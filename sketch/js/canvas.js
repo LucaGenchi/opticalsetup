@@ -970,6 +970,7 @@ function bindPointer() {
     else if (polygonDrawing) { e.preventDefault(); finishPolygon(); }
   });
   window.addEventListener('keydown', e => {
+    svg.classList.remove('pointer-focused');
     if (e.code === 'Space' && (e.target === document.body || e.target === svg)) {
       spaceDown = true; svg.style.cursor = 'grab'; e.preventDefault();
     }
@@ -979,6 +980,11 @@ function bindPointer() {
 }
 
 function onDown(e) {
+  // Chrome can classify programmatic focus from a pointer (notably a touch on
+  // Android) as `:focus-visible`. Mark that input modality before focusing so
+  // the whole SVG does not acquire a focus border. The global keydown listener
+  // above removes the marker as soon as the user switches to a keyboard.
+  svg.classList.add('pointer-focused');
   svg.focus({ preventScroll: true });
   if (e.pointerType === 'touch') {
     activeTouches.set(e.pointerId, localTouchPoint(e));
