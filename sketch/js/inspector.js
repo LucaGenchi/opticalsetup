@@ -236,8 +236,7 @@ export function renderInspector() {
         h += `</section>`;
       }
     }
-    if ((def.params || []).length) h += `<section class="insp-section"><div class="insp-section-title">Optical behavior</div>`;
-    let sectionOpen = (def.params || []).length > 0;
+    let sectionOpen = false;
     let voxelHintInserted = false;
     const insertVoxelHint = () => {
       if (voxelHintInserted) return;
@@ -247,16 +246,16 @@ export function renderInspector() {
         h += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
       }
     };
+    const openSection = title => {
+      if (sectionOpen) h += `</section>`;
+      h += `<section class="insp-section"><div class="insp-section-title">${esc(title)}</div>`;
+      sectionOpen = true;
+    };
     for (const p of def.params || []) {
       if (p.hidden) continue;
       if (p.show && !p.show(sel.params)) continue;
-      if (p.type === 'section') {
-        insertVoxelHint();
-        if (sectionOpen) h += `</section>`;
-        h += `<section class="insp-section"><div class="insp-section-title">${esc(p.label)}</div>`;
-        sectionOpen = true;
-        continue;
-      }
+      if (p.type === 'section') { insertVoxelHint(); openSection(p.label); continue; }
+      if (!sectionOpen) openSection('Optical behavior');
       if (p.type === 'heading') { h += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
       const v = sel.params[p.key];
       if (p.type === 'number') {
@@ -394,10 +393,17 @@ function applyInput(inp, rebuild = false) {
   else if (inp.type === 'number') {
     val = parseFloat(inp.value);
     if (!Number.isFinite(val)) return;
-    const min = parseFloat(inp.min), max = parseFloat(inp.max);
-    if (Number.isFinite(min)) val = Math.max(min, val);
-    if (Number.isFinite(max)) val = Math.min(max, val);
-    if (parseFloat(inp.value) !== val) inp.value = String(val);
+    // Only clamp (and rewrite the visible text) on commit (blur/change), not
+    // on every keystroke — otherwise clearing a field and typing a new
+    // value gets overwritten mid-edit the moment a leading digit sequence
+    // is momentarily below min (e.g. clearing "532" and typing "9" of a
+    // new "920" snaps to the min wavelength, corrupting the rest of the typed text).
+    if (rebuild) {
+      const min = parseFloat(inp.min), max = parseFloat(inp.max);
+      if (Number.isFinite(min)) val = Math.max(min, val);
+      if (Number.isFinite(max)) val = Math.min(max, val);
+      if (parseFloat(inp.value) !== val) inp.value = String(val);
+    }
   }
   else val = inp.value;
   if (inp.maxLength > 0 && typeof val === 'string' && val.length > inp.maxLength) {
