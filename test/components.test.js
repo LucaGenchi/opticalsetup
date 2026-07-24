@@ -168,11 +168,29 @@ test('eye detects focused light at its retina and clips outside the pupil', () =
   assert.equal(detectorReading(eye.id), null);
 });
 
-test('chopper applies CW duty and adds a temporal gate to pulsed tracks', () => {
+test('chopper averages static CW power, previews live gate phase, and gates pulses', () => {
   const laser = createElement('laser', 0, 0);
   const chopper = createElement('chopper', 150, 0);
+  chopper.params.frequencyMHz = 1;
   chopper.params.chopDuty = 0.4;
+  chopper.params.phaseNs = 25;
   const detector = createElement('detector', 300, 0);
+
+  // No live clock means a deterministic duty-averaged static trace/export.
+  traceAll([laser, chopper, detector]);
+  assert.ok(Math.abs(detectorReading(detector.id).signal - 0.4) < 1e-9);
+
+  // A live clock makes the same CW path visibly open and close. The phase
+  // offset is the beginning of the open interval; 40% of a 1 MHz gate is open.
+  chopper._simulationTimeNs = 25;
+  traceAll([laser, chopper, detector]);
+  assert.equal(detectorReading(detector.id).signal, 1);
+  chopper._simulationTimeNs = 425;
+  traceAll([laser, chopper, detector]);
+  assert.equal(detectorReading(detector.id), null);
+
+  // Non-finite transient UI state must safely fall back to the static average.
+  chopper._simulationTimeNs = Number.NaN;
   traceAll([laser, chopper, detector]);
   assert.ok(Math.abs(detectorReading(detector.id).signal - 0.4) < 1e-9);
 

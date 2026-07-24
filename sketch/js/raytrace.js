@@ -5,7 +5,7 @@
 
 import { registry, OBJ_SHAPES } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, pulseGateTransmission } from './pulses.js';
+import { C_MM_PER_NS, gateTransmissionAt, pulseGateTransmission } from './pulses.js';
 import {
   linearStokes, cloneStokes, retarder as applyRetarder, analyzerTransmission,
   legacyPolarization, polarizationDescription,
@@ -611,7 +611,18 @@ function interact(ray, hit) {
     }
     case 'chop': {
       const duty = Math.min(0.99, Math.max(0.01, data.duty ?? 0.5));
-      if (!ray.pulse) return [{ d, intensity: ray.intensity * duty }];
+      if (!ray.pulse) {
+        // Static traces and exports communicate time-averaged CW power. The
+        // live canvas supplies a finite gate time so the same chopper instead
+        // shows its instantaneous open/closed state as the wheel turns.
+        if (Number.isFinite(data.timeNs)) {
+          const transmission = gateTransmissionAt({
+            opl: 0, frequencyMHz: data.frequencyMHz || 1, duty, phaseNs: data.phaseNs || 0,
+          }, data.timeNs);
+          return transmission > 0 ? [{ d }] : [];
+        }
+        return [{ d, intensity: ray.intensity * duty }];
+      }
       const pulse = {
         ...ray.pulse,
         gates: [...(ray.pulse.gates || []), {

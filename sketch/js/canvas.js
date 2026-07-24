@@ -33,6 +33,8 @@ const voxelEventKeys = new Set();
 const MAX_VOXELS_PER_STAGE = 1200;
 export let onSelectionChange = () => { };
 export function setSelectionCallback(fn) { onSelectionChange = fn; }
+export let onMeasurementsChange = () => { };
+export function setMeasurementsCallback(fn) { onMeasurementsChange = fn; }
 
 export function initCanvas(svgElement, statusElement) {
   svg = svgElement;
@@ -142,13 +144,28 @@ function stageWithSignalSpot(el) {
   return { ...moved, _signalHitLocal: { ...toLocal(moved, hit.x, hit.y), wl: hit.wl } };
 }
 
+function animatedChopper(el) {
+  if (pulseTracks.length) return { ...el, _simulationTimeNs: pulsePlayback.timeNs };
+  const frequencyMHz = Math.min(1000, Math.max(0.000001, el.params.frequencyMHz || 0.001));
+  const periodNs = 1000 / frequencyMHz;
+  const physicalHz = frequencyMHz * 1e6;
+  const displayHz = Math.min(2, Math.max(0.25, physicalHz));
+  const phaseNs = Number.isFinite(el.params.phaseNs) ? el.params.phaseNs : 0;
+  return {
+    ...el,
+    _animationTimeS: motionTimeSeconds,
+    _simulationTimeNs: phaseNs + motionTimeSeconds * displayHz * periodNs,
+  };
+}
+
 function animatedOpticalElements() {
-  if (!hasGalvoMotion() && !hasStageMotion()) return state.elements;
+  if (!hasGalvoMotion() && !hasStageMotion() && !hasChopperMotion()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
       return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
     }
+    if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     return el.type === 'stage' ? animatedStageElement(el) : el;
   });
 }
@@ -160,12 +177,7 @@ function animatedVisualElements() {
       const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
       return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
     }
-    if (el.type === 'chopper' && el.params.modulate) {
-      return {
-        ...el, _animationTimeS: motionTimeSeconds,
-        _simulationTimeNs: pulseTracks.length ? pulsePlayback.timeNs : null,
-      };
-    }
+    if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     return el.type === 'stage' ? stageWithSignalSpot(el) : el;
   });
 }
@@ -188,6 +200,10 @@ function hasSignalSpotStage() {
   return state.elements.some(el => el.type === 'stage' && el.params.showSignalSpot);
 }
 
+function hasChopperMotion() {
+  return state.elements.some(el => el.type === 'chopper' && el.params.modulate);
+}
+
 function animateMotion(nowMs) {
   motionFrame = null;
   if (reduceMotion || !hasMotion()) return;
@@ -195,16 +211,13 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    if (hasGalvoMotion() || hasStageMotion()) renderBeams();
+    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasChopperMotion();
+    if (opticalMotion) renderBeams();
     renderElements();
     renderVoxels();
     renderOverlay();
     const selected = findSelected();
-    if (hasGalvoMotion() && selected && registry[selected.type]?.readoutKind
-      && nowMs - (animateMotion.lastInspectorMs || 0) >= 150) {
-      animateMotion.lastInspectorMs = nowMs;
-      onSelectionChange();
-    }
+    if (opticalMotion && selected && registry[selected.type]?.readoutKind) onMeasurementsChange();
   }
   motionFrame = requestAnimationFrame(animateMotion);
 }
