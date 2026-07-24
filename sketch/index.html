@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="OpticalSetup">
+<meta name="color-scheme" content="light dark">
 <title>OpticalSetup — 2D optical setup builder</title>
 <meta name="description" content="Build and share a live optical setup: place lasers, lenses, and mirrors on a virtual table and watch the ray paths trace instantly.">
 <meta property="og:type" content="website">
@@ -21,6 +22,16 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -69,6 +80,17 @@
       <button type="button" id="btnFiber" title="Draw an optical fiber patch cable: click waypoints, double-click to finish">Fiber</button>
     </div>
     <span class="spacer"></span>
+    <div class="toolgroup theme-group" aria-label="Appearance">
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+    </div>
     <div class="toolgroup export-group" aria-label="Export actions">
       <button type="button" id="btnSVG" class="primary" title="Export vector SVG">Export SVG</button>
       <button type="button" id="btnPNG" title="Export PNG (3×)">PNG</button>
