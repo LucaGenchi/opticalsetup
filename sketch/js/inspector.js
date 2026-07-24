@@ -316,7 +316,6 @@ export function renderInspector() {
         if (p.hidden) continue;
         if (p.show && !p.show(sel.params)) continue;
         if (p.type === 'section') {
-          insertVoxelHint();
           flushSection();
           sectionKey = p.key; sectionTitle = p.label; sectionFields = ''; sectionCount = 0;
           continue;
