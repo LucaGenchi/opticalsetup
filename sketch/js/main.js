@@ -5,7 +5,7 @@ import { registry, categories, createElement, getElementMeta } from './elements.
 import {
   initCanvas, renderAll, startPlacing, startBeamTool, cancelTool, isPlacing,
   isPolygonDrawing, rotatePlacing, finishBeam, finishPolygon, undoPolygonPoint,
-  getViewportDetail, zoomBy, zoomFit, setSelectionCallback,
+  getViewportDetail, zoomBy, zoomFit, setSelectionCallback, setMeasurementsCallback,
   getPulsePlayback, setPulsePlaying, setPulseSpeed, setPulseDisplayMode, resetPulseTime, clearVoxelPreview,
 } from './canvas.js';
 import { initInspector, renderInspector, refreshMeasurements } from './inspector.js';
@@ -808,6 +808,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (!isDemo) { bindExamples(); bindCommunity(); }
   bindKeys();
   setSelectionCallback(renderSelection);
+  setMeasurementsCallback(refreshMeasurements);
   onChange(() => { renderAll(); syncToolbar(); refreshMeasurements(); });
 
   if (isTypeDemo) {
