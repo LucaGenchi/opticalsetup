@@ -158,3 +158,40 @@ export function pulseMarkers(track, timeNs, {
   }
   return markers;
 }
+
+// Arrival events at one optical-path position between two display-clock times.
+// This uses the same physical/schematic packet speed as `pulseMarkers`, so a
+// deposited preview marker coincides with the animated packet reaching a
+// surface. Dense trains are bounded rather than trying to represent every
+// physical pulse in a single animation frame.
+export function pulseArrivalsAtPath(track, fromTimeNs, toTimeNs, targetOpl, {
+  mode = 'schematic',
+  schematicSpacingMm = 140,
+  maxEvents = 96,
+} = {}) {
+  if (!finiteTrack(track) || !track.pulse || !Number.isFinite(fromTimeNs)
+      || !Number.isFinite(toTimeNs) || !Number.isFinite(targetOpl)
+      || toTimeNs <= fromTimeNs || targetOpl < track.opls[0] - 1e-9
+      || targetOpl > track.opls.at(-1) + 1e-9) return [];
+  const repRateMHz = Math.min(1e6, Math.max(0.001, track.pulse.repRateMHz || 80));
+  const periodNs = 1000 / repRateMHz;
+  const physical = mode === 'physical';
+  const spacing = physical ? C_MM_PER_NS * periodNs : Math.max(20, schematicSpacingMm);
+  const speed = physical ? C_MM_PER_NS : spacing / periodNs;
+  const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
+  const firstArrival = phaseNs + targetOpl / speed;
+  const firstIndex = Math.floor((fromTimeNs - firstArrival) / periodNs) + 1;
+  const lastIndex = Math.floor((toTimeNs - firstArrival + 1e-9) / periodNs);
+  if (lastIndex < firstIndex) return [];
+  const total = lastIndex - firstIndex + 1;
+  const stride = total > maxEvents ? Math.ceil(total / maxEvents) : 1;
+  const activeGates = (track.pulse.gates || []).filter(gate => targetOpl + 1e-9 >= gate.opl);
+  const arrivals = [];
+  for (let i = firstIndex; i <= lastIndex && arrivals.length < maxEvents; i += stride) {
+    const timeNs = firstArrival + i * periodNs;
+    const emissionTimeNs = timeNs - targetOpl / speed;
+    const transmission = pulseTransmissionAt({ ...track.pulse, gates: activeGates }, emissionTimeNs);
+    if (transmission > 1e-9) arrivals.push({ timeNs, transmission });
+  }
+  return arrivals;
+}

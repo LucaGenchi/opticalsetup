@@ -6,7 +6,7 @@ import {
   initCanvas, renderAll, startPlacing, startBeamTool, cancelTool, isPlacing,
   isPolygonDrawing, rotatePlacing, finishBeam, finishPolygon, undoPolygonPoint,
   getViewportDetail, zoomBy, zoomFit, setSelectionCallback,
-  getPulsePlayback, setPulsePlaying, setPulseSpeed, setPulseDisplayMode, resetPulseTime,
+  getPulsePlayback, setPulsePlaying, setPulseSpeed, setPulseDisplayMode, resetPulseTime, clearVoxelPreview,
 } from './canvas.js';
 import { initInspector, renderInspector, refreshMeasurements } from './inspector.js';
 import { buildSVG, exportSVG, exportPNG } from './export.js';
@@ -778,6 +778,7 @@ function bindContextMenu() {
 // inspector panel buttons dispatch these
 document.addEventListener('optics:delete', deleteSelected);
 document.addEventListener('optics:duplicate', duplicateSelected);
+document.addEventListener('optics:clearvoxels', e => clearVoxelPreview(e.detail?.stageId));
 document.addEventListener('optics:toolchange', e => syncToolMode(e.detail));
 document.addEventListener('optics:pulsestate', e => syncPulseControls(e.detail));
 document.addEventListener('optics:viewchange', e => syncViewControls(e.detail));
