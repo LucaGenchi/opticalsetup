@@ -1360,6 +1360,14 @@ export const registry = {
     label: 'Sample on piezo stage', category: 'Microscopy', size: { w: 22, h: 56 },
     size_: el => ({ w: 22, h: (el.params.aperture || 25.4) + 30 }),
     params: [
+      { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
+      { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
+      { key: 'pzTravelXY', label: 'XY travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 12, show: p => p.pzMode === 'xy' || p.pzMode === 'sync' },
+      { key: 'pzFreqXY', label: 'XY scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.15, show: p => p.pzMode === 'xy' || p.pzMode === 'sync' },
+      { key: 'pzTravelZ', label: 'Z travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 8, show: p => p.pzMode === 'z' || p.pzMode === 'sync' },
+      { key: 'pzFreqZ', label: 'Z scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.1, show: p => p.pzMode === 'z' },
+      { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.pzMode === 'sync' },
+      { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
       { key: 'containsSample', label: 'Sample installed', type: 'checkbox', def: false },
       { key: 'aperture', label: 'Clear aperture', type: 'optsize', min: 4, max: 150, def: 25.4 },
       { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: p => p.containsSample, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
@@ -1368,13 +1376,6 @@ export const registry = {
       { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => p.containsSample && p.sampleKind === 'resin' },
       { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => p.containsSample && p.sampleKind === 'resin' && p.voxelPreview },
       ...sampleModeParams().map(spec => ({ ...spec, show: p => p.containsSample && (!spec.show || spec.show(p)) })),
-      { key: 'pzHeading', label: 'Piezo movement', type: 'section', show: p => p.containsSample },
-      { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', show: p => p.containsSample, options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
-      { key: 'pzTravelXY', label: 'XY travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 12, show: p => p.containsSample && (p.pzMode === 'xy' || p.pzMode === 'sync') },
-      { key: 'pzFreqXY', label: 'XY scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.15, show: p => p.containsSample && (p.pzMode === 'xy' || p.pzMode === 'sync') },
-      { key: 'pzTravelZ', label: 'Z travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 8, show: p => p.containsSample && (p.pzMode === 'z' || p.pzMode === 'sync') },
-      { key: 'pzFreqZ', label: 'Z scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.1, show: p => p.containsSample && p.pzMode === 'z' },
-      { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.containsSample && p.pzMode === 'sync' },
     ],
     svg(el) {
       const p = el.params;
@@ -1385,8 +1386,13 @@ export const registry = {
         const color = Number.isFinite(liveWl) ? wavelengthToColor(liveWl) : stageSampleColor(p);
         spot = `<circle cx="${el._signalHitLocal.x.toFixed(2)}" cy="${el._signalHitLocal.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
       }
-      return `<path d="M 8,${-outer} L -6,${-outer} L -6,${outer} L 8,${outer}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<rect x="-2" y="${-clear}" width="5" height="${2 * clear}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
+      // Two separate L brackets (short-side cap + rail) grip the glass from
+      // its top and bottom short edges and protrude 20% of the glass length
+      // inward, leaving a 60%-of-length window between them for the beam.
+      const windowY = clear * 0.6;
+      return `<path d="M 8,${-outer} L -6,${-outer} L -6,${-windowY}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
+        `<path d="M 8,${outer} L -6,${outer} L -6,${windowY}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
+        `<rect x="-2" y="${-clear}" width="5" height="${2 * clear}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0.5" cy="0" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
