@@ -237,9 +237,26 @@ export function renderInspector() {
       }
     }
     if ((def.params || []).length) h += `<section class="insp-section"><div class="insp-section-title">Optical behavior</div>`;
+    let sectionOpen = (def.params || []).length > 0;
+    let voxelHintInserted = false;
+    const insertVoxelHint = () => {
+      if (voxelHintInserted) return;
+      voxelHintInserted = true;
+      if (sel.type === 'stage' && sel.params.sampleKind === 'resin' && sel.params.voxelPreview) {
+        h += `<div class="hint">Each visible pulsed arrival deposits a bounded square marker at the traced hit. The marker follows the moving sample and broadens/fades with X (depth) offset from focus; it is a 2D writing preview, not a dose, threshold, curing, or true 3D-volume calculation.</div>`;
+        h += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
+      }
+    };
     for (const p of def.params || []) {
       if (p.hidden) continue;
       if (p.show && !p.show(sel.params)) continue;
+      if (p.type === 'section') {
+        insertVoxelHint();
+        if (sectionOpen) h += `</section>`;
+        h += `<section class="insp-section"><div class="insp-section-title">${esc(p.label)}</div>`;
+        sectionOpen = true;
+        continue;
+      }
       if (p.type === 'heading') { h += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
       const v = sel.params[p.key];
       if (p.type === 'number') {
@@ -267,11 +284,8 @@ export function renderInspector() {
         if (!isStd) h += field('↳ size (mm)', `<input type="number" data-p="${p.key}" min="1" max="500" step="0.5" value="${v}">`);
       }
     }
-    if (sel.type === 'stage' && sel.params.sampleKind === 'resin' && sel.params.voxelPreview) {
-      h += `<div class="hint">Each visible pulsed arrival deposits a bounded square marker at the traced hit. The marker follows the moving sample and broadens/fades with X (depth) offset from focus; it is a 2D writing preview, not a dose, threshold, curing, or true 3D-volume calculation.</div>`;
-      h += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
-    }
-    if ((def.params || []).length) h += `</section>`;
+    insertVoxelHint();
+    if (sectionOpen) h += `</section>`;
     if (!state.demoMode) {
       h += `<div class="btnrow">${def.singleton ? '' : '<button type="button" id="inspDup">Duplicate</button>'}<button type="button" id="inspDel" class="danger">Delete</button></div>`;
       h += `<a class="wiki-link" href="../wiki/${sel.type}/">Explore this element on the Wiki →</a>`;

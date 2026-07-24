@@ -1367,14 +1367,14 @@ export const registry = {
       { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, show: p => p.containsSample },
       { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => p.containsSample && p.sampleKind === 'resin' },
       { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => p.containsSample && p.sampleKind === 'resin' && p.voxelPreview },
-      { key: 'pzHeading', label: 'Piezo movement', type: 'heading', show: p => p.containsSample },
+      ...sampleModeParams().map(spec => ({ ...spec, show: p => p.containsSample && (!spec.show || spec.show(p)) })),
+      { key: 'pzHeading', label: 'Piezo movement', type: 'section', show: p => p.containsSample },
       { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', show: p => p.containsSample, options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
       { key: 'pzTravelXY', label: 'XY travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 12, show: p => p.containsSample && (p.pzMode === 'xy' || p.pzMode === 'sync') },
       { key: 'pzFreqXY', label: 'XY scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.15, show: p => p.containsSample && (p.pzMode === 'xy' || p.pzMode === 'sync') },
       { key: 'pzTravelZ', label: 'Z travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 8, show: p => p.containsSample && (p.pzMode === 'z' || p.pzMode === 'sync') },
       { key: 'pzFreqZ', label: 'Z scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.1, show: p => p.containsSample && p.pzMode === 'z' },
       { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.containsSample && p.pzMode === 'sync' },
-      ...sampleModeParams().map(spec => ({ ...spec, show: p => p.containsSample && (!spec.show || spec.show(p)) })),
     ],
     svg(el) {
       const p = el.params;
