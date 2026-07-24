@@ -7,7 +7,10 @@ import { traceScene } from './raytrace.js';
 import { pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG } from './util.js';
 import { canAppendPolygonPoint, isSimplePolygon, polygonBounds } from './polygon.js';
-import { pinchView, zoomViewAt } from './viewport.js';
+import {
+  FINE_GRID_PITCH, MICRO_GRID_PITCH, TABLE_HOLE_PITCH,
+  gridDetailForZoom, pinchView, snapToGrid, VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
+} from './viewport.js';
 
 let svg, viewport, gridLayer, beamLayer, pulseLayer, manualLayer, elementLayer, overlayLayer;
 let statusEl;
@@ -22,16 +25,11 @@ const pulsePlayback = { playing: true, timeNs: 0, speedNsPerSecond: 10, mode: 's
 export let onSelectionChange = () => { };
 export function setSelectionCallback(fn) { onSelectionChange = fn; }
 
-const HOLE_PITCH = 25; // optical table hole spacing, mm
-
 export function initCanvas(svgElement, statusElement) {
   svg = svgElement;
   statusEl = statusElement;
   svg.innerHTML = `
     <defs>
-      <pattern id="holes" x="${-HOLE_PITCH / 2}" y="${-HOLE_PITCH / 2}" width="${HOLE_PITCH}" height="${HOLE_PITCH}" patternUnits="userSpaceOnUse">
-        <circle cx="${HOLE_PITCH / 2}" cy="${HOLE_PITCH / 2}" r="1.6" fill="#d3d8de"/>
-      </pattern>
       <linearGradient id="pulseSpectrum" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0" stop-color="#7c3aed"/><stop offset="0.22" stop-color="#2563eb"/>
         <stop offset="0.45" stop-color="#10b981"/><stop offset="0.65" stop-color="#eab308"/>
@@ -71,7 +69,7 @@ export function screenToWorld(sx, sy) {
 
 function snapPos(v, bypass = false) {
   if (!state.snap || bypass) return v;
-  return Math.round(v / HOLE_PITCH) * HOLE_PITCH;
+  return snapToGrid(v, state.view.z);
 }
 
 // Snap an element so that its OPTICALLY ACTIVE point (mirror face, lens
@@ -83,8 +81,8 @@ function snapElPos(el, wx, wy, bypass = false) {
   const spl = def && def.snapPt ? def.snapPt : { x: 0, y: 0 };
   const sp = rotPt(spl.x, spl.y, el.rot || 0);
   return {
-    x: Math.round((wx + sp.x) / HOLE_PITCH) * HOLE_PITCH - sp.x,
-    y: Math.round((wy + sp.y) / HOLE_PITCH) * HOLE_PITCH - sp.y,
+    x: snapToGrid(wx + sp.x, state.view.z) - sp.x,
+    y: snapToGrid(wy + sp.y, state.view.z) - sp.y,
   };
 }
 
@@ -107,6 +105,16 @@ export function renderAll() {
   renderElements();
   renderOverlay();
   syncMotionAnimation();
+  notifyViewChange();
+}
+
+export function getViewportDetail() {
+  const grid = gridDetailForZoom(state.view.z);
+  return { zoom: state.view.z, ...grid, snap: state.snap };
+}
+
+function notifyViewChange() {
+  document.dispatchEvent(new CustomEvent('optics:viewchange', { detail: getViewportDetail() }));
 }
 
 function animatedOpticalElements() {
@@ -178,10 +186,39 @@ function syncMotionAnimation() {
 function renderGrid() {
   if (!state.showGrid) { gridLayer.innerHTML = ''; return; }
   const r = svg.getBoundingClientRect(), v = state.view;
-  const x0 = Math.floor((-v.x / v.z) / HOLE_PITCH - 1) * HOLE_PITCH;
-  const y0 = Math.floor((-v.y / v.z) / HOLE_PITCH - 1) * HOLE_PITCH;
-  const w = r.width / v.z + 2 * HOLE_PITCH, h = r.height / v.z + 2 * HOLE_PITCH;
-  gridLayer.innerHTML = `<rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="url(#holes)"/>`;
+  const x0 = -v.x / v.z - TABLE_HOLE_PITCH;
+  const y0 = -v.y / v.z - TABLE_HOLE_PITCH;
+  const x1 = x0 + r.width / v.z + 2 * TABLE_HOLE_PITCH;
+  const y1 = y0 + r.height / v.z + 2 * TABLE_HOLE_PITCH;
+  const { level } = gridDetailForZoom(v.z);
+  // vector-effect keeps this in screen space, so use a literal hairline
+  // width rather than compensating for zoom a second time.
+  const lineWidth = 0.55;
+  let s = '';
+
+  // The smaller grid lines stay hairline-thin on screen: zoom reveals spatial
+  // detail rather than turning the workbench into heavy graph paper.
+  if (level === 'micro') s += gridLines(x0, y0, x1, y1, MICRO_GRID_PITCH, '#eef1f4', lineWidth);
+  if (level !== 'table') s += gridLines(x0, y0, x1, y1, FINE_GRID_PITCH, '#e2e7ec', lineWidth);
+
+  const majorStartX = Math.floor(x0 / TABLE_HOLE_PITCH) * TABLE_HOLE_PITCH;
+  const majorStartY = Math.floor(y0 / TABLE_HOLE_PITCH) * TABLE_HOLE_PITCH;
+  const holeRadius = 1.35 / v.z;
+  for (let x = majorStartX; x <= x1; x += TABLE_HOLE_PITCH) {
+    for (let y = majorStartY; y <= y1; y += TABLE_HOLE_PITCH) {
+      s += `<circle cx="${x}" cy="${y}" r="${holeRadius}" fill="#cbd3dc"/>`;
+    }
+  }
+  gridLayer.innerHTML = s;
+}
+
+function gridLines(x0, y0, x1, y1, step, color, width) {
+  const startX = Math.floor(x0 / step) * step;
+  const startY = Math.floor(y0 / step) * step;
+  let d = '';
+  for (let x = startX; x <= x1; x += step) d += `M ${x} ${y0} V ${y1}`;
+  for (let y = startY; y <= y1; y += step) d += `M ${x0} ${y} H ${x1}`;
+  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" vector-effect="non-scaling-stroke"/>`;
 }
 
 function ptsAttr(pts) { return pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '); }
@@ -197,7 +234,7 @@ function renderBeams() {
     } else if (d.type === 'dots') {
       s += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
     } else {
-      s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}/>`;
+      s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}/>`;
     }
   }
   beamLayer.innerHTML = s;
@@ -290,7 +327,7 @@ export function resetPulseTime() {
 
 function renderManual() {
   let s = '';
-  for (const b of state.beams) s += manualBeamSVG(b);
+  for (const b of state.beams) s += `<g vector-effect="non-scaling-stroke">${manualBeamSVG(b)}</g>`;
   // in-progress beam / fiber
   if (drawing) {
     const c = drawing.kindType === 'fiber' ? '#c98f00' : '#e02020';
@@ -331,13 +368,13 @@ function renderElements() {
   for (const el of animatedVisualElements()) {
     const def = registry[el.type];
     if (!def) continue;
-    s += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})">${def.svg(el)}</g>`;
+    s += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el)}</g>`;
     s += labelSVG(el);
   }
   // placement ghost
   if (placing && placing.pos) {
     const el = placing.el;
-    s += `<g transform="translate(${placing.pos.x} ${placing.pos.y}) rotate(${el.rot || 0})" opacity="0.5">${registry[el.type].svg(el)}</g>`;
+    s += `<g transform="translate(${placing.pos.x} ${placing.pos.y}) rotate(${el.rot || 0})" opacity="0.5" vector-effect="non-scaling-stroke">${registry[el.type].svg(el)}</g>`;
   }
   elementLayer.innerHTML = s;
 }
@@ -1213,7 +1250,7 @@ export function zoomFit() {
   const x0 = Math.min(...xs) - 40, x1 = Math.max(...xs) + 40;
   const y0 = Math.min(...ys) - 40, y1 = Math.max(...ys) + 40;
   const r = svg.getBoundingClientRect();
-  const z = Math.min(8, Math.max(0.15, Math.min(r.width / (x1 - x0), r.height / (y1 - y0))));
+  const z = Math.min(VIEW_MAX_ZOOM, Math.max(VIEW_MIN_ZOOM, Math.min(r.width / (x1 - x0), r.height / (y1 - y0))));
   state.view = { x: (r.width - (x0 + x1) * z) / 2, y: (r.height - (y0 + y1) * z) / 2, z };
   renderAll();
 }

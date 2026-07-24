@@ -230,6 +230,10 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .canvas-controls button:hover { background: #eef2f7; }
 .canvas-controls button.active { background: var(--accent-soft); border-color: #b7ccf2; }
 .control-divider { width: 1px; height: 18px; margin: 0 3px; background: var(--border); }
+.zoom-readout {
+  min-width: 64px; padding: 0 4px 0 3px; color: var(--muted); font-size: 10px;
+  font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap;
+}
 .pulse-controls {
   position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
   display: flex; align-items: center; gap: 3px; max-width: calc(100% - 28px);
@@ -377,6 +381,7 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   .canvas-controls button { min-width: 31px; height: 31px; padding: 3px 5px; font-size: 11px; }
   .canvas-controls #btnGrid, .canvas-controls #btnSnap { min-width: 36px; }
   .control-divider { margin: 0 1px; }
+  .zoom-readout { display: none; }
   .pulse-controls { bottom: calc(65px + env(safe-area-inset-bottom)); max-width: calc(100% - 24px); }
   .pulse-controls #pulseDisplay { width: 114px; }
   .pulse-controls #pulseSpeed { width: 66px; }

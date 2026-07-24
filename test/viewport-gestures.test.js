@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clampZoom, pinchView, zoomViewAt } from '../sketch/js/viewport.js';
+import { clampZoom, gridDetailForZoom, pinchView, snapToGrid, zoomViewAt } from '../sketch/js/viewport.js';
 
 test('zoomViewAt keeps the world point under its screen anchor', () => {
   const start = { x: 60, y: 40, z: 1 };
@@ -24,6 +24,15 @@ test('pinchView combines pinch zoom and midpoint panning around the starting wor
 
 test('viewport zoom remains bounded', () => {
   assert.equal(clampZoom(0.001), 0.15);
-  assert.equal(clampZoom(50), 8);
-  assert.equal(zoomViewAt({ x: 0, y: 0, z: 7 }, { x: 10, y: 10 }, 3).z, 8);
+  assert.equal(clampZoom(500), 64);
+  assert.equal(zoomViewAt({ x: 0, y: 0, z: 32 }, { x: 10, y: 10 }, 3).z, 64);
+});
+
+test('progressive grid and snapping refine only at close zoom', () => {
+  assert.deepEqual(gridDetailForZoom(1.99), { step: 25, level: 'table' });
+  assert.deepEqual(gridDetailForZoom(2), { step: 5, level: 'fine' });
+  assert.deepEqual(gridDetailForZoom(8), { step: 1, level: 'micro' });
+  assert.equal(snapToGrid(13.4, 1), 25);
+  assert.equal(snapToGrid(13.4, 2), 15);
+  assert.equal(snapToGrid(13.4, 8), 13);
 });

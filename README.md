@@ -14,6 +14,11 @@ figures as SVG or PNG.
 
 ## Highlights
 
+- **Progressive workbench detail**: continuous zoom reaches 64×. The 25 mm
+  optical-table holes remain visible at overview, then 5 mm and 1 mm sketch
+  subdivisions and matching snap precision appear as you zoom in. Optical
+  strokes stay fine on screen at close inspection while shapes retain their
+  underlying geometry.
 - **Direct manipulation**: selecting any component reveals size-backed blue
   edge/corner handles, a rotation handle, and a component-specific purple tuning
   knob. Freeform glass also exposes its actual boundary vertices. Right-click offers
