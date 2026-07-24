@@ -1386,7 +1386,12 @@ export const registry = {
         const color = Number.isFinite(liveWl) ? wavelengthToColor(liveWl) : stageSampleColor(p);
         spot = `<circle cx="${el._signalHitLocal.x.toFixed(2)}" cy="${el._signalHitLocal.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
       }
-      return `<path d="M 8,${-outer} L -6,${-outer} L -6,${outer} L 8,${outer}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
+      // Two separate L brackets (short-side cap + rail) grip the glass from
+      // its top and bottom short edges and protrude 20% of the glass length
+      // inward, leaving a 60%-of-length window between them for the beam.
+      const windowY = clear * 0.6;
+      return `<path d="M 8,${-outer} L -6,${-outer} L -6,${-windowY}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
+        `<path d="M 8,${outer} L -6,${outer} L -6,${windowY}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<rect x="-2" y="${-clear}" width="5" height="${2 * clear}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0.5" cy="0" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
