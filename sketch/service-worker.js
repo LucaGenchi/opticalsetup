@@ -28,6 +28,7 @@ const PRECACHE_PATHS = [
   "./js/raytrace.js",
   "./js/share.js",
   "./js/state.js",
+  "./js/theme.js",
   "./js/util.js",
   "./js/viewport.js",
   "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
