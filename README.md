@@ -66,6 +66,10 @@ figures as SVG or PNG.
 - **Self-contained share links and QR codes**: the Share action compresses the
   current sketch into the URL fragment, copies the link, and generates a downloadable
   QR code. Opening it restores the setup without an account or server-side scene storage.
+- **Installable and offline-ready**: add OpticalSetup to a desktop or mobile home
+  screen as a standalone app. After the first online visit, the workbench and its
+  bundled examples continue to load without a network connection; sketches still
+  autosave locally in the browser.
 
 ## Simulation scope
 

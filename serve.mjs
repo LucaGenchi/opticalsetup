@@ -12,6 +12,7 @@ const MIME = {
   '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.xml': 'application/xml', '.txt': 'text/plain',
+  '.webmanifest': 'application/manifest+json',
 };
 
 createServer(async (req, res) => {
