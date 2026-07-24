@@ -171,23 +171,23 @@ button.danger:hover { background: var(--danger-bg); }
   margin: auto; padding: 22px; border: 1px solid var(--border-strong); border-radius: 13px;
   background: var(--panel); color: var(--text); box-shadow: 0 24px 70px rgba(22, 31, 44, .24);
 }
-.proposal-dialog::backdrop { background: rgba(28, 36, 48, .38); backdrop-filter: blur(2px); }
+.proposal-dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
 .proposal-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .proposal-dialog h2 { margin-top: 2px; font-size: 19px; letter-spacing: -.3px; }
-.proposal-intro { margin: 14px 0 17px; color: #56616e; font-size: 12px; line-height: 1.5; }
+.proposal-intro { margin: 14px 0 17px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .proposal-field { display: block; margin-top: 13px; }
-.proposal-field > span { display: block; margin-bottom: 6px; color: #59636f; font-size: 10px; font-weight: 730; letter-spacing: .35px; text-transform: uppercase; }
+.proposal-field > span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; font-weight: 730; letter-spacing: .35px; text-transform: uppercase; }
 .proposal-field input, .proposal-field textarea {
   width: 100%; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px;
-  background: #fbfcfd; color: var(--text); font: inherit; line-height: 1.4;
+  background: var(--surface); color: var(--text); font: inherit; line-height: 1.4;
 }
 .proposal-field textarea { resize: vertical; min-height: 92px; }
-.proposal-field input:focus, .proposal-field textarea:focus { border-color: var(--accent); background: #fff; outline: 2px solid rgba(36,105,232,.13); }
-.proposal-consent { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: start; margin-top: 15px; color: #586370; font-size: 11px; line-height: 1.45; }
+.proposal-field input:focus, .proposal-field textarea:focus { border-color: var(--accent); background: var(--panel); outline: 2px solid rgba(36,105,232,.13); }
+.proposal-consent { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: start; margin-top: 15px; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .proposal-consent input { width: 16px; height: 16px; margin-top: 1px; accent-color: var(--accent); }
-.proposal-error { margin-top: 13px; padding: 8px 10px; border-left: 2px solid #c94c42; background: #fff3f1; color: #96362f; font-size: 11px; line-height: 1.4; }
+.proposal-error { margin-top: 13px; padding: 8px 10px; border-left: 2px solid var(--danger); background: var(--danger-bg); color: var(--danger); font-size: 11px; line-height: 1.4; }
 .proposal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-.proposal-footnote { margin-top: 12px; color: #7a838d; font-size: 9.5px; line-height: 1.45; }
+.proposal-footnote { margin-top: 12px; color: var(--muted); font-size: 9.5px; line-height: 1.45; }
 
 /* ---------- layout ---------- */
 main { flex: 1; display: flex; min-height: 0; position: relative; }
