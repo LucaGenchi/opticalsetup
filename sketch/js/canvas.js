@@ -2,7 +2,7 @@
 // element placement, manual beam drawing/editing).
 
 import { state, changed, pushUndo, findSelected } from './state.js';
-import { registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG, stageYOffsetAt } from './elements.js';
+import { registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG, stageOffsetAt, voxelDepthFactor } from './elements.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG } from './util.js';
@@ -16,6 +16,8 @@ let svg, viewport, gridLayer, beamLayer, pulseLayer, manualLayer, elementLayer, 
 let statusEl;
 let pulseTracks = [];
 let writeHits = [];
+let signalHits = [];
+const sampleHitPositions = new Map();
 let pulseFrame = null;
 let motionFrame = null;
 let motionStartMs = null;
@@ -125,8 +127,16 @@ function notifyViewChange() {
 }
 
 function animatedStageElement(el) {
-  const yOffset = stageYOffsetAt(el.params, motionTimeSeconds);
-  return yOffset ? { ...el, y: el.y + yOffset } : el;
+  const offset = stageOffsetAt(el.params, motionTimeSeconds);
+  return (offset.x || offset.y) ? { ...el, x: el.x + offset.x, y: el.y + offset.y } : el;
+}
+
+function stageWithSignalSpot(el) {
+  const moved = animatedStageElement(el);
+  if (!moved.params.showSignalSpot) return moved;
+  const hit = sampleHitPositions.get(el.id);
+  if (!hit) return moved;
+  return { ...moved, _signalHitLocal: toLocal(moved, hit.x, hit.y) };
 }
 
 function animatedOpticalElements() {
@@ -141,7 +151,7 @@ function animatedOpticalElements() {
 }
 
 function animatedVisualElements() {
-  if (!hasMotion()) return state.elements;
+  if (!hasMotion() && !hasSignalSpotStage()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
@@ -153,14 +163,14 @@ function animatedVisualElements() {
         _simulationTimeNs: pulseTracks.length ? pulsePlayback.timeNs : null,
       };
     }
-    return el.type === 'stage' ? animatedStageElement(el) : el;
+    return el.type === 'stage' ? stageWithSignalSpot(el) : el;
   });
 }
 
 function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'chopper' && el.params.modulate)
-    || (el.type === 'stage' && el.params.voxelPreview && el.params.stageMoveY));
+    || (el.type === 'stage' && (el.params.stageMoveX || el.params.stageMoveY)));
 }
 
 function hasGalvoMotion() {
@@ -168,7 +178,11 @@ function hasGalvoMotion() {
 }
 
 function hasStageMotion() {
-  return state.elements.some(el => el.type === 'stage' && el.params.voxelPreview && el.params.stageMoveY);
+  return state.elements.some(el => el.type === 'stage' && (el.params.stageMoveX || el.params.stageMoveY));
+}
+
+function hasSignalSpotStage() {
+  return state.elements.some(el => el.type === 'stage' && el.params.showSignalSpot);
 }
 
 function animateMotion(nowMs) {
@@ -248,6 +262,9 @@ function renderBeams() {
   const drawables = scene.drawables;
   pulseTracks = scene.pulseTracks;
   writeHits = scene.writeHits || [];
+  signalHits = scene.signalHits || [];
+  sampleHitPositions.clear();
+  for (const hit of signalHits) sampleHitPositions.set(hit.stageId, hit);
   let s = '';
   for (const d of drawables) {
     if (d.type === 'poly') {
@@ -289,7 +306,7 @@ function recordVoxelHits(fromTimeNs, toTimeNs) {
   if (toTimeNs <= fromTimeNs || !writeHits.length) return;
   for (const hit of writeHits) {
     const stage = state.elements.find(el => el.id === hit.stageId && el.type === 'stage');
-    if (!stage?.params.containsSample || !stage.params.voxelPreview || !Number.isFinite(hit.opl)) continue;
+    if (!stage?.params.containsSample || stage.params.sampleKind !== 'resin' || !stage.params.voxelPreview || !Number.isFinite(hit.opl)) continue;
     const track = {
       pts: [{ x: hit.x - 1, y: hit.y }, { x: hit.x + 1, y: hit.y }],
       opls: [Math.max(0, hit.opl - 1), hit.opl + 1],
@@ -299,9 +316,17 @@ function recordVoxelHits(fromTimeNs, toTimeNs) {
       mode: pulsePlayback.mode,
     });
     if (!arrivals.length) continue;
-    const displayedStage = animatedStageElement(stage);
+    const offset = stageOffsetAt(stage.params, motionTimeSeconds);
+    const displayedStage = { ...stage, x: stage.x + offset.x, y: stage.y + offset.y };
     const local = toLocal(displayedStage, hit.x, hit.y);
     if (!Number.isFinite(local.x) || !Number.isFinite(local.y)) continue;
+    // Volumetric qualitative effect: the further the sample currently sits
+    // from the stage's nominal X=0 focal plane, the more the voxel broadens
+    // and fades — a 2D stand-in for real axial defocus, not a calculated
+    // point-spread function.
+    const depthFactor = voxelDepthFactor(offset.x, stage.params.stageTravelX ?? 8);
+    const baseSize = Math.min(6, Math.max(0.1, stage.params.voxelSize ?? 0.6));
+    const size = Math.min(10, baseSize * (1 + depthFactor * 1.5));
     for (const arrival of arrivals) {
       const key = `${hit.stageId}:${hit.pulse.sourceId || 'pulse'}:${Math.round(hit.opl * 1000)}:${Math.round(arrival.timeNs * 1e6)}`;
       if (voxelEventKeys.has(key)) continue;
@@ -310,8 +335,8 @@ function recordVoxelHits(fromTimeNs, toTimeNs) {
       marks.push({
         x: local.x,
         y: local.y,
-        size: Math.min(6, Math.max(0.1, stage.params.voxelSize ?? 0.6)),
-        opacity: Math.min(0.9, 0.3 + 0.5 * Math.sqrt(Math.max(0, hit.intensity * arrival.transmission))),
+        size,
+        opacity: Math.min(0.9, 0.3 + 0.5 * Math.sqrt(Math.max(0, hit.intensity * arrival.transmission))) * (1 - depthFactor * 0.6),
       });
       if (marks.length > MAX_VOXELS_PER_STAGE) marks.splice(0, marks.length - MAX_VOXELS_PER_STAGE);
       voxelMarks.set(hit.stageId, marks);

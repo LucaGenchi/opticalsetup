@@ -266,8 +266,8 @@ export function renderInspector() {
         if (!isStd) h += field('↳ size (mm)', `<input type="number" data-p="${p.key}" min="1" max="500" step="0.5" value="${v}">`);
       }
     }
-    if (sel.type === 'stage' && sel.params.voxelPreview) {
-      h += `<div class="hint">Each visible pulsed arrival deposits a bounded square marker at the traced hit. The marker follows the moving sample; it is a 2D writing preview, not a dose, threshold, curing, or 3D-volume calculation.</div>`;
+    if (sel.type === 'stage' && sel.params.sampleKind === 'resin' && sel.params.voxelPreview) {
+      h += `<div class="hint">Each visible pulsed arrival deposits a bounded square marker at the traced hit. The marker follows the moving sample and broadens/fades with X (depth) offset from focus; it is a 2D writing preview, not a dose, threshold, curing, or true 3D-volume calculation.</div>`;
       h += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
     }
     if ((def.params || []).length) h += `</section>`;
@@ -360,7 +360,7 @@ function applyStageSamplePreset(sel) {
   if (p.sampleKind === 'fluorescent') {
     Object.assign(p, { mode: 'fluor', fluorWl: 520, transmitExc: true, transmission: 0.8, signalEff: 0.1, voxelPreview: false });
   } else if (p.sampleKind === 'resin') {
-    Object.assign(p, { mode: 'none', transmitExc: true, transmission: 0.85, voxelPreview: true, stageMoveY: true });
+    Object.assign(p, { mode: 'none', transmitExc: true, transmission: 0.85, voxelPreview: true });
   } else if (p.sampleKind === 'nonlinear') {
     Object.assign(p, { mode: 'shg', transmitExc: true, transmission: 0.8, signalEff: 0.1, voxelPreview: false });
   } else if (p.sampleKind === 'opaque') {
@@ -435,5 +435,5 @@ function applyInput(inp, rebuild = false) {
   changed();
   if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'containsSample', 'sampleKind', 'voxelPreview', 'stageMoveY'].includes(pkey)) renderInspector();
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'containsSample', 'sampleKind', 'voxelPreview', 'stageMoveX', 'stageMoveY', 'showSignalSpot'].includes(pkey)) renderInspector();
 }

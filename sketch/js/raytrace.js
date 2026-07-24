@@ -806,7 +806,7 @@ function interact(ray, hit) {
 
 // trace all rays of one source; returns finished polylines.
 // `couplings` collects light captured by fiber input connectors.
-function traceRays(rays0, surfaces, couplings, writeHits) {
+function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
   const done = [];
   const stack = rays0.map(r => {
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
@@ -861,16 +861,20 @@ function traceRays(rays0, surfaces, couplings, writeHits) {
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
-      if (writeHits && hit.surface.el?.type === 'stage' && hit.surface.data.writeVoxel
-          && r.pulse && r.writeReference) {
-        writeHits.push({
-          stageId: hit.surface.el.id,
-          x: hit.p.x,
-          y: hit.p.y,
-          opl: r.opl,
-          pulse: { ...r.pulse },
-          intensity: Math.min(1, Math.max(0, r.intensity || 0)),
-        });
+      if (hit.surface.el?.type === 'stage' && r.writeReference) {
+        if (writeHits && hit.surface.data.writeVoxel && r.pulse) {
+          writeHits.push({
+            stageId: hit.surface.el.id,
+            x: hit.p.x,
+            y: hit.p.y,
+            opl: r.opl,
+            pulse: { ...r.pulse },
+            intensity: Math.min(1, Math.max(0, r.intensity || 0)),
+          });
+        }
+        if (signalHits && hit.surface.data.reportHit) {
+          signalHits.push({ stageId: hit.surface.el.id, x: hit.p.x, y: hit.p.y });
+        }
       }
       if (hit.surface.kind === 'detector') recordDetectorHit(r, hit);
       if (hit.surface.kind === 'delay') {
@@ -1107,6 +1111,7 @@ export function traceScene(elements, beams = []) {
   const drawables = [];
   const pulseTracks = [];
   const writeHits = [];
+  const signalHits = [];
   const couplings = [];
   lastPaths = [];
   detectorHits = new Map();
@@ -1152,7 +1157,7 @@ export function traceScene(elements, beams = []) {
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
       };
     });
-    const paths = traceRays(rays0, surfaces, couplings, writeHits);
+    const paths = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
     lastPaths.push(...paths);
     assembleDrawables(paths, {
       K, isBeam: p.beamMode === 'beam',
@@ -1171,7 +1176,7 @@ export function traceScene(elements, beams = []) {
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);
       if (!rays0) continue;
-      const paths = traceRays(rays0, surfaces, couplings, writeHits);
+      const paths = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
       lastPaths.push(...paths);
       assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
       collectPulseTracks(paths, rays0.length, null, pulseTracks);
@@ -1257,7 +1262,7 @@ export function traceScene(elements, beams = []) {
     }
   }
 
-  return { drawables, pulseTracks, writeHits };
+  return { drawables, pulseTracks, writeHits, signalHits };
 }
 
 export function traceAll(elements, beams = []) {
