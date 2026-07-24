@@ -1357,11 +1357,8 @@ export const registry = {
   },
 
   stage: {
-    label: 'Sample on piezo stage', category: 'Microscopy', size: { w: 34, h: 40 },
-    size_: el => {
-      const clear = (el.params.aperture || 25.4) / 2, baseHalf = Math.max(14, clear * 0.7);
-      return { w: 2 * baseHalf + 6, h: 2 * clear + 16 };
-    },
+    label: 'Sample on piezo stage', category: 'Microscopy', size: { w: 22, h: 56 },
+    size_: el => ({ w: 22, h: (el.params.aperture || 25.4) + 30 }),
     params: [
       { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
       { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
@@ -1382,18 +1379,14 @@ export const registry = {
     ],
     svg(el) {
       const p = el.params;
-      const clear = (p.aperture || 25.4) / 2, baseHalf = Math.max(14, clear * 0.7);
+      const clear = (p.aperture || 25.4) / 2, outer = clear + 12;
       let spot = '';
       if (p.showSignalSpot && el._signalHitLocal) {
         const liveWl = el._signalHitLocal.wl;
         const color = Number.isFinite(liveWl) ? wavelengthToColor(liveWl) : stageSampleColor(p);
         spot = `<circle cx="${el._signalHitLocal.x.toFixed(2)}" cy="${el._signalHitLocal.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
       }
-      // A wide horizontal piezo base sits below the beam axis, so the glass
-      // sample it holds reads as rising up "on top" of it — without rotating
-      // the element itself (surfaces() stays a vertical boundary at x=0/-6,
-      // so a straight left-to-right beam still hits the sample by default).
-      return `<rect x="${(-baseHalf).toFixed(1)}" y="${clear.toFixed(1)}" width="${(baseHalf * 2).toFixed(1)}" height="9" rx="2" fill="#4d565f" stroke="#22252a" stroke-width="1"/>` +
+      return `<path d="M 8,${-outer} L -6,${-outer} L -6,${outer} L 8,${outer}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<rect x="-2" y="${-clear}" width="5" height="${2 * clear}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0.5" cy="0" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
