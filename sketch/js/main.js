@@ -16,6 +16,7 @@ import { download, esc } from './util.js';
 import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
+import { initTheme } from './theme.js';
 
 const $ = id => document.getElementById(id);
 
@@ -792,6 +793,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isDemo = isTypeDemo || isCommunityDemo;
 
+  initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
   initInspector($('inspectorContent'));
   if (isDemo) {

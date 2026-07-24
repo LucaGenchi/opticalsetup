@@ -49,10 +49,11 @@ figures as SVG or PNG.
   arrivals leave bounded voxel markers at the traced sample hit while an optional
   2D Y-stage scan translates the mounted sample. It is a visual writing preview,
   not a dose, threshold, curing, or 3D fabrication model.
-- **Qualitative detector readouts**: photodetectors, PMTs, and cameras report
-  relative ray signal, spectrum, polarization, and spot span at their front face;
-  pulsed paths add optical-path delay and path spread. PMTs include qualitative
-  gain/saturation, cameras provide a 1D sensor profile, and the eye reads its retina.
+- **Qualitative detector readouts**: photodetectors, PMTs, cameras, and the eye
+  report relative ray signal, spectrum, polarization, and spot span at their active
+  surface; pulsed paths add optical-path delay and path spread. A data-only sensor
+  display can be linked to any of them and mirrors the live output directly on the
+  canvas. PMTs include qualitative gain/saturation and cameras provide a 1D profile.
 - **Physics that responds**: thin-lens/paraxial transfer, spectral band arithmetic at
   filters, Malus's law, grating equation, Cauchy prism dispersion, cavity round trips
   with partial mirrors, image formation with magnification (arrow / letter F / tree
@@ -66,6 +67,10 @@ figures as SVG or PNG.
 - **Self-contained share links and QR codes**: the Share action compresses the
   current sketch into the URL fragment, copies the link, and generates a downloadable
   QR code. Opening it restores the setup without an account or server-side scene storage.
+- **Installable and offline-ready**: add OpticalSetup to a desktop or mobile home
+  screen as a standalone app. After the first online visit, the workbench and its
+  bundled examples continue to load without a network connection; sketches still
+  autosave locally in the browser.
 
 ## Simulation scope
 
