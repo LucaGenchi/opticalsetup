@@ -45,6 +45,10 @@ figures as SVG or PNG.
   delays remain physical. Mechanical delay lines add folded optical path, while AOMs
   support square gating or graded sinusoidal intensity modulation. Playback can be
   paused, reset, and time-scaled.
+- **2PP write preview**: a sample holder can be set to photocurable resin. Pulsed
+  arrivals leave bounded voxel markers at the traced sample hit while an optional
+  2D Y-stage scan translates the mounted sample. It is a visual writing preview,
+  not a dose, threshold, curing, or 3D fabrication model.
 - **Qualitative detector readouts**: photodetectors, PMTs, and cameras report
   relative ray signal, spectrum, polarization, and spot span at their front face;
   pulsed paths add optical-path delay and path spread. PMTs include qualitative
@@ -73,6 +77,11 @@ diffraction-limited propagation, material dispersion beyond the stated simplifie
 models, or laboratory-specific calibration. Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are a canvas aid;
 SVG and PNG exports intentionally remain static and deterministic.
+
+The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
+shows their positions in the moving 2D sample. It does not calculate focal volume,
+two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
+third axis.
 
 Freeform glass is a directly editable, straight-segment boundary with constant-index
 or qualitative BK7-like dispersion, per-surface transmission, source-inside handling,

@@ -806,7 +806,7 @@ function interact(ray, hit) {
 
 // trace all rays of one source; returns finished polylines.
 // `couplings` collects light captured by fiber input connectors.
-function traceRays(rays0, surfaces, couplings) {
+function traceRays(rays0, surfaces, couplings, writeHits) {
   const done = [];
   const stack = rays0.map(r => {
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
@@ -861,6 +861,17 @@ function traceRays(rays0, surfaces, couplings) {
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
+      if (writeHits && hit.surface.el?.type === 'stage' && hit.surface.data.writeVoxel
+          && r.pulse && r.writeReference) {
+        writeHits.push({
+          stageId: hit.surface.el.id,
+          x: hit.p.x,
+          y: hit.p.y,
+          opl: r.opl,
+          pulse: { ...r.pulse },
+          intensity: Math.min(1, Math.max(0, r.intensity || 0)),
+        });
+      }
       if (hit.surface.kind === 'detector') recordDetectorHit(r, hit);
       if (hit.surface.kind === 'delay') {
         const extraOpl = Math.min(100000, Math.max(0, hit.surface.data.delayMm || 0));
@@ -931,7 +942,7 @@ function traceRays(rays0, surfaces, couplings) {
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
             : undefined,
-          sample: r.sample,
+          sample: r.sample, writeReference: r.writeReference,
           pts: [{ x: ox, y: oy }],
           opl: r.opl,
           opls: [r.opl],
@@ -1095,6 +1106,7 @@ export function traceScene(elements, beams = []) {
   const surfaces = buildSurfaces(elements, beams);
   const drawables = [];
   const pulseTracks = [];
+  const writeHits = [];
   const couplings = [];
   lastPaths = [];
   detectorHits = new Map();
@@ -1137,9 +1149,10 @@ export function traceScene(elements, beams = []) {
         evan: r.evan || false, evanLen: r.evanLen,
         medium: initialBody?.id || null, ior: initialIor,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,
+        writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
       };
     });
-    const paths = traceRays(rays0, surfaces, couplings);
+    const paths = traceRays(rays0, surfaces, couplings, writeHits);
     lastPaths.push(...paths);
     assembleDrawables(paths, {
       K, isBeam: p.beamMode === 'beam',
@@ -1158,7 +1171,7 @@ export function traceScene(elements, beams = []) {
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);
       if (!rays0) continue;
-      const paths = traceRays(rays0, surfaces, couplings);
+      const paths = traceRays(rays0, surfaces, couplings, writeHits);
       lastPaths.push(...paths);
       assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
       collectPulseTracks(paths, rays0.length, null, pulseTracks);
@@ -1244,7 +1257,7 @@ export function traceScene(elements, beams = []) {
     }
   }
 
-  return { drawables, pulseTracks };
+  return { drawables, pulseTracks, writeHits };
 }
 
 export function traceAll(elements, beams = []) {

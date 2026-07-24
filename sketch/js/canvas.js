@@ -2,9 +2,9 @@
 // element placement, manual beam drawing/editing).
 
 import { state, changed, pushUndo, findSelected } from './state.js';
-import { registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG } from './elements.js';
+import { registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG, stageYOffsetAt } from './elements.js';
 import { traceScene } from './raytrace.js';
-import { pulseMarkers } from './pulses.js';
+import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG } from './util.js';
 import { canAppendPolygonPoint, isSimplePolygon, polygonBounds } from './polygon.js';
 import {
@@ -12,9 +12,10 @@ import {
   gridDetailForZoom, pinchView, snapToGrid, VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
 } from './viewport.js';
 
-let svg, viewport, gridLayer, beamLayer, pulseLayer, manualLayer, elementLayer, overlayLayer;
+let svg, viewport, gridLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
 let statusEl;
 let pulseTracks = [];
+let writeHits = [];
 let pulseFrame = null;
 let motionFrame = null;
 let motionStartMs = null;
@@ -22,6 +23,9 @@ let motionTimeSeconds = 0;
 let motionLastRenderMs = 0;
 const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const pulsePlayback = { playing: true, timeNs: 0, speedNsPerSecond: 10, mode: 'schematic', lastFrameMs: null };
+const voxelMarks = new Map();
+const voxelEventKeys = new Set();
+const MAX_VOXELS_PER_STAGE = 1200;
 export let onSelectionChange = () => { };
 export function setSelectionCallback(fn) { onSelectionChange = fn; }
 
@@ -42,6 +46,7 @@ export function initCanvas(svgElement, statusElement) {
       <g id="pulseLayer" pointer-events="none"></g>
       <g id="manualLayer"></g>
       <g id="elementLayer"></g>
+      <g id="voxelLayer" pointer-events="none"></g>
       <g id="overlayLayer"></g>
     </g>`;
   viewport = svg.querySelector('#viewport');
@@ -50,6 +55,7 @@ export function initCanvas(svgElement, statusElement) {
   pulseLayer = svg.querySelector('#pulseLayer');
   manualLayer = svg.querySelector('#manualLayer');
   elementLayer = svg.querySelector('#elementLayer');
+  voxelLayer = svg.querySelector('#voxelLayer');
   overlayLayer = svg.querySelector('#overlayLayer');
   bindPointer();
   bindWheel();
@@ -103,6 +109,7 @@ export function renderAll() {
   renderBeams();
   renderManual();
   renderElements();
+  renderVoxels();
   renderOverlay();
   syncMotionAnimation();
   notifyViewChange();
@@ -117,12 +124,19 @@ function notifyViewChange() {
   document.dispatchEvent(new CustomEvent('optics:viewchange', { detail: getViewportDetail() }));
 }
 
+function animatedStageElement(el) {
+  const yOffset = stageYOffsetAt(el.params, motionTimeSeconds);
+  return yOffset ? { ...el, y: el.y + yOffset } : el;
+}
+
 function animatedOpticalElements() {
-  if (!state.elements.some(el => el.type === 'galvo' && el.params.scanMode !== 'static')) return state.elements;
+  if (!hasGalvoMotion() && !hasStageMotion()) return state.elements;
   return state.elements.map(el => {
-    if (el.type !== 'galvo' || el.params.scanMode === 'static') return el;
-    const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
-    return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
+    if (el.type === 'galvo' && el.params.scanMode !== 'static') {
+      const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
+      return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
+    }
+    return el.type === 'stage' ? animatedStageElement(el) : el;
   });
 }
 
@@ -139,17 +153,22 @@ function animatedVisualElements() {
         _simulationTimeNs: pulseTracks.length ? pulsePlayback.timeNs : null,
       };
     }
-    return el;
+    return el.type === 'stage' ? animatedStageElement(el) : el;
   });
 }
 
 function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
-    || (el.type === 'chopper' && el.params.modulate));
+    || (el.type === 'chopper' && el.params.modulate)
+    || (el.type === 'stage' && el.params.voxelPreview && el.params.stageMoveY));
 }
 
 function hasGalvoMotion() {
   return state.elements.some(el => el.type === 'galvo' && el.params.scanMode !== 'static');
+}
+
+function hasStageMotion() {
+  return state.elements.some(el => el.type === 'stage' && el.params.voxelPreview && el.params.stageMoveY);
 }
 
 function animateMotion(nowMs) {
@@ -159,8 +178,9 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    if (hasGalvoMotion()) renderBeams();
+    if (hasGalvoMotion() || hasStageMotion()) renderBeams();
     renderElements();
+    renderVoxels();
     renderOverlay();
     const selected = findSelected();
     if (hasGalvoMotion() && selected && registry[selected.type]?.readoutKind
@@ -227,6 +247,7 @@ function renderBeams() {
   const scene = traceScene(animatedOpticalElements(), state.beams);
   const drawables = scene.drawables;
   pulseTracks = scene.pulseTracks;
+  writeHits = scene.writeHits || [];
   let s = '';
   for (const d of drawables) {
     if (d.type === 'poly') {
@@ -241,6 +262,72 @@ function renderBeams() {
   renderPulseLayer();
   syncPulseAnimation();
   notifyPulseState();
+}
+
+function renderVoxels() {
+  if (!voxelLayer) return;
+  const z = state.view.z || 1;
+  let s = '';
+  for (const stage of state.elements) {
+    if (stage.type !== 'stage' || !stage.params.voxelPreview) continue;
+    const marks = voxelMarks.get(stage.id);
+    if (!marks?.length) continue;
+    const displayedStage = animatedStageElement(stage);
+    for (const mark of marks) {
+      const point = toWorld(displayedStage, mark.x, mark.y);
+      const size = Math.max(0.1, mark.size);
+      const half = size / 2;
+      s += `<g transform="translate(${point.x.toFixed(2)} ${point.y.toFixed(2)}) rotate(${displayedStage.rot || 0})">` +
+        `<rect x="${(-half).toFixed(2)}" y="${(-half).toFixed(2)}" width="${size.toFixed(2)}" height="${size.toFixed(2)}" rx="${Math.min(0.16, half).toFixed(2)}" fill="#b15cff" opacity="${mark.opacity.toFixed(2)}" stroke="#5b21b6" stroke-width="${(0.55 / z).toFixed(2)}" vector-effect="non-scaling-stroke"/>` +
+        `</g>`;
+    }
+  }
+  voxelLayer.innerHTML = s;
+}
+
+function recordVoxelHits(fromTimeNs, toTimeNs) {
+  if (toTimeNs <= fromTimeNs || !writeHits.length) return;
+  for (const hit of writeHits) {
+    const stage = state.elements.find(el => el.id === hit.stageId && el.type === 'stage');
+    if (!stage?.params.containsSample || !stage.params.voxelPreview || !Number.isFinite(hit.opl)) continue;
+    const track = {
+      pts: [{ x: hit.x - 1, y: hit.y }, { x: hit.x + 1, y: hit.y }],
+      opls: [Math.max(0, hit.opl - 1), hit.opl + 1],
+      pulse: hit.pulse,
+    };
+    const arrivals = pulseArrivalsAtPath(track, fromTimeNs, toTimeNs, hit.opl, {
+      mode: pulsePlayback.mode,
+    });
+    if (!arrivals.length) continue;
+    const displayedStage = animatedStageElement(stage);
+    const local = toLocal(displayedStage, hit.x, hit.y);
+    if (!Number.isFinite(local.x) || !Number.isFinite(local.y)) continue;
+    for (const arrival of arrivals) {
+      const key = `${hit.stageId}:${hit.pulse.sourceId || 'pulse'}:${Math.round(hit.opl * 1000)}:${Math.round(arrival.timeNs * 1e6)}`;
+      if (voxelEventKeys.has(key)) continue;
+      voxelEventKeys.add(key);
+      const marks = voxelMarks.get(hit.stageId) || [];
+      marks.push({
+        x: local.x,
+        y: local.y,
+        size: Math.min(6, Math.max(0.1, stage.params.voxelSize ?? 0.6)),
+        opacity: Math.min(0.9, 0.3 + 0.5 * Math.sqrt(Math.max(0, hit.intensity * arrival.transmission))),
+      });
+      if (marks.length > MAX_VOXELS_PER_STAGE) marks.splice(0, marks.length - MAX_VOXELS_PER_STAGE);
+      voxelMarks.set(hit.stageId, marks);
+    }
+  }
+}
+
+export function clearVoxelPreview(stageId = null) {
+  if (stageId) {
+    voxelMarks.delete(stageId);
+    for (const key of voxelEventKeys) if (key.startsWith(`${stageId}:`)) voxelEventKeys.delete(key);
+  } else {
+    voxelMarks.clear();
+    voxelEventKeys.clear();
+  }
+  renderVoxels();
 }
 
 function notifyPulseState() {
@@ -276,12 +363,15 @@ function renderPulseLayer() {
 function animatePulses(nowMs) {
   pulseFrame = null;
   if (!pulsePlayback.playing || !pulseTracks.length) return;
+  const previousTimeNs = pulsePlayback.timeNs;
   if (pulsePlayback.lastFrameMs !== null) {
     const elapsedSeconds = Math.min(0.05, Math.max(0, (nowMs - pulsePlayback.lastFrameMs) / 1000));
     pulsePlayback.timeNs += elapsedSeconds * pulsePlayback.speedNsPerSecond;
   }
   pulsePlayback.lastFrameMs = nowMs;
+  recordVoxelHits(previousTimeNs, pulsePlayback.timeNs);
   renderPulseLayer();
+  renderVoxels();
   pulseFrame = requestAnimationFrame(animatePulses);
 }
 
@@ -321,6 +411,7 @@ export function setPulseDisplayMode(mode) {
 export function resetPulseTime() {
   pulsePlayback.timeNs = 0;
   pulsePlayback.lastFrameMs = null;
+  clearVoxelPreview();
   renderPulseLayer();
   notifyPulseState();
 }

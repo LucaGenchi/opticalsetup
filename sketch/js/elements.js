@@ -215,16 +215,38 @@ function sampleModeParams() {
     { key: 'signalEff', label: 'Signal efficiency', type: 'number', min: 0, max: 1, step: 0.05, def: 0.1, show: p => p.mode !== 'none' },
   ];
 }
+// A 2D write preview can translate the mounted specimen along the canvas Y
+// axis. This is deliberately a display-time motion helper: it is not a
+// calibrated piezo/galvo trajectory or a three-dimensional stage model.
+export function stageYOffsetAt(params = {}, timeSeconds = 0) {
+  if (!params.voxelPreview || !params.stageMoveY || !Number.isFinite(timeSeconds)) return 0;
+  const travel = Math.min(150, Math.max(0, params.stageTravelY ?? 12));
+  const frequency = Math.min(10, Math.max(0.01, params.stageFrequencyHz ?? 0.15));
+  const phase = ((timeSeconds * frequency) % 1 + 1) % 1;
+  const triangle = phase < 0.5 ? phase * 2 : 2 - phase * 2;
+  return (triangle - 0.5) * travel;
+}
+
+function stageSampleColor(params) {
+  if (params.sampleKind === 'resin') return '#9b5de5';
+  if (params.sampleKind === 'nonlinear') return '#e6a23c';
+  if (params.sampleKind === 'opaque') return '#69737e';
+  if (params.mode === 'fluor') return wavelengthToColor(params.fluorWl);
+  if (params.mode === 'cars') return wavelengthToColor(params.carsWl);
+  return '#e2758f';
+}
+
 function sampleSurfaces(el, h) {
   const p = el.params;
+  const writeVoxel = p.voxelPreview === true;
   if (p.mode === 'fluor') {
-    return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'fluor', data: { wl: p.fluorWl, transmitExc: p.transmitExc, transmission: p.transmission, efficiency: p.signalEff } }];
+    return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'fluor', data: { wl: p.fluorWl, transmitExc: p.transmitExc, transmission: p.transmission, efficiency: p.signalEff, writeVoxel } }];
   }
   if (p.mode === 'shg' || p.mode === 'thg' || p.mode === 'cars') {
-    return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: { convert: p.mode, outWl: p.carsWl, transmitExc: p.transmitExc, transmission: p.transmission, efficiency: p.signalEff } }];
+    return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: { convert: p.mode, outWl: p.carsWl, transmitExc: p.transmitExc, transmission: p.transmission, efficiency: p.signalEff, writeVoxel } }];
   }
   return p.transmitExc
-    ? [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'attenuate', data: { transmission: p.transmission } }]
+    ? [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel } }]
     : rectAbsorb(8, 2 * h);
 }
 
@@ -1269,15 +1291,22 @@ export const registry = {
     params: [
       { key: 'containsSample', label: 'Sample installed', type: 'checkbox', def: false },
       { key: 'aperture', label: 'Clear aperture', type: 'optsize', min: 4, max: 150, def: 25.4 },
+      { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: p => p.containsSample, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
+      { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => p.containsSample },
+      { key: 'stageMoveY', label: 'Translate stage along Y', type: 'checkbox', def: true, show: p => p.containsSample && p.voxelPreview },
+      { key: 'stageTravelY', label: 'Y travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 12, show: p => p.containsSample && p.voxelPreview && p.stageMoveY },
+      { key: 'stageFrequencyHz', label: 'Y scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.15, show: p => p.containsSample && p.voxelPreview && p.stageMoveY },
+      { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => p.containsSample && p.voxelPreview },
       ...sampleModeParams().map(spec => ({ ...spec, show: p => p.containsSample && (!spec.show || spec.show(p)) })),
     ],
     svg(el) {
       const p = el.params;
-      const c = p.mode === 'fluor' ? wavelengthToColor(p.fluorWl) : p.mode === 'cars' ? wavelengthToColor(p.carsWl) : '#e2758f';
+      const c = stageSampleColor(p);
       const clear = (p.aperture || 25.4) / 2, outer = clear + 12;
       return `<path d="M 8,${-outer} L -6,${-outer} L -6,${outer} L 8,${outer}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<rect x="-2" y="${-clear}" width="5" height="${2 * clear}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
-        `<circle cx="0.5" cy="0" r="4" fill="${c}" opacity="0.85"/>`;
+        `<circle cx="0.5" cy="0" r="4" fill="${c}" opacity="0.85"/>` +
+        (p.voxelPreview ? `<circle cx="0.5" cy="0" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
     surfaces(el) {
       const clear = Math.max(2, (el.params.aperture || 25.4) / 2), outer = clear + 12;
@@ -1654,7 +1683,7 @@ const ELEMENT_HELP = {
   chopper: 'Gates finite-duration pulse trains in time and applies duty-averaged transmission to CW light; the wheel shows duty and pulse-clock phase.',
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
   sample: 'Attenuates excitation and can convert a bounded fraction into fluorescence or nonlinear signal.',
-  stage: 'Mechanically clips rays outside its clear aperture and optionally contains a simulated sample.',
+  stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. A resin can show pulsed 2PP voxel marks while the stage scans along the 2D Y axis.',
   microscope: 'Models a configurable objective, tube lens, clear aperture, and absorbing housing.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
@@ -1684,6 +1713,8 @@ export function getElementMeta(type, params = {}) {
     note = 'Annotations are intentionally visual and never change traced rays.';
   } else if (type === 'freeglass') {
     note = 'Straight boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
+  } else if (type === 'stage' && params.voxelPreview) {
+    note = 'Pulsed arrivals leave canvas-only 2PP voxel markers in the mounted sample. This is a 2D scan preview, not a threshold, dose, curing, or 3D fabrication simulation.';
   }
 
   const labels = { simulated: 'Simulated', configurable: 'Needs setup', diagram: 'Diagram only' };
