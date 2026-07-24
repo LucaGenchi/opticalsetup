@@ -230,6 +230,10 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .canvas-controls button:hover { background: #eef2f7; }
 .canvas-controls button.active { background: var(--accent-soft); border-color: #b7ccf2; }
 .control-divider { width: 1px; height: 18px; margin: 0 3px; background: var(--border); }
+.zoom-readout {
+  min-width: 64px; padding: 0 4px 0 3px; color: var(--muted); font-size: 10px;
+  font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap;
+}
 .pulse-controls {
   position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
   display: flex; align-items: center; gap: 3px; max-width: calc(100% - 28px);
@@ -257,6 +261,21 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   padding: 3px 8px;
   border-radius: 5px;
   pointer-events: none;
+}
+.scale-bar {
+  position: absolute; right: 14px; bottom: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  pointer-events: none;
+}
+.scale-bar-label {
+  color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.scale-bar-line {
+  height: 6px;
+  border-left: 1.5px solid var(--muted);
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  box-sizing: border-box;
 }
 
 .context-menu {
@@ -377,11 +396,15 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   .canvas-controls button { min-width: 31px; height: 31px; padding: 3px 5px; font-size: 11px; }
   .canvas-controls #btnGrid, .canvas-controls #btnSnap { min-width: 36px; }
   .control-divider { margin: 0 1px; }
+  .zoom-readout { display: none; }
   .pulse-controls { bottom: calc(65px + env(safe-area-inset-bottom)); max-width: calc(100% - 24px); }
   .pulse-controls #pulseDisplay { width: 114px; }
   .pulse-controls #pulseSpeed { width: 66px; }
   .pulse-scale-note { display: none; }
   #status { bottom: calc(70px + env(safe-area-inset-bottom)); left: 8px; max-width: calc(100% - 88px); font-size: 10px; }
+  /* the bottom-right corner is already claimed by the mobile add/properties/trash
+     button stack, so the scale bar moves to bottom-left, above the status readout. */
+  .scale-bar { right: auto; left: 8px; bottom: calc(94px + env(safe-area-inset-bottom)); }
 
   .mobile-tool-actions.is-visible {
     position: absolute; z-index: 9; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px;

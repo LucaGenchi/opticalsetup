@@ -5,7 +5,7 @@ import { registry, categories, createElement, getElementMeta } from './elements.
 import {
   initCanvas, renderAll, startPlacing, startBeamTool, cancelTool, isPlacing,
   isPolygonDrawing, rotatePlacing, finishBeam, finishPolygon, undoPolygonPoint,
-  zoomBy, zoomFit, setSelectionCallback,
+  getViewportDetail, zoomBy, zoomFit, setSelectionCallback,
   getPulsePlayback, setPulsePlaying, setPulseSpeed, setPulseDisplayMode, resetPulseTime,
 } from './canvas.js';
 import { initInspector, renderInspector, refreshMeasurements } from './inspector.js';
@@ -534,7 +534,30 @@ function syncToolbar() {
     button.classList.toggle('active', pressed);
     button.setAttribute('aria-pressed', String(pressed));
   }
+  syncViewControls();
   syncMobileSelection();
+}
+
+function syncViewControls(detail = getViewportDetail()) {
+  const readout = $('zoomReadout');
+  if (readout) {
+    readout.textContent = `${Math.round(detail.zoom * 100)}% · ${detail.step} mm grid`;
+    readout.title = `Zoom ${Math.round(detail.zoom * 100)}% — grid spacing is ${detail.step} mm`;
+  }
+  const scaleBarMm = detail.step * 2;
+  const scaleBarLine = $('scaleBarLine');
+  const scaleBarLabel = $('scaleBarLabel');
+  if (scaleBarLine && scaleBarLabel) {
+    scaleBarLine.style.width = `${Math.max(1, scaleBarMm * detail.zoom)}px`;
+    scaleBarLabel.textContent = `${scaleBarMm} mm`;
+  }
+  const snap = $('btnSnap');
+  if (!snap) return;
+  const description = detail.snap
+    ? `Snap to ${detail.step} mm ${detail.level === 'table' ? 'table-hole' : 'fine'} grid; Option bypasses snapping`
+    : 'Snapping is off';
+  snap.title = description;
+  snap.setAttribute('aria-label', description);
 }
 
 function syncPulseControls(detail = getPulsePlayback()) {
@@ -757,6 +780,7 @@ document.addEventListener('optics:delete', deleteSelected);
 document.addEventListener('optics:duplicate', duplicateSelected);
 document.addEventListener('optics:toolchange', e => syncToolMode(e.detail));
 document.addEventListener('optics:pulsestate', e => syncPulseControls(e.detail));
+document.addEventListener('optics:viewchange', e => syncViewControls(e.detail));
 
 // ---------- boot ----------
 window.addEventListener('DOMContentLoaded', async () => {
