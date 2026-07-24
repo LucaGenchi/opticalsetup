@@ -84,6 +84,100 @@ function signalLamp(el, x, y) {
     `stroke="#fff" stroke-width="0.8"/>`;
 }
 
+export function resolveDisplaySensor(display, elements = []) {
+  const sensorId = typeof display?.params?.sensorId === 'string' ? display.params.sensorId : '';
+  if (!sensorId || !Array.isArray(elements)) return null;
+  return elements.find(candidate => candidate?.id === sensorId
+    && candidate.id !== display.id
+    && registry[candidate.type]?.readoutKind) || null;
+}
+
+function displaySensorName(sensor) {
+  const name = sensor?.label || registry[sensor?.type]?.label || 'Sensor';
+  return String(name).trim().slice(0, 18) || 'Sensor';
+}
+
+function displaySpectrum(rd) {
+  return rd.bandMax - rd.bandMin > 2
+    ? `${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)} nm`
+    : `${Math.round(rd.wavelength)} nm`;
+}
+
+function displayProfile(rd) {
+  if (!Array.isArray(rd.profile) || !rd.profile.length) return '';
+  const values = rd.profile.filter(Number.isFinite);
+  if (!values.length) return '';
+  const max = Math.max(...values, 1e-9);
+  const width = 66 / values.length;
+  return values.map((value, i) => {
+    const height = Math.max(0.7, 12 * Math.max(0, value) / max);
+    return `<rect x="${(-33 + i * width).toFixed(2)}" y="${(7 - height).toFixed(2)}" ` +
+      `width="${Math.max(0.35, width - 0.45).toFixed(2)}" height="${height.toFixed(2)}" rx="0.35"/>`;
+  }).join('');
+}
+
+function displayScreenSVG(el, elements = []) {
+  const scale = Math.min(3, Math.max(0.5, el.params.displayScale || 1));
+  const sensor = resolveDisplaySensor(el, elements);
+  const hasConfiguredLink = Boolean(el.params.sensorId);
+  const rd = sensor ? detectorReading(sensor.id) : null;
+  const sensorName = sensor ? displaySensorName(sensor) : '';
+  let screen;
+
+  if (!sensor) {
+    screen = `<text x="0" y="-3" text-anchor="middle" font-size="8.5" font-weight="750" letter-spacing="0.8" fill="${hasConfiguredLink ? '#f59e0b' : '#94a3b8'}">${hasConfiguredLink ? 'LINK LOST' : 'UNPLUGGED'}</text>` +
+      `<text x="0" y="10" text-anchor="middle" font-size="6.5" fill="#64748b">${hasConfiguredLink ? 'Select another sensor' : 'Choose sensor input'}</text>`;
+  } else if (!rd) {
+    screen = `<text x="-34" y="-12" font-size="6.3" font-weight="700" letter-spacing="0.45" fill="#8aa3b5">${esc(sensorName.toUpperCase())}</text>` +
+      `<circle cx="-29" cy="2" r="2.2" fill="#64748b"/>` +
+      `<text x="-23" y="4" font-size="9" font-weight="760" letter-spacing="0.7" fill="#a7b8c5">NO SIGNAL</text>` +
+      `<text x="-34" y="13" font-size="6.3" fill="#64748b">0 relative ray weight</text>`;
+  } else if (rd.readoutKind === 'camera' && rd.profile) {
+    screen = `<text x="-34" y="-12" font-size="6.3" font-weight="700" letter-spacing="0.45" fill="#8aa3b5">${esc(sensorName.toUpperCase())}</text>` +
+      `<g fill="${rd.color}">${displayProfile(rd)}</g>` +
+      `<line x1="-34" y1="7.5" x2="34" y2="7.5" stroke="#284253" stroke-width="0.7"/>` +
+      `<text x="-34" y="15" font-size="6.3" fill="#9bb0bd">${displaySpectrum(rd)}</text>` +
+      `<text x="34" y="15" text-anchor="end" font-size="6.3" font-weight="700" fill="#d8e7ee">${Math.round(rd.signal * 100)}% rel.</text>`;
+  } else {
+    const value = rd.readoutKind === 'pmt'
+      ? `${rd.outputSignal >= 100 ? Math.round(rd.outputSignal) : rd.outputSignal.toFixed(2)} a.u.`
+      : `${rd.signal >= 10 ? '>999' : Math.round(rd.signal * 100)}% rel.`;
+    screen = `<text x="-34" y="-12" font-size="6.3" font-weight="700" letter-spacing="0.45" fill="#8aa3b5">${esc(sensorName.toUpperCase())}</text>` +
+      `<circle cx="-31" cy="-1" r="2.2" fill="${rd.color}"/>` +
+      `<text x="34" y="4" text-anchor="end" font-size="14" font-weight="760" fill="#edf7fb">${value}</text>` +
+      `<text x="-34" y="14" font-size="6.8" fill="#9bb0bd">${displaySpectrum(rd)}</text>` +
+      `<text x="34" y="14" text-anchor="end" font-size="6.3" fill="${rd.saturated ? '#fb7185' : '#6ee7b7'}">${rd.saturated ? 'SATURATED' : rd.polarization.slice(0, 16)}</text>`;
+  }
+
+  return `<g transform="scale(${scale})"><rect x="-47" y="-31" width="94" height="62" rx="5" fill="#24313b" stroke="#111b22" stroke-width="1.6"/>` +
+    `<rect x="-41" y="-23" width="82" height="42" rx="2.5" fill="#061822" stroke="#3f5664" stroke-width="1.2"/>` +
+    `<g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${screen}</g>` +
+    `<circle cx="-47" cy="15" r="3.4" fill="#13212a" stroke="#89a2b2" stroke-width="1"/>` +
+    `<circle cx="-47" cy="15" r="1.2" fill="${sensor ? '#60a5fa' : '#52636f'}"/>` +
+    `<circle cx="39" cy="25" r="2.1" fill="${rd ? '#34d399' : '#64748b'}"/>` +
+    `<text x="-37" y="27.5" font-size="5.8" font-weight="700" letter-spacing="0.65" fill="#a9bac5">SENSOR DISPLAY</text></g>`;
+}
+
+export function displayCableSVG(display, elements = []) {
+  const sensor = resolveDisplaySensor(display, elements);
+  if (!sensor) return '';
+  const rawPort = registry[sensor.type]?.dataPort;
+  const localPort = typeof rawPort === 'function' ? rawPort(sensor) : rawPort;
+  if (!Number.isFinite(localPort?.x) || !Number.isFinite(localPort?.y)) return '';
+  const from = toWorld(sensor, localPort.x, localPort.y);
+  const scale = Math.min(3, Math.max(0.5, display.params.displayScale || 1));
+  const to = toWorld(display, -47 * scale, 15 * scale);
+  if (![from.x, from.y, to.x, to.y].every(Number.isFinite)) return '';
+  const direction = to.x >= from.x ? 1 : -1;
+  const bend = Math.min(90, Math.max(24, Math.abs(to.x - from.x) * 0.42 + Math.abs(to.y - from.y) * 0.12));
+  const path = `M ${from.x.toFixed(2)} ${from.y.toFixed(2)} C ${(from.x + direction * bend).toFixed(2)} ${from.y.toFixed(2)}, ${(to.x - direction * bend).toFixed(2)} ${to.y.toFixed(2)}, ${to.x.toFixed(2)} ${to.y.toFixed(2)}`;
+  return `<g data-sensor-link="${esc(sensor.id)}" pointer-events="none">` +
+    `<path d="${path}" fill="none" stroke="#f8fafc" stroke-width="5.2" stroke-linecap="round" opacity="0.9" vector-effect="non-scaling-stroke"/>` +
+    `<path d="${path}" fill="none" stroke="#40586a" stroke-width="2.4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>` +
+    `<circle cx="${from.x.toFixed(2)}" cy="${from.y.toFixed(2)}" r="3.2" fill="#1f3340" stroke="#9eb3c0" stroke-width="1" vector-effect="non-scaling-stroke"/>` +
+    `</g>`;
+}
+
 function boxSVG(w, h, fill, stroke, text, textFill, flip) {
   return `<rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>` +
     (text ? `<text x="0" y="0" ${flip ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="${Math.min(11, w / (text.length * 0.62))}" font-weight="600" fill="${textFill || '#fff'}">${esc(text)}</text>` : '');
@@ -1060,6 +1154,7 @@ export const registry = {
   detector: {
     label: 'Photodetector', category: 'Detectors', readoutKind: 'detector', size: { w: 40, h: 30 },
     snapPt: { x: -19, y: 0 }, // entrance window
+    dataPort: { x: 20, y: 0 },
     size_: el => ({ w: 40, h: (el.params.aperture || 26) + 4 }),
     params: [{ key: 'aperture', label: 'Sensor height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 26 }],
     svg(el) {
@@ -1074,6 +1169,7 @@ export const registry = {
   pmt: {
     label: 'PMT', category: 'Detectors', readoutKind: 'pmt', size: { w: 54, h: 30 },
     snapPt: { x: -25, y: 0 }, // entrance window
+    dataPort: { x: 27, y: 0 },
     size_: el => ({ w: 54, h: (el.params.aperture || 26) + 4 }),
     params: [
       { key: 'aperture', label: 'Photocathode height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 26 },
@@ -1093,6 +1189,7 @@ export const registry = {
   camera: {
     label: 'Camera', category: 'Detectors', readoutKind: 'camera', size: { w: 44, h: 34 },
     snapPt: { x: -22, y: 0 }, // sensor face
+    dataPort: { x: 22, y: 0 },
     size_: el => ({ w: 44, h: (el.params.ch || 30) + 4 }),
     params: [
       { key: 'ch', label: 'Sensor height (mm)', type: 'number', min: 20, max: 150, step: 2, def: 30 },
@@ -1110,6 +1207,7 @@ export const registry = {
   eye: {
     label: 'Human eye', category: 'Detectors', readoutKind: 'retina', size: { w: 36, h: 36 },
     snapPt: { x: -15, y: 0 }, // pupil
+    dataPort: el => ({ x: (el.params.diameter || 30) / 2 + 3, y: 0 }),
     size_: el => ({ w: (el.params.diameter || 30) + 6, h: (el.params.diameter || 30) + 6 }),
     params: [
       { key: 'diameter', label: 'Eye diameter (mm)', type: 'number', min: 18, max: 60, step: 1, def: 30 },
@@ -1144,6 +1242,23 @@ export const registry = {
         { x1: radius, y1: -retina, x2: radius, y2: retina, kind: 'detector', data: { aperture: 2 * retina, detectorType: 'Retina' } },
       ];
     },
+  },
+
+  display: {
+    label: 'Sensor display', category: 'Detectors', paletteOrder: 10, size: { w: 94, h: 62 },
+    aliases: ['screen', 'monitor', 'readout', 'oscilloscope', 'data acquisition', 'DAQ'],
+    rotatable: false,
+    paramsTitle: 'Signal connection',
+    size_: el => {
+      const scale = Math.min(3, Math.max(0.5, el.params.displayScale || 1));
+      return { w: 94 * scale, h: 62 * scale };
+    },
+    params: [
+      { key: 'sensorId', label: 'Sensor input', type: 'sensor', def: '' },
+      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 3, step: 0.1, def: 1 },
+    ],
+    svg: displayScreenSVG,
+    surfaces: () => [],
   },
 
   beamdump: {
@@ -1684,6 +1799,7 @@ const DIRECT = {
   pmt: { resize: { y: 'aperture' }, tune: { key: 'gain', short: 'gain' } },
   camera: { resize: { y: 'ch' }, tune: { key: 'pixels', short: 'px' } },
   eye: { resize: { uniform: 'diameter' }, tune: { key: 'focus', short: 'f' } },
+  display: { resize: { uniform: 'displayScale' } },
   beamdump: { resize: { y: 'aperture' } },
   aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
   aotf: { resize: { y: 'aperture' }, tune: { key: 'center', short: 'λ select' } },
@@ -1764,6 +1880,7 @@ const ELEMENT_HELP = {
   pmt: 'Applies configurable qualitative gain and saturation to detected optical signal.',
   camera: 'Bins incident rays into a configurable one-dimensional sensor profile.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
+  display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
   aotf: 'Selects a configurable spectral band, then deflects and attenuates the selected acousto-optic order.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
@@ -1783,14 +1900,22 @@ const ELEMENT_HELP = {
 const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe']);
 const SHAPERS = new Set(['slm']);
 
-export function getElementMeta(type, params = {}) {
+export function getElementMeta(type, params = {}, context = {}) {
   let tier = DIAGRAM_ONLY.has(type) ? 'diagram' : 'simulated';
   let note = '';
   let description = ELEMENT_HELP[type] || 'Optical workbench component.';
+  const displayLinkMissing = type === 'display' && params.sensorId
+    && context.element && Array.isArray(context.elements)
+    && !resolveDisplaySensor(context.element, context.elements);
 
   if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
+  } else if (type === 'display' && (!params.sensorId || displayLinkMissing)) {
+    tier = 'configurable';
+    note = displayLinkMissing
+      ? 'The linked sensor is no longer in this sketch. Choose another input; the data cable never changes traced rays.'
+      : 'Choose a sensor input in the inspector. The drawn cable carries data only and never changes traced rays.';
   } else if (type === 'crystal' && (!params.convert || params.convert === 'none')) {
     tier = 'configurable';
     note = 'Choose a conversion mode to generate an output wavelength.';
@@ -1805,6 +1930,8 @@ export function getElementMeta(type, params = {}) {
     note = 'Pulsed arrivals leave canvas-only 2PP voxel markers in the mounted sample; marker size/opacity qualitatively broadens with Z (depth) offset from focus. This is a 2D scan preview, not a threshold, dose, curing, or true 3D fabrication simulation.';
   } else if (type === 'stage' && params.pzMode && params.pzMode !== 'static') {
     note = 'The piezo stage motion is a display-time animation of the mounted sample — "sync" is a simple serpentine raster, not a calibrated piezo trajectory.';
+  } else if (type === 'display') {
+    note = 'The screen mirrors a linked sensor’s qualitative tracer output. Its data cable never changes traced rays.';
   }
 
   const labels = { simulated: 'Simulated', configurable: 'Needs setup', diagram: 'Diagram only' };

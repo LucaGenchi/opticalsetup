@@ -1,7 +1,9 @@
 // Right-hand inspector: edit properties of the selected element or manual beam.
 
 import { state, changed, pushUndo, findSelected } from './state.js';
-import { registry, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation } from './elements.js';
+import {
+  registry, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
+} from './elements.js';
 import { detectorReading } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
 import { esc } from './util.js';
@@ -91,14 +93,28 @@ function inspectorHead(def, meta, element = null) {
   </div>`;
 }
 
+function sensorName(el) {
+  const name = el?.label || registry[el?.type]?.label || 'Sensor';
+  return String(name).trim() || 'Sensor';
+}
+
 function measurementHTML(el) {
-  const readoutKind = registry[el.type]?.readoutKind;
+  const viaDisplay = el.type === 'display';
+  const source = viaDisplay ? resolveDisplaySensor(el, state.elements) : el;
+  if (viaDisplay && !source) {
+    const missing = Boolean(el.params.sensorId);
+    return `<div class="measurement-card no-signal" data-measurements>
+      <div class="measurement-status"><span class="signal-light"></span>${missing ? 'Sensor link unavailable' : 'No sensor connected'}</div>
+      <div class="measurement-foot">${missing ? 'The linked sensor is no longer in this sketch. Choose another sensor input below.' : 'Choose a photodetector, PMT, camera, or retina from the sensor input below.'}</div>
+    </div>`;
+  }
+  const readoutKind = registry[source?.type]?.readoutKind;
   if (!readoutKind) return '';
-  const rd = detectorReading(el.id);
+  const rd = detectorReading(source.id);
   if (!rd) {
     return `<div class="measurement-card no-signal" data-measurements>
-      <div class="measurement-status"><span class="signal-light"></span>No light on sensor</div>
-      <div class="measurement-foot">Aim a traced beam at the component's front face to see a qualitative reading.</div>
+      <div class="measurement-status"><span class="signal-light"></span>${viaDisplay ? `${esc(sensorName(source))}: no signal` : 'No light on sensor'}</div>
+      <div class="measurement-foot">Aim a traced beam at ${viaDisplay ? "the linked sensor's" : "the component's"} front face to see a qualitative reading.</div>
     </div>`;
   }
   const signal = rd.signal >= 10 ? '>999%' : `${Math.round(rd.signal * 100)}%`;
@@ -132,7 +148,7 @@ function measurementHTML(el) {
     cameraProfile = `<div class="camera-profile"><svg viewBox="0 0 240 36" preserveAspectRatio="none" aria-label="One-dimensional sensor profile"><g fill="${rd.color}">${bars}</g><line x1="0" y1="32" x2="240" y2="32" stroke="#b8c6d8"/></svg><span>1D sensor profile</span></div>`;
   }
   return `<div class="measurement-card" data-measurements>
-    <div class="measurement-status"><span class="signal-light" style="background:${rd.color}"></span>Receiving light</div>
+    <div class="measurement-status"><span class="signal-light" style="background:${rd.color}"></span>${viaDisplay ? `Displaying ${esc(sensorName(source))}` : 'Receiving light'}</div>
     <dl class="measurement-grid">
       <dt>Relative signal</dt><dd>${signal}</dd>
       <dt>Spectrum</dt><dd>${spectral}</dd>
@@ -151,7 +167,7 @@ function measurementHTML(el) {
 export function refreshMeasurements() {
   if (!panel || state.selection?.kind !== 'element') return;
   const sel = findSelected();
-  if (!sel || !registry[sel.type]?.readoutKind) return;
+  if (!sel || (!registry[sel.type]?.readoutKind && sel.type !== 'display')) return;
   const current = panel.querySelector('[data-measurements]');
   if (!current) return;
   const holder = document.createElement('div');
@@ -209,7 +225,7 @@ export function renderInspector() {
 
   if (state.selection.kind === 'element') {
     const def = registry[sel.type];
-    const meta = getElementMeta(sel.type, sel.params);
+    const meta = getElementMeta(sel.type, sel.params, { element: sel, elements: state.elements });
     let h = inspectorHead(def, meta, sel) + measurementHTML(sel);
     const direct = getDirectManipulation(sel);
     if (direct || def.editPoints) {
@@ -255,7 +271,7 @@ export function renderInspector() {
       if (p.hidden) continue;
       if (p.show && !p.show(sel.params)) continue;
       if (p.type === 'section') { insertVoxelHint(); openSection(p.label); continue; }
-      if (!sectionOpen) openSection('Optical behavior');
+      if (!sectionOpen) openSection(def.paramsTitle || 'Optical behavior');
       if (p.type === 'heading') { h += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
       const v = sel.params[p.key];
       if (p.type === 'number') {
@@ -272,6 +288,21 @@ export function renderInspector() {
       else if (p.type === 'color') h += field(p.label, `<input type="color" data-p="${p.key}" value="${v}">`);
       else if (p.type === 'select') {
         h += field(p.label, `<select data-p="${p.key}">` + p.options.map(([ov, ol]) => `<option value="${ov}" ${ov === v ? 'selected' : ''}>${esc(ol)}</option>`).join('') + `</select>`);
+      }
+      else if (p.type === 'sensor') {
+        const sensors = state.elements.filter(candidate => candidate.id !== sel.id && registry[candidate.type]?.readoutKind);
+        const hasCurrent = sensors.some(candidate => candidate.id === v);
+        const options = [
+          `<option value="" ${v ? '' : 'selected'}>Not connected</option>`,
+          ...(!hasCurrent && v ? [`<option value="${esc(v)}" selected>Missing sensor</option>`] : []),
+          ...sensors.map(sensor => {
+            const name = sensorName(sensor);
+            const position = `${Math.round(sensor.x)}, ${Math.round(sensor.y)} mm`;
+            return `<option value="${esc(sensor.id)}" ${sensor.id === v ? 'selected' : ''}>${esc(`${name} · ${position}`)}</option>`;
+          }),
+        ];
+        h += field(p.label, `<select data-p="${p.key}">${options.join('')}</select>`);
+        if (!sensors.length) h += `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`;
       }
       else if (p.type === 'layers') h += layersHTML(Array.isArray(sel.params[p.key]) ? sel.params[p.key] : []);
       else if (p.type === 'optsize') {
@@ -456,5 +487,5 @@ function applyInput(inp, rebuild = false) {
   changed();
   if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'containsSample', 'sampleKind', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel'].includes(pkey)) renderInspector();
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'containsSample', 'sampleKind', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel', 'sensorId'].includes(pkey)) renderInspector();
 }

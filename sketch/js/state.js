@@ -64,6 +64,9 @@ function normalizeParam(value, spec) {
     const text = typeof value === 'string' ? value : String(spec.def ?? '');
     return spec.key === 'orders' ? text.slice(0, 200) : text;
   }
+  if (spec.type === 'sensor') {
+    return typeof value === 'string' ? value.slice(0, 128) : String(spec.def ?? '');
+  }
   if (spec.type === 'select') {
     return spec.options.some(([option]) => option === value) ? value : spec.def;
   }
