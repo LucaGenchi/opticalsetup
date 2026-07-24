@@ -1,7 +1,7 @@
 // Export the sketch as standalone SVG or PNG.
 
 import { state } from './state.js';
-import { registry, getVisualBounds, labelSVG } from './elements.js';
+import { registry, getVisualBounds, labelSVG, displayCableSVG } from './elements.js';
 import { traceAll } from './raytrace.js';
 import { download, manualBeamSVG } from './util.js';
 
@@ -62,9 +62,13 @@ export function buildSVG({ whiteBg = false } = {}) {
   for (const mb of state.beams) body += manualBeamSVG(mb);
 
   for (const el of state.elements) {
+    if (el.type === 'display') body += displayCableSVG(el, state.elements);
+  }
+
+  for (const el of state.elements) {
     const def = registry[el.type];
     if (!def || def.hideInExport) continue;
-    body += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})">${def.svg(el)}</g>`;
+    body += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})">${def.svg(el, state.elements)}</g>`;
     body += labelSVG(el);
   }
 

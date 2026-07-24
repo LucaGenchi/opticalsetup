@@ -2,7 +2,10 @@
 // element placement, manual beam drawing/editing).
 
 import { state, changed, pushUndo, findSelected } from './state.js';
-import { registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG, stageOffsetAt, stageSampleLabelSVG, voxelDepthFactor } from './elements.js';
+import {
+  registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG,
+  stageOffsetAt, stageSampleLabelSVG, voxelDepthFactor, displayCableSVG,
+} from './elements.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG } from './util.js';
@@ -481,17 +484,21 @@ function renderManual() {
 
 function renderElements() {
   let s = '';
-  for (const el of animatedVisualElements()) {
+  const elements = animatedVisualElements();
+  for (const el of elements) {
+    if (el.type === 'display') s += displayCableSVG(el, elements);
+  }
+  for (const el of elements) {
     const def = registry[el.type];
     if (!def) continue;
-    s += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el)}</g>`;
+    s += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el, elements)}</g>`;
     s += labelSVG(el);
     if (el.type === 'stage') s += stageSampleLabelSVG(el);
   }
   // placement ghost
   if (placing && placing.pos) {
     const el = placing.el;
-    s += `<g transform="translate(${placing.pos.x} ${placing.pos.y}) rotate(${el.rot || 0})" opacity="0.5" vector-effect="non-scaling-stroke">${registry[el.type].svg(el)}</g>`;
+    s += `<g transform="translate(${placing.pos.x} ${placing.pos.y}) rotate(${el.rot || 0})" opacity="0.5" vector-effect="non-scaling-stroke">${registry[el.type].svg(el, elements)}</g>`;
   }
   elementLayer.innerHTML = s;
 }

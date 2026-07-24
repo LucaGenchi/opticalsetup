@@ -79,6 +79,22 @@ test('duplicate object ids are repaired during import', () => {
   assert.notEqual(scene.elements[0].id, scene.elements[1].id);
 });
 
+test('sensor display links survive save loading while malformed ids are bounded', () => {
+  const detector = createElement('detector', 100, 0);
+  const display = createElement('display', 200, 50);
+  display.params.sensorId = detector.id;
+  let scene = parseSketch(file([detector, display]), registry);
+  assert.equal(scene.elements[1].params.sensorId, detector.id);
+
+  display.params.sensorId = 'x'.repeat(500);
+  scene = parseSketch(file([detector, display]), registry);
+  assert.equal(scene.elements[1].params.sensorId.length, 128);
+
+  display.params.sensorId = { unsafe: true };
+  scene = parseSketch(file([detector, display]), registry);
+  assert.equal(scene.elements[1].params.sensorId, '');
+});
+
 test('pre-checkbox sample mode strings fall back to current schema defaults', () => {
   // No migration is kept at this stage: 'trans'/'block' aren't valid `mode`
   // options anymore, so they're treated like any other invalid enum value.
