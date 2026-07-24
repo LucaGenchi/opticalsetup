@@ -873,7 +873,21 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           });
         }
         if (signalHits && hit.surface.data.reportHit) {
-          signalHits.push({ stageId: hit.surface.el.id, x: hit.p.x, y: hit.p.y });
+          // The generated-signal wavelength, when this surface actually
+          // converts light (fluorescence emission, or SHG/THG/CARS forward
+          // conversion) — used to color the excitation-spot indicator by
+          // the real signal color rather than a fixed per-material color.
+          let signalWl;
+          if (hit.surface.kind === 'fluor') {
+            signalWl = hit.surface.data.wl;
+          } else if (hit.surface.kind === 'transmit' && hit.surface.data.convert) {
+            const conv = hit.surface.data.convert;
+            signalWl = conv === 'shg' ? r.wl / 2
+              : conv === 'thg' ? r.wl / 3
+                : (conv === 'cars' || conv === 'custom') ? hit.surface.data.outWl
+                  : undefined;
+          }
+          signalHits.push({ stageId: hit.surface.el.id, x: hit.p.x, y: hit.p.y, wl: signalWl });
         }
       }
       if (hit.surface.kind === 'detector') recordDetectorHit(r, hit);

@@ -2,7 +2,7 @@
 // element placement, manual beam drawing/editing).
 
 import { state, changed, pushUndo, findSelected } from './state.js';
-import { registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG, stageOffsetAt, voxelDepthFactor } from './elements.js';
+import { registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG, stageOffsetAt, stageSampleLabelSVG, voxelDepthFactor } from './elements.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG } from './util.js';
@@ -136,7 +136,7 @@ function stageWithSignalSpot(el) {
   if (!moved.params.showSignalSpot) return moved;
   const hit = sampleHitPositions.get(el.id);
   if (!hit) return moved;
-  return { ...moved, _signalHitLocal: toLocal(moved, hit.x, hit.y) };
+  return { ...moved, _signalHitLocal: { ...toLocal(moved, hit.x, hit.y), wl: hit.wl } };
 }
 
 function animatedOpticalElements() {
@@ -170,7 +170,7 @@ function animatedVisualElements() {
 function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'chopper' && el.params.modulate)
-    || (el.type === 'stage' && (el.params.stageMoveX || el.params.stageMoveY)));
+    || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static'));
 }
 
 function hasGalvoMotion() {
@@ -178,7 +178,7 @@ function hasGalvoMotion() {
 }
 
 function hasStageMotion() {
-  return state.elements.some(el => el.type === 'stage' && (el.params.stageMoveX || el.params.stageMoveY));
+  return state.elements.some(el => el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static');
 }
 
 function hasSignalSpotStage() {
@@ -324,7 +324,7 @@ function recordVoxelHits(fromTimeNs, toTimeNs) {
     // from the stage's nominal X=0 focal plane, the more the voxel broadens
     // and fades — a 2D stand-in for real axial defocus, not a calculated
     // point-spread function.
-    const depthFactor = voxelDepthFactor(offset.x, stage.params.stageTravelX ?? 8);
+    const depthFactor = voxelDepthFactor(offset.x, stage.params.pzTravelZ ?? 8);
     const baseSize = Math.min(6, Math.max(0.1, stage.params.voxelSize ?? 0.6));
     const size = Math.min(10, baseSize * (1 + depthFactor * 1.5));
     for (const arrival of arrivals) {
@@ -486,6 +486,7 @@ function renderElements() {
     if (!def) continue;
     s += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el)}</g>`;
     s += labelSVG(el);
+    if (el.type === 'stage') s += stageSampleLabelSVG(el);
   }
   // placement ghost
   if (placing && placing.pos) {

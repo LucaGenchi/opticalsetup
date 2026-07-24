@@ -215,44 +215,74 @@ function sampleModeParams() {
     { key: 'signalEff', label: 'Signal efficiency', type: 'number', min: 0, max: 1, step: 0.05, def: 0.1, show: p => p.mode !== 'none' },
   ];
 }
-// A piezo stage can translate the mounted specimen along the canvas X (its
-// own optical axis — a 2D stand-in for focus/depth) and Y (transverse to the
-// beam) directions, each independently enabled with its own bounded
-// triangular travel and rate. This is deliberately a display-time motion
-// helper: it is not a calibrated piezo/galvo trajectory or a true
-// three-dimensional stage model.
-function axisOffsetAt(params, timeSeconds, moveKey, travelKey, freqKey, defTravel, defFreq) {
-  if (!params[moveKey] || !Number.isFinite(timeSeconds)) return 0;
-  const travel = Math.min(150, Math.max(0, params[travelKey] ?? defTravel));
-  const frequency = Math.min(10, Math.max(0.01, params[freqKey] ?? defFreq));
+// A piezo stage can translate the mounted specimen along its own XY (long
+// axis, transverse to the beam) and Z (its own optical axis — a 2D stand-in
+// for focus/depth) directions. Three scan patterns:
+//   'xy'   — continuous bidirectional (triangle) sweep along XY only.
+//   'z'    — continuous bidirectional sweep along Z only.
+//   'sync' — a raster scan: XY sweeps continuously (one full left-to-right
+//            or right-to-left pass per half period) while Z advances by one
+//            discrete step each time XY completes a pass, bouncing back
+//            down once it reaches the far end — a serpentine line-by-line
+//            scan, not a calibrated piezo trajectory.
+// Internally XY maps to the world-Y offset and Z maps to the world-X offset,
+// matching the sample surface's local geometry (the beam crosses it at
+// local x=0, spanning y across the clear aperture).
+function triangleWave(timeSeconds, frequency, travel) {
   const phase = ((timeSeconds * frequency) % 1 + 1) % 1;
   const triangle = phase < 0.5 ? phase * 2 : 2 - phase * 2;
   return (triangle - 0.5) * travel;
 }
 
+function syncZOffset(timeSeconds, freqXY, travelZ, steps) {
+  const n = Math.max(2, Math.round(steps) || 2);
+  if (!(freqXY > 0)) return -travelZ / 2;
+  const halfPeriod = 1 / (2 * freqXY);
+  const sweepIndex = Math.floor(timeSeconds / halfPeriod);
+  const cycleLen = 2 * (n - 1);
+  const stepPhase = ((sweepIndex % cycleLen) + cycleLen) % cycleLen;
+  const level = stepPhase <= n - 1 ? stepPhase : cycleLen - stepPhase;
+  return -travelZ / 2 + (level / (n - 1)) * travelZ;
+}
+
 export function stageOffsetAt(params = {}, timeSeconds = 0) {
-  return {
-    x: axisOffsetAt(params, timeSeconds, 'stageMoveX', 'stageTravelX', 'stageFrequencyX', 8, 0.1),
-    y: axisOffsetAt(params, timeSeconds, 'stageMoveY', 'stageTravelY', 'stageFrequencyY', 12, 0.15),
-  };
+  const mode = params.pzMode || 'static';
+  if (mode === 'static' || !Number.isFinite(timeSeconds)) return { x: 0, y: 0 };
+  const travelXY = Math.min(150, Math.max(0, params.pzTravelXY ?? 12));
+  const freqXY = Math.min(10, Math.max(0.01, params.pzFreqXY ?? 0.15));
+  const travelZ = Math.min(150, Math.max(0, params.pzTravelZ ?? 8));
+  if (mode === 'xy') return { x: 0, y: triangleWave(timeSeconds, freqXY, travelXY) };
+  if (mode === 'z') {
+    const freqZ = Math.min(10, Math.max(0.01, params.pzFreqZ ?? 0.1));
+    return { x: triangleWave(timeSeconds, freqZ, travelZ), y: 0 };
+  }
+  if (mode === 'sync') {
+    const steps = Math.min(50, Math.max(2, Math.round(params.pzZSteps ?? 5)));
+    return { x: syncZOffset(timeSeconds, freqXY, travelZ, steps), y: triangleWave(timeSeconds, freqXY, travelXY) };
+  }
+  return { x: 0, y: 0 };
 }
 
 // A 2PP voxel's apparent size/opacity qualitatively broadens and fades the
 // further the sample currently sits from the stage's nominal X=0 (focus)
 // plane — a stand-in for real defocus-broadened, threshold-limited exposure
-// in a system with no true third axis. `travelX` scales what "far" means so
+// in a system with no true third axis. `travelZ` scales what "far" means so
 // the falloff tracks whatever axial range the user configured.
-export function voxelDepthFactor(xOffset = 0, travelX = 8) {
-  const halfTravel = Math.max(1e-6, travelX / 2);
+export function voxelDepthFactor(xOffset = 0, travelZ = 8) {
+  const halfTravel = Math.max(1e-6, travelZ / 2);
   return Math.min(1, Math.abs(xOffset) / halfTravel);
 }
 
+// Fallback material-identity color, used only when no live traced hit is
+// available yet (e.g. nothing currently illuminates the sample). Once a ray
+// hits, the actual generated-signal wavelength (computed in raytrace.js)
+// takes over for fluorescence and nonlinear signals.
 function stageSampleColor(params) {
+  if (params.mode === 'fluor') return wavelengthToColor(params.fluorWl);
+  if (params.mode === 'cars') return wavelengthToColor(params.carsWl);
   if (params.sampleKind === 'resin') return '#9b5de5';
   if (params.sampleKind === 'nonlinear') return '#e6a23c';
   if (params.sampleKind === 'opaque') return '#69737e';
-  if (params.mode === 'fluor') return wavelengthToColor(params.fluorWl);
-  if (params.mode === 'cars') return wavelengthToColor(params.carsWl);
   return '#e2758f';
 }
 
@@ -262,6 +292,18 @@ function stageSampleLabel(params) {
   if (params.sampleKind === 'nonlinear') return 'NL';
   if (params.sampleKind === 'opaque') return 'Opaque';
   return 'Sample';
+}
+
+// The material label always reads upright, independent of the stage's own
+// rotation — same world-space, non-rotated pattern as the generic
+// el.label/showLabel system in labelSVG() below.
+export function stageSampleLabelSVG(el) {
+  if (el.type !== 'stage' || !el.params.containsSample || el.params.showMaterialLabel === false) return '';
+  const sz = getSize(el);
+  const a = (el.rot || 0) * Math.PI / 180;
+  const ey = (Math.abs(sz.w * Math.sin(a)) + Math.abs(sz.h * Math.cos(a))) / 2;
+  const y = el.y - ey - 3;
+  return `<text x="${el.x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="5.5" fill="#5b6472">${esc(stageSampleLabel(el.params))}</text>`;
 }
 
 function sampleSurfaces(el, h) {
@@ -1321,27 +1363,31 @@ export const registry = {
       { key: 'containsSample', label: 'Sample installed', type: 'checkbox', def: false },
       { key: 'aperture', label: 'Clear aperture', type: 'optsize', min: 4, max: 150, def: 25.4 },
       { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: p => p.containsSample, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
+      { key: 'showMaterialLabel', label: 'Show material label', type: 'checkbox', def: true, show: p => p.containsSample },
       { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, show: p => p.containsSample },
       { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => p.containsSample && p.sampleKind === 'resin' },
       { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => p.containsSample && p.sampleKind === 'resin' && p.voxelPreview },
-      { key: 'stageMoveX', label: 'Move along beam axis (X, depth)', type: 'checkbox', def: false, show: p => p.containsSample },
-      { key: 'stageTravelX', label: 'X travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 8, show: p => p.containsSample && p.stageMoveX },
-      { key: 'stageFrequencyX', label: 'X scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.1, show: p => p.containsSample && p.stageMoveX },
-      { key: 'stageMoveY', label: 'Move transverse (Y)', type: 'checkbox', def: false, show: p => p.containsSample },
-      { key: 'stageTravelY', label: 'Y travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 12, show: p => p.containsSample && p.stageMoveY },
-      { key: 'stageFrequencyY', label: 'Y scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.15, show: p => p.containsSample && p.stageMoveY },
+      { key: 'pzHeading', label: 'Piezo movement', type: 'heading', show: p => p.containsSample },
+      { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', show: p => p.containsSample, options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
+      { key: 'pzTravelXY', label: 'XY travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 12, show: p => p.containsSample && (p.pzMode === 'xy' || p.pzMode === 'sync') },
+      { key: 'pzFreqXY', label: 'XY scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.15, show: p => p.containsSample && (p.pzMode === 'xy' || p.pzMode === 'sync') },
+      { key: 'pzTravelZ', label: 'Z travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 8, show: p => p.containsSample && (p.pzMode === 'z' || p.pzMode === 'sync') },
+      { key: 'pzFreqZ', label: 'Z scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.1, show: p => p.containsSample && p.pzMode === 'z' },
+      { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.containsSample && p.pzMode === 'sync' },
       ...sampleModeParams().map(spec => ({ ...spec, show: p => p.containsSample && (!spec.show || spec.show(p)) })),
     ],
     svg(el) {
       const p = el.params;
       const clear = (p.aperture || 25.4) / 2, outer = clear + 12;
-      const spot = p.showSignalSpot && el._signalHitLocal
-        ? `<circle cx="${el._signalHitLocal.x.toFixed(2)}" cy="${el._signalHitLocal.y.toFixed(2)}" r="3.2" fill="${stageSampleColor(p)}" opacity="0.85"/>`
-        : '';
+      let spot = '';
+      if (p.showSignalSpot && el._signalHitLocal) {
+        const liveWl = el._signalHitLocal.wl;
+        const color = Number.isFinite(liveWl) ? wavelengthToColor(liveWl) : stageSampleColor(p);
+        spot = `<circle cx="${el._signalHitLocal.x.toFixed(2)}" cy="${el._signalHitLocal.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
+      }
       return `<path d="M 8,${-outer} L -6,${-outer} L -6,${outer} L 8,${outer}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<rect x="-2" y="${-clear}" width="5" height="${2 * clear}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         spot +
-        (p.containsSample ? `<text x="0.5" y="${-outer - 3}" text-anchor="middle" font-size="5.5" fill="#5b6472">${esc(stageSampleLabel(p))}</text>` : '') +
         (p.voxelPreview ? `<circle cx="0.5" cy="0" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
     surfaces(el) {
@@ -1719,7 +1765,7 @@ const ELEMENT_HELP = {
   chopper: 'Gates finite-duration pulse trains in time and applies duty-averaged transmission to CW light; the wheel shows duty and pulse-clock phase.',
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
   sample: 'Attenuates excitation and can convert a bounded fraction into fluorescence or nonlinear signal.',
-  stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can move the sample independently along the beam axis (X, depth) and transverse (Y); a resin sample can also show pulsed 2PP voxel marks.',
+  stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
   microscope: 'Models a configurable objective, tube lens, clear aperture, and absorbing housing.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
@@ -1750,9 +1796,9 @@ export function getElementMeta(type, params = {}) {
   } else if (type === 'freeglass') {
     note = 'Straight boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
   } else if (type === 'stage' && params.voxelPreview) {
-    note = 'Pulsed arrivals leave canvas-only 2PP voxel markers in the mounted sample; marker size/opacity qualitatively broadens with X (depth) offset from focus. This is a 2D scan preview, not a threshold, dose, curing, or true 3D fabrication simulation.';
-  } else if (type === 'stage' && (params.stageMoveX || params.stageMoveY)) {
-    note = 'The piezo stage motion is a display-time animation of the mounted sample, not a calibrated piezo trajectory.';
+    note = 'Pulsed arrivals leave canvas-only 2PP voxel markers in the mounted sample; marker size/opacity qualitatively broadens with Z (depth) offset from focus. This is a 2D scan preview, not a threshold, dose, curing, or true 3D fabrication simulation.';
+  } else if (type === 'stage' && params.pzMode && params.pzMode !== 'static') {
+    note = 'The piezo stage motion is a display-time animation of the mounted sample — "sync" is a simple serpentine raster, not a calibrated piezo trajectory.';
   }
 
   const labels = { simulated: 'Simulated', configurable: 'Needs setup', diagram: 'Diagram only' };

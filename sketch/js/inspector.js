@@ -240,6 +240,7 @@ export function renderInspector() {
     for (const p of def.params || []) {
       if (p.hidden) continue;
       if (p.show && !p.show(sel.params)) continue;
+      if (p.type === 'heading') { h += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
       const v = sel.params[p.key];
       if (p.type === 'number') {
         if (p.negative) {
@@ -435,5 +436,5 @@ function applyInput(inp, rebuild = false) {
   changed();
   if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'containsSample', 'sampleKind', 'voxelPreview', 'stageMoveX', 'stageMoveY', 'showSignalSpot'].includes(pkey)) renderInspector();
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'containsSample', 'sampleKind', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel'].includes(pkey)) renderInspector();
 }

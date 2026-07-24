@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, stageOffsetAt, voxelDepthFactor } from '../sketch/js/elements.js';
+import { createElement, stageOffsetAt, stageSampleLabelSVG, voxelDepthFactor } from '../sketch/js/elements.js';
 import { pulseArrivalsAtPath } from '../sketch/js/pulses.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 
@@ -93,24 +93,62 @@ test('an opaque (non-transmitting) sample still reports its excitation hit', () 
   assert.equal(scene.signalHits[0].stageId, stage.id);
 });
 
-test('the piezo stage moves independently along X (depth) and Y (transverse)', () => {
-  const both = { stageMoveX: true, stageTravelX: 20, stageFrequencyX: 1, stageMoveY: true, stageTravelY: 20, stageFrequencyY: 1 };
-  closeTo(stageOffsetAt(both, 0).x, -10);
-  closeTo(stageOffsetAt(both, 0).y, -10);
-  closeTo(stageOffsetAt(both, 0.5).x, 10);
-  closeTo(stageOffsetAt(both, 0.5).y, 10);
+test('the signal-spot indicator reports the real generated wavelength, not a fixed per-material color', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.wavelength = 800;
+  const stage = createElement('stage', 150, 0);
 
-  const xOnly = { ...both, stageMoveY: false };
-  closeTo(stageOffsetAt(xOnly, 0).x, -10);
-  closeTo(stageOffsetAt(xOnly, 0).y, 0);
+  Object.assign(stage.params, { containsSample: true, sampleKind: 'fluorescent', mode: 'fluor', fluorWl: 520 });
+  closeTo(traceScene([laser, stage]).signalHits[0].wl, 520);
 
-  const yOnly = { ...both, stageMoveX: false };
-  closeTo(stageOffsetAt(yOnly, 0).x, 0);
-  closeTo(stageOffsetAt(yOnly, 0).y, -10);
+  Object.assign(stage.params, { sampleKind: 'nonlinear', mode: 'shg' });
+  closeTo(traceScene([laser, stage]).signalHits[0].wl, 400); // 800 / 2
 
-  const neither = { ...both, stageMoveX: false, stageMoveY: false };
-  closeTo(stageOffsetAt(neither, 0.5).x, 0);
-  closeTo(stageOffsetAt(neither, 0.5).y, 0);
+  stage.params.mode = 'thg';
+  closeTo(traceScene([laser, stage]).signalHits[0].wl, 800 / 3);
+
+  Object.assign(stage.params, { mode: 'cars', carsWl: 660 });
+  closeTo(traceScene([laser, stage]).signalHits[0].wl, 660);
+
+  // a plain attenuating (non-signal-generating) surface reports no wavelength
+  Object.assign(stage.params, { sampleKind: 'generic', mode: 'none' });
+  assert.equal(traceScene([laser, stage]).signalHits[0].wl, undefined);
+});
+
+test('the piezo stage is static by default and only moves when a scan pattern is chosen', () => {
+  assert.deepEqual(stageOffsetAt({}, 5), { x: 0, y: 0 });
+  assert.deepEqual(stageOffsetAt({ pzMode: 'static', pzTravelXY: 20, pzFreqXY: 1 }, 5), { x: 0, y: 0 });
+});
+
+test('XY mode moves only the transverse (Y) axis, bidirectionally', () => {
+  const p = { pzMode: 'xy', pzTravelXY: 20, pzFreqXY: 1 };
+  closeTo(stageOffsetAt(p, 0).x, 0);
+  closeTo(stageOffsetAt(p, 0).y, -10);
+  closeTo(stageOffsetAt(p, 0.25).y, 0);
+  closeTo(stageOffsetAt(p, 0.5).y, 10, 1e-6); // full sweep the other way
+  closeTo(stageOffsetAt(p, 0.75).y, 0);
+});
+
+test('Z mode moves only the depth (X) axis, bidirectionally', () => {
+  const p = { pzMode: 'z', pzTravelZ: 20, pzFreqZ: 1 };
+  closeTo(stageOffsetAt(p, 0).y, 0);
+  closeTo(stageOffsetAt(p, 0).x, -10);
+  closeTo(stageOffsetAt(p, 0.5).x, 10, 1e-6);
+});
+
+test('sync mode rasters: XY sweeps continuously while Z steps once per completed sweep, bouncing at the ends', () => {
+  const p = { pzMode: 'sync', pzTravelXY: 20, pzFreqXY: 1, pzTravelZ: 8, pzZSteps: 3 };
+  // halfPeriod = 0.5s (one full XY sweep in one direction).
+  // Z levels 0,1,2 map to offsets -4, 0, 4 (3 steps across an 8mm travel).
+  closeTo(stageOffsetAt(p, 0.0).x, -4); // sweep 0: level 0
+  closeTo(stageOffsetAt(p, 0.6).x, 0); // sweep 1: level 1
+  closeTo(stageOffsetAt(p, 1.1).x, 4); // sweep 2: level 2
+  closeTo(stageOffsetAt(p, 1.6).x, 0); // sweep 3: bounces back to level 1
+  closeTo(stageOffsetAt(p, 2.1).x, -4); // sweep 4: back to level 0
+  // XY itself still sweeps left-to-right then right-to-left within each pass
+  closeTo(stageOffsetAt(p, 0.0).y, -10);
+  closeTo(stageOffsetAt(p, 0.5).y, 10, 1e-6);
+  closeTo(stageOffsetAt(p, 1.0).y, -10, 1e-5);
 });
 
 test('voxel depth factor grows from 0 at focus to 1 at the edge of the configured axial travel', () => {
@@ -119,4 +157,34 @@ test('voxel depth factor grows from 0 at focus to 1 at the edge of the configure
   closeTo(voxelDepthFactor(10, 20), 1);
   closeTo(voxelDepthFactor(50, 20), 1);
   closeTo(voxelDepthFactor(-5, 20), 0.5);
+});
+
+test('the material label is world-upright (no rotate transform) and respects the show/hide toggle', () => {
+  const stage = createElement('stage', 100, 50);
+  stage.rot = 137;
+  stage.params.containsSample = true;
+  stage.params.sampleKind = 'resin';
+  const svg = stageSampleLabelSVG(stage);
+  assert.match(svg, /Resin/);
+  assert.doesNotMatch(svg, /rotate/);
+
+  stage.params.showMaterialLabel = false;
+  assert.equal(stageSampleLabelSVG(stage), '');
+
+  stage.params.showMaterialLabel = true;
+  stage.params.containsSample = false;
+  assert.equal(stageSampleLabelSVG(stage), '', 'no label without an installed sample');
+});
+
+test('the label position accounts for the stage rotating its bounding box', () => {
+  const upright = createElement('stage', 0, 0);
+  upright.params.containsSample = true;
+  const svgUpright = stageSampleLabelSVG(upright);
+
+  const rotated = createElement('stage', 0, 0);
+  rotated.rot = 90;
+  rotated.params.containsSample = true;
+  const svgRotated = stageSampleLabelSVG(rotated);
+
+  assert.notEqual(svgUpright, svgRotated);
 });
