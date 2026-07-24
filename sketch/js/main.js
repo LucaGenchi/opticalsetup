@@ -540,7 +540,17 @@ function syncToolbar() {
 
 function syncViewControls(detail = getViewportDetail()) {
   const readout = $('zoomReadout');
-  if (readout) readout.textContent = `${Math.round(detail.zoom * 100)}% · ${detail.step} mm`;
+  if (readout) {
+    readout.textContent = `${Math.round(detail.zoom * 100)}% · ${detail.step} mm grid`;
+    readout.title = `Zoom ${Math.round(detail.zoom * 100)}% — grid spacing is ${detail.step} mm`;
+  }
+  const scaleBarMm = detail.step * 2;
+  const scaleBarLine = $('scaleBarLine');
+  const scaleBarLabel = $('scaleBarLabel');
+  if (scaleBarLine && scaleBarLabel) {
+    scaleBarLine.style.width = `${Math.max(1, scaleBarMm * detail.zoom)}px`;
+    scaleBarLabel.textContent = `${scaleBarMm} mm`;
+  }
   const snap = $('btnSnap');
   if (!snap) return;
   const description = detail.snap

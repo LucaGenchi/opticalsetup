@@ -159,7 +159,7 @@
         <button type="button" id="btnZoomOut" title="Zoom out" aria-label="Zoom out">−</button>
         <button type="button" id="btnZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
         <button type="button" id="btnZoomFit" title="Fit sketch in view">Fit</button>
-        <span id="zoomReadout" class="zoom-readout" aria-live="polite">100% · 25 mm</span>
+        <span id="zoomReadout" class="zoom-readout" aria-live="polite" title="Zoom 100% — grid spacing is 25 mm">100% · 25 mm grid</span>
       </div>
       <div id="pulseControls" class="pulse-controls is-idle" role="toolbar" aria-label="Pulse playback controls">
         <button type="button" id="btnPulsePlay" title="Play pulse animation" aria-label="Play pulse animation">▶</button>
@@ -176,6 +176,10 @@
         <span id="pulseScaleNote" class="pulse-scale-note">packets schematic · timing physical</span>
       </div>
       <div id="status"></div>
+      <div id="scaleBar" class="scale-bar" aria-hidden="true">
+        <span id="scaleBarLabel" class="scale-bar-label">50 mm</span>
+        <div id="scaleBarLine" class="scale-bar-line"></div>
+      </div>
       <div id="contextMenu" class="context-menu" role="menu" aria-label="Object actions" hidden>
         <button type="button" role="menuitem" data-action="duplicate"><span>Duplicate</span><kbd>⌘D</kbd></button>
         <button type="button" role="menuitem" data-action="rotate"><span>Rotate 45°</span><kbd>R</kbd></button>
