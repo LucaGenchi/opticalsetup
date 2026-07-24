@@ -5,7 +5,13 @@
 
 import { registry, OBJ_SHAPES } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, gateTransmissionAt, pulseGateTransmission } from './pulses.js';
+import { C_MM_PER_NS, pulseGateTransmission } from './pulses.js';
+
+// Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
+// period is Hz-to-kHz scale, so c·period would be light-seconds long — this
+// mirrors the same schematic-spacing convention already used by pulse
+// markers: an on-screen-legible constant, not a physically scaled distance.
+const CHOP_SCHEMATIC_PERIOD_MM = 14;
 import {
   linearStokes, cloneStokes, retarder as applyRetarder, analyzerTransmission,
   legacyPolarization, polarizationDescription,
@@ -612,16 +618,13 @@ function interact(ray, hit) {
     case 'chop': {
       const duty = Math.min(0.99, Math.max(0.01, data.duty ?? 0.5));
       if (!ray.pulse) {
-        // Static traces and exports communicate time-averaged CW power. The
-        // live canvas supplies a finite gate time so the same chopper instead
-        // shows its instantaneous open/closed state as the wheel turns.
-        if (Number.isFinite(data.timeNs)) {
-          const transmission = gateTransmissionAt({
-            opl: 0, frequencyMHz: data.frequencyMHz || 1, duty, phaseNs: data.phaseNs || 0,
-          }, data.timeNs);
-          return transmission > 0 ? [{ d }] : [];
-        }
-        return [{ d, intensity: ray.intensity * duty }];
+        // CW light downstream of a chopper keeps its duty-averaged power (the
+        // quantitative reading a detector sees) but is drawn as a chunked
+        // on/off pattern rather than a smoothly dimmed line — a chopper
+        // physically gates light in time, and this is its spatial footprint.
+        // The pattern is a fixed property of the ray, so it's identical
+        // between the live canvas and static SVG/PNG exports.
+        return [{ d, intensity: ray.intensity * duty, chopped: { period: CHOP_SCHEMATIC_PERIOD_MM, duty } }];
       }
       const pulse = {
         ...ray.pulse,

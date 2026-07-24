@@ -168,35 +168,32 @@ test('eye detects focused light at its retina and clips outside the pupil', () =
   assert.equal(detectorReading(eye.id), null);
 });
 
-test('chopper averages static CW power, previews live gate phase, and gates pulses', () => {
+test('chopper averages static CW power, draws it as a chunked pattern, and gates pulses', () => {
   const laser = createElement('laser', 0, 0);
   const chopper = createElement('chopper', 150, 0);
-  chopper.params.frequencyMHz = 1;
+  chopper.params.frequencyHz = 1000;
   chopper.params.chopDuty = 0.4;
   chopper.params.phaseNs = 25;
   const detector = createElement('detector', 300, 0);
 
-  // No live clock means a deterministic duty-averaged static trace/export.
+  // CW power downstream of a chopper is always its duty-averaged value —
+  // this is the quantitative reading a detector sees, live or static.
   traceAll([laser, chopper, detector]);
   assert.ok(Math.abs(detectorReading(detector.id).signal - 0.4) < 1e-9);
 
-  // A live clock makes the same CW path visibly open and close. The phase
-  // offset is the beginning of the open interval; 40% of a 1 MHz gate is open.
-  chopper._simulationTimeNs = 25;
-  traceAll([laser, chopper, detector]);
-  assert.equal(detectorReading(detector.id).signal, 1);
-  chopper._simulationTimeNs = 425;
-  traceAll([laser, chopper, detector]);
-  assert.equal(detectorReading(detector.id), null);
-
-  // Non-finite transient UI state must safely fall back to the static average.
-  chopper._simulationTimeNs = Number.NaN;
-  traceAll([laser, chopper, detector]);
-  assert.ok(Math.abs(detectorReading(detector.id).signal - 0.4) < 1e-9);
+  // The traced beam still reaches the detector (chopping doesn't remove the
+  // ray) but is tagged as a chunked pattern for rendering: a fixed on/off
+  // dash cadence reflecting the duty cycle, identical in the live view and
+  // in static SVG/PNG exports.
+  const scene = traceScene([laser, chopper, detector]);
+  const chopped = scene.drawables.find(d => d.dash);
+  assert.ok(chopped, 'the downstream beam should carry a chunked dash pattern');
+  const [on, off] = chopped.dash.split(' ').map(Number);
+  assert.ok(Math.abs(on / (on + off) - 0.4) < 1e-6, 'dash/gap ratio should match the duty cycle');
 
   laser.params.temporalMode = 'pulsed';
-  const scene = traceScene([laser, chopper, detector]);
-  const gated = scene.pulseTracks.find(track => track.pulse.gates?.length);
+  const pulsedScene = traceScene([laser, chopper, detector]);
+  const gated = pulsedScene.pulseTracks.find(track => track.pulse.gates?.length);
   assert.ok(gated);
   assert.ok(Math.abs(gated.pulse.gates[0].duty - 0.4) < 1e-9);
 });
@@ -207,8 +204,8 @@ test('detector signal follows overlap of chained pulse gates', () => {
   laser.params.repRateMHz = 80;
   const first = createElement('chopper', 150, 0);
   const second = createElement('chopper', 200, 0);
-  first.params.frequencyMHz = 1;
-  second.params.frequencyMHz = 1;
+  first.params.frequencyHz = 1e6;
+  second.params.frequencyHz = 1e6;
   first.params.chopDuty = 0.5;
   second.params.chopDuty = 0.5;
   first.params.phaseNs = 98 / C_MM_PER_NS;

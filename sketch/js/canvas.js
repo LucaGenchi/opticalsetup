@@ -144,12 +144,14 @@ function stageWithSignalSpot(el) {
   return { ...moved, _signalHitLocal: { ...toLocal(moved, hit.x, hit.y), wl: hit.wl } };
 }
 
+// Drives only the wheel icon's rotation — the traced beam no longer depends
+// on live time (chopped CW light is drawn as a fixed chunk pattern, the same
+// on the live canvas and in static exports; see raytrace.js's 'chop' case).
 function animatedChopper(el) {
   if (pulseTracks.length) return { ...el, _simulationTimeNs: pulsePlayback.timeNs };
-  const frequencyMHz = Math.min(1000, Math.max(0.000001, el.params.frequencyMHz || 0.001));
-  const periodNs = 1000 / frequencyMHz;
-  const physicalHz = frequencyMHz * 1e6;
-  const displayHz = Math.min(2, Math.max(0.25, physicalHz));
+  const frequencyHz = Math.min(1e9, Math.max(0.000001, el.params.frequencyHz || 1000));
+  const periodNs = 1e9 / frequencyHz;
+  const displayHz = Math.min(2, Math.max(0.25, frequencyHz));
   const phaseNs = Number.isFinite(el.params.phaseNs) ? el.params.phaseNs : 0;
   return {
     ...el,
@@ -159,13 +161,12 @@ function animatedChopper(el) {
 }
 
 function animatedOpticalElements() {
-  if (!hasGalvoMotion() && !hasStageMotion() && !hasChopperMotion()) return state.elements;
+  if (!hasGalvoMotion() && !hasStageMotion()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
       return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
     }
-    if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     return el.type === 'stage' ? animatedStageElement(el) : el;
   });
 }
@@ -211,7 +212,7 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasChopperMotion();
+    const opticalMotion = hasGalvoMotion() || hasStageMotion();
     if (opticalMotion) renderBeams();
     renderElements();
     renderVoxels();
