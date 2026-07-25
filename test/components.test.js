@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, registry } from '../sketch/js/elements.js';
+import { createElement, registry, retroOffsetAt } from '../sketch/js/elements.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { C_MM_PER_NS } from '../sketch/js/pulses.js';
 
@@ -313,4 +313,29 @@ test('configured SLM steering changes the reflected ray direction', () => {
   slm.params.layers = [{ type: 'steer', n: 3, f: 50, lines: 600, orders: '1', angle: 10, div: 8 }];
   const ray = paths([laser, slm])[0];
   assert.ok(Math.abs(angleOfLastSegment(ray)) > 160 && Math.abs(angleOfLastSegment(ray)) < 180);
+});
+
+test('retroreflector returns a beam antiparallel to its incidence, mirrored about its axis', () => {
+  const laser = createElement('laser', 0, 10);
+  const retro = createElement('retroreflector', 150, 0);
+  const ray = paths([laser, retro])[0];
+  assert.ok(ray.pts.length >= 4, 'expects an entry bounce, an internal bounce, and an exit segment');
+  const angle = Math.abs(angleOfLastSegment(ray));
+  assert.ok(Math.abs(angle - 180) < 1e-6, `exit ray should be antiparallel (180°), got ${angle}°`);
+  const exitStart = ray.pts.at(-2), exitEnd = ray.pts.at(-1);
+  assert.ok(Math.abs(exitStart.y - (-10)) < 1e-6, 'a beam entering at +10 above the axis should return at -10');
+  assert.ok(Math.abs(exitEnd.y - exitStart.y) < 1e-9, 'the outgoing leg should stay at constant height');
+});
+
+test('retroreflector delay-line motion is static by default and a bounded periodic wave when enabled', () => {
+  const retro = createElement('retroreflector');
+  assert.deepEqual(retroOffsetAt(retro.params, 5), { x: 0, y: 0 });
+
+  retro.params.moveMode = 'linear';
+  retro.params.travel = 20;
+  retro.params.freqHz = 0.5;
+  const samples = [0, 0.5, 1, 1.5, 2].map(t => retroOffsetAt(retro.params, t).x);
+  for (const x of samples) assert.ok(Math.abs(x) <= 10 + 1e-9, `offset ${x} should stay within ±travel/2`);
+  assert.ok(Math.abs(samples[0] - samples[4]) < 1e-9, 'motion should repeat every period (1/freqHz = 2s)');
+  assert.ok(samples.some(x => Math.abs(x) > 1e-6), 'linear mode should actually move');
 });

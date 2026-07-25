@@ -4,7 +4,7 @@
 import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG,
-  stageOffsetAt, stageSampleLabelSVG, voxelDepthFactor, displayCableSVG,
+  stageOffsetAt, retroOffsetAt, stageSampleLabelSVG, voxelDepthFactor, displayCableSVG,
 } from './elements.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
@@ -138,6 +138,13 @@ function animatedStageElement(el) {
   return (offset.x || offset.y) ? { ...el, x: el.x + offset.x, y: el.y + offset.y } : el;
 }
 
+function animatedRetroElement(el) {
+  const local = retroOffsetAt(el.params, motionTimeSeconds);
+  if (!local.x && !local.y) return el;
+  const offset = rotPt(local.x, local.y, el.rot || 0);
+  return { ...el, x: el.x + offset.x, y: el.y + offset.y };
+}
+
 function stageWithSignalSpot(el) {
   const moved = animatedStageElement(el);
   if (!moved.params.showSignalSpot) return moved;
@@ -163,13 +170,15 @@ function animatedChopper(el) {
 }
 
 function animatedOpticalElements() {
-  if (!hasGalvoMotion() && !hasStageMotion()) return state.elements;
+  if (!hasGalvoMotion() && !hasStageMotion() && !hasRetroMotion()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
       return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
     }
-    return el.type === 'stage' ? animatedStageElement(el) : el;
+    if (el.type === 'stage') return animatedStageElement(el);
+    if (el.type === 'retroreflector') return animatedRetroElement(el);
+    return el;
   });
 }
 
@@ -181,14 +190,17 @@ function animatedVisualElements() {
       return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
     }
     if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
-    return el.type === 'stage' ? stageWithSignalSpot(el) : el;
+    if (el.type === 'stage') return stageWithSignalSpot(el);
+    if (el.type === 'retroreflector') return animatedRetroElement(el);
+    return el;
   });
 }
 
 function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'chopper' && el.params.modulate)
-    || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static'));
+    || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
+    || (el.type === 'retroreflector' && el.params.moveMode === 'linear'));
 }
 
 function hasGalvoMotion() {
@@ -197,6 +209,10 @@ function hasGalvoMotion() {
 
 function hasStageMotion() {
   return state.elements.some(el => el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static');
+}
+
+function hasRetroMotion() {
+  return state.elements.some(el => el.type === 'retroreflector' && el.params.moveMode === 'linear');
 }
 
 function hasSignalSpotStage() {
@@ -214,7 +230,7 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasStageMotion();
+    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasRetroMotion();
     if (opticalMotion) renderBeams();
     renderElements();
     renderVoxels();

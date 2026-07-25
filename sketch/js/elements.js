@@ -348,6 +348,18 @@ function syncZOffset(timeSeconds, freqXY, travelZ, steps) {
   return -travelZ / 2 + (level / (n - 1)) * travelZ;
 }
 
+// A retroreflector's delay-line motion translates the whole element along
+// its own apex-to-mouth symmetry axis (local -x); the caller rotates this
+// local offset into world space by the element's own rot, since the
+// retroreflector — unlike the piezo stage — is routinely placed at an
+// arbitrary angle to fold a beam path.
+export function retroOffsetAt(params = {}, timeSeconds = 0) {
+  if (params.moveMode !== 'linear' || !Number.isFinite(timeSeconds)) return { x: 0, y: 0 };
+  const travel = Math.min(150, Math.max(0, params.travel ?? 20));
+  const freq = Math.min(10, Math.max(0.01, params.freqHz ?? 0.2));
+  return { x: triangleWave(timeSeconds, freq, travel), y: 0 };
+}
+
 export function stageOffsetAt(params = {}, timeSeconds = 0) {
   const mode = params.pzMode || 'static';
   if (mode === 'static' || !Number.isFinite(timeSeconds)) return { x: 0, y: 0 };
@@ -627,6 +639,40 @@ export const registry = {
       const L = el.params.length / 2;
       const a = galvoAngleAt(el.params, el._animationTimeS || 0) * Math.PI / 180;
       return [{ x1: L * Math.sin(a), y1: -L * Math.cos(a), x2: -L * Math.sin(a), y2: L * Math.cos(a), kind: 'mirror' }];
+    },
+  },
+
+  retroreflector: {
+    label: 'Retroreflector', category: 'Mirrors', paletteOrder: 5, size: { w: 24, h: 56 },
+    size_: el => ({ w: el.params.length / 2 + 10, h: el.params.length + 10 }),
+    params: [
+      { key: 'moveHeading', label: 'Delay-line movement', type: 'section' },
+      { key: 'moveMode', label: 'Motion', type: 'select', def: 'static', options: [['static', 'Static'], ['linear', 'Periodic linear']] },
+      { key: 'travel', label: 'Travel range (mm)', type: 'number', min: 0, max: 150, step: 1, def: 20, show: p => p.moveMode === 'linear' },
+      { key: 'freqHz', label: 'Frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.2, show: p => p.moveMode === 'linear' },
+      { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
+      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
+      { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+    ],
+    // Apex at the local origin (the element's anchor/pivot point) pointing
+    // toward +x, with two mirror arms opening toward -x at exactly 45° each
+    // — a right-angle "roof" corner reflector. In 2D this returns any
+    // incoming ray exactly antiparallel to its incidence direction
+    // (offset in y), independent of incidence angle within its aperture —
+    // the defining property of a corner retroreflector, unlike a single
+    // flat mirror whose return direction depends on incidence angle.
+    svg(el) {
+      const L = el.params.length / 2;
+      const partial = (el.params.refl ?? 100) < 100;
+      const dash = partial ? ' stroke-dasharray="6 2.5"' : '';
+      return `<path d="M ${-L},${L} L 0,0 L ${-L},${-L}" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"${dash}/>`;
+    },
+    surfaces(el) {
+      const L = el.params.length / 2;
+      return [
+        { x1: 0, y1: 0, x2: -L, y2: L, kind: 'mirror', data: { refl: el.params.refl } },
+        { x1: 0, y1: 0, x2: -L, y2: -L, kind: 'mirror', data: { refl: el.params.refl } },
+      ];
     },
   },
 
@@ -1794,6 +1840,7 @@ const DIRECT = {
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
+  retroreflector: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   cmirrorx: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   cmirror: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   oap: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
@@ -1871,6 +1918,7 @@ const ELEMENT_HELP = {
   pointsource: 'Emits isotropic light (360° by default, optionally broadband) that fades over a short evanescent range unless captured by a nearby lens, objective, or fiber tip.',
   objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
+  retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion translates the whole element along its own apex axis, adding a periodic, user-set range of optical path length — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
   cmirrorx: 'Diverges reflected rays with a paraxial focal-length model.',
   cmirror: 'Focuses reflected rays with a paraxial focal-length model.',
