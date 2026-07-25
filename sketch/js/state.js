@@ -1,7 +1,7 @@
 // App state, undo/redo, autosave.
 
 import { distinctPoints, rotPt } from './util.js';
-import { normalizePolygonPoints, polygonBounds } from './polygon.js';
+import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 
 export const state = {
   elements: [],   // optical elements
@@ -57,6 +57,7 @@ function normalizeLayers(value) {
 
 function normalizeParam(value, spec) {
   if (spec.type === 'layers') return normalizeLayers(value);
+  if (spec.type === 'boundary') return normalizeBoundaryPoints(value, spec.def || []);
   if (spec.type === 'points') return normalizePolygonPoints(value, spec.def || []);
   if (spec.type === 'checkbox') return typeof value === 'boolean' ? value : !!spec.def;
   if (spec.type === 'color') return typeof value === 'string' && COLOR.test(value) ? value : spec.def;
@@ -102,9 +103,11 @@ function normalizeElement(raw, definitions, used) {
   // hit boxes, resize handles, labels, and exports agree while preserving the
   // exact world-space boundary of older or hand-edited sketch files.
   if (raw.type === 'freeglass' && Array.isArray(params.vertices) && params.vertices.length >= 3) {
-    const b = polygonBounds(params.vertices), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+    const b = boundaryBounds(params.vertices), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
     if (Math.abs(cx) > 1e-9 || Math.abs(cy) > 1e-9) {
-      params.vertices = params.vertices.map(p => ({ x: p.x - cx, y: p.y - cy }));
+      params.vertices = params.vertices.map(p => ({
+        x: p.x - cx, y: p.y - cy, ...(p.arc === true ? { arc: true } : {}),
+      }));
       const shift = rotPt(cx * (params.scale || 1), cy * (params.scale || 1), rot);
       x += shift.x; y += shift.y;
     }

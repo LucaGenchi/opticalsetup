@@ -5,13 +5,17 @@ import { buildSVG } from '../sketch/js/export.js';
 import { createElement, getSize, registry } from '../sketch/js/elements.js';
 import { detectorReading, traceAll } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
-import { isSimplePolygon, normalizePolygonPoints, pointInPolygon } from '../sketch/js/polygon.js';
+import {
+  appendBoundaryGesture, boundaryBounds, boundarySegments, circularArcThrough,
+  isSimpleBoundary, isSimplePolygon, normalizeBoundaryPoints, normalizePolygonPoints,
+  pointInPolygon,
+} from '../sketch/js/polygon.js';
 import { toWorld } from '../sketch/js/util.js';
 
 const file = elements => JSON.stringify({ app: 'optics2d', version: 1, elements, beams: [] });
 const finitePath = path => path.pts.every(p => Number.isFinite(p.x) && Number.isFinite(p.y));
 
-test('freeform glass uses one closed, uniquely keyed refractive surface per vertex', () => {
+test('freeform glass uses one closed, uniquely keyed surface per logical boundary edge', () => {
   const glass = createElement('freeglass');
   glass.params.vertices = [
     { x: -40, y: -20 }, { x: 20, y: -28 }, { x: 42, y: 12 }, { x: 0, y: 30 }, { x: -35, y: 16 },
@@ -26,6 +30,60 @@ test('freeform glass uses one closed, uniquely keyed refractive surface per vert
   );
   assert.ok(getSize(glass).w > 80 && getSize(glass).h > 50);
   assert.doesNotMatch(registry.freeglass.svg(glass), /NaN|Infinity|undefined/);
+});
+
+test('press-drag gestures add a three-point circular arc while clicks stay straight', () => {
+  let points = [{ x: 0, y: 0 }];
+  points = appendBoundaryGesture(points, { x: 25, y: -20 }, { x: 50, y: 0 }, true);
+  assert.deepEqual(points, [
+    { x: 0, y: 0 }, { x: 25, y: -20, arc: true }, { x: 50, y: 0 },
+  ]);
+  points = appendBoundaryGesture(points, { x: 50, y: 50 }, { x: 50, y: 50 }, false);
+  points = appendBoundaryGesture(points, { x: 0, y: 50 }, { x: 0, y: 50 }, false);
+  assert.equal(isSimpleBoundary(points), true);
+
+  const [curved, ...straight] = boundarySegments(points);
+  assert.equal(curved.kind, 'arc');
+  assert.ok(Math.abs(curved.arc.r - 25.625) < 1e-9);
+  assert.equal(straight.every(segment => segment.kind === 'line'), true);
+});
+
+test('a circular arc can close a simple boundary after sampling exceeds the editable point limit', () => {
+  const capsule = [
+    { x: -50, y: -40 },
+    { x: 50, y: -40 },
+    { x: 90, y: 0, arc: true },
+    { x: 50, y: 40 },
+    { x: -50, y: 40 },
+    { x: -90, y: 0, arc: true },
+  ];
+  assert.equal(isSimpleBoundary(capsule), true);
+  assert.equal(boundarySegments(capsule).filter(segment => segment.kind === 'arc').length, 2);
+});
+
+test('curved boundaries serialize safely, retain exact bounds, and reject malformed arc runs', () => {
+  const curved = [
+    { x: -50, y: -20 }, { x: 0, y: -40, arc: true },
+    { x: 50, y: -20 }, { x: 50, y: 30 }, { x: -50, y: 30 },
+  ];
+  assert.equal(isSimpleBoundary(curved), true);
+  assert.deepEqual(boundaryBounds(curved), { x0: -50, x1: 50, y0: -40, y1: 30 });
+  assert.match(registry.freeglass.svg({ ...createElement('freeglass'), params: {
+    ...createElement('freeglass').params, vertices: curved,
+  } }), /\bA 72\.5 72\.5 0 0 1 50 -20\b/);
+
+  const fallback = createElement('freeglass').params.vertices;
+  const malformed = [
+    { x: -30, y: -20 }, { x: -10, y: -30, arc: true },
+    { x: 10, y: -30, arc: true }, { x: 30, y: -20 }, { x: 0, y: 30 },
+  ];
+  assert.deepEqual(normalizeBoundaryPoints(malformed, fallback), fallback);
+
+  const raw = createElement('freeglass', 20, 30);
+  raw.params.vertices = curved;
+  const [loaded] = parseSketch(file([raw]), registry).elements;
+  assert.equal(loaded.params.vertices.some(point => point.arc === true), true);
+  assert.equal(isSimpleBoundary(loaded.params.vertices), true);
 });
 
 test('simple concave polygons are accepted while malformed boundaries normalize safely', () => {
@@ -92,6 +150,44 @@ test('a freeform wedge refracts finite rays and produces wavelength-dependent di
   };
   const blue = finalSlope(450), red = finalSlope(650);
   assert.ok(Math.abs(blue - red) > 0.001, 'BK7-like index changes the exit angle across wavelength');
+});
+
+test('a circular-arc glass face uses exact circle intersections and radial refraction normals', () => {
+  const vertices = [
+    { x: -50, y: -20 }, { x: 0, y: -40, arc: true },
+    { x: 50, y: -20 }, { x: 50, y: 30 }, { x: -50, y: 30 },
+  ];
+  const arc = circularArcThrough(vertices[0], vertices[1], vertices[2]);
+  const laser = createElement('laser', 25, -120);
+  laser.rot = 90;
+  const glass = createElement('freeglass', 0, 0);
+  glass.params.ior = 1.5;
+  glass.params.vertices = vertices;
+
+  const [path] = traceAll([laser, glass]).filter(drawable => drawable.type === 'path');
+  assert.ok(path && finitePath(path));
+  const entry = path.pts[1];
+  assert.ok(Math.abs(Math.hypot(entry.x - arc.cx, entry.y - arc.cy) - arc.r) < 1e-7);
+  assert.ok(Math.abs(path.pts[2].x - entry.x) > 1, 'the off-axis radial normal bends the ray inside the glass');
+  assert.ok(path.pts.at(-1).x < -100, 'the curved entrance and flat exit produce a finite deflected output');
+});
+
+test('an exact circular-arc endpoint hit stops instead of choosing either adjoining normal', () => {
+  const target = { x: 50, y: -20 };
+  const angleDeg = 60, angle = angleDeg * Math.PI / 180;
+  const direction = { x: Math.cos(angle), y: Math.sin(angle) };
+  const laser = createElement('laser', target.x - direction.x * 212, target.y - direction.y * 212);
+  laser.rot = angleDeg;
+  const glass = createElement('freeglass', 0, 0);
+  glass.params.vertices = [
+    { x: -50, y: -20 }, { x: 0, y: -40, arc: true },
+    target, { x: 50, y: 30 }, { x: -50, y: 30 },
+  ];
+
+  const [path] = traceAll([laser, glass]).filter(drawable => drawable.type === 'path');
+  assert.ok(path && finitePath(path));
+  assert.ok(Math.abs(path.pts.at(-1).x - target.x) < 1e-7);
+  assert.ok(Math.abs(path.pts.at(-1).y - target.y) < 1e-7);
 });
 
 test('a source born inside freeform glass undergoes TIR and exits without non-finite rays', () => {

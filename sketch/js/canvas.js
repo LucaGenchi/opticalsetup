@@ -9,7 +9,9 @@ import {
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG } from './util.js';
-import { canAppendPolygonPoint, isSimplePolygon, polygonBounds } from './polygon.js';
+import {
+  appendBoundaryGesture, boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
+} from './polygon.js';
 import {
   FINE_GRID_PITCH, MICRO_GRID_PITCH, TABLE_HOLE_PITCH,
   gridDetailForZoom, pinchView, snapToGrid, VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
@@ -457,11 +459,17 @@ function renderManual() {
   }
   if (polygonDrawing) {
     const z = state.view.z || 1;
-    const pts = [...polygonDrawing.pts];
-    if (polygonDrawing.cursor) pts.push(polygonDrawing.cursor);
-    if (pts.length >= 3) s += `<polygon points="${ptsAttr(pts)}" fill="rgba(111,177,219,0.15)" stroke="none"/>`;
-    if (pts.length > 1) {
-      s += `<polyline points="${ptsAttr(pts)}" fill="none" stroke="#4a90c4" stroke-width="${1.7 / z}" stroke-dasharray="${5 / z} ${4 / z}" stroke-linejoin="round"/>`;
+    const pts = polygonDrawing.pts.map(p => ({ ...p }));
+    if (polygonDrawing.press?.curved) pts.push({ ...polygonDrawing.press.start, arc: true });
+    if (polygonDrawing.cursor && polygonDrawing.pts.length) pts.push({ ...polygonDrawing.cursor });
+    const openPath = boundaryPathData(pts, { closed: false });
+    const anchorCount = pts.filter(p => p.arc !== true).length;
+    if (anchorCount >= 3) {
+      const closedPath = boundaryPathData(pts);
+      if (closedPath) s += `<path d="${closedPath}" fill="rgba(111,177,219,0.15)" stroke="none"/>`;
+    }
+    if (openPath) {
+      s += `<path d="${openPath}" fill="none" stroke="#4a90c4" stroke-width="${1.7 / z}" stroke-dasharray="${5 / z} ${4 / z}" stroke-linejoin="round"/>`;
     }
     if (polygonDrawing.pts.length >= 2 && polygonDrawing.cursor) {
       const first = polygonDrawing.pts[0], cur = polygonDrawing.cursor;
@@ -469,13 +477,23 @@ function renderManual() {
     }
     polygonDrawing.pts.forEach((p, i) => {
       const r = (i === 0 ? 5.5 : 3.8) / z;
-      s += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`;
+      const curveNode = p.arc === true;
+      s += `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="#fff" stroke="${curveNode ? '#8b5cf6' : '#2f6fed'}" stroke-width="${1.5 / z}"/>`;
     });
+    if (polygonDrawing.press?.curved) {
+      const p = polygonDrawing.press.start;
+      s += `<circle cx="${p.x}" cy="${p.y}" r="${4.2 / z}" fill="#fff" stroke="#8b5cf6" stroke-width="${1.7 / z}"/>`;
+    }
     if (polygonDrawing.cursor && polygonDrawing.pts.length) {
-      const a = polygonDrawing.pts.at(-1), b = polygonDrawing.cursor;
-      const length = Math.hypot(b.x - a.x, b.y - a.y);
-      const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
-      const label = `${length.toFixed(1)} mm · ${angle.toFixed(0)}°`;
+      const previewSegments = boundarySegments(pts, { closed: false });
+      const segment = previewSegments.at(-1);
+      const length = segment?.kind === 'arc'
+        ? Math.abs(segment.arc.r * segment.arc.sweep)
+        : segment ? Math.hypot(segment.b.x - segment.a.x, segment.b.y - segment.a.y) : 0;
+      const angle = segment
+        ? Math.atan2(segment.b.y - segment.a.y, segment.b.x - segment.a.x) * 180 / Math.PI : 0;
+      const label = `${segment?.kind === 'arc' ? 'arc · ' : ''}${length.toFixed(1)} mm · ${angle.toFixed(0)}°`;
+      const b = polygonDrawing.cursor;
       s += `<g transform="translate(${b.x + 9 / z} ${b.y - 24 / z})"><rect x="0" y="0" width="${(label.length * 6.1 + 12) / z}" height="${18 / z}" rx="${5 / z}" fill="rgba(255,255,255,0.96)" stroke="#c8d8e8" stroke-width="${1 / z}"/><text x="${6 / z}" y="${12.2 / z}" font-size="${10 / z}" fill="#4f657d">${label}</text></g>`;
     }
   }
@@ -590,7 +608,7 @@ function renderOverlay() {
     const editPoints = registry[sel.type]?.editPoints?.get?.(sel) || [];
     if (editPoints.length) {
       s += `<g transform="translate(${sel.x} ${sel.y}) rotate(${sel.rot || 0})">` +
-        editPoints.map((p, i) => `<circle data-element-vtx="${i}" cx="${p.x}" cy="${p.y}" r="${5 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.7 / z}"/>`).join('') +
+        editPoints.map((p, i) => `<circle data-element-vtx="${i}" cx="${p.x}" cy="${p.y}" r="${5 / z}" fill="#fff" stroke="${p.arc === true ? '#8b5cf6' : '#2f6fed'}" stroke-width="${1.7 / z}"/>`).join('') +
         `</g>`;
     }
     if (direct?.tune) {
@@ -783,6 +801,7 @@ function beginTouchGesture() {
   // A second finger always controls the viewport. Dropping an in-progress
   // pointer drag prevents object mutations or placement while pinching.
   drag = null;
+  if (polygonDrawing) polygonDrawing.press = null;
   touchGesture = { view: { ...state.view }, center: pair.center, distance: Math.max(1, pair.distance) };
   setStatus('');
 }
@@ -832,10 +851,12 @@ export function startPlacing(type) {
   }
   if (def?.construction?.kind === 'polygon') {
     placing = null;
-    polygonDrawing = { type, pts: [], cursor: null };
+    polygonDrawing = { type, pts: [], cursor: null, press: null };
     lastDrawClick = null;
     state.tool = 'polygon:' + type;
-    setStatus('Click the first point again, double-click, or press Enter to close');
+    setStatus(def.construction.circularArcs
+      ? 'Click for a straight point · press-drag for a circular arc · Enter closes'
+      : 'Click the first point again, double-click, or press Enter to close');
     notifyTool({ mode: 'polygon', type, label: def.label });
     renderAll();
     return;
@@ -879,8 +900,10 @@ export function undoPolygonPoint() {
   if (!polygonDrawing) return false;
   if (polygonDrawing.pts.length) {
     polygonDrawing.pts.pop();
-    setStatus(polygonDrawing.pts.length
-      ? `${polygonDrawing.pts.length} ${polygonDrawing.pts.length === 1 ? 'point' : 'points'} · continue drawing`
+    if (polygonDrawing.pts.at(-1)?.arc === true) polygonDrawing.pts.pop();
+    const anchors = polygonDrawing.pts.filter(p => p.arc !== true).length;
+    setStatus(anchors
+      ? `${anchors} ${anchors === 1 ? 'anchor' : 'anchors'} · click or press-drag to continue`
       : 'Choose the first boundary point');
     renderManual();
   } else {
@@ -891,16 +914,19 @@ export function undoPolygonPoint() {
 
 export function finishPolygon() {
   if (!polygonDrawing) return false;
-  const points = distinctPoints(polygonDrawing.pts, 0.25);
-  if (!isSimplePolygon(points)) {
-    setStatus(points.length < 3 ? 'Freeform glass needs at least three points' : 'Boundary cannot cross itself or collapse');
+  const points = polygonDrawing.pts.map(p => ({ ...p }));
+  const anchors = points.filter(p => p.arc !== true).length;
+  if (!isSimpleBoundary(points)) {
+    setStatus(anchors < 3 ? 'Freeform glass needs at least three anchors' : 'Boundary cannot cross itself or collapse');
     renderManual();
     return false;
   }
-  const b = polygonBounds(points), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+  const b = boundaryBounds(points), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
   const el = createElement(polygonDrawing.type, cx, cy);
   const key = registry[el.type].construction.pointsKey;
-  el.params[key] = points.map(p => ({ x: p.x - cx, y: p.y - cy }));
+  el.params[key] = points.map(p => ({
+    x: p.x - cx, y: p.y - cy, ...(p.arc === true ? { arc: true } : {}),
+  }));
   el.params.scale = 1;
   pushUndo();
   state.elements.push(el);
@@ -998,30 +1024,45 @@ function onDown(e) {
 
   if (polygonDrawing) {
     let p = { x: snapPos(w.x, e.altKey), y: snapPos(w.y, e.altKey) };
-    const previous = polygonDrawing.pts.at(-1);
+    const previous = [...polygonDrawing.pts].reverse().find(point => point.arc !== true);
     if (e.shiftKey && previous) p = constrainPoint(previous, p);
+    if (!polygonDrawing.pts.length) {
+      polygonDrawing.pts.push(p);
+      polygonDrawing.cursor = p;
+      isManualDoubleClick(e);
+      setStatus('1 anchor · click for a straight point or press-drag for an arc');
+      renderManual();
+      return;
+    }
     // manual double-click closes the polygon even when the browser never
     // synthesizes a native dblclick; must run before duplicate rejection
     // because the second click lands on the same point
-    if (isManualDoubleClick(e) && polygonDrawing.pts.length >= 3) {
+    const anchors = polygonDrawing.pts.filter(point => point.arc !== true).length;
+    if (isManualDoubleClick(e) && anchors >= 3) {
       finishPolygon();
       return;
     }
     const first = polygonDrawing.pts[0];
-    if (first && polygonDrawing.pts.length >= 3
+    if (first && anchors >= 3
         && Math.hypot(p.x - first.x, p.y - first.y) <= 11 / state.view.z) {
       finishPolygon();
       return;
     }
-    if (!canAppendPolygonPoint(polygonDrawing.pts, p)) {
-      const duplicate = previous && Math.hypot(p.x - previous.x, p.y - previous.y) < 0.25;
-      setStatus(duplicate ? 'Move to a new point' : 'That edge would cross the boundary');
+    if (previous && Math.hypot(p.x - previous.x, p.y - previous.y) < 0.25) {
+      setStatus('Move to a new point');
       return;
     }
-    polygonDrawing.pts.push(p);
-    setStatus(polygonDrawing.pts.length < 3
-      ? `${polygonDrawing.pts.length} ${polygonDrawing.pts.length === 1 ? 'point' : 'points'} · add at least ${3 - polygonDrawing.pts.length} more`
-      : 'Click the first point, double-click, or press Enter to close');
+    polygonDrawing.press = {
+      pointerId: e.pointerId,
+      start: p,
+      current: p,
+      curved: false,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      pointerType: e.pointerType,
+    };
+    polygonDrawing.cursor = p;
+    svg.setPointerCapture(e.pointerId);
     renderManual();
     return;
   }
@@ -1181,8 +1222,17 @@ function onMove(e) {
   }
   if (polygonDrawing) {
     let p = { x: snapPos(w.x, e.altKey), y: snapPos(w.y, e.altKey) };
-    const previous = polygonDrawing.pts.at(-1);
+    const previous = [...polygonDrawing.pts].reverse().find(point => point.arc !== true);
     if (e.shiftKey && previous) p = constrainPoint(previous, p);
+    const press = polygonDrawing.press;
+    if (press?.pointerId === e.pointerId) {
+      press.current = p;
+      const threshold = press.pointerType === 'touch' ? 10 : 6;
+      if (Math.hypot(e.clientX - press.clientX, e.clientY - press.clientY) >= threshold) {
+        press.curved = true;
+        setStatus('Circular arc · release to place its next anchor');
+      }
+    }
     polygonDrawing.cursor = p;
     renderManual();
     return;
@@ -1305,6 +1355,55 @@ function onUp(e) {
       placeCurrentElement(w, false, false);
       return;
     }
+  }
+  if (polygonDrawing?.press?.pointerId === e.pointerId) {
+    const press = polygonDrawing.press;
+    polygonDrawing.press = null;
+    if (e.type === 'pointercancel') {
+      renderManual();
+      return;
+    }
+    const w = screenToWorld(e.clientX, e.clientY);
+    const previous = [...polygonDrawing.pts].reverse().find(point => point.arc !== true);
+    let release = { x: snapPos(w.x, e.altKey), y: snapPos(w.y, e.altKey) };
+    if (e.shiftKey && previous) release = constrainPoint(previous, release);
+    const threshold = press.pointerType === 'touch' ? 10 : 6;
+    const supportsArcs = registry[polygonDrawing.type]?.construction?.circularArcs === true;
+    const curved = supportsArcs && (press.curved
+      || Math.hypot(e.clientX - press.clientX, e.clientY - press.clientY) >= threshold);
+    const first = polygonDrawing.pts[0];
+    const anchors = polygonDrawing.pts.filter(point => point.arc !== true).length;
+
+    if (curved && anchors >= 3
+        && Math.hypot(release.x - first.x, release.y - first.y) <= 11 / state.view.z) {
+      const closing = [...polygonDrawing.pts, { ...press.start, arc: true }];
+      if (isSimpleBoundary(closing)) {
+        polygonDrawing.pts = closing;
+        polygonDrawing.cursor = first;
+        finishPolygon();
+      } else {
+        polygonDrawing.cursor = release;
+        setStatus('That circular arc would cross or collapse the boundary');
+        renderManual();
+      }
+      return;
+    }
+
+    const next = appendBoundaryGesture(polygonDrawing.pts, press.start, release, curved);
+    if (!next) {
+      polygonDrawing.cursor = release;
+      setStatus(curved ? 'That circular arc would cross or collapse the boundary' : 'That edge would cross the boundary');
+      renderManual();
+      return;
+    }
+    polygonDrawing.pts = next;
+    polygonDrawing.cursor = release;
+    const nextAnchors = next.filter(point => point.arc !== true).length;
+    setStatus(nextAnchors < 3
+      ? `${nextAnchors} anchors · add ${3 - nextAnchors} more`
+      : 'Click for straight · press-drag for arc · click first or press Enter to close');
+    renderManual();
+    return;
   }
   if (!drag) return;
   if (e.type === 'pointercancel') {

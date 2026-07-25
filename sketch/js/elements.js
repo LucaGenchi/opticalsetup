@@ -9,7 +9,10 @@
 import { distToSegment, esc, rotPt, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
 import { detectorReading, probeAt } from './raytrace.js';
-import { isSimplePolygon, pointInPolygon, polygonBounds } from './polygon.js';
+import {
+  boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
+  pointInBoundary, sampleBoundary,
+} from './polygon.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -31,7 +34,9 @@ function freeglassPoints(el) {
   const scale = Math.min(10, Math.max(0.1, el.params.scale || 1));
   const points = Array.isArray(el.params.vertices) && el.params.vertices.length >= 3
     ? el.params.vertices : FREEGLASS_DEFAULT;
-  return points.map(p => ({ x: p.x * scale, y: p.y * scale }));
+  return points.map(p => ({
+    x: p.x * scale, y: p.y * scale, ...(p.arc === true ? { arc: true } : {}),
+  }));
 }
 
 function freeglassEditCandidate(el, index, localPoint) {
@@ -43,14 +48,18 @@ function freeglassEditCandidate(el, index, localPoint) {
   points[index] = {
     x: Math.min(limit, Math.max(-limit, localPoint.x)),
     y: Math.min(limit, Math.max(-limit, localPoint.y)),
+    ...(points[index].arc === true ? { arc: true } : {}),
   };
-  if (!isSimplePolygon(points)) return null;
-  const b = polygonBounds(points), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+  if (!isSimpleBoundary(points)) return null;
+  const b = boundaryBounds(points), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
   const shift = rotPt(cx, cy, el.rot || 0);
   return {
     x: el.x + shift.x,
     y: el.y + shift.y,
-    vertices: points.map(p => ({ x: (p.x - cx) / scale, y: (p.y - cy) / scale })),
+    vertices: points.map(p => ({
+      x: (p.x - cx) / scale, y: (p.y - cy) / scale,
+      ...(p.arc === true ? { arc: true } : {}),
+    })),
   };
 }
 
@@ -986,47 +995,49 @@ export const registry = {
 
   freeglass: {
     label: 'Freeform glass', category: 'Dispersive & Apertures', paletteOrder: 3,
-    aliases: ['custom prism', 'polygon glass', 'arbitrary glass', 'glass polygon'],
-    construction: { kind: 'polygon', pointsKey: 'vertices', minPoints: 3 },
+    aliases: ['custom prism', 'polygon glass', 'arbitrary glass', 'glass polygon', 'curved glass', 'circular arc glass'],
+    construction: { kind: 'polygon', pointsKey: 'vertices', minPoints: 3, circularArcs: true },
     size_(el) {
-      const b = polygonBounds(freeglassPoints(el));
+      const b = boundaryBounds(freeglassPoints(el));
       return { w: b.x1 - b.x0 + 6, h: b.y1 - b.y0 + 6 };
     },
     params: [
-      { key: 'vertices', label: 'Boundary vertices', type: 'points', def: FREEGLASS_DEFAULT, hidden: true },
+      { key: 'vertices', label: 'Boundary points', type: 'boundary', def: FREEGLASS_DEFAULT, hidden: true },
       { key: 'scale', label: 'Overall scale', type: 'number', min: 0.1, max: 10, step: 0.05, def: 1 },
       { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ['bk7', 'BK7-like dispersion']] },
       { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.5, show: p => p.material === 'constant' },
       { key: 'transmission', label: 'Per-surface transmission', type: 'number', min: 0, max: 1, step: 0.01, def: 0.98 },
     ],
     svg(el) {
-      const points = freeglassPoints(el).map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
-      return `<polygon points="${points}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`;
+      const path = boundaryPathData(freeglassPoints(el));
+      return `<path d="${path}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`;
     },
     surfaces(el) {
       const points = freeglassPoints(el);
       const material = el.params.material === 'bk7' ? 'bk7' : undefined;
-      return points.map((a, i) => {
-        const b = points[(i + 1) % points.length];
-        return {
-          x1: a.x, y1: a.y, x2: b.x, y2: b.y, kind: 'refract',
-          data: {
-            material, ior: el.params.ior, transmission: el.params.transmission,
-            topologyKey: `edge-${i}`,
-          },
-        };
-      });
+      return boundarySegments(points).map((segment, i) => ({
+        x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
+        data: {
+          material, ior: el.params.ior, transmission: el.params.transmission,
+          topologyKey: `edge-${i}`,
+          ...(segment.kind === 'arc'
+            ? { arcPoint: { x: segment.through.x, y: segment.through.y } }
+            : {}),
+        },
+      }));
     },
     editPoints: {
       get: freeglassPoints,
       candidate: freeglassEditCandidate,
+      hint: 'blue anchors and purple curve nodes reshape the boundary',
     },
     hitTest(el, localPoint, tolerance = 4) {
       const points = freeglassPoints(el);
-      return pointInPolygon(localPoint, points)
-        || points.some((a, i) => distToSegment(localPoint, a, points[(i + 1) % points.length]) <= tolerance);
+      const sampled = sampleBoundary(points, { maxAngle: Math.PI / 90 });
+      return pointInBoundary(localPoint, points)
+        || sampled.some((a, i) => distToSegment(localPoint, a, sampled[(i + 1) % sampled.length]) <= tolerance);
     },
-    containsLocal(el, localPoint) { return pointInPolygon(localPoint, freeglassPoints(el)); },
+    containsLocal(el, localPoint) { return pointInBoundary(localPoint, freeglassPoints(el)); },
     refractiveIndex(el, wavelength = 550) {
       return el.params.material === 'bk7'
         ? 1.5046 + 4680 / (wavelength * wavelength)
@@ -1862,7 +1873,7 @@ const ELEMENT_HELP = {
   bs: 'Splits incident light into transmitted and reflected branches.',
   grating: 'Creates selected diffraction orders using the grating equation.',
   prism: 'Refracts through all three drawn BK7-like boundaries with wavelength-dependent dispersion.',
-  freeglass: 'Refracts through a directly editable, straight-sided glass boundary. Supports constant-index or BK7-like qualitative dispersion; overlapping glass bodies are not surface-merged.',
+  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant-index or BK7-like qualitative dispersion; overlapping glass bodies are not surface-merged.',
   diffuser: 'Spreads incident light into a configurable angular fan.',
   glassrod: 'Refracts at every glass-air boundary and supports total internal reflection.',
   polarizer: 'Applies a linear polarization axis and Malus-law attenuation.',
@@ -1925,7 +1936,7 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (type === 'arrowann' || type === 'textlabel' || type === 'figureframe') {
     note = 'Annotations are intentionally visual and never change traced rays.';
   } else if (type === 'freeglass') {
-    note = 'Straight boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
+    note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
   } else if (type === 'stage' && params.voxelPreview) {
     note = 'Pulsed arrivals leave canvas-only 2PP voxel markers in the mounted sample; marker size/opacity qualitatively broadens with Z (depth) offset from focus. This is a 2D scan preview, not a threshold, dose, curing, or true 3D fabrication simulation.';
   } else if (type === 'stage' && params.pzMode && params.pzMode !== 'static') {
