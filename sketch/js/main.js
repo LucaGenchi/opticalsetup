@@ -211,6 +211,7 @@ function buildPalette() {
 
 function syncToolMode(detail = { mode: 'select' }) {
   const active = detail.mode !== 'select';
+  const construction = detail.type ? registry[detail.type]?.construction : null;
   const mode = $('toolMode');
   const mobileActions = $('mobileToolActions');
   const canvas = $('canvas');
@@ -228,7 +229,9 @@ function syncToolMode(detail = { mode: 'select' }) {
   mode.textContent = detail.mode === 'place'
     ? `Place ${detail.label} · click to drop · R rotate · Shift keeps placing · Esc cancels`
     : detail.mode === 'polygon'
-      ? `${detail.label} · click corners · click first point, double-click, or Enter closes · Shift constrains · Option bypasses snap`
+      ? construction?.circularArcs
+        ? `${detail.label} · click straight anchors · press-drag curves · click first point, double-click, or Enter closes · Option bypasses snap`
+        : `${detail.label} · click corners · click first point, double-click, or Enter closes · Shift constrains · Option bypasses snap`
       : `${detail.label} · click waypoints · double-click or Enter finishes · Esc cancels`;
 }
 
