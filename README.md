@@ -23,6 +23,12 @@ figures as SVG or PNG.
   edge/corner handles, a rotation handle, and a component-specific purple tuning
   knob. Freeform glass also exposes its blue boundary anchors and purple circular-arc
   nodes. Right-click offers duplicate, rotate, and delete without leaving the canvas.
+- **Instrument-grade inspector**: the panel leads with the selected element's own
+  settings, with bounded numeric ranges getting a slider synced to an exact-entry
+  field; position and label controls collapse into their own disclosure sections.
+- **Light or dark workbench**: follows your system appearance by default, with a
+  persistent toggle; the toolbar, palette, canvas, and inspector restyle together
+  while exported SVG/PNG keep their original colors regardless of theme.
 - **Element palette**: lasers (line or sized beam, monochromatic / broadband /
   supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
   laser, directional LED, broadband point source, mirrors (flat with reflectivity,
@@ -44,7 +50,9 @@ figures as SVG or PNG.
   rate; schematic mode keeps packets visible at workbench scale while detector
   delays remain physical. Mechanical delay lines add folded optical path, while AOMs
   support square gating or graded sinusoidal intensity modulation. Playback can be
-  paused, reset, and time-scaled.
+  paused, reset, and time-scaled. A chopper gates pulse trains in time and draws
+  CW light as a chunked on/off pattern matching its duty cycle (in Hz, matching a
+  real mechanical wheel), visible identically on the live canvas and in exports.
 - **2PP write preview**: a sample holder can be set to photocurable resin. Pulsed
   arrivals leave bounded voxel markers at the traced sample hit while an optional
   2D Y-stage scan translates the mounted sample. It is a visual writing preview,
@@ -61,6 +69,9 @@ figures as SVG or PNG.
 - **Examples menu**: pedagogical image-formation setups (telescope, microscope,
   camera + depth of field, Scheimpflug, vignetting...) and laboratory sketches
   (Michelson, Mach–Zehnder, laser cavity, OPO...).
+- **Community section**: propose your own setup for review directly from the
+  toolbar; accepted submissions get their own page with a locked, click-to-inspect
+  canvas embed, and a "From the community" menu loads them straight into the editor.
 - **Paper-ready export**: sketches save/load as `.json` files; figures export as
   SVG/PNG. An optional resizable Figure frame sets the exact export crop and never
   appears in the exported artwork.
