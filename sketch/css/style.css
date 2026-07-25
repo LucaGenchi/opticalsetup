@@ -419,6 +419,10 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   #toolbar select { max-width: 210px; }
 }
 @media (max-width: 1100px) {
+  #toolbar { gap: 4px; padding-right: 6px; padding-left: 6px; }
+  #toolbar select { max-width: 155px; }
+  #toolbar button { padding-left: 4px; padding-right: 4px; }
+  .toolgroup + .toolgroup { padding-left: 4px; }
   #palette { flex-basis: 220px; }
   #inspector { flex-basis: 278px; padding-right: 13px; padding-left: 13px; }
   .model-badge { display: none; }

@@ -282,7 +282,7 @@ export function renderInspector() {
     const direct = getDirectManipulation(sel);
     if (direct || def.editPoints) {
       const actions = [direct?.resize ? 'blue handles resize the physical component' : '',
-        def.editPoints ? 'round blue points reshape the boundary' : '',
+        def.editPoints ? (def.editPoints.hint || 'round blue points reshape the boundary') : '',
         direct?.tune ? `purple knob tunes ${direct.tune.short || direct.tune.param.label}` : ''].filter(Boolean).join(' · ');
       h += `<div class="direct-hint"><b>On-canvas controls</b><span>${esc(def.directHint || actions)}</span></div>`;
     }

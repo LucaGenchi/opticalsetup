@@ -16,6 +16,7 @@ import {
   linearStokes, cloneStokes, retarder as applyRetarder, analyzerTransmission,
   legacyPolarization, polarizationDescription,
 } from './polarization.js';
+import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
@@ -199,11 +200,18 @@ function buildSurfaces(elements, beams) {
     const def = registry[el.type];
     if (!def || !def.surfaces) continue;
     for (const s of def.surfaces(el)) {
+      const a = toWorld(el, s.x1, s.y1);
+      const b = toWorld(el, s.x2, s.y2);
+      const data = { ...(s.data || {}) };
+      if (data.arcPoint) {
+        const through = toWorld(el, data.arcPoint.x, data.arcPoint.y);
+        const arc = circularArcThrough(a, through, b);
+        if (arc) data.arc = arc;
+        delete data.arcPoint;
+      }
       list.push({
         id: sid++,
-        a: toWorld(el, s.x1, s.y1),
-        b: toWorld(el, s.x2, s.y2),
-        kind: s.kind, data: s.data || {}, el,
+        a, b, kind: s.kind, data, el,
       });
     }
   }
@@ -296,25 +304,53 @@ function chopStrip(A, B, period, duty) {
   return polys;
 }
 
-// nearest intersection of ray (p,d) with surfaces, ignoring `skip`
+function rayArcHit(p, d, surface) {
+  const arc = surface.data.arc;
+  const dx = p.x - arc.cx, dy = p.y - arc.cy;
+  const a = dot(d, d);
+  const b = 2 * (dx * d.x + dy * d.y);
+  const c = dx * dx + dy * dy - arc.r * arc.r;
+  let discriminant = b * b - 4 * a * c;
+  if (!Number.isFinite(discriminant) || discriminant < -1e-8 || a <= 1e-12) return null;
+  discriminant = Math.max(0, discriminant);
+  const root = Math.sqrt(discriminant);
+  const roots = [(-b - root) / (2 * a), (-b + root) / (2 * a)].sort((x, y) => x - y);
+  for (const t of roots) {
+    if (t < 0.05) continue;
+    const point = add(p, mul(d, t));
+    const u = arcParameterAtPoint(arc, point, 1e-7);
+    if (u !== null) return { t, u, p: point };
+  }
+  return null;
+}
+
+function rayLineHit(p, d, surface) {
+  const e = sub(surface.b, surface.a);
+  const den = d.x * e.y - d.y * e.x;
+  if (Math.abs(den) < 1e-9) return null;
+  const dp = sub(surface.a, p);
+  const t = (dp.x * e.y - dp.y * e.x) / den;
+  const u = (dp.x * d.y - dp.y * d.x) / den;
+  if (t < 0.05 || u < 0 || u > 1) return null;
+  return { t, u, p: add(p, mul(d, t)) };
+}
+
+// nearest intersection of ray (p,d) with surfaces, ignoring the immediately
+// departed straight segment. Curved surfaces remain eligible because a ray can
+// legitimately meet another part of the same arc after entering or reflecting.
 function nearestHit(p, d, surfaces, skip) {
   let best = null;
   for (const s of surfaces) {
-    if (s === skip) continue;
-    const e = sub(s.b, s.a);
-    const den = d.x * e.y - d.y * e.x;
-    if (Math.abs(den) < 1e-9) continue;
-    const dp = sub(s.a, p);
-    const t = (dp.x * e.y - dp.y * e.x) / den;       // distance along ray
-    const u = (dp.x * d.y - dp.y * d.x) / den;       // position along segment
-    if (t < 0.05 || u < 0 || u > 1) continue;
-    if (!best || t < best.t - 1e-8) {
-      best = { t, u, surface: s, p: add(p, mul(d, t)), ambiguous: false };
-    } else if (Math.abs(t - best.t) <= 1e-8
+    if (s === skip && !s.data.arc) continue;
+    const candidate = s.data.arc ? rayArcHit(p, d, s) : rayLineHit(p, d, s);
+    if (!candidate) continue;
+    if (!best || candidate.t < best.t - 1e-8) {
+      best = { ...candidate, surface: s, ambiguous: false };
+    } else if (Math.abs(candidate.t - best.t) <= 1e-8
         && s.kind === 'refract' && best.surface.kind === 'refract'
         && s.el?.id && s.el.id === best.surface.el?.id
-        && (u < 1e-7 || u > 1 - 1e-7 || best.u < 1e-7 || best.u > 1 - 1e-7)) {
-      // At an exact polygon corner either face normal would be arbitrary.
+        && (candidate.u < 1e-7 || candidate.u > 1 - 1e-7 || best.u < 1e-7 || best.u > 1 - 1e-7)) {
+      // At an exact boundary corner either face normal would be arbitrary.
       // Mark the hit so the tracer can terminate safely at the vertex.
       best.ambiguous = true;
     }
@@ -441,7 +477,10 @@ function bandChild(ray, d, lo, hi, tag) {
 // interaction -> array of child rays [{d, wl?, intensity?, tag?}] ; [] = absorbed
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
-  const t = norm(sub(s.b, s.a)), n = perp(t);
+  const t = norm(sub(s.b, s.a));
+  const n = data.arc
+    ? norm({ x: hit.p.x - data.arc.cx, y: hit.p.y - data.arc.cy })
+    : perp(t);
 
   switch (k) {
     case 'absorb': return [];

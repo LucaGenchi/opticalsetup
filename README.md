@@ -21,8 +21,8 @@ figures as SVG or PNG.
   underlying geometry.
 - **Direct manipulation**: selecting any component reveals size-backed blue
   edge/corner handles, a rotation handle, and a component-specific purple tuning
-  knob. Freeform glass also exposes its actual boundary vertices. Right-click offers
-  duplicate, rotate, and delete without leaving the canvas.
+  knob. Freeform glass also exposes its blue boundary anchors and purple circular-arc
+  nodes. Right-click offers duplicate, rotate, and delete without leaving the canvas.
 - **Element palette**: lasers (line or sized beam, monochromatic / broadband /
   supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
   laser, directional LED, broadband point source, mirrors (flat with reflectivity,
@@ -33,8 +33,8 @@ figures as SVG or PNG.
   optical functions, modulators (AOM/AOTF/EOM/chopper), mechanical pulse-delay lines,
   nonlinear crystals (SHG, THG,
   supercontinuum, OPO), fibers with per-end output specs, detectors, a focusing
-  human eye, straight-sided freeform glass/prisms, and free annotations (arrows,
-  labels, beam probes, and a canvas-only figure frame).
+  human eye, freeform glass/prisms with straight or circular-arc sides, and free
+  annotations (arrows, labels, beam probes, and a canvas-only figure frame).
 - **Honest capability states**: the component library and inspector distinguish
   simulated elements, elements that need setup, and intentionally diagram-only
   annotations. An unset EOM, nonlinear crystal, or SLM is labeled as needing setup;
@@ -88,12 +88,14 @@ shows their positions in the moving 2D sample. It does not calculate focal volum
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
-Freeform glass is a directly editable, straight-segment boundary with constant-index
-or qualitative BK7-like dispersion, per-surface transmission, source-inside handling,
-and total internal reflection. Exact corner hits stop safely because their surface
-normal is ambiguous. Nested or overlapping glass bodies are not surface-merged, and
-the model does not include Fresnel reflection, coatings, stress birefringence, phase,
-or manufacturing tolerances.
+Freeform glass is a directly editable boundary of straight segments and exact
+three-point circular arcs with constant-index or qualitative BK7-like dispersion,
+per-surface transmission, source-inside handling, and total internal reflection.
+Clicking adds a straight anchor; pressing, dragging, and releasing adds a point on
+an arc plus its next anchor. Exact corner hits stop safely because their surface
+normal is ambiguous. Nested or overlapping glass bodies are not surface-merged,
+and the model does not include Fresnel reflection, coatings, stress birefringence,
+phase, or manufacturing tolerances.
 
 ## Feedback
 
