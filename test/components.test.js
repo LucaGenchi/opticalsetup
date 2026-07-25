@@ -327,15 +327,20 @@ test('retroreflector returns a beam antiparallel to its incidence, mirrored abou
   assert.ok(Math.abs(exitEnd.y - exitStart.y) < 1e-9, 'the outgoing leg should stay at constant height');
 });
 
-test('retroreflector delay-line motion is static by default and a bounded periodic wave when enabled', () => {
+test('retroreflector delay-line motion is static by default, starts at the placed position, and only ever lengthens the path', () => {
   const retro = createElement('retroreflector');
+  assert.equal(retro.params.travel, 50, 'default travel range should be 50 mm');
   assert.deepEqual(retroOffsetAt(retro.params, 5), { x: 0, y: 0 });
 
   retro.params.moveMode = 'linear';
   retro.params.travel = 20;
   retro.params.freqHz = 0.5;
+  assert.deepEqual(retroOffsetAt(retro.params, 0), { x: 0, y: 0 }, 'motion should start at the beginning of the travel range');
   const samples = [0, 0.5, 1, 1.5, 2].map(t => retroOffsetAt(retro.params, t).x);
-  for (const x of samples) assert.ok(Math.abs(x) <= 10 + 1e-9, `offset ${x} should stay within ±travel/2`);
+  for (const x of samples) assert.ok(x >= -1e-9 && x <= 20 + 1e-9, `offset ${x} should stay within [0, travel] — never shorter than the placed position`);
   assert.ok(Math.abs(samples[0] - samples[4]) < 1e-9, 'motion should repeat every period (1/freqHz = 2s)');
-  assert.ok(samples.some(x => Math.abs(x) > 1e-6), 'linear mode should actually move');
+  assert.ok(samples.some(x => x > 1e-6), 'linear mode should actually move, always lengthening the path');
+
+  const clamped = retroOffsetAt({ moveMode: 'linear', travel: 500, freqHz: 0.5 }, 1);
+  assert.ok(clamped.x >= -1e-9 && clamped.x <= 200 + 1e-9, 'travel should clamp to the 200 mm maximum');
 });

@@ -349,15 +349,18 @@ function syncZOffset(timeSeconds, freqXY, travelZ, steps) {
 }
 
 // A retroreflector's delay-line motion translates the whole element along
-// its own apex-to-mouth symmetry axis (local -x); the caller rotates this
-// local offset into world space by the element's own rot, since the
-// retroreflector — unlike the piezo stage — is routinely placed at an
-// arbitrary angle to fold a beam path.
+// its own apex axis (local x, pointing from the mouth toward the apex); the
+// caller rotates this local offset into world space by the element's own
+// rot, since the retroreflector — unlike the piezo stage — is routinely
+// placed at an arbitrary angle to fold a beam path. The offset ranges over
+// [0, travel], starting at 0 (the placed position, the shortest path) and
+// moving only in the positive-x direction — away from the mouth, which
+// always lengthens the round-trip optical path, never shortens it.
 export function retroOffsetAt(params = {}, timeSeconds = 0) {
   if (params.moveMode !== 'linear' || !Number.isFinite(timeSeconds)) return { x: 0, y: 0 };
-  const travel = Math.min(150, Math.max(0, params.travel ?? 20));
+  const travel = Math.min(200, Math.max(0, params.travel ?? 50));
   const freq = Math.min(10, Math.max(0.01, params.freqHz ?? 0.2));
-  return { x: triangleWave(timeSeconds, freq, travel), y: 0 };
+  return { x: triangleWave(timeSeconds, freq, travel) + travel / 2, y: 0 };
 }
 
 export function stageOffsetAt(params = {}, timeSeconds = 0) {
@@ -648,7 +651,7 @@ export const registry = {
     params: [
       { key: 'moveHeading', label: 'Delay-line movement', type: 'section' },
       { key: 'moveMode', label: 'Motion', type: 'select', def: 'static', options: [['static', 'Static'], ['linear', 'Periodic linear']] },
-      { key: 'travel', label: 'Travel range (mm)', type: 'number', min: 0, max: 150, step: 1, def: 20, show: p => p.moveMode === 'linear' },
+      { key: 'travel', label: 'Travel range (mm)', type: 'number', min: 0, max: 200, step: 1, def: 50, show: p => p.moveMode === 'linear' },
       { key: 'freqHz', label: 'Frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.2, show: p => p.moveMode === 'linear' },
       { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
@@ -1918,7 +1921,7 @@ const ELEMENT_HELP = {
   pointsource: 'Emits isotropic light (360° by default, optionally broadband) that fades over a short evanescent range unless captured by a nearby lens, objective, or fiber tip.',
   objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
-  retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion translates the whole element along its own apex axis, adding a periodic, user-set range of optical path length — a physical model of a mechanical retroreflecting delay stage.',
+  retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
   cmirrorx: 'Diverges reflected rays with a paraxial focal-length model.',
   cmirror: 'Focuses reflected rays with a paraxial focal-length model.',

@@ -112,7 +112,7 @@ export const wikiEntries = [
         varies with wavelength. None of that is modeled — <span class="w">R</span> is
         constant regardless of incidence angle, polarization, or color.</p>`,
     },
-    related: ['cmirror', 'cmirrorx', 'oap', 'galvo', 'bs'],
+    related: ['cmirror', 'cmirrorx', 'oap', 'galvo', 'retroreflector', 'bs'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
     ],
@@ -728,6 +728,69 @@ export const wikiEntries = [
     resources: [
       { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
       { label: 'RP Photonics Encyclopedia — Laser Beam Delivery', url: 'https://www.rp-photonics.com/laser_beam_delivery.html' },
+    ],
+  },
+
+  {
+    type: 'retroreflector',
+    title: 'Retroreflector',
+    category: 'Mirrors',
+    realWorld: {
+      html: `
+        <p>A single flat mirror sends a ray back at whatever angle the law of reflection
+        dictates — tilt the mirror even slightly and the returned beam walks off target. A
+        <strong>corner retroreflector</strong> solves that by pairing two flat mirrors at
+        exactly a right angle. Each bounce still obeys the ordinary law of reflection, but
+        the composition of two perpendicular reflections has a special property: the
+        outgoing ray is always exactly antiparallel to the incoming one, independent of
+        the angle of incidence, for any ray that enters within the device's aperture.</p>
+        <p>The three-dimensional version of this idea — three mutually perpendicular
+        mirror facets meeting at a corner, called a <em>corner cube</em> — is why bicycle
+        reflectors and road signs throw a car's headlights straight back at the driver
+        regardless of the exact angle the light arrives from, and why the retroreflector
+        arrays left on the Moon by the Apollo missions still return laser pulses fired
+        from Earth decades later with sub-arcsecond alignment tolerance. The 2D version
+        modeled here — two mirrors at 90°, sometimes called a "roof" or "porro" reflector
+        — is the working element inside a Michelson interferometer arm that needs
+        alignment-insensitive retroreflection, and inside mechanical delay lines: mounting
+        one on a translation stage and sliding it changes the round-trip path length by
+        twice the stage's travel, without ever needing to re-align the returned beam.</p>`,
+      formulas: [
+        { tex: "\\hat{d}' = -\\hat{d}", caption: 'The defining property of a corner retroreflector: the outgoing direction is exactly the negative of the incoming one, for any incidence angle within the aperture — unlike a single flat mirror, whose return direction depends on incidence angle.' },
+        { tex: '\\Delta L = 2\\,\\Delta x', caption: 'Translating a retroreflector by Δx along its own axis changes the round-trip optical path by twice that distance — the basis of every retroreflecting mechanical delay line, from tabletop pulse stretchers to gravitational-wave interferometer arms.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Retroreflector is built from the same two flat mirror surfaces, each
+        obeying the exact vector law of reflection used by the plain <a
+        href="../mirror/">mirror</a>, joined at a shared apex at exactly 90°. Ray tracing
+        finds the first mirror hit, reflects it, then finds the second mirror hit and
+        reflects again — two ordinary reflections, composed — which is enough for the
+        antiparallel-return property to fall directly out of the vector reflection law
+        rather than being special-cased.</p>
+        <p>Its <strong>delay-line movement</strong> section adds an optional periodic
+        motion: set to <em>Periodic linear</em>, the whole element slides back and forth
+        along its own apex axis, rotation-aware, so it works at any angle you place it on
+        the table. The motion always starts at the position you placed it — the shortest
+        path — and moves only in the direction that adds path length, sweeping up to the
+        configured travel range (50&nbsp;mm by default, up to 200&nbsp;mm) at the
+        configured frequency, then back. Because it's a true retroreflector rather than
+        an abstract path-length tag, this doubles as a physical model of a mechanical
+        retroreflecting delay stage: moving it by Δx really does add 2Δx of round-trip
+        path, computed from the actual traced geometry.</p>`,
+      formulas: [],
+      limitations: `<p>Reflectivity is a single flat percentage applied identically to
+        both mirror surfaces, with the same caveats as the plain mirror: no angle- or
+        polarization-dependence, and no wavelength-dependent coating behavior. The
+        delay-line motion is an idealized triangle wave — no modeled stage inertia, servo
+        settling time, or velocity ripple — and, like the piezo stage's scanning, it
+        drives the traced geometry directly rather than a separate abstract path-length
+        parameter.</p>`,
+    },
+    related: ['mirror', 'cmirror', 'cmirrorx', 'galvo'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Retroreflectors', url: 'https://www.rp-photonics.com/retroreflectors.html' },
     ],
   },
 ];

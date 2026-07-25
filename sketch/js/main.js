@@ -119,6 +119,12 @@ const demoScenes = {
     mkDemo('galvo', 220, 200, 45, { scanMode: 'sine', scanAmplitude: 8, scanFrequencyHz: 0.4 }),
     mkDemo('box', 220, 60, 0, { text: '', w: 200, h: 2, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — the reflected beam sweeps back and forth', showLabel: true, labelPos: 't' }),
   ],
+  retroreflector: () => [
+    mkDemo('laser', 60, 145, 0),
+    mkDemo('retroreflector', 260, 160, 0, {
+      length: 50.8, moveMode: 'linear', travel: 50, freqHz: 0.15,
+    }, { label: 'slides only away from the laser — round-trip path only ever gets longer', showLabel: true, labelPos: 'b' }),
+  ],
 };
 
 // ---------- palette ----------
