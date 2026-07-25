@@ -931,7 +931,7 @@ export function finishBeam() {
     const isFiber = drawing.kindType === 'fiber';
     const beam = isFiber
       ? {
-        id: 'b' + Math.random().toString(36).slice(2, 9), kind: 'fiber', pts, color: '#e8a800', width: 4, propagate: false,
+        id: 'b' + Math.random().toString(36).slice(2, 9), kind: 'fiber', pts, color: '#e8a800', width: 4, propagate: true,
         inputNA: 0.22, groupIndex: 1.468, lossDbPerM: 0.2,
         out0: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },
         out1: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },
