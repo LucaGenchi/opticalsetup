@@ -5,7 +5,10 @@ export const C_MM_PER_NS = 299.792458;
 
 const positiveMod = (value, modulus) => ((value % modulus) + modulus) % modulus;
 
-function gateTransmission(gate, emissionTimeNs) {
+// Instantaneous transmission of one temporal gate. `emissionTimeNs` is the
+// source emission time when `gate.opl` is an optical path from the source, or
+// the local gate time when `gate.opl` is zero (used by the live CW preview).
+export function gateTransmissionAt(gate, emissionTimeNs) {
   if (!Number.isFinite(gate?.opl) || !Number.isFinite(emissionTimeNs)) return 1;
   const frequencyMHz = Math.min(1e6, Math.max(0.000001, gate.frequencyMHz || 1));
   const periodNs = 1000 / frequencyMHz;
@@ -29,7 +32,7 @@ function gateTransmission(gate, emissionTimeNs) {
 export function pulseTransmissionAt(pulse, emissionTimeNs) {
   const gates = Array.isArray(pulse?.gates) ? pulse.gates.filter(g => Number.isFinite(g?.opl)) : [];
   if (!gates.length) return 1;
-  const transmissionAt = timeNs => gates.reduce((value, gate) => value * gateTransmission(gate, timeNs), 1);
+  const transmissionAt = timeNs => gates.reduce((value, gate) => value * gateTransmissionAt(gate, timeNs), 1);
   const durationNs = Math.min(1000, Math.max(1e-6, pulse.pulseWidthFs || 100) * 1e-6);
   const gateFeatures = gates.map(gate => {
     const frequencyMHz = Math.min(1e6, Math.max(0.000001, gate.frequencyMHz || 1));

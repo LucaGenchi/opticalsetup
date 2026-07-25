@@ -63,8 +63,8 @@ test('zero-power gated hits cannot contaminate detector metadata', () => {
 
   const first = createElement('chopper', 150, 0);
   const second = createElement('chopper', 200, 0);
-  first.params.frequencyMHz = 1;
-  second.params.frequencyMHz = 1;
+  first.params.frequencyHz = 1e6;
+  second.params.frequencyHz = 1e6;
   first.params.chopDuty = 0.5;
   second.params.chopDuty = 0.5;
   first.params.phaseNs = 98 / C_MM_PER_NS;

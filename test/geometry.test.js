@@ -9,7 +9,7 @@ import { registry, createElement, getElementMeta, getSize } from '../sketch/js/e
 import { buildSVG, exportPNG, exportSVG } from '../sketch/js/export.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { C_MM_PER_NS } from '../sketch/js/pulses.js';
-import { pulseTimelineHTML } from '../sketch/js/inspector.js';
+import { pulseTimelineHTML, shouldUseSlider } from '../sketch/js/inspector.js';
 import { state, parseSketch } from '../sketch/js/state.js';
 import { distinctPoints } from '../sketch/js/util.js';
 
@@ -41,6 +41,15 @@ test('every registered element renders and traces with valid defaults', () => {
       }
     }
   }
+});
+
+test('inspector sliders are limited to bounded, practical adjustment ranges', () => {
+  assert.equal(shouldUseSlider({ min: 1, max: 60, step: 0.5 }), true, 'beam width is quick to tune');
+  assert.equal(shouldUseSlider({ min: 0, max: 1, step: 0.05 }), true, 'normalized transmission is quick to tune');
+  assert.equal(shouldUseSlider({ min: 100, max: 12000, step: 1 }), false, 'wavelength keeps a precise number field');
+  assert.equal(shouldUseSlider({ min: 0.001, max: 1000000, step: 1 }), false, 'large repetition-rate spans stay numeric');
+  assert.equal(shouldUseSlider({ min: 0, max: 359, step: 1, slider: true }), true, 'rotation explicitly opts into a slider');
+  assert.equal(shouldUseSlider({ min: 0, max: 1 }), false, 'incomplete schemas never create a slider');
 });
 
 test('small custom mirrors never emit NaN hatch coordinates', () => {

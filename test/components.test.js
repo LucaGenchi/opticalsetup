@@ -168,17 +168,32 @@ test('eye detects focused light at its retina and clips outside the pupil', () =
   assert.equal(detectorReading(eye.id), null);
 });
 
-test('chopper applies CW duty and adds a temporal gate to pulsed tracks', () => {
+test('chopper averages static CW power, draws it as a chunked pattern, and gates pulses', () => {
   const laser = createElement('laser', 0, 0);
   const chopper = createElement('chopper', 150, 0);
+  chopper.params.frequencyHz = 1000;
   chopper.params.chopDuty = 0.4;
+  chopper.params.phaseNs = 25;
   const detector = createElement('detector', 300, 0);
+
+  // CW power downstream of a chopper is always its duty-averaged value —
+  // this is the quantitative reading a detector sees, live or static.
   traceAll([laser, chopper, detector]);
   assert.ok(Math.abs(detectorReading(detector.id).signal - 0.4) < 1e-9);
 
-  laser.params.temporalMode = 'pulsed';
+  // The traced beam still reaches the detector (chopping doesn't remove the
+  // ray) but is tagged as a chunked pattern for rendering: a fixed on/off
+  // dash cadence reflecting the duty cycle, identical in the live view and
+  // in static SVG/PNG exports.
   const scene = traceScene([laser, chopper, detector]);
-  const gated = scene.pulseTracks.find(track => track.pulse.gates?.length);
+  const chopped = scene.drawables.find(d => d.dash);
+  assert.ok(chopped, 'the downstream beam should carry a chunked dash pattern');
+  const [on, off] = chopped.dash.split(' ').map(Number);
+  assert.ok(Math.abs(on / (on + off) - 0.4) < 1e-6, 'dash/gap ratio should match the duty cycle');
+
+  laser.params.temporalMode = 'pulsed';
+  const pulsedScene = traceScene([laser, chopper, detector]);
+  const gated = pulsedScene.pulseTracks.find(track => track.pulse.gates?.length);
   assert.ok(gated);
   assert.ok(Math.abs(gated.pulse.gates[0].duty - 0.4) < 1e-9);
 });
@@ -189,8 +204,8 @@ test('detector signal follows overlap of chained pulse gates', () => {
   laser.params.repRateMHz = 80;
   const first = createElement('chopper', 150, 0);
   const second = createElement('chopper', 200, 0);
-  first.params.frequencyMHz = 1;
-  second.params.frequencyMHz = 1;
+  first.params.frequencyHz = 1e6;
+  second.params.frequencyHz = 1e6;
   first.params.chopDuty = 0.5;
   second.params.chopDuty = 0.5;
   first.params.phaseNs = 98 / C_MM_PER_NS;

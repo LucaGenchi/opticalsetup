@@ -33,6 +33,8 @@ const voxelEventKeys = new Set();
 const MAX_VOXELS_PER_STAGE = 1200;
 export let onSelectionChange = () => { };
 export function setSelectionCallback(fn) { onSelectionChange = fn; }
+export let onMeasurementsChange = () => { };
+export function setMeasurementsCallback(fn) { onMeasurementsChange = fn; }
 
 export function initCanvas(svgElement, statusElement) {
   svg = svgElement;
@@ -142,6 +144,22 @@ function stageWithSignalSpot(el) {
   return { ...moved, _signalHitLocal: { ...toLocal(moved, hit.x, hit.y), wl: hit.wl } };
 }
 
+// Drives only the wheel icon's rotation — the traced beam no longer depends
+// on live time (chopped CW light is drawn as a fixed chunk pattern, the same
+// on the live canvas and in static exports; see raytrace.js's 'chop' case).
+function animatedChopper(el) {
+  if (pulseTracks.length) return { ...el, _simulationTimeNs: pulsePlayback.timeNs };
+  const frequencyHz = Math.min(1e9, Math.max(0.000001, el.params.frequencyHz || 1000));
+  const periodNs = 1e9 / frequencyHz;
+  const displayHz = Math.min(2, Math.max(0.25, frequencyHz));
+  const phaseNs = Number.isFinite(el.params.phaseNs) ? el.params.phaseNs : 0;
+  return {
+    ...el,
+    _animationTimeS: motionTimeSeconds,
+    _simulationTimeNs: phaseNs + motionTimeSeconds * displayHz * periodNs,
+  };
+}
+
 function animatedOpticalElements() {
   if (!hasGalvoMotion() && !hasStageMotion()) return state.elements;
   return state.elements.map(el => {
@@ -160,12 +178,7 @@ function animatedVisualElements() {
       const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
       return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
     }
-    if (el.type === 'chopper' && el.params.modulate) {
-      return {
-        ...el, _animationTimeS: motionTimeSeconds,
-        _simulationTimeNs: pulseTracks.length ? pulsePlayback.timeNs : null,
-      };
-    }
+    if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     return el.type === 'stage' ? stageWithSignalSpot(el) : el;
   });
 }
@@ -188,6 +201,10 @@ function hasSignalSpotStage() {
   return state.elements.some(el => el.type === 'stage' && el.params.showSignalSpot);
 }
 
+function hasChopperMotion() {
+  return state.elements.some(el => el.type === 'chopper' && el.params.modulate);
+}
+
 function animateMotion(nowMs) {
   motionFrame = null;
   if (reduceMotion || !hasMotion()) return;
@@ -195,16 +212,13 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    if (hasGalvoMotion() || hasStageMotion()) renderBeams();
+    const opticalMotion = hasGalvoMotion() || hasStageMotion();
+    if (opticalMotion) renderBeams();
     renderElements();
     renderVoxels();
     renderOverlay();
     const selected = findSelected();
-    if (hasGalvoMotion() && selected && registry[selected.type]?.readoutKind
-      && nowMs - (animateMotion.lastInspectorMs || 0) >= 150) {
-      animateMotion.lastInspectorMs = nowMs;
-      onSelectionChange();
-    }
+    if (opticalMotion && selected && (registry[selected.type]?.readoutKind || selected.type === 'display')) onMeasurementsChange();
   }
   motionFrame = requestAnimationFrame(animateMotion);
 }
@@ -970,6 +984,7 @@ function bindPointer() {
     else if (polygonDrawing) { e.preventDefault(); finishPolygon(); }
   });
   window.addEventListener('keydown', e => {
+    svg.classList.remove('pointer-focused');
     if (e.code === 'Space' && (e.target === document.body || e.target === svg)) {
       spaceDown = true; svg.style.cursor = 'grab'; e.preventDefault();
     }
@@ -979,6 +994,11 @@ function bindPointer() {
 }
 
 function onDown(e) {
+  // Chrome can classify programmatic focus from a pointer (notably a touch on
+  // Android) as `:focus-visible`. Mark that input modality before focusing so
+  // the whole SVG does not acquire a focus border. The global keydown listener
+  // above removes the marker as soon as the user switches to a keyboard.
+  svg.classList.add('pointer-focused');
   svg.focus({ preventScroll: true });
   if (e.pointerType === 'touch') {
     activeTouches.set(e.pointerId, localTouchPoint(e));

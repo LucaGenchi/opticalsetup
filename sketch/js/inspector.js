@@ -10,11 +10,60 @@ import { esc } from './util.js';
 
 let panel;
 let undoArmed = false; // push one undo snapshot per editing session
+let controlSerial = 0;
+const sectionState = new Map();
 
 export function initInspector(el) { panel = el; }
 
 function field(labelText, inputHTML) {
   return `<label class="field"><span>${esc(labelText)}</span>${inputHTML}</label>`;
+}
+
+function splitFieldLabel(labelText) {
+  const match = String(labelText).match(/^(.*?)\s*\(([^()]*)\)$/);
+  return match ? { label: match[1], unit: match[2] } : { label: labelText, unit: '' };
+}
+
+export function shouldUseSlider(param = {}) {
+  if (param.slider === false) return false;
+  const min = Number(param.min), max = Number(param.max), step = Number(param.step);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || max <= min || step <= 0) return false;
+  if (param.slider === true) return true;
+  return (max - min) / step <= 200;
+}
+
+function sliderProgress(value, min, max) {
+  return Math.max(0, Math.min(100, (Number(value) - min) / (max - min) * 100));
+}
+
+function numberField(labelText, attrs, value, param = {}) {
+  const min = Number(param.min), max = Number(param.max), step = Number(param.step);
+  const negative = Boolean(param.negative);
+  const displayValue = negative ? Math.abs(value) : value;
+  const limits = `min="${min}" max="${max}" step="${step}"`;
+  const negAttr = negative ? ' data-neg="1"' : '';
+  if (!shouldUseSlider(param)) {
+    return field(labelText, `${negative ? '<span class="negsign">−</span>' : ''}<input type="number" ${attrs}${negAttr} ${limits} value="${displayValue}">`);
+  }
+
+  const id = `control-${controlSerial++}`;
+  const parts = splitFieldLabel(labelText);
+  const progress = sliderProgress(displayValue, min, max).toFixed(2);
+  return `<div class="field slider-field" role="group" aria-labelledby="${id}-label">
+    <div class="field-heading"><span id="${id}-label">${esc(parts.label)}</span>${parts.unit ? `<span class="field-unit">${esc(parts.unit)}</span>` : ''}</div>
+    <div class="slider-inputs">
+      <input type="range" ${attrs}${negAttr} data-control-id="${id}" data-control-role="range" ${limits} value="${displayValue}" aria-labelledby="${id}-label" style="--range-progress:${progress}%">
+      <span class="number-wrap">${negative ? '<span class="negsign">−</span>' : ''}<input type="number" ${attrs}${negAttr} data-control-id="${id}" data-control-role="number" ${limits} value="${displayValue}" aria-label="${esc(labelText)} exact value"></span>
+    </div>
+  </div>`;
+}
+
+function inspectorSection(key, title, content, { open = true, meta = '' } = {}) {
+  const isOpen = sectionState.has(key) ? sectionState.get(key) : open;
+  return `<details class="insp-section" data-section="${key}" ${isOpen ? 'open' : ''}>
+    <summary><span class="insp-section-title">${esc(title)}</span>${meta ? `<span class="insp-section-meta">${esc(meta)}</span>` : ''}</summary>
+    <div class="insp-section-content">${content}</div>
+  </details>`;
 }
 
 const LAYER_TYPES = [['lensarray', 'Lens array'], ['grating', 'Grating'], ['steer', 'Beam steer'], ['speckle', 'Speckle / diffuser']];
@@ -87,6 +136,7 @@ function inspectorHead(def, meta, element = null) {
   const noteClass = meta.tier === 'diagram' ? ' diagram' : '';
   const title = element && def.labelFor ? def.labelFor(element) : def.label;
   return `<div class="inspector-head">
+    <div class="inspector-kicker">Selected element</div>
     <div class="inspector-title-row"><h3>${esc(title)}</h3><span class="cap-badge ${meta.tier}">${esc(meta.status)}</span></div>
     <div class="inspector-desc">${esc(meta.description)}</div>
     ${meta.note ? `<div class="inspector-note${noteClass}">${esc(meta.note)}</div>` : ''}
@@ -183,13 +233,13 @@ function layersHTML(layers) {
       LAYER_TYPES.map(([v, l]) => `<option value="${v}" ${v === ly.type ? 'selected' : ''}>${l}</option>`).join('') +
       `</select><button type="button" class="layerdel" data-ldel="${i}" title="Remove this structure" aria-label="Remove structure ${i + 1}">✕</button></div>`;
     if (ly.type === 'lensarray') {
-      h += field('Nr. of lenses (1–8)', `<input type="number" data-li="${i}" data-lk="n" min="1" max="8" step="1" value="${ly.n}">`);
+      h += numberField('Nr. of lenses (1–8)', `data-li="${i}" data-lk="n"`, ly.n, { min: 1, max: 8, step: 1 });
       h += field('Focal length (mm)', `<input type="number" data-li="${i}" data-lk="f" min="-3000" max="3000" step="5" value="${ly.f}">`);
     } else if (ly.type === 'grating') {
       h += field('Lines / mm', `<input type="number" data-li="${i}" data-lk="lines" min="10" max="3600" step="10" value="${ly.lines}">`);
       h += field('Orders', `<input type="text" data-li="${i}" data-lk="orders" maxlength="200" value="${esc(ly.orders)}">`);
     } else if (ly.type === 'speckle') {
-      h += field('Divergence (°)', `<input type="number" data-li="${i}" data-lk="div" min="0.5" max="40" step="0.5" value="${ly.div ?? 8}">`);
+      h += numberField('Divergence (°)', `data-li="${i}" data-lk="div"`, ly.div ?? 8, { min: 0.5, max: 40, step: 0.5 });
     } else {
       h += field('Steer angle (°)', `<input type="number" data-li="${i}" data-lk="angle" min="-360" max="360" step="0.5" value="${ly.angle}">`);
     }
@@ -203,9 +253,10 @@ function layersHTML(layers) {
 export function renderInspector() {
   const sel = findSelected();
   undoArmed = false;
+  controlSerial = 0;
   if (state.selection?.kind === 'multi') {
     const n = state.selection.els.length + state.selection.beams.length;
-    panel.innerHTML = `<div class="inspector-head"><div class="inspector-title-row"><h3>${n} objects selected</h3><span class="cap-badge simulated">Group</span></div>
+    panel.innerHTML = `<div class="inspector-head"><div class="inspector-kicker">Selection</div><div class="inspector-title-row"><h3>${n} objects selected</h3><span class="cap-badge simulated">Group</span></div>
       <div class="inspector-desc">Move, duplicate, or remove this selection as one unit.</div></div>
       <div class="hint">Drag any selected object to move the group.<br>
       Shift-click adds or removes objects.<br>⌫ deletes all · ⌘D duplicates all.</div>
@@ -216,10 +267,11 @@ export function renderInspector() {
   }
   if (!sel) {
     panel.innerHTML = `<div class="empty-inspector">
-      <div class="empty-kicker">Quick start</div><h3>Build a light path</h3>
+      <div class="empty-kicker">Inspector</div><h3>Build a light path</h3>
+      <p class="empty-intro">Select any object to adjust its setup with precise values and quick controls.</p>
       <ol class="quick-steps"><li>Choose a source from the library.</li><li>Place optics in the beam.</li><li>Add a detector and select it to read the signal.</li></ol>
-      <div class="insp-section"><div class="insp-section-title">Useful controls</div>
-      <div class="hint"><b>/</b> search components<br><b>R / ⇧R</b> rotate ±45°<br><b>⌘D</b> duplicate · <b>⌫</b> delete<br><b>Arrows</b> nudge · <b>Space-drag</b> pan<br><b>⌘/ctrl-scroll</b> zoom</div></div></div>`;
+      ${inspectorSection('quick-controls', 'Useful controls', '<div class="hint"><b>/</b> search components<br><b>R / ⇧R</b> rotate ±45°<br><b>⌘D</b> duplicate · <b>⌫</b> delete<br><b>Arrows</b> nudge · <b>Space-drag</b> pan<br><b>⌘/ctrl-scroll</b> zoom</div>', { open: false })}
+      </div>`;
     return;
   }
 
@@ -234,88 +286,102 @@ export function renderInspector() {
         direct?.tune ? `purple knob tunes ${direct.tune.short || direct.tune.param.label}` : ''].filter(Boolean).join(' · ');
       h += `<div class="direct-hint"><b>On-canvas controls</b><span>${esc(def.directHint || actions)}</span></div>`;
     }
+
+    // Most element types render exactly one "Optical behavior" section (or
+    // `def.paramsTitle`, e.g. the sensor display's "Signal connection").
+    // The stage element instead splits its params into multiple titled
+    // sections via `type: 'section'` markers (e.g. "Piezo movement" before
+    // "Optical behavior") — each flush emits one collapsible section.
+    {
+      let sectionKey = 'optical';
+      let sectionTitle = def.paramsTitle || 'Optical behavior';
+      let sectionFields = '';
+      let sectionCount = 0;
+      let voxelHintInserted = false;
+      const insertVoxelHint = () => {
+        if (voxelHintInserted) return;
+        voxelHintInserted = true;
+        if (sel.type === 'stage' && sel.params.sampleKind === 'resin' && sel.params.voxelPreview) {
+          sectionFields += `<div class="hint">Each visible pulsed arrival deposits a bounded square marker at the traced hit. The marker follows the moving sample and broadens/fades with X (depth) offset from focus; it is a 2D writing preview, not a dose, threshold, curing, or true 3D-volume calculation.</div>`;
+          sectionFields += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
+        }
+      };
+      const flushSection = () => {
+        if (!sectionFields) return;
+        h += inspectorSection(sectionKey, sectionTitle, sectionFields, {
+          meta: `${sectionCount} ${sectionCount === 1 ? 'setting' : 'settings'}`,
+        });
+      };
+      for (const p of def.params || []) {
+        if (p.hidden) continue;
+        if (p.show && !p.show(sel.params)) continue;
+        if (p.type === 'section') {
+          flushSection();
+          sectionKey = p.key; sectionTitle = p.label; sectionFields = ''; sectionCount = 0;
+          continue;
+        }
+        sectionCount++;
+        if (p.type === 'heading') { sectionFields += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
+        const v = sel.params[p.key];
+        if (p.type === 'number') {
+          sectionFields += numberField(p.label, `data-p="${p.key}"`, v, p);
+        }
+        else if (p.type === 'text') sectionFields += field(p.label, `<input type="text" data-p="${p.key}" ${p.key === 'orders' ? 'maxlength="200"' : ''} value="${esc(v)}">`);
+        else if (p.type === 'checkbox') sectionFields += field(p.label, `<input type="checkbox" data-p="${p.key}" ${v ? 'checked' : ''}>`);
+        else if (p.type === 'color') sectionFields += field(p.label, `<input type="color" data-p="${p.key}" value="${v}">`);
+        else if (p.type === 'select') {
+          sectionFields += field(p.label, `<select data-p="${p.key}">` + p.options.map(([ov, ol]) => `<option value="${ov}" ${ov === v ? 'selected' : ''}>${esc(ol)}</option>`).join('') + `</select>`);
+        }
+        else if (p.type === 'sensor') {
+          const sensors = state.elements.filter(candidate => candidate.id !== sel.id && registry[candidate.type]?.readoutKind);
+          const hasCurrent = sensors.some(candidate => candidate.id === v);
+          const options = [
+            `<option value="" ${v ? '' : 'selected'}>Not connected</option>`,
+            ...(!hasCurrent && v ? [`<option value="${esc(v)}" selected>Missing sensor</option>`] : []),
+            ...sensors.map(sensor => {
+              const name = sensorName(sensor);
+              const position = `${Math.round(sensor.x)}, ${Math.round(sensor.y)} mm`;
+              return `<option value="${esc(sensor.id)}" ${sensor.id === v ? 'selected' : ''}>${esc(`${name} · ${position}`)}</option>`;
+            }),
+          ];
+          sectionFields += field(p.label, `<select data-p="${p.key}">${options.join('')}</select>`);
+          if (!sensors.length) sectionFields += `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`;
+        }
+        else if (p.type === 'layers') sectionFields += layersHTML(Array.isArray(sel.params[p.key]) ? sel.params[p.key] : []);
+        else if (p.type === 'optsize') {
+          const STD = [[12.7, '½″ (12.7 mm)'], [25.4, '1″ (25.4 mm)'], [50.8, '2″ (50.8 mm)']];
+          const isStd = STD.some(([s]) => s === v);
+          sectionFields += field(p.label, `<select data-p="${p.key}" data-optsize="1">` +
+            STD.map(([s, l]) => `<option value="${s}" ${v === s ? 'selected' : ''}>${l}</option>`).join('') +
+            `<option value="custom" ${!isStd ? 'selected' : ''}>Custom…</option></select>`);
+          if (!isStd) sectionFields += field('↳ size (mm)', `<input type="number" data-p="${p.key}" min="1" max="500" step="0.5" value="${v}">`);
+        }
+      }
+      insertVoxelHint();
+      flushSection();
+    }
+
     if (!state.demoMode) {
-      h += `<section class="insp-section"><div class="insp-section-title">Position</div>`;
-      h += field('X (mm)', `<input type="number" step="1" data-k="x" value="${Math.round(sel.x * 10) / 10}">`);
-      h += field('Y (mm)', `<input type="number" step="1" data-k="y" value="${Math.round(sel.y * 10) / 10}">`);
-      if (def.rotatable !== false) h += field('Angle (°)', `<input type="number" step="1" data-k="rot" value="${Math.round((sel.rot || 0) * 10) / 10}">`);
-      h += `</section>`;
+      let positionFields = '';
+      positionFields += field('X (mm)', `<input type="number" step="1" data-k="x" value="${Math.round(sel.x * 10) / 10}">`);
+      positionFields += field('Y (mm)', `<input type="number" step="1" data-k="y" value="${Math.round(sel.y * 10) / 10}">`);
+      if (def.rotatable !== false) {
+        positionFields += numberField('Angle (°)', 'data-k="rot"', Math.round((sel.rot || 0) * 10) / 10, {
+          min: 0, max: 359, step: 1, slider: true,
+        });
+      }
+      h += inspectorSection('position', 'Position & rotation', positionFields, { open: false });
       if (!def.noLabel) {
-        h += `<section class="insp-section"><div class="insp-section-title">Appearance</div>`;
-        h += field('Label', `<input type="text" data-k="label" value="${esc(sel.label || '')}">`);
-        h += field('Show label', `<input type="checkbox" data-k="showLabel" ${sel.showLabel ? 'checked' : ''}>`);
+        let appearanceFields = field('Label', `<input type="text" data-k="label" value="${esc(sel.label || '')}">`);
+        appearanceFields += field('Show label', `<input type="checkbox" data-k="showLabel" ${sel.showLabel ? 'checked' : ''}>`);
         if (sel.showLabel) {
           const lp = sel.labelPos || 'b';
-          h += field('Label position', `<select data-k="labelPos">` +
+          appearanceFields += field('Label position', `<select data-k="labelPos">` +
             [['b', 'Below'], ['t', 'Above'], ['l', 'Left'], ['r', 'Right']].map(([v, l]) => `<option value="${v}" ${v === lp ? 'selected' : ''}>${l}</option>`).join('') + `</select>`);
         }
-        h += `</section>`;
+        h += inspectorSection('appearance', 'Label & appearance', appearanceFields, { open: false });
       }
     }
-    let sectionOpen = false;
-    let voxelHintInserted = false;
-    const insertVoxelHint = () => {
-      if (voxelHintInserted) return;
-      voxelHintInserted = true;
-      if (sel.type === 'stage' && sel.params.sampleKind === 'resin' && sel.params.voxelPreview) {
-        h += `<div class="hint">Each visible pulsed arrival deposits a bounded square marker at the traced hit. The marker follows the moving sample and broadens/fades with X (depth) offset from focus; it is a 2D writing preview, not a dose, threshold, curing, or true 3D-volume calculation.</div>`;
-        h += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
-      }
-    };
-    const openSection = title => {
-      if (sectionOpen) h += `</section>`;
-      h += `<section class="insp-section"><div class="insp-section-title">${esc(title)}</div>`;
-      sectionOpen = true;
-    };
-    for (const p of def.params || []) {
-      if (p.hidden) continue;
-      if (p.show && !p.show(sel.params)) continue;
-      if (p.type === 'section') { insertVoxelHint(); openSection(p.label); continue; }
-      if (!sectionOpen) openSection(def.paramsTitle || 'Optical behavior');
-      if (p.type === 'heading') { h += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
-      const v = sel.params[p.key];
-      if (p.type === 'number') {
-        if (p.negative) {
-          // fixed − sign outside the box; the user types the magnitude,
-          // the stored value is always negative (e.g. convex mirror f)
-          h += field(p.label, `<span class="negsign">−</span><input type="number" data-p="${p.key}" data-neg="1" min="${p.min}" max="${p.max}" step="${p.step}" value="${Math.abs(v)}">`);
-        } else {
-          h += field(p.label, `<input type="number" data-p="${p.key}" min="${p.min}" max="${p.max}" step="${p.step}" value="${v}">`);
-        }
-      }
-      else if (p.type === 'text') h += field(p.label, `<input type="text" data-p="${p.key}" ${p.key === 'orders' ? 'maxlength="200"' : ''} value="${esc(v)}">`);
-      else if (p.type === 'checkbox') h += field(p.label, `<input type="checkbox" data-p="${p.key}" ${v ? 'checked' : ''}>`);
-      else if (p.type === 'color') h += field(p.label, `<input type="color" data-p="${p.key}" value="${v}">`);
-      else if (p.type === 'select') {
-        h += field(p.label, `<select data-p="${p.key}">` + p.options.map(([ov, ol]) => `<option value="${ov}" ${ov === v ? 'selected' : ''}>${esc(ol)}</option>`).join('') + `</select>`);
-      }
-      else if (p.type === 'sensor') {
-        const sensors = state.elements.filter(candidate => candidate.id !== sel.id && registry[candidate.type]?.readoutKind);
-        const hasCurrent = sensors.some(candidate => candidate.id === v);
-        const options = [
-          `<option value="" ${v ? '' : 'selected'}>Not connected</option>`,
-          ...(!hasCurrent && v ? [`<option value="${esc(v)}" selected>Missing sensor</option>`] : []),
-          ...sensors.map(sensor => {
-            const name = sensorName(sensor);
-            const position = `${Math.round(sensor.x)}, ${Math.round(sensor.y)} mm`;
-            return `<option value="${esc(sensor.id)}" ${sensor.id === v ? 'selected' : ''}>${esc(`${name} · ${position}`)}</option>`;
-          }),
-        ];
-        h += field(p.label, `<select data-p="${p.key}">${options.join('')}</select>`);
-        if (!sensors.length) h += `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`;
-      }
-      else if (p.type === 'layers') h += layersHTML(Array.isArray(sel.params[p.key]) ? sel.params[p.key] : []);
-      else if (p.type === 'optsize') {
-        const STD = [[12.7, '½″ (12.7 mm)'], [25.4, '1″ (25.4 mm)'], [50.8, '2″ (50.8 mm)']];
-        const isStd = STD.some(([s]) => s === v);
-        h += field(p.label, `<select data-p="${p.key}" data-optsize="1">` +
-          STD.map(([s, l]) => `<option value="${s}" ${v === s ? 'selected' : ''}>${l}</option>`).join('') +
-          `<option value="custom" ${!isStd ? 'selected' : ''}>Custom…</option></select>`);
-        if (!isStd) h += field('↳ size (mm)', `<input type="number" data-p="${p.key}" min="1" max="500" step="0.5" value="${v}">`);
-      }
-    }
-    insertVoxelHint();
-    if (sectionOpen) h += `</section>`;
     if (!state.demoMode) {
       h += `<div class="btnrow">${def.singleton ? '' : '<button type="button" id="inspDup">Duplicate</button>'}<button type="button" id="inspDel" class="danger">Delete</button></div>`;
       h += `<a class="wiki-link" href="../wiki/${sel.type}/">Explore this element on the Wiki →</a>`;
@@ -324,39 +390,49 @@ export function renderInspector() {
   } else {
     const b = sel;
     const isFiber = b.kind === 'fiber';
-    let h = `<h3>${isFiber ? 'Optical fiber' : 'Manual beam'}</h3>`;
-    h += field('Color', `<input type="color" data-k="color" value="${b.color}">`);
-    h += field('Width', `<input type="number" data-k="width" min="0.5" max="20" step="0.5" value="${b.width}">`);
+    const tier = isFiber ? (b.propagate ? 'simulated' : 'configurable') : 'diagram';
+    const status = isFiber ? (b.propagate ? 'Simulated' : 'Needs setup') : 'Diagram only';
+    const description = isFiber
+      ? (b.propagate ? 'Routes incoming light between its two configured ends.' : 'Enable propagation to route light through this fiber path.')
+      : 'A visual beam path for explanatory diagrams; it does not affect traced rays.';
+    let h = `<div class="inspector-head"><div class="inspector-kicker">Selected path</div>
+      <div class="inspector-title-row"><h3>${isFiber ? 'Optical fiber' : 'Manual beam'}</h3><span class="cap-badge ${tier}">${status}</span></div>
+      <div class="inspector-desc">${description}</div></div>`;
+    let appearanceFields = field('Color', `<input type="color" data-k="color" value="${b.color}">`);
+    appearanceFields += numberField('Width (px)', 'data-k="width"', b.width, { min: 0.5, max: 20, step: 0.5 });
     if (!isFiber) {
-      h += field('Dashed', `<input type="checkbox" data-k="dash" ${b.dash ? 'checked' : ''}>`);
-      h += field('Arrowhead', `<input type="checkbox" data-k="arrow" ${b.arrow ? 'checked' : ''}>`);
+      appearanceFields += field('Dashed', `<input type="checkbox" data-k="dash" ${b.dash ? 'checked' : ''}>`);
+      appearanceFields += field('Arrowhead', `<input type="checkbox" data-k="arrow" ${b.arrow ? 'checked' : ''}>`);
+      h += inspectorSection('path-appearance', 'Appearance', appearanceFields);
     } else {
-      h += field('Beam propagates', `<input type="checkbox" data-k="propagate" ${b.propagate ? 'checked' : ''}>`);
+      h += inspectorSection('path-appearance', 'Appearance', appearanceFields);
+      let propagationFields = field('Beam propagates', `<input type="checkbox" data-k="propagate" ${b.propagate ? 'checked' : ''}>`);
       if (b.propagate) {
-        h += field('Input NA', `<input type="number" data-k="inputNA" min="0.01" max="0.95" step="0.01" value="${b.inputNA ?? 0.22}">`);
-        h += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
-        h += field('Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
+        propagationFields += numberField('Input NA', 'data-k="inputNA"', b.inputNA ?? 0.22, { min: 0.01, max: 0.95, step: 0.01 });
+        propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
+        propagationFields += field('Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
         // one output spec per fiber end; migrate legacy single-spec fibers
         for (const end of [0, 1]) {
           if (!b['out' + end]) b['out' + end] = { mode: b.outMode || 'diverge', na: b.na ?? 0.12, focal: b.focal ?? 20, dia: b.outDia ?? 6 };
         }
         for (const end of [0, 1]) {
           const o = b['out' + end];
-          h += `<div class="lsechead">Output at end ${end === 0 ? 'A' : 'B'}</div>`;
-          h += field('Style', `<select data-fend="${end}" data-fk="mode">
+          propagationFields += `<div class="lsechead">Output at end ${end === 0 ? 'A' : 'B'}</div>`;
+          propagationFields += field('Style', `<select data-fend="${end}" data-fk="mode">
             <option value="diverge" ${o.mode !== 'focus' ? 'selected' : ''}>Diverging (NA)</option>
             <option value="focus" ${o.mode === 'focus' ? 'selected' : ''}>Lensed (focus)</option></select>`);
           if (o.mode !== 'focus') {
-            h += field('NA', `<input type="number" data-fend="${end}" data-fk="na" min="0.01" max="0.95" step="0.01" value="${o.na ?? 0.12}">`);
+            propagationFields += numberField('NA', `data-fend="${end}" data-fk="na"`, o.na ?? 0.12, { min: 0.01, max: 0.95, step: 0.01 });
           } else {
-            h += field('Focal length (mm)', `<input type="number" data-fend="${end}" data-fk="focal" min="2" max="500" step="1" value="${o.focal ?? 20}">`);
-            h += field('Output beam Ø (mm)', `<input type="number" data-fend="${end}" data-fk="dia" min="1" max="30" step="0.5" value="${o.dia ?? 6}">`);
+            propagationFields += field('Focal length (mm)', `<input type="number" data-fend="${end}" data-fk="focal" min="2" max="500" step="1" value="${o.focal ?? 20}">`);
+            propagationFields += numberField('Output beam Ø (mm)', `data-fend="${end}" data-fk="dia"`, o.dia ?? 6, { min: 1, max: 30, step: 0.5 });
           }
         }
-        h += `<div class="hint">Ends A and B are marked on the canvas while the fiber is selected. Light entering one end exits the other with that end's output spec.</div>`;
+        propagationFields += `<div class="hint">Ends A and B are marked on the canvas while the fiber is selected. Light entering one end exits the other with that end's output spec.</div>`;
       } else {
-        h += `<div class="hint">Connectors block incoming beams. Enable propagation to relaunch the beam from the other end.</div>`;
+        propagationFields += `<div class="hint">Connectors block incoming beams. Enable propagation to relaunch the beam from the other end.</div>`;
       }
+      h += inspectorSection('fiber-propagation', 'Propagation', propagationFields);
     }
     h += `<div class="hint">Drag the round handles on the canvas to reshape ${isFiber ? 'the fiber' : 'the beam'}.</div>`;
     h += `<div class="btnrow"><button type="button" id="inspDup">Duplicate</button><button type="button" id="inspDel" class="danger">Delete</button></div>`;
@@ -366,6 +442,9 @@ export function renderInspector() {
   panel.querySelectorAll('input,select').forEach(inp => {
     inp.addEventListener('input', () => applyInput(inp));
     inp.addEventListener('change', () => applyInput(inp, true));
+  });
+  panel.querySelectorAll('[data-section]').forEach(section => {
+    section.addEventListener('toggle', () => sectionState.set(section.dataset.section, section.open));
   });
   const del = panel.querySelector('#inspDel');
   if (del) del.addEventListener('click', () => document.dispatchEvent(new CustomEvent('optics:delete')));
@@ -421,7 +500,7 @@ function applyInput(inp, rebuild = false) {
   const key = inp.dataset.k, pkey = inp.dataset.p;
   let val;
   if (inp.type === 'checkbox') val = inp.checked;
-  else if (inp.type === 'number') {
+  else if (inp.type === 'number' || inp.type === 'range') {
     val = parseFloat(inp.value);
     if (!Number.isFinite(val)) return;
     // Only clamp (and rewrite the visible text) on commit (blur/change), not
@@ -437,6 +516,16 @@ function applyInput(inp, rebuild = false) {
     }
   }
   else val = inp.value;
+  if (inp.dataset.controlId) {
+    panel.querySelectorAll('[data-control-id]').forEach(peer => {
+      if (peer !== inp && peer.dataset.controlId === inp.dataset.controlId) peer.value = String(val);
+    });
+    const range = inp.dataset.controlRole === 'range'
+      ? inp
+      : [...panel.querySelectorAll('[data-control-id]')].find(peer =>
+        peer.dataset.controlId === inp.dataset.controlId && peer.dataset.controlRole === 'range');
+    if (range) range.style.setProperty('--range-progress', `${sliderProgress(val, Number(range.min), Number(range.max))}%`);
+  }
   if (inp.maxLength > 0 && typeof val === 'string' && val.length > inp.maxLength) {
     val = val.slice(0, inp.maxLength);
     inp.value = val;

@@ -1376,7 +1376,7 @@ export const registry = {
     params: [
       { key: 'modulate', label: 'Modulate on/off', type: 'checkbox', def: true },
       { key: 'diameter', label: 'Wheel diameter (mm)', type: 'number', min: 20, max: 120, step: 2, def: 40 },
-      { key: 'frequencyMHz', label: 'Chop frequency (MHz)', type: 'number', min: 0.000001, max: 1000, step: 0.001, def: 0.001, show: p => p.modulate },
+      { key: 'frequencyHz', label: 'Chop frequency (Hz)', type: 'number', min: 0.1, max: 20000, step: 0.1, def: 1000, show: p => p.modulate },
       { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate },
       { key: 'phaseNs', label: 'Gate offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate },
     ],
@@ -1384,9 +1384,13 @@ export const registry = {
       let blades = '';
       const p = el.params, r = (p.diameter || 40) / 2 - 2;
       const bladeSpan = 60 * (1 - Math.min(0.95, Math.max(0.05, p.chopDuty ?? 0.5)));
-      const physicalAngle = Number.isFinite(el._simulationTimeNs)
-        ? (el._simulationTimeNs - (p.phaseNs || 0)) * (p.frequencyMHz || 0.001) * 0.36
-        : (el._animationTimeS || 0) * 360 * Math.min(2, Math.max(0.25, (p.frequencyMHz || 0.001) * 1e6));
+      // Six identical blade/slot pairs make one gate period a 60° wheel step.
+      // The positive rotation also places the fixed horizontal ray in a slot
+      // for phase < duty and behind a blade for the remainder of the cycle.
+      const rawAngle = Number.isFinite(el._simulationTimeNs)
+        ? (el._simulationTimeNs - (p.phaseNs || 0)) * (p.frequencyHz || 1000) * 6e-8
+        : (el._animationTimeS || 0) * 60 * Math.min(2, Math.max(0.25, p.frequencyHz || 1000));
+      const physicalAngle = ((rawAngle % 60) + 60) % 60;
       for (let i = 0; i < 6; i++) {
         const a0 = i * 60, a1 = a0 + bladeSpan;
         const x0 = r * Math.cos(a0 * Math.PI / 180), y0 = r * Math.sin(a0 * Math.PI / 180),
@@ -1400,7 +1404,14 @@ export const registry = {
       const p = el.params;
       if (!p.modulate) return [];
       const half = (p.diameter || 40) / 2;
-      return [{ x1: 0, y1: -half, x2: 0, y2: half, kind: 'chop', data: { frequencyMHz: p.frequencyMHz, duty: p.chopDuty, phaseNs: p.phaseNs } }];
+      return [{
+        x1: 0, y1: -half, x2: 0, y2: half, kind: 'chop',
+        data: {
+          frequencyMHz: (p.frequencyHz || 1000) / 1e6,
+          duty: p.chopDuty,
+          phaseNs: p.phaseNs,
+        },
+      }];
     },
   },
 
@@ -1885,7 +1896,7 @@ const ELEMENT_HELP = {
   aotf: 'Selects a configurable spectral band, then deflects and attenuates the selected acousto-optic order.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
   eom: 'Applies voltage-controlled polarization retardance; an analyzer converts it to intensity modulation.',
-  chopper: 'Gates finite-duration pulse trains in time and applies duty-averaged transmission to CW light; the wheel shows duty and pulse-clock phase.',
+  chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
   sample: 'Attenuates excitation and can convert a bounded fraction into fluorescence or nonlinear signal.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
