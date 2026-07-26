@@ -2,4 +2,10 @@
 // Lists every approved community-submissions/*.json entry so the "From the community"
 // dropdown can fetch them at runtime without a directory listing (this is a
 // static site). Re-run the generator after approving/removing a submission.
-export const community = [];
+export const community = [
+  {
+    "slug": "laserpecker-4-dual-laser-optical-path",
+    "name": "LaserPecker 4 dual-laser optical path",
+    "path": "../community-submissions/issue-25.json"
+  }
+];
