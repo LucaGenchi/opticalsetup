@@ -97,6 +97,15 @@ function sidebar(entries, currentType, base) {
     </nav>`;
 }
 
+function referencesBlock(citations) {
+  if (!citations || !citations.length) return '';
+  return `
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        ${citations.map((c, i) => `<li id="ref-${i + 1}"><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.label)}</a></li>`).join('')}
+      </ol>`;
+}
+
 function formulaBlock(f) {
   return `<div class="formula">
       <div class="katex-render">${renderFormula(f.tex)}</div>
@@ -168,6 +177,8 @@ ${header(base)}
       <div class="related-list">
         ${related.map(t => `<a href="${base}/wiki/${t}/">${iconSVG(t)}${esc(registry[t].label)}</a>`).join('')}
       </div>` : ''}
+
+      ${referencesBlock(entry.citations)}
 
       ${(entry.resources || []).length ? `
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>

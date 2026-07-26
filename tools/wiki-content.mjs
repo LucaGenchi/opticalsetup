@@ -6,6 +6,18 @@
 // Every claim under `inOpticalSetup` must be verified against the actual
 // implementation (js/raytrace.js, js/polarization.js) before it's written
 // here — see the physics verification pass in the branch's history.
+//
+// Citations: whenever a factual claim in the prose needs a source, cite it
+// inline, academic-style, with `cite(n)` or `cite(n, m, ...)` at the point
+// the claim is made, e.g. `...sub-arcsecond alignment tolerance${cite(1, 2)}.`
+// The numbers are 1-indexed positions into that entry's own `citations`
+// array; each renders as a clickable [n] linking to the matching numbered
+// entry in the page's "References" section (built by build-wiki.mjs). Use
+// `resources` instead for general further-reading links not tied to one
+// specific claim.
+function cite(...nums) {
+  return `<sup class="cite">[${nums.map(n => `<a href="#ref-${n}">${n}</a>`).join(',')}]</sup>`;
+}
 
 export const wikiEntries = [
   {
@@ -749,7 +761,7 @@ export const wikiEntries = [
         reflectors and road signs throw a car's headlights straight back at the driver
         regardless of the exact angle the light arrives from, and why the retroreflector
         arrays left on the Moon by the Apollo missions still return laser pulses fired
-        from Earth decades later with sub-arcsecond alignment tolerance. The 2D version
+        from Earth decades later with sub-arcsecond alignment tolerance${cite(1, 2)}. The 2D version
         modeled here — two mirrors at 90°, sometimes called a "roof" or "porro" reflector
         — is the working element inside a Michelson interferometer arm that needs
         alignment-insensitive retroreflection, and inside mechanical delay lines: mounting
@@ -789,6 +801,10 @@ export const wikiEntries = [
         parameter.</p>`,
     },
     related: ['mirror', 'cmirror', 'cmirrorx', 'galvo'],
+    citations: [
+      { label: 'NASA — Retroreflectors from Apollo & Mars', url: 'https://www.nasa.gov/image-article/retroreflectors-from-apollo-mars/' },
+      { label: 'Wikipedia — List of retroreflectors on the Moon', url: 'https://en.wikipedia.org/wiki/List_of_retroreflectors_on_the_Moon' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Retroreflectors', url: 'https://www.rp-photonics.com/retroreflectors.html' },
     ],
