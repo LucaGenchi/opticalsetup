@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "proposed",
+  "status": "approved",
   "name": "LaserPecker 4 dual-laser optical path",
   "description": "Functional educational reconstruction of the LaserPecker 4 beam chain. It shows the selectable 10 W 450 nm blue diode and 2 W 1064 nm pulsed IR sources feeding an inferred shared-path combiner, two qualitative galvo axes, a 150 mm field lens, and the 160 x 120 mm engraving work plane. Both wavelengths are traced together only for comparison; the real LP4 selects one source per job. The combiner, orthogonal scanner flattening, and thin-lens/F-theta approximation are explicitly labeled because public documentation does not disclose the exact internal optical layout. It does not model power, ablation, thermal effects, scanner calibration, or laser safety.",
   "reference": "LP4 Buying Guide: https://support.laserpecker.net/hc/en-us/articles/7501661632911-LP4-Buying-Guide; focusing: https://support.laserpecker.net/hc/en-us/articles/7601300545807-LP4-Laser-Focusing-Instructions; work area: https://support.laserpecker.net/hc/en-us/articles/9408074022287-LP4-Effective-Working-Area; FCC internal photos: https://fccid.io/2A68F-L4/Internal-Photos/Internal-Photos-6535715",
