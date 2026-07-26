@@ -805,8 +805,7 @@ export const registry = {
     size_: el => ({ w: 14, h: el.params.length + 6 }),
     svg(el) {
       const L = el.params.length / 2;
-      const partial = (el.params.refl ?? 100) < 100;
-      return `<line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#444" stroke-width="3.5" ${partial ? 'stroke-dasharray="6 2.5"' : ''}/>` + hatch(-1.5, -L, L - 6, -1, Math.round(el.params.length / 8));
+      return `<line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#444" stroke-width="3.5"/>` + hatch(-1.5, -L, L - 6, -1, Math.round(el.params.length / 8));
     },
     surfaces(el) {
       const L = el.params.length / 2;
@@ -834,9 +833,8 @@ export const registry = {
     svg(el) {
       const L = el.params.length / 2;
       const command = galvoAngleAt(el.params, el._animationTimeS || 0);
-      const partial = (el.params.refl ?? 100) < 100;
       return `<circle r="4.5" fill="#777" stroke="#444" stroke-width="1.2"/>` +
-        `<g transform="rotate(${command})"><line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#444" stroke-width="3" ${partial ? 'stroke-dasharray="5 2"' : ''}/></g>` +
+        `<g transform="rotate(${command})"><line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#444" stroke-width="3"/></g>` +
         `<path d="M -9,${-L - 3} A ${L + 5} ${L + 5} 0 0 1 9,${-L - 3}" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/>` +
         `<path d="M -9,${L + 3} A ${L + 5} ${L + 5} 0 0 0 9,${L + 3}" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/>` +
         (el.params.scanMode !== 'static' ? `<circle cx="10" cy="${-L - 5}" r="2.5" fill="#8b5cf6"/>` : '');
@@ -872,9 +870,7 @@ export const registry = {
     // flat mirror whose return direction depends on incidence angle.
     svg(el) {
       const L = el.params.length / 2;
-      const partial = (el.params.refl ?? 100) < 100;
-      const dash = partial ? ' stroke-dasharray="6 2.5"' : '';
-      return `<path d="M ${-L},${L} L 0,0 L ${-L},${-L}" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"${dash}/>`;
+      return `<path d="M ${-L},${L} L 0,0 L ${-L},${-L}" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"/>`;
     },
     surfaces(el) {
       const L = el.params.length / 2;
@@ -896,9 +892,8 @@ export const registry = {
     size_: el => ({ w: 18, h: el.params.length + 6 }),
     svg(el) {
       const L = el.params.length / 2;
-      const partial = (el.params.refl ?? 100) < 100;
       // bulges toward the incoming beam (from -x)
-      return `<path d="M 0,${-L} Q -7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5" ${partial ? 'stroke-dasharray="6 2.5"' : ''}/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="M 0,${-L} Q -7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
     },
     surfaces(el) {
       const L = el.params.length / 2;
@@ -916,9 +911,8 @@ export const registry = {
     size_: el => ({ w: 18, h: el.params.length + 6 }),
     svg(el) {
       const L = el.params.length / 2;
-      const partial = (el.params.refl ?? 100) < 100;
       // hollow toward the incoming beam (from -x): focuses it
-      return `<path d="M 0,${-L} Q 7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5" ${partial ? 'stroke-dasharray="6 2.5"' : ''}/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="M 0,${-L} Q 7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
     },
     surfaces(el) {
       const L = el.params.length / 2;
@@ -942,7 +936,6 @@ export const registry = {
       // true parabola x = -y²/(4f): vertex at the origin, opening toward the
       // incoming beam, focus at (-f, 0). Shorter f -> visibly deeper curve.
       const L = el.params.length / 2, f = Math.max(5, el.params.f);
-      const partial = (el.params.refl ?? 100) < 100;
       const N = 26;
       let dp = '';
       for (let i = 0; i <= N; i++) {
@@ -955,7 +948,7 @@ export const registry = {
         const x = -(y * y) / (4 * f);
         ticks += `<line x1="${(x + 1.5).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + 7).toFixed(1)}" y2="${(y + 5).toFixed(1)}" stroke="#888" stroke-width="1"/>`;
       }
-      return `<path d="${dp}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round" ${partial ? 'stroke-dasharray="6 2.5"' : ''}/>` + ticks;
+      return `<path d="${dp}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + ticks;
     },
     surfaces(el) {
       // real geometry: the parabola as a chain of small plane mirrors, so
