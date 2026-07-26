@@ -5,10 +5,11 @@ import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, stageSampleLabelSVG, voxelDepthFactor, displayCableSVG,
+  displayActionUpdate,
 } from './elements.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
-import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG } from './util.js';
+import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
 import {
   appendBoundaryGesture, boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
 } from './polygon.js';
@@ -539,7 +540,7 @@ function renderElements() {
   for (const el of elements) {
     const def = registry[el.type];
     if (!def) continue;
-    s += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el, elements)}</g>`;
+    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el, elements)}</g>`;
     s += labelSVG(el);
     if (el.type === 'stage') s += stageSampleLabelSVG(el);
   }
@@ -1122,6 +1123,29 @@ function onDown(e) {
     if (isManualDoubleClick(e)) { finishBeam(); return; }
     renderAll();
     return;
+  }
+
+  const displayControl = e.target.closest?.('[data-display-action]');
+  const displayOwner = displayControl?.closest?.('[data-element-id]');
+  if (displayControl && displayOwner && !state.demoMode) {
+    const display = state.elements.find(element =>
+      element.id === displayOwner.getAttribute('data-element-id') && element.type === 'display');
+    const result = displayActionUpdate(display, displayControl.getAttribute('data-display-action'), state.elements);
+    if (result) {
+      const changes = Object.entries(result.updates || {}).filter(([key, value]) => display.params[key] !== value);
+      if (changes.length) {
+        pushUndo();
+        for (const [key, value] of changes) display.params[key] = value;
+        changed();
+      }
+      state.selection = { kind: 'element', id: display.id };
+      setStatus(result.message || '');
+      renderAll();
+      onSelectionChange();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
   }
 
   // Editable control points take precedence over Shift multi-selection so

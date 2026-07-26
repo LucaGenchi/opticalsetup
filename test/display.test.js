@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  createElement, displayCableSVG, getElementMeta, registry, resolveDisplaySensor,
+  createElement, displayActionUpdate, displayCableSVG, displayDensity, getElementMeta, registry, resolveDisplaySensor,
 } from '../sketch/js/elements.js';
 import { buildSVG } from '../sketch/js/export.js';
 import { detectorReading, traceAll } from '../sketch/js/raytrace.js';
@@ -41,15 +41,17 @@ test('sensor display mirrors live photodetector output and handles a missing sig
   assert.equal(detectorReading(detector.id).signal, 1);
   const active = registry.display.svg(display, elements);
   assert.match(active, /SAMPLE PD/);
-  assert.match(active, /100% rel\./);
-  assert.match(active, /532 nm/);
+  assert.match(active, />1\.00</);
+  assert.match(active, />Σw</);
+  assert.match(active, /λ532 nm/);
+  assert.doesNotMatch(active, /% rel\./);
   assert.doesNotMatch(active, invalidNumber);
 
   laser.y = 80;
   traceAll(elements);
   const idle = registry.display.svg(display, elements);
   assert.match(idle, /NO SIGNAL/);
-  assert.match(idle, /0 relative ray weight/);
+  assert.match(idle, /Σw 0\.00/);
 });
 
 test('sensor display renders a linked camera profile and reports connection state honestly', () => {
@@ -59,18 +61,96 @@ test('sensor display renders a linked camera profile and reports connection stat
   const display = createElement('display', 420, 80);
 
   assert.equal(getElementMeta('display', display.params).tier, 'configurable');
-  assert.match(registry.display.svg(display, [laser, camera, display]), /UNPLUGGED/);
+  assert.match(registry.display.svg(display, [laser, camera, display]), /SELECT INPUT/);
 
   display.params.sensorId = camera.id;
   traceAll([laser, camera, display]);
   const linked = registry.display.svg(display, [laser, camera, display]);
   assert.equal(getElementMeta('display', display.params).tier, 'simulated');
   assert.match(linked, /CAMERA/);
-  assert.match(linked, /<rect x="-33/);
+  assert.match(linked, /data-profile-bin=/);
 
   display.params.sensorId = 'removed-sensor';
   assert.match(registry.display.svg(display, [display]), /LINK LOST/);
   assert.equal(getElementMeta('display', display.params, { element: display, elements: [display] }).tier, 'configurable');
+});
+
+test('sensor display adapts information density and exposes direct instrument controls', () => {
+  const laser = createElement('laser', 0, 0);
+  const camera = createElement('camera', 300, 0);
+  const display = createElement('display', 420, 80);
+  display.params.sensorId = camera.id;
+  traceAll([laser, camera, display]);
+
+  display.params.displayScale = 0.6;
+  const compact = registry.display.svg(display, [laser, camera, display]);
+  assert.match(compact, /data-display-density="compact"/);
+  assert.match(compact, /data-display-action="power"/);
+  assert.match(compact, /data-display-action="input"/);
+  assert.match(compact, /data-display-action="view"/);
+
+  display.params.displayScale = 1;
+  assert.match(registry.display.svg(display, [laser, camera, display]), /data-display-density="standard"/);
+  display.params.displayScale = 2;
+  const expanded = registry.display.svg(display, [laser, camera, display]);
+  assert.match(expanded, /data-display-density="expanded"/);
+  assert.match(expanded, /\+½ sensor/);
+
+  assert.equal(displayDensity(0.5), 'compact');
+  assert.equal(displayDensity(1), 'standard');
+  assert.equal(displayDensity(3), 'expanded');
+});
+
+test('display buttons cycle power, view, and available sensor inputs without inspector state', () => {
+  const detector = createElement('detector', 200, 0);
+  detector.label = 'Reference PD';
+  const camera = createElement('camera', 300, 0);
+  const display = createElement('display', 420, 80);
+  const elements = [detector, camera, display];
+
+  let action = displayActionUpdate(display, 'input', elements);
+  assert.deepEqual(action.updates, { sensorId: detector.id });
+  Object.assign(display.params, action.updates);
+  action = displayActionUpdate(display, 'input', elements);
+  assert.deepEqual(action.updates, { sensorId: camera.id });
+  Object.assign(display.params, action.updates);
+  action = displayActionUpdate(display, 'input', elements);
+  assert.deepEqual(action.updates, { sensorId: '' });
+
+  action = displayActionUpdate(display, 'view', elements);
+  assert.deepEqual(action.updates, { displayView: 'spectrum' });
+  Object.assign(display.params, action.updates);
+  action = displayActionUpdate(display, 'view', elements);
+  assert.deepEqual(action.updates, { displayView: 'detail' });
+
+  action = displayActionUpdate(display, 'power', elements);
+  assert.deepEqual(action.updates, { screenOn: false });
+  Object.assign(display.params, action.updates);
+  assert.match(registry.display.svg(display, elements), /STANDBY/);
+});
+
+test('camera profile colors follow the wavelength mixture in each occupied sensor bin', () => {
+  const green = createElement('laser', 0, -20);
+  green.params.wavelength = 532;
+  const red = createElement('laser', 0, 20);
+  red.params.wavelength = 650;
+  const camera = createElement('camera', 300, 0);
+  camera.params.ch = 100;
+  camera.params.pixels = 8;
+  const display = createElement('display', 420, 80);
+  display.params.sensorId = camera.id;
+  const elements = [green, red, camera, display];
+
+  traceAll(elements);
+  const reading = detectorReading(camera.id);
+  const occupied = reading.profile.map((value, index) => value > 1e-12 ? index : -1).filter(index => index >= 0);
+  const colors = occupied.map(index => reading.profileColors[index]);
+  assert.equal(reading.spectrum.length, 2);
+  assert.equal(new Set(colors).size, 2, 'green and red hits should not collapse to one overall camera color');
+
+  const svg = registry.display.svg(display, elements);
+  assert.equal((svg.match(/data-profile-bin=/g) || []).length, occupied.length);
+  assert.doesNotMatch(svg, /% rel\./);
 });
 
 test('sensor display and its data cable are preserved in deterministic SVG export', () => {
@@ -83,7 +163,8 @@ test('sensor display and its data cable are preserved in deterministic SVG expor
 
   const svg = buildSVG();
   assert.match(svg, new RegExp(`data-sensor-link="${detector.id}"`));
-  assert.match(svg, /100% rel\./);
-  assert.match(svg, /SENSOR DISPLAY/);
+  assert.match(svg, />1\.00</);
+  assert.match(svg, />Σw</);
+  assert.match(svg, /data-display-action="power"/);
   assert.doesNotMatch(svg, invalidNumber);
 });

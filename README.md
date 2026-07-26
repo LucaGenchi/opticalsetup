@@ -61,7 +61,11 @@ figures as SVG or PNG.
   report relative ray signal, spectrum, polarization, and spot span at their active
   surface; pulsed paths add optical-path delay and path spread. A data-only sensor
   display can be linked to any of them and mirrors the live output directly on the
-  canvas. PMTs include qualitative gain/saturation and cameras provide a 1D profile.
+  canvas. Its information density adapts to its drawn size, while power, sensor-input,
+  and view controls live on the instrument itself. PMTs include qualitative
+  gain/saturation; cameras provide a 1D profile whose bin colors show the qualitative
+  wavelength mixture at each position. Scalar readouts use arbitrary relative
+  ray-weight units rather than implying a calibrated percentage.
 - **Physics that responds**: thin-lens/paraxial transfer, spectral band arithmetic at
   filters, Malus's law, grating equation, Cauchy prism dispersion, cavity round trips
   with partial mirrors, image formation with magnification (arrow / letter F / tree

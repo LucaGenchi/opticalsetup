@@ -23,6 +23,56 @@ let lastPaths = [];
 let detectorHits = new Map();
 let gateTransmissionCache = new Map();
 
+function hexChannels(color) {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
+  return match ? match.slice(1).map(channel => parseInt(channel, 16)) : [255, 255, 255];
+}
+
+// Add wavelength colors in display space. This is intentionally a qualitative
+// visualization of ray composition, not a calibrated camera response curve.
+function mixedWavelengthColor(hits) {
+  if (!hits?.length) return '#d8e7ee';
+  let red = 0, green = 0, blue = 0;
+  for (const hit of hits) {
+    const weight = Math.max(0, Number.isFinite(hit.power) ? hit.power : 0);
+    const [r, g, b] = hexChannels(wavelengthToColor(hit.wl));
+    red += r * weight;
+    green += g * weight;
+    blue += b * weight;
+  }
+  const peak = Math.max(red, green, blue, 1e-9);
+  const channel = value => Math.round(255 * value / peak).toString(16).padStart(2, '0');
+  return `#${channel(red)}${channel(green)}${channel(blue)}`;
+}
+
+function detectorSpectrum(hits) {
+  const samples = new Map();
+  for (const hit of hits) {
+    if (!Number.isFinite(hit.wl) || !Number.isFinite(hit.power) || hit.power <= 0) continue;
+    const key = Math.round(hit.wl * 10) / 10;
+    const sample = samples.get(key) || { wavelength: key, power: 0 };
+    sample.power += hit.power;
+    samples.set(key, sample);
+  }
+  const ordered = [...samples.values()].sort((a, b) => a.wavelength - b.wavelength);
+  if (ordered.length <= 24) return ordered.map(sample => ({
+    ...sample,
+    color: wavelengthToColor(sample.wavelength),
+  }));
+  // Keep the readout bounded for sources that produce many wavelength samples.
+  const stride = ordered.length / 24;
+  return Array.from({ length: 24 }, (_, index) => {
+    const start = Math.floor(index * stride);
+    const end = Math.max(start + 1, Math.floor((index + 1) * stride));
+    const group = ordered.slice(start, end);
+    const power = group.reduce((sum, sample) => sum + sample.power, 0);
+    const wavelength = power > 0
+      ? group.reduce((sum, sample) => sum + sample.wavelength * sample.power, 0) / power
+      : group[0].wavelength;
+    return { wavelength, power, color: wavelengthToColor(wavelength) };
+  });
+}
+
 function averageGateTransmission(pulse) {
   if (!pulse?.gates?.length) return 1;
   const key = [pulse.repRateMHz, pulse.pulseWidthFs, pulse.phaseNs, ...pulse.gates.flatMap(g => [
@@ -74,7 +124,7 @@ export function detectorReading(elementId) {
   const spotSpan = aperture * (Math.max(...us) - Math.min(...us));
   const detectorType = activeHits[0].detectorType || 'Detector';
   const readoutKind = activeHits[0].readoutKind || 'detector';
-  let outputSignal = signal, saturated = false, profile = null, centroid = null;
+  let outputSignal = signal, saturated = false, profile = null, profileColors = null, centroid = null;
   if (readoutKind === 'pmt') {
     const gain = Math.max(1, activeHits[0].gain || 1);
     const saturation = Math.max(1, activeHits[0].saturation || 100);
@@ -83,10 +133,13 @@ export function detectorReading(elementId) {
   } else if (readoutKind === 'camera') {
     const count = Math.min(64, Math.max(8, Math.round(activeHits[0].pixels || 16)));
     profile = Array(count).fill(0);
+    const profileHits = Array.from({ length: count }, () => []);
     for (const h of activeHits) {
       const i = Math.min(count - 1, Math.max(0, Math.floor(h.u * count)));
       profile[i] += Math.max(0, h.power || 0);
+      profileHits[i].push(h);
     }
+    profileColors = profileHits.map(hitsInBin => hitsInBin.length ? mixedWavelengthColor(hitsInBin) : null);
     const total = profile.reduce((sum, value) => sum + value, 0);
     if (total > 0) centroid = profile.reduce((sum, value, i) => sum + value * ((i + 0.5) / count - 0.5) * aperture, 0) / total;
   }
@@ -146,13 +199,15 @@ export function detectorReading(elementId) {
     bandMax,
     polarization,
     spotSpan,
-    color: wavelengthToColor(wavelength),
+    color: mixedWavelengthColor(activeHits),
+    spectrum: detectorSpectrum(activeHits),
     pulse,
     detectorType,
     readoutKind,
     outputSignal,
     saturated,
     profile,
+    profileColors,
     centroid,
   };
 }
