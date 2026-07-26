@@ -13,6 +13,7 @@ import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
+import { stokesAngleDeg } from './polarization.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -442,6 +443,15 @@ function probeCard(el, rd) {
       icon = `<g transform="rotate(${-rd.pol})"><line x1="-8.5" y1="0" x2="8.5" y2="0" stroke="#333" stroke-width="1.6"/>` +
         `<path d="M 10,0 L 4.5,-3 L 4.5,3 Z M -10,0 L -4.5,-3 L -4.5,3 Z" fill="#333"/></g>`;
       lab = `linear ${Math.round(rd.pol)}°`;
+    } else if (rd.pol === 'e') {
+      // Elliptical: partial retardance (e.g. a waveplate not at 0/45/90° to
+      // the input) leaves a nonzero circular component (s3) without being
+      // purely circular — distinct from, and must not collapse into, the
+      // true "no polarization at all" case below.
+      const angle = rd.stokes ? stokesAngleDeg(rd.stokes) : 0;
+      icon = `<g transform="rotate(${-angle})"><ellipse cx="0" cy="0" rx="8.5" ry="4" fill="none" stroke="#333" stroke-width="1.6"/>` +
+        `<path d="M 8.5,0 L 4,-2.6 L 4,2.6 Z" fill="#333"/></g>`;
+      lab = `elliptical ${Math.round(angle)}°`;
     } else {
       icon = `<g stroke="#666" stroke-width="1.3"><line x1="-8" y1="0" x2="8" y2="0"/><line x1="0" y1="-8" x2="0" y2="8"/><line x1="-5.7" y1="-5.7" x2="5.7" y2="5.7"/><line x1="-5.7" y1="5.7" x2="5.7" y2="-5.7"/></g>`;
       lab = 'unpolarized';

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement } from '../sketch/js/elements.js';
+import { createElement, registry } from '../sketch/js/elements.js';
 import { detectorReading, probeAt, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { C_MM_PER_NS } from '../sketch/js/pulses.js';
 
@@ -114,6 +114,26 @@ test('beam probes report state at their position rather than the final path stat
   assert.ok(downstream);
   closeTo(upstream.intensity, 1, 1e-9, 'upstream probe inherited downstream attenuation');
   closeTo(downstream.intensity, 0.25);
+});
+
+test('beam probe reports elliptical, not unpolarized, downstream of an off-axis waveplate', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.pol = 0;
+  const qwp = createElement('qwp', 150, 0);
+  qwp.params.a = 100;
+  qwp.params.prop = 'pol';
+
+  traceAll([laser, qwp]);
+  const downstream = probeAt(250, 0, 4);
+  assert.ok(downstream);
+  assert.equal(downstream.pol, 'e', 'a QWP at 100° from a 0° linear input should leave genuinely elliptical light');
+  assert.ok(downstream.stokes, 'the probe should carry the Stokes vector needed to render an elliptical angle');
+
+  const probeEl = createElement('probe', 250, 0);
+  probeEl.params.prop = 'pol';
+  const svg = registry.probe.svg(probeEl);
+  assert.match(svg, /elliptical/);
+  assert.doesNotMatch(svg, /unpolarized/);
 });
 
 test('pulsed AOM zero order complements the gated first order', () => {

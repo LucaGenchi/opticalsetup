@@ -225,7 +225,7 @@ export function probeAt(x, y, tol = 16) {
       }
     }
   }
-  return best ? { wl: best.wl, bw: best.bw || 0, pol: best.pol, intensity: best.intensity } : null;
+  return best ? { wl: best.wl, bw: best.bw || 0, pol: best.pol, stokes: cloneStokes(best.stokes), intensity: best.intensity } : null;
 }
 
 const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
