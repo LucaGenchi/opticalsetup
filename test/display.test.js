@@ -153,6 +153,41 @@ test('camera profile colors follow the wavelength mixture in each occupied senso
   assert.doesNotMatch(svg, /% rel\./);
 });
 
+test('a long sensor name never shares a text baseline with the readout mode label', () => {
+  const laser = createElement('laser', 0, 0);
+  const detector = createElement('detector', 300, 0);
+  detector.label = ''; // falls back to the registry label, "Photodetector"
+  const display = createElement('display', 420, 0);
+  display.params.sensorId = detector.id;
+  const elements = [laser, detector, display];
+
+  traceAll(elements);
+  const svg = registry.display.svg(display, elements);
+  const ys = [...svg.matchAll(/<text x="-36" y="(-?[\d.]+)"[^>]*>(PHOTODETECTOR|REL SIGNAL)</g)]
+    .map(m => Number(m[1]));
+  assert.equal(ys.length, 2, 'both the sensor name and the mode label should render');
+  assert.notEqual(ys[0], ys[1], 'the name and mode label must sit on different lines, not one shared baseline');
+});
+
+test('elliptical polarization is abbreviated, not truncated, in the sensor display', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.pol = 0;
+  const qwp = createElement('qwp', 150, 0);
+  qwp.params.a = 100;
+  const detector = createElement('detector', 300, 0);
+  const display = createElement('display', 420, 0);
+  display.params.sensorId = detector.id;
+  const elements = [laser, qwp, detector, display];
+
+  traceAll(elements);
+  const reading = detectorReading(detector.id);
+  assert.match(reading.polarization, /^Elliptical \d+°$/);
+
+  const svg = registry.display.svg(display, elements);
+  assert.match(svg, /ELLIP \d+°/, 'the degree value should survive abbreviation, not be cut off mid-number');
+  assert.doesNotMatch(svg, />ELLIP\s*</, 'the abbreviated label must not drop the angle entirely');
+});
+
 test('sensor display and its data cable are preserved in deterministic SVG export', () => {
   const laser = createElement('laser', 0, 0);
   const detector = createElement('detector', 300, 0);

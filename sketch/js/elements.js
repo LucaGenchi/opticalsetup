@@ -167,6 +167,7 @@ function compactNumber(value) {
 function shortPolarization(polarization = '') {
   return String(polarization)
     .replace(/^Linear /, 'LIN ')
+    .replace(/^Elliptical /, 'ELLIP ')
     .replace(/^Circular$/, 'CIRC')
     .replace(/^Unpolarized$/, 'UNPOL')
     .replace(/^Mixed linear$/, 'MIX LIN')
@@ -209,11 +210,16 @@ function displaySpectrumPlot(rd, { baseline = 5, height = 15 } = {}) {
   return `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>${marks}`;
 }
 
+// Two lines rather than sharing one row: a long sensor name (e.g.
+// "PHOTODETECTOR") and the current readout mode used to compete for the
+// same baseline and could overlap. Stacking them costs a little vertical
+// room, which the rest of standardDisplayReading()'s layout below (all at
+// y >= -9) already clears.
 function displayHeader(sensorName, mode, pulse) {
   const headerName = sensorName.toUpperCase();
-  const nameSize = Math.max(3.7, Math.min(5.7, 40 / Math.max(1, headerName.length * 0.62)));
-  return `<text x="-36" y="-20" font-size="${nameSize.toFixed(2)}" font-weight="760" letter-spacing="0.35" fill="#9eb5c3">${esc(headerName)}</text>` +
-    `<text x="36" y="-20" text-anchor="end" font-size="4.8" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(mode)}${pulse ? ' · PULSE' : ''}</text>`;
+  const nameSize = Math.max(3.9, Math.min(6, 46 / Math.max(1, headerName.length * 0.62)));
+  return `<text x="-36" y="-23.5" font-size="${nameSize.toFixed(2)}" font-weight="760" letter-spacing="0.35" fill="#9eb5c3">${esc(headerName)}</text>` +
+    `<text x="-36" y="-16.5" font-size="4.5" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(mode)}${pulse ? ' · PULSE' : ''}</text>`;
 }
 
 function displayDetail(rd) {
@@ -227,7 +233,7 @@ function displayDetail(rd) {
         ['POL', shortPolarization(rd.polarization)], ['λ SPAN', displaySpectrum(rd)]];
   return entries.map(([label, value], index) => {
     const x = index % 2 ? 4 : -35;
-    const y = index < 2 ? -9 : 4;
+    const y = index < 2 ? -8 : 5;
     return `<text x="${x}" y="${y}" font-size="4.2" font-weight="700" letter-spacing="0.35" fill="#5f7d8e">${label}</text>` +
       `<text x="${x}" y="${y + 6}" font-size="5.2" font-weight="680" fill="#d9e8ee">${esc(value)}</text>`;
   }).join('');
