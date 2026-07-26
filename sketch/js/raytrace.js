@@ -565,7 +565,12 @@ function interact(ray, hit) {
       out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted });
       return out;
     }
-    case 'lens': return [{ d: lensBend(d, hit.p, s, data.f) }];
+    case 'lens': {
+      // transmission efficiency (AR-coating/absorption loss): a straight
+      // power/intensity attenuation, no deviation of the focused direction.
+      const T = Math.min(1, Math.max(0, (data.transEff ?? 100) / 100));
+      return [{ d: lensBend(d, hit.p, s, data.f), intensity: ray.intensity * T }];
+    }
     case 'refract': {
       const materialId = s.el?.id || null;
       const inside = materialId !== null && ray.medium === materialId;

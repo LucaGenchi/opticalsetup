@@ -975,12 +975,13 @@ export const registry = {
     params: [
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
+      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
     ],
     size_: el => ({ w: 18, h: el.params.dia + 6 }),
     svg(el) { return lensShape(0, el.params.dia / 2, el.params.f); },
     surfaces(el) {
       const h = el.params.dia / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'lens', data: { f: el.params.f } }];
+      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'lens', data: { f: el.params.f, transEff: el.params.transEff } }];
     },
   },
 
@@ -991,6 +992,7 @@ export const registry = {
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
       { key: 'f2', label: 'Lens 2 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 50 },
       { key: 'dia', label: 'Lens diameter', type: 'optsize', def: 25.4 },
+      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
     ],
     svg(el) {
       const p = el.params, s = Math.max(5, p.f1 + p.f2), h = (p.dia || 25.4) / 2;
@@ -998,10 +1000,13 @@ export const registry = {
         lensShape(-s / 2, h, p.f1) + lensShape(s / 2, h, p.f2);
     },
     surfaces(el) {
+      // Each lens carries the same shared coating spec, so the pair's
+      // overall throughput is transEff² — matching two real lenses with
+      // matched AR coatings, consistent with how `dia` is already shared.
       const p = el.params, s = Math.max(5, p.f1 + p.f2), h = (p.dia || 25.4) / 2;
       return [
-        { x1: -s / 2, y1: -h, x2: -s / 2, y2: h, kind: 'lens', data: { f: p.f1 } },
-        { x1: s / 2, y1: -h, x2: s / 2, y2: h, kind: 'lens', data: { f: p.f2 } },
+        { x1: -s / 2, y1: -h, x2: -s / 2, y2: h, kind: 'lens', data: { f: p.f1, transEff: p.transEff } },
+        { x1: s / 2, y1: -h, x2: s / 2, y2: h, kind: 'lens', data: { f: p.f2, transEff: p.transEff } },
       ];
     },
   },
@@ -1018,6 +1023,7 @@ export const registry = {
     params: [
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 1, max: 500, step: 1, def: 10 },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 5, max: 100, step: 1, def: 20 },
+      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
     ],
     svg(el) {
       const h = (el.params.aperture || 20) / 2, outer = h + 7;
@@ -1027,7 +1033,7 @@ export const registry = {
     },
     surfaces(el) {
       const h = (el.params.aperture || 20) / 2;
-      return [{ x1: 16, y1: -h, x2: 16, y2: h, kind: 'lens', data: { f: el.params.f } }];
+      return [{ x1: 16, y1: -h, x2: 16, y2: h, kind: 'lens', data: { f: el.params.f, transEff: el.params.transEff } }];
     },
   },
 
