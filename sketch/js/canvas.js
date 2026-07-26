@@ -17,6 +17,9 @@ import {
   FINE_GRID_PITCH, MICRO_GRID_PITCH, TABLE_HOLE_PITCH,
   gridDetailForZoom, pinchView, snapToGrid, VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
 } from './viewport.js';
+import {
+  MAX_TIME_SCALE, MIN_TIME_SCALE, pulsePeriodNs, pulsesReadAsCW,
+} from './timescale.js';
 
 let svg, viewport, gridLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
 let statusEl;
@@ -31,6 +34,9 @@ let motionTimeSeconds = 0;
 let motionLastRenderMs = 0;
 const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const pulsePlayback = { playing: true, timeNs: 0, speedNsPerSecond: 10, mode: 'schematic', lastFrameMs: null };
+// Set while at least one pulse train is being drawn as steady CW light
+// because its period sits too far from the current time scale.
+let cwFallbackActive = false;
 const voxelMarks = new Map();
 const voxelEventKeys = new Set();
 const MAX_VOXELS_PER_STAGE = 1200;
@@ -154,28 +160,48 @@ function stageWithSignalSpot(el) {
   return { ...moved, _signalHitLocal: { ...toLocal(moved, hit.x, hit.y), wl: hit.wl } };
 }
 
+// The one simulated-time axis shared by pulse packets, chopper gating, AOM
+// modulation and galvo scanning, in simulated nanoseconds. When a pulsed
+// source is on the table its playback clock IS this clock, so everything is
+// phase-locked to the same packets; with no pulses, simulated time is
+// derived from the motion clock at the same ns-per-second scale so those
+// elements still animate — and still respond to the time-scale selector.
+function simulatedTimeNs() {
+  return pulseTracks.length
+    ? pulsePlayback.timeNs
+    : motionTimeSeconds * pulsePlayback.speedNsPerSecond;
+}
+
+// Longest a full cycle may take on screen before an element counts as
+// unwatchable at the current time scale.
+const ILLUSTRATIVE_MAX_CYCLE_S = 8;
+
+// A galvo's real mechanical range (0.01–200 Hz, i.e. periods of 5 ms to 100 s)
+// only partly overlaps the 1 ns/s–1 ms/s scale window. Where it does overlap
+// the mirror runs on the shared simulated clock and stays phase-locked to
+// pulses, chopper gating and AOM modulation. Where it does not — a 1 Hz galvo
+// would need ~1000 real seconds per sweep even at 1 ms/s — it falls back to
+// the same illustrative wall-clock treatment as the piezo stage and the
+// retroreflector, so the mirror still visibly scans instead of freezing.
+function galvoAnimationSeconds(params) {
+  const hz = Math.max(0.01, params.scanFrequencyHz || 1);
+  const cyclesPerRealSecond = hz * (pulsePlayback.speedNsPerSecond / 1e9);
+  if (cyclesPerRealSecond * ILLUSTRATIVE_MAX_CYCLE_S >= 1) return simulatedTimeNs() / 1e9;
+  return motionTimeSeconds / (hz * ILLUSTRATIVE_MAX_CYCLE_S);
+}
+
 // Drives only the wheel icon's rotation — the traced beam no longer depends
 // on live time (chopped CW light is drawn as a fixed chunk pattern, the same
 // on the live canvas and in static exports; see raytrace.js's 'chop' case).
 function animatedChopper(el) {
-  if (pulseTracks.length) return { ...el, _simulationTimeNs: pulsePlayback.timeNs };
-  const frequencyHz = Math.min(1e9, Math.max(0.000001, el.params.frequencyHz || 1000));
-  const periodNs = 1e9 / frequencyHz;
-  const displayHz = Math.min(2, Math.max(0.25, frequencyHz));
-  const phaseNs = Number.isFinite(el.params.phaseNs) ? el.params.phaseNs : 0;
-  return {
-    ...el,
-    _animationTimeS: motionTimeSeconds,
-    _simulationTimeNs: phaseNs + motionTimeSeconds * displayHz * periodNs,
-  };
+  return { ...el, _animationTimeS: motionTimeSeconds, _simulationTimeNs: simulatedTimeNs() };
 }
 
 function animatedOpticalElements() {
   if (!hasGalvoMotion() && !hasStageMotion() && !hasRetroMotion()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
-      const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
-      return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
+      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
     if (el.type === 'stage') return animatedStageElement(el);
     if (el.type === 'retroreflector') return animatedRetroElement(el);
@@ -187,8 +213,7 @@ function animatedVisualElements() {
   if (!hasMotion() && !hasSignalSpotStage()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
-      const physicalHz = Math.max(0.01, el.params.scanFrequencyHz || 1);
-      return { ...el, _animationTimeS: motionTimeSeconds * Math.min(1, 4 / physicalHz) };
+      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
     if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     if (el.type === 'stage') return stageWithSignalSpot(el);
@@ -397,10 +422,18 @@ function notifyPulseState() {
 
 function renderPulseLayer() {
   if (!pulseLayer) return;
-  if (!pulseTracks.length) { pulseLayer.innerHTML = ''; return; }
+  if (!pulseTracks.length) { pulseLayer.innerHTML = ''; cwFallbackActive = false; return; }
   const z = state.view.z || 1;
   let s = '';
+  let suppressed = false;
   for (const track of pulseTracks) {
+    // Too far from the time scale in either direction and the packets stop
+    // reading as pulses — drop the overlay and let the steady traced beam
+    // stand in for CW light.
+    if (pulsesReadAsCW(pulsePeriodNs(track.pulse?.repRateMHz), pulsePlayback.speedNsPerSecond)) {
+      suppressed = true;
+      continue;
+    }
     for (const marker of pulseMarkers(track, pulsePlayback.timeNs, { mode: pulsePlayback.mode })) {
       const physicalMin = 9 / z;
       const width = pulsePlayback.mode === 'physical' ? Math.max(marker.widthMm, physicalMin) : marker.widthMm;
@@ -419,6 +452,7 @@ function renderPulseLayer() {
     }
   }
   pulseLayer.innerHTML = s;
+  cwFallbackActive = suppressed;
 }
 
 function animatePulses(nowMs) {
@@ -447,7 +481,7 @@ function syncPulseAnimation() {
 }
 
 export function getPulsePlayback() {
-  return { ...pulsePlayback, hasPulses: pulseTracks.length > 0 };
+  return { ...pulsePlayback, hasPulses: pulseTracks.length > 0, cwFallback: cwFallbackActive };
 }
 
 export function setPulsePlaying(playing) {
@@ -458,8 +492,11 @@ export function setPulsePlaying(playing) {
 }
 
 export function setPulseSpeed(speedNsPerSecond) {
-  if (Number.isFinite(speedNsPerSecond)) pulsePlayback.speedNsPerSecond = Math.min(1000, Math.max(0.1, speedNsPerSecond));
+  if (Number.isFinite(speedNsPerSecond)) {
+    pulsePlayback.speedNsPerSecond = Math.min(MAX_TIME_SCALE, Math.max(MIN_TIME_SCALE, speedNsPerSecond));
+  }
   pulsePlayback.lastFrameMs = null;
+  renderPulseLayer();
   notifyPulseState();
 }
 

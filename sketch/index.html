@@ -200,9 +200,14 @@
           <option value="1">1 ns/s</option>
           <option value="10" selected>10 ns/s</option>
           <option value="100">100 ns/s</option>
+          <option value="1000">1 µs/s</option>
+          <option value="10000">10 µs/s</option>
+          <option value="100000">100 µs/s</option>
+          <option value="1000000">1 ms/s</option>
         </select>
         <span id="pulseScaleNote" class="pulse-scale-note">packets schematic · timing physical</span>
       </div>
+      <div id="timeScaleToast" class="time-scale-toast" role="status" aria-live="polite" hidden></div>
       <div id="status"></div>
       <div id="scaleBar" class="scale-bar" aria-hidden="true">
         <span id="scaleBarLabel" class="scale-bar-label">50 mm</span>

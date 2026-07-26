@@ -338,6 +338,26 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .pulse-controls #pulseDisplay { width: 132px; }
 .pulse-controls #pulseSpeed { width: 78px; }
 .pulse-scale-note { padding: 0 5px 0 2px; color: var(--muted); font-size: 8.5px; white-space: nowrap; }
+.time-scale-toast {
+  position: absolute;
+  left: 50%;
+  top: 62px;
+  transform: translateX(-50%) translateY(-6px);
+  z-index: 12;
+  max-width: min(420px, calc(100% - 32px));
+  padding: 8px 13px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.time-scale-toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 #status {
   position: absolute;
   left: 10px;

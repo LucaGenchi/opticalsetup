@@ -16,6 +16,7 @@ import { download, esc } from './util.js';
 import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
+import { recommendedTimeScale, TIME_SCALES } from './timescale.js';
 import { initTheme } from './theme.js';
 
 const $ = id => document.getElementById(id);
@@ -582,9 +583,44 @@ function syncPulseControls(detail = getPulsePlayback()) {
   play.classList.toggle('active', detail.playing && detail.hasPulses);
   $('pulseDisplay').value = detail.mode;
   $('pulseSpeed').value = String(detail.speedNsPerSecond);
-  $('pulseScaleNote').textContent = detail.mode === 'physical'
-    ? 'spacing physical · packets enlarged'
-    : 'packets schematic · timing physical';
+  $('pulseScaleNote').textContent = detail.cwFallback
+    ? 'shown as CW · pulse rate far from time scale'
+    : detail.mode === 'physical'
+      ? 'spacing physical · packets enlarged'
+      : 'packets schematic · timing physical';
+}
+
+// Re-pick the canvas time scale when the scene's slowest animated element
+// changes tier, so a kHz source or a piezo stage is watchable without the
+// user hunting through the dropdown. Only ever fires when the scale would
+// actually change, and never overrides a scale the user set by hand for the
+// same scene shape.
+let lastAutoScale = null;
+let userChoseScale = false;
+function autoAdjustTimeScale() {
+  const recommended = recommendedTimeScale(state.elements);
+  if (!recommended || recommended.scaleNsPerSecond === lastAutoScale) return;
+  if (userChoseScale) return;
+  const previous = lastAutoScale;
+  lastAutoScale = recommended.scaleNsPerSecond;
+  if (previous === null && recommended.scaleNsPerSecond === 10) return; // already the default
+  setPulseSpeed(recommended.scaleNsPerSecond);
+  const label = (TIME_SCALES.find(s => s.ns === recommended.scaleNsPerSecond) || {}).label || '';
+  showTimeScaleToast(`Time scale automatically adjusted to ${label} to show the animation${recommended.driver ? ` of ${recommended.driver}` : ''}.`);
+}
+
+let timeScaleToastTimer = null;
+function showTimeScaleToast(message) {
+  const toast = $('timeScaleToast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.hidden = false;
+  toast.classList.add('is-visible');
+  clearTimeout(timeScaleToastTimer);
+  timeScaleToastTimer = setTimeout(() => {
+    toast.classList.remove('is-visible');
+    timeScaleToastTimer = setTimeout(() => { toast.hidden = true; }, 300);
+  }, 4200);
 }
 
 function bindToolbar() {
@@ -710,7 +746,10 @@ function bindToolbar() {
   $('btnPulsePlay').addEventListener('click', () => setPulsePlaying(!getPulsePlayback().playing));
   $('btnPulseReset').addEventListener('click', resetPulseTime);
   $('pulseDisplay').addEventListener('change', e => setPulseDisplayMode(e.target.value));
-  $('pulseSpeed').addEventListener('change', e => setPulseSpeed(parseFloat(e.target.value)));
+  $('pulseSpeed').addEventListener('change', e => {
+    userChoseScale = true; // an explicit pick wins until the scene changes tier again
+    setPulseSpeed(parseFloat(e.target.value));
+  });
 
   const mobileMenu = $('mobileMenu');
   $('btnMobileMenu').addEventListener('click', () => mobileMenu.showModal());
@@ -818,7 +857,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindKeys();
   setSelectionCallback(renderSelection);
   setMeasurementsCallback(refreshMeasurements);
-  onChange(() => { renderAll(); syncToolbar(); refreshMeasurements(); });
+  onChange(() => { renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); });
 
   if (isTypeDemo) {
     // Wiki embed: a small fixed scene — a light source plus the showcased
