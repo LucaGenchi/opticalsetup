@@ -675,6 +675,18 @@ const P = {
   color: { key: 'color', label: 'Beam color', type: 'color', def: '#e02020', show: p => !p.autoColor },
 };
 
+// Shared by every mirror in the Mirrors category: a reflectivity percentage
+// and, once it's set below 100%, an opt-in toggle for actually drawing the
+// leaked transmitted beam (default off — the leak is still fully traced for
+// correct detector/power-budget readings either way, see raytrace.js's
+// `hidden` ray flag; this only controls whether it's rendered).
+function reflectivityParams() {
+  return [
+    { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+    { key: 'showTransmitted', label: 'Display transmitted beam', type: 'checkbox', def: false, show: p => (p.refl ?? 100) < 100 },
+  ];
+}
+
 // Ideal quasistatic galvo command. The mechanical mirror angle is what the
 // user configures; a reflected beam changes direction by twice that amount.
 // Animation deliberately omits inertia/resonance so the UI never implies a
@@ -705,6 +717,7 @@ export const registry = {
     size_: el => ({ w: 104, h: laserH(el) + 4 }),
     params: [
       P.wavelength,
+      { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.01 },
       { key: 'beamMode', label: 'Beam style', type: 'select', def: 'line', options: [['line', 'Simple line'], ['beam', 'Beam with size']] },
       { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: 6, show: p => p.beamMode === 'beam' },
       { key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono', options: [['mono', 'Monochromatic'], ['band', 'Broadband'], ['sc', 'Supercontinuum (white)']] },
@@ -787,7 +800,7 @@ export const registry = {
     label: 'Mirror', category: 'Mirrors', paletteOrder: 0, size: { w: 14, h: 56 },
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-      { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+      ...reflectivityParams(),
     ],
     size_: el => ({ w: 14, h: el.params.length + 6 }),
     svg(el) {
@@ -797,7 +810,7 @@ export const registry = {
     },
     surfaces(el) {
       const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'mirror', data: { refl: el.params.refl } }];
+      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'mirror', data: { refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
     },
   },
 
@@ -816,12 +829,14 @@ export const registry = {
       { key: 'scanAmplitude', label: 'Peak mechanical sweep (°)', type: 'number', min: 0, max: 10, step: 0.5, def: 1, show: p => p.scanMode !== 'static' },
       { key: 'scanFrequencyHz', label: 'Scan frequency (Hz)', type: 'number', min: 0.01, max: 200, step: 0.1, def: 1, show: p => p.scanMode !== 'static' },
       { key: 'scanPhaseDeg', label: 'Scan phase (°)', type: 'number', min: -360, max: 360, step: 5, def: 0, show: p => p.scanMode !== 'static' },
+      ...reflectivityParams(),
     ],
     svg(el) {
       const L = el.params.length / 2;
       const command = galvoAngleAt(el.params, el._animationTimeS || 0);
+      const partial = (el.params.refl ?? 100) < 100;
       return `<circle r="4.5" fill="#777" stroke="#444" stroke-width="1.2"/>` +
-        `<g transform="rotate(${command})"><line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#444" stroke-width="3"/></g>` +
+        `<g transform="rotate(${command})"><line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#444" stroke-width="3" ${partial ? 'stroke-dasharray="5 2"' : ''}/></g>` +
         `<path d="M -9,${-L - 3} A ${L + 5} ${L + 5} 0 0 1 9,${-L - 3}" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/>` +
         `<path d="M -9,${L + 3} A ${L + 5} ${L + 5} 0 0 0 9,${L + 3}" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/>` +
         (el.params.scanMode !== 'static' ? `<circle cx="10" cy="${-L - 5}" r="2.5" fill="#8b5cf6"/>` : '');
@@ -829,7 +844,10 @@ export const registry = {
     surfaces(el) {
       const L = el.params.length / 2;
       const a = galvoAngleAt(el.params, el._animationTimeS || 0) * Math.PI / 180;
-      return [{ x1: L * Math.sin(a), y1: -L * Math.cos(a), x2: -L * Math.sin(a), y2: L * Math.cos(a), kind: 'mirror' }];
+      return [{
+        x1: L * Math.sin(a), y1: -L * Math.cos(a), x2: -L * Math.sin(a), y2: L * Math.cos(a), kind: 'mirror',
+        data: { refl: el.params.refl, showTransmitted: el.params.showTransmitted },
+      }];
     },
   },
 
@@ -843,7 +861,7 @@ export const registry = {
       { key: 'freqHz', label: 'Frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.2, show: p => p.moveMode === 'linear' },
       { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-      { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+      ...reflectivityParams(),
     ],
     // Apex at the local origin (the element's anchor/pivot point) pointing
     // toward +x, with two mirror arms opening toward -x at exactly 45° each
@@ -860,9 +878,10 @@ export const registry = {
     },
     surfaces(el) {
       const L = el.params.length / 2;
+      const data = { refl: el.params.refl, showTransmitted: el.params.showTransmitted };
       return [
-        { x1: 0, y1: 0, x2: -L, y2: L, kind: 'mirror', data: { refl: el.params.refl } },
-        { x1: 0, y1: 0, x2: -L, y2: -L, kind: 'mirror', data: { refl: el.params.refl } },
+        { x1: 0, y1: 0, x2: -L, y2: L, kind: 'mirror', data },
+        { x1: 0, y1: 0, x2: -L, y2: -L, kind: 'mirror', data },
       ];
     },
   },
@@ -872,16 +891,18 @@ export const registry = {
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: -100, negative: true },
+      ...reflectivityParams(),
     ],
     size_: el => ({ w: 18, h: el.params.length + 6 }),
     svg(el) {
       const L = el.params.length / 2;
+      const partial = (el.params.refl ?? 100) < 100;
       // bulges toward the incoming beam (from -x)
-      return `<path d="M 0,${-L} Q -7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="M 0,${-L} Q -7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5" ${partial ? 'stroke-dasharray="6 2.5"' : ''}/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
     },
     surfaces(el) {
       const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'cmirror', data: { f: -Math.abs(el.params.f) } }];
+      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'cmirror', data: { f: -Math.abs(el.params.f), refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
     },
   },
 
@@ -890,16 +911,18 @@ export const registry = {
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 100 },
+      ...reflectivityParams(),
     ],
     size_: el => ({ w: 18, h: el.params.length + 6 }),
     svg(el) {
       const L = el.params.length / 2;
+      const partial = (el.params.refl ?? 100) < 100;
       // hollow toward the incoming beam (from -x): focuses it
-      return `<path d="M 0,${-L} Q 7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="M 0,${-L} Q 7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5" ${partial ? 'stroke-dasharray="6 2.5"' : ''}/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
     },
     surfaces(el) {
       const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'cmirror', data: { f: Math.abs(el.params.f) } }];
+      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'cmirror', data: { f: Math.abs(el.params.f), refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
     },
   },
 
@@ -908,6 +931,7 @@ export const registry = {
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 80 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 50 },
+      ...reflectivityParams(),
     ],
     size_: el => {
       const L = el.params.length / 2;
@@ -918,6 +942,7 @@ export const registry = {
       // true parabola x = -y²/(4f): vertex at the origin, opening toward the
       // incoming beam, focus at (-f, 0). Shorter f -> visibly deeper curve.
       const L = el.params.length / 2, f = Math.max(5, el.params.f);
+      const partial = (el.params.refl ?? 100) < 100;
       const N = 26;
       let dp = '';
       for (let i = 0; i <= N; i++) {
@@ -930,7 +955,7 @@ export const registry = {
         const x = -(y * y) / (4 * f);
         ticks += `<line x1="${(x + 1.5).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + 7).toFixed(1)}" y2="${(y + 5).toFixed(1)}" stroke="#888" stroke-width="1"/>`;
       }
-      return `<path d="${dp}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + ticks;
+      return `<path d="${dp}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round" ${partial ? 'stroke-dasharray="6 2.5"' : ''}/>` + ticks;
     },
     surfaces(el) {
       // real geometry: the parabola as a chain of small plane mirrors, so
@@ -939,11 +964,12 @@ export const registry = {
       // more segments for deeper curves so marginal rays still hit the focus
       const N = Math.min(64, Math.max(16, Math.round(L / 2 + (L * L) / (6 * f))));
       const segs = [];
+      const data = { refl: el.params.refl, showTransmitted: el.params.showTransmitted };
       let py = -L, px = -(py * py) / (4 * f);
       for (let i = 1; i <= N; i++) {
         const y = -L + (2 * L * i) / N;
         const x = -(y * y) / (4 * f);
-        segs.push({ x1: px, y1: py, x2: x, y2: y, kind: 'mirror' });
+        segs.push({ x1: px, y1: py, x2: x, y2: y, kind: 'mirror', data });
         px = x; py = y;
       }
       return segs;

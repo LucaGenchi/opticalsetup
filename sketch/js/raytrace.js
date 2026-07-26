@@ -543,18 +543,27 @@ function interact(ray, hit) {
     case 'attenuate': return [{ d, intensity: ray.intensity * Math.min(1, Math.max(0, data.transmission ?? 1)) }];
     case 'mirror': {
       // partial reflectivity (cavity mirrors / output couplers): reflect R,
-      // transmit 1-R. The transmitted ray leaves the cavity, so multi-bounce
-      // growth stays linear in depth, not exponential.
+      // transmit 1-R. The transmitted ray is always traced — so a detector
+      // or sample placed behind the mirror reads the correct leaked power
+      // for a transmission power budget — but only drawn on the canvas
+      // when showTransmitted is on (see the `hidden` flag consumed by
+      // traceScene(), which strips hidden rays before assembling drawables
+      // without touching detector-hit recording).
       const R = (data.refl ?? 100) / 100;
       if (R >= 0.995) return [{ d: reflect(d, n) }];
       const out = [];
       if (R > 0.005) out.push({ d: reflect(d, n), intensity: ray.intensity * R, tag: 'R' });
-      out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T' });
+      out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted });
       return out;
     }
     case 'cmirror': {
-      const r = reflect(d, n);
-      return [{ d: lensBend(r, hit.p, s, data.f) }];
+      const R = (data.refl ?? 100) / 100;
+      const focused = lensBend(reflect(d, n), hit.p, s, data.f);
+      if (R >= 0.995) return [{ d: focused }];
+      const out = [];
+      if (R > 0.005) out.push({ d: focused, intensity: ray.intensity * R, tag: 'R' });
+      out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted });
+      return out;
     }
     case 'lens': return [{ d: lensBend(d, hit.p, s, data.f) }];
     case 'refract': {
@@ -1069,6 +1078,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
             : undefined,
           sample: r.sample, writeReference: r.writeReference,
+          hidden: r.hidden || Boolean(c.hidden),
           pts: [{ x: ox, y: oy }],
           opl: r.opl,
           opls: [r.opl],
@@ -1279,7 +1289,12 @@ export function traceScene(elements, beams = []) {
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
       };
     });
-    const paths = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
+    const allPaths = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
+    // Rays tagged hidden (a partial mirror's transmitted leak with its
+    // "Display transmitted beam" toggle off) are always fully traced above,
+    // for correct detector/power-budget physics — but stay out of every
+    // visual surface: drawables, pulse animation, and the beam probe.
+    const paths = allPaths.filter(r => !r.hidden);
     lastPaths.push(...paths);
     assembleDrawables(paths, {
       K, isBeam: p.beamMode === 'beam',
@@ -1298,7 +1313,7 @@ export function traceScene(elements, beams = []) {
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);
       if (!rays0) continue;
-      const paths = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
+      const paths = traceRays(rays0, surfaces, couplings, writeHits, signalHits).filter(r => !r.hidden);
       lastPaths.push(...paths);
       assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
       collectPulseTracks(paths, rays0.length, null, pulseTracks);
