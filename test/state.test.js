@@ -83,8 +83,12 @@ test('sensor display links survive save loading while malformed ids are bounded'
   const detector = createElement('detector', 100, 0);
   const display = createElement('display', 200, 50);
   display.params.sensorId = detector.id;
+  delete display.params.screenOn;
+  delete display.params.displayView;
   let scene = parseSketch(file([detector, display]), registry);
   assert.equal(scene.elements[1].params.sensorId, detector.id);
+  assert.equal(scene.elements[1].params.screenOn, true);
+  assert.equal(scene.elements[1].params.displayView, 'main');
 
   display.params.sensorId = 'x'.repeat(500);
   scene = parseSketch(file([detector, display]), registry);

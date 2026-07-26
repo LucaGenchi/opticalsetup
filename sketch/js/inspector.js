@@ -167,7 +167,8 @@ function measurementHTML(el) {
       <div class="measurement-foot">Aim a traced beam at ${viaDisplay ? "the linked sensor's" : "the component's"} front face to see a qualitative reading.</div>
     </div>`;
   }
-  const signal = rd.signal >= 10 ? '>999%' : `${Math.round(rd.signal * 100)}%`;
+  const signal = rd.signal >= 1000 ? '>999 a.u.'
+    : `${rd.signal >= 100 ? Math.round(rd.signal) : rd.signal >= 10 ? rd.signal.toFixed(1) : rd.signal.toFixed(2)} a.u.`;
   const spectral = rd.bandMax - rd.bandMin > 2
     ? `${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)} nm`
     : `${Math.round(rd.wavelength)} nm`;
@@ -192,15 +193,17 @@ function measurementHTML(el) {
     const max = Math.max(...rd.profile, 1e-9);
     const bw = 240 / rd.profile.length;
     const bars = rd.profile.map((value, i) => {
+      if (!Number.isFinite(value) || value <= 1e-12) return '';
       const height = 28 * value / max;
-      return `<rect x="${(i * bw + 0.5).toFixed(2)}" y="${(32 - height).toFixed(2)}" width="${Math.max(0.5, bw - 1).toFixed(2)}" height="${height.toFixed(2)}" rx="0.7"/>`;
+      const fill = rd.profileColors?.[i] || rd.color;
+      return `<rect x="${(i * bw + 0.5).toFixed(2)}" y="${(32 - height).toFixed(2)}" width="${Math.max(0.5, bw - 1).toFixed(2)}" height="${height.toFixed(2)}" rx="0.7" fill="${fill}"/>`;
     }).join('');
-    cameraProfile = `<div class="camera-profile"><svg viewBox="0 0 240 36" preserveAspectRatio="none" aria-label="One-dimensional sensor profile"><g fill="${rd.color}">${bars}</g><line x1="0" y1="32" x2="240" y2="32" stroke="#b8c6d8"/></svg><span>1D sensor profile</span></div>`;
+    cameraProfile = `<div class="camera-profile"><svg viewBox="0 0 240 36" preserveAspectRatio="none" aria-label="One-dimensional sensor profile"><g>${bars}</g><line x1="0" y1="32" x2="240" y2="32" stroke="#b8c6d8"/></svg><span>1D sensor profile · color shows qualitative wavelength mix per bin</span></div>`;
   }
   return `<div class="measurement-card" data-measurements>
     <div class="measurement-status"><span class="signal-light" style="background:${rd.color}"></span>${viaDisplay ? `Displaying ${esc(sensorName(source))}` : 'Receiving light'}</div>
     <dl class="measurement-grid">
-      <dt>Relative signal</dt><dd>${signal}</dd>
+      <dt>Relative ray weight</dt><dd>${signal}</dd>
       <dt>Spectrum</dt><dd>${spectral}</dd>
       <dt>Polarization</dt><dd>${esc(rd.polarization)}</dd>
       <dt>Spot span</dt><dd>${spot}</dd>

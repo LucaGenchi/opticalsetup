@@ -101,6 +101,43 @@ export function resolveDisplaySensor(display, elements = []) {
     && registry[candidate.type]?.readoutKind) || null;
 }
 
+export function displayDensity(displayScale = 1) {
+  const scale = Math.min(3, Math.max(0.5, Number.isFinite(displayScale) ? displayScale : 1));
+  return scale < 0.85 ? 'compact' : scale < 1.45 ? 'standard' : 'expanded';
+}
+
+function availableDisplaySensors(display, elements = []) {
+  return Array.isArray(elements) ? elements.filter(candidate => candidate?.id !== display?.id
+    && registry[candidate?.type]?.readoutKind) : [];
+}
+
+export function displayActionUpdate(display, action, elements = []) {
+  if (!display || display.type !== 'display') return null;
+  if (action === 'power') {
+    const screenOn = display.params.screenOn === false;
+    return { updates: { screenOn }, message: screenOn ? 'Sensor display on' : 'Sensor display standby' };
+  }
+  if (action === 'view') {
+    const views = ['main', 'spectrum', 'detail'];
+    const current = views.includes(display.params.displayView) ? display.params.displayView : 'main';
+    const displayView = views[(views.indexOf(current) + 1) % views.length];
+    return { updates: { displayView }, message: `Display view: ${displayView}` };
+  }
+  if (action === 'input') {
+    const sensors = availableDisplaySensors(display, elements);
+    if (!sensors.length) return { updates: { sensorId: '' }, message: 'No sensors available' };
+    const ids = ['', ...sensors.map(sensor => sensor.id)];
+    const current = ids.includes(display.params.sensorId) ? display.params.sensorId : '';
+    const sensorId = ids[(ids.indexOf(current) + 1) % ids.length];
+    const sensor = sensors.find(candidate => candidate.id === sensorId);
+    return {
+      updates: { sensorId },
+      message: sensor ? `Display input: ${displaySensorName(sensor)}` : 'Display input disconnected',
+    };
+  }
+  return null;
+}
+
 function displaySensorName(sensor) {
   const name = sensor?.label || registry[sensor?.type]?.label || 'Sensor';
   return String(name).trim().slice(0, 18) || 'Sensor';
@@ -112,59 +149,194 @@ function displaySpectrum(rd) {
     : `${Math.round(rd.wavelength)} nm`;
 }
 
-function displayProfile(rd) {
+function shortSpectrum(rd) {
+  return rd.bandMax - rd.bandMin > 2
+    ? `λ${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)}`
+    : `λ${Math.round(rd.wavelength)} nm`;
+}
+
+function compactNumber(value) {
+  if (!Number.isFinite(value)) return '—';
+  if (value >= 1000) return '>999';
+  if (value >= 100) return Math.round(value).toString();
+  if (value >= 10) return value.toFixed(1);
+  return value.toFixed(2);
+}
+
+function shortPolarization(polarization = '') {
+  return String(polarization)
+    .replace(/^Linear /, 'LIN ')
+    .replace(/^Circular$/, 'CIRC')
+    .replace(/^Unpolarized$/, 'UNPOL')
+    .replace(/^Mixed linear$/, 'MIX LIN')
+    .slice(0, 12);
+}
+
+function displayViewName(view, rd) {
+  if (view === 'spectrum') return 'λ SAMPLES';
+  if (view === 'detail') return 'DETAIL';
+  return rd?.readoutKind === 'camera' ? '1D PROFILE' : rd?.readoutKind === 'pmt' ? 'PMT OUTPUT' : 'REL SIGNAL';
+}
+
+function displayProfile(rd, { x = -35, width = 70, baseline = 5, height = 15 } = {}) {
   if (!Array.isArray(rd.profile) || !rd.profile.length) return '';
-  const values = rd.profile.filter(Number.isFinite);
-  if (!values.length) return '';
+  const values = rd.profile.map(value => Number.isFinite(value) ? Math.max(0, value) : 0);
   const max = Math.max(...values, 1e-9);
-  const width = 66 / values.length;
+  const binWidth = width / values.length;
   return values.map((value, i) => {
-    const height = Math.max(0.7, 12 * Math.max(0, value) / max);
-    return `<rect x="${(-33 + i * width).toFixed(2)}" y="${(7 - height).toFixed(2)}" ` +
-      `width="${Math.max(0.35, width - 0.45).toFixed(2)}" height="${height.toFixed(2)}" rx="0.35"/>`;
+    if (value <= 1e-12) return '';
+    const barHeight = Math.max(0.7, height * value / max);
+    const color = rd.profileColors?.[i] || rd.color || '#d8e7ee';
+    return `<rect data-profile-bin="${i}" x="${(x + i * binWidth).toFixed(2)}" y="${(baseline - barHeight).toFixed(2)}" ` +
+      `width="${Math.max(0.35, binWidth - 0.45).toFixed(2)}" height="${barHeight.toFixed(2)}" rx="0.35" fill="${color}"/>`;
   }).join('');
+}
+
+function displaySpectrumPlot(rd, { baseline = 5, height = 15 } = {}) {
+  const samples = Array.isArray(rd.spectrum) && rd.spectrum.length
+    ? rd.spectrum : [{ wavelength: rd.wavelength, power: rd.signal, color: rd.color }];
+  const lo = Number.isFinite(rd.bandMin) ? rd.bandMin : rd.wavelength;
+  const hi = Number.isFinite(rd.bandMax) ? rd.bandMax : rd.wavelength;
+  const span = Math.max(1, hi - lo);
+  const max = Math.max(...samples.map(sample => sample.power || 0), 1e-9);
+  const marks = samples.map((sample, index) => {
+    const x = hi - lo < 1e-9 ? 0 : -34 + 68 * (sample.wavelength - lo) / span;
+    const y = baseline - Math.max(1.2, height * Math.max(0, sample.power || 0) / max);
+    return `<line data-spectrum-sample="${index}" x1="${x.toFixed(2)}" y1="${baseline}" x2="${x.toFixed(2)}" y2="${y.toFixed(2)}" ` +
+      `stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="${samples.length > 12 ? 1.4 : 2.2}" stroke-linecap="round"/>`;
+  }).join('');
+  return `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>${marks}`;
+}
+
+function displayHeader(sensorName, mode, pulse) {
+  const headerName = sensorName.toUpperCase();
+  const nameSize = Math.max(3.7, Math.min(5.7, 40 / Math.max(1, headerName.length * 0.62)));
+  return `<text x="-36" y="-20" font-size="${nameSize.toFixed(2)}" font-weight="760" letter-spacing="0.35" fill="#9eb5c3">${esc(headerName)}</text>` +
+    `<text x="36" y="-20" text-anchor="end" font-size="4.8" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(mode)}${pulse ? ' · PULSE' : ''}</text>`;
+}
+
+function displayDetail(rd) {
+  const entries = rd.readoutKind === 'camera'
+    ? [['SIGNAL', `Σw ${compactNumber(rd.signal)}`], ['CENTROID', rd.centroid == null ? '—' : `${rd.centroid.toFixed(2)} mm`],
+      ['BINS', String(rd.profile?.length || 0)], ['λ SPAN', displaySpectrum(rd)]]
+    : rd.readoutKind === 'pmt'
+      ? [['INPUT', `Σw ${compactNumber(rd.signal)}`], ['OUTPUT', `${compactNumber(rd.outputSignal)} a.u.`],
+        ['STATE', rd.saturated ? 'SATURATED' : 'LINEAR'], ['λ SPAN', displaySpectrum(rd)]]
+      : [['SIGNAL', `Σw ${compactNumber(rd.signal)}`], ['SPOT', rd.samples > 1 ? `${rd.spotSpan.toFixed(1)} mm` : 'POINT'],
+        ['POL', shortPolarization(rd.polarization)], ['λ SPAN', displaySpectrum(rd)]];
+  return entries.map(([label, value], index) => {
+    const x = index % 2 ? 4 : -35;
+    const y = index < 2 ? -9 : 4;
+    return `<text x="${x}" y="${y}" font-size="4.2" font-weight="700" letter-spacing="0.35" fill="#5f7d8e">${label}</text>` +
+      `<text x="${x}" y="${y + 6}" font-size="5.2" font-weight="680" fill="#d9e8ee">${esc(value)}</text>`;
+  }).join('');
+}
+
+function compactDisplayReading(sensorName, rd, view) {
+  const header = `<text x="-35" y="-17" font-size="6" font-weight="760" letter-spacing="0.4" fill="#8fa9b8">${esc(sensorName.toUpperCase().slice(0, 11))}</text>`;
+  if (view === 'spectrum') {
+    const spectral = rd.bandMax - rd.bandMin > 2
+      ? `${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)}`
+      : `${Math.round(rd.wavelength)}`;
+    return header + `<text x="0" y="6" text-anchor="middle" font-size="${spectral.length > 6 ? 11 : 15}" font-weight="780" fill="${rd.color}">${spectral}</text>` +
+      `<text x="0" y="13" text-anchor="middle" font-size="5" font-weight="700" fill="#7792a2">nm · DETECTED λ</text>`;
+  }
+  if (view === 'detail') {
+    return header + `<text x="0" y="4" text-anchor="middle" font-size="8" font-weight="750" fill="#d9e8ee">${esc(shortPolarization(rd.polarization))}</text>` +
+      `<text x="0" y="13" text-anchor="middle" font-size="5" fill="#7792a2">${esc(shortSpectrum(rd))}</text>`;
+  }
+  if (rd.readoutKind === 'camera' && rd.profile) {
+    return header + displayProfile(rd, { x: -35, width: 70, baseline: 12, height: 20 }) +
+      `<line x1="-35" y1="12.5" x2="35" y2="12.5" stroke="#294453" stroke-width="0.8"/>`;
+  }
+  const value = rd.readoutKind === 'pmt' ? rd.outputSignal : rd.signal;
+  const unit = rd.readoutKind === 'pmt' ? 'a.u.' : 'Σw';
+  return header + `<circle cx="-29" cy="2" r="2.3" fill="${rd.color}"/>` +
+    `<text x="30" y="7" text-anchor="end" font-size="15" font-weight="780" fill="#ecf7fa">${compactNumber(value)}</text>` +
+    `<text x="34" y="13" text-anchor="end" font-size="5" font-weight="700" fill="#7792a2">${unit}</text>`;
+}
+
+function standardDisplayReading(sensorName, rd, view, density) {
+  const header = displayHeader(sensorName, displayViewName(view, rd), rd.pulse);
+  if (view === 'detail') return header + displayDetail(rd);
+  if (view === 'spectrum') {
+    return header + displaySpectrumPlot(rd, { baseline: density === 'expanded' ? 4 : 6, height: 16 }) +
+      `<text x="-35" y="14" font-size="5.2" fill="#8fa7b5">${esc(shortSpectrum(rd))}</text>` +
+      `<text x="35" y="14" text-anchor="end" font-size="5.2" font-weight="700" fill="#d9e8ee">Σw ${compactNumber(rd.signal)}</text>`;
+  }
+  if (rd.readoutKind === 'camera' && rd.profile) {
+    const expanded = density === 'expanded';
+    const baseline = expanded ? 1 : 5;
+    return header + displayProfile(rd, { x: -35, width: 70, baseline, height: expanded ? 14 : 16 }) +
+      `<line x1="-35" y1="${baseline + 0.5}" x2="35" y2="${baseline + 0.5}" stroke="#294453" stroke-width="0.8"/>` +
+      (expanded
+        ? `<text x="-35" y="7" font-size="4" fill="#557181">−½</text><text x="0" y="7" text-anchor="middle" font-size="4" fill="#557181">0</text><text x="35" y="7" text-anchor="end" font-size="4" fill="#557181">+½ sensor</text>`
+        : '') +
+      `<text x="-35" y="14" font-size="5.2" fill="#8fa7b5">${esc(shortSpectrum(rd))}</text>` +
+      `<text x="35" y="14" text-anchor="end" font-size="5.2" font-weight="700" fill="#d9e8ee">Σw ${compactNumber(rd.signal)}</text>`;
+  }
+  const value = rd.readoutKind === 'pmt' ? rd.outputSignal : rd.signal;
+  const unit = rd.readoutKind === 'pmt' ? 'a.u.' : 'Σw';
+  const stateText = rd.saturated ? 'SATURATED' : shortPolarization(rd.polarization);
+  return header + `<circle cx="-31" cy="-2" r="2.3" fill="${rd.color}"/>` +
+    `<text x="35" y="6" text-anchor="end" font-size="14" font-weight="780" fill="#ecf7fa">${compactNumber(value)}</text>` +
+    `<text x="35" y="-6" text-anchor="end" font-size="4.7" font-weight="700" fill="#7892a1">${unit}</text>` +
+    `<text x="-35" y="14" font-size="5.2" fill="#8fa7b5">${esc(shortSpectrum(rd))}</text>` +
+    `<text x="35" y="14" text-anchor="end" font-size="5.2" font-weight="700" fill="${rd.saturated ? '#fb7185' : '#6ee7b7'}">${esc(stateText)}</text>`;
+}
+
+function displayControls(screenOn, density, hasReading) {
+  const compact = density === 'compact';
+  const labelSize = compact ? 4.1 : 4.5;
+  return `<g class="display-control" data-display-action="power" role="button" aria-label="Toggle display power">` +
+    `<title>Power</title><circle class="display-control-face" cx="-40" cy="27" r="4.4" fill="#14232c" stroke="${screenOn ? '#6ee7b7' : '#60727e'}" stroke-width="1.1"/>` +
+    `<path d="M -40,23.8 L -40,27.1 M -42.2,25.2 A 3,3 0 1 0 -37.8,25.2" fill="none" stroke="${screenOn ? '#6ee7b7' : '#80909a'}" stroke-width="0.9" stroke-linecap="round"/></g>` +
+    `<g class="display-control" data-display-action="input" role="button" aria-label="Cycle sensor input">` +
+    `<title>Cycle sensor input</title><rect class="display-control-face" x="-30" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/>` +
+    `<text x="-18.5" y="28.6" text-anchor="middle" font-size="${labelSize}" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">${compact ? 'IN' : 'INPUT'}</text></g>` +
+    `<g class="display-control" data-display-action="view" role="button" aria-label="Cycle display view">` +
+    `<title>Cycle display view</title><rect class="display-control-face" x="-3.5" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/>` +
+    `<text x="8" y="28.6" text-anchor="middle" font-size="${labelSize}" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">${compact ? 'V' : 'VIEW'}</text></g>` +
+    `<circle cx="41" cy="27" r="2.3" fill="${screenOn && hasReading ? '#34d399' : '#596b76'}"/>` +
+    `<text x="33" y="29" text-anchor="end" font-size="3.6" font-weight="700" letter-spacing="0.35" fill="#708692">QUAL</text>`;
 }
 
 function displayScreenSVG(el, elements = []) {
   const scale = Math.min(3, Math.max(0.5, el.params.displayScale || 1));
+  const density = displayDensity(scale);
+  const screenOn = el.params.screenOn !== false;
+  const view = ['main', 'spectrum', 'detail'].includes(el.params.displayView) ? el.params.displayView : 'main';
   const sensor = resolveDisplaySensor(el, elements);
   const hasConfiguredLink = Boolean(el.params.sensorId);
   const rd = sensor ? detectorReading(sensor.id) : null;
   const sensorName = sensor ? displaySensorName(sensor) : '';
   let screen;
 
-  if (!sensor) {
-    screen = `<text x="0" y="-3" text-anchor="middle" font-size="8.5" font-weight="750" letter-spacing="0.8" fill="${hasConfiguredLink ? '#f59e0b' : '#94a3b8'}">${hasConfiguredLink ? 'LINK LOST' : 'UNPLUGGED'}</text>` +
-      `<text x="0" y="10" text-anchor="middle" font-size="6.5" fill="#64748b">${hasConfiguredLink ? 'Select another sensor' : 'Choose sensor input'}</text>`;
+  if (!screenOn) {
+    screen = `<text x="0" y="-1" text-anchor="middle" font-size="9" font-weight="760" letter-spacing="1" fill="#415661">STANDBY</text>` +
+      `<text x="0" y="10" text-anchor="middle" font-size="5" fill="#31454f">${sensor ? esc(sensorName) : 'input retained'}</text>`;
+  } else if (!sensor) {
+    screen = `<text x="0" y="-2" text-anchor="middle" font-size="9" font-weight="760" letter-spacing="0.8" fill="${hasConfiguredLink ? '#f59e0b' : '#94a3b8'}">${hasConfiguredLink ? 'LINK LOST' : 'SELECT INPUT'}</text>` +
+      `<text x="0" y="10" text-anchor="middle" font-size="5.4" fill="#607887">${hasConfiguredLink ? 'Press INPUT to relink' : 'Press INPUT to connect'}</text>`;
   } else if (!rd) {
-    screen = `<text x="-34" y="-12" font-size="6.3" font-weight="700" letter-spacing="0.45" fill="#8aa3b5">${esc(sensorName.toUpperCase())}</text>` +
-      `<circle cx="-29" cy="2" r="2.2" fill="#64748b"/>` +
-      `<text x="-23" y="4" font-size="9" font-weight="760" letter-spacing="0.7" fill="#a7b8c5">NO SIGNAL</text>` +
-      `<text x="-34" y="13" font-size="6.3" fill="#64748b">0 relative ray weight</text>`;
-  } else if (rd.readoutKind === 'camera' && rd.profile) {
-    screen = `<text x="-34" y="-12" font-size="6.3" font-weight="700" letter-spacing="0.45" fill="#8aa3b5">${esc(sensorName.toUpperCase())}</text>` +
-      `<g fill="${rd.color}">${displayProfile(rd)}</g>` +
-      `<line x1="-34" y1="7.5" x2="34" y2="7.5" stroke="#284253" stroke-width="0.7"/>` +
-      `<text x="-34" y="15" font-size="6.3" fill="#9bb0bd">${displaySpectrum(rd)}</text>` +
-      `<text x="34" y="15" text-anchor="end" font-size="6.3" font-weight="700" fill="#d8e7ee">${Math.round(rd.signal * 100)}% rel.</text>`;
+    screen = `<text x="-35" y="-20" font-size="5.7" font-weight="760" letter-spacing="0.45" fill="#8fa9b8">${esc(sensorName.toUpperCase())}</text>` +
+      `<circle cx="-29" cy="1" r="2.2" fill="#64748b"/>` +
+      `<text x="-23" y="3" font-size="8.5" font-weight="760" letter-spacing="0.7" fill="#a7b8c5">NO SIGNAL</text>` +
+      `<text x="-35" y="14" font-size="5.2" fill="#607887">Σw 0.00 · aim at sensor face</text>`;
   } else {
-    const value = rd.readoutKind === 'pmt'
-      ? `${rd.outputSignal >= 100 ? Math.round(rd.outputSignal) : rd.outputSignal.toFixed(2)} a.u.`
-      : `${rd.signal >= 10 ? '>999' : Math.round(rd.signal * 100)}% rel.`;
-    screen = `<text x="-34" y="-12" font-size="6.3" font-weight="700" letter-spacing="0.45" fill="#8aa3b5">${esc(sensorName.toUpperCase())}</text>` +
-      `<circle cx="-31" cy="-1" r="2.2" fill="${rd.color}"/>` +
-      `<text x="34" y="4" text-anchor="end" font-size="14" font-weight="760" fill="#edf7fb">${value}</text>` +
-      `<text x="-34" y="14" font-size="6.8" fill="#9bb0bd">${displaySpectrum(rd)}</text>` +
-      `<text x="34" y="14" text-anchor="end" font-size="6.3" fill="${rd.saturated ? '#fb7185' : '#6ee7b7'}">${rd.saturated ? 'SATURATED' : rd.polarization.slice(0, 16)}</text>`;
+    screen = density === 'compact'
+      ? compactDisplayReading(sensorName, rd, view)
+      : standardDisplayReading(sensorName, rd, view, density);
   }
 
-  return `<g transform="scale(${scale})"><rect x="-47" y="-31" width="94" height="62" rx="5" fill="#24313b" stroke="#111b22" stroke-width="1.6"/>` +
-    `<rect x="-41" y="-23" width="82" height="42" rx="2.5" fill="#061822" stroke="#3f5664" stroke-width="1.2"/>` +
+  return `<g transform="scale(${scale})" data-display-density="${density}"><rect x="-49" y="-36" width="98" height="72" rx="6" fill="#24313b" stroke="#111b22" stroke-width="1.7"/>` +
+    `<path d="M -43,-32 H 43" stroke="#40515d" stroke-width="0.8" opacity="0.7"/>` +
+    `<rect x="-43" y="-29" width="86" height="47" rx="3" fill="${screenOn ? '#061822' : '#071219'}" stroke="#45606f" stroke-width="1.2"/>` +
     `<g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${screen}</g>` +
-    `<circle cx="-47" cy="15" r="3.4" fill="#13212a" stroke="#89a2b2" stroke-width="1"/>` +
-    `<circle cx="-47" cy="15" r="1.2" fill="${sensor ? '#60a5fa' : '#52636f'}"/>` +
-    `<circle cx="39" cy="25" r="2.1" fill="${rd ? '#34d399' : '#64748b'}"/>` +
-    `<text x="-37" y="27.5" font-size="5.8" font-weight="700" letter-spacing="0.65" fill="#a9bac5">SENSOR DISPLAY</text></g>`;
+    `<circle cx="-49" cy="19" r="3.6" fill="#13212a" stroke="#89a2b2" stroke-width="1"/>` +
+    `<circle cx="-49" cy="19" r="1.3" fill="${sensor ? '#60a5fa' : '#52636f'}"/>` +
+    displayControls(screenOn, density, Boolean(rd)) +
+    `</g>`;
 }
 
 export function displayCableSVG(display, elements = []) {
@@ -175,7 +347,7 @@ export function displayCableSVG(display, elements = []) {
   if (!Number.isFinite(localPort?.x) || !Number.isFinite(localPort?.y)) return '';
   const from = toWorld(sensor, localPort.x, localPort.y);
   const scale = Math.min(3, Math.max(0.5, display.params.displayScale || 1));
-  const to = toWorld(display, -47 * scale, 15 * scale);
+  const to = toWorld(display, -49 * scale, 19 * scale);
   if (![from.x, from.y, to.x, to.y].every(Number.isFinite)) return '';
   const direction = to.x >= from.x ? 1 : -1;
   const bend = Math.min(90, Math.max(24, Math.abs(to.x - from.x) * 0.42 + Math.abs(to.y - from.y) * 0.12));
@@ -1305,18 +1477,21 @@ export const registry = {
   },
 
   display: {
-    label: 'Sensor display', category: 'Detectors', paletteOrder: 10, size: { w: 94, h: 62 },
+    label: 'Sensor display', category: 'Detectors', paletteOrder: 10, size: { w: 98, h: 72 },
     aliases: ['screen', 'monitor', 'readout', 'oscilloscope', 'data acquisition', 'DAQ'],
     rotatable: false,
     paramsTitle: 'Signal connection',
     size_: el => {
       const scale = Math.min(3, Math.max(0.5, el.params.displayScale || 1));
-      return { w: 94 * scale, h: 62 * scale };
+      return { w: 98 * scale, h: 72 * scale };
     },
     params: [
       { key: 'sensorId', label: 'Sensor input', type: 'sensor', def: '' },
       { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 3, step: 0.1, def: 1 },
+      { key: 'screenOn', label: 'Power', type: 'checkbox', def: true, hidden: true },
+      { key: 'displayView', label: 'View', type: 'select', def: 'main', options: [['main', 'Primary'], ['spectrum', 'Wavelength samples'], ['detail', 'Detail']], hidden: true },
     ],
+    directHint: 'Use the blue handles to resize · PWR, INPUT, and VIEW operate directly on the display.',
     svg: displayScreenSVG,
     surfaces: () => [],
   },
