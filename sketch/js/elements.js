@@ -1099,7 +1099,7 @@ export const registry = {
     svg(el) {
       const L = el.params.length / 2;
       return `<rect x="-2.5" y="${-L}" width="5" height="${el.params.length}" fill="#f3e3c3" stroke="#a08340" stroke-width="1.4"/>` +
-        `<text x="9" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#7a6430" transform="rotate(${sideTextRot(el)} 9 0)">λ/2</text>`;
+        `<text x="0" y="${-L - 6}" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#7a6430" ${isFlipped(el) ? `transform="rotate(180 0 ${-L - 6})"` : ''}>λ/2</text>`;
     },
     surfaces(el) {
       const L = el.params.length / 2;
@@ -1117,7 +1117,7 @@ export const registry = {
     svg(el) {
       const L = el.params.length / 2;
       return `<rect x="-2.5" y="${-L}" width="5" height="${el.params.length}" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/>` +
-        `<text x="9" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" transform="rotate(${sideTextRot(el)} 9 0)">λ/4</text>`;
+        `<text x="0" y="${-L - 6}" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" ${isFlipped(el) ? `transform="rotate(180 0 ${-L - 6})"` : ''}>λ/4</text>`;
     },
     surfaces(el) {
       const L = el.params.length / 2;
@@ -1133,7 +1133,7 @@ export const registry = {
       const s = (el.params.size || 26) / 2;
       return `<rect x="${-s}" y="${-s}" width="${2 * s}" height="${2 * s}" fill="#d5e3f0" stroke="#3f6a92" stroke-width="1.6"/>` +
         `<line x1="${-s}" y1="${s}" x2="${s}" y2="${-s}" stroke="#3f6a92" stroke-width="1.6"/>` +
-        `<text x="0" y="${s * 0.45}" text-anchor="middle" font-size="${Math.min(9, s * 0.55)}" fill="#3f6a92" font-weight="600">PBS</text>`;
+        `<text x="${-s}" y="${s + 8}" text-anchor="start" dominant-baseline="central" font-size="8.5" fill="#3f6a92" font-weight="600" ${isFlipped(el) ? `transform="rotate(180 ${-s} ${s + 8})"` : ''}>PBS</text>`;
     },
     surfaces(el) {
       const s = (el.params.size || 26) / 2;
