@@ -597,17 +597,20 @@ function syncPulseControls(detail = getPulsePlayback()) {
 // user hunting through the dropdown. Only ever fires when the scale would
 // actually change, and never overrides a scale the user set by hand for the
 // same scene shape.
-let lastAutoScale = null;
+let lastAutoScale = null; // a number (ns/s), the string 'mechanics', or null (never adjusted)
 let userChoseScale = false;
 function autoAdjustTimeScale() {
   const recommended = recommendedTimeScale(state.elements);
-  if (!recommended || recommended.scaleNsPerSecond === lastAutoScale) return;
+  if (!recommended) return;
+  const key = recommended.mechanics ? 'mechanics' : recommended.scaleNsPerSecond;
+  if (key === lastAutoScale) return;
   if (userChoseScale) return;
   const previous = lastAutoScale;
-  lastAutoScale = recommended.scaleNsPerSecond;
-  if (previous === null && recommended.scaleNsPerSecond === 10) return; // already the default
-  setPulseSpeed(recommended.scaleNsPerSecond);
-  const label = (TIME_SCALES.find(s => s.ns === recommended.scaleNsPerSecond) || {}).label || '';
+  lastAutoScale = key;
+  if (previous === null && key === 10) return; // already the default
+  const label = recommended.mechanics ? 'Mechanics' : (TIME_SCALES.find(s => s.ns === key) || {}).label || '';
+  if (recommended.mechanics) setMechanicsMode(true);
+  else setPulseSpeed(recommended.scaleNsPerSecond);
   showTimeScaleToast(`Time scale automatically adjusted to ${label} to show the animation${recommended.driver ? ` of ${recommended.driver}` : ''}.`);
 }
 

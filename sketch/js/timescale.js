@@ -107,16 +107,27 @@ const MOTION_LABELS = {
   retroreflector: 'the delay line',
 };
 
+// Elements whose motion never runs on the simulated clock at all — see
+// canvas.js's galvoAnimationSeconds()/setMechanicsMode() — so no numeric
+// scale can make them "correct." Their presence recommends the dedicated
+// Mechanics mode outright, in place of a numeric pick.
+const ILLUSTRATIVE_ONLY_TYPES = new Set(['stage', 'retroreflector']);
+
 // Pick the scale that keeps the slowest moving thing on the table watchable.
-// Returns the chosen scale plus what drove the choice, so the UI can explain
-// itself when it auto-adjusts.
+// Returns either a numeric scale or the Mechanics mode, plus what drove the
+// choice, so the UI can explain itself when it auto-adjusts.
 export function recommendedTimeScale(elements = []) {
   const list = Array.isArray(elements) ? elements : [];
-  let best = null;
 
+  const illustrativeDriver = list.find(el => ILLUSTRATIVE_ONLY_TYPES.has(el?.type) && elementDriveHz(el) !== null);
+  if (illustrativeDriver) {
+    return { mechanics: true, scaleNsPerSecond: null, driver: MOTION_LABELS[illustrativeDriver.type] };
+  }
+
+  let best = null;
   const consider = (scale, driver) => {
     if (!Number.isFinite(scale)) return;
-    if (!best || scale > best.scaleNsPerSecond) best = { scaleNsPerSecond: scale, driver };
+    if (!best || scale > best.scaleNsPerSecond) best = { scaleNsPerSecond: scale, driver, mechanics: false };
   };
 
   const repRates = list.map(el => (el?.type === 'laser' || el?.type === 'sclaser') ? elementDriveHz(el) : null)
@@ -130,5 +141,5 @@ export function recommendedTimeScale(elements = []) {
     consider(motionScaleFor(hz), MOTION_LABELS[el.type] || 'the animated element');
   }
 
-  return best || { scaleNsPerSecond: 10, driver: null };
+  return best || { scaleNsPerSecond: 10, driver: null, mechanics: false };
 }

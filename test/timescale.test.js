@@ -52,18 +52,31 @@ test('continuous-wave sources contribute no timing requirement', () => {
   assert.equal(scaleOf([cw]), 10, 'a scene with nothing animated falls back to the 10 ns/s default');
 });
 
-test('a piezo stage pushes the scene to 1 ms/s, as the slowest thing on the table', () => {
+test('a moving piezo stage recommends Mechanics mode, not a numeric scale', () => {
+  // No numeric scale can make the stage's illustrative wall-clock motion
+  // "correct," so its presence recommends Mechanics outright.
   const stage = createElement('stage', 0, 0);
   stage.params.pzMode = 'xy';
-  assert.equal(scaleOf([stage]), 1e6);
-  assert.equal(recommendedTimeScale([stage]).driver, 'the piezo stage');
+  const result = recommendedTimeScale([stage]);
+  assert.equal(result.mechanics, true);
+  assert.equal(result.driver, 'the piezo stage');
+  const staticStage = createElement('stage', 0, 0);
+  assert.equal(recommendedTimeScale([staticStage]).mechanics, false, 'a static stage recommends nothing special');
 });
 
-test('the slowest animated element wins over a much faster pulsed source', () => {
+test('a moving retroreflector delay line also recommends Mechanics mode', () => {
+  const retro = createElement('retroreflector', 0, 0);
+  retro.params.moveMode = 'linear';
+  const result = recommendedTimeScale([retro]);
+  assert.equal(result.mechanics, true);
+  assert.equal(result.driver, 'the delay line');
+});
+
+test('a moving piezo stage or delay line wins over a much faster pulsed source', () => {
   const stage = createElement('stage', 300, 0);
   stage.params.pzMode = 'xy';
   const result = recommendedTimeScale([pulsedLaser(80), stage]);
-  assert.equal(result.scaleNsPerSecond, 1e6, 'the 80 MHz laser alone would ask for 10 ns/s');
+  assert.equal(result.mechanics, true, 'the 80 MHz laser alone would ask for a numeric 10 ns/s');
   assert.equal(result.driver, 'the piezo stage');
 });
 
