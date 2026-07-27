@@ -2,6 +2,13 @@
 
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave } from './state.js';
 import { registry, categories, createElement, getElementMeta } from './elements.js';
+// Registers the redesigned detector catalogue onto `registry`. Imported here,
+// not from pwa.js: service-worker registration is unrelated, and every Node
+// entry point that validates scenes must install the same catalogue (see
+// tools/build-examples.mjs, tools/build-community.mjs and
+// scripts/materialize-example-proposal.mjs) so the browser and the tooling
+// never disagree about which element types exist.
+import './detector-instruments.js';
 import {
   initCanvas, renderAll, startPlacing, startBeamTool, cancelTool, isPlacing,
   isPolygonDrawing, rotatePlacing, finishBeam, finishPolygon, undoPolygonPoint,

@@ -5,6 +5,12 @@ import { pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 import { buildSVG } from '../sketch/js/export.js';
 import { registry } from '../sketch/js/elements.js';
+// Registers the redesigned detector catalogue onto `registry`. Required
+// here because this tool validates scenes with parseSketch(..., registry):
+// without it, any sketch using a Power meter, Polarimeter, Spectrometer,
+// Wavefront detector or General detector is rejected as an unknown type.
+import '../sketch/js/detector-instruments.js';
+
 import { traceAll } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 
