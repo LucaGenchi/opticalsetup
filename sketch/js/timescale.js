@@ -26,7 +26,7 @@ export const MAX_TIME_SCALE = TIME_SCALES[TIME_SCALES.length - 1].ns;
 // either crawl (period >> scale, nothing arrives) or smear into a continuous
 // stream (period << scale) — both of which look like plain CW light, so the
 // renderer drops the packet overlay and leaves the steady traced beam.
-export const CW_FALLBACK_RATIO = 100;
+export const CW_FALLBACK_RATIO = 50;
 
 export function snapTimeScale(desiredNsPerSecond) {
   if (!Number.isFinite(desiredNsPerSecond) || desiredNsPerSecond <= 0) return 10;

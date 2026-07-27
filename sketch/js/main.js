@@ -609,6 +609,23 @@ function autoAdjustTimeScale() {
   showTimeScaleToast(`Time scale automatically adjusted to ${label} to show the animation${recommended.driver ? ` of ${recommended.driver}` : ''}.`);
 }
 
+// Appears just above the pulsed source whose drawing style just changed.
+let pulseModePopupTimer = null;
+function showPulseModePopup({ message, x, y } = {}) {
+  const popup = $('pulseModePopup');
+  if (!popup || !message) return;
+  popup.textContent = message;
+  popup.style.left = `${Math.round(x)}px`;
+  popup.style.top = `${Math.round(y - 26)}px`;
+  popup.hidden = false;
+  popup.classList.add('is-visible');
+  clearTimeout(pulseModePopupTimer);
+  pulseModePopupTimer = setTimeout(() => {
+    popup.classList.remove('is-visible');
+    pulseModePopupTimer = setTimeout(() => { popup.hidden = true; }, 250);
+  }, 3000);
+}
+
 let timeScaleToastTimer = null;
 function showTimeScaleToast(message) {
   const toast = $('timeScaleToast');
@@ -830,6 +847,7 @@ document.addEventListener('optics:duplicate', duplicateSelected);
 document.addEventListener('optics:clearvoxels', e => clearVoxelPreview(e.detail?.stageId));
 document.addEventListener('optics:toolchange', e => syncToolMode(e.detail));
 document.addEventListener('optics:pulsestate', e => syncPulseControls(e.detail));
+document.addEventListener('optics:pulserepresentation', e => showPulseModePopup(e.detail));
 document.addEventListener('optics:viewchange', e => syncViewControls(e.detail));
 
 // ---------- boot ----------

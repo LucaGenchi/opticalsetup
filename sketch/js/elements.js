@@ -698,7 +698,7 @@ export function galvoAngleAt(params = {}, timeSeconds = 0) {
   }
   const amplitude = Math.min(10, 45 - Math.abs(center),
     Math.max(0, Number.isFinite(params.scanAmplitude) ? params.scanAmplitude : 0));
-  const frequency = Math.min(200, Math.max(0.01, Number.isFinite(params.scanFrequencyHz) ? params.scanFrequencyHz : 1));
+  const frequency = Math.min(5000, Math.max(0.01, Number.isFinite(params.scanFrequencyHz) ? params.scanFrequencyHz : 100));
   const phase = (Number.isFinite(params.scanPhaseDeg) ? params.scanPhaseDeg : 0) * Math.PI / 180;
   const cycle = timeSeconds * frequency + phase / (2 * Math.PI);
   const frac = ((cycle % 1) + 1) % 1;
@@ -826,7 +826,7 @@ export const registry = {
       { key: 'commandAngle', label: 'Center mechanical angle (°)', type: 'number', min: -30, max: 30, step: 0.5, def: 0 },
       { key: 'scanMode', label: 'Scan waveform', type: 'select', def: 'static', options: [['static', 'Static'], ['sine', 'Sine scan'], ['triangle', 'Triangle scan']] },
       { key: 'scanAmplitude', label: 'Peak mechanical sweep (°)', type: 'number', min: 0, max: 10, step: 0.5, def: 1, show: p => p.scanMode !== 'static' },
-      { key: 'scanFrequencyHz', label: 'Scan frequency (Hz)', type: 'number', min: 0.01, max: 200, step: 0.1, def: 1, show: p => p.scanMode !== 'static' },
+      { key: 'scanFrequencyHz', label: 'Scan frequency (Hz)', type: 'number', min: 0.01, max: 5000, step: 1, def: 100, show: p => p.scanMode !== 'static' },
       { key: 'scanPhaseDeg', label: 'Scan phase (°)', type: 'number', min: -360, max: 360, step: 5, def: 0, show: p => p.scanMode !== 'static' },
       ...reflectivityParams(),
     ],

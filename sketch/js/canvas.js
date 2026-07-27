@@ -174,7 +174,7 @@ function simulatedTimeNs() {
 
 // Longest a full cycle may take on screen before an element counts as
 // unwatchable at the current time scale.
-const ILLUSTRATIVE_MAX_CYCLE_S = 8;
+const ILLUSTRATIVE_MAX_CYCLE_S = 12;
 
 // A galvo's real mechanical range (0.01–200 Hz, i.e. periods of 5 ms to 100 s)
 // only partly overlaps the 1 ns/s–1 ms/s scale window. Where it does overlap
@@ -422,7 +422,12 @@ function notifyPulseState() {
 
 function renderPulseLayer() {
   if (!pulseLayer) return;
-  if (!pulseTracks.length) { pulseLayer.innerHTML = ''; cwFallbackActive = false; return; }
+  if (!pulseTracks.length) {
+    pulseLayer.innerHTML = '';
+    cwFallbackActive = false;
+    lastCwFallback = null; // a scene with no pulse trains has nothing to switch between
+    return;
+  }
   const z = state.view.z || 1;
   let s = '';
   let suppressed = false;
@@ -453,6 +458,32 @@ function renderPulseLayer() {
   }
   pulseLayer.innerHTML = s;
   cwFallbackActive = suppressed;
+  announcePulseRepresentation(suppressed);
+}
+
+// Announce only the transition between packet and CW-style drawing, anchored
+// over the pulsed source it applies to. renderPulseLayer() runs every frame,
+// so anything that fires unconditionally here would spam.
+let lastCwFallback = null;
+function announcePulseRepresentation(nowCw) {
+  if (lastCwFallback === nowCw) return;
+  const firstObservation = lastCwFallback === null;
+  lastCwFallback = nowCw;
+  if (firstObservation) return; // the initial state is not a switch
+  const source = state.elements.find(el =>
+    (el.type === 'laser' || el.type === 'sclaser') && el.params.temporalMode === 'pulsed');
+  if (!source) return;
+  const v = state.view;
+  document.dispatchEvent(new CustomEvent('optics:pulserepresentation', {
+    detail: {
+      cw: nowCw,
+      message: nowCw
+        ? 'Time scale not suitable for pulses representation, switching to CW graphics for pulsed laser.'
+        : "Switching to temporal representation to show laser's pulses.",
+      x: source.x * v.z + v.x,
+      y: source.y * v.z + v.y,
+    },
+  }));
 }
 
 function animatePulses(nowMs) {

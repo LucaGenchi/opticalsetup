@@ -5,7 +5,7 @@ import {
   TIME_SCALES, MIN_TIME_SCALE, MAX_TIME_SCALE, CW_FALLBACK_RATIO,
   snapTimeScale, pulsePeriodNs, pulsesReadAsCW, elementDriveHz, recommendedTimeScale,
 } from '../sketch/js/timescale.js';
-import { createElement, galvoAngleAt } from '../sketch/js/elements.js';
+import { createElement, galvoAngleAt, registry } from '../sketch/js/elements.js';
 import { gateTransmissionAt } from '../sketch/js/pulses.js';
 
 const scaleOf = elements => recommendedTimeScale(elements).scaleNsPerSecond;
@@ -65,6 +65,14 @@ test('the slowest animated element wins over a much faster pulsed source', () =>
   const result = recommendedTimeScale([pulsedLaser(80), stage]);
   assert.equal(result.scaleNsPerSecond, 1e6, 'the 80 MHz laser alone would ask for 10 ns/s');
   assert.equal(result.driver, 'the piezo stage');
+});
+
+test('a galvo defaults to a realistic 100 Hz line-scan rate and reaches kHz', () => {
+  const galvo = createElement('galvo', 0, 0);
+  assert.equal(galvo.params.scanFrequencyHz, 100, 'point-scanning galvos run at tens of Hz to kHz');
+  const spec = registry.galvo.params.find(p => p.key === 'scanFrequencyHz');
+  assert.equal(spec.def, 100);
+  assert.ok(spec.max >= 1000, 'the fastest point-scanning applications reach kHz');
 });
 
 test('galvo, chopper and AOM each raise the scale to keep their own motion watchable', () => {
@@ -190,12 +198,15 @@ test('a galvo is only fast enough to ride the simulated clock in the top part of
   // 100 Hz and above complete a sweep in a watchable time. Slower ones fall
   // back to the illustrative wall clock, like the stage and retroreflector.
   const realSecondsPerCycleAtCoarsest = hz => 1 / (hz * (1e6 / 1e9));
-  const WATCHABLE_S = 8;
-  assert.ok(realSecondsPerCycleAtCoarsest(200) <= WATCHABLE_S, '200 Hz sweeps in 5 s — synced');
-  assert.ok(realSecondsPerCycleAtCoarsest(125) <= WATCHABLE_S, '125 Hz is the break-even point — synced');
-  assert.ok(realSecondsPerCycleAtCoarsest(100) > WATCHABLE_S, '100 Hz needs 10 s — illustrative');
-  assert.ok(realSecondsPerCycleAtCoarsest(1) > 100, 'the 1 Hz default would take ~1000 s — illustrative');
-  assert.ok(realSecondsPerCycleAtCoarsest(0.4) > 100, 'the wiki demo galvo would freeze if synced');
+  const WATCHABLE_S = 12;
+  // The two rates called out explicitly: at 1 ms/s a 100 Hz galvo must take
+  // 10 real seconds per period and a 1 kHz galvo exactly 1 second.
+  assert.equal(realSecondsPerCycleAtCoarsest(100), 10);
+  assert.equal(realSecondsPerCycleAtCoarsest(1000), 1);
+  assert.ok(realSecondsPerCycleAtCoarsest(100) <= WATCHABLE_S, '100 Hz must ride the simulated clock');
+  assert.ok(realSecondsPerCycleAtCoarsest(1000) <= WATCHABLE_S, '1 kHz must ride the simulated clock');
+  assert.ok(realSecondsPerCycleAtCoarsest(1) > WATCHABLE_S, 'a 1 Hz galvo would take ~1000 s — illustrative');
+  assert.ok(realSecondsPerCycleAtCoarsest(0.4) > WATCHABLE_S, 'the wiki demo galvo would freeze if synced');
 });
 
 test('scaling simulated time rescales galvo motion proportionally', () => {
