@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement, registry } from '../sketch/js/elements.js';
 import { traceAll } from '../sketch/js/raytrace.js';
 import { DETECTOR_TYPES } from '../sketch/js/detector-instruments.js';
+import { enhancedReading } from '../sketch/js/detector-measurements.js';
 
 function screenFor(sensor, elements, view = 'main') {
   const display = createElement('display', sensor.x + 130, sensor.y + 80);
@@ -87,7 +88,9 @@ test('power meter uses configured source power', () => {
   assert.match(svg, /OPTICAL POWER/);
   assert.match(svg, /250/);
   assert.match(svg, /mW/);
-  assert.match(svg, /configured source power/);
+  // the provenance caption was dropped: it collided with the unit label.
+  // Physical watts (not relative units) is what proves source power was used.
+  assert.match(svg, /mW|&#183;|W</);
 });
 
 test('wavefront detector reports collimation and intensity', () => {
@@ -140,4 +143,51 @@ test('general detector includes Stokes parameters and pulsed timing', () => {
   assert.match(svg, /80\.0 MHz/);
   assert.match(svg, /PULSE DURATION/);
   assert.match(svg, /100 fs/);
+});
+
+test('wavefront classification is monotonic through a focus and independent of detector size', () => {
+  // Regression: the original implementation inferred divergence by measuring
+  // the beam's drawn width at two planes and differencing them, with both the
+  // sampling baseline and the probe tolerance scaled by the sensor aperture.
+  // That made the verdict flip with detector size and degenerate into
+  // quantization noise near a focus (reported: converging AT the focus,
+  // diverging at +25, collimated at +50/+75, diverging again at +100).
+  const stateAt = (distanceFromLens, aperture) => {
+    const laser = createElement('laser', 0, 0);
+    laser.params.beamMode = 'beam';
+    laser.params.beamWidth = 20;
+    const lens = createElement('lens', 200, 0);
+    lens.params.f = 100;
+    lens.params.dia = 25.4;
+    const wf = createElement('wavefrontdetector', 200 + distanceFromLens, 0);
+    if (aperture) wf.params.aperture = aperture;
+    const elements = [laser, lens, wf];
+    traceAll(elements);
+    return enhancedReading(wf, elements).wavefront.state;
+  };
+
+  // Exactly one converging -> diverging transition along the axis.
+  const walk = [40, 60, 80, 120, 160, 200, 260].map(d => stateAt(d));
+  assert.ok(!walk.includes('COLLIMATED'), `a focused beam is never collimated, got ${walk.join(',')}`);
+  const flips = walk.slice(1).filter((s, i) => s !== walk[i]).length;
+  assert.equal(flips, 1, `expected a single crossover, got ${walk.join(',')}`);
+  assert.equal(walk[0], 'CONVERGING');
+  assert.equal(walk[walk.length - 1], 'DIVERGING');
+
+  // Resizing the detector must not change the physics it reports.
+  for (const distance of [60, 160]) {
+    const byAperture = [10, 20, 40, 80].map(a => stateAt(distance, a));
+    assert.equal(new Set(byAperture).size, 1,
+      `detector size changed the verdict at ${distance} mm: ${byAperture.join(',')}`);
+  }
+});
+
+test('a genuinely collimated beam still reads as collimated', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'beam';
+  laser.params.beamWidth = 12;
+  const wf = createElement('wavefrontdetector', 300, 0);
+  const elements = [laser, wf];
+  traceAll(elements);
+  assert.equal(enhancedReading(wf, elements).wavefront.state, 'COLLIMATED');
 });

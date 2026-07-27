@@ -123,16 +123,27 @@ if (registry.eye) { registry.eye.category = 'Microscopy'; registry.eye.paletteOr
 
 function header(name, mode, pulse) {
   const title = String(name).toUpperCase(), size = Math.max(3.7, Math.min(6, 46 / Math.max(1, title.length * 0.62)));
+  // The mode line must shrink to fit too. Appending " · PULSE" pushed the
+  // longest modes (e.g. "WAVELENGTH + BANDWIDTH") past the screen's right
+  // edge at a fixed 4.5, so size it against the 72-unit usable width the
+  // same way the title is sized.
+  const modeText = `${mode}${pulse ? ' · PULSE' : ''}`;
+  const modeSize = Math.max(3.1, Math.min(4.5, 72 / Math.max(1, modeText.length * 0.62)));
   return `<text x="-36" y="-23.5" font-size="${size.toFixed(2)}" font-weight="760" letter-spacing="0.35" fill="#9eb5c3">${esc(title)}</text>` +
-    `<text x="-36" y="-16.5" font-size="4.5" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(mode)}${pulse ? ' · PULSE' : ''}</text>`;
+    `<text x="-36" y="-16.5" font-size="${modeSize.toFixed(2)}" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(modeText)}</text>`;
 }
 
 function metrics(entries, columns = 2) {
   const labelSize = columns >= 3 ? 3.05 : 3.8, valueSize = columns >= 3 ? 4 : 5.1;
+  const cellWidth = 78 / columns;
+  // Each cell must stay inside its own column, or a long value (a pulsed
+  // "80.0 MHz · 100 fs", say) runs off the right edge of the screen.
+  const fit = (text, preferred) =>
+    Math.max(2.7, Math.min(preferred, (cellWidth - 3) / Math.max(1, String(text).length * 0.62)));
   return entries.map(([label, value], index) => {
-    const column = index % columns, row = Math.floor(index / columns), x = -35 + column * 78 / columns, y = -8 + row * 13;
-    return `<text x="${x}" y="${y}" font-size="${labelSize}" font-weight="700" fill="#5f7d8e">${esc(label)}</text>` +
-      `<text x="${x}" y="${y + 6}" font-size="${valueSize}" font-weight="680" fill="#d9e8ee">${esc(value)}</text>`;
+    const column = index % columns, row = Math.floor(index / columns), x = -35 + column * cellWidth, y = -8 + row * 13;
+    return `<text x="${x}" y="${y}" font-size="${fit(label, labelSize).toFixed(2)}" font-weight="700" fill="#5f7d8e">${esc(label)}</text>` +
+      `<text x="${x}" y="${y + 6}" font-size="${fit(value, valueSize).toFixed(2)}" font-weight="680" fill="#d9e8ee">${esc(value)}</text>`;
   }).join('');
 }
 
@@ -190,7 +201,7 @@ function cameraMap(reading, sensor, elements) {
   }
   return `<rect x="${x0}" y="${y0}" width="${width}" height="${height}" rx="1.5" fill="#031119" stroke="#294453"/>${pixels}${objectGlyph(objectImageAtCamera(sensor, elements))}` +
     `<text x="22" y="-6" font-size="4" fill="#6d8796">BEAM Ø</text><text x="40" y="1" text-anchor="end" font-size="6" fill="#d9e8ee">${reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(1)} mm` : 'POINT'}</text>` +
-    `<text x="22" y="7" font-size="4" fill="#6d8796">INTENSITY</text><text x="40" y="14" text-anchor="end" font-size="6" fill="#d9e8ee">Σw ${compactNumber(reading.signal)}</text>`;
+    `<text x="40" y="7" text-anchor="end" font-size="4" fill="#6d8796">INTENSITY</text><text x="40" y="14" text-anchor="end" font-size="6" fill="#d9e8ee">Σw ${compactNumber(reading.signal)}</text>`;
 }
 
 function polarizationGlyph(reading) {
@@ -230,7 +241,11 @@ function panel(sensor, reading, elements, view) {
   ]);
   if (sensor.type === 'powermeter') {
     const [value, unit] = formatPower(reading.detectedPowerW, reading.signal);
-    return header(name, 'OPTICAL POWER', reading.pulse) + `<text x="35" y="4" text-anchor="end" font-size="14" font-weight="780" fill="#ecf7fa">${value}</text><text x="35" y="12" text-anchor="end" font-size="5.2" fill="#86efac">${unit}</text><text x="-35" y="14" font-size="4.2" fill="#6d8796">${reading.powerIsEstimated ? 'from configured source power' : 'qualitative relative power'}</text>`;
+    // The value and its unit sit on one baseline; the old provenance caption
+    // ("from configured source power") collided with the unit and is dropped.
+    return header(name, 'OPTICAL POWER', reading.pulse)
+      + `<text x="35" y="6" text-anchor="end" font-size="14" font-weight="780" fill="#ecf7fa">${value}</text>`
+      + `<text x="35" y="14" text-anchor="end" font-size="5.2" fill="#86efac">${unit}</text>`;
   }
   if (sensor.type === 'wavefrontdetector') {
     const wave = reading.wavefront, divergence = wave.state === 'COLLIMATED' ? '0.00°' : `${wave.divergenceDeg.toFixed(2)}°`;
@@ -238,7 +253,11 @@ function panel(sensor, reading, elements, view) {
   }
   if (sensor.type === 'polarimeter') return header(name, 'POLARIZATION · STOKES', reading.pulse) + polarizationGlyph(reading) +
     `<text x="-11" y="-5" font-size="6" font-weight="760" fill="#f5e8f1">${esc(String(reading.polarization).toUpperCase())}</text><text x="-11" y="3" font-size="4.4" fill="#b99aaa">DoP ${(100 * reading.stokes.normalized.degree).toFixed(0)}%</text><text x="-11" y="11" font-size="4.2" fill="#d9e8ee">S0 ${compactNumber(reading.stokes.s0)}  S1 ${compactNumber(reading.stokes.s1)}</text><text x="35" y="11" text-anchor="end" font-size="4.2" fill="#d9e8ee">S2 ${compactNumber(reading.stokes.s2)}  S3 ${compactNumber(reading.stokes.s3)}</text>`;
-  if (sensor.type === 'spectrometer' || (sensor.type === 'generaldetector' && view === 'spectrum')) return header(name, sensor.type === 'spectrometer' ? 'WAVELENGTH + BANDWIDTH' : 'GENERAL · SPECTRUM', reading.pulse) + spectrumPlot(reading) + `<text x="-35" y="14" font-size="4.6" fill="#8fa7b5">λ ${esc(spectrumLabel(reading))}</text><text x="35" y="14" text-anchor="end" font-size="4.6" fill="#fde68a">BANDWIDTH ${compactNumber(reading.bandwidth)} nm</text>`;
+  if (sensor.type === 'spectrometer' || (sensor.type === 'generaldetector' && view === 'spectrum')) return header(name, sensor.type === 'spectrometer' ? 'WAVELENGTH + BANDWIDTH' : 'GENERAL · SPECTRUM', reading.pulse) + spectrumPlot(reading)
+    // λ range and bandwidth each get their own line: side by side they
+    // overlapped as soon as the range was a two-ended span.
+    + `<text x="-35" y="11" font-size="4.6" fill="#8fa7b5">λ ${esc(spectrumLabel(reading))}</text>`
+    + `<text x="-35" y="17" font-size="4.6" fill="#fde68a">BANDWIDTH ${compactNumber(reading.bandwidth)} nm</text>`;
   if (sensor.type === 'generaldetector' && view === 'detail') return header(name, 'STOKES + PULSE TIMING', reading.pulse) + metrics([
     ['S0', compactNumber(reading.stokes.s0)], ['S1', compactNumber(reading.stokes.s1)], ['S2', compactNumber(reading.stokes.s2)],
     ['S3', compactNumber(reading.stokes.s3)], ['REP RATE', pulseRate(reading.pulse)], ['PULSE DURATION', pulseDuration(reading.pulse)],
@@ -248,7 +267,7 @@ function panel(sensor, reading, elements, view) {
     const wave = reading.wavefront.state === 'COLLIMATED' ? 'COLLIMATED' : `${reading.wavefront.state} ${reading.wavefront.divergenceDeg.toFixed(2)}°`;
     return header(name, 'ALL LIGHT PROPERTIES', reading.pulse) + metrics([
       ['POWER / INTENSITY', `${power} ${unit}`], ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'], ['WAVEFRONT', wave],
-      ['POLARIZATION', String(reading.polarization).toUpperCase()], ['WAVELENGTH', spectrumLabel(reading)], ['PULSE', reading.pulse ? `${pulseRate(reading.pulse)} · ${pulseDuration(reading.pulse)}` : 'CW'],
+      ['POLARIZATION', String(reading.polarization).toUpperCase()], ['WAVELENGTH', spectrumLabel(reading)], ['PULSE', reading.pulse ? `${pulseRate(reading.pulse)}·${pulseDuration(reading.pulse)}`.replace(/ /g, '') : 'CW'],
     ], 3);
   }
   return '';

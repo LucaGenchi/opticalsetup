@@ -45,6 +45,41 @@ function mixedWavelengthColor(hits) {
   return `#${channel(red)}${channel(green)}${channel(blue)}`;
 }
 
+// Wavefront convergence straight from the traced ray slopes at the face.
+// Fitting ray angle against ray height is size-independent and stays valid
+// through a focus, unlike differencing the beam's drawn width between two
+// planes (which quantizes to noise wherever the beam is narrow).
+function detectorConvergence(hits) {
+  const pts = [];
+  for (const h of hits) {
+    if (!Number.isFinite(h.dx) || !Number.isFinite(h.tx)) continue;
+    const tlen = Math.hypot(h.tx, h.ty);
+    if (!(tlen > 1e-9)) continue;
+    const tx = h.tx / tlen, ty = h.ty / tlen;   // unit tangent (across the face)
+    const along = h.dx * tx + h.dy * ty;         // transverse direction component
+    const axial = h.dx * -ty + h.dy * tx;        // component along the face normal
+    pts.push({
+      height: (h.u - 0.5) * (h.aperture || tlen),
+      theta: Math.atan2(along, Math.abs(axial)),
+    });
+  }
+  if (pts.length < 2) return null;
+  const n = pts.length;
+  const mh = pts.reduce((s, p) => s + p.height, 0) / n;
+  const mt = pts.reduce((s, p) => s + p.theta, 0) / n;
+  let num = 0, den = 0;
+  for (const p of pts) { num += (p.height - mh) * (p.theta - mt); den += (p.height - mh) ** 2; }
+  if (!(den > 1e-12)) return null; // every ray at the same height: nothing to fit
+  const slope = num / den; // radians of tilt per mm of height
+  const heights = pts.map(p => p.height);
+  const span = Math.max(...heights) - Math.min(...heights);
+  return {
+    slopePerMm: slope,
+    fullAngleDeg: Math.abs(slope) * span * 180 / Math.PI,
+    diverging: slope > 0,
+  };
+}
+
 function detectorSpectrum(hits) {
   const samples = new Map();
   for (const hit of hits) {
@@ -95,6 +130,13 @@ function recordDetectorHit(ray, hit) {
     pol: ray.pol,
     stokes: cloneStokes(ray.stokes),
     u: hit.u,
+    // Ray direction at the face, plus the surface tangent, so a wavefront
+    // sensor can read convergence from real ray slopes instead of trying to
+    // difference the beam's drawn width between two planes.
+    dx: ray.dx,
+    dy: ray.dy,
+    tx: hit.surface.b.x - hit.surface.a.x,
+    ty: hit.surface.b.y - hit.surface.a.y,
     aperture: hit.surface.data.aperture || 0,
     detectorType: hit.surface.data.detectorType || 'Detector',
     readoutKind: registry[hit.surface.el?.type]?.readoutKind || 'detector',
@@ -201,6 +243,7 @@ export function detectorReading(elementId) {
     spotSpan,
     color: mixedWavelengthColor(activeHits),
     spectrum: detectorSpectrum(activeHits),
+    convergence: detectorConvergence(activeHits),
     pulse,
     detectorType,
     readoutKind,

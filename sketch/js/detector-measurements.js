@@ -78,20 +78,25 @@ function occupiedSpan(sensor, localX) {
   return { span: Math.max(...occupied) - Math.min(...occupied), count: occupied.length };
 }
 
-function sampleWavefront(sensor) {
-  const face = sensorFaceX(sensor);
-  const distance = Math.max(14, Math.min(32, sensorAperture(sensor) * 0.8));
-  const near = occupiedSpan(sensor, face - 2), far = occupiedSpan(sensor, face - distance);
-  if (!near || !far || near.count < 2 || far.count < 2) {
+// Reads convergence from the traced ray slopes at the sensor face
+// (reading.convergence, computed in raytrace.js). The earlier approach —
+// measuring the beam's drawn width at two planes and differencing — depended
+// on the sensor's own aperture for both its sampling baseline and its probe
+// tolerance, so resizing the detector changed the verdict, and near a focus
+// the width difference was pure quantization noise.
+function sampleWavefront(sensor, reading) {
+  const c = reading?.convergence;
+  if (!c || !Number.isFinite(c.fullAngleDeg)) {
     return { state: 'COLLIMATED', divergenceDeg: 0, signedDivergenceDeg: 0 };
   }
-  const signed = 2 * Math.atan2(near.span - far.span, 2 * (distance - 2)) * 180 / Math.PI;
-  if (Math.abs(signed) < 0.15) {
-    return { state: 'COLLIMATED', divergenceDeg: 0, signedDivergenceDeg: signed };
+  const signed = c.diverging ? c.fullAngleDeg : -c.fullAngleDeg;
+  // A single traced ray, or a genuinely parallel bundle, reads as collimated.
+  if (c.fullAngleDeg < 0.05) {
+    return { state: 'COLLIMATED', divergenceDeg: 0, signedDivergenceDeg: 0 };
   }
   return {
-    state: signed > 0 ? 'DIVERGING' : 'CONVERGING',
-    divergenceDeg: Math.abs(signed),
+    state: c.diverging ? 'DIVERGING' : 'CONVERGING',
+    divergenceDeg: c.fullAngleDeg,
     signedDivergenceDeg: signed,
   };
 }
@@ -111,7 +116,7 @@ export function enhancedReading(sensor, elements = []) {
     ...reading,
     beamDiameter: reading.samples > 1 ? Math.max(0, reading.spotSpan) : 0,
     stokes: sampleStokes(sensor, reading),
-    wavefront: sampleWavefront(sensor),
+    wavefront: sampleWavefront(sensor, reading),
     bandwidth: Math.max(0, reading.bandMax - reading.bandMin),
     detectedPowerW: wattsPerRelativeUnit == null ? null : reading.signal * wattsPerRelativeUnit,
     powerIsEstimated: wattsPerRelativeUnit != null,
