@@ -13,5 +13,10 @@ export const examples = [
     "group": "Optics Bench",
     "name": "Michelson interferometer",
     "path": "../Examples/Optics%20Bench/Michelson%20interferometer.json"
+  },
+  {
+    "group": "Optics Bench",
+    "name": "OPTICAL SETUP — pulsed component panorama",
+    "path": "../Examples/Optics%20Bench/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json"
   }
 ];
