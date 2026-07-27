@@ -33,7 +33,13 @@ let motionStartMs = null;
 let motionTimeSeconds = 0;
 let motionLastRenderMs = 0;
 const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-const pulsePlayback = { playing: true, timeNs: 0, speedNsPerSecond: 10, mode: 'schematic', lastFrameMs: null };
+const pulsePlayback = {
+  playing: true, timeNs: 0, speedNsPerSecond: 10, mode: 'schematic', lastFrameMs: null,
+  // "Mechanics" mode: pulses stop trying to sync to a numeric time scale
+  // (always drawn as steady CW) so galvo/stage/retroreflector motion can run
+  // purely illustratively, watchable regardless of their real frequency.
+  mechanicsMode: false,
+};
 // Set while at least one pulse train is being drawn as steady CW light
 // because its period sits too far from the current time scale.
 let cwFallbackActive = false;
@@ -185,8 +191,12 @@ const ILLUSTRATIVE_MAX_CYCLE_S = 12;
 // retroreflector, so the mirror still visibly scans instead of freezing.
 function galvoAnimationSeconds(params) {
   const hz = Math.max(0.01, params.scanFrequencyHz || 1);
-  const cyclesPerRealSecond = hz * (pulsePlayback.speedNsPerSecond / 1e9);
-  if (cyclesPerRealSecond * ILLUSTRATIVE_MAX_CYCLE_S >= 1) return simulatedTimeNs() / 1e9;
+  // Mechanics mode deliberately opts every mechanical element out of the
+  // simulated clock, regardless of frequency — see pulsePlayback.mechanicsMode.
+  if (!pulsePlayback.mechanicsMode) {
+    const cyclesPerRealSecond = hz * (pulsePlayback.speedNsPerSecond / 1e9);
+    if (cyclesPerRealSecond * ILLUSTRATIVE_MAX_CYCLE_S >= 1) return simulatedTimeNs() / 1e9;
+  }
   return motionTimeSeconds / (hz * ILLUSTRATIVE_MAX_CYCLE_S);
 }
 
@@ -432,10 +442,14 @@ function renderPulseLayer() {
   let s = '';
   let suppressed = false;
   for (const track of pulseTracks) {
-    // Too far from the time scale in either direction and the packets stop
-    // reading as pulses — drop the overlay and let the steady traced beam
-    // stand in for CW light.
-    if (pulsesReadAsCW(pulsePeriodNs(track.pulse?.repRateMHz), pulsePlayback.speedNsPerSecond)) {
+    // Mechanics mode deliberately decouples pulses from any numeric time
+    // scale — every train draws as steady CW so galvo/stage/retroreflector
+    // motion can be watched illustratively without chasing a pulse rate.
+    // Otherwise: too far from the time scale in either direction and the
+    // packets stop reading as pulses — drop the overlay and let the steady
+    // traced beam stand in for CW light.
+    if (pulsePlayback.mechanicsMode
+      || pulsesReadAsCW(pulsePeriodNs(track.pulse?.repRateMHz), pulsePlayback.speedNsPerSecond)) {
       suppressed = true;
       continue;
     }
@@ -526,6 +540,16 @@ export function setPulseSpeed(speedNsPerSecond) {
   if (Number.isFinite(speedNsPerSecond)) {
     pulsePlayback.speedNsPerSecond = Math.min(MAX_TIME_SCALE, Math.max(MIN_TIME_SCALE, speedNsPerSecond));
   }
+  pulsePlayback.mechanicsMode = false; // picking a numeric scale always leaves Mechanics mode
+  pulsePlayback.lastFrameMs = null;
+  renderPulseLayer();
+  notifyPulseState();
+}
+
+// "Mechanics": pulses always draw as CW and galvo motion always runs
+// illustratively, regardless of frequency — see pulsePlayback.mechanicsMode.
+export function setMechanicsMode(on) {
+  pulsePlayback.mechanicsMode = !!on;
   pulsePlayback.lastFrameMs = null;
   renderPulseLayer();
   notifyPulseState();

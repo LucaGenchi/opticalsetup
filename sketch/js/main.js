@@ -6,7 +6,7 @@ import {
   initCanvas, renderAll, startPlacing, startBeamTool, cancelTool, isPlacing,
   isPolygonDrawing, rotatePlacing, finishBeam, finishPolygon, undoPolygonPoint,
   getViewportDetail, zoomBy, zoomFit, setSelectionCallback, setMeasurementsCallback,
-  getPulsePlayback, setPulsePlaying, setPulseSpeed, setPulseDisplayMode, resetPulseTime, clearVoxelPreview,
+  getPulsePlayback, setPulsePlaying, setPulseSpeed, setMechanicsMode, setPulseDisplayMode, resetPulseTime, clearVoxelPreview,
 } from './canvas.js';
 import { initInspector, renderInspector, refreshMeasurements } from './inspector.js';
 import { buildSVG, exportSVG, exportPNG } from './export.js';
@@ -16,7 +16,7 @@ import { download, esc } from './util.js';
 import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
-import { recommendedTimeScale, TIME_SCALES } from './timescale.js';
+import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.js';
 import { initTheme } from './theme.js';
 
 const $ = id => document.getElementById(id);
@@ -582,12 +582,14 @@ function syncPulseControls(detail = getPulsePlayback()) {
   play.setAttribute('aria-pressed', String(detail.playing && detail.hasPulses));
   play.classList.toggle('active', detail.playing && detail.hasPulses);
   $('pulseDisplay').value = detail.mode;
-  $('pulseSpeed').value = String(detail.speedNsPerSecond);
-  $('pulseScaleNote').textContent = detail.cwFallback
-    ? 'shown as CW · pulse rate far from time scale'
-    : detail.mode === 'physical'
-      ? 'spacing physical · packets enlarged'
-      : 'packets schematic · timing physical';
+  $('pulseSpeed').value = detail.mechanicsMode ? 'mechanics' : String(detail.speedNsPerSecond);
+  $('pulseScaleNote').textContent = detail.mechanicsMode
+    ? 'mechanics illustrative · pulses not synced'
+    : detail.cwFallback
+      ? 'shown as CW · pulse rate far from time scale'
+      : detail.mode === 'physical'
+        ? 'spacing physical · packets enlarged'
+        : 'packets schematic · timing physical';
 }
 
 // Re-pick the canvas time scale when the scene's slowest animated element
@@ -609,9 +611,11 @@ function autoAdjustTimeScale() {
   showTimeScaleToast(`Time scale automatically adjusted to ${label} to show the animation${recommended.driver ? ` of ${recommended.driver}` : ''}.`);
 }
 
-// Appears just above the pulsed source whose drawing style just changed.
-let pulseModePopupTimer = null;
-function showPulseModePopup({ message, x, y } = {}) {
+// Small popup anchored above a specific element (screen coordinates) — used
+// both for the pulse-representation switch and the illustrative-motion
+// notice below.
+let anchoredPopupTimer = null;
+function showAnchoredPopup({ message, x, y } = {}) {
   const popup = $('pulseModePopup');
   if (!popup || !message) return;
   popup.textContent = message;
@@ -619,11 +623,31 @@ function showPulseModePopup({ message, x, y } = {}) {
   popup.style.top = `${Math.round(y - 26)}px`;
   popup.hidden = false;
   popup.classList.add('is-visible');
-  clearTimeout(pulseModePopupTimer);
-  pulseModePopupTimer = setTimeout(() => {
+  clearTimeout(anchoredPopupTimer);
+  anchoredPopupTimer = setTimeout(() => {
     popup.classList.remove('is-visible');
-    pulseModePopupTimer = setTimeout(() => { popup.hidden = true; }, 250);
+    anchoredPopupTimer = setTimeout(() => { popup.hidden = true; }, 250);
   }, 3000);
+}
+
+// The piezo stage and the retroreflector's delay-line motion are excluded
+// from every time-scale sync — they always run on an illustrative wall
+// clock (see canvas.js). Warn once per element, the moment it actually
+// starts moving, so that isn't mistaken for a real timing bug.
+const warnedIllustrativeIds = new Set();
+function announceIllustrativeMotion() {
+  for (const el of state.elements) {
+    if (el.type !== 'stage' && el.type !== 'retroreflector') continue;
+    if (warnedIllustrativeIds.has(el.id)) continue;
+    if (elementDriveHz(el) === null) continue; // not actually moving yet
+    warnedIllustrativeIds.add(el.id);
+    const v = state.view;
+    showAnchoredPopup({
+      message: 'Animation timescale is illustrative only, not physically accurate.',
+      x: el.x * v.z + v.x,
+      y: el.y * v.z + v.y,
+    });
+  }
 }
 
 let timeScaleToastTimer = null;
@@ -765,7 +789,8 @@ function bindToolbar() {
   $('pulseDisplay').addEventListener('change', e => setPulseDisplayMode(e.target.value));
   $('pulseSpeed').addEventListener('change', e => {
     userChoseScale = true; // an explicit pick wins until the scene changes tier again
-    setPulseSpeed(parseFloat(e.target.value));
+    if (e.target.value === 'mechanics') setMechanicsMode(true);
+    else setPulseSpeed(parseFloat(e.target.value)); // also clears mechanics mode
   });
 
   const mobileMenu = $('mobileMenu');
@@ -847,7 +872,7 @@ document.addEventListener('optics:duplicate', duplicateSelected);
 document.addEventListener('optics:clearvoxels', e => clearVoxelPreview(e.detail?.stageId));
 document.addEventListener('optics:toolchange', e => syncToolMode(e.detail));
 document.addEventListener('optics:pulsestate', e => syncPulseControls(e.detail));
-document.addEventListener('optics:pulserepresentation', e => showPulseModePopup(e.detail));
+document.addEventListener('optics:pulserepresentation', e => showAnchoredPopup(e.detail));
 document.addEventListener('optics:viewchange', e => syncViewControls(e.detail));
 
 // ---------- boot ----------
@@ -875,7 +900,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindKeys();
   setSelectionCallback(renderSelection);
   setMeasurementsCallback(refreshMeasurements);
-  onChange(() => { renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); });
+  onChange(() => { renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion(); });
 
   if (isTypeDemo) {
     // Wiki embed: a small fixed scene — a light source plus the showcased
