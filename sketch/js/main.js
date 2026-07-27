@@ -12,7 +12,7 @@ import { initInspector, renderInspector, refreshMeasurements } from './inspector
 import { buildSVG, exportSVG, exportPNG } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
-import { download, esc } from './util.js';
+import { download, esc, manualBeamSVG } from './util.js';
 import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
@@ -129,6 +129,13 @@ const demoScenes = {
 };
 
 // ---------- palette ----------
+const FIBER_TOOLS = [
+  { tool: 'fiber', label: 'Fiber', desc: 'Draw an optical fiber patch cable: click waypoints, double-click to finish.', bare: false },
+  { tool: 'barefiber', label: 'Bare fiber', desc: 'Draw a bare optical fiber, without connectors: click waypoints, double-click to finish.', bare: true },
+];
+const FIBER_ICON_PTS = [{ x: -15, y: 7 }, { x: 0, y: -7 }, { x: 15, y: 7 }];
+const FIBER_ICON_VB = 44;
+
 function buildPalette() {
   const pal = $('paletteContent');
   let h = `<div class="library-head">
@@ -146,9 +153,10 @@ function buildPalette() {
     const entries = Object.entries(registry).filter(([, def]) => def.category === cat && !def.hidden)
       .sort((a, b) => (a[1].paletteOrder ?? 100) - (b[1].paletteOrder ?? 100));
     const drawArrowHere = cat === 'Annotations';
-    if (!entries.length && !drawArrowHere) continue;
+    const drawFiberHere = cat === 'Fibers';
+    if (!entries.length && !drawArrowHere && !drawFiberHere) continue;
     h += `<details class="palette-group" data-category="${esc(cat)}" ${initiallyOpen.has(cat) ? 'open' : ''}>
-      <summary>${esc(cat)}<span class="group-count">${entries.length + (drawArrowHere ? 1 : 0)}</span></summary><div class="catlist">`;
+      <summary>${esc(cat)}<span class="group-count">${entries.length + (drawArrowHere ? 1 : 0) + (drawFiberHere ? FIBER_TOOLS.length : 0)}</span></summary><div class="catlist">`;
     if (drawArrowHere) {
       // freehand "draw arrow" tool lives here too — it's the same concept as
       // the fixed-length Arrow annotation, just drawn point-by-point
@@ -164,6 +172,22 @@ function buildPalette() {
         <span class="pal-copy"><span class="pal-label">Arrow</span><span class="pal-desc">${esc(adesc)}</span></span>
         <i class="cap-dot ${ameta.tier}" title="${esc(ameta.status)}" aria-label="${esc(ameta.status)}"></i></button>`;
       total++;
+    }
+    if (drawFiberHere) {
+      // Both are draw-point tools, not placeable registry elements — same
+      // pattern as the Arrow tool above. Bare fiber shares every physics
+      // param with the connectorized one; only the drawn graphic differs
+      // (see manualBeamSVG's `bare` branch), so both icons are rendered by
+      // that same function for a real preview, not a hand-drawn stand-in.
+      for (const ft of FIBER_TOOLS) {
+        const iconBeam = { kind: 'fiber', pts: FIBER_ICON_PTS, color: '#e8a800', width: 4, bare: ft.bare };
+        const fsearch = `fiber optical patch cable ${ft.bare ? 'bare no connector flat termination' : 'connector'} ${ft.desc}`.toLowerCase();
+        h += `<button type="button" class="palitem" data-tool="${ft.tool}" data-search="${esc(fsearch)}" title="${esc(ft.desc)}">
+          <svg viewBox="${-FIBER_ICON_VB / 2} ${-FIBER_ICON_VB / 2} ${FIBER_ICON_VB} ${FIBER_ICON_VB}">${manualBeamSVG(iconBeam)}</svg>
+          <span class="pal-copy"><span class="pal-label">${esc(ft.label)}</span><span class="pal-desc">${esc(ft.desc)}</span></span>
+          <i class="cap-dot simulated" title="Simulated" aria-label="Simulated"></i></button>`;
+        total++;
+      }
     }
     for (const [type, def] of entries) {
       const el = createElement(type);
@@ -189,6 +213,10 @@ function buildPalette() {
   pal.querySelectorAll('.palitem').forEach(item => {
     if (item.dataset.tool === 'drawarrow') {
       item.addEventListener('click', () => { startBeamTool('beam'); closeMobileSheet('palette'); });
+      return;
+    }
+    if (item.dataset.tool === 'fiber' || item.dataset.tool === 'barefiber') {
+      item.addEventListener('click', () => { startBeamTool(item.dataset.tool); closeMobileSheet('palette'); });
       return;
     }
     item.addEventListener('click', () => { startPlacing(item.dataset.type); closeMobileSheet('palette'); });
@@ -226,12 +254,13 @@ function syncToolMode(detail = { mode: 'select' }) {
   mode.classList.toggle('is-visible', active);
   mobileActions.classList.toggle('is-visible', active);
   $('mobileToolLabel').textContent = active ? `Adding ${detail.label}` : '';
-  const canFinishMobileTool = detail.mode === 'beam' || detail.mode === 'fiber' || detail.mode === 'polygon';
+  const canFinishMobileTool = detail.mode === 'beam' || detail.mode === 'fiber' || detail.mode === 'barefiber' || detail.mode === 'polygon';
   $('btnMobileToolDone').hidden = !canFinishMobileTool;
   document.querySelectorAll('.palitem').forEach(item => item.classList.toggle('is-active',
     ((detail.mode === 'place' || detail.mode === 'polygon') && !item.dataset.tool && item.dataset.type === detail.type) ||
-    (detail.mode === 'beam' && item.dataset.tool === 'drawarrow')));
-  $('btnFiber').classList.toggle('active', detail.mode === 'fiber');
+    (detail.mode === 'beam' && item.dataset.tool === 'drawarrow') ||
+    (detail.mode === 'fiber' && item.dataset.tool === 'fiber') ||
+    (detail.mode === 'barefiber' && item.dataset.tool === 'barefiber')));
   if (!active) { mode.textContent = ''; return; }
   mode.textContent = detail.mode === 'place'
     ? `Place ${detail.label} · click to drop · R rotate · Shift keeps placing · Esc cancels`
@@ -780,7 +809,6 @@ function bindToolbar() {
   $('btnPNG').addEventListener('click', () => exportPNG(3));
   $('btnUndo').addEventListener('click', () => { undo(); renderInspector(); });
   $('btnRedo').addEventListener('click', () => { redo(); renderInspector(); });
-  $('btnFiber').addEventListener('click', () => startBeamTool('fiber'));
   $('btnGrid').addEventListener('click', () => { state.showGrid = !state.showGrid; syncToolbar(); renderAll(); });
   $('btnSnap').addEventListener('click', () => { state.snap = !state.snap; syncToolbar(); });
   $('btnFocal').addEventListener('click', () => { state.showFocal = !state.showFocal; syncToolbar(); renderAll(); });

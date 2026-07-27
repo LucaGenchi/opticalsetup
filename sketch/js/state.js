@@ -145,6 +145,7 @@ function normalizeBeam(raw, used) {
   if (kind === 'fiber') {
     return {
       ...base,
+      bare: raw.bare === true,
       propagate: raw.propagate === true,
       inputNA: clamp(finite(raw.inputNA) ? raw.inputNA : 0.22, 0.01, 0.95),
       groupIndex: clamp(finite(raw.groupIndex) ? raw.groupIndex : 1.468, 1, 2.2),

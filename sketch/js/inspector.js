@@ -399,7 +399,7 @@ export function renderInspector() {
       ? (b.propagate ? 'Routes incoming light between its two configured ends.' : 'Enable propagation to route light through this fiber path.')
       : 'A visual beam path for explanatory diagrams; it does not affect traced rays.';
     let h = `<div class="inspector-head"><div class="inspector-kicker">Selected path</div>
-      <div class="inspector-title-row"><h3>${isFiber ? 'Optical fiber' : 'Manual beam'}</h3><span class="cap-badge ${tier}">${status}</span></div>
+      <div class="inspector-title-row"><h3>${isFiber ? (b.bare ? 'Bare fiber' : 'Optical fiber') : 'Manual beam'}</h3><span class="cap-badge ${tier}">${status}</span></div>
       <div class="inspector-desc">${description}</div></div>`;
     let appearanceFields = field('Color', `<input type="color" data-k="color" value="${b.color}">`);
     appearanceFields += numberField('Width (px)', 'data-k="width"', b.width, { min: 0.5, max: 20, step: 0.5 });

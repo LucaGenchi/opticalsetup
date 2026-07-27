@@ -494,7 +494,7 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   #toolbar { min-height: 54px; gap: 7px; padding: 6px 10px; }
   .brandblock { min-width: 0; }
   .brand { font-size: 14px; }
-  .model-badge, #toolbar .examples-group, #toolbar .file-group, #toolbar .draw-group,
+  .model-badge, #toolbar .examples-group, #toolbar .file-group,
   #toolbar .export-group, #toolbar .spacer { display: none; }
   #toolbar .history-group { margin-left: auto; border-left: 0; padding-left: 0; gap: 2px; }
   #toolbar .history-group button { min-width: 38px; min-height: 38px; padding: 4px; font-size: 18px; }
@@ -785,7 +785,6 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 body.demo-mode #palette,
 body.demo-mode #toolbar .examples-group,
 body.demo-mode #toolbar .file-group,
-body.demo-mode #toolbar .draw-group,
 body.demo-mode #toolbar .export-group,
 body.demo-mode #toolbar .history-group,
 body.demo-mode #btnAdd,

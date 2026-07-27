@@ -2237,6 +2237,7 @@ export const categories = [
   'Sources',
   'Mirrors',
   'Lenses',
+  'Fibers',
   'Filters & Splitters',
   'Dispersive & Apertures',
   'Polarization',

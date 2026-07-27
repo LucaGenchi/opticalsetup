@@ -574,7 +574,7 @@ function renderManual() {
   for (const b of state.beams) s += `<g vector-effect="non-scaling-stroke">${manualBeamSVG(b)}</g>`;
   // in-progress beam / fiber
   if (drawing) {
-    const c = drawing.kindType === 'fiber' ? '#c98f00' : '#e02020';
+    const c = (drawing.kindType === 'fiber' || drawing.kindType === 'barefiber') ? '#c98f00' : '#e02020';
     const pts = [...drawing.pts];
     if (drawing.cursor) pts.push(drawing.cursor);
     if (pts.length > 1) s += `<polyline points="${ptsAttr(pts)}" fill="none" stroke="${c}" stroke-width="2" opacity="0.6" stroke-dasharray="4 4"/>`;
@@ -991,13 +991,15 @@ export function startPlacing(type) {
   renderAll();
 }
 
+const BEAM_TOOL_LABELS = { fiber: 'Optical fiber', barefiber: 'Bare fiber' };
+
 export function startBeamTool(kind = 'beam') {
   placing = null; polygonDrawing = null;
   state.tool = 'beam';
   drawing = { pts: [], cursor: null, kindType: kind };
   lastDrawClick = null;
   setStatus('');
-  notifyTool({ mode: kind, label: kind === 'fiber' ? 'Optical fiber' : 'Arrow' });
+  notifyTool({ mode: kind, label: BEAM_TOOL_LABELS[kind] || 'Arrow' });
   renderAll();
 }
 
@@ -1063,10 +1065,11 @@ export function finishBeam() {
   const pts = distinctPoints(drawing?.pts);
   if (drawing && pts.length >= 2) {
     pushUndo();
-    const isFiber = drawing.kindType === 'fiber';
+    const isFiber = drawing.kindType === 'fiber' || drawing.kindType === 'barefiber';
     const beam = isFiber
       ? {
         id: 'b' + Math.random().toString(36).slice(2, 9), kind: 'fiber', pts, color: '#e8a800', width: 4, propagate: true,
+        bare: drawing.kindType === 'barefiber',
         inputNA: 0.22, groupIndex: 1.468, lossDbPerM: 0.2,
         out0: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },
         out1: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },

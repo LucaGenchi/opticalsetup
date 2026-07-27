@@ -103,13 +103,19 @@ export function manualBeamSVG(b) {
       d += ` L ${p[p.length - 1].x},${p[p.length - 1].y}`;
     }
     const w = b.width || 4;
-    let s = `<path d="${d}" fill="none" stroke="${b.color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>`;
-    for (const [e, q] of [[p[0], p[1]], [p[p.length - 1], p[p.length - 2]]]) {
-      const a = Math.atan2(q.y - e.y, q.x - e.x) * 180 / Math.PI;
-      const W = w + 6;
-      s += `<g transform="translate(${e.x} ${e.y}) rotate(${a})">` +
-        `<rect x="0" y="${-W / 2}" width="11" height="${W}" rx="1.5" fill="#4d565f"/>` +
-        `<rect x="11" y="${-(W - 5) / 2}" width="4" height="${W - 5}" fill="#8d98a5"/></g>`;
+    // Bare fiber is the same physical/optical component with connector
+    // plugs omitted and flat-cut (not rounded) ends, matching a cleaved bare
+    // fiber tip rather than a terminated patch cable.
+    const cap = b.bare ? 'butt' : 'round';
+    let s = `<path d="${d}" fill="none" stroke="${b.color}" stroke-width="${w}" stroke-linecap="${cap}" stroke-linejoin="round" opacity="0.95"/>`;
+    if (!b.bare) {
+      for (const [e, q] of [[p[0], p[1]], [p[p.length - 1], p[p.length - 2]]]) {
+        const a = Math.atan2(q.y - e.y, q.x - e.x) * 180 / Math.PI;
+        const W = w + 6;
+        s += `<g transform="translate(${e.x} ${e.y}) rotate(${a})">` +
+          `<rect x="0" y="${-W / 2}" width="11" height="${W}" rx="1.5" fill="#4d565f"/>` +
+          `<rect x="11" y="${-(W - 5) / 2}" width="4" height="${W - 5}" fill="#8d98a5"/></g>`;
+      }
     }
     return s;
   }
