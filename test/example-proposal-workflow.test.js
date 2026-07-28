@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { gzipSync } from 'node:zlib';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
   extractProposalIssue,
@@ -82,7 +83,7 @@ test('proposal materialization normalizes, traces, exports, and records provenan
   });
   assert.equal(result.proposalFile, 'community-submissions/issue-42.json');
   assert.equal(result.branchName, 'example-proposal/issue-42');
-  assert.equal(result.proposal.status, 'proposed');
+  assert.equal(Object.hasOwn(result.proposal, 'status'), false);
   assert.equal(result.proposal.name, 'Green focusing path');
   assert.equal(result.proposal.reference, null);
   assert.equal(result.proposal.author.github, 'example-contributor');
@@ -90,7 +91,20 @@ test('proposal materialization normalizes, traces, exports, and records provenan
   assert.equal(result.proposal.scene.elements.length, 2);
   assert.match(result.proposal.sceneSha256, /^[0-9a-f]{64}$/);
   assert.match(result.prBody, /parsed and normalized/);
-  assert.match(result.prBody, /status.*approved/);
+  assert.match(result.prBody, /merge this pull request to approve/i);
+  assert.match(result.prBody, /publishing workflow generates/i);
+  assert.doesNotMatch(result.prBody, /status.*approved/i);
+});
+
+test('proposal workflow opens a normal pull request and merge publishes generated files', async () => {
+  const proposalWorkflow = await readFile(new URL('../.github/workflows/example-proposal.yml', import.meta.url), 'utf8');
+  const publishWorkflow = await readFile(new URL('../.github/workflows/publish-community.yml', import.meta.url), 'utf8');
+  assert.match(proposalWorkflow, /git add "\$PROPOSAL_FILE"/);
+  assert.match(proposalWorkflow, /gh pr create --base main/);
+  assert.doesNotMatch(proposalWorkflow, /gh pr create --draft/);
+  assert.match(publishWorkflow, /community-submissions\/\*\.json/);
+  assert.match(publishWorkflow, /node tools\/build-community\.mjs/);
+  assert.match(publishWorkflow, /git add community sketch\/js\/community-data\.js/);
 });
 
 test('proposal materialization records a provided reference', () => {

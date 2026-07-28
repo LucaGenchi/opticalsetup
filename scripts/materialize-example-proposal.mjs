@@ -169,7 +169,6 @@ export function materializeProposal({ issueNumber, issueBody, userLogin, created
   const issueURL = `https://github.com/${REPOSITORY}/issues/${number}`;
   const proposal = {
     schema: 1,
-    status: 'proposed',
     name: fields.name,
     description: fields.description,
     reference: fields.reference,
@@ -195,9 +194,9 @@ export function materializeProposal({ issueNumber, issueBody, userLogin, created
       '- parsed and normalized with the current component registry',
       '- traced without an exception',
       '- exported to finite SVG geometry',
-      '- passed the repository test suite before this draft was opened',
+      '- passed the repository test suite before this pull request was opened',
       '',
-      'This draft stores a reviewable proposal only. A maintainer must still assess the setup, flip `status` to `approved` in this file, and run `node tools/build-community.mjs` to publish it to the Community section.',
+      'Review the setup and description, then merge this pull request to approve it. The publishing workflow generates the Community page and app manifest after the merge. Close the pull request to reject it. No status or generated-file edits are required.',
     ].join('\n'),
   };
 }

@@ -1,0 +1,49 @@
+name: Publish approved community setups
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - community-submissions/*.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-community
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the latest main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Include every approved merge
+        run: |
+          git fetch origin main
+          git switch -C main origin/main
+
+      - name: Build community pages and manifest
+        run: node tools/build-community.mjs
+
+      - name: Run repository checks
+        run: npm test
+
+      - name: Commit generated publishing files
+        run: |
+          if git diff --quiet -- community sketch/js/community-data.js; then
+            echo "Community publishing files are already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add community sketch/js/community-data.js
+          git diff --cached --check
+          git commit -m "Publish approved community setups"
+          git push origin HEAD:main
