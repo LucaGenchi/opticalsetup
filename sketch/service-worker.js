@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v2';
+const CACHE_NAME = 'opticalsetup-pwa-v3';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -17,6 +17,7 @@ const PRECACHE_PATHS = [
   "./js/detector-instruments.js",
   "./js/detector-measurements.js",
   "./js/elements.js",
+  "./js/etalon.js",
   "./js/examples-data.js",
   "./js/export.js",
   "./js/inspector.js",
