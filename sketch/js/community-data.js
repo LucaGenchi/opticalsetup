@@ -4,6 +4,11 @@
 // static site). Re-run the generator after approving/removing a submission.
 export const community = [
   {
+    "slug": "bright-field-microscope",
+    "name": "Bright field microscope",
+    "path": "../community-submissions/issue-29.json"
+  },
+  {
     "slug": "laserpecker-4-dual-laser-optical-path",
     "name": "LaserPecker 4 dual-laser optical path",
     "path": "../community-submissions/issue-25.json"

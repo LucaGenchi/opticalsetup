@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "status": "proposed",
-  "name": "Birghtfield microscope",
+  "status": "approved",
+  "name": "Bright field microscope",
   "description": "Base building block for microscopy. Features a Kholer illumination and an objective + tube lens detection",
   "reference": null,
   "author": {
