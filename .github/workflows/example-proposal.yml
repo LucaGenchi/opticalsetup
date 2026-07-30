@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  create-draft-pr:
+  create-proposal-pr:
     if: startsWith(github.event.issue.title, '[Example proposal]')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -53,7 +53,7 @@ jobs:
             git push --set-upstream origin "$BRANCH_NAME"
           fi
 
-      - name: Open or find the draft pull request
+      - name: Open or find the pull request
         id: pull_request
         env:
           BRANCH_NAME: ${{ steps.proposal.outputs.branch_name }}
@@ -62,17 +62,17 @@ jobs:
         run: |
           pr_url="$(gh pr list --state open --head "$BRANCH_NAME" --json url --jq '.[0].url')"
           if [[ -z "$pr_url" ]]; then
-            pr_url="$(gh pr create --draft --base main --head "$BRANCH_NAME" --title "$PR_TITLE" --body-file "$PR_BODY_FILE")"
+            pr_url="$(gh pr create --base main --head "$BRANCH_NAME" --title "$PR_TITLE" --body-file "$PR_BODY_FILE")"
           fi
           echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
 
-      - name: Link the draft pull request
+      - name: Link the pull request
         env:
           PR_URL: ${{ steps.pull_request.outputs.pr_url }}
         run: |
-          gh issue comment "$ISSUE_NUMBER" --body "Automated validation passed and a draft pull request is ready for maintainer review: $PR_URL"
+          gh issue comment "$ISSUE_NUMBER" --body "Automated validation passed and a publish-ready pull request is ready for maintainer review: $PR_URL"
 
       - name: Report a failed proposal
         if: failure()
         run: |
-          gh issue comment "$ISSUE_NUMBER" --body "The automated proposal checks could not prepare a draft pull request. The setup remains in this issue for maintainer review; see the workflow run for the validation result."
+          gh issue comment "$ISSUE_NUMBER" --body "The automated proposal checks could not prepare a pull request. The setup remains in this issue for maintainer review; see the workflow run for the validation result."
