@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "status": "proposed",
-  "name": "optical setup",
-  "description": "just write it",
+  "status": "approved",
+  "name": "Component library showcase",
+  "description": "Not a real optical setup — a panorama of building blocks (lasers, mirrors, filters, gratings, detectors, and more) laid out side by side to show the range of elements available in the component library.",
   "reference": null,
   "author": {
     "github": "bertona88",
