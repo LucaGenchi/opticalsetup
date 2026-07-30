@@ -9,6 +9,11 @@ export const community = [
     "path": "../community-submissions/issue-33.json"
   },
   {
+    "slug": "bright-field-microscope",
+    "name": "Bright field microscope",
+    "path": "../community-submissions/issue-29.json"
+  },
+  {
     "slug": "laserpecker-4-dual-laser-optical-path",
     "name": "LaserPecker 4 dual-laser optical path",
     "path": "../community-submissions/issue-25.json"
