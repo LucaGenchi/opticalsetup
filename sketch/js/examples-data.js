@@ -5,6 +5,11 @@
 // under Examples/.
 export const examples = [
   {
+    "group": null,
+    "name": "OPTICAL SETUP — pulsed component panorama",
+    "path": "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json"
+  },
+  {
     "group": "Optics Bench",
     "name": "Mach–Zehnder interferometer",
     "path": "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json"
