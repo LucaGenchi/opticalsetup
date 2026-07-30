@@ -75,10 +75,15 @@ test('offline cache covers every workbench module and bundled example', async ()
     assert.ok(precache.has(module), `offline cache is missing ${module}`);
   }
 
+  // Standalone examples live directly under Examples/; categorized ones sit
+  // one level deeper, under Examples/<Category>/ — both must be precached.
+  const standaloneExamples = (await readdir(resolve(ROOT, 'Examples'), { withFileTypes: true }))
+    .filter(entry => entry.isFile() && entry.name.endsWith('.json'))
+    .map(entry => `../Examples/${encodeURIComponent(entry.name)}`);
   const examples = (await readdir(resolve(ROOT, 'Examples/Optics Bench')))
     .filter(name => name.endsWith('.json'))
     .map(name => `../Examples/Optics%20Bench/${encodeURIComponent(name)}`);
-  for (const example of examples) {
+  for (const example of [...standaloneExamples, ...examples]) {
     assert.ok(precache.has(example), `offline cache is missing ${example}`);
   }
 

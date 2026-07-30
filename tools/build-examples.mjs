@@ -3,6 +3,11 @@
 // loads at runtime via fetch(). Run this after adding, renaming, or removing
 // a file under Examples/ — `node tools/build-examples.mjs`.
 //
+// A .json placed directly under Examples/, not inside a category
+// subdirectory, is standalone: it is listed before every category, outside
+// any optgroup, so it can't be mistaken for belonging to a category —
+// including one added later.
+//
 // Each .json is validated against the real component registry (the same
 // parseSketch() the app itself uses to open a file), so a typo'd element
 // type or malformed file fails the build instead of silently 404ing or
@@ -29,17 +34,36 @@ function humanize(baseName) {
 }
 
 async function main() {
-  let categories;
+  let listing;
   try {
-    categories = (await readdir(EXAMPLES_DIR, { withFileTypes: true }))
-      .filter(d => d.isDirectory())
-      .map(d => d.name)
-      .sort((a, b) => a.localeCompare(b));
+    listing = await readdir(EXAMPLES_DIR, { withFileTypes: true });
   } catch (err) {
-    if (err.code === 'ENOENT') { categories = []; } else { throw err; }
+    if (err.code === 'ENOENT') { listing = []; } else { throw err; }
   }
+  const categories = listing.filter(d => d.isDirectory()).map(d => d.name).sort((a, b) => a.localeCompare(b));
 
   const entries = [];
+
+  // Files directly under Examples/ (not inside a category subdirectory) are
+  // standalone — no optgroup, listed before every category so they can never
+  // be mistaken for belonging to one, including categories added later.
+  const standaloneFiles = listing.filter(d => d.isFile() && d.name.toLowerCase().endsWith('.json'))
+    .map(d => d.name).sort((a, b) => a.localeCompare(b));
+  for (const file of standaloneFiles) {
+    const full = join(EXAMPLES_DIR, file);
+    const text = await readFile(full, 'utf-8');
+    let parsed;
+    try {
+      parsed = parseSketch(text, registry);
+    } catch (err) {
+      throw new Error(`Examples/${file}: ${err.message}`);
+    }
+    if (!parsed.elements.length) throw new Error(`Examples/${file}: sketch has no elements`);
+    const name = humanize(file.replace(/\.json$/i, ''));
+    const path = `../Examples/${encodeURIComponent(file)}`;
+    entries.push({ group: null, name, path });
+  }
+
   for (const category of categories) {
     const dir = join(EXAMPLES_DIR, category);
     const files = (await readdir(dir))
@@ -71,7 +95,7 @@ async function main() {
 export const examples = ${JSON.stringify(entries, null, 2)};
 `;
   await writeFile(OUT_FILE, body, 'utf-8');
-  console.log(`Wrote ${entries.length} example(s) across ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'} to sketch/js/examples-data.js`);
+  console.log(`Wrote ${entries.length} example(s) (${standaloneFiles.length} standalone) across ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'} to sketch/js/examples-data.js`);
 }
 
 main().catch(err => { console.error(err); process.exitCode = 1; });

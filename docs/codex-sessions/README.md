@@ -23,6 +23,8 @@ reasoning, token-count events, and obvious secret values are excluded.
    (`019f9026-046d-7521-9771-f8f223a0587d`)
 8. [Curved Freeform Glass circular-arc construction](2026-07-25T06-32-05Z-how-does-ricktu-make-it-possible-to-make-curved-segments-i-dont-remember-8b13711d.md)
    (`019f97f9-4e40-78f3-8eaf-ba338b13711d`)
+9. [Exact saved OPTICAL SETUP component panorama](2026-07-20T18-46-02Z-add-exact-saved-optical-setup-component-panorama-491c153a.md)
+   (`019f80d9-73b0-7be3-9e88-9d08491c153a`)
 
 The transcripts are provenance records, not product documentation. Current
 behavior and limitations are documented in the repository's main README and tests.

@@ -503,17 +503,20 @@ function bindExamples() {
   const groups = new Map(); // group label -> <optgroup>
   examples.forEach((ex, i) => {
     for (const sel of selects) {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = ex.name;
+      // No group: a plain top-level option, not nested in any optgroup —
+      // it stays outside every category, including ones added later.
+      if (!ex.group) { sel.appendChild(o); continue; }
       const key = `${sel.id}:${ex.group}`;
       let og = groups.get(key);
       if (!og) {
         og = document.createElement('optgroup');
-        og.label = ex.group || 'Examples';
+        og.label = ex.group;
         sel.appendChild(og);
         groups.set(key, og);
       }
-      const o = document.createElement('option');
-      o.value = String(i);
-      o.textContent = ex.name;
       og.appendChild(o);
     }
   });
