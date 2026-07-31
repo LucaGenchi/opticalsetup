@@ -1,0 +1,194 @@
+{
+  "schema": 1,
+  "name": "Optical spectrometer",
+  "description": "Simple spectrometer do visualize its working principle.\n\nThis configuration is commonly used in spectrometers from various manufacturers.",
+  "reference": "https://en.wikipedia.org/wiki/Optical_spectrometer",
+  "author": {
+    "github": "TrimenZ",
+    "profile": "https://github.com/TrimenZ"
+  },
+  "source": {
+    "issue": "https://github.com/LucaGenchi/optics-sketch/issues/38",
+    "submittedAt": "2026-07-31T15:12:57.000Z"
+  },
+  "sceneSha256": "9ac9549101e3db11484a619a532d8228b76001f847eb98a31bd9c3e253d2f18f",
+  "scene": {
+    "app": "optics2d",
+    "version": 1,
+    "elements": [
+      {
+        "id": "egg4i78n",
+        "type": "slit",
+        "x": 550,
+        "y": -35,
+        "rot": 180,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "gap": 7,
+          "length": 47
+        }
+      },
+      {
+        "id": "e0strxb7",
+        "type": "pointsource",
+        "x": 200.0297393435067,
+        "y": -450,
+        "rot": 90,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "displayScale": 1,
+          "wavelength": 600,
+          "bwMode": "band",
+          "bandwidth": 200,
+          "spread": 20,
+          "nrays": 12,
+          "autoColor": true,
+          "color": "#e02020"
+        }
+      },
+      {
+        "id": "e38vzqjs",
+        "type": "cmirror",
+        "x": 705.5416312257508,
+        "y": -35.54159155743199,
+        "rot": 10,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "length": 40,
+          "f": 205,
+          "refl": 100,
+          "showTransmitted": false
+        }
+      },
+      {
+        "id": "e0q4ghnt",
+        "type": "grating",
+        "x": 559.4435594206752,
+        "y": -90,
+        "rot": 190,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "lines": 1200,
+          "orders": "1",
+          "transmissive": false,
+          "length": 50.8
+        }
+      },
+      {
+        "id": "e7gjktsb",
+        "type": "camera",
+        "x": 629.403509211236,
+        "y": 34.76661795887339,
+        "rot": 100,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ch": 148,
+          "pixels": 64,
+          "rows": 12
+        }
+      },
+      {
+        "id": "e1pgoag2",
+        "type": "display",
+        "x": 975,
+        "y": -50,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "sensorId": "e7gjktsb",
+          "displayScale": 3,
+          "screenOn": true,
+          "displayView": "spectrum"
+        }
+      },
+      {
+        "id": "emuc7kml",
+        "type": "lens",
+        "x": 200,
+        "y": -405,
+        "rot": 270,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 20,
+          "dia": 32.5,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "e63tnrke",
+        "type": "cmirror",
+        "x": 629.9865165879022,
+        "y": -105.58900493833181,
+        "rot": 295,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "length": 122,
+          "f": 115,
+          "refl": 100,
+          "showTransmitted": false
+        }
+      },
+      {
+        "id": "eo14wz8t",
+        "type": "textlabel",
+        "x": 616.6038541058856,
+        "y": -219.56597174374005,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Optical spectrometer",
+          "fontSize": 14,
+          "fill": "#333333"
+        }
+      }
+    ],
+    "beams": [
+      {
+        "id": "bnwebz14",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 496.12573113860776,
+            "y": -37.0518027038021
+          },
+          {
+            "x": 200.23049800103163,
+            "y": -34.53900399793679
+          },
+          {
+            "x": 200,
+            "y": -370
+          }
+        ],
+        "color": "#e8a800",
+        "width": 4,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0.2,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.29,
+          "focal": 20,
+          "dia": 6
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.12,
+          "focal": 20,
+          "dia": 6
+        }
+      }
+    ]
+  }
+}
