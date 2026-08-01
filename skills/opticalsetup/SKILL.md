@@ -1,5 +1,5 @@
 ---
-name: opticalsetup-scene-builder
+name: opticalsetup
 description: Build, validate, and encode OpticalSetup scenes from natural-language descriptions, then return working self-contained OpticalSetup share links. Use for optical bench diagrams, ray-tracing scenes, experiment layouts, and requests that should open directly in opticalsetup.com.
 compatibility: Requires access to the public OpticalSetup repository or website. The bundled Node script is intended to run from a checkout of LucaGenchi/optics-sketch.
 metadata:
