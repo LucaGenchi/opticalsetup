@@ -1,0 +1,27 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "e-laser-1",
+      "type": "laser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "Laser",
+      "showLabel": true,
+      "params": {}
+    },
+    {
+      "id": "e-lens-1",
+      "type": "lens",
+      "x": 300,
+      "y": 200,
+      "rot": 0,
+      "label": "Lens",
+      "showLabel": true,
+      "params": {}
+    }
+  ],
+  "beams": []
+}
