@@ -17,6 +17,7 @@ import {
   legacyPolarization, polarizationDescription,
 } from './polarization.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
+import { airyTransmission } from './etalon.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
@@ -271,7 +272,14 @@ export function probeAt(x, y, tol = 16) {
   return best ? { wl: best.wl, bw: best.bw || 0, pol: best.pol, stokes: cloneStokes(best.stokes), intensity: best.intensity } : null;
 }
 
-const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
+// Physics and presentation use different cutoffs. Low-power branches must
+// still reach detectors; keeping the old 2% threshold only for drawing avoids
+// turning deep split paths into canvas clutter.
+const MAXLEN = 6000, MAX_DEPTH = 60, MIN_TRACE_INT = 1e-6, MIN_RENDER_INT = 0.02;
+
+function pathPeakIntensity(ray) {
+  return Math.max(ray.intensity || 0, ...(ray.segmentIntensities || []));
+}
 
 function fiberEndDirection(pts, end, outward = false) {
   const j = end === 0 ? 0 : pts.length - 1;
@@ -606,6 +614,86 @@ function interact(ray, hit) {
       const out = [];
       if (R > 0.005) out.push({ d: focused, intensity: ray.intensity * R, tag: 'R' });
       out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted });
+      return out;
+    }
+    case 'etalon': {
+      const axis = dot(d, n) >= 0 ? n : mul(n, -1);
+      const incidenceSin = dot(d, t);
+      const index = Math.min(2.5, Math.max(1, data.refractiveIndex || 1.46));
+      const insideSin = Math.min(0.999999, Math.max(-0.999999, incidenceSin / index));
+      const insideCos = Math.sqrt(Math.max(1e-12, 1 - insideSin * insideSin));
+      const insideTan = insideSin / insideCos;
+      const spacing = Math.min(100, Math.max(1, data.spacing || 12));
+      const rearOrigin = add(add(hit.p, mul(axis, spacing)), mul(t, spacing * insideTan));
+      const referenceIncidenceSin = Math.sin((data.configuredTiltDeg || 0) * D2R);
+      const samples = wlSamples(ray);
+      const out = [];
+      for (let i = 0; i < samples.length; i++) {
+        const wavelength = samples[i];
+        const transmission = airyTransmission({
+          wavelengthNm: wavelength,
+          designWavelengthNm: data.designWavelength,
+          spacingMm: spacing,
+          refractiveIndex: index,
+          reflectivity: data.reflectivity,
+          incidenceSin,
+          referenceIncidenceSin,
+        });
+        const sampleIntensity = ray.intensity / samples.length;
+        if (transmission > 0) out.push({
+          d, origin: rearOrigin, wl: wavelength, bw: 0,
+          intensity: sampleIntensity * transmission,
+          oplOffset: index * spacing / insideCos,
+          tag: `airy-T${i}`,
+        });
+        if (transmission < 1) out.push({
+          d: reflect(d, n), wl: wavelength, bw: 0,
+          intensity: sampleIntensity * (1 - transmission),
+          tag: `airy-R${i}`,
+        });
+      }
+      return out;
+    }
+    case 'vipa': {
+      const axis = dot(d, n) >= 0 ? n : mul(n, -1);
+      const incidenceSin = dot(d, t);
+      const index = Math.min(2.5, Math.max(1, data.refractiveIndex || 1.46));
+      const insideSin = Math.min(0.999999, Math.max(-0.999999, incidenceSin / index));
+      const insideCos = Math.sqrt(Math.max(1e-12, 1 - insideSin * insideSin));
+      const insideTan = insideSin / insideCos;
+      const spacing = Math.min(100, Math.max(1, data.spacing || 12));
+      const aperture = Math.min(150, Math.max(6, data.aperture || 35));
+      const windowMidpoint = mul(add(s.a, s.b), 0.5);
+      const surfaceMidpoint = sub(windowMidpoint, mul(t, data.windowOffset || 0));
+      const inputAlong = dot(sub(hit.p, surfaceMidpoint), t);
+      const oneWayShift = spacing * insideTan;
+      const roundTripShift = 2 * oneWayShift;
+      const outputR = Math.min(0.999, Math.max(0, data.outputReflectivity ?? 0.96));
+      const roundTrip = outputR * Math.min(0.999, Math.max(0, data.frontReflectivity ?? 0.999));
+      const leakage = 1 - outputR;
+      const samples = wlSamples(ray);
+      const maxOrders = Math.abs(roundTripShift) < 0.05 ? 1 : Math.min(24, Math.max(1, data.maxOrders || 24));
+      const out = [];
+      for (let i = 0; i < samples.length; i++) {
+        const wavelength = samples[i];
+        const dispersion = Math.min(45, Math.max(-45,
+          (data.angularDispersionDegPerNm || 0) * (wavelength - data.designWavelength))) * D2R;
+        for (let order = 0; order < maxOrders; order++) {
+          const outputAlong = inputAlong + oneWayShift + order * roundTripShift;
+          if (Math.abs(outputAlong) > aperture / 2) break;
+          const orderIntensity = ray.intensity / samples.length * leakage * roundTrip ** order;
+          if (orderIntensity < MIN_TRACE_INT) break;
+          out.push({
+            d: rotv(d, dispersion),
+            origin: add(add(surfaceMidpoint, mul(axis, spacing)), mul(t, outputAlong)),
+            wl: wavelength, bw: 0,
+            intensity: orderIntensity,
+            oplOffset: index * spacing * (2 * order + 1) / insideCos,
+            hidden: !data.showLeakage,
+            tag: `vipa-w${i}-o${order}`,
+          });
+        }
+      }
       return out;
     }
     case 'lens': {
@@ -993,7 +1081,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
   while (stack.length) {
     const r = stack.pop();
     for (; ;) {
-      if (r.depth > MAX_DEPTH || r.intensity < MIN_INT) break;
+      if (r.depth > MAX_DEPTH || r.intensity < MIN_TRACE_INT) break;
       const hit = nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, surfaces, r.last);
       if (r.evan) {
         // evanescent (isotropic fluorescence, or a diagram point source):
@@ -1108,6 +1196,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
       }
       for (const c of children) {
         const ox = c.origin ? c.origin.x : hit.p.x, oy = c.origin ? c.origin.y : hit.p.y;
+        const childOpl = r.opl + Math.max(0, Number.isFinite(c.oplOffset) ? c.oplOffset : 0);
         stack.push({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
           wl: c.wl !== undefined ? c.wl : r.wl,
@@ -1128,8 +1217,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           sample: r.sample, writeReference: r.writeReference,
           hidden: r.hidden || Boolean(c.hidden),
           pts: [{ x: ox, y: oy }],
-          opl: r.opl,
-          opls: [r.opl],
+          opl: childOpl,
+          opls: [childOpl],
           segmentIntensities: [],
           segmentHistories: [],
           segmentEvents: [],
@@ -1342,13 +1431,14 @@ export function traceScene(elements, beams = []) {
     // "Display transmitted beam" toggle off) are always fully traced above,
     // for correct detector/power-budget physics — but stay out of every
     // visual surface: drawables, pulse animation, and the beam probe.
-    const paths = allPaths.filter(r => !r.hidden);
-    lastPaths.push(...paths);
-    assembleDrawables(paths, {
+    const visiblePaths = allPaths.filter(r => !r.hidden);
+    const renderPaths = visiblePaths.filter(r => pathPeakIntensity(r) >= MIN_RENDER_INT);
+    lastPaths.push(...renderPaths);
+    assembleDrawables(renderPaths, {
       K, isBeam: p.beamMode === 'beam',
       fixedColor: p.autoColor === false && p.color ? baseColor : null,
     }, drawables);
-    collectPulseTracks(paths, K, p.autoColor === false && p.color ? baseColor : null, pulseTracks);
+    collectPulseTracks(renderPaths, K, p.autoColor === false && p.color ? baseColor : null, pulseTracks);
   }
 
   // fibers that received light re-emit at their far end (up to 3 chained hops)
@@ -1361,10 +1451,11 @@ export function traceScene(elements, beams = []) {
       emitted.add(key);
       const rays0 = fiberEmissionRays(c);
       if (!rays0) continue;
-      const paths = traceRays(rays0, surfaces, couplings, writeHits, signalHits).filter(r => !r.hidden);
-      lastPaths.push(...paths);
-      assembleDrawables(paths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
-      collectPulseTracks(paths, rays0.length, null, pulseTracks);
+      const visiblePaths = traceRays(rays0, surfaces, couplings, writeHits, signalHits).filter(r => !r.hidden);
+      const renderPaths = visiblePaths.filter(r => pathPeakIntensity(r) >= MIN_RENDER_INT);
+      lastPaths.push(...renderPaths);
+      assembleDrawables(renderPaths, { K: rays0.length, isBeam: true, fixedColor: null }, drawables);
+      collectPulseTracks(renderPaths, rays0.length, null, pulseTracks);
     }
   }
   // image formation for Object elements: locate the image of the object's

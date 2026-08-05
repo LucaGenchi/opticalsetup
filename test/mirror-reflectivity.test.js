@@ -68,6 +68,21 @@ test('a fully reflective mirror is unaffected: no leak traced or drawn', () => {
   assert.equal(detectorReading(detector.id), null, 'a 100%-reflective mirror should leak nothing');
 });
 
+test('sub-2% power still propagates through the shared tracer to detectors', () => {
+  const laser = createElement('laser', 0, 0);
+  const first = createElement('filter', 120, 0);
+  const second = createElement('filter', 180, 0);
+  for (const filter of [first, second]) {
+    filter.params.ftype = 'nd';
+    filter.params.trans = 0.1;
+  }
+  const detector = createElement('detector', 260, 0);
+
+  traceAll([laser, first, second, detector]);
+  assert.ok(Math.abs(detectorReading(detector.id).signal - 0.01) < 1e-9,
+    'the old 2% display threshold must not prune a physically valid detector path');
+});
+
 test('the laser has an Average power (W) parameter', () => {
   const laser = createElement('laser');
   assert.ok(Number.isFinite(laser.params.avgPowerW));

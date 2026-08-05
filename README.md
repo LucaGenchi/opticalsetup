@@ -92,10 +92,13 @@ figures as SVG or PNG.
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
 design package. It models ray paths, bounded relative power, spectral bands, Stokes
 polarization, thin-lens elements, refractive boundaries, timed pulse trains, and
-simple detector responses. It does not model coherent carrier phase, interference,
-diffraction-limited propagation, material dispersion beyond the stated simplified
-models, or laboratory-specific calibration. Paraxial image markers do not account
-for downstream clipping. Animated pulse packets are a canvas aid;
+simple detector responses. It does not generally model coherent carrier phase or
+interference. The Etalon / VIPA component is a deliberately bounded exception: its
+etalon mode evaluates an ideal lossless Airy response relative to a user-selected
+design wavelength, while VIPA mode draws a finite leakage array with qualitative
+user-set angular dispersion. Neither mode models diffraction, coherent far-field
+fringes, coating phase, manufacturing tolerances, or laboratory calibration.
+Paraxial image markers do not account for downstream clipping. Animated pulse packets are a canvas aid;
 SVG and PNG exports intentionally remain static and deterministic.
 
 The 2PP resin preview records pulsed ray arrivals at the stage sample plane and

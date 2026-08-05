@@ -14,6 +14,7 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { stokesAngleDeg } from './polarization.js';
+import { etalonDefinition } from './etalon.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -2008,6 +2009,10 @@ export const registry = {
   },
 };
 
+// Keep optional component definitions in the registry module's import graph so
+// browser, Node, and CLI loaders all see the same source of truth.
+registry.etalon = etalonDefinition;
+
 // concave lens: identical optics to 'lens', concave default focal length
 registry.lensc = {
   ...registry.lens,
@@ -2069,6 +2074,7 @@ const DIRECT = {
   objective: { resize: { y: 'aperture' }, tune: { key: 'f', short: 'f' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
+  etalon: { resize: { y: 'aperture' }, tune: { key: p => p.mode === 'vipa' ? 'angularDispersion' : 'reflectivity', short: 'response' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
   polarizer: { resize: { y: 'length' }, tune: { key: 'pangle', short: 'axis' } },
   hwp: { resize: { y: 'length' }, tune: { key: 'a', short: 'axis' } },
@@ -2190,9 +2196,10 @@ const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe']);
 const SHAPERS = new Set(['slm']);
 
 export function getElementMeta(type, params = {}, context = {}) {
-  let tier = DIAGRAM_ONLY.has(type) ? 'diagram' : 'simulated';
-  let note = '';
-  let description = ELEMENT_HELP[type] || 'Optical workbench component.';
+  const definition = registry[type];
+  let tier = DIAGRAM_ONLY.has(type) ? 'diagram' : (definition?.capabilityTier || 'simulated');
+  let note = definition?.capabilityNote || '';
+  let description = definition?.description || ELEMENT_HELP[type] || 'Optical workbench component.';
   const displayLinkMissing = type === 'display' && params.sensorId
     && context.element && Array.isArray(context.elements)
     && !resolveDisplaySensor(context.element, context.elements);

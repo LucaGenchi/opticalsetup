@@ -25,6 +25,8 @@ reasoning, token-count events, and obvious secret values are excluded.
    (`019f97f9-4e40-78f3-8eaf-ba338b13711d`)
 9. [Exact saved OPTICAL SETUP component panorama](2026-07-20T18-46-02Z-add-exact-saved-optical-setup-component-panorama-491c153a.md)
    (`019f80d9-73b0-7be3-9e88-9d08491c153a`)
+10. [Etalon / VIPA diagnosis and PR repair](2026-07-30T15-28-27Z-luca-says-the-etalon-model-we-sent-sucks-and-he-thinks-the-problem-might-4728bdde.md)
+    (`019fb3a4-26a9-77b2-91a5-36e04728bdde`)
 
 The transcripts are provenance records, not product documentation. Current
 behavior and limitations are documented in the repository's main README and tests.

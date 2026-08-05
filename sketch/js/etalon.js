@@ -1,12 +1,15 @@
-// Fabry–Pérot etalon and VIPA geometry built from the tracer's existing
-// partially reflective mirror interactions. The VIPA mode models the
-// entrance window and repeated spatially offset leakage beams; coherent
-// phase summation / Airy fringes remain outside the qualitative ray model.
-
-import { registry } from './elements.js';
+// Bounded Fabry–Pérot etalon and VIPA models.
+//
+// The general tracer is intentionally phase-free. Etalon mode therefore uses
+// the closed-form, lossless Airy transmission for two identical coatings
+// rather than recursively spawning cavity rays. VIPA mode emits a finite
+// geometric leakage array with a user-set qualitative angular dispersion.
 
 const D2R = Math.PI / 180;
-const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, Number(value)));
+const clamp = (value, lo, hi) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(hi, Math.max(lo, number)) : lo;
+};
 
 function frame(params = {}) {
   const mode = params.mode === 'vipa' ? 'vipa' : 'etalon';
@@ -20,46 +23,88 @@ function frame(params = {}) {
     x: surfaceCentre.x + along * tangent.x,
     y: surfaceCentre.y + along * tangent.y,
   });
-  return { mode, aperture, spacing, tangent, normal, centre, point };
+  return { mode, aperture, spacing, tilt, tangent, normal, centre, point };
 }
 
-function segment(a, b, refl, showTransmitted) {
+function modelData(params, f) {
   return {
-    x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-    kind: 'mirror', data: { refl, showTransmitted },
+    aperture: f.aperture,
+    spacing: f.spacing,
+    configuredTiltDeg: f.tilt / D2R,
+    refractiveIndex: clamp(params.refractiveIndex ?? 1.46, 1, 2.5),
+    designWavelength: clamp(params.designWavelength ?? 532, 200, 2000),
   };
+}
+
+export function airyTransmission({
+  wavelengthNm,
+  designWavelengthNm = 532,
+  spacingMm = 12,
+  refractiveIndex = 1.46,
+  reflectivity = 0.9,
+  incidenceSin = 0,
+  referenceIncidenceSin = 0,
+} = {}) {
+  const wavelength = clamp(wavelengthNm ?? designWavelengthNm, 1, 1e6);
+  const designWavelength = clamp(designWavelengthNm, 1, 1e6);
+  const spacingNm = clamp(spacingMm, 0, 1e6) * 1e6;
+  const index = clamp(refractiveIndex, 1, 2.5);
+  const coatingR = clamp(reflectivity, 0, 0.999999);
+  const insideSin = clamp(incidenceSin / index, -0.999999, 0.999999);
+  const referenceInsideSin = clamp(referenceIncidenceSin / index, -0.999999, 0.999999);
+  const insideCos = Math.sqrt(Math.max(0, 1 - insideSin * insideSin));
+  const referenceInsideCos = Math.sqrt(Math.max(0, 1 - referenceInsideSin * referenceInsideSin));
+  const finesseCoefficient = 4 * coatingR / Math.max(1e-12, (1 - coatingR) ** 2);
+  // Subtract the configured design state before evaluating the Airy phase.
+  // This makes the design wavelength an explicit resonant reference instead
+  // of depending on an unknowable absolute coating phase / integer order.
+  const phaseHalf = 2 * Math.PI * index * spacingNm
+    * (insideCos / wavelength - referenceInsideCos / designWavelength);
+  return 1 / (1 + finesseCoefficient * Math.sin(phaseHalf) ** 2);
 }
 
 export function etalonSurfaces(params = {}) {
   const f = frame(params), half = f.aperture / 2;
-  const front = f.centre(-1), rear = f.centre(1);
+  const front = f.centre(-1);
+  const a = f.point(front, -half), b = f.point(front, half);
+  const common = modelData(params, f);
 
   if (f.mode === 'etalon') {
-    const reflectivity = clamp(params.reflectivity ?? 90, 0, 99.4);
-    return [
-      segment(f.point(front, -half), f.point(front, half), reflectivity, true),
-      segment(f.point(rear, -half), f.point(rear, half), reflectivity, true),
-    ];
+    return [{
+      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+      kind: 'etalon',
+      data: {
+        ...common,
+        reflectivity: clamp(params.reflectivity ?? 90, 0, 99.9) / 100,
+      },
+    }];
   }
 
-  const frontReflectivity = clamp(params.frontReflectivity ?? 99.9, 0, 100);
-  const outputReflectivity = clamp(params.outputReflectivity ?? 96, 0, 99.4);
+  const frontReflectivity = clamp(params.frontReflectivity ?? 99.9, 0, 99.9);
   const windowSize = clamp(params.windowSize ?? 3, 0.5, Math.max(0.5, f.aperture - 1));
   const windowOffset = clamp(params.windowOffset ?? 0, -half + windowSize / 2, half - windowSize / 2);
   const windowLo = windowOffset - windowSize / 2;
   const windowHi = windowOffset + windowSize / 2;
+  const surface = (from, to, kind, data) => {
+    const start = f.point(front, from), end = f.point(front, to);
+    return { x1: start.x, y1: start.y, x2: end.x, y2: end.y, kind, data };
+  };
   const out = [];
-
   if (windowLo > -half + 1e-6) {
-    out.push(segment(f.point(front, -half), f.point(front, windowLo), frontReflectivity, false));
+    out.push(surface(-half, windowLo, 'mirror', { refl: frontReflectivity, showTransmitted: false }));
   }
+  out.push(surface(windowLo, windowHi, 'vipa', {
+    ...common,
+    windowOffset,
+    frontReflectivity: frontReflectivity / 100,
+    outputReflectivity: clamp(params.outputReflectivity ?? 96, 0, 99.9) / 100,
+    angularDispersionDegPerNm: clamp(params.angularDispersion ?? 0.08, -1, 1),
+    showLeakage: params.showLeakage !== false,
+    maxOrders: 24,
+  }));
   if (windowHi < half - 1e-6) {
-    out.push(segment(f.point(front, windowHi), f.point(front, half), frontReflectivity, false));
+    out.push(surface(windowHi, half, 'mirror', { refl: frontReflectivity, showTransmitted: false }));
   }
-  out.push(segment(
-    f.point(rear, -half), f.point(rear, half), outputReflectivity,
-    params.showLeakage !== false,
-  ));
   return out;
 }
 
@@ -115,7 +160,8 @@ export const etalonDefinition = {
     'fabry perot', 'fabry–pérot', 'fabry-perot etalon', 'interferometer',
     'vipa', 'virtually imaged phased array', 'spectral disperser',
   ],
-  description: 'Parallel partially reflective plates. Toggle VIPA mode for an HR entrance-window face and a partially transmitting output face that produces spatially offset multi-pass leakage beams.',
+  description: 'A closed-form Airy etalon or a bounded, wavelength-separated VIPA leakage array.',
+  capabilityNote: 'Etalon transmission is an ideal lossless Airy response referenced to the design wavelength. VIPA leakage and angular dispersion are qualitative; diffraction, coherent far-field fringes, coating phase, and calibration are not modeled.',
   size: { w: 22, h: 41 },
   size_: element => {
     const f = frame(element.params);
@@ -125,11 +171,14 @@ export const etalonDefinition = {
     { key: 'mode', label: 'Configuration', type: 'select', def: 'etalon', options: [['etalon', 'Fabry–Pérot etalon'], ['vipa', 'VIPA']] },
     { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 150, step: 1, def: 35 },
     { key: 'spacing', label: 'Plate spacing / thickness (mm)', type: 'number', min: 1, max: 100, step: 0.5, def: 12 },
+    { key: 'refractiveIndex', label: 'Cavity index', type: 'number', min: 1, max: 2.5, step: 0.01, def: 1.46 },
+    { key: 'designWavelength', label: 'Design wavelength (nm)', type: 'number', min: 200, max: 2000, step: 1, def: 532 },
     { key: 'etalonTilt', label: 'Etalon tilt (°)', type: 'number', min: -30, max: 30, step: 0.5, def: 0, show: p => p.mode !== 'vipa' },
-    { key: 'reflectivity', label: 'Both surfaces reflectivity (%)', type: 'number', min: 0, max: 99.4, step: 0.1, def: 90, show: p => p.mode !== 'vipa' },
+    { key: 'reflectivity', label: 'Both surfaces reflectivity (%)', type: 'number', min: 0, max: 99.9, step: 0.1, def: 90, show: p => p.mode !== 'vipa' },
     { key: 'vipaTilt', label: 'VIPA incidence tilt (°)', type: 'number', min: -30, max: 30, step: 0.5, def: 4, show: p => p.mode === 'vipa' },
-    { key: 'frontReflectivity', label: 'Front HR coating (%)', type: 'number', min: 0, max: 100, step: 0.1, def: 99.9, show: p => p.mode === 'vipa' },
-    { key: 'outputReflectivity', label: 'Output coating reflectivity (%)', type: 'number', min: 0, max: 99.4, step: 0.1, def: 96, show: p => p.mode === 'vipa' },
+    { key: 'frontReflectivity', label: 'Front HR coating (%)', type: 'number', min: 0, max: 99.9, step: 0.1, def: 99.9, show: p => p.mode === 'vipa' },
+    { key: 'outputReflectivity', label: 'Output coating reflectivity (%)', type: 'number', min: 0, max: 99.9, step: 0.1, def: 96, show: p => p.mode === 'vipa' },
+    { key: 'angularDispersion', label: 'Angular dispersion (°/nm)', type: 'number', min: -1, max: 1, step: 0.01, def: 0.08, show: p => p.mode === 'vipa' },
     { key: 'windowSize', label: 'Entrance window (mm)', type: 'number', min: 0.5, max: 30, step: 0.5, def: 3, show: p => p.mode === 'vipa' },
     { key: 'windowOffset', label: 'Window offset (mm)', type: 'number', min: -60, max: 60, step: 0.5, def: 0, show: p => p.mode === 'vipa' },
     { key: 'showLeakage', label: 'Show output leakage beams', type: 'checkbox', def: true, show: p => p.mode === 'vipa' },
@@ -137,5 +186,3 @@ export const etalonDefinition = {
   svg: element => etalonSVG(element.params),
   surfaces: element => etalonSurfaces(element.params),
 };
-
-registry.etalon = etalonDefinition;
