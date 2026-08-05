@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for sharing an optical setup. After submission, an automated workflow validates the scene and opens a draft pull request for maintainer review.
+        Thanks for sharing an optical setup. After submission, an automated workflow validates the scene and opens a publish-ready pull request for maintainer review.
 
   - type: input
     id: setup_name
