@@ -97,6 +97,7 @@ test('component metadata distinguishes simulated, setup-dependent, and diagram-o
 
 test('glass rods refract through their faces and return an exiting ray to air', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   const rod = createElement('glassrod', 180, 0);
   rod.rot = 10;
   const paths = traceAll([laser, rod]).filter(d => d.type === 'path');
@@ -109,6 +110,7 @@ test('glass rods refract through their faces and return an exiting ray to air', 
 
 test('microscope assembly applies both internal lenses and blocks outside its aperture', () => {
   const laser = createElement('laser', 0, 5);
+  laser.params.beamMode = 'line';
   const microscope = createElement('microscope', 200, 0);
   const paths = traceAll([laser, microscope]).filter(d => d.type === 'path');
   const ray = paths.find(d => d.pts.length >= 4);

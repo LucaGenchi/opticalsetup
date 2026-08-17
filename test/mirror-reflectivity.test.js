@@ -22,6 +22,7 @@ test('every mirror-category element has a reflectivity param defaulting to 100%,
 
 test('a partial flat mirror keeps the transmitted beam undrawn by default, but a detector behind it still reads the leaked power', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   const mirror = createElement('mirror', 150, 0);
   mirror.rot = 45; // folds the reflected beam off-axis; the 20% leak keeps going straight through
   mirror.params.refl = 80;
@@ -43,6 +44,7 @@ test('a partial flat mirror keeps the transmitted beam undrawn by default, but a
 
 test('curved mirrors (convex/concave) now split reflectivity too, always tracing the leak for detector physics', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   const cmirror = createElement('cmirror', 150, 0);
   cmirror.rot = 45;
   cmirror.params.refl = 70;

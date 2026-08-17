@@ -6,12 +6,21 @@ import {
 } from './elements.js';
 import { detectorReading } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
+import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
 import { esc } from './util.js';
 
 let panel;
 let undoArmed = false; // push one undo snapshot per editing session
 let controlSerial = 0;
 const sectionState = new Map();
+
+// Round a computed transform-limited value to a sane display precision —
+// the raw TBP formulas return long floats that read as noise in a text field.
+function roundSig(value, sig = 4) {
+  if (!Number.isFinite(value) || value === 0) return value;
+  const magnitude = Math.pow(10, sig - Math.ceil(Math.log10(Math.abs(value))));
+  return Math.round(value * magnitude) / magnitude;
+}
 
 export function initInspector(el) { panel = el; }
 
@@ -577,7 +586,38 @@ function applyInput(inp, rebuild = false) {
     if (pkey === 'sampleKind') applyStageSamplePreset(sel);
   }
   changed();
+  // Transform-limited pulses tie bandwidth and pulse duration together via
+  // the time–bandwidth product: committing an edit to either one on a TL
+  // laser recomputes the other, so the pair always describes one physically
+  // consistent pulse. Only on commit (rebuild), not every keystroke, so
+  // typing a new value doesn't get overwritten mid-edit.
+  if (rebuild && sel.type === 'laser' && sel.params.temporalMode === 'pulsed' && sel.params.transformLimited
+    && (pkey === 'bandwidth' || pkey === 'pulseWidthFs')) {
+    const shape = sel.params.pulseShape || 'gauss';
+    if (pkey === 'bandwidth') {
+      sel.params.pulseWidthFs = roundSig(transformLimitedDurationFs(val, sel.params.wavelength, shape));
+      document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message: 'Pulse duration calculated for a transform-limited pulse.' } }));
+    } else {
+      sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(val, sel.params.wavelength, shape));
+      document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message: 'Bandwidth calculated for a transform-limited pulse.' } }));
+    }
+    changed();
+    renderInspector();
+    return;
+  }
+  // Flipping transform-limited on (or switching pulse shape while it's on)
+  // instantly makes bandwidth and pulse duration inconsistent with each
+  // other unless one is recomputed right away — duration drives bandwidth,
+  // matching the per-field sync above.
+  if (rebuild && sel.type === 'laser' && sel.params.temporalMode === 'pulsed' && sel.params.transformLimited
+    && (pkey === 'transformLimited' || pkey === 'pulseShape')) {
+    const shape = sel.params.pulseShape || 'gauss';
+    sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(sel.params.pulseWidthFs, sel.params.wavelength, shape));
+    changed();
+    renderInspector();
+    return;
+  }
   if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'containsSample', 'sampleKind', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel', 'sensorId', 'refl'].includes(pkey)) renderInspector();
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'containsSample', 'sampleKind', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel', 'sensorId', 'refl', 'transformLimited', 'rangeMode'].includes(pkey)) renderInspector();
 }

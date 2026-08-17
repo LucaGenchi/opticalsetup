@@ -37,6 +37,7 @@ test('a lens below 100% transmission attenuates power/intensity by exactly that 
 
 test('the objective attenuates by its own transmission efficiency', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   const objective = createElement('objective', 150, 0);
   objective.params.f = 20;
   objective.params.transEff = 75;

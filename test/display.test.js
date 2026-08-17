@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  createElement, displayActionUpdate, displayCableSVG, displayDensity, getElementMeta, registry, resolveDisplaySensor,
+  createElement, displayActionUpdate, displayCableSVG, displayDensity, getElementMeta, getSize, registry, resolveDisplaySensor,
 } from '../sketch/js/elements.js';
 import { buildSVG } from '../sketch/js/export.js';
 import { detectorReading, traceAll } from '../sketch/js/raytrace.js';
@@ -30,6 +30,7 @@ test('sensor display resolves only a linked detector and draws a finite data cab
 
 test('sensor display mirrors live photodetector output and handles a missing signal', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   laser.params.wavelength = 532;
   const detector = createElement('detector', 300, 0);
   detector.label = 'Sample PD';
@@ -82,16 +83,21 @@ test('sensor display adapts information density and exposes direct instrument co
   display.params.sensorId = camera.id;
   traceAll([laser, camera, display]);
 
-  display.params.displayScale = 0.6;
+  // The exposed "Display scale" range (0.25–1.5) is deliberately an octave
+  // below the 0.5–3 range displayDensity()'s thresholds are tuned against —
+  // every raw value is doubled before it drives rendered size or density
+  // (see displayRenderScale()), so the default (1) renders at what used to
+  // require manually dialing the old control up to 2.
+  display.params.displayScale = 0.3; // effective 0.6 -> compact
   const compact = registry.display.svg(display, [laser, camera, display]);
   assert.match(compact, /data-display-density="compact"/);
   assert.match(compact, /data-display-action="power"/);
   assert.match(compact, /data-display-action="input"/);
   assert.match(compact, /data-display-action="view"/);
 
-  display.params.displayScale = 1;
+  display.params.displayScale = 0.6; // effective 1.2 -> standard
   assert.match(registry.display.svg(display, [laser, camera, display]), /data-display-density="standard"/);
-  display.params.displayScale = 2;
+  display.params.displayScale = 1.5; // effective 3.0 (max) -> expanded
   const expanded = registry.display.svg(display, [laser, camera, display]);
   assert.match(expanded, /data-display-density="expanded"/);
   assert.match(expanded, /\+½ sensor/);
@@ -99,6 +105,13 @@ test('sensor display adapts information density and exposes direct instrument co
   assert.equal(displayDensity(0.5), 'compact');
   assert.equal(displayDensity(1), 'standard');
   assert.equal(displayDensity(3), 'expanded');
+});
+
+test('a new sensor display defaults to twice the old baseline size', () => {
+  const display = createElement('display', 0, 0);
+  assert.equal(display.params.displayScale, 1);
+  assert.deepEqual(getSize(display), { w: 196, h: 144 }); // 98x72 * 2
+  assert.match(registry.display.svg(display, [display]), /<g transform="scale\(2\)"/);
 });
 
 test('display buttons cycle power, view, and available sensor inputs without inspector state', () => {

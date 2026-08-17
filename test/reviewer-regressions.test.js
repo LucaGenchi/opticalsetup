@@ -52,11 +52,13 @@ test('finite optics preserve the shared beam before adjacent samples split', () 
 
 test('zero-power gated hits cannot contaminate detector metadata', () => {
   const blocked = createElement('laser', 0, 0);
+  blocked.params.beamMode = 'line';
   blocked.params.temporalMode = 'pulsed';
   blocked.params.repRateMHz = 80;
   blocked.params.wavelength = 400;
 
   const passing = createElement('laser', 0, 30);
+  passing.params.beamMode = 'line';
   passing.params.temporalMode = 'pulsed';
   passing.params.repRateMHz = 80;
   passing.params.wavelength = 800;
@@ -88,6 +90,7 @@ test('zero-power gated hits cannot contaminate detector metadata', () => {
 
 test('a passive diffuser redistributes but does not create optical power', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   const diffuser = createElement('diffuser', 150, 0);
   const camera = createElement('camera', 300, 0);
   camera.params.ch = 150;
