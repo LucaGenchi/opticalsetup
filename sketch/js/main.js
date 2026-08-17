@@ -22,7 +22,7 @@ import { initInspector, renderInspector, refreshMeasurements } from './inspector
 import { buildSVG, exportSVG, exportPNG } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
-import { download, esc, manualBeamSVG } from './util.js';
+import { download, esc, exampleIndexFromQuery, manualBeamSVG } from './util.js';
 import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
@@ -493,18 +493,18 @@ function bindKeys() {
 // same format the "Save" button writes) — see tools/build-examples.mjs,
 // which turns that folder into ./examples-data.js. Loading one is just a
 // fetch + the same parseSketch() the "Open" button uses.
-async function loadExample(index) {
+async function loadExample(index, { confirmReplace = true, resetHistory = false } = {}) {
   if (index === '') return;
   const ex = examples[+index];
   if (!ex) return;
-  if (hasScene() && !confirm(`Load example “${ex.name}”? This replaces the current sketch (Undo brings it back).`)) return;
+  if (confirmReplace && hasScene() && !confirm(`Load example “${ex.name}”? This replaces the current sketch (Undo brings it back).`)) return;
   try {
     const res = await fetch(ex.path);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const scene = parseSketch(await res.text(), registry);
-    pushUndo();
+    if (!resetHistory) pushUndo();
     cancelTool();
-    replaceScene(scene);
+    replaceScene(scene, { resetHistory });
     setSceneRegions(scene.regions);
     resetPulseTime();
     renderSelection();
@@ -953,6 +953,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
+  const requestedExampleIndex = exampleIndexFromQuery(examples, params.get('example'));
   const isTypeDemo = Boolean(demoType && registry[demoType] && !registry[demoType].hidden);
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isDemo = isTypeDemo || isCommunityDemo;
@@ -1001,6 +1002,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load community setup:', err);
     }
+  } else if (requestedExampleIndex >= 0) {
+    await loadExample(requestedExampleIndex, { confirmReplace: false, resetHistory: true });
   } else {
     let sharedScene = null;
     try {

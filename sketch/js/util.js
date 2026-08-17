@@ -92,6 +92,21 @@ export function download(filename, data, mime) {
 
 export const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+export function slugifyLabel(value) {
+  return String(value ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+export function exampleIndexFromQuery(exampleList, query) {
+  const target = slugifyLabel(query);
+  if (!target) return -1;
+  return exampleList.findIndex(example => slugifyLabel(example?.name) === target);
+}
+
 export const ptsAttr = pts => pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
 
 export function arrowHeadSVG(pts, color, w) {
