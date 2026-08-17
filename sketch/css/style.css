@@ -316,12 +316,6 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .canvas-controls button { min-width: 30px; height: 28px; padding: 3px 7px; border-color: transparent; background: transparent; }
 .canvas-controls button:hover { background: var(--surface-active); }
 .canvas-controls button.active { background: var(--accent-soft); border-color: var(--accent-border); }
-.scene-region-select {
-  width: 150px; height: 28px; padding: 3px 24px 3px 7px; border-color: transparent;
-  background-color: transparent; color: var(--text); font: inherit; font-size: 10px;
-  text-overflow: ellipsis;
-}
-.scene-region-select:hover, .scene-region-select:focus-visible { background-color: var(--surface-active); }
 .control-divider { width: 1px; height: 18px; margin: 0 3px; background: var(--border); }
 .zoom-readout {
   min-width: 64px; padding: 0 4px 0 3px; color: var(--muted); font-size: 10px;
@@ -538,7 +532,6 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   .canvas-controls { top: 10px; right: 10px; gap: 0; padding: 3px; }
   .canvas-controls button { min-width: 31px; height: 31px; padding: 3px 5px; font-size: 11px; }
   .canvas-controls #btnGrid, .canvas-controls #btnSnap { min-width: 36px; }
-  .scene-region-select { width: 137px; }
   .control-divider { margin: 0 1px; }
   .zoom-readout { display: none; }
   .pulse-controls { bottom: calc(65px + env(safe-area-inset-bottom)); max-width: calc(100% - 24px); }

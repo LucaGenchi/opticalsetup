@@ -1,6 +1,5 @@
 // Deterministically rebuild the large NIF teaching sketch from normal
-// OpticalSetup components. The emitted JSON is the same format as Save,
-// with optional named regions used only by the large-example navigator.
+// OpticalSetup components. The emitted JSON is the same format as Save.
 
 import { writeFile } from 'node:fs/promises';
 import { createElement } from '../sketch/js/elements.js';
@@ -64,15 +63,15 @@ function buildNifFacilityScene() {
 
   elements.push(
     tl('NATIONAL IGNITION FACILITY · 2D OPTICAL CONSTRUCTION', 2400, -920, 24, '#24313d'),
-    tl('One modeled master pulse → 11 causally connected representative quad ports → one absorbing target surrogate', 2400, -884, 12, '#536473'),
-    tl('This opens as a facility overview. Use Setup regions, then zoom to inspect split ratios, fibers, timing trim, amplifier optics, final optics, and VISAR.', 2400, -858, 10, '#6c7a87'),
+    tl('One master laser source → 11 causally connected representative quad ports → one absorbing target surrogate', 2400, -884, 12, '#536473'),
+    tl('Zoom and pan to inspect split ratios, fibers, timing trim, amplifier optics, final optics, and VISAR.', 2400, -858, 10, '#6c7a87'),
     tl('Reality scale: NIF has 48 chamber beam ports, four beams per port (192 beamlines). This readable 2D slice displays 11 live representative ports.', 2400, -832, 10, '#7653ad'),
     tl('01  MASTER OSCILLATOR + INJECTION DISTRIBUTION', 900, 420, 13, '#34495a'),
     tl('Sequential split ratios make eleven equal-power displayed seeds. The icons stand in for the actual staged fiber splitter / fiber amplifier network.', 900, 448, 9, '#687786'),
     mk('laser', sourceX, cy, 0, {
-      wavelength: 1053, beamMode: 'line', temporalMode: 'single',
+      wavelength: 1053, beamMode: 'line', temporalMode: 'pulsed', repRateMHz: 0.001,
       pulseWidthFs: 20000000, pulsePhaseNs: 0,
-    }, { label: '1ω master-oscillator pulse · illustrative 20 ns', showLabel: true, labelPos: 'b' }),
+    }, { label: '1ω master oscillator · illustrative 20 ns pulses', showLabel: true, labelPos: 'b' }),
   );
 
   const inputs = [];
@@ -192,7 +191,7 @@ function buildNifFacilityScene() {
     tl('Separate pulsed probe, target return, delayed reference return, recombination, and camera are optical elements—not a diagnostic placeholder.', 2800, 2302, 9, '#4e6f78'),
     tl('LLNL VISAR uses 659.5–660 nm light. This camera measures return and delay spread; coherent fringe phase and inferred velocity are outside the ray model.', 2800, 2324, 9, '#7a556f'),
     mk('laser', 2300, 2800, 0, {
-      wavelength: 659.5, beamMode: 'line', temporalMode: 'single',
+      wavelength: 659.5, beamMode: 'line', temporalMode: 'pulsed', repRateMHz: 0.001,
       pulseWidthFs: 100000, pulsePhaseNs: 0,
     }, { label: 'VISAR probe · illustrative 100 ps', showLabel: true, labelPos: 'b' }),
     mk('bs', 2550, 2800, 0, { ratio: 0.5, size: 40 }, {
@@ -217,22 +216,13 @@ function buildNifFacilityScene() {
     tl('nTOF: neutron time of flight · annotation only (no neutron transport)', 3950, 1940, 9, '#3a7654'),
     tl('MODEL BOUNDARY', 3950, 2750, 11, '#8a3e3e'),
     ...tls([
-      'Simulated: geometric paths, bounded relative signal, wavelengths, polarization, single-shot timing, fiber delay, detector arrivals.',
+      'Simulated: geometric paths, bounded relative signal, wavelengths, polarization, pulsed timing, fiber delay, detector arrivals.',
       'Constructed from existing optics only: laser, BS, fiber, lens, delay, EOM, freeform glass, crystals, sample, mirrors, detector/camera.',
       'Not simulated: gain/saturation, flashlamps, four-pass amplifier switching, damage, diffraction/phase, 3D cones, x rays, implosion, fusion, neutrons.',
     ], 3950, 2776, 8.5, '#66717e'),
   );
 
-  return {
-    app: 'optics2d', version: 1, elements, beams,
-    regions: [
-      { label: 'Whole facility', bounds: { x0: -40, y0: -1020, x1: 4830, y1: 3200 }, padding: 20 },
-      { label: 'Injection split', bounds: { x0: 0, y0: 350, x1: 1760, y1: 1450 }, padding: 70 },
-      { label: '11 live ports', bounds: { x0: 1950, y0: 120, x1: 4400, y1: 1760 }, padding: 45 },
-      { label: 'VISAR diagnostic', bounds: { x0: 2180, y0: 2240, x1: 3270, y1: 3150 }, padding: 55 },
-      { label: 'Model boundary', bounds: { x0: 3450, y0: 2670, x1: 4720, y1: 2870 }, padding: 80 },
-    ],
-  };
+  return { app: 'optics2d', version: 1, elements, beams };
 }
 
 const output = new URL('../Examples/NIF — one shot from master oscillator to target.json', import.meta.url);

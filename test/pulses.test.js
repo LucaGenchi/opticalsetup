@@ -1,10 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  C_MM_PER_NS, pointAtOpticalPath, pulseArrivalsAtPath,
-  pulseGateTransmission, pulseMarkers, pulseTransmissionAt,
-} from '../sketch/js/pulses.js';
+import { C_MM_PER_NS, pointAtOpticalPath, pulseGateTransmission, pulseMarkers, pulseTransmissionAt } from '../sketch/js/pulses.js';
 
 const track = {
   pts: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }],
@@ -47,45 +44,12 @@ test('dense physical trains are sampled across the path instead of only at its f
   assert.ok(markers.at(-1).opl > 5000);
 });
 
-test('a single-shot packet crosses the path once without periodic wraparound', () => {
-  const single = {
-    ...track,
-    pulse: { mode: 'single', pulseWidthFs: 20000000, phaseNs: 2 },
-  };
-  const options = { mode: 'schematic', schematicSpacingMm: 100 };
-  assert.deepEqual(pulseMarkers(single, 1.99, options), []);
-  const emitted = pulseMarkers(single, 2, options);
-  assert.equal(emitted.length, 1);
-  assert.ok(Math.abs(emitted[0].opl) < 1e-9);
-  const midway = pulseMarkers(single, 7, options);
-  assert.equal(midway.length, 1);
-  assert.ok(Math.abs(midway[0].opl - 50) < 1e-9);
-  assert.deepEqual(pulseMarkers(single, 22.01, options), [], 'shot leaves the path and does not repeat');
-});
-
-test('single-shot arrival events fire exactly once at a requested optical path', () => {
-  const single = {
-    ...track,
-    pulse: { mode: 'single', pulseWidthFs: 100, phaseNs: 2 },
-  };
-  const options = { mode: 'schematic', schematicSpacingMm: 100 };
-  assert.deepEqual(pulseArrivalsAtPath(single, 0, 16.99, 150, options), []);
-  assert.deepEqual(pulseArrivalsAtPath(single, 16.99, 17, 150, options), [{ timeNs: 17, transmission: 1 }]);
-  assert.deepEqual(pulseArrivalsAtPath(single, 17, 100, 150, options), []);
-});
-
 test('pulse gating respects aligned and opposed gate phases', () => {
   const first = { opl: 0, frequencyMHz: 1, duty: 0.5, phaseNs: 0 };
   const aligned = { repRateMHz: 80, phaseNs: 0, gates: [first, { ...first }] };
   const opposed = { repRateMHz: 80, phaseNs: 0, gates: [first, { ...first, phaseNs: 500 }] };
   assert.ok(Math.abs(pulseGateTransmission(aligned, 800) - 0.5) < 1e-9);
   assert.equal(pulseGateTransmission(opposed, 800), 0);
-});
-
-test('single-shot gate transmission is evaluated at its one emission time', () => {
-  const gate = { opl: 0, frequencyMHz: 1, duty: 0.5, phaseNs: 0 };
-  assert.equal(pulseGateTransmission({ mode: 'single', pulseWidthFs: 100, phaseNs: 0, gates: [gate] }), 1);
-  assert.equal(pulseGateTransmission({ mode: 'single', pulseWidthFs: 100, phaseNs: 600, gates: [gate] }), 0);
 });
 
 test('sinusoidal AOM modulation grades pulse intensity instead of imposing a half-cycle blackout', () => {

@@ -25,7 +25,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "One modeled master pulse → 11 causally connected representative quad ports → one absorbing target surrogate",
+    "text": "One master laser source → 11 causally connected representative quad ports → one absorbing target surrogate",
     "fontSize": 12,
     "fill": "#536473"
    }
@@ -39,7 +39,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "This opens as a facility overview. Use Setup regions, then zoom to inspect split ratios, fibers, timing trim, amplifier optics, final optics, and VISAR.",
+    "text": "Zoom and pan to inspect split ratios, fibers, timing trim, amplifier optics, final optics, and VISAR.",
     "fontSize": 10,
     "fill": "#6c7a87"
    }
@@ -92,15 +92,15 @@
    "x": 80,
    "y": 900,
    "rot": 0,
-   "label": "1ω master-oscillator pulse · illustrative 20 ns",
+   "label": "1ω master oscillator · illustrative 20 ns pulses",
    "showLabel": true,
    "params": {
     "wavelength": 1053,
     "avgPowerW": 1,
     "beamMode": "line",
     "beamWidth": 5,
-    "temporalMode": "single",
-    "repRateMHz": 80,
+    "temporalMode": "pulsed",
+    "repRateMHz": 0.001,
     "pulseWidthFs": 20000000,
     "transformLimited": false,
     "pulseShape": "gauss",
@@ -1937,8 +1937,8 @@
     "avgPowerW": 1,
     "beamMode": "line",
     "beamWidth": 5,
-    "temporalMode": "single",
-    "repRateMHz": 80,
+    "temporalMode": "pulsed",
+    "repRateMHz": 0.001,
     "pulseWidthFs": 100000,
     "transformLimited": false,
     "pulseShape": "gauss",
@@ -2090,7 +2090,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Simulated: geometric paths, bounded relative signal, wavelengths, polarization, single-shot timing, fiber delay, detector arrivals.",
+    "text": "Simulated: geometric paths, bounded relative signal, wavelengths, polarization, pulsed timing, fiber delay, detector arrivals.",
     "fontSize": 8.5,
     "fill": "#66717e"
    }
@@ -3499,58 +3499,6 @@
    "width": 1.4,
    "dash": true,
    "arrow": false
-  }
- ],
- "regions": [
-  {
-   "label": "Whole facility",
-   "bounds": {
-    "x0": -40,
-    "y0": -1020,
-    "x1": 4830,
-    "y1": 3200
-   },
-   "padding": 20
-  },
-  {
-   "label": "Injection split",
-   "bounds": {
-    "x0": 0,
-    "y0": 350,
-    "x1": 1760,
-    "y1": 1450
-   },
-   "padding": 70
-  },
-  {
-   "label": "11 live ports",
-   "bounds": {
-    "x0": 1950,
-    "y0": 120,
-    "x1": 4400,
-    "y1": 1760
-   },
-   "padding": 45
-  },
-  {
-   "label": "VISAR diagnostic",
-   "bounds": {
-    "x0": 2180,
-    "y0": 2240,
-    "x1": 3270,
-    "y1": 3150
-   },
-   "padding": 55
-  },
-  {
-   "label": "Model boundary",
-   "bounds": {
-    "x0": 3450,
-    "y0": 2670,
-    "x1": 4720,
-    "y1": 2870
-   },
-   "padding": 80
   }
  ]
 }

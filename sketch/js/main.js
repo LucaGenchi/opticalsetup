@@ -15,7 +15,7 @@ import './vipa.js';
 import {
   initCanvas, renderAll, startPlacing, startBeamTool, cancelTool, isPlacing,
   isPolygonDrawing, rotatePlacing, finishBeam, finishPolygon, undoPolygonPoint,
-  getViewportDetail, zoomBy, zoomFit, zoomToBounds, setSelectionCallback, setMeasurementsCallback,
+  getViewportDetail, zoomBy, zoomFit, setSelectionCallback, setMeasurementsCallback,
   getPulsePlayback, setPulsePlaying, setPulseSpeed, setMechanicsMode, setPulseDisplayMode, resetPulseTime, clearVoxelPreview,
 } from './canvas.js';
 import { initInspector, renderInspector, refreshMeasurements } from './inspector.js';
@@ -30,17 +30,6 @@ import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.j
 import { initTheme } from './theme.js';
 
 const $ = id => document.getElementById(id);
-let sceneRegions = [];
-
-function setSceneRegions(regions = []) {
-  sceneRegions = Array.isArray(regions) ? regions : [];
-  const select = $('sceneRegion');
-  if (!select) return;
-  select.innerHTML = '<option value="">Setup regions…</option>' + sceneRegions.map((region, i) =>
-    `<option value="${i}">${esc(region.label)}</option>`).join('');
-  select.hidden = sceneRegions.length === 0;
-  select.value = '';
-}
 
 // ---------- wiki embed scenes ----------
 // Each demo needs a light source (and sometimes a second one, or a probe)
@@ -505,8 +494,6 @@ async function loadExample(index) {
     pushUndo();
     cancelTool();
     replaceScene(scene);
-    setSceneRegions(scene.regions);
-    resetPulseTime();
     renderSelection();
     zoomFit();
   } catch (err) {
@@ -562,7 +549,6 @@ async function loadCommunity(index) {
     pushUndo();
     cancelTool();
     replaceScene(scene);
-    setSceneRegions();
     renderSelection();
     zoomFit();
   } catch (err) {
@@ -637,14 +623,9 @@ function syncPulseControls(detail = getPulsePlayback()) {
   play.setAttribute('aria-label', play.title);
   play.setAttribute('aria-pressed', String(detail.playing && detail.hasPulses));
   play.classList.toggle('active', detail.playing && detail.hasPulses);
-  const reset = $('btnPulseReset');
-  reset.title = detail.hasSingleShot ? 'Re-arm single shot at the source' : 'Reset pulse clock';
-  reset.setAttribute('aria-label', reset.title);
   $('pulseDisplay').value = detail.mode;
   $('pulseSpeed').value = detail.mechanicsMode ? 'mechanics' : String(detail.speedNsPerSecond);
-  $('pulseScaleNote').textContent = detail.hasSingleShot
-    ? (detail.mode === 'physical' ? 'single shot · physical speed' : 'single shot · path slowed')
-    : detail.mechanicsMode
+  $('pulseScaleNote').textContent = detail.mechanicsMode
     ? 'mechanics illustrative · pulses not synced'
     : detail.cwFallback
       ? 'shown as CW · pulse rate far from time scale'
@@ -793,7 +774,6 @@ function bindToolbar() {
     pushUndo();
     cancelTool();
     state.elements = []; state.beams = []; state.selection = null;
-    setSceneRegions();
     changed(); renderInspector();
   });
   $('btnOpen').addEventListener('click', () => $('fileInput').click());
@@ -806,7 +786,6 @@ function bindToolbar() {
       pushUndo();
       cancelTool();
       replaceScene(scene);
-      setSceneRegions();
       renderInspector(); zoomFit();
     } catch (err) {
       alert('Could not open file: ' + err.message);
@@ -851,11 +830,7 @@ function bindToolbar() {
   $('btnFocal').addEventListener('click', () => { state.showFocal = !state.showFocal; syncToolbar(); renderAll(); });
   $('btnZoomIn').addEventListener('click', () => zoomBy(1.25));
   $('btnZoomOut').addEventListener('click', () => zoomBy(0.8));
-  $('btnZoomFit').addEventListener('click', () => { $('sceneRegion').value = ''; zoomFit(); });
-  $('sceneRegion').addEventListener('change', event => {
-    const region = sceneRegions[Number(event.target.value)];
-    if (region) zoomToBounds(region.bounds, region.padding);
-  });
+  $('btnZoomFit').addEventListener('click', zoomFit);
   $('btnPulsePlay').addEventListener('click', () => setPulsePlaying(!getPulsePlayback().playing));
   $('btnPulseReset').addEventListener('click', resetPulseTime);
   $('pulseDisplay').addEventListener('change', e => setPulseDisplayMode(e.target.value));
@@ -1012,7 +987,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     if (sharedScene) {
       replaceScene(sharedScene, { resetHistory: true });
-      setSceneRegions();
       zoomFit();
     } else if (!loadAutosave(registry)) {
       // starter scene: laser -> lens -> beamsplitter -> two detection arms

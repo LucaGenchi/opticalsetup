@@ -759,9 +759,9 @@ export const registry = {
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
       { key: 'beamMode', label: 'Beam style', type: 'select', def: 'beam', options: [['line', 'Simple line'], ['beam', 'Beam with size']] },
       { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: 5, show: p => p.beamMode === 'beam' },
-      { key: 'temporalMode', label: 'Emission', type: 'select', def: 'cw', options: [['cw', 'Continuous wave'], ['pulsed', 'Pulse train'], ['single', 'Single shot']] },
+      { key: 'temporalMode', label: 'Emission', type: 'select', def: 'cw', options: [['cw', 'Continuous wave'], ['pulsed', 'Pulsed']] },
       { key: 'repRateMHz', label: 'Repetition rate (MHz)', type: 'number', min: 0.001, max: 1000000, step: 1, def: 80, show: p => p.temporalMode === 'pulsed' },
-      { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 100, show: p => p.temporalMode === 'pulsed' || p.temporalMode === 'single' },
+      { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 100, show: p => p.temporalMode === 'pulsed' },
       {
         key: 'transformLimited', label: 'Transform-limited (time–bandwidth product)', type: 'checkbox', def: false,
         show: p => p.temporalMode === 'pulsed',
@@ -771,7 +771,7 @@ export const registry = {
         options: [['gauss', 'Gaussian'], ['sech2', 'Sech²']],
         show: p => p.temporalMode === 'pulsed' && p.transformLimited,
       },
-      { key: 'pulsePhaseNs', label: 'Emission offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.temporalMode === 'pulsed' || p.temporalMode === 'single' },
+      { key: 'pulsePhaseNs', label: 'Emission offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.temporalMode === 'pulsed' },
       {
         key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono',
         options: [['mono', 'Monochromatic'], ['band', 'Broadband'], ['sc', 'Supercontinuum (white)']],
@@ -791,7 +791,7 @@ export const registry = {
     svg(el) {
       const h = laserH(el), hh = h / 2;
       const ap = el.params.beamMode === 'beam' ? Math.min(hh - 4, el.params.beamWidth / 2 + 3) : 6;
-      const pulsed = el.params.temporalMode === 'pulsed' || el.params.temporalMode === 'single';
+      const pulsed = el.params.temporalMode === 'pulsed';
       return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
         `<text x="0" y="${pulsed ? -3 : 0}" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="${pulsed ? 10 : 12}" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text>` +
         (pulsed ? `<g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>` : '') +
@@ -2098,10 +2098,10 @@ registry.sclaser = {
     { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: 8, show: p => p.beamMode === 'beam' },
     { key: 'bwMode', label: 'Spectrum', type: 'select', def: 'sc', options: [['sc', 'Supercontinuum (white)']], show: () => false },
     { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 },
-    { key: 'temporalMode', label: 'Emission', type: 'select', def: 'pulsed', options: [['cw', 'Continuous wave'], ['pulsed', 'Pulse train'], ['single', 'Single shot']] },
+    { key: 'temporalMode', label: 'Emission', type: 'select', def: 'pulsed', options: [['cw', 'Continuous wave'], ['pulsed', 'Pulsed']] },
     { key: 'repRateMHz', label: 'Repetition rate (MHz)', type: 'number', min: 0.001, max: 1000000, step: 1, def: 80, show: p => p.temporalMode === 'pulsed' },
-    { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 100, show: p => p.temporalMode === 'pulsed' || p.temporalMode === 'single' },
-    { key: 'pulsePhaseNs', label: 'Emission offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.temporalMode === 'pulsed' || p.temporalMode === 'single' },
+    { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 100, show: p => p.temporalMode === 'pulsed' },
+    { key: 'pulsePhaseNs', label: 'Emission offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.temporalMode === 'pulsed' },
     P.autoColor, P.color,
   ],
   svg(el) {
@@ -2198,7 +2198,7 @@ export function getDirectManipulation(el) {
 // simulated elements affect traced rays, configurable elements need an active
 // mode, and diagram-only elements are honest visual annotations/placeholders.
 const ELEMENT_HELP = {
-  laser: 'Emits a CW, repeating pulse-train, or single-shot monochromatic, broadband, supercontinuum, or sized collimated beam.',
+  laser: 'Emits a CW or pulsed monochromatic, broadband, supercontinuum, or sized collimated beam.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam.',
   pointsource: 'Emits isotropic light (360° by default, optionally broadband) that fades over a short evanescent range unless captured by a nearby lens, objective, or fiber tip.',
   objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',

@@ -91,64 +91,44 @@ function shortTime(ns) {
 // when the physical width would be sub-pixel.
 export function pulseTimelineHTML(pulse, color = '#2469e8') {
   if (!pulse) return '';
-  const fallback = pulse.mode === 'single' || Number.isFinite(pulse.repRateMHz) ? [{
-    mode: pulse.mode === 'single' ? 'single' : 'train',
+  const fallback = Number.isFinite(pulse.repRateMHz) ? [{
     repRateMHz: pulse.repRateMHz,
     pulseWidthFs: pulse.pulseWidthFs,
     phaseNs: pulse.phaseNs,
     gates: pulse.gates,
   }] : [];
   const trains = (Array.isArray(pulse.trains) && pulse.trains.length ? pulse.trains : fallback)
-    .filter(t => t.mode === 'single' || (Number.isFinite(t.repRateMHz) && t.repRateMHz > 0))
+    .filter(t => Number.isFinite(t.repRateMHz) && t.repRateMHz > 0)
     .slice(0, 3);
   if (!trains.length) return '';
-  const periods = trains.filter(t => t.mode !== 'single').map(t => 1000 / t.repRateMHz);
-  const minPeriod = periods.length ? Math.min(...periods) : null;
-  const maxPeriod = periods.length ? Math.max(...periods) : null;
+  const periods = trains.map(t => 1000 / t.repRateMHz);
+  const minPeriod = Math.min(...periods), maxPeriod = Math.max(...periods);
+  const windowNs = Math.max(minPeriod, Math.min(3 * maxPeriod, 12 * minPeriod));
   const width = 240, rowHeight = 24, height = 6 + rowHeight * trains.length;
   const stroke = /^#[0-9a-f]{6}$/i.test(color) ? color : '#2469e8';
   const delayNs = Number.isFinite(pulse.earliestPathDelayNs) ? pulse.earliestPathDelayNs : 0;
   const spreadNs = Number.isFinite(pulse.arrivalSpreadPs) ? pulse.arrivalSpreadPs / 1000 : 0;
-  const latestSingleArrival = Math.max(0, ...trains.filter(t => t.mode === 'single').map(train =>
-    (Number.isFinite(train.phaseNs) ? train.phaseNs : 0)
-      + (Number.isFinite(train.pathDelayNs) ? train.pathDelayNs : delayNs)));
-  const widestSinglePulse = Math.max(0, ...trains.filter(t => t.mode === 'single')
-    .map(train => Math.max(0, (train.pulseWidthFs || 0) * 1e-6 + spreadNs)));
-  const periodicWindow = periods.length ? Math.max(minPeriod, Math.min(3 * maxPeriod, 12 * minPeriod)) : 0;
-  const windowNs = Math.max(1, periodicWindow, latestSingleArrival * 1.25,
-    latestSingleArrival + widestSinglePulse * 1.1);
   let content = '';
   trains.forEach((train, row) => {
+    const periodNs = periods[row];
     const base = 18 + row * rowHeight;
     const phaseNs = Number.isFinite(train.phaseNs) ? train.phaseNs : 0;
+    const offsetNs = positiveMod(phaseNs + delayNs, periodNs);
     const physicalWidthNs = Math.max(0, (train.pulseWidthFs || 0) * 1e-6 + spreadNs);
     const halfWidth = Math.min(8, Math.max(1.2, physicalWidthNs / windowNs * width / 2));
+    const firstK = Math.floor(-offsetNs / periodNs) - 1;
+    const lastK = Math.ceil((windowNs - offsetNs) / periodNs) + 1;
+    const stride = Math.max(1, Math.ceil((lastK - firstK + 1) / 60));
     let pulses = '';
-    if (train.mode === 'single') {
-      const pathDelayNs = Number.isFinite(train.pathDelayNs) ? train.pathDelayNs : delayNs;
-      const timeNs = phaseNs + pathDelayNs;
-      const transmission = pulseTransmissionAt(train, phaseNs);
-      if (timeNs >= 0 && timeNs <= windowNs && transmission > 0) {
-        const x = timeNs / windowNs * width;
-        const peak = base - 14 * transmission;
-        pulses = `M ${(x - halfWidth).toFixed(2)},${base} Q ${x.toFixed(2)},${peak.toFixed(2)} ${(x + halfWidth).toFixed(2)},${base}`;
-      }
-    } else {
-      const periodNs = 1000 / train.repRateMHz;
-      const offsetNs = positiveMod(phaseNs + delayNs, periodNs);
-      const firstK = Math.floor(-offsetNs / periodNs) - 1;
-      const lastK = Math.ceil((windowNs - offsetNs) / periodNs) + 1;
-      const stride = Math.max(1, Math.ceil((lastK - firstK + 1) / 60));
-      for (let k = firstK; k <= lastK; k += stride) {
-        const timeNs = offsetNs + k * periodNs;
-        if (timeNs < 0 || timeNs > windowNs) continue;
-        const emissionTimeNs = timeNs - (Number.isFinite(train.pathDelayNs) ? train.pathDelayNs : delayNs);
-        const transmission = pulseTransmissionAt(train, emissionTimeNs);
-        if (transmission <= 0) continue;
-        const x = timeNs / windowNs * width;
-        const peak = base - 14 * transmission;
-        pulses += `M ${(x - halfWidth).toFixed(2)},${base} Q ${x.toFixed(2)},${peak.toFixed(2)} ${(x + halfWidth).toFixed(2)},${base}`;
-      }
+    for (let k = firstK; k <= lastK; k += stride) {
+      const timeNs = offsetNs + k * periodNs;
+      if (timeNs < 0 || timeNs > windowNs) continue;
+      const emissionTimeNs = timeNs - (Number.isFinite(train.pathDelayNs) ? train.pathDelayNs : delayNs);
+      const transmission = pulseTransmissionAt(train, emissionTimeNs);
+      if (transmission <= 0) continue;
+      const x = timeNs / windowNs * width;
+      const peak = base - 14 * transmission;
+      pulses += `M ${(x - halfWidth).toFixed(2)},${base} Q ${x.toFixed(2)},${peak.toFixed(2)} ${(x + halfWidth).toFixed(2)},${base}`;
     }
     content += `<line x1="0" y1="${base}" x2="${width}" y2="${base}" stroke="#b8c6d8" stroke-width="1"/>` +
       `<path d="${pulses}" fill="none" stroke="${stroke}" stroke-width="2"/>`;
@@ -157,7 +137,7 @@ export function pulseTimelineHTML(pulse, color = '#2469e8') {
     ? ` · first ${trains.length} of ${pulse.trains.length} trains` : '';
   return `<div class="pulse-timeline" aria-label="Detector pulse arrival timeline">
     <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">${content}</svg>
-    <span>${shortTime(windowNs)} arrival window · pulse glyphs bounded for visibility${extra}</span>
+    <span>${shortTime(windowNs)} arrival window · widths enlarged when sub-pixel${extra}</span>
   </div>`;
 }
 
@@ -203,12 +183,10 @@ function measurementHTML(el) {
     : `${Math.round(rd.wavelength)} nm`;
   const spot = rd.samples > 1 ? `${rd.spotSpan.toFixed(1)} mm` : 'Point hit';
   const pulseTrain = rd.pulse?.mixed
-    ? `${rd.pulse.sources} timed sources · mixed settings`
-    : rd.pulse?.mode === 'single'
-      ? `${rd.pulse.sources > 1 ? `${rd.pulse.sources} sources · ` : ''}Single shot · ${rd.pulse.pulseWidthFs.toLocaleString()} fs`
-      : rd.pulse ? `${rd.pulse.sources > 1 ? `${rd.pulse.sources} sources · ` : ''}${rd.pulse.repRateMHz.toLocaleString()} MHz · ${rd.pulse.pulseWidthFs.toLocaleString()} fs` : '';
+    ? `${rd.pulse.sources} source trains · mixed settings`
+    : rd.pulse ? `${rd.pulse.sources > 1 ? `${rd.pulse.sources} sources · ` : ''}${rd.pulse.repRateMHz.toLocaleString()} MHz · ${rd.pulse.pulseWidthFs.toLocaleString()} fs` : '';
   const pulseRows = rd.pulse ? `
-      <dt>${rd.pulse.mode === 'single' ? 'Pulse' : 'Pulse train'}</dt><dd>${pulseTrain}</dd>
+      <dt>Pulse train</dt><dd>${pulseTrain}</dd>
       ${rd.pulse.mixed ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
