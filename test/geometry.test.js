@@ -271,24 +271,24 @@ test('every Examples/**/*.json file parses, traces, and exports without invalid 
   }
 });
 
-test('NIF example drives 11 ports from one pulsed master laser and traces a real VISAR-style return', async () => {
+test('NIF example drives 11 ports from one pulsed master laser', async () => {
   const path = join(EXAMPLES_DIR, 'NIF — one shot from master oscillator to target.json');
   const scene = parseSketch(await readFile(path, 'utf-8'), registry);
   const lasers = scene.elements.filter(element => element.type === 'laser');
   const laser = lasers.find(element => element.params.wavelength === 1053);
-  const probe = lasers.find(element => element.params.wavelength === 659.5);
   const target = scene.elements.find(element => element.type === 'sample' && element.params.transmitExc === false);
   const detector = scene.elements.find(element => element.type === 'detector');
-  const camera = scene.elements.find(element => element.type === 'camera');
+  assert.equal(lasers.length, 1, 'the detached VISAR probe bench is not part of the driver scene');
   assert.equal(laser.params.temporalMode, 'pulsed');
-  assert.equal(probe.params.temporalMode, 'pulsed');
   assert.equal(laser.params.repRateMHz, 0.001);
-  assert.equal(probe.params.repRateMHz, 0.001);
   assert.equal(scene.beams.filter(beam => beam.kind === 'fiber').length, 11);
   assert.equal(scene.elements.filter(element => element.type === 'lens').length, 22);
+  assert.equal(scene.elements.filter(element => element.type === 'delayline').length, 11);
   assert.equal(scene.elements.filter(element => element.type === 'crystal').length, 22);
   assert.equal(scene.elements.filter(element => element.type === 'eom').length, 11);
   assert.equal(scene.elements.filter(element => element.type === 'freeglass').length, 11);
+  assert.equal(scene.elements.filter(element => element.type === 'mirror').length, 0);
+  assert.equal(scene.elements.filter(element => element.type === 'camera').length, 0);
   assert.equal(scene.elements.filter(element => element.type === 'box').length, 0,
     'no custom box pretends to be an optical component');
   assert.ok(scene.elements.every(element => registry[element.type]),
@@ -315,14 +315,6 @@ test('NIF example drives 11 ports from one pulsed master laser and traces a real
   assert.ok(driveReading?.signal > 0);
   assert.ok(Math.abs(driveReading.wavelength - 351) < 1e-6);
   assert.equal(driveReading.pulse.repRateMHz, 0.001);
-
-  const visar = detectorReading(camera.id);
-  assert.ok(visar?.signal > 0);
-  assert.ok(Math.abs(visar.wavelength - 659.5) < 1e-6);
-  assert.equal(visar.samples, 2, 'target and delayed reference returns both reach the camera');
-  assert.equal(visar.pulse.sources, 1);
-  assert.ok(visar.pulse.arrivalSpreadPs > 1000,
-    'the two interferometer arms retain a measurable path delay');
 });
 
 test('speckle dot drawables are included in export bounds', () => {

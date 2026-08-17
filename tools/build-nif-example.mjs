@@ -64,10 +64,10 @@ function buildNifFacilityScene() {
   elements.push(
     tl('NATIONAL IGNITION FACILITY · 2D OPTICAL CONSTRUCTION', 2400, -920, 24, '#24313d'),
     tl('One master laser source → 11 causally connected representative quad ports → one absorbing target surrogate', 2400, -884, 12, '#536473'),
-    tl('Zoom and pan to inspect split ratios, fibers, timing trim, amplifier optics, final optics, and VISAR.', 2400, -858, 10, '#6c7a87'),
+    tl('Zoom and pan to inspect split ratios, fibers, timing trim, passive amplifier proxies, final optics, and target.', 2400, -858, 10, '#6c7a87'),
     tl('Reality scale: NIF has 48 chamber beam ports, four beams per port (192 beamlines). This readable 2D slice displays 11 live representative ports.', 2400, -832, 10, '#7653ad'),
-    tl('01  MASTER OSCILLATOR + INJECTION DISTRIBUTION', 900, 420, 13, '#34495a'),
-    tl('Sequential split ratios make eleven equal-power displayed seeds. The icons stand in for the actual staged fiber splitter / fiber amplifier network.', 900, 448, 9, '#687786'),
+    tl('01  MASTER OSCILLATOR + COMPRESSED INJECTION PROXY', 900, 420, 13, '#34495a'),
+    tl('Sequential splits make eleven equal-power displayed seeds. This stands in for NIF’s PAM beam shaping and four-way PABTS distribution.', 900, 448, 9, '#687786'),
     mk('laser', sourceX, cy, 0, {
       wavelength: 1053, beamMode: 'line', temporalMode: 'pulsed', repRateMHz: 0.001,
       pulseWidthFs: 20000000, pulsePhaseNs: 0,
@@ -147,7 +147,7 @@ function buildNifFacilityScene() {
       along(angle, 835, 'freeglass', {
         vertices: [{ x: -35, y: -16 }, { x: 35, y: -16 }, { x: 35, y: 16 }, { x: -35, y: 16 }],
         scale: 1, material: 'constant', ior: 1.5, transmission: 0.99,
-      }, first ? { label: 'Nd:glass · passive', showLabel: true, labelPos: 'b' } : {}),
+      }, first ? { label: 'Nd:glass slab · passive proxy', showLabel: true, labelPos: 'b' } : {}),
       along(angle, 748, 'crystal', {
         aperture: 46, convert: 'shg', efficiency: 1, transmitPump: false,
       }, first ? { label: '2ω · 526.5', showLabel: true, labelPos: 't' } : {}),
@@ -173,7 +173,7 @@ function buildNifFacilityScene() {
 
   elements.push(
     tl('02  11 LIVE FINAL-OPTICS PORTS', cx, 250, 13, '#34495a'),
-    tl('Each port is active: fiber seed → collimator → timing trim → EOM/PEPC proxy → glass slab → 2ω → 3ω → focus.', cx, 276, 9, '#687786'),
+    tl('Each port is active: fiber seed → collimator → timing trim → EOM/PEPC proxy → passive glass slab → 2ω → 3ω → focus.', cx, 276, 9, '#687786'),
     tl('The 11-way radial layout is a readable 2D projection, not NIF’s literal four 3D cone angles. Every P01–P11 path is traced from the same source.', cx, 298, 9, '#7653ad'),
     mk('sample', cx, cy, 0, {
       aperture: 110, mode: 'none', transmitExc: false, transmission: 0,
@@ -187,37 +187,14 @@ function buildNifFacilityScene() {
   );
 
   elements.push(
-    tl('03  VISAR-STYLE OPTICAL DIAGNOSTIC · LIVE RAY PATH', 2800, 2275, 13, '#176b78'),
-    tl('Separate pulsed probe, target return, delayed reference return, recombination, and camera are optical elements—not a diagnostic placeholder.', 2800, 2302, 9, '#4e6f78'),
-    tl('LLNL VISAR uses 659.5–660 nm light. This camera measures return and delay spread; coherent fringe phase and inferred velocity are outside the ray model.', 2800, 2324, 9, '#7a556f'),
-    mk('laser', 2300, 2800, 0, {
-      wavelength: 659.5, beamMode: 'line', temporalMode: 'pulsed', repRateMHz: 0.001,
-      pulseWidthFs: 100000, pulsePhaseNs: 0,
-    }, { label: 'VISAR probe · illustrative 100 ps', showLabel: true, labelPos: 'b' }),
-    mk('bs', 2550, 2800, 0, { ratio: 0.5, size: 40 }, {
-      label: 'interferometer splitter / recombiner', showLabel: true, labelPos: 'b',
-    }),
-    mk('delayline', 2550, 2580, 270, { delayMm: 50, aperture: 40 }, {
-      label: 'delayed reference arm', showLabel: true, labelPos: 'l',
-    }),
-    mk('mirror', 2550, 2470, 90, { length: 60, refl: 100 }, {
-      label: 'reference return', showLabel: true, labelPos: 'l',
-    }),
-    mk('mirror', 3100, 2800, 45, { length: 60, refl: 100 }, {
-      label: 'target-line turn mirror', showLabel: true, labelPos: 'b',
-    }),
-    mk('mirror', 3100, 2350, 90, { length: 60, refl: 100 }, {
-      label: 'moving reflector surrogate · target return', showLabel: true, labelPos: 'r',
-    }),
-    mk('camera', 2550, 3050, 90, { ch: 80, pixels: 32, rows: 12 }, {
-      label: 'streak-camera proxy · live 659.5 nm returns', showLabel: true, labelPos: 'r',
-    }),
+    tl('03  TARGET DIAGNOSTICS · ANNOTATION ONLY', 3950, 1850, 11, '#59636d'),
     tl('DANTE: x-ray power history · annotation only (no x-ray transport)', 3950, 1910, 9, '#9a6a22'),
     tl('nTOF: neutron time of flight · annotation only (no neutron transport)', 3950, 1940, 9, '#3a7654'),
+    tl('VISAR: shock-velocity diagnostic · annotation only (no coherent interference or velocity inference)', 3950, 1970, 9, '#7a556f'),
     tl('MODEL BOUNDARY', 3950, 2750, 11, '#8a3e3e'),
     ...tls([
       'Simulated: geometric paths, bounded relative signal, wavelengths, polarization, pulsed timing, fiber delay, detector arrivals.',
-      'Constructed from existing optics only: laser, BS, fiber, lens, delay, EOM, freeform glass, crystals, sample, mirrors, detector/camera.',
+      'Constructed from existing optics only: laser, BS, fiber, lens, delay, EOM, freeform glass, crystals, sample, detector.',
       'Not simulated: gain/saturation, flashlamps, four-pass amplifier switching, damage, diffraction/phase, 3D cones, x rays, implosion, fusion, neutrons.',
     ], 3950, 2776, 8.5, '#66717e'),
   );

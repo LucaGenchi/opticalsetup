@@ -39,7 +39,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Zoom and pan to inspect split ratios, fibers, timing trim, amplifier optics, final optics, and VISAR.",
+    "text": "Zoom and pan to inspect split ratios, fibers, timing trim, passive amplifier proxies, final optics, and target.",
     "fontSize": 10,
     "fill": "#6c7a87"
    }
@@ -67,7 +67,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "01  MASTER OSCILLATOR + INJECTION DISTRIBUTION",
+    "text": "01  MASTER OSCILLATOR + COMPRESSED INJECTION PROXY",
     "fontSize": 13,
     "fill": "#34495a"
    }
@@ -81,7 +81,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Sequential split ratios make eleven equal-power displayed seeds. The icons stand in for the actual staged fiber splitter / fiber amplifier network.",
+    "text": "Sequential splits make eleven equal-power displayed seeds. This stands in for NIF’s PAM beam shaping and four-way PABTS distribution.",
     "fontSize": 9,
     "fill": "#687786"
    }
@@ -1685,7 +1685,7 @@
    "x": 2365,
    "y": 899.9999999999999,
    "rot": 0,
-   "label": "Nd:glass · passive",
+   "label": "Nd:glass slab · passive proxy",
    "showLabel": true,
    "params": {
     "vertices": [
@@ -1830,7 +1830,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Each port is active: fiber seed → collimator → timing trim → EOM/PEPC proxy → glass slab → 2ω → 3ω → focus.",
+    "text": "Each port is active: fiber seed → collimator → timing trim → EOM/PEPC proxy → passive glass slab → 2ω → 3ω → focus.",
     "fontSize": 9,
     "fill": "#687786"
    }
@@ -1885,162 +1885,19 @@
   {
    "id": "nif-e113",
    "type": "textlabel",
-   "x": 2800,
-   "y": 2275,
+   "x": 3950,
+   "y": 1850,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "03  VISAR-STYLE OPTICAL DIAGNOSTIC · LIVE RAY PATH",
-    "fontSize": 13,
-    "fill": "#176b78"
+    "text": "03  TARGET DIAGNOSTICS · ANNOTATION ONLY",
+    "fontSize": 11,
+    "fill": "#59636d"
    }
   },
   {
    "id": "nif-e114",
-   "type": "textlabel",
-   "x": 2800,
-   "y": 2302,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "Separate pulsed probe, target return, delayed reference return, recombination, and camera are optical elements—not a diagnostic placeholder.",
-    "fontSize": 9,
-    "fill": "#4e6f78"
-   }
-  },
-  {
-   "id": "nif-e115",
-   "type": "textlabel",
-   "x": 2800,
-   "y": 2324,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "LLNL VISAR uses 659.5–660 nm light. This camera measures return and delay spread; coherent fringe phase and inferred velocity are outside the ray model.",
-    "fontSize": 9,
-    "fill": "#7a556f"
-   }
-  },
-  {
-   "id": "nif-e116",
-   "type": "laser",
-   "x": 2300,
-   "y": 2800,
-   "rot": 0,
-   "label": "VISAR probe · illustrative 100 ps",
-   "showLabel": true,
-   "params": {
-    "wavelength": 659.5,
-    "avgPowerW": 1,
-    "beamMode": "line",
-    "beamWidth": 5,
-    "temporalMode": "pulsed",
-    "repRateMHz": 0.001,
-    "pulseWidthFs": 100000,
-    "transformLimited": false,
-    "pulseShape": "gauss",
-    "pulsePhaseNs": 0,
-    "bwMode": "mono",
-    "bandwidth": 40,
-    "pol": 0,
-    "autoColor": true,
-    "color": "#e02020"
-   },
-   "labelPos": "b"
-  },
-  {
-   "id": "nif-e117",
-   "type": "bs",
-   "x": 2550,
-   "y": 2800,
-   "rot": 0,
-   "label": "interferometer splitter / recombiner",
-   "showLabel": true,
-   "params": {
-    "ratio": 0.5,
-    "size": 40
-   },
-   "labelPos": "b"
-  },
-  {
-   "id": "nif-e118",
-   "type": "delayline",
-   "x": 2550,
-   "y": 2580,
-   "rot": 270,
-   "label": "delayed reference arm",
-   "showLabel": true,
-   "params": {
-    "delayMm": 50,
-    "aperture": 40
-   },
-   "labelPos": "l"
-  },
-  {
-   "id": "nif-e119",
-   "type": "mirror",
-   "x": 2550,
-   "y": 2470,
-   "rot": 90,
-   "label": "reference return",
-   "showLabel": true,
-   "params": {
-    "length": 60,
-    "refl": 100,
-    "showTransmitted": false
-   },
-   "labelPos": "l"
-  },
-  {
-   "id": "nif-e120",
-   "type": "mirror",
-   "x": 3100,
-   "y": 2800,
-   "rot": 45,
-   "label": "target-line turn mirror",
-   "showLabel": true,
-   "params": {
-    "length": 60,
-    "refl": 100,
-    "showTransmitted": false
-   },
-   "labelPos": "b"
-  },
-  {
-   "id": "nif-e121",
-   "type": "mirror",
-   "x": 3100,
-   "y": 2350,
-   "rot": 90,
-   "label": "moving reflector surrogate · target return",
-   "showLabel": true,
-   "params": {
-    "length": 60,
-    "refl": 100,
-    "showTransmitted": false
-   },
-   "labelPos": "r"
-  },
-  {
-   "id": "nif-e122",
-   "type": "camera",
-   "x": 2550,
-   "y": 3050,
-   "rot": 90,
-   "label": "streak-camera proxy · live 659.5 nm returns",
-   "showLabel": true,
-   "params": {
-    "ch": 80,
-    "pixels": 32,
-    "rows": 12
-   },
-   "labelPos": "r"
-  },
-  {
-   "id": "nif-e123",
    "type": "textlabel",
    "x": 3950,
    "y": 1910,
@@ -2054,7 +1911,7 @@
    }
   },
   {
-   "id": "nif-e124",
+   "id": "nif-e115",
    "type": "textlabel",
    "x": 3950,
    "y": 1940,
@@ -2068,7 +1925,21 @@
    }
   },
   {
-   "id": "nif-e125",
+   "id": "nif-e116",
+   "type": "textlabel",
+   "x": 3950,
+   "y": 1970,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "VISAR: shock-velocity diagnostic · annotation only (no coherent interference or velocity inference)",
+    "fontSize": 9,
+    "fill": "#7a556f"
+   }
+  },
+  {
+   "id": "nif-e117",
    "type": "textlabel",
    "x": 3950,
    "y": 2750,
@@ -2082,7 +1953,7 @@
    }
   },
   {
-   "id": "nif-e126",
+   "id": "nif-e118",
    "type": "textlabel",
    "x": 3950,
    "y": 2776,
@@ -2096,7 +1967,7 @@
    }
   },
   {
-   "id": "nif-e127",
+   "id": "nif-e119",
    "type": "textlabel",
    "x": 3950,
    "y": 2787.5,
@@ -2104,13 +1975,13 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Constructed from existing optics only: laser, BS, fiber, lens, delay, EOM, freeform glass, crystals, sample, mirrors, detector/camera.",
+    "text": "Constructed from existing optics only: laser, BS, fiber, lens, delay, EOM, freeform glass, crystals, sample, detector.",
     "fontSize": 8.5,
     "fill": "#66717e"
    }
   },
   {
-   "id": "nif-e128",
+   "id": "nif-e120",
    "type": "textlabel",
    "x": 3950,
    "y": 2799,
