@@ -157,6 +157,20 @@ function normalizeBeam(raw, used) {
   return { ...base, dash: raw.dash === true, arrow: raw.arrow !== false };
 }
 
+function normalizeRegions(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter(record).map(region => {
+    const b = region.bounds;
+    if (typeof region.label !== 'string' || !region.label.trim() || !record(b)
+      || ![b.x0, b.y0, b.x1, b.y1].every(finite) || b.x1 <= b.x0 || b.y1 <= b.y0) return null;
+    return {
+      label: region.label.trim().slice(0, 60),
+      bounds: { x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 },
+      padding: clamp(finite(region.padding) ? region.padding : 40, 0, 200),
+    };
+  }).filter(Boolean).slice(0, 12);
+}
+
 export function parseSketch(text, definitions = null) {
   const d = typeof text === 'string' ? JSON.parse(text) : text;
   if (!record(d) || !Array.isArray(d.elements) || (d.beams !== undefined && !Array.isArray(d.beams))) {
@@ -168,6 +182,7 @@ export function parseSketch(text, definitions = null) {
   return {
     elements: d.elements.map(el => normalizeElement(el, definitions, used)),
     beams: (d.beams || []).map(beam => normalizeBeam(beam, used)),
+    regions: normalizeRegions(d.regions),
   };
 }
 

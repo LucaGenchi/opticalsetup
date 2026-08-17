@@ -15,9 +15,10 @@ import { distinctPoints } from '../sketch/js/util.js';
 
 const EXAMPLES_DIR = join(dirname(fileURLToPath(import.meta.url)), '../Examples');
 async function loadExampleFiles() {
-  const categories = await readdir(EXAMPLES_DIR, { withFileTypes: true });
-  const files = [];
-  for (const cat of categories.filter(d => d.isDirectory())) {
+  const listing = await readdir(EXAMPLES_DIR, { withFileTypes: true });
+  const files = listing.filter(entry => entry.isFile() && entry.name.toLowerCase().endsWith('.json'))
+    .map(entry => ({ name: entry.name.replace(/\.json$/i, ''), path: join(EXAMPLES_DIR, entry.name) }));
+  for (const cat of listing.filter(d => d.isDirectory())) {
     const dir = join(EXAMPLES_DIR, cat.name);
     for (const file of (await readdir(dir)).filter(f => f.toLowerCase().endsWith('.json'))) {
       files.push({ name: file.replace(/\.json$/i, ''), path: join(dir, file) });
@@ -174,6 +175,26 @@ test('pulsed lasers produce optical-path tracks and physical detector arrival ti
   assert.equal(reading.pulse.mixed, false);
 });
 
+test('single-shot lasers expose one-shot tracks and detector timing without a repetition rate', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.temporalMode = 'single';
+  laser.params.pulseWidthFs = 20000000;
+  laser.params.pulsePhaseNs = 2;
+  const detector = createElement('detector', 52 + C_MM_PER_NS + 19, 0);
+  const scene = traceScene([laser, detector]);
+  assert.ok(scene.pulseTracks.length > 0);
+  assert.deepEqual(scene.pulseTracks[0].pulse, {
+    sourceId: laser.id, mode: 'single', pulseWidthFs: 20000000, phaseNs: 2,
+  });
+  const reading = detectorReading(detector.id);
+  assert.equal(reading.pulse.mode, 'single');
+  assert.equal(reading.pulse.repRateMHz, undefined);
+  assert.equal(reading.pulse.mixed, false);
+  const timeline = pulseTimelineHTML(reading.pulse, '#8b00d4');
+  assert.match(timeline, /25\.00 ns arrival window/, 'single-shot window contains its 20 ns duration');
+  assert.doesNotMatch(timeline, invalidNumber);
+});
+
 test('detectors distinguish mixed pulse trains instead of inventing one setting', () => {
   const fast = createElement('laser', 0, 0);
   fast.params.temporalMode = 'pulsed';
@@ -268,6 +289,61 @@ test('every Examples/**/*.json file parses, traces, and exports without invalid 
     assert.match(svg, /^<svg /, name);
     assert.doesNotMatch(svg, invalidNumber, name);
   }
+});
+
+test('NIF example drives 11 ports from one master shot and traces a real VISAR-style return', async () => {
+  const path = join(EXAMPLES_DIR, 'NIF — one shot from master oscillator to target.json');
+  const scene = parseSketch(await readFile(path, 'utf-8'), registry);
+  const lasers = scene.elements.filter(element => element.type === 'laser');
+  const laser = lasers.find(element => element.params.wavelength === 1053);
+  const probe = lasers.find(element => element.params.wavelength === 659.5);
+  const target = scene.elements.find(element => element.type === 'sample' && element.params.transmitExc === false);
+  const detector = scene.elements.find(element => element.type === 'detector');
+  const camera = scene.elements.find(element => element.type === 'camera');
+  assert.equal(laser.params.temporalMode, 'single');
+  assert.equal(probe.params.temporalMode, 'single');
+  assert.equal(scene.beams.filter(beam => beam.kind === 'fiber').length, 11);
+  assert.equal(scene.elements.filter(element => element.type === 'lens').length, 22);
+  assert.equal(scene.elements.filter(element => element.type === 'crystal').length, 22);
+  assert.equal(scene.elements.filter(element => element.type === 'eom').length, 11);
+  assert.equal(scene.elements.filter(element => element.type === 'freeglass').length, 11);
+  assert.equal(scene.elements.filter(element => element.type === 'box').length, 0,
+    'no custom box pretends to be an optical component');
+  assert.ok(scene.elements.every(element => registry[element.type]),
+    'the scene uses only existing registry components');
+  assert.deepEqual(scene.regions.map(region => region.label), [
+    'Whole facility', 'Injection split', '11 live ports', 'VISAR diagnostic', 'Model boundary',
+  ]);
+
+  const traced = traceScene(scene.elements, scene.beams);
+  const targetTracks = traced.pulseTracks.filter(track => {
+    const endpoint = track.pts.at(-1);
+    return track.pulse?.sourceId === laser.id
+      && Math.hypot(endpoint.x - target.x, endpoint.y - target.y) < 70;
+  });
+  assert.equal(targetTracks.length, 11, 'all eleven displayed ports terminate at the target');
+  const approachAngles = new Set(targetTracks.map(track => {
+    const a = track.pts.at(-2), b = track.pts.at(-1);
+    return Math.round(Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI);
+  }));
+  assert.equal(approachAngles.size, 11, 'the target arrivals come from eleven distinct port directions');
+  const arrivals = targetTracks.map(track => track.opls.at(-1) / C_MM_PER_NS);
+  assert.ok((Math.max(...arrivals) - Math.min(...arrivals)) < 0.1,
+    'timing trim keeps the 2D port arrivals within 0.1 ns');
+
+  traceScene(scene.elements, scene.beams);
+  const driveReading = detectorReading(detector.id);
+  assert.ok(driveReading?.signal > 0);
+  assert.ok(Math.abs(driveReading.wavelength - 351) < 1e-6);
+  assert.equal(driveReading.pulse.mode, 'single');
+
+  const visar = detectorReading(camera.id);
+  assert.ok(visar?.signal > 0);
+  assert.ok(Math.abs(visar.wavelength - 659.5) < 1e-6);
+  assert.equal(visar.samples, 2, 'target and delayed reference returns both reach the camera');
+  assert.equal(visar.pulse.sources, 1);
+  assert.ok(visar.pulse.arrivalSpreadPs > 1000,
+    'the two interferometer arms retain a measurable path delay');
 });
 
 test('speckle dot drawables are included in export bounds', () => {

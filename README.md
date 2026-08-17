@@ -23,6 +23,8 @@ figures as SVG or PNG.
   edge/corner handles, a rotation handle, and a component-specific purple tuning
   knob. Freeform glass also exposes its blue boundary anchors and purple circular-arc
   nodes. Right-click offers duplicate, rotate, and delete without leaving the canvas.
+  Large examples can expose named setup regions beside Fit, keeping dense subsystems
+  one click away without changing the saved optical scene.
 - **Instrument-grade inspector**: the panel leads with the selected element's own
   settings, with bounded numeric ranges getting a slider synced to an exact-entry
   field; position and label controls collapse into their own disclosure sections.
@@ -30,7 +32,7 @@ figures as SVG or PNG.
   persistent toggle; the toolbar, palette, canvas, and inspector restyle together
   while exported SVG/PNG keep their original colors regardless of theme.
 - **Element palette**: lasers (line or sized beam, monochromatic / broadband /
-  supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
+  supercontinuum, continuous-wave, pulse-train, or single-shot), a first-class pulsed supercontinuum
   laser, directional LED, broadband point source, mirrors (flat with reflectivity,
   convex/concave, true parabolic,
   galvo), lenses, telescopes, objectives, dichroics, filters, beamsplitters,
@@ -45,10 +47,11 @@ figures as SVG or PNG.
   simulated elements, elements that need setup, and intentionally diagram-only
   annotations. An unset EOM, nonlinear crystal, or SLM is labeled as needing setup;
   arrows and text labels never affect rays.
-- **Pulsed timing**: pulsed lasers animate wavelength-colored packets along the
-  traced path. Physical mode uses optical-path delay and the configured repetition
-  rate; schematic mode keeps packets visible at workbench scale while detector
-  delays remain physical. Mechanical delay lines add folded optical path, while AOMs
+- **Pulsed timing**: pulse-train and single-shot lasers animate wavelength-colored
+  packets along the traced path. A single shot crosses each path once and can be
+  re-armed; it never wraps into a train. Physical mode uses optical-path delay and,
+  for trains, the configured repetition rate; schematic mode keeps packets visible
+  at workbench scale while detector delays remain physical. Mechanical delay lines add folded optical path, while AOMs
   support square gating or graded sinusoidal intensity modulation. Playback can be
   paused, reset, and time-scaled. A chopper gates pulse trains in time and draws
   CW light as a chunked on/off pattern matching its duty cycle (in Hz, matching a
@@ -70,9 +73,9 @@ figures as SVG or PNG.
   filters, Malus's law, grating equation, Cauchy prism dispersion, cavity round trips
   with partial mirrors, image formation with magnification (arrow / letter F / tree
   objects and their computed images).
-- **Examples menu**: pedagogical image-formation setups (telescope, microscope,
-  camera + depth of field, Scheimpflug, vignetting...) and laboratory sketches
-  (Michelson, Mach–Zehnder, laser cavity, OPO...).
+- **Examples menu**: pedagogical image-formation and laboratory sketches, plus a
+  zoomable NIF teaching scene assembled from standard optics with 11 live
+  representative ports and a traced VISAR-style optical diagnostic.
 - **Community section**: propose your own setup for review directly from the
   toolbar; accepted submissions get their own page with a locked, click-to-inspect
   canvas embed, and a "From the community" menu loads them straight into the editor.
@@ -91,12 +94,25 @@ figures as SVG or PNG.
 
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
 design package. It models ray paths, bounded relative power, spectral bands, Stokes
-polarization, thin-lens elements, refractive boundaries, timed pulse trains, and
-simple detector responses. It does not model coherent carrier phase, interference,
+polarization, thin-lens elements, refractive boundaries, timed pulse trains and
+single shots, and simple detector responses. It does not model coherent carrier
+phase, interference,
 diffraction-limited propagation, material dispersion beyond the stated simplified
 models, or laboratory-specific calibration. Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are a canvas aid;
 SVG and PNG exports intentionally remain static and deterministic.
+
+The NIF example is an instructive optical construction, not an ignition simulation.
+It uses only the normal component library: one 1053 nm single-shot laser, staged
+beamsplitters, 11 fiber-fed paths, collimators, timing trims, EOMs, glass slabs,
+idealized 1053 → 526.5 → 351 nm conversion, final-focus lenses, an absorbing sample,
+and a qualitative drive detector. A separate 659.5 nm laser, splitter/recombiner,
+delayed reference arm, target-return mirrors, and camera form a traced VISAR-style
+diagnostic. The model reports optical return and path-delay spread, but not coherent
+fringe phase or velocity. Amplifier gain and four-pass PEPC switching, the literal
+192-beam/48-port 3D cone geometry, DANTE x-ray response, neutron time of flight,
+x-ray transport, implosion, fusion, yield, damage, and calibrated energetics remain
+explicitly out of scope.
 
 The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
 shows their positions in the moving 2D sample. It does not calculate focal volume,

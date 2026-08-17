@@ -132,7 +132,7 @@ function detectorSpectrum(hits) {
 
 function averageGateTransmission(pulse) {
   if (!pulse?.gates?.length) return 1;
-  const key = [pulse.repRateMHz, pulse.pulseWidthFs, pulse.phaseNs, ...pulse.gates.flatMap(g => [
+  const key = [pulse.mode || 'train', pulse.repRateMHz, pulse.pulseWidthFs, pulse.phaseNs, ...pulse.gates.flatMap(g => [
     g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1, g.invert ? 1 : 0,
   ])].join('|');
   if (!gateTransmissionCache.has(key)) gateTransmissionCache.set(key, pulseGateTransmission(pulse));
@@ -232,8 +232,10 @@ export function detectorReading(elementId) {
     const trainMap = new Map();
     for (const h of pulsed) {
       const p = h.pulse;
-      const key = p.sourceId || [p.repRateMHz, p.pulseWidthFs, p.phaseNs].join(':');
+      const mode = p.mode === 'single' ? 'single' : 'train';
+      const key = p.sourceId || [mode, p.repRateMHz, p.pulseWidthFs, p.phaseNs].join(':');
       if (!trainMap.has(key)) trainMap.set(key, {
+        mode,
         repRateMHz: p.repRateMHz,
         pulseWidthFs: p.pulseWidthFs,
         phaseNs: p.phaseNs,
@@ -243,11 +245,12 @@ export function detectorReading(elementId) {
     }
     const trains = [...trainMap.values()];
     const sources = new Set(pulsed.map(h => h.pulse.sourceId).filter(Boolean));
-    const trainSettings = new Set(trains.map(p => [p.repRateMHz, p.pulseWidthFs, p.phaseNs].join(':')));
+    const trainSettings = new Set(trains.map(p => [p.mode, p.repRateMHz, p.pulseWidthFs, p.phaseNs].join(':')));
     const mixed = trainSettings.size > 1;
     pulse = {
       sources: Math.max(1, sources.size),
       mixed,
+      mode: mixed ? null : (first.mode === 'single' ? 'single' : 'train'),
       repRateMHz: mixed ? null : first.repRateMHz,
       pulseWidthFs: mixed ? null : first.pulseWidthFs,
       phaseNs: mixed ? null : first.phaseNs,
@@ -1436,9 +1439,12 @@ export function traceScene(elements, beams = []) {
       : effectiveBwMode === 'sc' ? flatSpectrum(scLo, scHi)
       : null;
     const K = local.length;
-    const pulse = p.temporalMode === 'pulsed' ? {
+    const timed = p.temporalMode === 'pulsed' || p.temporalMode === 'single';
+    const pulse = timed ? {
       sourceId: el.id,
-      repRateMHz: Math.min(1000000, Math.max(0.001, p.repRateMHz || 80)),
+      ...(p.temporalMode === 'single'
+        ? { mode: 'single' }
+        : { repRateMHz: Math.min(1000000, Math.max(0.001, p.repRateMHz || 80)) }),
       pulseWidthFs: Math.min(1000000000, Math.max(1, p.pulseWidthFs || 100)),
       phaseNs: Math.min(1000000, Math.max(-1000000, p.pulsePhaseNs || 0)),
     } : null;

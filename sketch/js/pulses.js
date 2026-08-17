@@ -61,6 +61,10 @@ export function pulseTransmissionAt(pulse, emissionTimeNs) {
 export function pulseGateTransmission(pulse, sampleCount = 4096) {
   const gates = Array.isArray(pulse?.gates) ? pulse.gates.filter(g => Number.isFinite(g?.opl)) : [];
   if (!gates.length) return 1;
+  if (pulse?.mode === 'single') {
+    const emissionTimeNs = Number.isFinite(pulse.phaseNs) ? pulse.phaseNs : 0;
+    return pulseTransmissionAt(pulse, emissionTimeNs);
+  }
   const repRateMHz = Math.min(1e6, Math.max(0.001, pulse.repRateMHz || 80));
   const periodNs = 1000 / repRateMHz;
   const phaseNs = Number.isFinite(pulse.phaseNs) ? pulse.phaseNs : 0;
@@ -129,14 +133,31 @@ export function pulseMarkers(track, timeNs, {
   maxMarkers = 80,
 } = {}) {
   if (!finiteTrack(track) || !track.pulse || !Number.isFinite(timeNs)) return [];
-  const repRateMHz = Math.min(1e6, Math.max(0.001, track.pulse.repRateMHz || 80));
   const pulseWidthFs = Math.min(1e9, Math.max(1, track.pulse.pulseWidthFs || 100));
-  const periodNs = 1000 / repRateMHz;
   const physical = mode === 'physical';
+  const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
+  const width = physical ? C_MM_PER_NS * pulseWidthFs * 1e-6 : Math.max(2, schematicWidthMm);
+  if (track.pulse.mode === 'single') {
+    // A schematic single shot crosses one workbench-scale packet spacing in
+    // ten display nanoseconds. It moves once from the source to the end of the
+    // traced optical path and never wraps back to the beginning.
+    const speed = physical ? C_MM_PER_NS : Math.max(20, schematicSpacingMm) / 10;
+    const opl = (timeNs - phaseNs) * speed;
+    const lo = track.opls[0], hi = track.opls.at(-1);
+    if (opl < lo - 1e-9 || opl > hi + 1e-9) return [];
+    const activeGates = (track.pulse.gates || []).filter(gate => opl >= gate.opl);
+    const transmission = pulseTransmissionAt({ ...track.pulse, gates: activeGates }, phaseNs);
+    const point = transmission > 0 ? pointAtOpticalPath(track, opl) : null;
+    return point ? [{
+      ...point, opl, widthMm: width,
+      physicalWidthMm: C_MM_PER_NS * pulseWidthFs * 1e-6,
+      transmission,
+    }] : [];
+  }
+  const repRateMHz = Math.min(1e6, Math.max(0.001, track.pulse.repRateMHz || 80));
+  const periodNs = 1000 / repRateMHz;
   const spacing = physical ? C_MM_PER_NS * periodNs : Math.max(20, schematicSpacingMm);
   const speed = physical ? C_MM_PER_NS : spacing / periodNs;
-  const width = physical ? C_MM_PER_NS * pulseWidthFs * 1e-6 : Math.max(2, schematicWidthMm);
-  const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
   const phase = positiveMod((timeNs - phaseNs) * speed, spacing);
   const lo = track.opls[0], hi = track.opls.at(-1);
   const k0 = Math.ceil((lo - phase) / spacing);
@@ -176,12 +197,20 @@ export function pulseArrivalsAtPath(track, fromTimeNs, toTimeNs, targetOpl, {
       || !Number.isFinite(toTimeNs) || !Number.isFinite(targetOpl)
       || toTimeNs <= fromTimeNs || targetOpl < track.opls[0] - 1e-9
       || targetOpl > track.opls.at(-1) + 1e-9) return [];
+  const physical = mode === 'physical';
+  const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
+  if (track.pulse.mode === 'single') {
+    const speed = physical ? C_MM_PER_NS : Math.max(20, schematicSpacingMm) / 10;
+    const arrivalNs = phaseNs + targetOpl / speed;
+    if (arrivalNs <= fromTimeNs || arrivalNs > toTimeNs + 1e-9) return [];
+    const activeGates = (track.pulse.gates || []).filter(gate => targetOpl + 1e-9 >= gate.opl);
+    const transmission = pulseTransmissionAt({ ...track.pulse, gates: activeGates }, phaseNs);
+    return transmission > 1e-9 ? [{ timeNs: arrivalNs, transmission }] : [];
+  }
   const repRateMHz = Math.min(1e6, Math.max(0.001, track.pulse.repRateMHz || 80));
   const periodNs = 1000 / repRateMHz;
-  const physical = mode === 'physical';
   const spacing = physical ? C_MM_PER_NS * periodNs : Math.max(20, schematicSpacingMm);
   const speed = physical ? C_MM_PER_NS : spacing / periodNs;
-  const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
   const firstArrival = phaseNs + targetOpl / speed;
   const firstIndex = Math.floor((fromTimeNs - firstArrival) / periodNs) + 1;
   const lastIndex = Math.floor((toTimeNs - firstArrival + 1e-9) / periodNs);

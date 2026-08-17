@@ -6,6 +6,11 @@
 export const examples = [
   {
     "group": null,
+    "name": "NIF — one shot from master oscillator to target",
+    "path": "../Examples/NIF%20%E2%80%94%20one%20shot%20from%20master%20oscillator%20to%20target.json"
+  },
+  {
+    "group": null,
     "name": "OPTICAL SETUP — pulsed component panorama",
     "path": "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json"
   },

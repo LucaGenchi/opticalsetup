@@ -526,7 +526,12 @@ function syncPulseAnimation() {
 }
 
 export function getPulsePlayback() {
-  return { ...pulsePlayback, hasPulses: pulseTracks.length > 0, cwFallback: cwFallbackActive };
+  return {
+    ...pulsePlayback,
+    hasPulses: pulseTracks.length > 0,
+    hasSingleShot: pulseTracks.some(track => track.pulse?.mode === 'single'),
+    cwFallback: cwFallbackActive,
+  };
 }
 
 export function setPulsePlaying(playing) {
@@ -1610,6 +1615,23 @@ export function zoomBy(factor) {
   const v = state.view;
   const mx = r.width / 2, my = r.height / 2;
   state.view = zoomViewAt(v, { x: mx, y: my }, factor);
+  renderAll();
+}
+
+export function zoomToBounds(bounds, padding = 40) {
+  const rect = svg.getBoundingClientRect();
+  if (rect.width < 50 || rect.height < 50) {
+    requestAnimationFrame(() => zoomToBounds(bounds, padding));
+    return;
+  }
+  const values = [bounds?.x0, bounds?.y0, bounds?.x1, bounds?.y1, padding];
+  if (!values.every(Number.isFinite) || bounds.x1 <= bounds.x0 || bounds.y1 <= bounds.y0) return;
+  const pad = Math.max(0, Math.min(200, padding));
+  const x0 = bounds.x0 - pad, x1 = bounds.x1 + pad;
+  const y0 = bounds.y0 - pad, y1 = bounds.y1 + pad;
+  const z = Math.min(VIEW_MAX_ZOOM, Math.max(VIEW_MIN_ZOOM,
+    Math.min(rect.width / (x1 - x0), rect.height / (y1 - y0))));
+  state.view = { x: (rect.width - (x0 + x1) * z) / 2, y: (rect.height - (y0 + y1) * z) / 2, z };
   renderAll();
 }
 

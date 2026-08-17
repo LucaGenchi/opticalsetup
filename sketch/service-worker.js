@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v6';
+const CACHE_NAME = 'opticalsetup-pwa-v7';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -37,6 +37,7 @@ const PRECACHE_PATHS = [
   "./js/util.js",
   "./js/vipa.js",
   "./js/viewport.js",
+  "../Examples/NIF%20%E2%80%94%20one%20shot%20from%20master%20oscillator%20to%20target.json",
   "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json",
   "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
   "../Examples/Optics%20Bench/Michelson%20interferometer.json"

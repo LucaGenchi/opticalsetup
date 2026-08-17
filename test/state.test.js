@@ -64,6 +64,26 @@ test('legacy lasers without temporal fields remain continuous-wave sources', () 
   assert.equal(loaded.params.pulsePhaseNs, 0);
 });
 
+test('single-shot emission and named regions load with bounded values', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.temporalMode = 'single';
+  laser.params.pulseWidthFs = 1e12;
+  laser.params.pulsePhaseNs = -1e12;
+  const scene = parseSketch({
+    app: 'optics2d', version: 1, elements: [laser], beams: [],
+    regions: [
+      { label: '  Diagnostic bench  ', bounds: { x0: 0, y0: 10, x1: 200, y1: 90 }, padding: 999 },
+      { label: 'broken', bounds: { x0: 10, y0: 0, x1: 5, y1: 20 } },
+    ],
+  }, registry);
+  assert.equal(scene.elements[0].params.temporalMode, 'single');
+  assert.equal(scene.elements[0].params.pulseWidthFs, 1000000000);
+  assert.equal(scene.elements[0].params.pulsePhaseNs, -1000000);
+  assert.deepEqual(scene.regions, [{
+    label: 'Diagnostic bench', bounds: { x0: 0, y0: 10, x1: 200, y1: 90 }, padding: 200,
+  }]);
+});
+
 test('sketches from before the LED/lamp -> Point source merge no longer load', () => {
   // No back-compat is kept at this stage: an old element type is simply an
   // unknown type, same as any other invalid sketch reference.
