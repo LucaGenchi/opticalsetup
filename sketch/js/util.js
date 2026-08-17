@@ -32,6 +32,23 @@ export function distToSegment(p, a, b) {
   return len(sub(p, add(a, mul(ab, t))));
 }
 
+// Catmull-Rom spline through the given points, converted to cubic Bézier
+// segments (tension 1/6, the standard conversion) — a smooth curve through
+// real sampled data instead of a row of discrete bars. Shared by the
+// spectrometer's screen readout and the beam probe's spectrum card.
+export function smoothPath(points) {
+  if (points.length < 2) return '';
+  if (points.length === 2) return `M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)} L ${points[1].x.toFixed(2)},${points[1].y.toFixed(2)}`;
+  let d = `M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)], p1 = points[i], p2 = points[i + 1], p3 = points[Math.min(points.length - 1, i + 2)];
+    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+  }
+  return d;
+}
+
 // Remove consecutive duplicate vertices. Double-click completion naturally
 // produces a repeated final pointer event; zero-length fiber end segments have
 // no direction and must not reach the ray tracer.

@@ -125,9 +125,12 @@ test('spectrometer reports wavelength, bandwidth, and spectrum samples', () => {
   const spectrometer = createElement('spectrometer', 300, 0);
   const svg = screenFor(spectrometer, [laser, spectrometer]);
 
-  assert.match(svg, /WAVELENGTH \+ BANDWIDTH/);
+  // The "WAVELENGTH + BANDWIDTH" mode line was dropped as redundant — the
+  // spectrometer only ever shows this one labeled plot, so restating its
+  // axes added nothing and crowded the bandwidth caption below it.
+  assert.doesNotMatch(svg, /WAVELENGTH \+ BANDWIDTH/);
   assert.match(svg, /BANDWIDTH 40\.0 nm/);
-  assert.match(svg, /data-spectrum-sample=/);
+  assert.match(svg, /data-spectrum-points=/);
 });
 
 test('general detector includes Stokes parameters and pulsed timing', () => {

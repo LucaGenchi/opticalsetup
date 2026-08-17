@@ -25,6 +25,7 @@ test('triangular prism uses drawn boundaries and disperses blue more than red', 
   const angles = [];
   for (const wavelength of [450, 650]) {
     const laser = createElement('laser', 0, 0);
+    laser.params.beamMode = 'line';
     laser.params.wavelength = wavelength;
     const prism = createElement('prism', 180, 0);
     prism.rot = 20;
@@ -38,7 +39,9 @@ test('triangular prism uses drawn boundaries and disperses blue more than red', 
 
 test('DMD routes ON and OFF micromirror stripes into distinct orders', () => {
   const onLaser = createElement('laser', 0, 0);
+  onLaser.params.beamMode = 'line';
   const offLaser = createElement('laser', 0, 4);
+  offLaser.params.beamMode = 'line';
   const dmd = createElement('dmd', 180, 0);
   dmd.params.routeOff = true;
   const onOut = paths([onLaser, dmd]).find(p => Math.abs(p.pts[0].x - 171) < 1e-6);
@@ -52,6 +55,7 @@ test('DMD routes ON and OFF micromirror stripes into distinct orders', () => {
 
 test('deformable mirror defocuses an off-axis reflected ray through its focus', () => {
   const laser = createElement('laser', 0, 5);
+  laser.params.beamMode = 'line';
   const dm = createElement('dm', 400, 0);
   dm.params.f = 200;
   const ray = paths([laser, dm])[0];
@@ -111,6 +115,7 @@ test('uncollected fluorescence fades within 25 mm and never reaches a bare detec
 
 test('fluorescence collected by a nearby objective propagates to a detector', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   const sample = createElement('sample', 150, 0);
   sample.params.mode = 'fluor';
   sample.params.transmission = 0.8;
@@ -136,6 +141,7 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
 
 test('PMT gain/saturation and camera pixels produce detector-specific readings', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   const pmt = createElement('pmt', 300, 0);
   pmt.params.gain = 10;
   pmt.params.saturation = 100;
@@ -235,6 +241,7 @@ test('AOM deflects, frequency-shifts, and attenuates first-order light', () => {
 
 test('mechanical delay line adds bounded optical path without steering the beam', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   laser.params.temporalMode = 'pulsed';
   const delay = createElement('delayline', 150, 0);
   const detector = createElement('detector', 300, 0);
@@ -309,6 +316,7 @@ test('fiber input NA rejects steep incidence and accepts an aligned source', () 
 
 test('configured SLM steering changes the reflected ray direction', () => {
   const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
   const slm = createElement('slm', 180, 0);
   slm.params.layers = [{ type: 'steer', n: 3, f: 50, lines: 600, orders: '1', angle: 10, div: 8 }];
   const ray = paths([laser, slm])[0];
@@ -317,6 +325,7 @@ test('configured SLM steering changes the reflected ray direction', () => {
 
 test('retroreflector returns a beam antiparallel to its incidence, mirrored about its axis', () => {
   const laser = createElement('laser', 0, 10);
+  laser.params.beamMode = 'line';
   const retro = createElement('retroreflector', 150, 0);
   const ray = paths([laser, retro])[0];
   assert.ok(ray.pts.length >= 4, 'expects an entry bounce, an internal bounce, and an exit segment');

@@ -17,6 +17,9 @@ import {
   legacyPolarization, polarizationDescription,
 } from './polarization.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
+import {
+  gaussianSpectrum, flatSpectrum, spectrumSamples, applyTransmission, transformLimitedBandwidthNm,
+} from './spectrum.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
@@ -80,15 +83,7 @@ function detectorConvergence(hits) {
   };
 }
 
-function detectorSpectrum(hits) {
-  const samples = new Map();
-  for (const hit of hits) {
-    if (!Number.isFinite(hit.wl) || !Number.isFinite(hit.power) || hit.power <= 0) continue;
-    const key = Math.round(hit.wl * 10) / 10;
-    const sample = samples.get(key) || { wavelength: key, power: 0 };
-    sample.power += hit.power;
-    samples.set(key, sample);
-  }
+function bucketizeSpectrum(samples) {
   const ordered = [...samples.values()].sort((a, b) => a.wavelength - b.wavelength);
   if (ordered.length <= 24) return ordered.map(sample => ({
     ...sample,
@@ -106,6 +101,33 @@ function detectorSpectrum(hits) {
       : group[0].wavelength;
     return { wavelength, power, color: wavelengthToColor(wavelength) };
   });
+}
+
+function addSample(samples, wl, power) {
+  const key = Math.round(wl * 10) / 10;
+  const sample = samples.get(key) || { wavelength: key, power: 0 };
+  sample.power += power;
+  samples.set(key, sample);
+}
+
+// The tracer only ever traces one geometric ray per spatial sample — a
+// broadband source's actual spectral shape (Gaussian laser line, flat
+// supercontinuum, or whatever survived a filter) is carried analytically as
+// `hit.spec`, not by physically splitting the ray into wavelength samples.
+// Without expanding it here, a spectrometer aimed straight at a broadband
+// laser would show a single spike at its centre wavelength instead of the
+// real curve.
+function detectorSpectrum(hits) {
+  const samples = new Map();
+  for (const hit of hits) {
+    if (!Number.isFinite(hit.power) || hit.power <= 0) continue;
+    if (hit.spec) {
+      const profile = spectrumSamples(hit.spec, 48);
+      if (profile) { for (const { wl, weight } of profile) addSample(samples, wl, weight * hit.power); continue; }
+    }
+    if (Number.isFinite(hit.wl)) addSample(samples, hit.wl, hit.power);
+  }
+  return bucketizeSpectrum(samples);
 }
 
 function averageGateTransmission(pulse) {
@@ -127,6 +149,7 @@ function recordDetectorHit(ray, hit) {
     intensity: ray.intensity,
     wl: ray.wl,
     bw: ray.bw || 0,
+    spec: ray.spec || null,
     pol: ray.pol,
     stokes: cloneStokes(ray.stokes),
     u: hit.u,
@@ -268,7 +291,7 @@ export function probeAt(x, y, tol = 16) {
       }
     }
   }
-  return best ? { wl: best.wl, bw: best.bw || 0, pol: best.pol, stokes: cloneStokes(best.stokes), intensity: best.intensity } : null;
+  return best ? { wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol, stokes: cloneStokes(best.stokes), intensity: best.intensity } : null;
 }
 
 const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
@@ -352,7 +375,7 @@ function fiberEmissionRays(c) {
   const lengthMm = polylineLength(pts);
   const transmission = 10 ** (-(lossDbPerM * lengthMm / 1000) / 10);
   const common = {
-    wl: c.wl, bw: c.bw || 0, speckle: false, intensity: Math.min(1, c.intensity * transmission),
+    wl: c.wl, bw: c.bw || 0, spec: c.spec || null, speckle: false, intensity: Math.min(1, c.intensity * transmission),
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
     pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, oplStart: (c.opl || 0) + lengthMm * ng + 2,
   };
@@ -522,11 +545,20 @@ function offsetPolyline(pts, d) {
 }
 
 // broadband rays expand into wavelength samples at dispersive elements
+// (prism/grating). Each sample carries a weight (summing to 1) so a Gaussian
+// laser line disperses into a fan that is genuinely brighter near its centre
+// wavelength, not spread evenly across the box — spectrumSamples() already
+// falls back to uniform weights for a flat (supercontinuum) spectrum, so
+// that case is unchanged.
 function wlSamples(ray) {
-  if (!ray.bw) return [ray.wl];
+  if (!ray.bw) return [{ wl: ray.wl, weight: 1 }];
   const K = ray.bw >= 200 ? 9 : 5;
+  if (ray.spec) {
+    const samples = spectrumSamples(ray.spec, K);
+    if (samples) return samples;
+  }
   const lo = ray.wl - ray.bw / 2, hi = ray.wl + ray.bw / 2;
-  return Array.from({ length: K }, (_, i) => lo + (hi - lo) * i / (K - 1));
+  return Array.from({ length: K }, (_, i) => ({ wl: lo + (hi - lo) * i / (K - 1), weight: 1 / K }));
 }
 
 // thin-lens (paraxial) bend; also used for curved mirrors after reflection.
@@ -563,11 +595,41 @@ const bandIntersect = (a, b) => {
   return lo <= hi ? [lo, hi] : null;
 };
 
-// child ray carrying the spectral slice [lo, hi] of a parent broadband ray
+// Fabry–Pérot transmission (Airy function), matched-reflectivity mirrors with
+// a per-surface loss/absorption term. `cosTheta` is the ray's own incidence
+// angle at the surface, not a stored parameter — tilting the element (or a
+// ray simply arriving off-axis) shifts the resonance exactly like tilting a
+// real etalon does, for free, via the round-trip phase below. Unlike a
+// sequence of independent partial mirrors (which only ever sums intensities),
+// this is the closed-form multi-beam-interference result: at resonance the
+// reflected components from every internal bounce cancel and transmission
+// climbs to the coating-limited peak even for high reflectivity.
+function etalonAiryTransmission(wl, cosTheta, data) {
+  const R = data.R;
+  const oneMinusR = Math.max(1e-6, 1 - R);
+  const roundTripPhase = (4 * Math.PI * data.spacingNm * cosTheta) / wl;
+  const surfaceT = Math.max(0, 1 - R - data.loss);
+  const peak = (surfaceT * surfaceT) / (oneMinusR * oneMinusR);
+  const finesseTerm = (4 * R) / (oneMinusR * oneMinusR);
+  const t = peak / (1 + finesseTerm * Math.sin(roundTripPhase / 2) ** 2);
+  return Math.max(0, Math.min(1, t));
+}
+
+// Below this fraction a fringe (or its complement) is treated as fully
+// blocked / fully transmitted — keeps a near-grazing or badly-mistuned
+// etalon from spawning vanishingly weak child rays that can never register
+// on a detector.
+const ETALON_FLOOR = 0.02;
+
+// child ray carrying the spectral slice [lo, hi] of a parent broadband ray.
+// Only used for a flat-spectrum (or spec-less) parent, where the exact
+// analytic box overlap below is exact — a Gaussian input routes through
+// applyTransmission() instead (see the 'dichroic'/'filter' cases), since a
+// box overlap fraction doesn't apply to a curved profile.
 function bandChild(ray, d, lo, hi, tag) {
   const nbw = hi - lo < 2 ? 0 : hi - lo;
   return {
-    d, wl: (lo + hi) / 2, bw: nbw, tag,
+    d, wl: (lo + hi) / 2, bw: nbw, spec: nbw > 0 ? flatSpectrum(lo, hi) : null, tag,
     intensity: ray.intensity * Math.min(1, Math.max(0, (hi - lo) / ray.bw)),
   };
 }
@@ -630,16 +692,23 @@ function interact(ray, hit) {
         // must use its own incident index or the spectrum keeps one angle.
         const n1 = inside ? (dispersive ? materialIor : (ray.ior || materialIor)) : (ray.ior || 1);
         const n2 = inside ? 1 : materialIor;
+        // A discretized dispersion sample (bandwidth explicitly forced to 0)
+        // is now effectively monochromatic — drop the inherited profile
+        // rather than carrying the parent's full-width spec forward. The
+        // key is omitted entirely (not set to undefined) for a plain
+        // pass-through, so the stack push's `'spec' in c` inheritance rule
+        // still sees "unset" and keeps the ray's real profile.
+        const specField = bandwidth === ray.bw ? {} : { spec: null };
         const transmitted = refract(d, n, n1, n2);
         if (!transmitted) {
           return {
-            d: reflect(d, n), wl, bw: bandwidth, intensity,
+            d: reflect(d, n), wl, bw: bandwidth, ...specField, intensity,
             ior: inside ? materialIor : (ray.ior || 1),
             tag: tag ? `${tag}-tir` : 'tir',
           };
         }
         return {
-          d: transmitted, wl, bw: bandwidth, tag,
+          d: transmitted, wl, bw: bandwidth, ...specField, tag,
           medium: inside ? null : materialId,
           ior: n2,
           intensity: intensity * Math.min(1, Math.max(0, data.transmission ?? 1)),
@@ -647,13 +716,24 @@ function interact(ray, hit) {
       };
       if (dispersive) {
         const samples = wlSamples(ray);
-        return samples.map((wl, i) => transmitAt(wl, ray.intensity / samples.length, `w${i}`, 0));
+        return samples.map((s, i) => transmitAt(s.wl, ray.intensity * s.weight, `w${i}`, 0));
       }
       return [transmitAt(ray.wl)];
     }
     case 'dichroic': {
       if (!ray.bw) return dichroicTransmits(ray.wl, data) ? [{ d }] : [{ d: reflect(d, n) }];
-      // broadband: transmit the overlap with the passband, reflect the rest
+      // A Gaussian (or already-filtered) input has no closed-form box
+      // overlap with the passband — integrate the real profile numerically.
+      if (ray.spec && ray.spec.kind !== 'flat') {
+        const T = wl => (dichroicTransmits(wl, data) ? 1 : 0);
+        const out = [];
+        const trans = applyTransmission(ray.spec, ray.wl, T);
+        if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T' });
+        const refl = applyTransmission(ray.spec, ray.wl, wl => 1 - T(wl));
+        if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R' });
+        return out;
+      }
+      // flat (supercontinuum) or unspecified box: exact analytic overlap
       const rb = [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
       const pb = passbandOf(data);
       const out = [];
@@ -671,12 +751,41 @@ function interact(ray, hit) {
         const pb0 = passbandOf(f);
         return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
       }
-      // broadband: transmitted spectrum = overlap of beam band and passband
+      if (ray.spec && ray.spec.kind !== 'flat') {
+        const T = wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; };
+        const trans = applyTransmission(ray.spec, ray.wl, T);
+        return trans ? [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction }] : [];
+      }
+      // flat (supercontinuum) or unspecified box: transmitted spectrum is
+      // the exact overlap of the beam band and the passband
       const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], passbandOf(f));
       if (!ix || ix[1] - ix[0] < 0.5) return [];
       const c = bandChild(ray, d, ix[0], ix[1], null);
       delete c.tag;
       return [c];
+    }
+    case 'etalon': {
+      // Off-resonance light reflects (it's two coatings, not an absorber),
+      // exactly like 'dichroic' — only right at a resonance does the balance
+      // flip toward transmission. The Airy transmission has no box-overlap
+      // shortcut regardless of input shape, so both the flat and Gaussian
+      // broadband cases go through the same numeric integration.
+      const cosTheta = Math.min(1, Math.max(1e-6, Math.abs(dot(d, n))));
+      const T = wl => etalonAiryTransmission(wl, cosTheta, data);
+      const rd = reflect(d, n);
+      if (!ray.bw) {
+        const t = T(ray.wl);
+        const out = [];
+        if (t > ETALON_FLOOR) out.push({ d, intensity: ray.intensity * t, tag: 'T' });
+        if (1 - t > ETALON_FLOOR) out.push({ d: rd, intensity: ray.intensity * (1 - t), tag: 'R' });
+        return out;
+      }
+      const out = [];
+      const trans = applyTransmission(ray.spec, ray.wl, T);
+      if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T' });
+      const refl = applyTransmission(ray.spec, ray.wl, wl => 1 - T(wl));
+      if (refl) out.push({ d: rd, wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R' });
+      return out;
     }
     case 'split': {
       const r = Math.min(1, Math.max(0, data.ratio));
@@ -692,14 +801,14 @@ function interact(ray, hit) {
       const wls = wlSamples(ray);
       for (const m of data.orders) {
         for (let i = 0; i < wls.length; i++) {
-          const sd = si + m * wls[i] / data.d;
+          const sd = si + m * wls[i].wl / data.d;
           if (Math.abs(sd) > 1) continue;
           const c = Math.sqrt(1 - sd * sd);
           const sOut = data.transmissive ? sIn : -sIn;
           out.push({
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
-            wl: wls[i], bw: 0,
-            intensity: ray.intensity / (data.orders.length * (m === 0 ? 1 : wls.length)),
+            wl: wls[i].wl, bw: 0, spec: null,
+            intensity: ray.intensity * (m === 0 ? 1 : wls[i].weight) / data.orders.length,
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
           });
           if (m === 0 && wls.length > 1) break; // 0th order is undispersed
@@ -889,13 +998,13 @@ function interact(ray, hit) {
             const wls = wlSamples(ray);
             for (const m of orders) {
               for (let wi = 0; wi < wls.length; wi++) {
-                const sd = si + m * wls[wi] / gd;
+                const sd = si + m * wls[wi].wl / gd;
                 if (Math.abs(sd) > 1) continue;
                 const c = Math.sqrt(1 - sd * sd);
                 next.push({
                   d: norm(add(mul(n, sOut * c), mul(t, sd))),
-                  wl: wls[wi], bw: 0, speckle: r.speckle,
-                  intensity: r.intensity / (orders.length * (m === 0 ? 1 : wls.length)),
+                  wl: wls[wi].wl, bw: 0, spec: null, speckle: r.speckle,
+                  intensity: r.intensity * (m === 0 ? 1 : wls[wi].weight) / orders.length,
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
                 });
                 if (m === 0 && wls.length > 1) break;
@@ -946,13 +1055,14 @@ function interact(ray, hit) {
         if (data.transmitPump && efficiency < 0.999) out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'p' });
         return out;
       }
-      let wl = ray.wl, bw;
+      let wl = ray.wl, bw, spec;
       if (data.convert === 'shg') wl = ray.wl / 2;
       else if (data.convert === 'thg') wl = ray.wl / 3;
       else if (data.convert === 'custom' || data.convert === 'cars') wl = data.outWl;
-      else if (data.convert === 'sc') { wl = 650; bw = 440; } // supercontinuum
+      else if (data.convert === 'sc') { wl = 650; bw = 440; spec = flatSpectrum(wl - bw / 2, wl + bw / 2); } // supercontinuum
       const conv = { d, wl, intensity: ray.intensity * efficiency };
       if (bw !== undefined) conv.bw = bw;
+      if (spec !== undefined) conv.spec = spec;
       // samples can co-transmit the excitation beam alongside the converted signal
       if (data.transmitExc && wl !== ray.wl) {
         conv.tag = 'c';
@@ -1074,7 +1184,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         const accepted = intoFiber && dot({ x: r.dx, y: r.dy }, intoFiber) >= Math.cos(Math.asin(inputNA));
         if (couplings && fb.propagate && accepted) {
           couplings.push({
-            beam: fb, end: hit.surface.data.end, wl: r.wl, bw: r.bw,
+            beam: fb, end: hit.surface.data.end, wl: r.wl, bw: r.bw, spec: r.spec,
             intensity: r.intensity, power: r.power, pol: r.pol, stokes: cloneStokes(r.stokes),
             pulse: r.pulse, opl: r.opl,
           });
@@ -1087,6 +1197,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
       const single = children.length === 1 && !c0.tag
         && (c0.wl === undefined || c0.wl === r.wl)
         && (c0.bw === undefined || c0.bw === r.bw)
+        && (c0.spec === undefined || c0.spec === r.spec)
         && !(c0.speckle && !r.speckle)
         && !(c0.chopped && !r.chopped)
         && !('pol' in c0 && c0.pol !== r.pol)
@@ -1112,6 +1223,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
           wl: c.wl !== undefined ? c.wl : r.wl,
           bw: c.bw !== undefined ? c.bw : r.bw,
+          spec: 'spec' in c ? c.spec : r.spec,
           speckle: c.speckle || r.speckle || false,
           chopped: c.chopped || r.chopped || undefined,
           evan: c.evan || false,
@@ -1305,9 +1417,24 @@ export function traceScene(elements, beams = []) {
     const local = def.source(el);
     const scLo = el.type === 'sclaser' ? Math.min(p.scMin || 430, p.scMax || 870) : 430;
     const scHi = el.type === 'sclaser' ? Math.max(p.scMin || 430, p.scMax || 870) : 870;
-    const srcBw = p.bwMode === 'band' ? (p.bandwidth || 0)
-      : p.bwMode === 'sc' ? scHi - scLo : 0;
-    const srcWl = p.bwMode === 'sc' ? (scHi + scLo) / 2 : p.wavelength;
+    // Transform-limited pulsed emission drives the spectral width from the
+    // pulse duration (time-bandwidth product) rather than a separately
+    // chosen bandwidth — it overrides bwMode/bandwidth entirely while active.
+    const transformLimited = el.type === 'laser' && p.temporalMode === 'pulsed' && p.transformLimited;
+    const effectiveBwMode = transformLimited ? 'band' : p.bwMode;
+    const effectiveBandwidth = transformLimited
+      ? transformLimitedBandwidthNm(p.pulseWidthFs || 100, p.wavelength, p.pulseShape)
+      : p.bandwidth;
+    const srcBw = effectiveBwMode === 'band' ? (effectiveBandwidth || 0)
+      : effectiveBwMode === 'sc' ? scHi - scLo : 0;
+    const srcWl = effectiveBwMode === 'sc' ? (scHi + scLo) / 2 : p.wavelength;
+    // A ray's (wl, bw) stay the centroid/FWHM summary every part of the
+    // tracer already reads; `spec` is the true shape — Gaussian for a
+    // broadband laser line, flat for a supercontinuum — that wavelength-
+    // selective elements and the spectrometer display integrate against.
+    const srcSpec = effectiveBwMode === 'band' ? gaussianSpectrum(srcWl, srcBw)
+      : effectiveBwMode === 'sc' ? flatSpectrum(scLo, scHi)
+      : null;
     const K = local.length;
     const pulse = p.temporalMode === 'pulsed' ? {
       sourceId: el.id,
@@ -1327,7 +1454,7 @@ export function traceScene(elements, beams = []) {
         ? registry[initialBody.type].refractiveIndex?.(initialBody, srcWl) || 1
         : 1;
       return {
-        x: o.x, y: o.y, dx: d.x, dy: d.y, wl: srcWl, bw: srcBw, speckle: false,
+        x: o.x, y: o.y, dx: d.x, dy: d.y, wl: srcWl, bw: srcBw, spec: srcSpec, speckle: false,
         pol: typeof p.pol === 'number' ? p.pol : undefined,
         stokes: typeof p.pol === 'number' ? linearStokes(p.pol) : null,
         pulse,

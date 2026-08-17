@@ -1,11 +1,12 @@
 // Detector catalogue redesign and detector-aware screen panels.
 
 import {
-  OBJ_SHAPES, createElement, displayDensity, getElementMeta, registry, resolveDisplaySensor,
+  OBJ_SHAPES, createElement, displayDensity, displayRenderScale, getElementMeta, registry, resolveDisplaySensor,
 } from './elements.js';
 import { detectorReading } from './raytrace.js';
 import { enhancedReading, objectImageAtCamera } from './detector-measurements.js';
-import { esc, wavelengthToColor } from './util.js';
+import { fwhmToSigma } from './spectrum.js';
+import { esc, smoothPath, wavelengthToColor } from './util.js';
 
 export const DETECTOR_TYPES = [
   'camera', 'detector', 'pmt', 'powermeter', 'wavefrontdetector',
@@ -111,6 +112,15 @@ registry.spectrometer = instrumentDefinition({
   label: 'Spectrometer', code: 'SPEC', readoutKind: 'spectrometer', paletteOrder: 7, width: 54, accent: '#fde68a',
   aliases: ['spectrum', 'wavelength detector', 'bandwidth detector'],
 });
+// By default the displayed range tracks the live signal (padded 5 nm past
+// its detected [bandMin, bandMax] on each side, like the beam probe's own
+// spectrum card). Manual mode instead pins an explicit window, e.g. to
+// compare readings across changing sources without the axis jumping.
+registry.spectrometer.params.push(
+  { key: 'rangeMode', label: 'Displayed wavelength range', type: 'select', def: 'auto', options: [['auto', 'Automatic'], ['manual', 'Manual']] },
+  { key: 'rangeMin', label: 'Range min (nm)', type: 'number', min: 100, max: 12000, step: 5, def: 480, show: p => p.rangeMode === 'manual' },
+  { key: 'rangeMax', label: 'Range max (nm)', type: 'number', min: 100, max: 12000, step: 5, def: 580, show: p => p.rangeMode === 'manual' },
+);
 registry.generaldetector = instrumentDefinition({
   label: 'General detector', code: 'ALL', readoutKind: 'general', paletteOrder: 8, width: 54, accent: '#67e8f9',
   aliases: ['universal detector', 'all properties', 'pulse detector', 'repetition rate', 'pulse duration'],
@@ -123,13 +133,18 @@ if (registry.eye) { registry.eye.category = 'Microscopy'; registry.eye.paletteOr
 
 function header(name, mode, pulse) {
   const title = String(name).toUpperCase(), size = Math.max(3.7, Math.min(6, 46 / Math.max(1, title.length * 0.62)));
+  const titleLine = `<text x="-36" y="-23.5" font-size="${size.toFixed(2)}" font-weight="760" letter-spacing="0.35" fill="#9eb5c3">${esc(title)}</text>`;
+  // A falsy mode omits the second line entirely — used where it would only
+  // restate what the readout below it already shows (e.g. the spectrometer,
+  // whose one and only view is a labeled wavelength/bandwidth plot).
+  if (!mode) return titleLine;
   // The mode line must shrink to fit too. Appending " · PULSE" pushed the
   // longest modes (e.g. "WAVELENGTH + BANDWIDTH") past the screen's right
   // edge at a fixed 4.5, so size it against the 72-unit usable width the
   // same way the title is sized.
   const modeText = `${mode}${pulse ? ' · PULSE' : ''}`;
   const modeSize = Math.max(3.1, Math.min(4.5, 72 / Math.max(1, modeText.length * 0.62)));
-  return `<text x="-36" y="-23.5" font-size="${size.toFixed(2)}" font-weight="760" letter-spacing="0.35" fill="#9eb5c3">${esc(title)}</text>` +
+  return titleLine +
     `<text x="-36" y="-16.5" font-size="${modeSize.toFixed(2)}" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(modeText)}</text>`;
 }
 
@@ -151,14 +166,66 @@ function spectrumLabel(reading) {
   return reading.bandwidth > 0.05 ? `${Math.round(reading.bandMin)}–${Math.round(reading.bandMax)} nm` : `${Math.round(reading.wavelength)} nm`;
 }
 
-function spectrumPlot(reading) {
+// Displayed domain: by default ±2σ of the detected FWHM bandwidth plus 5 nm
+// padding on each side — wide enough to show the actual Gaussian shape (not
+// just its half-max width) while staying clipped well short of the ±3σ tails
+// the underlying spec is sampled over, exactly like the beam probe's own
+// spectrum card — a spectrometer additionally lets the user pin an explicit
+// manual range instead of tracking the live signal.
+function spectrumRange(reading, sensor) {
+  const manual = sensor?.params?.rangeMode === 'manual';
+  const rangeMin = sensor?.params?.rangeMin, rangeMax = sensor?.params?.rangeMax;
+  if (manual && Number.isFinite(rangeMin) && Number.isFinite(rangeMax) && rangeMax > rangeMin) {
+    return [rangeMin, rangeMax];
+  }
+  const sigma = fwhmToSigma(reading.bandwidth || 0);
+  return [reading.wavelength - 2 * sigma - 5, reading.wavelength + 2 * sigma + 5];
+}
+
+function spectrumPlot(reading, sensor, baseline = 8) {
   const samples = reading.spectrum?.length ? reading.spectrum : [{ wavelength: reading.wavelength, power: reading.signal, color: reading.color }];
-  const lo = reading.bandMin, hi = reading.bandMax, span = Math.max(1, hi - lo), maximum = Math.max(...samples.map(sample => sample.power || 0), 1e-9);
-  return `<line x1="-35" y1="8" x2="35" y2="8" stroke="#294453" stroke-width="0.8"/>` + samples.map((sample, index) => {
-    const x = hi - lo < 1e-6 ? 0 : -35 + 70 * (sample.wavelength - lo) / span;
-    const height = Math.max(1.2, 17 * Math.max(0, sample.power || 0) / maximum);
-    return `<line data-spectrum-sample="${index}" x1="${x.toFixed(2)}" y1="8" x2="${x.toFixed(2)}" y2="${(8 - height).toFixed(2)}" stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="2" stroke-linecap="round"/>`;
+  const [lo, hi] = spectrumRange(reading, sensor);
+  const span = Math.max(1e-6, hi - lo);
+  const visible = samples.filter(sample => sample.wavelength >= lo && sample.wavelength <= hi);
+  const maximum = Math.max(...visible.map(sample => sample.power || 0), 1e-9);
+  const xAt = wl => -35 + 70 * (wl - lo) / span;
+  const tick = (wl, anchor) => {
+    const x = xAt(wl).toFixed(2);
+    return `<line x1="${x}" y1="${baseline}" x2="${x}" y2="${baseline + 1.4}" stroke="#3d5566" stroke-width="0.6"/>` +
+      `<text x="${x}" y="${baseline + 5.8}" text-anchor="${anchor}" font-size="3.6" fill="#5f7d8e">${Math.round(wl)}</text>`;
+  };
+  const axis = `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
+  const ticks = tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end');
+
+  if (visible.length < 2) {
+    // nothing to smooth through — a single line (monochromatic, or a
+    // manual range that clipped everything but one sample) draws as a spike
+    const sample = visible[0];
+    if (!sample) return axis + ticks;
+    const x = xAt(sample.wavelength).toFixed(2);
+    const height = Math.max(1.2, 15 * Math.max(0, sample.power || 0) / maximum);
+    return axis + `<line data-spectrum-points="1" x1="${x}" y1="${baseline}" x2="${x}" y2="${(baseline - height).toFixed(2)}" stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="2" stroke-linecap="round"/>` + ticks;
+  }
+
+  const points = visible.map(sample => ({
+    x: xAt(sample.wavelength),
+    y: baseline - Math.max(0, 15 * Math.max(0, sample.power || 0) / maximum),
+  }));
+  // the fill traces the same curve but pinned to the baseline at both ends,
+  // so it reads as a filled lineshape rather than a floating ribbon
+  const fillPoints = [{ x: points[0].x, y: baseline }, ...points, { x: points[points.length - 1].x, y: baseline }];
+  const clipId = `specClip${esc(sensor?.id || 'x')}`, gradientId = `specGrad${esc(sensor?.id || 'x')}`;
+  const stops = visible.map((sample, i) => {
+    const offset = visible.length > 1 ? (i / (visible.length - 1) * 100).toFixed(1) : 0;
+    return `<stop offset="${offset}%" stop-color="${sample.color || wavelengthToColor(sample.wavelength)}"/>`;
   }).join('');
+  return `<defs><clipPath id="${clipId}"><rect x="-35" y="${(baseline - 17).toFixed(2)}" width="70" height="17.5"/></clipPath>` +
+    `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">${stops}</linearGradient></defs>` +
+    axis +
+    `<g clip-path="url(#${clipId})">` +
+    `<path data-spectrum-points="${visible.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.35" stroke="none"/>` +
+    `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.4" stroke-linecap="round"/>` +
+    `</g>` + ticks;
 }
 
 function profile(reading) {
@@ -253,10 +320,20 @@ function panel(sensor, reading, elements, view) {
   }
   if (sensor.type === 'polarimeter') return header(name, 'POLARIZATION · STOKES', reading.pulse) + polarizationGlyph(reading) +
     `<text x="-11" y="-5" font-size="6" font-weight="760" fill="#f5e8f1">${esc(String(reading.polarization).toUpperCase())}</text><text x="-11" y="3" font-size="4.4" fill="#b99aaa">DoP ${(100 * reading.stokes.normalized.degree).toFixed(0)}%</text><text x="-11" y="11" font-size="4.2" fill="#d9e8ee">S0 ${compactNumber(reading.stokes.s0)}  S1 ${compactNumber(reading.stokes.s1)}</text><text x="35" y="11" text-anchor="end" font-size="4.2" fill="#d9e8ee">S2 ${compactNumber(reading.stokes.s2)}  S3 ${compactNumber(reading.stokes.s3)}</text>`;
-  if (sensor.type === 'spectrometer' || (sensor.type === 'generaldetector' && view === 'spectrum')) return header(name, sensor.type === 'spectrometer' ? 'WAVELENGTH + BANDWIDTH' : 'GENERAL · SPECTRUM', reading.pulse) + spectrumPlot(reading)
-    // λ range and bandwidth each get their own line: side by side they
-    // overlapped as soon as the range was a two-ended span.
-    + `<text x="-35" y="11" font-size="4.6" fill="#8fa7b5">λ ${esc(spectrumLabel(reading))}</text>`
+  if (sensor.type === 'spectrometer') {
+    // No mode line here — a spectrometer only ever shows this one labeled
+    // plot, so "WAVELENGTH + BANDWIDTH" restated nothing the plot and its
+    // caption below don't already say, and sat close enough to the ticks and
+    // the bandwidth caption to visually collide with both. Dropping it frees
+    // room to raise the plot itself, so its axis ticks stop crowding the
+    // caption underneath.
+    return header(name, null, reading.pulse) + spectrumPlot(reading, sensor, 1)
+      + `<text x="-35" y="13" font-size="4.6" fill="#fde68a">BANDWIDTH ${compactNumber(reading.bandwidth)} nm</text>`;
+  }
+  if (sensor.type === 'generaldetector' && view === 'spectrum') return header(name, 'GENERAL · SPECTRUM', reading.pulse) + spectrumPlot(reading, sensor)
+    // The detected λ range used to be captioned here too, but it duplicated
+    // (and visually collided with) the plot's own axis, which already shows
+    // the displayed range — auto or manual — via its endpoint tick labels.
     + `<text x="-35" y="17" font-size="4.6" fill="#fde68a">BANDWIDTH ${compactNumber(reading.bandwidth)} nm</text>`;
   if (sensor.type === 'generaldetector' && view === 'detail') return header(name, 'STOKES + PULSE TIMING', reading.pulse) + metrics([
     ['S0', compactNumber(reading.stokes.s0)], ['S1', compactNumber(reading.stokes.s1)], ['S2', compactNumber(reading.stokes.s2)],
@@ -281,7 +358,7 @@ registry.display.svg = function detectorAwareDisplaySVG(display, elements = []) 
   if (!sensor || !DETECTOR_TYPES.includes(sensor.type)) return base;
   const reading = enhancedReading(sensor, elements);
   if (!reading) return base;
-  const scale = clamp(display.params.displayScale || 1, 0.5, 3);
+  const scale = displayRenderScale(display.params.displayScale);
   const view = ['main', 'spectrum', 'detail'].includes(display.params.displayView) ? display.params.displayView : 'main';
   const content = panel(sensor, reading, elements, view);
   return base + `<g transform="scale(${scale})" data-detector-readout="${esc(sensor.type)}" data-display-density="${displayDensity(scale)}" pointer-events="none"><rect x="-42.2" y="-28.2" width="84.4" height="45.4" rx="2.5" fill="#061822"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${content}</g></g>`;

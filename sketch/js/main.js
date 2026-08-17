@@ -2,13 +2,16 @@
 
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave } from './state.js';
 import { registry, categories, createElement, getElementMeta } from './elements.js';
-// Registers the redesigned detector catalogue onto `registry`. Imported here,
-// not from pwa.js: service-worker registration is unrelated, and every Node
-// entry point that validates scenes must install the same catalogue (see
-// tools/build-examples.mjs, tools/build-community.mjs and
-// scripts/materialize-example-proposal.mjs) so the browser and the tooling
-// never disagree about which element types exist.
+// Registers the redesigned detector catalogue, the Etalon, and the VIPA
+// element onto `registry`. Imported here, not from pwa.js: service-worker
+// registration is unrelated, and every Node entry point that validates
+// scenes must install the same catalogues (see tools/build-examples.mjs,
+// tools/build-community.mjs and scripts/materialize-example-proposal.mjs)
+// so the browser and the tooling never disagree about which element types
+// exist.
 import './detector-instruments.js';
+import './etalon.js';
+import './vipa.js';
 import {
   initCanvas, renderAll, startPlacing, startBeamTool, cancelTool, isPlacing,
   isPolygonDrawing, rotatePlacing, finishBeam, finishPolygon, undoPolygonPoint,
@@ -650,7 +653,7 @@ function autoAdjustTimeScale() {
   const label = recommended.mechanics ? 'Mechanics' : (TIME_SCALES.find(s => s.ns === key) || {}).label || '';
   if (recommended.mechanics) setMechanicsMode(true);
   else setPulseSpeed(recommended.scaleNsPerSecond);
-  showTimeScaleToast(`Time scale automatically adjusted to ${label} to show the animation${recommended.driver ? ` of ${recommended.driver}` : ''}.`);
+  showToast(`Time scale automatically adjusted to ${label} to show the animation${recommended.driver ? ` of ${recommended.driver}` : ''}.`);
 }
 
 // Small popup anchored above a specific element (screen coordinates) — used
@@ -692,8 +695,11 @@ function announceIllustrativeMotion() {
   }
 }
 
+// Shared top-center toast — originally built for the auto time-scale
+// notice, now a general-purpose transient message slot (e.g. the inspector's
+// transform-limited-pulse recompute notice).
 let timeScaleToastTimer = null;
-function showTimeScaleToast(message) {
+function showToast(message) {
   const toast = $('timeScaleToast');
   if (!toast) return;
   toast.textContent = message;
@@ -915,6 +921,7 @@ document.addEventListener('optics:toolchange', e => syncToolMode(e.detail));
 document.addEventListener('optics:pulsestate', e => syncPulseControls(e.detail));
 document.addEventListener('optics:pulserepresentation', e => showAnchoredPopup(e.detail));
 document.addEventListener('optics:viewchange', e => syncViewControls(e.detail));
+document.addEventListener('optics:toast', e => { if (e.detail?.message) showToast(e.detail.message); });
 
 // ---------- boot ----------
 window.addEventListener('DOMContentLoaded', async () => {

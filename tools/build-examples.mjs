@@ -18,11 +18,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { parseSketch } from '../sketch/js/state.js';
 import { registry } from '../sketch/js/elements.js';
-// Registers the redesigned detector catalogue onto `registry`. Required
-// here because this tool validates scenes with parseSketch(..., registry):
-// without it, any sketch using a Power meter, Polarimeter, Spectrometer,
-// Wavefront detector or General detector is rejected as an unknown type.
+// Registers the redesigned detector catalogue and the Etalon/VIPA element
+// onto `registry`. Required here because this tool validates scenes with
+// parseSketch(..., registry): without these, a sketch using a Power meter,
+// Polarimeter, Spectrometer, Wavefront detector, General detector,
+// Etalon, or VIPA is rejected as an unknown type.
 import '../sketch/js/detector-instruments.js';
+import '../sketch/js/etalon.js';
+import '../sketch/js/vipa.js';
 
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');

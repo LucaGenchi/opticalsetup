@@ -159,6 +159,7 @@ test('a circular-arc glass face uses exact circle intersections and radial refra
   ];
   const arc = circularArcThrough(vertices[0], vertices[1], vertices[2]);
   const laser = createElement('laser', 25, -120);
+  laser.params.beamMode = 'line';
   laser.rot = 90;
   const glass = createElement('freeglass', 0, 0);
   glass.params.ior = 1.5;
@@ -177,6 +178,7 @@ test('an exact circular-arc endpoint hit stops instead of choosing either adjoin
   const angleDeg = 60, angle = angleDeg * Math.PI / 180;
   const direction = { x: Math.cos(angle), y: Math.sin(angle) };
   const laser = createElement('laser', target.x - direction.x * 212, target.y - direction.y * 212);
+  laser.params.beamMode = 'line';
   laser.rot = angleDeg;
   const glass = createElement('freeglass', 0, 0);
   glass.params.vertices = [
@@ -257,6 +259,7 @@ test('an exact polygon-corner hit terminates at the vertex instead of choosing a
   const target = { x: 170, y: -30 }, angleDeg = -15, angle = angleDeg * Math.PI / 180;
   const direction = { x: Math.cos(angle), y: Math.sin(angle) };
   const laser = createElement('laser', target.x - direction.x * 212, target.y - direction.y * 212);
+  laser.params.beamMode = 'line';
   laser.rot = angleDeg;
   const glass = createElement('freeglass', 200, 0);
   glass.params.vertices = [{ x: -30, y: -30 }, { x: 30, y: -30 }, { x: 30, y: 30 }, { x: -30, y: 30 }];

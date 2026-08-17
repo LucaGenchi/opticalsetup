@@ -1,0 +1,462 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  gaussianSpectrum, flatSpectrum, spectrumWeight, spectrumSamples, spectrumStats,
+  applyTransmission, transformLimitedBandwidthNm, transformLimitedDurationFs,
+} from '../sketch/js/spectrum.js';
+import { createElement, registry } from '../sketch/js/elements.js';
+import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
+import '../sketch/js/detector-instruments.js';
+import '../sketch/js/etalon.js';
+import '../sketch/js/vipa.js';
+
+function nearly(actual, expected, tolerance = 1e-6) {
+  assert.ok(Math.abs(actual - expected) <= tolerance,
+    `expected ${actual} to be within ${tolerance} of ${expected}`);
+}
+
+// ---------------- spectrum.js pure-function physics ----------------
+
+test('gaussianSpectrum weight and FWHM measure back correctly', () => {
+  const g = gaussianSpectrum(532, 40);
+  nearly(spectrumWeight(g, 532), 1);
+  nearly(spectrumWeight(g, 552), 0.5); // exactly one half-FWHM off centre
+  nearly(spectrumWeight(g, 512), 0.5);
+  const stats = spectrumStats(g);
+  nearly(stats.center, 532);
+  nearly(stats.fwhm, 40);
+});
+
+test('flatSpectrum has uniform weight inside its range and zero outside', () => {
+  const f = flatSpectrum(400, 800);
+  nearly(spectrumWeight(f, 400), 1);
+  nearly(spectrumWeight(f, 600), 1);
+  nearly(spectrumWeight(f, 800), 1);
+  nearly(spectrumWeight(f, 399.9), 0);
+  nearly(spectrumWeight(f, 800.1), 0);
+});
+
+test('spectrumSamples normalizes weights to sum to 1 for both shapes', () => {
+  const g = spectrumSamples(gaussianSpectrum(532, 40), 33);
+  nearly(g.reduce((sum, s) => sum + s.weight, 0), 1, 1e-9);
+  const f = spectrumSamples(flatSpectrum(400, 800), 33);
+  nearly(f.reduce((sum, s) => sum + s.weight, 0), 1, 1e-9);
+  // a flat profile's samples should all carry (nearly) the same weight
+  const spread = Math.max(...f.map(s => s.weight)) - Math.min(...f.map(s => s.weight));
+  assert.ok(spread < 1e-9, 'flat spectrum samples should be uniformly weighted');
+});
+
+test('applyTransmission reproduces exact analytic box overlap for a flat spectrum', () => {
+  const f = flatSpectrum(400, 800);
+  const passband = wl => (wl >= 540 && wl <= 560) ? 1 : 0;
+  const result = applyTransmission(f, 600, passband);
+  // grid-based numeric integration of a flat source against a step function
+  // has some discretization error; this is the case the app routes through
+  // the exact analytic bandIntersect path instead (see raytrace.js), so a
+  // loose tolerance here just confirms the numeric fallback is in the right
+  // ballpark, not exact.
+  nearly(result.fraction, 20 / 400, 0.01);
+});
+
+test('applyTransmission with no spectrum (monochromatic) is exact', () => {
+  const passband = wl => (wl >= 540 && wl <= 560) ? 1 : 0;
+  assert.equal(applyTransmission(null, 550, passband).fraction, 1);
+  assert.equal(applyTransmission(null, 550, passband).spec, null);
+  assert.equal(applyTransmission(null, 561, passband), null);
+});
+
+test('applyTransmission narrows a Gaussian correctly clipped by a bandpass', () => {
+  const g = gaussianSpectrum(532, 40);
+  // a bandpass wholly inside the Gaussian's support should pass only that slice
+  const result = applyTransmission(g, 532, wl => (wl >= 520 && wl <= 544) ? 1 : 0);
+  assert.ok(result.fraction > 0 && result.fraction < 1, 'only part of the Gaussian survives');
+  nearly(result.wl, 532, 1); // centred bandpass keeps the centroid near 532
+  assert.ok(result.bw < 40, 'the surviving slice is narrower than the original FWHM');
+});
+
+test('time-bandwidth product: Gaussian pulse bandwidth matches the textbook benchmark', () => {
+  // ~100 fs Gaussian pulses at 800 nm need ~9.4 nm FWHM bandwidth (a widely
+  // cited Ti:Sapphire oscillator benchmark) — direct formula check.
+  nearly(transformLimitedBandwidthNm(100, 800, 'gauss'), 9.41, 0.02);
+});
+
+test('sech² pulses need less bandwidth than Gaussian for the same duration', () => {
+  const gaussBw = transformLimitedBandwidthNm(100, 800, 'gauss');
+  const sechBw = transformLimitedBandwidthNm(100, 800, 'sech2');
+  assert.ok(sechBw < gaussBw, 'sech2 K=0.315 < gauss K=0.441, so its bandwidth should be smaller');
+});
+
+test('transformLimitedDurationFs is the inverse of transformLimitedBandwidthNm', () => {
+  const bw = transformLimitedBandwidthNm(200, 1064, 'gauss');
+  const dt = transformLimitedDurationFs(bw, 1064, 'gauss');
+  nearly(dt, 200, 0.01);
+});
+
+// ---------------- laser element defaults ----------------
+
+test('the laser now defaults to a sized beam with 1 W average power', () => {
+  const laser = createElement('laser');
+  assert.equal(laser.params.beamMode, 'beam');
+  assert.equal(laser.params.beamWidth, 5);
+  assert.equal(laser.params.avgPowerW, 1);
+  assert.equal(laser.params.bwMode, 'mono');
+});
+
+test('transform-limited and pulse-shape params only appear while pulsed', () => {
+  const def = registry.laser;
+  const tl = def.params.find(p => p.key === 'transformLimited');
+  const shape = def.params.find(p => p.key === 'pulseShape');
+  assert.equal(tl.show({ temporalMode: 'cw' }), false);
+  assert.equal(tl.show({ temporalMode: 'pulsed' }), true);
+  assert.equal(shape.show({ temporalMode: 'pulsed', transformLimited: false }), false);
+  assert.equal(shape.show({ temporalMode: 'pulsed', transformLimited: true }), true);
+  const bwMode = def.params.find(p => p.key === 'bwMode');
+  assert.equal(bwMode.show({ temporalMode: 'pulsed', transformLimited: true }), false);
+  assert.equal(bwMode.show({ temporalMode: 'cw', transformLimited: true }), true);
+});
+
+// ---------------- end-to-end: a spectrometer sees the real Gaussian shape ----------------
+
+test('a monochromatic laser reads as a single spike on a spectrometer', () => {
+  const laser = createElement('laser', 0, 0);
+  const spectrometer = createElement('spectrometer', 300, 0);
+  traceAll([laser, spectrometer]);
+  const reading = detectorReading(spectrometer.id);
+  assert.equal(reading.spectrum.length, 1);
+  nearly(reading.spectrum[0].wavelength, laser.params.wavelength, 0.5);
+});
+
+test('a broadband laser reads as a real Gaussian curve on a spectrometer, not a single spike', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 40;
+  const spectrometer = createElement('spectrometer', 300, 0);
+  traceAll([laser, spectrometer]);
+  const reading = detectorReading(spectrometer.id);
+  assert.ok(reading.spectrum.length > 10, 'the spectrometer should resolve many points across the line, not one');
+
+  // peak should sit at the centre wavelength, and power should fall off
+  // monotonically moving away from it on both sides (a genuine Gaussian
+  // shape, not noise or a flat plateau)
+  const samples = reading.spectrum;
+  const peakIndex = samples.reduce((best, s, i) => (s.power > samples[best].power ? i : best), 0);
+  nearly(samples[peakIndex].wavelength, 532, 3);
+  for (let i = 1; i <= peakIndex; i++) assert.ok(samples[i].power >= samples[i - 1].power - 1e-9, 'rising toward the peak');
+  for (let i = peakIndex; i < samples.length - 1; i++) assert.ok(samples[i].power >= samples[i + 1].power - 1e-9, 'falling away from the peak');
+
+  // half-maximum points should sit roughly bandwidth/2 away from centre
+  const peak = samples[peakIndex].power;
+  const above = samples.filter(s => s.power >= peak / 2);
+  const halfWidth = Math.max(...above.map(s => s.wavelength)) - Math.min(...above.map(s => s.wavelength));
+  nearly(halfWidth, 40, 6);
+});
+
+test('a transform-limited pulsed laser drives its bandwidth from pulse duration, not a manual setting', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.temporalMode = 'pulsed';
+  laser.params.pulseWidthFs = 100;
+  laser.params.transformLimited = true;
+  laser.params.pulseShape = 'gauss';
+  // an explicit (and very different) bandwidth must be ignored while
+  // transform-limited mode is driving the spectrum
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 400;
+  const spectrometer = createElement('spectrometer', 300, 0);
+  traceAll([laser, spectrometer]);
+  const reading = detectorReading(spectrometer.id);
+  const expected = transformLimitedBandwidthNm(100, laser.params.wavelength, 'gauss');
+  nearly(reading.bandMax - reading.bandMin, expected, 0.05);
+
+  laser.params.pulseShape = 'sech2';
+  traceAll([laser, spectrometer]);
+  const sechReading = detectorReading(spectrometer.id);
+  assert.ok(sechReading.bandMax - sechReading.bandMin < reading.bandMax - reading.bandMin,
+    'sech2 should be measurably narrower than Gaussian for the same duration');
+});
+
+// ---------------- broadband light through wavelength-selective elements ----------------
+
+test('a bandpass filter partially transmits a Gaussian laser line, proportional to spectral overlap', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 40; // wide relative to a 20 nm passband
+  const filter = createElement('filter', 150, 0);
+  filter.params.ftype = 'bandpass';
+  filter.params.center = 532;
+  filter.params.band = 20;
+  const detector = createElement('detector', 300, 0);
+  traceAll([laser, filter, detector]);
+  const reading = detectorReading(detector.id);
+  assert.ok(reading, 'a centred passband should transmit something of a broad Gaussian line');
+  assert.ok(reading.signal > 0 && reading.signal < 1, 'only a fraction of the Gaussian survives a narrower passband');
+
+  // moving the passband far into the Gaussian's tail should transmit much less
+  filter.params.center = 532 + 60;
+  traceAll([laser, filter, detector]);
+  const farReading = detectorReading(detector.id);
+  const farSignal = farReading ? farReading.signal : 0;
+  assert.ok(farSignal < reading.signal, 'a passband far in the tail should transmit less than one centred on the peak');
+});
+
+test('a dichroic mirror splits a Gaussian laser line into transmitted and reflected halves', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 40;
+  const dichroic = createElement('dichroic', 150, 0);
+  dichroic.rot = 45; // fold the reflected half 90° off-axis
+  dichroic.params.dtype = 'longpass';
+  dichroic.params.cutoff = 532; // splits the Gaussian roughly down the middle
+  const transmitted = createElement('detector', 300, 0);
+  const reflected = createElement('detector', 150, -150);
+  reflected.rot = -90;
+  traceAll([laser, dichroic, transmitted, reflected]);
+  const t = detectorReading(transmitted.id), r = detectorReading(reflected.id);
+  assert.ok(t && r, 'both halves of a Gaussian split at its centre should register');
+  nearly(t.signal + r.signal, 1, 0.02, 'energy should be conserved between the transmitted and reflected halves');
+  nearly(t.signal, 0.5, 0.05, 'a cutoff at the centre wavelength should roughly bisect a symmetric Gaussian');
+});
+
+test('two filters in series on a Gaussian source: the second sees the first\'s reshaped output, not the raw line', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 60;
+  const first = createElement('filter', 100, 0);
+  first.params.ftype = 'bandpass'; first.params.center = 532; first.params.band = 30;
+  const second = createElement('filter', 200, 0);
+  second.params.ftype = 'bandpass'; second.params.center = 535; second.params.band = 10;
+  const detector = createElement('detector', 300, 0);
+  assert.doesNotThrow(() => traceAll([laser, first, second, detector]));
+  const reading = detectorReading(detector.id);
+  assert.ok(reading, 'some of the Gaussian survives two overlapping narrow filters');
+  nearly(reading.bandMax - reading.bandMin, 10, 2, 'the narrower, later filter should dominate the final width');
+
+  // a filter with no overlap with what survived the first one blocks everything
+  second.params.center = 700;
+  traceAll([laser, first, second, detector]);
+  assert.equal(detectorReading(detector.id), null);
+});
+
+test('two filters in series on a supercontinuum source keep the exact analytic overlap at each stage', () => {
+  const source = createElement('sclaser', 0, 0);
+  source.params.beamMode = 'line';
+  source.params.scMin = 400;
+  source.params.scMax = 800;
+  const first = createElement('filter', 100, 0);
+  first.params.ftype = 'bandpass'; first.params.center = 550; first.params.band = 100;
+  const second = createElement('filter', 200, 0);
+  second.params.ftype = 'bandpass'; second.params.center = 560; second.params.band = 20;
+  const detector = createElement('detector', 300, 0);
+  traceAll([source, first, second, detector]);
+  // the second (narrower) filter is wholly inside the first's passband, so
+  // the final transmitted fraction is exactly its own width over the source
+  nearly(detectorReading(detector.id).signal, 20 / 400, 1e-6);
+});
+
+test('the exact flat-spectrum overlap through a filter is unaffected by the Gaussian code path', () => {
+  // regression: supercontinuum sources must keep using the analytic exact
+  // overlap, not the numeric Gaussian integration
+  const source = createElement('sclaser', 0, 0);
+  source.params.beamMode = 'line';
+  source.params.scMin = 400;
+  source.params.scMax = 800;
+  const filter = createElement('filter', 150, 0);
+  filter.params.ftype = 'bandpass';
+  filter.params.band = 20;
+  filter.params.center = 550;
+  const detector = createElement('detector', 300, 0);
+  traceAll([source, filter, detector]);
+  nearly(detectorReading(detector.id).signal, 20 / 400, 1e-6);
+});
+
+// ---------------- dispersion weighting ----------------
+
+test('a Gaussian-mode broadband laser disperses through a prism with a brighter centre, not a flat fan', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 200; // >=200 uses the finer 9-sample dispersion grid
+  const prism = createElement('prism', 180, 0);
+  prism.params.psize = 50;
+  prism.rot = 20;
+  const drawables = traceAll([laser, prism]).filter(d => d.type === 'path' && d.pts.length >= 3);
+  assert.ok(drawables.length > 3, 'a broadband ray should disperse into several distinct wavelength paths');
+  // intensities should not all be identical — the Gaussian weighting means
+  // samples near the centre wavelength carry more power than the tails
+  const intensities = new Set(drawables.map(d => d.opacity ?? d.intensity ?? null).filter(v => v != null));
+  assert.ok(intensities.size > 1 || drawables.length <= 1,
+    'dispersed rays from a Gaussian source should not all carry identical weight');
+});
+
+test('a supercontinuum source still disperses through a prism with uniform weighting (unchanged)', () => {
+  const source = createElement('sclaser', 0, 0);
+  source.params.beamMode = 'line';
+  source.params.scMin = 450;
+  source.params.scMax = 700;
+  const prism = createElement('prism', 180, 0);
+  prism.params.psize = 50;
+  prism.rot = 20;
+  const outgoing = traceAll([source, prism]).filter(d => d.type === 'path' && d.pts.length >= 3);
+  assert.ok(outgoing.length > 3, 'supercontinuum should still fan out across the prism');
+});
+
+// ---------------- etalon interaction with the new Gaussian model ----------------
+
+test('a monochromatic laser exactly on an etalon resonance is unaffected by the spectrum redesign', () => {
+  const laser = createElement('laser', 0, 0);
+  const etalon = createElement('etalon', 150, 0);
+  const detector = createElement('detector', 300, 0);
+  traceAll([laser, etalon, detector]);
+  const reading = detectorReading(detector.id);
+  nearly(reading.signal, 0.98, 0.001); // default spectral-mode peak transmission is 98%
+});
+
+test('a broadband Gaussian laser through an etalon degrades gracefully (no crash, finite result)', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 40; // far broader than the etalon's default 1 nm linewidth
+  const etalon = createElement('etalon', 150, 0);
+  const transmitted = createElement('detector', 300, 0);
+  const reflected = createElement('detector', 150, -300);
+  reflected.rot = -90;
+  etalon.rot = 45; // guarantees a reflected path exists to sanity-check against
+  assert.doesNotThrow(() => traceAll([laser, etalon, transmitted, reflected]));
+  const r = detectorReading(reflected.id);
+  assert.ok(r === null || (Number.isFinite(r.signal) && r.signal >= 0 && r.signal <= 1.01),
+    'reflected signal must stay finite and physically bounded even when the etalon linewidth is unresolved');
+});
+
+// ---------------- beam probe: real data, padded range, labeled extremes ----------------
+
+function screenFor(sensor, elements, view = 'main') {
+  const display = createElement('display', sensor.x + 130, sensor.y + 80);
+  display.params.sensorId = sensor.id;
+  display.params.displayView = view;
+  const scene = [...elements, display];
+  traceAll(scene);
+  return registry.display.svg(display, scene);
+}
+
+test('the beam probe plots real sampled data for a broadband line as a smooth curve, not a hand-drawn bump', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 40; // centre 532, so bandMin=512, bandMax=552
+  const probe = createElement('probe', 150, 0);
+  traceAll([laser, probe]);
+  const svg = registry.probe.svg(probe);
+  const sampleCount = Number(svg.match(/data-spectrum-points="(\d+)"/)?.[1] ?? 0);
+  assert.ok(sampleCount > 5, `expected many sampled points for a broadband line, got ${sampleCount}`);
+});
+
+test('the beam probe shows the range as ±2σ of the FWHM bandwidth plus 5 nm, with extremes and centre labeled', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 40; // FWHM 40 -> sigma ~16.99 -> padded [~493, ~571], centre 532
+  const probe = createElement('probe', 150, 0);
+  traceAll([laser, probe]);
+  const svg = registry.probe.svg(probe);
+  assert.match(svg, />493</, 'left extreme (centre - 2σ - 5) should be labeled');
+  assert.match(svg, />532</, 'centre wavelength should be labeled');
+  assert.match(svg, />571</, 'right extreme (centre + 2σ + 5) should be labeled');
+});
+
+test('the beam probe spectrum plot never overflows the white box, even when the spec\'s sampled support reaches past the displayed range', () => {
+  // Regression: the curve used to be drawn from all 28 raw samples across
+  // the spec's own ±3σ support, unfiltered and unclipped — for a wide
+  // enough laser the ±3σ tails ran past the plot box's edges. A wide
+  // bandwidth (sigma ~85 nm) makes the ±2σ+5 display window (~180 nm) much
+  // narrower than the ±3σ sample support (~255 nm), so some of the 28 raw
+  // samples must now be filtered out.
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 200;
+  const probe = createElement('probe', 150, 0);
+  traceAll([laser, probe]);
+  const svg = registry.probe.svg(probe);
+  assert.match(svg, /<clipPath id="probeSpecClip/, 'the curve must also be clipped to the plot box as a second guard');
+  const sampleCount = Number(svg.match(/data-spectrum-points="(\d+)"/)?.[1] ?? 0);
+  assert.ok(sampleCount > 0 && sampleCount < 28,
+    `expected the wide Gaussian's ±3σ tail samples to be filtered out of the 28-sample sweep, got ${sampleCount}`);
+});
+
+test('the beam probe pads a monochromatic line by 5 nm on each side too', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  const probe = createElement('probe', 150, 0);
+  traceAll([laser, probe]);
+  const svg = registry.probe.svg(probe);
+  assert.match(svg, />527</); // 532 - 5
+  assert.match(svg, />532</);
+  assert.match(svg, />537</); // 532 + 5
+});
+
+test('the beam probe readout card defaults to twice the old baseline size, but its crosshair marker never scales', () => {
+  const laser = createElement('laser', 0, 0);
+  const probe = createElement('probe', 150, 0);
+  traceAll([laser, probe]);
+  assert.equal(probe.params.displayScale, 1);
+  const svg = registry.probe.svg(probe);
+  assert.match(svg, /<g transform="scale\(2\)">/, 'the readout card should render at the old scale-2 size by default');
+  const crosshair = svg.slice(0, svg.indexOf('<g transform="scale('));
+  assert.match(crosshair, /circle r="4.5"/, 'the crosshair must be drawn outside (before) the scaled group');
+});
+
+// ---------------- spectrometer: default padded range + manual override ----------------
+
+test('a spectrometer defaults to the ±2σ (FWHM) + 5 nm range, extremes and centre labeled', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 40; // FWHM 40 -> sigma ~16.99 -> padded [~493, ~571]
+  const spectrometer = createElement('spectrometer', 300, 0);
+  assert.equal(spectrometer.params.rangeMode, 'auto');
+  const svg = screenFor(spectrometer, [laser, spectrometer]);
+  assert.match(svg, />493</);
+  assert.match(svg, />532</);
+  assert.match(svg, />571</);
+});
+
+test('a spectrometer\'s manual range overrides the auto-computed one and clips out-of-range samples', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 40; // bandMin=512, bandMax=552
+  const spectrometer = createElement('spectrometer', 300, 0);
+  const autoSvg = screenFor(spectrometer, [laser, spectrometer]);
+  const autoSamples = Number(autoSvg.match(/data-spectrum-points="(\d+)"/)?.[1] ?? 0);
+
+  spectrometer.params.rangeMode = 'manual';
+  spectrometer.params.rangeMin = 525;
+  spectrometer.params.rangeMax = 539; // a narrow window well inside the Gaussian's full extent
+  const manualSvg = screenFor(spectrometer, [laser, spectrometer]);
+  assert.match(manualSvg, />525</);
+  assert.match(manualSvg, />532</);
+  assert.match(manualSvg, />539</);
+  assert.doesNotMatch(manualSvg, />493</, 'the auto lower bound should no longer appear once manual range is set');
+
+  const manualSamples = Number(manualSvg.match(/data-spectrum-points="(\d+)"/)?.[1] ?? 0);
+  assert.ok(manualSamples < autoSamples, 'a narrower manual window should clip out-of-range samples');
+});
+
+test('an invalid manual range (max <= min) falls back to the automatic range', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.bwMode = 'band';
+  laser.params.bandwidth = 40;
+  const spectrometer = createElement('spectrometer', 300, 0);
+  spectrometer.params.rangeMode = 'manual';
+  spectrometer.params.rangeMin = 600;
+  spectrometer.params.rangeMax = 600; // invalid: not > min
+  const svg = screenFor(spectrometer, [laser, spectrometer]);
+  assert.match(svg, />493</, 'should fall back to the automatic lower bound');
+  assert.match(svg, />571</, 'should fall back to the automatic upper bound');
+});

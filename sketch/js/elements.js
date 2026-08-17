@@ -6,9 +6,10 @@
 // dichroic, filter, split, grating, absorb, transmit (data may change
 // wavelength / deflect).
 
-import { distToSegment, esc, rotPt, toWorld, wavelengthToColor } from './util.js';
+import { distToSegment, esc, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
 import { detectorReading, probeAt } from './raytrace.js';
+import { fwhmToSigma, spectrumSamples } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
@@ -105,6 +106,15 @@ export function resolveDisplaySensor(display, elements = []) {
 export function displayDensity(displayScale = 1) {
   const scale = Math.min(3, Math.max(0.5, Number.isFinite(displayScale) ? displayScale : 1));
   return scale < 0.85 ? 'compact' : scale < 1.45 ? 'standard' : 'expanded';
+}
+
+// Detector screens and the beam probe's readout card both expose a "Display
+// scale" number, but the range users actually pick from (0.25–1.5) is
+// deliberately an octave below the 0.5–3 range the drawing/sizing code was
+// tuned against — every use doubles it back out, so the default (1) renders
+// at what used to require manually dialing the old control up to 2.
+export function displayRenderScale(rawScale = 1, min = 0.25, max = 1.5) {
+  return Math.min(max, Math.max(min, Number.isFinite(rawScale) ? rawScale : 1)) * 2;
 }
 
 function availableDisplaySensors(display, elements = []) {
@@ -309,7 +319,7 @@ function displayControls(screenOn, density, hasReading) {
 }
 
 function displayScreenSVG(el, elements = []) {
-  const scale = Math.min(3, Math.max(0.5, el.params.displayScale || 1));
+  const scale = displayRenderScale(el.params.displayScale);
   const density = displayDensity(scale);
   const screenOn = el.params.screenOn !== false;
   const view = ['main', 'spectrum', 'detail'].includes(el.params.displayView) ? el.params.displayView : 'main';
@@ -353,7 +363,7 @@ export function displayCableSVG(display, elements = []) {
   const localPort = typeof rawPort === 'function' ? rawPort(sensor) : rawPort;
   if (!Number.isFinite(localPort?.x) || !Number.isFinite(localPort?.y)) return '';
   const from = toWorld(sensor, localPort.x, localPort.y);
-  const scale = Math.min(3, Math.max(0.5, display.params.displayScale || 1));
+  const scale = displayRenderScale(display.params.displayScale);
   const to = toWorld(display, -49 * scale, 19 * scale);
   if (![from.x, from.y, to.x, to.y].every(Number.isFinite)) return '';
   const direction = to.x >= from.x ? 1 : -1;
@@ -466,21 +476,50 @@ function probeCard(el, rd) {
       `<text x="0" y="24" text-anchor="middle" font-size="8" fill="#333">${lab}</text></g>`;
   }
 
-  // spectrum plot: λ (nm) vs I (a.u.), schematic
+  // spectrum plot: λ (nm) vs I (a.u.), real sampled data, smoothed through a
+  // Catmull-Rom spline (matching the spectrometer's own screen readout).
+  // Domain is ±2σ of the beam's FWHM bandwidth plus 5 nm padding — wide
+  // enough to actually show the Gaussian shape, not just its half-max width
+  // — and the rendered samples are both filtered to that domain and clipped,
+  // since the spec's own sampled support (±3σ) can otherwise reach past it.
   const W = 74, H = 50, x0 = 10, y0 = H - 13, pw = W - 18, ph = H - 24;
+  const sigma = fwhmToSigma(rd.bw || 0);
+  const lo = rd.wl - 2 * sigma - 5, hi = rd.wl + 2 * sigma + 5, span = Math.max(1e-6, hi - lo);
+  const xAt = wl => x0 + pw * (wl - lo) / span;
   let curve = '';
-  if (isSC) {
-    const hs = [0.35, 0.6, 0.85, 1, 0.9, 0.7, 0.45];
-    const bw = pw / hs.length;
-    hs.forEach((hgt, i) => {
-      const wlBar = rd.wl - rd.bw / 2 + rd.bw * i / (hs.length - 1);
-      curve += `<rect x="${x0 + i * bw}" y="${y0 - hgt * ph}" width="${bw}" height="${hgt * ph}" fill="${wavelengthToColor(wlBar)}" opacity="0.8"/>`;
-    });
+  if (rd.spec) {
+    const samples = (spectrumSamples(rd.spec, 28) || []).filter(s => s.wl >= lo && s.wl <= hi);
+    const peak = Math.max(...samples.map(s => s.weight), 1e-9);
+    if (samples.length < 2) {
+      const sample = samples[0];
+      if (sample) {
+        const x = xAt(sample.wl).toFixed(2), height = Math.max(1, (sample.weight / peak) * ph);
+        curve = `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - height).toFixed(2)}" stroke="${wavelengthToColor(sample.wl)}" stroke-width="2" stroke-linecap="round"/>`;
+      }
+    } else {
+      const points = samples.map(s => ({ x: xAt(s.wl), y: y0 - Math.max(0, (s.weight / peak) * ph) }));
+      const fillPoints = [{ x: points[0].x, y: y0 }, ...points, { x: points[points.length - 1].x, y: y0 }];
+      const clipId = `probeSpecClip${esc(el.id)}`, gradientId = `probeSpecGrad${esc(el.id)}`;
+      const stops = samples.map((s, i) => {
+        const offset = samples.length > 1 ? (i / (samples.length - 1) * 100).toFixed(1) : 0;
+        return `<stop offset="${offset}%" stop-color="${wavelengthToColor(s.wl)}"/>`;
+      }).join('');
+      curve = `<defs><clipPath id="${clipId}"><rect x="${x0}" y="${(y0 - ph - 2).toFixed(2)}" width="${pw}" height="${(ph + 3).toFixed(2)}"/></clipPath>` +
+        `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">${stops}</linearGradient></defs>` +
+        `<g clip-path="url(#${clipId})">` +
+        `<path data-spectrum-points="${samples.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.3" stroke="none"/>` +
+        `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.6" stroke-linecap="round"/>` +
+        `</g>`;
+    }
   } else {
-    const xc = x0 + Math.min(1, Math.max(0, (rd.wl - 400) / 380)) * pw;
-    const hw = Math.max(2.5, (rd.bw / 380) * pw / 2);
-    curve = `<path d="M ${x0},${y0} L ${Math.max(x0, xc - 3 * hw)},${y0} C ${xc - hw},${y0} ${xc - hw * 0.7},${y0 - ph} ${xc},${y0 - ph} C ${xc + hw * 0.7},${y0 - ph} ${xc + hw},${y0} ${Math.min(x0 + pw, xc + 3 * hw)},${y0} L ${x0 + pw},${y0}" fill="none" stroke="${c}" stroke-width="1.5"/>`;
+    const x = xAt(rd.wl).toFixed(2);
+    curve = `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - ph).toFixed(2)}" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
   }
+  const tick = (wl, anchor) => {
+    const x = xAt(wl).toFixed(2);
+    return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 + 1.6).toFixed(2)}" stroke="#888" stroke-width="0.7"/>` +
+      `<text x="${x}" y="${(y0 + 6).toFixed(2)}" text-anchor="${anchor}" font-size="4.6" fill="#666">${Math.round(wl)}</text>`;
+  };
   const vlabel = isSC ? `${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
     : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`;
   return `<g transform="translate(14,-${H + 6})">` +
@@ -488,7 +527,7 @@ function probeCard(el, rd) {
     `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
     `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>` +
     curve +
-    `<text x="${x0 + pw}" y="${H - 4}" text-anchor="end" font-size="5.5" fill="#888">λ (nm)</text>` +
+    tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end') +
     `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
     `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6.5" fill="#333">${vlabel}</text>` +
     `</g>`;
@@ -717,16 +756,36 @@ export const registry = {
     size_: el => ({ w: 104, h: laserH(el) + 4 }),
     params: [
       P.wavelength,
-      { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.01 },
-      { key: 'beamMode', label: 'Beam style', type: 'select', def: 'line', options: [['line', 'Simple line'], ['beam', 'Beam with size']] },
-      { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: 6, show: p => p.beamMode === 'beam' },
-      { key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono', options: [['mono', 'Monochromatic'], ['band', 'Broadband'], ['sc', 'Supercontinuum (white)']] },
-      { key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 1, max: 400, step: 5, def: 40, show: p => p.bwMode === 'band' },
-      { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 },
+      { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
+      { key: 'beamMode', label: 'Beam style', type: 'select', def: 'beam', options: [['line', 'Simple line'], ['beam', 'Beam with size']] },
+      { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: 5, show: p => p.beamMode === 'beam' },
       { key: 'temporalMode', label: 'Emission', type: 'select', def: 'cw', options: [['cw', 'Continuous wave'], ['pulsed', 'Pulsed']] },
       { key: 'repRateMHz', label: 'Repetition rate (MHz)', type: 'number', min: 0.001, max: 1000000, step: 1, def: 80, show: p => p.temporalMode === 'pulsed' },
       { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 100, show: p => p.temporalMode === 'pulsed' },
+      {
+        key: 'transformLimited', label: 'Transform-limited (time–bandwidth product)', type: 'checkbox', def: false,
+        show: p => p.temporalMode === 'pulsed',
+      },
+      {
+        key: 'pulseShape', label: 'Pulse shape', type: 'select', def: 'gauss',
+        options: [['gauss', 'Gaussian'], ['sech2', 'Sech²']],
+        show: p => p.temporalMode === 'pulsed' && p.transformLimited,
+      },
       { key: 'pulsePhaseNs', label: 'Emission offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.temporalMode === 'pulsed' },
+      {
+        key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono',
+        options: [['mono', 'Monochromatic'], ['band', 'Broadband'], ['sc', 'Supercontinuum (white)']],
+        show: p => !(p.temporalMode === 'pulsed' && p.transformLimited),
+      },
+      {
+        // Also editable while transform-limited: entering a bandwidth there
+        // recomputes pulse duration (and vice versa) via the time–bandwidth
+        // product — see inspector.js's applyInput(). bwMode is irrelevant
+        // (and hidden) in that state, so it isn't part of this show check.
+        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 0.001, max: 400, step: 0.5, def: 40,
+        show: p => p.bwMode === 'band' || (p.temporalMode === 'pulsed' && p.transformLimited),
+      },
+      { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 },
       P.autoColor, P.color,
     ],
     svg(el) {
@@ -1039,7 +1098,7 @@ export const registry = {
 
   // ---------------- Filters & splitters ----------------
   dichroic: {
-    label: 'Dichroic mirror', category: 'Filters & Splitters', size: { w: 14, h: 56 },
+    label: 'Dichroic mirror', category: 'Filters & Splitters', paletteOrder: 3, size: { w: 14, h: 56 },
     params: [
       { key: 'dtype', label: 'Type', type: 'select', def: 'longpass', options: [['longpass', 'Longpass (transmit long λ)'], ['shortpass', 'Shortpass (transmit short λ)'], ['bandpass', 'Bandpass']] },
       { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype !== 'bandpass' },
@@ -1060,7 +1119,7 @@ export const registry = {
   },
 
   filter: {
-    label: 'Filter', category: 'Filters & Splitters', size: { w: 12, h: 42 },
+    label: 'Filter', category: 'Filters & Splitters', paletteOrder: 2, size: { w: 12, h: 42 },
     params: [
       { key: 'ftype', label: 'Type', type: 'select', def: 'bandpass', options: [['bandpass', 'Bandpass'], ['longpass', 'Longpass'], ['shortpass', 'Shortpass'], ['nd', 'Neutral density']] },
       { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 500, show: p => p.ftype === 'longpass' || p.ftype === 'shortpass' },
@@ -1082,7 +1141,7 @@ export const registry = {
   },
 
   bs: {
-    label: 'Beamsplitter', category: 'Filters & Splitters', size: { w: 30, h: 30 },
+    label: 'Beamsplitter', category: 'Filters & Splitters', paletteOrder: 1, size: { w: 30, h: 30 },
     size_: el => ({ w: (el.params.size || 26) + 4, h: (el.params.size || 26) + 4 }),
     params: [
       { key: 'ratio', label: 'Transmission (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5 },
@@ -1523,12 +1582,12 @@ export const registry = {
     rotatable: false,
     paramsTitle: 'Signal connection',
     size_: el => {
-      const scale = Math.min(3, Math.max(0.5, el.params.displayScale || 1));
+      const scale = displayRenderScale(el.params.displayScale);
       return { w: 98 * scale, h: 72 * scale };
     },
     params: [
       { key: 'sensorId', label: 'Sensor input', type: 'sensor', def: '' },
-      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 3, step: 0.1, def: 1 },
+      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.25, max: 1.5, step: 0.05, def: 1 },
       { key: 'screenOn', label: 'Power', type: 'checkbox', def: true, hidden: true },
       { key: 'displayView', label: 'View', type: 'select', def: 'main', options: [['main', 'Primary'], ['spectrum', 'Wavelength samples'], ['detail', 'Detail']], hidden: true },
     ],
@@ -1887,19 +1946,26 @@ export const registry = {
 
   probe: {
     label: 'Beam probe (?)', category: 'Annotations', size: { w: 24, h: 24 },
-    size_: el => ({ w: 24 * (el.params.displayScale || 1), h: 24 * (el.params.displayScale || 1) }),
+    size_: el => {
+      const scale = displayRenderScale(el.params.displayScale, 0.25, 1.25);
+      return { w: 24 * scale, h: 24 * scale };
+    },
     noLabel: true,
     params: [
-      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2.5, step: 0.1, def: 1 },
+      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.25, max: 1.25, step: 0.05, def: 1 },
       { key: 'prop', label: 'Show', type: 'select', def: 'spectrum', options: [['spectrum', 'Spectrum plot'], ['pol', 'Polarization'], ['wl', 'Wavelength label']] },
     ],
     svg(el) {
-      const scale = el.params.displayScale || 1;
-      return `<g transform="scale(${scale})"><circle r="4.5" fill="none" stroke="#e07020" stroke-width="1.6"/>` +
+      const scale = displayRenderScale(el.params.displayScale, 0.25, 1.25);
+      // The crosshair marks the exact point being read and must stay put
+      // regardless of scale — only the readout card (and the leader line
+      // pointing to it) grows with the Display scale setting.
+      const crosshair = `<circle r="4.5" fill="none" stroke="#e07020" stroke-width="1.6"/>` +
         `<line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/>` +
-        `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>` +
-        `<line x1="3.5" y1="-3.5" x2="14" y2="-14" stroke="#e07020" stroke-width="1"/>` +
-        probeCard(el, probeAt(el.x, el.y)) + `</g>`;
+        `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>`;
+      const readout = `<line x1="3.5" y1="-3.5" x2="14" y2="-14" stroke="#e07020" stroke-width="1"/>` +
+        probeCard(el, probeAt(el.x, el.y));
+      return crosshair + `<g transform="scale(${scale})">${readout}</g>`;
     },
     surfaces: () => [],
   },
@@ -2270,7 +2336,7 @@ export function getVisualBounds(el, { includeLabel = true } = {}) {
   let x0 = el.x - ex, x1 = el.x + ex, y0 = el.y - ey, y1 = el.y + ey;
 
   if (el.type === 'probe') {
-    const scale = el.params.displayScale || 1;
+    const scale = displayRenderScale(el.params.displayScale, 0.25, 1.25);
     const corners = [[-10, -75], [160, -75], [-10, 15], [160, 15]]
       .map(([x, y]) => toWorld(el, x * scale, y * scale));
     x0 = Math.min(x0, ...corners.map(p => p.x)); x1 = Math.max(x1, ...corners.map(p => p.x));
