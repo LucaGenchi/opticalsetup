@@ -3,7 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "preview-nif": "node serve.mjs '--entry=/sketch/?example=nif-one-shot-from-master-oscillator-to-target'",
     "test": "node --test"
   },
   "devDependencies": {

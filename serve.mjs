@@ -7,11 +7,6 @@ import process from 'node:process';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const PORT = parseInt(process.env.PORT, 10) || 5182;
-const entryArg = process.argv.find(arg => arg.startsWith('--entry='));
-const requestedEntry = entryArg?.slice('--entry='.length);
-const ENTRY = requestedEntry?.startsWith('/') && !requestedEntry.startsWith('//')
-  ? requestedEntry
-  : null;
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
   '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml',
@@ -24,9 +19,6 @@ createServer(async (req, res) => {
   try {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405, { Allow: 'GET, HEAD' }); res.end(); return;
-    }
-    if (ENTRY && req.url === '/') {
-      res.writeHead(302, { Location: ENTRY }); res.end(); return;
     }
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (p.endsWith('/')) p += 'index.html';
