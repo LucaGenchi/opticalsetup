@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: publish-community
@@ -35,15 +36,28 @@ jobs:
       - name: Run repository checks
         run: npm test
 
-      - name: Commit generated publishing files
+      # main requires a reviewed pull request, with no bypass for this
+      # workflow's identity -- deliberately so: publishing never gets a
+      # direct-push shortcut, no matter what a future workflow might do.
+      # Instead this opens a small PR containing only the two files
+      # tools/build-community.mjs deterministically produces; merging it
+      # (see docs/community-setup-review.md) is the actual publish step.
+      - name: Open a PR with the generated publishing files
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if git diff --quiet -- community sketch/js/community-data.js; then
             echo "Community publishing files are already current."
             exit 0
           fi
+          branch="publish-community/$(date -u +%Y%m%d%H%M%S)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
           git add community sketch/js/community-data.js
           git diff --cached --check
           git commit -m "Publish approved community setups"
-          git push origin HEAD:main
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "Publish approved community setups" \
+            --body "Regenerates \`community/\` and \`sketch/js/community-data.js\` from the community-submissions/*.json files currently on \`main\`, via \`node tools/build-community.mjs\`. The diff is entirely deterministic generated output -- nothing here should need hand-editing. Merging this PR is what makes the setup(s) live; see docs/community-setup-review.md."
