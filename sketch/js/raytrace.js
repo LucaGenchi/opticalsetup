@@ -132,8 +132,13 @@ function detectorSpectrum(hits) {
 
 function averageGateTransmission(pulse) {
   if (!pulse?.gates?.length) return 1;
+  // Every field that changes the waveform must be in the key. The two output
+  // ports of a polarization-modulated PBS differ *only* by their high/low
+  // levels, so omitting those made one port silently reuse the other's
+  // cached average.
   const key = [pulse.repRateMHz, pulse.pulseWidthFs, pulse.phaseNs, ...pulse.gates.flatMap(g => [
     g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1, g.invert ? 1 : 0,
+    g.high ?? 1, g.low ?? 0,
   ])].join('|');
   if (!gateTransmissionCache.has(key)) gateTransmissionCache.set(key, pulseGateTransmission(pulse));
   return gateTransmissionCache.get(key);
@@ -291,7 +296,13 @@ export function probeAt(x, y, tol = 16) {
       }
     }
   }
-  return best ? { wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol, stokes: cloneStokes(best.stokes), intensity: best.intensity } : null;
+  return best ? {
+    wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol,
+    stokes: cloneStokes(best.stokes), intensity: best.intensity,
+    // A polarization-modulated segment has no single meaningful state, so the
+    // probe reports the alternation itself rather than its average.
+    polMod: best.polMod || null,
+  } : null;
 }
 
 const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
@@ -634,6 +645,33 @@ function bandChild(ray, d, lo, hi, tag) {
   };
 }
 
+// A polarization modulation (from a switching EOM) meeting an analyzer:
+// Malus's law is evaluated separately for the two modulation states, giving
+// the two transmission levels of a real square temporal gate plus the
+// time-averaged level a slow instrument would read.
+function polModThrough(ray, transmissionOf) {
+  const m = ray.polMod;
+  const high = transmissionOf(m.stokesHigh);
+  const low = transmissionOf(m.stokesLow);
+  return {
+    high,
+    low,
+    mean: m.duty * high + (1 - m.duty) * low,
+    gate: {
+      opl: m.opl, frequencyMHz: m.frequencyMHz, phaseNs: m.phaseNs,
+      duty: m.duty, shape: 'square', high, low,
+    },
+  };
+}
+
+const withGate = (pulse, gate) => ({ ...pulse, gates: [...(pulse.gates || []), gate] });
+
+const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
+  ...polMod,
+  stokesHigh: applyRetarder(polMod.stokesHigh, axisDeg, retardanceDeg),
+  stokesLow: applyRetarder(polMod.stokesLow, axisDeg, retardanceDeg),
+});
+
 // interaction -> array of child rays [{d, wl?, intensity?, tag?}] ; [] = absorbed
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
@@ -896,6 +934,16 @@ function interact(ray, hit) {
     }
     case 'polarizer': {
       const a = data.a || 0;
+      if (ray.polMod) {
+        const m = polModThrough(ray, s => analyzerTransmission(s, a));
+        const stokes = linearStokes(a);
+        if (!ray.pulse) {
+          if (m.mean < 0.02) return [];
+          return [{ d, intensity: ray.intensity * m.mean, pol: a, stokes, polMod: null, tag: 'pol' }];
+        }
+        if (Math.max(m.high, m.low) < 0.02) return [];
+        return [{ d, pol: a, stokes, polMod: null, pulse: withGate(ray.pulse, m.gate), tag: 'pol' }];
+      }
       const f = analyzerTransmission(ray.stokes, a);
       if (f < 0.02) return [];
       const stokes = linearStokes(a);
@@ -903,15 +951,77 @@ function interact(ray, hit) {
     }
     case 'wp': {
       if (!ray.stokes) return [{ d }];
-      const stokes = applyRetarder(ray.stokes, data.a || 0, data.half ? 180 : 90);
-      return [{ d, stokes, pol: legacyPolarization(stokes), tag: data.half ? 'hwp' : 'qwp' }];
+      const retardance = data.half ? 180 : 90;
+      const stokes = applyRetarder(ray.stokes, data.a || 0, retardance);
+      return [{
+        d, stokes, pol: legacyPolarization(stokes), tag: data.half ? 'hwp' : 'qwp',
+        // A waveplate after a switching EOM retards both modulation states,
+        // so the alternation survives (rotated) instead of being erased.
+        ...(ray.polMod ? { polMod: retardPolMod(ray.polMod, data.a || 0, retardance) } : {}),
+      }];
     }
     case 'retarder': {
       if (!ray.stokes) return [{ d }];
-      const stokes = applyRetarder(ray.stokes, data.a || 0, data.retardance || 0);
-      return [{ d, stokes, pol: legacyPolarization(stokes), tag: 'ret' }];
+      if (!data.switching) {
+        const stokes = applyRetarder(ray.stokes, data.a || 0, data.retardance || 0);
+        return [{
+          d, stokes, pol: legacyPolarization(stokes), tag: 'ret',
+          ...(ray.polMod ? { polMod: retardPolMod(ray.polMod, data.a || 0, data.retardance || 0) } : {}),
+        }];
+      }
+      // A square-wave-driven EOM alternates between two polarization states.
+      // Both are carried forward in `polMod` so a downstream analyzer (see
+      // 'polarizer'/'pbs') can turn them into a real time-varying
+      // transmission — with a pulsed source that means individual pulses are
+      // routed differently, not blended. `stokes` itself stays the
+      // duty-weighted average, which is what an instrument with no temporal
+      // resolution (a probe or a detector placed directly after the EOM)
+      // genuinely measures: a partially polarized beam.
+      const duty = Math.min(1, Math.max(0, data.duty ?? 0.5));
+      const lo = applyRetarder(ray.stokes, data.a || 0, data.retardanceLow || 0);
+      // "Flip" drive is the half-wave switch a Pockels cell is normally used
+      // for: whatever linear state comes in, the driven state is rotated 90°
+      // from it (and circular handedness reverses). In Stokes terms that is
+      // exactly a negation, so it needs no crystal-axis bookkeeping and
+      // works for any input polarization.
+      const hi = data.flip
+        ? { s1: -ray.stokes.s1, s2: -ray.stokes.s2, s3: -ray.stokes.s3 }
+        : applyRetarder(ray.stokes, data.a || 0, data.retardanceHigh || 0);
+      const stokes = {
+        s1: duty * hi.s1 + (1 - duty) * lo.s1,
+        s2: duty * hi.s2 + (1 - duty) * lo.s2,
+        s3: duty * hi.s3 + (1 - duty) * lo.s3,
+      };
+      const polMod = {
+        opl: ray.opl, frequencyMHz: data.frequencyMHz || 1, phaseNs: data.phaseNs || 0,
+        duty, stokesHigh: hi, stokesLow: lo,
+      };
+      return [{ d, stokes, polMod, pol: legacyPolarization(stokes), tag: 'ret' }];
     }
     case 'pbs': {
+      if (ray.polMod) {
+        // The port a pulse leaves by is decided by its own polarization at
+        // the moment it arrives. Under a switching EOM that alternates
+        // pulse-by-pulse, so each output port carries a real gated pulse
+        // train (complementary to the other) rather than a steady half.
+        const m = polModThrough(ray, s => analyzerTransmission(s, 0));
+        const out = [];
+        if (!ray.pulse) {
+          if (m.mean > 0.02) out.push({ d, intensity: ray.intensity * m.mean, pol: 0, stokes: linearStokes(0), polMod: null, tag: 'T' });
+          if (1 - m.mean > 0.02) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - m.mean), pol: 90, stokes: linearStokes(90), polMod: null, tag: 'R' });
+          return out;
+        }
+        if (Math.max(m.high, m.low) > 0.02) {
+          out.push({ d, pol: 0, stokes: linearStokes(0), polMod: null, pulse: withGate(ray.pulse, m.gate), tag: 'T' });
+        }
+        if (Math.max(1 - m.high, 1 - m.low) > 0.02) {
+          out.push({
+            d: reflect(d, n), pol: 90, stokes: linearStokes(90), polMod: null,
+            pulse: withGate(ray.pulse, { ...m.gate, high: 1 - m.high, low: 1 - m.low }), tag: 'R',
+          });
+        }
+        return out;
+      }
       const ft = analyzerTransmission(ray.stokes, 0);
       const out = [];
       if (ft > 0.02) out.push({ d, intensity: ray.intensity * ft, pol: 0, stokes: linearStokes(0), tag: 'T' });
@@ -1202,6 +1312,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         && !(c0.chopped && !r.chopped)
         && !('pol' in c0 && c0.pol !== r.pol)
         && !('stokes' in c0)
+        && !('polMod' in c0)
         && !('pulse' in c0); // state changes split so probes read each segment
       if (single) {
         if (c0.intensity !== undefined && r.intensity > 0 && Number.isFinite(r.power)) {
@@ -1230,6 +1341,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           evanLen: c.evanLen,
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
+          polMod: 'polMod' in c ? c.polMod : r.polMod,
           medium: 'medium' in c ? c.medium : r.medium,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           pulse: 'pulse' in c ? c.pulse : r.pulse,

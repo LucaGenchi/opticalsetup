@@ -6,6 +6,7 @@ import {
 import { detectorReading } from './raytrace.js';
 import { enhancedReading, objectImageAtCamera } from './detector-measurements.js';
 import { fwhmToSigma } from './spectrum.js';
+import { scopeTrace } from './pulses.js';
 import { esc, smoothPath, wavelengthToColor } from './util.js';
 
 export const DETECTOR_TYPES = [
@@ -228,6 +229,61 @@ function spectrumPlot(reading, sensor, baseline = 8) {
     `</g>` + ticks;
 }
 
+const formatTimeNs = ns => (ns <= 0 ? '0 ns'
+  : ns >= 1e6 ? `${(ns / 1e6).toFixed(ns < 1e7 ? 1 : 0)} ms`
+  : ns >= 1000 ? `${(ns / 1000).toFixed(ns < 1e4 ? 1 : 0)} µs`
+    : ns >= 1 ? `${ns.toFixed(ns < 10 ? 1 : 0)} ns`
+      : `${(ns * 1000).toFixed(0)} ps`);
+
+const formatMHz = mhz => (mhz >= 1000 ? `${(mhz / 1000).toFixed(2)} GHz`
+  : mhz >= 1 ? `${mhz.toFixed(mhz < 10 ? 2 : 1)} MHz`
+    : `${(mhz * 1000).toFixed(mhz * 1000 < 10 ? 1 : 0)} kHz`);
+
+// Oscilloscope trace: a photodetector wired to a screen shows the pulse train
+// in time, each pulse scaled by whatever survived the temporal gates on its
+// path. A polarization modulator read through an analyzer therefore appears
+// here as the alternating pulse pattern it physically is, not as a steady
+// averaged level. The window spans two periods of whichever is slower, the
+// train or the modulation, so one full repeat of the structure is always
+// visible.
+function scopePlot(reading) {
+  const trace = scopeTrace(reading.pulse);
+  if (!trace) return null;
+  const baseline = 6, height = 17;
+  const xAt = ns => -35 + 70 * (trace.spanNs > 0 ? ns / trace.spanNs : 0);
+  const yAt = value => baseline - Math.max(0, Math.min(1, value)) * height;
+
+  const axis = `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
+  const tick = (ns, anchor) => {
+    const x = xAt(ns).toFixed(2);
+    return `<line x1="${x}" y1="${baseline}" x2="${x}" y2="${baseline + 1.4}" stroke="#3d5566" stroke-width="0.6"/>` +
+      `<text x="${x}" y="${baseline + 5.8}" text-anchor="${anchor}" font-size="3.4" fill="#5f7d8e">${esc(formatTimeNs(ns))}</text>`;
+  };
+
+  // The gate envelope behind the pulses makes the modulation shape readable
+  // even where the train is too dense to resolve individual spikes.
+  const envelope = trace.envelope.length > 1
+    ? `<polyline data-scope-envelope="${trace.envelope.length}" points="${trace.envelope
+      .map(p => `${xAt(p.tNs).toFixed(2)},${yAt(p.value).toFixed(2)}`).join(' ')}" ` +
+      `fill="none" stroke="#67e8f9" stroke-width="0.7" opacity="0.45"/>`
+    : '';
+
+  const spikes = trace.pulses.filter(p => p.amplitude > 1e-6).map(p => {
+    const x = xAt(p.tNs).toFixed(2);
+    return `<line x1="${x}" y1="${baseline}" x2="${x}" y2="${yAt(p.amplitude).toFixed(2)}" ` +
+      `stroke="${reading.color || '#8fd3ff'}" stroke-width="1.3" stroke-linecap="round"/>`;
+  }).join('');
+
+  const caption = trace.modulationMHz
+    ? `MOD ${formatMHz(trace.modulationMHz)} · REP ${formatMHz(trace.repRateMHz)}`
+    : `REP ${formatMHz(trace.repRateMHz)}`;
+
+  return `<g data-scope-pulses="${trace.pulses.length}">` + axis + envelope + spikes +
+    tick(0, 'start') + tick(trace.spanNs / 2, 'middle') + tick(trace.spanNs, 'end') + `</g>` +
+    `<text x="-35" y="17" font-size="4.6" fill="#fde68a">${esc(caption)}</text>` +
+    `<text x="35" y="17" text-anchor="end" font-size="4.6" fill="#7892a1">Σw ${compactNumber(reading.signal)}</text>`;
+}
+
 function profile(reading) {
   const values = reading.profile || [], maximum = Math.max(...values, 1e-9), width = values.length ? 70 / values.length : 0;
   return values.map((value, index) => {
@@ -300,8 +356,15 @@ function panel(sensor, reading, elements, view) {
     if (view === 'spectrum') return header(name, 'LINE PROFILE', reading.pulse) + profile(reading);
     return header(name, '2D INTENSITY', reading.pulse) + cameraMap(reading, sensor, elements);
   }
-  if (sensor.type === 'detector') return header(name, 'REL INTENSITY', reading.pulse) +
-    `<circle cx="-31" cy="-1" r="2.3" fill="${reading.color}"/><text x="35" y="4" text-anchor="end" font-size="15" font-weight="780" fill="#ecf7fa">${compactNumber(reading.signal)}</text><text x="35" y="12" text-anchor="end" font-size="5" fill="#7892a1">Σw · REL INTENSITY</text>`;
+  if (sensor.type === 'detector') {
+    // A pulsed arrival has real temporal structure, so the screen becomes an
+    // oscilloscope rather than a single averaged number. CW light keeps the
+    // plain intensity readout — there is nothing to plot against time.
+    const scope = reading.pulse ? scopePlot(reading) : null;
+    if (scope) return header(name, 'OSCILLOSCOPE', reading.pulse) + scope;
+    return header(name, 'REL INTENSITY', reading.pulse) +
+      `<circle cx="-31" cy="-1" r="2.3" fill="${reading.color}"/><text x="35" y="4" text-anchor="end" font-size="15" font-weight="780" fill="#ecf7fa">${compactNumber(reading.signal)}</text><text x="35" y="12" text-anchor="end" font-size="5" fill="#7892a1">Σw · REL INTENSITY</text>`;
+  }
   if (sensor.type === 'pmt') return header(name, 'LOW-LIGHT INTENSITY', reading.pulse) + metrics([
     ['INPUT', `Σw ${compactNumber(reading.signal)}`], ['GAIN', `×${compactNumber(sensor.params.gain || 1)}`],
     ['PMT OUTPUT', `${compactNumber(reading.outputSignal)} a.u.`], ['STATE', reading.saturated ? 'SATURATED' : 'LINEAR'],

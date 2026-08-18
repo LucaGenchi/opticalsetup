@@ -14,7 +14,7 @@ import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
-import { stokesAngleDeg } from './polarization.js';
+import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -451,6 +451,22 @@ function probeCard(el, rd) {
 
   if (prop === 'pol') {
     let icon, lab;
+    if (rd.polMod) {
+      // A modulated segment alternates between two states, so its average is
+      // a meaningless (often zero-length) Stokes vector. Name both states and
+      // the rate instead — that is what is physically there.
+      const name = s => polarizationDescription(s).replace(/^Linear /, '').replace('°', '°');
+      const mhz = rd.polMod.frequencyMHz;
+      const rate = mhz >= 1000 ? `${(mhz / 1000).toFixed(2)} GHz`
+        : mhz >= 1 ? `${mhz.toFixed(mhz < 10 ? 2 : 1)} MHz`
+          : `${(mhz * 1000).toFixed(0)} kHz`;
+      icon = `<g stroke="#7c3aed" stroke-width="1.6"><line x1="-8.5" y1="0" x2="8.5" y2="0"/>` +
+        `<line x1="0" y1="-8.5" x2="0" y2="8.5"/></g>` +
+        `<path d="M -6,-11 L 6,-11 M 3,-13.5 L 6,-11 L 3,-8.5" fill="none" stroke="#7c3aed" stroke-width="1.2"/>`;
+      lab = `${name(rd.polMod.stokesLow)} ↔ ${name(rd.polMod.stokesHigh)} · ${rate}`;
+      return `<g transform="translate(28,-40)"><circle r="14" fill="#fff" stroke="#c9ced6"/>` + icon +
+        `<text x="0" y="24" text-anchor="middle" font-size="7" fill="#333">${lab}</text></g>`;
+    }
     if (rd.pol === 'c') {
       icon = `<path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +
         `<path d="M 3,-7.7 L 7.5,-8.5 L 4.5,-3.6 Z" fill="#333"/>`;
@@ -1687,21 +1703,62 @@ export const registry = {
     },
   },
 
+  // Voltage-controlled retarder (Pockels effect): "Static retardance" acts as
+  // a plain waveplate at the configured crystal axis. "Switching" square-wave
+  // toggles the retardance between two states at a set frequency — paired
+  // with a downstream polarizer/analyzer (and, for a clean two-state linear
+  // swing, a quarter-wave plate before the EOM), this is how a real EOM
+  // becomes an intensity modulator, the standard technique behind
+  // modulation-transfer methods like stimulated Raman scattering. Detector
+  // and analyzer readings use the duty-cycle-averaged Stokes state (the same
+  // convention the chopper element uses for CW light) rather than animating
+  // individual pulses mid-switch — this reports the correct time-averaged
+  // modulation depth but doesn't synchronize with a pulsed source's own
+  // repetition rate.
   eom: {
     label: 'EOM', category: 'Modulators', size: { w: 48, h: 28 },
     size_: el => ({ w: 48, h: (el.params.aperture || 24) + 4 }),
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
       { key: 'modulate', label: 'Apply voltage', type: 'checkbox', def: false },
-      { key: 'a', label: 'Crystal axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 0, show: p => p.modulate },
-      { key: 'retardance', label: 'Retardance (°)', type: 'number', min: -720, max: 720, step: 5, def: 90, show: p => p.modulate },
+      // Irrelevant in the H↔V flip drive, where the required axis is derived
+      // from whatever polarization actually arrives.
+      { key: 'a', label: 'Crystal axis (°)', type: 'number', min: 0, max: 180, step: 5, def: 0, show: p => p.modulate && !(p.driveMode === 'switching' && p.switchMode !== 'custom') },
+      {
+        key: 'driveMode', label: 'Drive', type: 'select', def: 'static',
+        options: [['static', 'Static retardance'], ['switching', 'Switching (square wave)']],
+        show: p => p.modulate,
+      },
+      {
+        // The default needs no crystal-axis reasoning at all: "Flip" is the
+        // half-wave switch a Pockels cell is normally used for, and it
+        // rotates whatever linear state arrives by exactly 90° (H<->V),
+        // which is what an analyzer or PBS turns into full-depth intensity
+        // modulation. Explicit retardance states stay available underneath.
+        key: 'switchMode', label: 'Switch between', type: 'select', def: 'flip',
+        options: [['flip', 'Orthogonal polarizations (H↔V)'], ['custom', 'Custom retardance states']],
+        show: p => p.modulate && p.driveMode === 'switching',
+      },
+      { key: 'retardance', label: 'Retardance (°)', type: 'number', min: -720, max: 720, step: 5, def: 90, show: p => p.modulate && p.driveMode !== 'switching' },
+      { key: 'retardanceLow', label: 'Low-state retardance (°)', type: 'number', min: -720, max: 720, step: 5, def: 0, show: p => p.modulate && p.driveMode === 'switching' && p.switchMode === 'custom' },
+      { key: 'retardanceHigh', label: 'High-state retardance (°)', type: 'number', min: -720, max: 720, step: 5, def: 180, show: p => p.modulate && p.driveMode === 'switching' && p.switchMode === 'custom' },
+      { key: 'switchFreqMHz', label: 'Switching frequency (MHz)', type: 'number', min: 0.000001, max: 1000, step: 0.001, def: 1, show: p => p.modulate && p.driveMode === 'switching' },
+      { key: 'switchDuty', label: 'High-state duty (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.driveMode === 'switching' },
+      { key: 'switchPhaseNs', label: 'Switching offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate && p.driveMode === 'switching' },
     ],
     svg(el) { return boxSVG(44, el.params.aperture || 24, '#b8c9a3', '#66794a', 'EOM', '#2f3a20', isFlipped(el)); },
     surfaces(el) {
       const p = el.params;
       if (!p.modulate) return [];
       const h = (p.aperture || 24) / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'retarder', data: { a: p.a, retardance: p.retardance } }];
+      const data = p.driveMode === 'switching'
+        ? {
+          a: p.a, switching: true, flip: p.switchMode !== 'custom',
+          retardanceLow: p.retardanceLow, retardanceHigh: p.retardanceHigh,
+          duty: p.switchDuty, frequencyMHz: p.switchFreqMHz, phaseNs: p.switchPhaseNs,
+        }
+        : { a: p.a, retardance: p.retardance };
+      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'retarder', data }];
     },
   },
 
@@ -2158,7 +2215,7 @@ const DIRECT = {
   aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
   aotf: { resize: { y: 'aperture' }, tune: { key: 'center', short: 'λ select' } },
   delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL' } },
-  eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate } },
+  eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
   crystal: { resize: { y: 'aperture' }, tune: { key: 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n' } },
@@ -2239,7 +2296,7 @@ const ELEMENT_HELP = {
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
   aotf: 'Selects a configurable spectral band, then deflects and attenuates the selected acousto-optic order.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
-  eom: 'Applies voltage-controlled polarization retardance; an analyzer converts it to intensity modulation.',
+  eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
   sample: 'Attenuates excitation and can convert a bounded fraction into fluorescence or nonlinear signal.',
@@ -2266,6 +2323,10 @@ export function getElementMeta(type, params = {}, context = {}) {
   if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
+  } else if (type === 'eom' && params.modulate && params.driveMode === 'switching') {
+    note = params.switchMode === 'custom'
+      ? 'The two retardance states alternate at the switching frequency. A downstream polarizer or PBS turns that into real intensity modulation — with a pulsed source, individual pulses are routed by the state they meet, so a photodetector on a screen shows the modulated train.'
+      : 'Alternates the incoming polarization between two orthogonal states (H↔V) at the switching frequency; no crystal-axis tuning needed. Put a polarizer or PBS downstream to turn it into intensity modulation — with a pulsed source, individual pulses are routed by the state they meet, so a photodetector on a screen shows the modulated train.';
   } else if (type === 'display' && (!params.sensorId || displayLinkMissing)) {
     tier = 'configurable';
     note = displayLinkMissing
