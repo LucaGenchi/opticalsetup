@@ -56,7 +56,9 @@ figures as SVG or PNG.
 - **2PP write preview**: a sample holder can be set to photocurable resin. Pulsed
   arrivals leave bounded voxel markers at the traced sample hit while an optional
   2D Y-stage scan translates the mounted sample. It is a visual writing preview,
-  not a dose, threshold, curing, or 3D fabrication model.
+  not a dose, threshold, curing, or 3D fabrication model. An illuminated resin
+  sample can continue into the dedicated Two-Photon Lithography Lab with the
+  compatible pulsed-laser settings prefilled.
 - **Qualitative detector readouts**: photodetectors, PMTs, cameras, and the eye
   report relative ray signal, spectrum, polarization, and spot span at their active
   surface; pulsed paths add optical-path delay and path spread. A data-only sensor

@@ -23,6 +23,7 @@ import {
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
+let lastSignalHits = [];
 let detectorHits = new Map();
 let gateTransmissionCache = new Map();
 
@@ -303,6 +304,10 @@ export function probeAt(x, y, tol = 16) {
     // probe reports the alternation itself rather than its average.
     polMod: best.polMod || null,
   } : null;
+}
+
+export function signalHitsFromLastTrace(stageId) {
+  return lastSignalHits.filter(hit => hit.stageId === stageId);
 }
 
 const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
@@ -1272,7 +1277,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
                 : (conv === 'cars' || conv === 'custom') ? hit.surface.data.outWl
                   : undefined;
           }
-          signalHits.push({ stageId: hit.surface.el.id, x: hit.p.x, y: hit.p.y, wl: signalWl });
+          signalHits.push({
+            stageId: hit.surface.el.id,
+            x: hit.p.x,
+            y: hit.p.y,
+            wl: signalWl,
+            sourceId: r.pulse?.sourceId,
+          });
         }
       }
       if (hit.surface.kind === 'detector') recordDetectorHit(r, hit);
@@ -1516,6 +1527,7 @@ export function traceScene(elements, beams = []) {
   const pulseTracks = [];
   const writeHits = [];
   const signalHits = [];
+  lastSignalHits = [];
   const couplings = [];
   lastPaths = [];
   detectorHits = new Map();
@@ -1686,6 +1698,7 @@ export function traceScene(elements, beams = []) {
     }
   }
 
+  lastSignalHits = signalHits;
   return { drawables, pulseTracks, writeHits, signalHits };
 }
 

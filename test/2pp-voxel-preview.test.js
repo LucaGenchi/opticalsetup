@@ -78,7 +78,11 @@ test('any installed sample reports an excitation hit for the signal-spot indicat
   const cw = traceScene([laser, stage]);
   assert.equal(cw.signalHits.length, 1);
   assert.equal(cw.signalHits[0].stageId, stage.id);
+  assert.equal(cw.signalHits[0].sourceId, undefined);
   closeTo(cw.signalHits[0].x, stage.x);
+
+  laser.params.temporalMode = 'pulsed';
+  assert.equal(traceScene([laser, stage]).signalHits[0].sourceId, laser.id);
 
   stage.params.containsSample = false;
   assert.equal(traceScene([laser, stage]).signalHits.length, 0);
