@@ -4,6 +4,11 @@
 // static site). The publishing workflow regenerates this file after approval.
 export const community = [
   {
+    "slug": "optical-spectrometer",
+    "name": "Optical spectrometer",
+    "path": "../community-submissions/issue-38.json"
+  },
+  {
     "slug": "component-library-showcase",
     "name": "Component library showcase",
     "path": "../community-submissions/issue-33.json"
