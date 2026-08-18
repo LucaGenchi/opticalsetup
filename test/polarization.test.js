@@ -178,6 +178,27 @@ test('switching to static drive mode falls back to the plain fixed-retardance be
   assert.equal(detectorReading(detector.id), null, 'static drive mode is untouched by the new switching feature');
 });
 
+test('the polarizer draws its transmission axis horizontal at 0° and vertical at 90°', () => {
+  // Regression: the arrow was drawn along the local vertical, so a 0° axis
+  // rendered vertical and 90° rendered horizontal — backwards from every
+  // other polarization readout in the app (a probe on a 0° beam correctly
+  // draws a horizontal arrow and says "linear 0°").
+  const axisLine = svg => svg.match(/<line x1="(-?[\d.]+)" y1="(-?[\d.]+)" x2="(-?[\d.]+)" y2="(-?[\d.]+)" stroke="#54606e"/);
+  const rotationOf = svg => Number(svg.match(/rotate\((-?[\d.]+)\)/)[1]);
+
+  const p = createElement('polarizer', 0, 0);
+  p.params.pangle = 0;
+  const [, x1, y1, x2, y2] = axisLine(registry.polarizer.svg(p));
+  assert.equal(Number(y1), 0, 'at 0° the arrow lies along the horizontal');
+  assert.equal(Number(y2), 0);
+  assert.ok(Number(x1) < 0 && Number(x2) > 0, 'and spans left-to-right');
+  assert.equal(rotationOf(registry.polarizer.svg(p)), 0, 'no extra rotation at 0°');
+
+  // The glyph is rotated by -angle (SVG y-down), so 90° swings it upright.
+  p.params.pangle = 90;
+  assert.equal(rotationOf(registry.polarizer.svg(p)), -90);
+});
+
 test('a beam alternating between orthogonal states reads as unpolarized, not as a definite azimuth', () => {
   // Regression: the duty-averaged Stokes vector of a 50/50 H/V alternation is
   // the origin of the Poincaré sphere, and atan2(0, 0) is 0 — so a probe just
