@@ -67,6 +67,54 @@ test('photodetector screen is an intensity readout', () => {
   assert.match(svg, /Σw/);
 });
 
+// ---------------- photodetector screen as an oscilloscope ----------------
+
+test('a pulsed photodetector screen becomes an oscilloscope showing the train in time', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.temporalMode = 'pulsed';
+  laser.params.repRateMHz = 20;
+  const detector = createElement('detector', 300, 0);
+  const svg = screenFor(detector, [laser, detector]);
+
+  assert.match(svg, /OSCILLOSCOPE/);
+  assert.match(svg, /data-scope-pulses="\d+"/);
+  assert.match(svg, /REP 20\.0 MHz/);
+  assert.doesNotMatch(svg, /REL INTENSITY/, 'the plain averaged readout is replaced, not stacked');
+});
+
+test('the oscilloscope reports the modulation frequency and window for a switched beam', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.pol = 0;
+  laser.params.temporalMode = 'pulsed';
+  laser.params.repRateMHz = 20;
+  const eom = createElement('eom', 150, 0);
+  eom.params.modulate = true;
+  eom.params.driveMode = 'switching';
+  eom.params.switchFreqMHz = 10;
+  const analyzer = createElement('polarizer', 250, 0);
+  analyzer.params.pangle = 0;
+  const detector = createElement('detector', 400, 0);
+  const svg = screenFor(detector, [laser, eom, analyzer, detector]);
+
+  assert.match(svg, /MOD 10\.0 MHz/, 'the modulation rate is reported alongside the rep rate');
+  assert.match(svg, /REP 20\.0 MHz/);
+  // Window is two periods of the slower 10 MHz modulation = 200 ns, with the
+  // midpoint tick at 100 ns.
+  assert.match(svg, />200 ns</);
+  assert.match(svg, />100 ns</);
+  assert.match(svg, />0 ns</, 'the window starts at a plain zero, not a sub-nanosecond unit');
+  assert.match(svg, /data-scope-envelope="\d+"/, 'the gate envelope is drawn behind the pulses');
+});
+
+test('continuous-wave light keeps the plain intensity readout, with nothing to plot in time', () => {
+  const laser = createElement('laser', 0, 0); // CW by default
+  const detector = createElement('detector', 300, 0);
+  const svg = screenFor(detector, [laser, detector]);
+  assert.match(svg, /REL INTENSITY/);
+  assert.doesNotMatch(svg, /OSCILLOSCOPE/);
+  assert.doesNotMatch(svg, /data-scope-pulses/);
+});
+
 test('PMT screen reports low-light input, gain, output, and saturation state', () => {
   const laser = createElement('laser', 0, 0);
   const pmt = createElement('pmt', 300, 0);

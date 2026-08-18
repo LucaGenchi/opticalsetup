@@ -20,7 +20,14 @@ export function gateTransmissionAt(gate, emissionTimeNs) {
     const depth = Math.min(1, Math.max(0, gate.depth ?? 1));
     transmission = 1 - depth * (1 - Math.cos(2 * Math.PI * phase)) / 2;
   } else {
-    transmission = phase < duty ? 1 : 0;
+    // A square gate alternates between two transmission levels. A chopper or
+    // an RF-gated AOM uses the default full-on/full-off pair, but a
+    // polarization modulator read through an analyzer swings between two
+    // partial Malus-law levels instead (see the 'polarizer'/'pbs' cases in
+    // raytrace.js), so both levels are explicit and optional.
+    const high = Number.isFinite(gate.high) ? gate.high : 1;
+    const low = Number.isFinite(gate.low) ? gate.low : 0;
+    transmission = phase < duty ? high : low;
   }
   return gate.invert ? 1 - transmission : transmission;
 }
@@ -88,6 +95,62 @@ export function pulseGateTransmission(pulse, sampleCount = 4096) {
     passed += pulseTransmissionAt(pulse, emissionTimeNs);
   }
   return passed / count;
+}
+
+// Time-domain trace a photodetector would show on an oscilloscope: where each
+// pulse of the train lands in time, how much of it survived every temporal
+// gate on its path (chopper, gated AOM, or a polarization modulator read
+// through an analyzer), and the continuous gate envelope behind them.
+//
+// The window defaults to two periods of whichever is slower — the pulse train
+// or the slowest modulation — so an alternating pattern (e.g. a 20 MHz train
+// switched at 10 MHz) always shows at least one full repeat of its structure.
+export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs } = {}) {
+  const repRateMHz = Number.isFinite(pulse?.repRateMHz) && pulse.repRateMHz > 0
+    ? Math.min(1e6, Math.max(0.001, pulse.repRateMHz)) : null;
+  if (!repRateMHz) return null;
+  const pulsePeriodNs = 1000 / repRateMHz;
+  const gates = (Array.isArray(pulse?.trains) ? pulse.trains : [pulse])
+    .flatMap(train => (Array.isArray(train?.gates) ? train.gates : []))
+    .filter(g => Number.isFinite(g?.opl));
+  const gatePeriodsNs = gates.map(g => 1000 / Math.min(1e6, Math.max(0.000001, g.frequencyMHz || 1)));
+  const slowestGateNs = gatePeriodsNs.length ? Math.max(...gatePeriodsNs) : 0;
+  const spanNs = Number.isFinite(forcedSpanNs) && forcedSpanNs > 0
+    ? forcedSpanNs
+    : 2 * Math.max(pulsePeriodNs, slowestGateNs);
+  const phaseNs = Number.isFinite(pulse.phaseNs) ? pulse.phaseNs : 0;
+  const gated = { ...pulse, gates };
+
+  // Pulse arrivals inside the window, each scaled by what survived the gates.
+  // Very dense trains are bounded so one window can't emit thousands of spikes.
+  const maxPulses = 240;
+  const first = Math.ceil(-phaseNs / pulsePeriodNs);
+  const pulses = [];
+  for (let k = first; pulses.length < maxPulses; k++) {
+    const tNs = phaseNs + k * pulsePeriodNs;
+    if (tNs > spanNs + 1e-9) break;
+    if (tNs < -1e-9) continue;
+    pulses.push({ tNs, amplitude: gates.length ? pulseTransmissionAt(gated, tNs) : 1 });
+  }
+
+  const count = Math.max(2, Math.min(600, Math.round(samples)));
+  const envelope = [];
+  for (let i = 0; i < count; i++) {
+    const tNs = spanNs * i / (count - 1);
+    envelope.push({
+      tNs,
+      value: gates.reduce((acc, gate) => acc * gateTransmissionAt(gate, tNs), 1),
+    });
+  }
+
+  return {
+    spanNs,
+    repRateMHz,
+    modulationMHz: slowestGateNs > 0 ? 1000 / slowestGateNs : null,
+    truncated: pulses.length >= maxPulses,
+    pulses,
+    envelope,
+  };
 }
 
 function finiteTrack(track) {

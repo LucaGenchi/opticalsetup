@@ -46,8 +46,19 @@ export function stokesAngleDeg(stokes) {
   return ((Math.atan2(stokes.s2, stokes.s1) / (2 * D2R)) % 180 + 180) % 180;
 }
 
+// Overall degree of polarization: 1 for any pure state, 0 for a fully
+// scrambled one. A beam alternating between two orthogonal states (a
+// switching EOM at 50% duty, say) averages to the origin of the Poincaré
+// sphere, and reporting that as a definite azimuth would be a plain lie —
+// the azimuth of a zero-length vector is meaningless.
+export const degreeOfPolarization = stokes =>
+  (stokes ? Math.min(1, Math.hypot(stokes.s1, stokes.s2, stokes.s3)) : 0);
+
+const DEPOLARIZED = 0.02;
+
 export function legacyPolarization(stokes) {
   if (!stokes) return undefined;
+  if (degreeOfPolarization(stokes) < DEPOLARIZED) return undefined;
   if (Math.abs(stokes.s3) > 0.985) return 'c';
   if (Math.abs(stokes.s3) < 0.015) {
     return stokesAngleDeg(stokes);
@@ -57,6 +68,7 @@ export function legacyPolarization(stokes) {
 
 export function polarizationDescription(stokes) {
   if (!stokes) return 'Unpolarized';
+  if (degreeOfPolarization(stokes) < DEPOLARIZED) return 'Unpolarized';
   if (Math.abs(stokes.s3) > 0.985) return stokes.s3 > 0 ? 'Right circular' : 'Left circular';
   const linearDegree = Math.hypot(stokes.s1, stokes.s2);
   const angle = stokesAngleDeg(stokes);

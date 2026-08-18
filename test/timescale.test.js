@@ -103,6 +103,12 @@ test('galvo, chopper and AOM each raise the scale to keep their own motion watch
   aom.params.modulate = true;
   aom.params.modFreqMHz = 1;
   assert.equal(scaleOf([aom]), 1e3, '1 MHz AOM modulation cycles once per second at 1 µs/s');
+
+  const eom = createElement('eom', 0, 0);
+  eom.params.modulate = true;
+  eom.params.driveMode = 'switching';
+  eom.params.switchFreqMHz = 1;
+  assert.equal(scaleOf([eom]), 1e3, '1 MHz EOM switching cycles once per second at 1 µs/s');
 });
 
 test('static animated elements are ignored until they are actually switched on', () => {
@@ -120,12 +126,22 @@ test('static animated elements are ignored until they are actually switched on',
   assert.equal(elementDriveHz(retro), null, 'a static retroreflector drives nothing');
 });
 
-test('the EOM and the mechanical delay line are constants, not waveforms', () => {
+test('a static-retardance EOM and the mechanical delay line are constants, not waveforms', () => {
   const eom = createElement('eom', 0, 0);
   eom.params.modulate = true;
-  assert.equal(elementDriveHz(eom), null, 'EOM retardance is a fixed phase, not a drive frequency');
+  assert.equal(elementDriveHz(eom), null, 'a static EOM retardance is a fixed phase, not a drive frequency');
   assert.equal(elementDriveHz(createElement('delayline', 0, 0)), null,
     'the delay line adds fixed optical path, it does not oscillate');
+});
+
+test('a switching EOM drives the auto time-scale at its switching frequency', () => {
+  const eom = createElement('eom', 0, 0);
+  eom.params.modulate = true;
+  eom.params.driveMode = 'switching';
+  eom.params.switchFreqMHz = 2;
+  assert.equal(elementDriveHz(eom), 2e6, 'a switching EOM drives at its configured MHz rate');
+  eom.params.modulate = false;
+  assert.equal(elementDriveHz(eom), null, 'no voltage applied means no drive, even in switching mode');
 });
 
 test('snapTimeScale always returns a listed scale and clamps beyond the ends', () => {
