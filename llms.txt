@@ -1,0 +1,28 @@
+# OpticalSetup
+
+> OpticalSetup is a browser-based 2D optical setup builder with qualitative live ray tracing. Its scene files are versioned JSON, and self-contained share links store the complete scene in the URL fragment.
+
+Use the scene-builder skill when a user asks an LLM or implementation agent to create an OpticalSetup scene from natural language and return a working share link. The repository remains authoritative for supported components, parameters, validation, and serialization.
+
+## Agent instructions
+
+- [OpticalSetup scene-builder skill](https://opticalsetup.com/skills/opticalsetup/SKILL.md): Build, validate, encode, and return self-contained OpticalSetup scenes.
+- [Convenience skill entry point](https://opticalsetup.com/skill.md): Stable short URL that points agents to the canonical skill.
+
+## Authoritative implementation
+
+- [Source repository](https://github.com/LucaGenchi/optics-sketch): Current application and scene behavior.
+- [Scene state and validation](https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/state.js): Versioned scene envelope, normalization, parsing, and serialization.
+- [Element registry](https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/elements.js): Supported optical element types, defaults, parameters, rendering, and optical behavior.
+- [Detector registry extension](https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/detector-instruments.js): Additional detector types installed into the element registry.
+- [Share-link codec](https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/share.js): Current `#sketch=` payload encoding and decoding.
+- [Example scenes](https://github.com/LucaGenchi/optics-sketch/tree/main/Examples): Working scenes to use as structural and layout references.
+
+## Application
+
+- [OpticalSetup canvas](https://opticalsetup.com/sketch/): Open, inspect, and verify generated scenes.
+- [OpticalSetup wiki](https://opticalsetup.com/wiki/): Component explanations and simulation scope.
+
+## Optional
+
+- [Machine-readable AI catalog](https://opticalsetup.com/.well-known/ai-catalog.json): Discovery metadata for the OpticalSetup scene-builder skill.

@@ -1,0 +1,34 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "OpticalSetup",
+    "identifier": "did:web:opticalsetup.com",
+    "documentationUrl": "https://opticalsetup.com/llms.txt"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:opticalsetup.com:skill:scene-builder",
+      "displayName": "OpticalSetup Scene Builder",
+      "type": "application/ai-skill",
+      "url": "https://opticalsetup.com/skills/opticalsetup/SKILL.md",
+      "description": "Build, validate, and encode OpticalSetup scenes from natural-language optical setup requests, returning self-contained share links.",
+      "capabilities": [
+        "scene-generation",
+        "scene-validation",
+        "share-link-encoding"
+      ],
+      "tags": [
+        "optics",
+        "ray-tracing",
+        "scientific-visualization",
+        "agent-skill"
+      ],
+      "representativeQueries": [
+        "Build a Michelson interferometer in OpticalSetup and return a working share link",
+        "Create a Gaussian beam expander with two lenses and open it in OpticalSetup",
+        "Turn this optical experiment description into a self-contained OpticalSetup scene URL",
+        "Generate an OpticalSetup diagram with a laser, dichroic, filters, and detectors"
+      ]
+    }
+  ]
+}
