@@ -120,6 +120,9 @@ autosaves in your own browser, so you can't break anything for anyone else.
 The sanitized Codex conversations behind the major development passes are available
 in the [work-trace index](docs/codex-sessions/README.md).
 
+Maintainers reviewing and publishing a community setup submission should follow
+[docs/community-setup-review.md](docs/community-setup-review.md).
+
 ## Site structure
 
 The repo root is a static marketing/SEO landing page (`index.html`,
