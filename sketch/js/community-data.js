@@ -4,6 +4,11 @@
 // static site). The publishing workflow regenerates this file after approval.
 export const community = [
   {
+    "slug": "nif-one-shot-from-master-oscillator-to-target",
+    "name": "NIF — one shot from master oscillator to target",
+    "path": "../community-submissions/pr-42.json"
+  },
+  {
     "slug": "optical-spectrometer",
     "name": "Optical spectrometer",
     "path": "../community-submissions/issue-38.json"
