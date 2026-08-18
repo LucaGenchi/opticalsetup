@@ -378,7 +378,12 @@ function fiberEmissionRays(c) {
   const e = pts[j];
   const dir = fiberEndDirection(pts, outEnd, true); // out of the connector
   if (!dir) return [];
-  const o = add(e, mul(dir, 2));
+  // Just past the tip, not visually clear of it: nearestHit() already
+  // ignores any surface within 0.05 mm of a ray's own origin, so this only
+  // needs to clear that margin, not the fiber's drawn body. The old 2 mm
+  // push left a visible dead gap between the connector and where the beam
+  // appeared to start.
+  const o = add(e, mul(dir, 0.1));
   const cfg = b['out' + outEnd] || { mode: b.outMode || 'diverge', na: b.na, focal: b.focal, dia: b.outDia };
   const K = 9, rays = [];
   const ng = Math.min(2.2, Math.max(1, b.groupIndex || 1.468));

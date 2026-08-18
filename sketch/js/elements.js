@@ -2127,6 +2127,37 @@ export const registry = {
     surfaces: () => [],
   },
 
+  highlight: {
+    label: 'Highlight', category: 'Annotations',
+    size: el => ({ w: el.params.w, h: el.params.h }),
+    // Painted in its own layer behind the grid holes, beams, and every other
+    // element (see renderHighlights() in canvas.js) — purely a background
+    // wash that is still part of the exported figure, unlike the figure
+    // frame's canvas-only crop border. It never intercepts or attenuates a
+    // traced ray (surfaces() is empty).
+    params: [
+      { key: 'shape', label: 'Shape', type: 'select', def: 'rect', options: [['rect', 'Rectangle'], ['circle', 'Circle']] },
+      { key: 'w', label: 'Width (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 120 },
+      { key: 'h', label: 'Height (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 80 },
+      { key: 'fill', label: 'Color', type: 'color', def: '#fde047' },
+      { key: 'opacity', label: 'Opacity (%)', type: 'number', min: 5, max: 100, step: 5, def: 35 },
+    ],
+    hitTest(el, point, tolerance) {
+      const hw = el.params.w / 2 + tolerance, hh = el.params.h / 2 + tolerance;
+      if (el.params.shape === 'circle') return (point.x * point.x) / (hw * hw) + (point.y * point.y) / (hh * hh) <= 1;
+      return Math.abs(point.x) <= hw && Math.abs(point.y) <= hh;
+    },
+    svg(el) {
+      const p = el.params, w = p.w, h = p.h;
+      const fillOpacity = Math.min(1, Math.max(0.05, (p.opacity ?? 35) / 100));
+      const shape = p.shape === 'circle'
+        ? `<ellipse cx="0" cy="0" rx="${w / 2}" ry="${h / 2}" fill="${p.fill}" fill-opacity="${fillOpacity}"/>`
+        : `<rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" fill="${p.fill}" fill-opacity="${fillOpacity}"/>`;
+      return shape;
+    },
+    surfaces: () => [],
+  },
+
   // ---------------- Custom ----------------
   box: {
     label: 'Custom box', category: 'Custom', size: el => ({ w: el.params.w + 4, h: el.params.h + 4 }),
@@ -2165,6 +2196,10 @@ export const registry = {
 
   textlabel: {
     label: 'Text label', category: 'Annotations', size: el => ({ w: Math.max(30, String(el.params.text).length * el.params.fontSize * 0.6), h: el.params.fontSize + 10 }),
+    // The element position is the box's LEFT edge, not its center (see
+    // boxAnchor()), so typing longer text grows the box to the right instead
+    // of re-centering it around the drop point every keystroke.
+    anchorX: 'left',
     params: [
       { key: 'text', label: 'Text', type: 'text', def: 'Label' },
       { key: 'fontSize', label: 'Size (pt)', type: 'number', min: 6, max: 72, step: 1, def: 14 },
@@ -2173,11 +2208,23 @@ export const registry = {
     noLabel: true,
     svg(el) {
       const p = el.params;
-      return `<text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="${p.fontSize}" fill="${p.fill}">${esc(p.text)}</text>`;
+      return `<text x="0" y="0" text-anchor="start" dominant-baseline="central" font-size="${p.fontSize}" fill="${p.fill}">${esc(p.text)}</text>`;
     },
     surfaces: () => [],
   },
 };
+
+// Where an element's local origin (el.x, el.y) sits relative to the center
+// of its size() box, in local (unrotated) coordinates. Every element type is
+// center-anchored (origin === box center) except those that opt into
+// anchorX: 'left', where the origin is the box's left-middle edge instead —
+// see the textlabel entry above. Consumed by every generic piece of UI that
+// draws or hit-tests a selection box around an element (canvas.js).
+export function boxAnchor(el) {
+  const d = registry[el.type];
+  if (d?.anchorX === 'left') return { x: getSize(el).w / 2, y: 0 };
+  return { x: 0, y: 0 };
+}
 
 // concave lens: identical optics to 'lens', concave default focal length
 registry.lensc = {
@@ -2271,7 +2318,8 @@ const DIRECT = {
   stage: { resize: { y: 'aperture' } },
   microscope: { resize: { y: 'housingHeight' }, tune: { key: 'objectiveF', short: 'f obj' } },
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
-  figureframe: { resize: { x: 'w', y: 'h' } },
+  figureframe: { resize: { x: 'w', y: 'h', anchor: true } },
+  highlight: { resize: { x: 'w', y: 'h', anchor: true } },
   box: { resize: { x: 'w', y: 'h' } },
   blocker: { resize: { x: 'w', y: 'h' } },
   textlabel: { resize: { uniform: 'fontSize' } },
@@ -2354,10 +2402,11 @@ const ELEMENT_HELP = {
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
   textlabel: 'Diagram annotation; does not interact with rays.',
+  highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
 };
 
-const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe']);
+const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight']);
 const SHAPERS = new Set(['slm']);
 
 export function getElementMeta(type, params = {}, context = {}) {
@@ -2386,7 +2435,7 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (SHAPERS.has(type) && (!Array.isArray(params.layers) || params.layers.length === 0)) {
     tier = 'configurable';
     note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
-  } else if (type === 'arrowann' || type === 'textlabel' || type === 'figureframe') {
+  } else if (type === 'arrowann' || type === 'textlabel' || type === 'figureframe' || type === 'highlight') {
     note = 'Annotations are intentionally visual and never change traced rays.';
   } else if (type === 'freeglass') {
     note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
@@ -2442,7 +2491,10 @@ export function getVisualBounds(el, { includeLabel = true } = {}) {
   const a = (el.rot || 0) * Math.PI / 180;
   const ex = (Math.abs(sz.w * Math.cos(a)) + Math.abs(sz.h * Math.sin(a))) / 2;
   const ey = (Math.abs(sz.w * Math.sin(a)) + Math.abs(sz.h * Math.cos(a))) / 2;
-  let x0 = el.x - ex, x1 = el.x + ex, y0 = el.y - ey, y1 = el.y + ey;
+  const anchor = boxAnchor(el);
+  const cx = el.x + anchor.x * Math.cos(a) - anchor.y * Math.sin(a);
+  const cy = el.y + anchor.x * Math.sin(a) + anchor.y * Math.cos(a);
+  let x0 = cx - ex, x1 = cx + ex, y0 = cy - ey, y1 = cy + ey;
 
   if (el.type === 'probe') {
     // The card is counter-rotated to stay upright, so its world box is
