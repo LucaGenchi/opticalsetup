@@ -113,9 +113,14 @@ export function displayDensity(displayScale = 1) {
 // deliberately an octave below the 0.5–3 range the drawing/sizing code was
 // tuned against — every use doubles it back out, so the default (1) renders
 // at what used to require manually dialing the old control up to 2.
-export function displayRenderScale(rawScale = 1, min = 0.25, max = 1.5) {
-  return Math.min(max, Math.max(min, Number.isFinite(rawScale) ? rawScale : 1)) * 2;
+export function displayRenderScale(rawScale = 1, min = 0.25, max = 1.5, factor = 2) {
+  return Math.min(max, Math.max(min, Number.isFinite(rawScale) ? rawScale : 1)) * factor;
 }
+
+// The beam probe's card reads better a little smaller than the detector
+// screen's, so its own "1" is 1.5x the original baseline rather than 2x,
+// and the dial runs 0.5x-2x around that.
+export const probeScale = el => displayRenderScale(el?.params?.displayScale, 0.5, 2, 1.5);
 
 function availableDisplaySensors(display, elements = []) {
   return Array.isArray(elements) ? elements.filter(candidate => candidate?.id !== display?.id
@@ -429,11 +434,18 @@ export const OBJ_SHAPES = {
   },
 };
 
-// infographic card for the beam probe ("?" tool)
+// Infographic card for the beam probe ("?" tool). Every branch draws with its
+// top-left corner at the local origin and reports its own {w, h}, so the
+// caller can place the card relative to the sampled point and keep it upright
+// no matter how the probe itself is rotated — see probeCardPlacement().
 function probeCard(el, rd) {
   if (!rd) {
-    return `<g transform="translate(14,-28)"><rect x="0" y="-12" width="56" height="24" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-      `<text x="28" y="0" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text></g>`;
+    return {
+      w: 56,
+      h: 24,
+      body: `<rect x="0" y="0" width="56" height="24" rx="4" fill="#fff" stroke="#c9ced6"/>` +
+        `<text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text>`,
+    };
   }
   const prop = el.params.prop;
   const isSC = rd.bw >= 200;
@@ -443,14 +455,18 @@ function probeCard(el, rd) {
     const label = isSC ? `SC ${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
       : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`;
     const w = label.length * 5.4 + 24;
-    return `<g transform="translate(14,-28)"><rect x="0" y="-12" width="${w}" height="24" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-      `<circle cx="11" cy="0" r="4.5" fill="${isSC ? '#fff' : c}" ${isSC ? 'stroke="#888"' : ''}/>` +
-      (isSC ? `<path d="M 7,0 A 4.5 4.5 0 0 1 15.5,0" fill="#e04040"/><path d="M 7,0 A 4.5 4.5 0 0 0 15.5,0" fill="#3050e0"/>` : '') +
-      `<text x="20" y="0" font-size="9" dominant-baseline="central" fill="#333">${label}</text></g>`;
+    return {
+      w,
+      h: 24,
+      body: `<rect x="0" y="0" width="${w}" height="24" rx="4" fill="#fff" stroke="#c9ced6"/>` +
+        `<circle cx="11" cy="12" r="4.5" fill="${isSC ? '#fff' : c}" ${isSC ? 'stroke="#888"' : ''}/>` +
+        (isSC ? `<path d="M 7,12 A 4.5 4.5 0 0 1 15.5,12" fill="#e04040"/><path d="M 7,12 A 4.5 4.5 0 0 0 15.5,12" fill="#3050e0"/>` : '') +
+        `<text x="20" y="12" font-size="9" dominant-baseline="central" fill="#333">${label}</text>`,
+    };
   }
 
   if (prop === 'pol') {
-    let icon, lab;
+    let icon, lab, labSize = 8;
     if (rd.polMod) {
       // A modulated segment alternates between two states, so its average is
       // a meaningless (often zero-length) Stokes vector. Name both states and
@@ -464,10 +480,8 @@ function probeCard(el, rd) {
         `<line x1="0" y1="-8.5" x2="0" y2="8.5"/></g>` +
         `<path d="M -6,-11 L 6,-11 M 3,-13.5 L 6,-11 L 3,-8.5" fill="none" stroke="#7c3aed" stroke-width="1.2"/>`;
       lab = `${name(rd.polMod.stokesLow)} ↔ ${name(rd.polMod.stokesHigh)} · ${rate}`;
-      return `<g transform="translate(28,-40)"><circle r="14" fill="#fff" stroke="#c9ced6"/>` + icon +
-        `<text x="0" y="24" text-anchor="middle" font-size="7" fill="#333">${lab}</text></g>`;
-    }
-    if (rd.pol === 'c') {
+      labSize = 7;
+    } else if (rd.pol === 'c') {
       icon = `<path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +
         `<path d="M 3,-7.7 L 7.5,-8.5 L 4.5,-3.6 Z" fill="#333"/>`;
       lab = 'circular';
@@ -488,8 +502,15 @@ function probeCard(el, rd) {
       icon = `<g stroke="#666" stroke-width="1.3"><line x1="-8" y1="0" x2="8" y2="0"/><line x1="0" y1="-8" x2="0" y2="8"/><line x1="-5.7" y1="-5.7" x2="5.7" y2="5.7"/><line x1="-5.7" y1="5.7" x2="5.7" y2="-5.7"/></g>`;
       lab = 'unpolarized';
     }
-    return `<g transform="translate(28,-40)"><circle r="14" fill="#fff" stroke="#c9ced6"/>` + icon +
-      `<text x="0" y="24" text-anchor="middle" font-size="8" fill="#333">${lab}</text></g>`;
+    // Sized to the label so a long modulation caption never spills outside
+    // the box the caller uses for placement and export bounds.
+    const w = Math.max(56, lab.length * labSize * 0.56 + 12);
+    return {
+      w,
+      h: 44,
+      body: `<g transform="translate(${w / 2},14)"><circle r="14" fill="#fff" stroke="#c9ced6"/>${icon}</g>` +
+        `<text x="${w / 2}" y="38" text-anchor="middle" font-size="${labSize}" fill="#333">${lab}</text>`,
+    };
   }
 
   // spectrum plot: λ (nm) vs I (a.u.), real sampled data, smoothed through a
@@ -538,15 +559,34 @@ function probeCard(el, rd) {
   };
   const vlabel = isSC ? `${Math.round(rd.wl - rd.bw / 2)}–${Math.round(rd.wl + rd.bw / 2)} nm`
     : rd.bw > 0 ? `${Math.round(rd.wl)} ± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`;
-  return `<g transform="translate(14,-${H + 6})">` +
-    `<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-    `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
-    `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>` +
-    curve +
-    tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end') +
-    `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
-    `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6.5" fill="#333">${vlabel}</text>` +
-    `</g>`;
+  return {
+    w: W,
+    h: H,
+    body: `<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#fff" stroke="#c9ced6"/>` +
+      `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
+      `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>` +
+      curve +
+      tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end') +
+      `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
+      `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6.5" fill="#333">${vlabel}</text>`,
+  };
+}
+
+// Where the probe's readout card sits and how it is oriented. The leader line
+// points straight up from the sampled point at 0° and swings around that
+// point as the probe is rotated, but the card itself is counter-rotated so
+// its text and plots always read horizontally — an upside-down spectrum is
+// useless. The card is anchored by whichever edge faces the sampled point, so
+// it always extends away from the beam rather than covering it.
+const PROBE_LEADER = 22;
+
+function probeCardPlacement(el, card, scale) {
+  const rot = el.rot || 0;
+  const a = rot * Math.PI / 180;
+  const dirX = Math.sin(a), dirY = -Math.cos(a); // local "up" in world space
+  const x = dirX * PROBE_LEADER + (-card.w / 2 + dirX * card.w / 2) * scale;
+  const y = dirY * PROBE_LEADER + (-card.h / 2 + dirY * card.h / 2) * scale;
+  return { rot, x, y, w: card.w * scale, h: card.h * scale };
 }
 
 // samples can generate signal (fluorescence / SHG / THG / CARS) and
@@ -1184,10 +1224,13 @@ export const registry = {
     ],
     svg(el) {
       const L = el.params.length / 2, a = el.params.pangle;
+      // The transmission axis is drawn along the lab horizontal at 0° and
+      // sweeps to vertical at 90°, matching how every polarization readout in
+      // the app (probe glyph, detector "Linear N°") already draws that angle.
       return `<rect x="-2.5" y="${-L}" width="5" height="${el.params.length}" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/>` +
         `<g transform="rotate(${-a})"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/>` +
-        `<line x1="0" y1="-6" x2="0" y2="6" stroke="#54606e" stroke-width="1.6"/>` +
-        `<path d="M 0,-8 L -2.4,-4 L 2.4,-4 Z M 0,8 L -2.4,4 L 2.4,4 Z" fill="#54606e"/></g>`;
+        `<line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/>` +
+        `<path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g>`;
     },
     surfaces(el) {
       const L = el.params.length / 2;
@@ -2004,25 +2047,30 @@ export const registry = {
   probe: {
     label: 'Beam probe (?)', category: 'Annotations', size: { w: 24, h: 24 },
     size_: el => {
-      const scale = displayRenderScale(el.params.displayScale, 0.25, 1.25);
+      const scale = probeScale(el);
       return { w: 24 * scale, h: 24 * scale };
     },
     noLabel: true,
     params: [
-      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.25, max: 1.25, step: 0.05, def: 1 },
+      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2, step: 0.05, def: 1 },
       { key: 'prop', label: 'Show', type: 'select', def: 'spectrum', options: [['spectrum', 'Spectrum plot'], ['pol', 'Polarization'], ['wl', 'Wavelength label']] },
     ],
     svg(el) {
-      const scale = displayRenderScale(el.params.displayScale, 0.25, 1.25);
+      const scale = probeScale(el);
+      const card = probeCard(el, probeAt(el.x, el.y));
+      const place = probeCardPlacement(el, card, scale);
       // The crosshair marks the exact point being read and must stay put
-      // regardless of scale — only the readout card (and the leader line
-      // pointing to it) grows with the Display scale setting.
+      // regardless of scale — only the readout card grows with Display scale.
+      // The leader rotates with the element (so the card swings around the
+      // sampled point), while the card itself is counter-rotated to stay
+      // upright and readable.
       const crosshair = `<circle r="4.5" fill="none" stroke="#e07020" stroke-width="1.6"/>` +
         `<line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/>` +
-        `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>`;
-      const readout = `<line x1="3.5" y1="-3.5" x2="14" y2="-14" stroke="#e07020" stroke-width="1"/>` +
-        probeCard(el, probeAt(el.x, el.y));
-      return crosshair + `<g transform="scale(${scale})">${readout}</g>`;
+        `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>` +
+        `<line x1="0" y1="-9" x2="0" y2="${-PROBE_LEADER}" stroke="#e07020" stroke-width="1"/>`;
+      return crosshair +
+        `<g transform="rotate(${-place.rot}) translate(${place.x.toFixed(2)},${place.y.toFixed(2)}) scale(${scale})">` +
+        card.body + `</g>`;
     },
     surfaces: () => [],
   },
@@ -2397,11 +2445,14 @@ export function getVisualBounds(el, { includeLabel = true } = {}) {
   let x0 = el.x - ex, x1 = el.x + ex, y0 = el.y - ey, y1 = el.y + ey;
 
   if (el.type === 'probe') {
-    const scale = displayRenderScale(el.params.displayScale, 0.25, 1.25);
-    const corners = [[-10, -75], [160, -75], [-10, 15], [160, 15]]
-      .map(([x, y]) => toWorld(el, x * scale, y * scale));
-    x0 = Math.min(x0, ...corners.map(p => p.x)); x1 = Math.max(x1, ...corners.map(p => p.x));
-    y0 = Math.min(y0, ...corners.map(p => p.y)); y1 = Math.max(y1, ...corners.map(p => p.y));
+    // The card is counter-rotated to stay upright, so its world box is
+    // axis-aligned and offset from the element — not a rotation of some
+    // element-local rectangle.
+    const scale = probeScale(el);
+    const place = probeCardPlacement(el, probeCard(el, probeAt(el.x, el.y)), scale);
+    const left = el.x + place.x, top = el.y + place.y;
+    x0 = Math.min(x0, left); x1 = Math.max(x1, left + place.w);
+    y0 = Math.min(y0, top); y1 = Math.max(y1, top + place.h);
   }
 
   if (includeLabel && el.showLabel && el.label) {

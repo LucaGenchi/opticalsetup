@@ -5,7 +5,7 @@ import {
   gaussianSpectrum, flatSpectrum, spectrumWeight, spectrumSamples, spectrumStats,
   applyTransmission, transformLimitedBandwidthNm, transformLimitedDurationFs,
 } from '../sketch/js/spectrum.js';
-import { createElement, registry } from '../sketch/js/elements.js';
+import { createElement, getVisualBounds, probeScale, registry } from '../sketch/js/elements.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
 import '../sketch/js/detector-instruments.js';
 import '../sketch/js/etalon.js';
@@ -399,15 +399,53 @@ test('the beam probe pads a monochromatic line by 5 nm on each side too', () => 
   assert.match(svg, />537</); // 532 + 5
 });
 
-test('the beam probe readout card defaults to twice the old baseline size, but its crosshair marker never scales', () => {
+test('the beam probe readout card renders at 1.5x the original baseline, and its crosshair never scales', () => {
   const laser = createElement('laser', 0, 0);
   const probe = createElement('probe', 150, 0);
   traceAll([laser, probe]);
   assert.equal(probe.params.displayScale, 1);
+  assert.equal(probeScale(probe), 1.5);
   const svg = registry.probe.svg(probe);
-  assert.match(svg, /<g transform="scale\(2\)">/, 'the readout card should render at the old scale-2 size by default');
-  const crosshair = svg.slice(0, svg.indexOf('<g transform="scale('));
-  assert.match(crosshair, /circle r="4.5"/, 'the crosshair must be drawn outside (before) the scaled group');
+  assert.match(svg, /scale\(1\.5\)/, 'the card renders at the dialled-back default size');
+  const crosshair = svg.slice(0, svg.indexOf('<g transform="rotate('));
+  assert.match(crosshair, /circle r="4.5"/, 'the crosshair is drawn outside (before) the scaled card group');
+});
+
+test('the beam probe scale dial spans 0.5x to 2x around its new default', () => {
+  const probe = createElement('probe', 0, 0);
+  const spec = registry.probe.params.find(p => p.key === 'displayScale');
+  assert.equal(spec.min, 0.5);
+  assert.equal(spec.max, 2);
+  assert.equal(spec.def, 1);
+  probe.params.displayScale = 0.5;
+  assert.equal(probeScale(probe), 0.75);
+  probe.params.displayScale = 2;
+  assert.equal(probeScale(probe), 3);
+  probe.params.displayScale = 99; // out-of-range input still clamps
+  assert.equal(probeScale(probe), 3);
+});
+
+test('the probe card stays upright and clear of the beam however the probe is rotated', () => {
+  const laser = createElement('laser', 0, 0);
+  const probe = createElement('probe', 150, 0);
+  traceAll([laser, probe]);
+
+  for (const rot of [0, 90, 180, 270]) {
+    probe.rot = rot;
+    const svg = registry.probe.svg(probe);
+    // The card group counter-rotates by exactly the element's own rotation,
+    // so its text and plots always render horizontally.
+    assert.match(svg, new RegExp(`rotate\\(${-rot}\\)`),
+      `card should counter-rotate by ${-rot}° so its contents stay level`);
+
+    // And it is placed on the side the leader points to, never covering the
+    // sampled point at the element's origin.
+    const bounds = getVisualBounds(probe, { includeLabel: false });
+    if (rot === 0) assert.ok(bounds.y0 < probe.y - 20, 'card sits above when the leader points up');
+    if (rot === 180) assert.ok(bounds.y1 > probe.y + 20, 'card sits below when the leader points down');
+    if (rot === 90) assert.ok(bounds.x1 > probe.x + 20, 'card sits right when the leader points right');
+    if (rot === 270) assert.ok(bounds.x0 < probe.x - 20, 'card sits left when the leader points left');
+  }
 });
 
 // ---------------- spectrometer: default padded range + manual override ----------------
