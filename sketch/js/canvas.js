@@ -3,7 +3,7 @@
 
 import { state, changed, pushUndo, findSelected } from './state.js';
 import {
-  registry, getSize, getVisualBounds, getDirectManipulation, createElement, labelSVG,
+  registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, stageSampleLabelSVG, voxelDepthFactor, displayCableSVG,
   displayActionUpdate,
 } from './elements.js';
@@ -21,7 +21,7 @@ import {
   MAX_TIME_SCALE, MIN_TIME_SCALE, pulsePeriodNs, pulsesReadAsCW,
 } from './timescale.js';
 
-let svg, viewport, gridLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
+let svg, viewport, gridLayer, highlightLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
 let statusEl;
 let pulseTracks = [];
 let writeHits = [];
@@ -64,6 +64,7 @@ export function initCanvas(svgElement, statusElement) {
     </defs>
     <g id="viewport">
       <g id="gridLayer"></g>
+      <g id="highlightLayer"></g>
       <g id="beamLayer"></g>
       <g id="pulseLayer" pointer-events="none"></g>
       <g id="manualLayer"></g>
@@ -73,6 +74,7 @@ export function initCanvas(svgElement, statusElement) {
     </g>`;
   viewport = svg.querySelector('#viewport');
   gridLayer = svg.querySelector('#gridLayer');
+  highlightLayer = svg.querySelector('#highlightLayer');
   beamLayer = svg.querySelector('#beamLayer');
   pulseLayer = svg.querySelector('#pulseLayer');
   manualLayer = svg.querySelector('#manualLayer');
@@ -128,6 +130,7 @@ export function renderAll() {
   const v = state.view;
   viewport.setAttribute('transform', `translate(${v.x} ${v.y}) scale(${v.z})`);
   renderGrid();
+  renderHighlights();
   renderBeams();
   renderManual();
   renderElements();
@@ -623,9 +626,22 @@ function renderManual() {
   manualLayer.innerHTML = s;
 }
 
+// Highlights draw in their own layer, behind the grid holes and everything
+// else, so they read as background wash and never sit on top of a beam or
+// a device — see the layer order set up in mountCanvas().
+function renderHighlights() {
+  let s = '';
+  for (const el of state.elements) {
+    if (el.type !== 'highlight') continue;
+    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${registry.highlight.svg(el)}</g>`;
+    s += labelSVG(el);
+  }
+  highlightLayer.innerHTML = s;
+}
+
 function renderElements() {
   let s = '';
-  const elements = animatedVisualElements();
+  const elements = animatedVisualElements().filter(el => el.type !== 'highlight');
   for (const el of elements) {
     if (el.type === 'display') s += displayCableSVG(el, elements);
   }
@@ -706,8 +722,9 @@ function renderOverlay() {
       const el = state.elements.find(q => q.id === id);
       if (!el) continue;
       const sz = getSize(el);
+      const off = boxAnchor(el);
       s += `<g transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})">` +
-        `<rect x="${-sz.w / 2 - 5}" y="${-sz.h / 2 - 5}" width="${sz.w + 10}" height="${sz.h + 10}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/></g>`;
+        `<rect x="${off.x - sz.w / 2 - 5}" y="${off.y - sz.h / 2 - 5}" width="${sz.w + 10}" height="${sz.h + 10}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/></g>`;
     }
     for (const id of state.selection.beams) {
       const b = state.beams.find(q => q.id === id);
@@ -716,14 +733,16 @@ function renderOverlay() {
   }
   if (sel && state.selection.kind === 'element') {
     const sz = getSize(sel);
+    const off = boxAnchor(sel);
     const hw = sz.w / 2 + 6, hh = sz.h / 2 + 6;
     const direct = getDirectManipulation(sel);
-    const resizeHandles = direct?.resize ? resizeHandleLocations(direct.resize, hw, hh) : [];
+    const resizeHandles = (direct?.resize ? resizeHandleLocations(direct.resize, hw, hh) : [])
+      .map(h => ({ ...h, x: h.x + off.x, y: h.y + off.y }));
     const rotateControl = registry[sel.type]?.rotatable === false ? ''
-      : `<line x1="0" y1="${-hh}" x2="0" y2="${-hh - 18 / z}" stroke="#2f6fed" stroke-width="${1.2 / z}"/>` +
-        `<circle id="rotHandle" cx="0" cy="${-hh - 22 / z}" r="${5 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`;
+      : `<line x1="${off.x}" y1="${off.y - hh}" x2="${off.x}" y2="${off.y - hh - 18 / z}" stroke="#2f6fed" stroke-width="${1.2 / z}"/>` +
+        `<circle id="rotHandle" cx="${off.x}" cy="${off.y - hh - 22 / z}" r="${5 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`;
     s += `<g transform="translate(${sel.x} ${sel.y}) rotate(${sel.rot || 0})">` +
-      `<rect x="${-hw}" y="${-hh}" width="${2 * hw}" height="${2 * hh}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>` +
+      `<rect x="${off.x - hw}" y="${off.y - hh}" width="${2 * hw}" height="${2 * hh}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>` +
       rotateControl +
       resizeHandles.map(({ x, y }) =>
         `<rect x="${x - 4.5 / z}" y="${y - 4.5 / z}" width="${9 / z}" height="${9 / z}" rx="${1.4 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`).join('') +
@@ -781,14 +800,23 @@ function resizeHandleLocations(resize, hw, hh) {
 
 // ---------- hit testing ----------
 function hitElement(w) {
+  // Highlights always draw behind every other element (see renderHighlights),
+  // so they must also lose every hit-test tie: clicking a device that sits
+  // inside a highlight rectangle should select the device, not the
+  // background. Test everything else in normal top-to-bottom order first,
+  // then fall back to highlights in the same order.
+  const front = [], back = [];
   for (let i = state.elements.length - 1; i >= 0; i--) {
-    const el = state.elements[i];
+    (state.elements[i].type === 'highlight' ? back : front).push(state.elements[i]);
+  }
+  for (const el of [...front, ...back]) {
     const def = registry[el.type];
     const sz = getSize(el);
+    const off = boxAnchor(el);
     const l = toLocal(el, w.x, w.y);
     if (def?.hitTest) {
       if (def.hitTest(el, l, 6 / state.view.z)) return el;
-    } else if (Math.abs(l.x) <= sz.w / 2 + 4 && Math.abs(l.y) <= sz.h / 2 + 4) return el;
+    } else if (Math.abs(l.x - off.x) <= sz.w / 2 + 4 && Math.abs(l.y - off.y) <= sz.h / 2 + 4) return el;
   }
   return null;
 }
@@ -830,9 +858,10 @@ function hitRotHandle(sel, w) {
   if (!sel || state.selection.kind !== 'element') return false;
   if (registry[sel.type]?.rotatable === false) return false;
   const sz = getSize(sel);
+  const off = boxAnchor(sel);
   const l = toLocal(sel, w.x, w.y);
-  const hy = -(sz.h / 2 + 6) - 22 / state.view.z;
-  return Math.hypot(l.x, l.y - hy) < 9 / state.view.z;
+  const hy = off.y - (sz.h / 2 + 6) - 22 / state.view.z;
+  return Math.hypot(l.x - off.x, l.y - hy) < 9 / state.view.z;
 }
 
 function hitResizeHandle(sel, w) {
@@ -840,10 +869,11 @@ function hitResizeHandle(sel, w) {
   const direct = getDirectManipulation(sel);
   if (!direct?.resize) return null;
   const sz = getSize(sel), z = state.view.z;
+  const off = boxAnchor(sel);
   const hw = sz.w / 2 + 6, hh = sz.h / 2 + 6;
   const l = toLocal(sel, w.x, w.y);
   const corners = resizeHandleLocations(direct.resize, hw, hh);
-  return corners.find(corner => Math.hypot(l.x - corner.x, l.y - corner.y) < 10 / z) || null;
+  return corners.find(corner => Math.hypot(l.x - off.x - corner.x, l.y - off.y - corner.y) < 10 / z) || null;
 }
 
 function tuneHandleSide(sel) {
@@ -1303,6 +1333,18 @@ function onDown(e) {
   if (resizeHandle) {
     const direct = getDirectManipulation(sel);
     const size = getSize(sel);
+    if (direct.resize.anchor) {
+      // Crop-style resize: the corner opposite the one being dragged stays
+      // put in world space and the dragged corner tracks the cursor, instead
+      // of scaling both edges out from a fixed center.
+      const anchorLocal = { x: -resizeHandle.sx * size.w / 2, y: -resizeHandle.sy * size.h / 2 };
+      drag = {
+        mode: 'resizeAnchor', el: sel, direct: direct.resize, corner: resizeHandle,
+        angle: sel.rot || 0, anchor: toWorld(sel, anchorLocal.x, anchorLocal.y), moved: false,
+      };
+      svg.setPointerCapture(e.pointerId);
+      return;
+    }
     const keys = [...new Set(Object.values(direct.resize).filter(value => typeof value === 'string'))];
     drag = {
       mode: 'resize', el: sel, direct: direct.resize, corner: resizeHandle,
@@ -1414,6 +1456,24 @@ function onMove(e) {
     if (a === drag.el.rot) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     drag.el.rot = a;
+    renderAll();
+  } else if (drag.mode === 'resizeAnchor') {
+    const rel = rotPt(w.x - drag.anchor.x, w.y - drag.anchor.y, -drag.angle);
+    const rawW = Math.max(1, drag.corner.sx * rel.x);
+    const rawH = Math.max(1, drag.corner.sy * rel.y);
+    const wKey = drag.direct.x, hKey = drag.direct.y;
+    const nextW = boundedParam(drag.el, wKey, rawW);
+    const nextH = boundedParam(drag.el, hKey, rawH);
+    const centerOffset = rotPt(drag.corner.sx * nextW / 2, drag.corner.sy * nextH / 2, drag.angle);
+    const centerWorld = { x: drag.anchor.x + centerOffset.x, y: drag.anchor.y + centerOffset.y };
+    if (nextW === drag.el.params[wKey] && nextH === drag.el.params[hKey]
+      && centerWorld.x === drag.el.x && centerWorld.y === drag.el.y) return;
+    if (!drag.moved) { pushUndo(); drag.moved = true; }
+    drag.el.params[wKey] = nextW;
+    drag.el.params[hKey] = nextH;
+    drag.el.x = centerWorld.x;
+    drag.el.y = centerWorld.y;
+    setStatus(`${wKey} ${nextW} · ${hKey} ${nextH}`);
     renderAll();
   } else if (drag.mode === 'resize') {
     const local = toLocal(drag.el, w.x, w.y);
@@ -1562,7 +1622,7 @@ function onUp(e) {
   }
   if (!drag) return;
   if (e.type === 'pointercancel') {
-    const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(drag.mode);
+    const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(drag.mode);
     drag = null;
     renderAll();
     if (wasChange) { changed(); onSelectionChange(); }
@@ -1582,7 +1642,7 @@ function onUp(e) {
     return;
   }
   const dragMode = drag.mode;
-  const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(dragMode);
+  const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(dragMode);
   drag = null;
   if (wasChange) { setStatus(''); changed(); onSelectionChange(); }
   else if (e.pointerType === 'touch' && (dragMode === 'move' || dragMode === 'movebeam')) onSelectionChange({ openMobile: true });

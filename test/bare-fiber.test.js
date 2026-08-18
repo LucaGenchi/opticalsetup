@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { registry, categories } from '../sketch/js/elements.js';
+import { registry, categories, createElement } from '../sketch/js/elements.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { manualBeamSVG } from '../sketch/js/util.js';
+import { traceAll } from '../sketch/js/raytrace.js';
 
 const file = (elements = [], beams = []) => JSON.stringify({ app: 'optics2d', version: 1, elements, beams });
 const canvasSource = await readFile(new URL('../sketch/js/canvas.js', import.meta.url), 'utf8');
@@ -73,4 +74,24 @@ test('the standalone Fiber toolbar button is gone', () => {
 test('drawing with the barefiber tool creates a fiber beam with bare set, sharing the same defaults as the connectorized tool', () => {
   assert.match(canvasSource, /drawing\.kindType === 'fiber' \|\| drawing\.kindType === 'barefiber'/);
   assert.match(canvasSource, /bare: drawing\.kindType === 'barefiber',/);
+});
+
+test('the beam leaving a fiber starts right at the output connector, not a couple mm downstream', () => {
+  // Regression: the emitted cone used to start 2 mm past the tip point to
+  // stay clear of the connector's own coupling geometry, leaving a visible
+  // dead gap between the drawn fiber end and where the beam appeared to
+  // begin. nearestHit() already ignores any surface within 0.05 mm of a
+  // ray's own origin, so a much smaller push is enough.
+  const laser = createElement('laser', 0, 0);
+  const pointB = { x: 200, y: 0 };
+  const patch = fiber({ pts: [{ x: 100, y: 0 }, pointB] });
+  const drawables = traceAll([laser], [patch]);
+
+  const emitted = drawables.filter(d => d.type === 'path' && d.pts?.length
+    && d.pts[0].x > pointB.x - 1 && Math.abs(d.pts[0].y) < 5);
+  assert.ok(emitted.length, 'expected at least one drawn ray leaving the output connector');
+  for (const d of emitted) {
+    const gap = Math.hypot(d.pts[0].x - pointB.x, d.pts[0].y - pointB.y);
+    assert.ok(gap < 0.5, `a ray started ${gap.toFixed(2)} mm from point B, expected well under 0.5 mm`);
+  }
 });
