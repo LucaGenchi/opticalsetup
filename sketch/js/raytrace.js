@@ -5,10 +5,13 @@
 
 import {
   registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS,
-  sumFrequencyWl, carsAntiStokesWl,
+  ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
+  sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
+  drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
+  fluorophoreSpec, fluorophoreAbsorption,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, pulseGateTransmission } from './pulses.js';
+import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -31,6 +34,20 @@ let gateTransmissionCache = new Map();
 // Non-null only during the mixing probe pass in traceScene(): surface id ->
 // Set of wavelengths observed arriving at that specimen.
 let specimenProbe = null;
+// element id -> wavelengths observed arriving at its specimen surface on the
+// last trace. Read by the inspector to derive emission defaults and warn
+// about channels the bench cannot drive; empty when nothing illuminates it.
+let specimenIncident = new Map();
+
+export function specimenIncidentWls(elementId) {
+  return (specimenIncident.get(elementId) || []).map(b => b.wl);
+}
+
+// The full incident record — wavelength, path length and pulse train — used
+// by the inspector to report how far apart two beams arrive.
+export function specimenIncidentBeams(elementId) {
+  return specimenIncident.get(elementId) || [];
+}
 
 function hexChannels(color) {
   const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
@@ -89,15 +106,15 @@ function detectorConvergence(hits) {
   };
 }
 
-function bucketizeSpectrum(samples) {
-  const ordered = [...samples.values()].sort((a, b) => a.wavelength - b.wavelength);
-  if (ordered.length <= 24) return ordered.map(sample => ({
-    ...sample,
-    color: wavelengthToColor(sample.wavelength),
-  }));
-  // Keep the readout bounded for sources that produce many wavelength samples.
-  const stride = ordered.length / 24;
-  return Array.from({ length: 24 }, (_, index) => {
+const MAX_SPECTRUM_SAMPLES = 24;
+
+// Reduce a broadband profile to a bounded number of samples by merging
+// neighbours. Grouping only ever merges adjacent wavelengths, so a bucket
+// holding more than one really does span a range of colours.
+function bucketize(ordered, limit) {
+  if (ordered.length <= limit) return ordered;
+  const stride = ordered.length / limit;
+  return Array.from({ length: limit }, (_, index) => {
     const start = Math.floor(index * stride);
     const end = Math.max(start + 1, Math.floor((index + 1) * stride));
     const group = ordered.slice(start, end);
@@ -105,14 +122,54 @@ function bucketizeSpectrum(samples) {
     const wavelength = power > 0
       ? group.reduce((sum, sample) => sum + sample.wavelength * sample.power, 0) / power
       : group[0].wavelength;
-    return { wavelength, power, color: wavelengthToColor(wavelength) };
+    return {
+      wavelength, power,
+      continuum: group.length > 1 || group.some(sample => sample.continuum),
+      sourceId: group[0].sourceId,
+      // Merged bins span from the first sample to the last, plus one bin.
+      widthNm: group.length > 1
+        ? Math.abs(group[group.length - 1].wavelength - group[0].wavelength) + (group[0].widthNm || 0)
+        : group[0].widthNm,
+    };
   });
 }
 
-function addSample(samples, wl, power) {
-  const key = Math.round(wl * 10) / 10;
-  const sample = samples.get(key) || { wavelength: key, power: 0 };
+function bucketizeSpectrum(samples) {
+  const ordered = [...samples.values()].sort((a, b) => a.wavelength - b.wavelength);
+  // Discrete lines are summarized separately from any continuum, so a laser
+  // line alongside a broadband source is never averaged into the band — it
+  // is a peak at one wavelength, not part of a smear across a range. Bands
+  // are summarized per source for the same reason, and only the weakest
+  // lines are dropped if there are somehow too many.
+  const lines = ordered.filter(sample => !sample.continuum);
+  const band = ordered.filter(sample => sample.continuum);
+  const bySource = new Map();
+  for (const sample of band) {
+    const list = bySource.get(sample.sourceId) || [];
+    list.push(sample);
+    bySource.set(sample.sourceId, list);
+  }
+  const perSourceLimit = Math.max(4, Math.floor(MAX_SPECTRUM_SAMPLES / Math.max(1, bySource.size)));
+  const keptBand = [...bySource.values()].flatMap(list => bucketize(list, perSourceLimit));
+  const keptLines = lines.length <= MAX_SPECTRUM_SAMPLES
+    ? lines
+    : [...lines].sort((a, b) => b.power - a.power).slice(0, MAX_SPECTRUM_SAMPLES);
+  return [...keptBand, ...keptLines]
+    .sort((a, b) => a.wavelength - b.wavelength)
+    .map(sample => ({ ...sample, color: wavelengthToColor(sample.wavelength) }));
+}
+
+function addSample(samples, wl, power, continuum = false, sourceId = null, widthNm = null) {
+  // Keyed by source as well as wavelength: the spectrometer's relative mode
+  // scales each source's own contribution to its own peak, which it cannot
+  // do once two sources at the same colour have been added together.
+  const wavelength = Math.round(wl * 10) / 10;
+  const key = `${sourceId || ''}|${wavelength}`;
+  const sample = samples.get(key)
+    || { wavelength, power: 0, continuum: false, sourceId: sourceId || null, widthNm: null };
   sample.power += power;
+  if (continuum) sample.continuum = true;
+  if (widthNm > 0) sample.widthNm = Math.max(sample.widthNm || 0, widthNm);
   samples.set(key, sample);
 }
 
@@ -123,15 +180,29 @@ function addSample(samples, wl, power) {
 // Without expanding it here, a spectrometer aimed straight at a broadband
 // laser would show a single spike at its centre wavelength instead of the
 // real curve.
+// The spectral width one sample stands for, in nm. A broadband profile is
+// sampled evenly across its span, so each sample owns one bin; a
+// monochromatic ray owns nothing at all, and is reported as a true line for
+// the display to render at whatever the instrument can resolve.
+function profileBinWidth(profile) {
+  if (!profile || profile.length < 2) return null;
+  const first = profile[0].wl, last = profile[profile.length - 1].wl;
+  return Math.abs(last - first) / (profile.length - 1) || null;
+}
+
 function detectorSpectrum(hits) {
   const samples = new Map();
   for (const hit of hits) {
     if (!Number.isFinite(hit.power) || hit.power <= 0) continue;
     if (hit.spec) {
       const profile = spectrumSamples(hit.spec, 48);
-      if (profile) { for (const { wl, weight } of profile) addSample(samples, wl, weight * hit.power); continue; }
+      if (profile) {
+        const widthNm = profileBinWidth(profile);
+        for (const { wl, weight } of profile) addSample(samples, wl, weight * hit.power, true, hit.sourceId, widthNm);
+        continue;
+      }
     }
-    if (Number.isFinite(hit.wl)) addSample(samples, hit.wl, hit.power);
+    if (Number.isFinite(hit.wl)) addSample(samples, hit.wl, hit.power, false, hit.sourceId, null);
   }
   return bucketizeSpectrum(samples);
 }
@@ -161,6 +232,7 @@ function recordDetectorHit(ray, hit) {
     wl: ray.wl,
     bw: ray.bw || 0,
     spec: ray.spec || null,
+    sourceId: ray.sourceId || null,
     pol: ray.pol,
     stokes: cloneStokes(ray.stokes),
     u: hit.u,
@@ -317,6 +389,46 @@ const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
 // resolvably apart; the same laser sampled twice must not mix with itself.
 const MIXING_MIN_SEPARATION_NM = 1;
 
+// Incoherent emission (fluorescence, its multiphoton cousins, spontaneous
+// Raman) is isotropic, but a microscope only ever collects the small solid
+// angle its optics subtend — which sits on the beam axis, forward and back.
+// Sampling that emission uniformly spends nearly every ray on directions no
+// optic will ever see. These rays are instead drawn from a distribution
+// denser along the axis, each still carrying an equal share of the power, so
+// the total is unchanged and the directions that can actually be captured
+// are the ones sampled finely. The glow is still drawn all the way round.
+const EMISSION_RAYS = 20;
+const RAMAN_RAYS_PER_LINE = 14;
+const AXIS_BIAS = 5;
+// How far the drawn glow reaches, and how far away an optic can still
+// collect it. Real collection optics sit well outside the few centimetres
+// the glow is drawn over, so the two are separate numbers.
+const EMISSION_GLOW_MM = 25;
+const EMISSION_CAPTURE_MM = 100;
+
+// Angles sampled with density proportional to 1 + AXIS_BIAS * cos^2 around
+// `axisAngle`, by inverting that distribution's CDF. Equal-probability
+// sampling means every ray still carries the same power.
+function emissionAngles(count, axisAngle, bias = AXIS_BIAS) {
+  const total = 2 * Math.PI * (1 + bias / 2);
+  // CDF of the density, measured from the axis direction.
+  const cdf = u => (u * (1 + bias / 2) + bias * Math.sin(2 * u) / 4) / total;
+  const angles = [];
+  for (let i = 0; i < count; i++) {
+    const target = (i + 0.5) / count;
+    let lo = 0, hi = 2 * Math.PI;
+    for (let step = 0; step < 40; step++) {
+      const mid = (lo + hi) / 2;
+      if (cdf(mid) < target) lo = mid; else hi = mid;
+    }
+    angles.push(axisAngle + (lo + hi) / 2);
+  }
+  return angles;
+}
+// Below this the two pulses barely meet and the signal is reported as absent
+// rather than as a vanishing sliver.
+const MIN_OVERLAP = 0.02;
+
 // The wavelength one signal channel produces for a ray of wavelength rayWl.
 // Single-beam channels scale the incident colour. Mixing channels (SFG,
 // CARS) need a second, different colour present at the same spot, supplied
@@ -324,6 +436,76 @@ const MIXING_MIN_SEPARATION_NM = 1;
 // this specimen during the mixing probe pass in traceScene(). Returns null
 // when the channel cannot produce anything for this ray, which is exactly
 // what makes CARS/SFG silent under single-beam illumination.
+// Stimulated Raman: a modulated beam drives gain on an unmodulated one at
+// the same spot, so the modulation crosses over between colours without any
+// new wavelength appearing. That is what makes SRS detectable at all — a
+// photodiode on the receiving beam, read on the oscilloscope, sees a
+// modulation that is only there because the specimen is Raman-active.
+//
+// The transferred gate copies the donor's timing verbatim (frequency, duty,
+// phase and the optical path the modulation was imposed at) and swaps in a
+// shallower depth, so the two trains stay phase-locked. This assumes the two
+// sources are synchronous, which is what a real SRS setup arranges.
+// Returns null when there is nothing to transfer.
+// Record the colour and, for SRS, whatever intensity modulation this beam is
+// already carrying, so the real pass afterwards can mix and transfer.
+function recordProbeBeam(surface, ray) {
+  let seen = specimenProbe.get(surface.id);
+  if (!seen) specimenProbe.set(surface.id, seen = []);
+  if (seen.some(b => Math.abs(b.wl - ray.wl) < 1e-9)) return;
+  seen.push({
+    wl: ray.wl, opl: ray.opl,
+    pulse: ray.pulse ? { ...ray.pulse } : null,
+    gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
+  });
+}
+
+function srsTransferGate(channel, ray, incidentBeams) {
+  if ((ray.pulse?.gates || []).length) return null; // this beam is the donor
+  const donor = (incidentBeams || []).find(b =>
+    Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM && b.gates?.length);
+  if (!donor) return null;
+  // Both pulses must be at the spot together for the interaction to happen.
+  const overlap = channelOverlap(channel, ray, donor);
+  if (overlap < MIN_OVERLAP) return null;
+  const source = donor.gates[donor.gates.length - 1];
+  const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1)) * overlap;
+  // The two beams are not symmetric. Energy flows from the blue photon to
+  // the red one, so when the PUMP (the shorter wavelength) carries the
+  // modulation the Stokes beam is amplified while the pump is on — that is
+  // stimulated Raman GAIN, and the receiving beam rises above its
+  // unmodulated level. When the STOKES beam carries it, the pump is
+  // depleted while the Stokes is on — stimulated Raman LOSS, a dip. Both
+  // excursions happen during the donor's own "on" half, so they differ in
+  // sign, not in phase.
+  const receiverIsStokes = donor.wl < ray.wl;
+  return {
+    opl: source.opl, frequencyMHz: source.frequencyMHz, duty: source.duty,
+    phaseNs: source.phaseNs, shape: source.shape, depth, invert: false,
+    high: receiverIsStokes ? 1 + depth : 1 - depth,
+    low: 1,
+  };
+}
+
+// How much of a two-beam signal survives the arrival mismatch between the
+// beams driving it. Channels can opt out, for a schematic that is about the
+// signal rather than about timing.
+function channelOverlap(channel, ray, partner) {
+  if (!partner || channel.requireOverlap === false) return 1;
+  return pulseOverlap({ opl: ray.opl, pulse: ray.pulse }, partner).factor;
+}
+
+// The incident beam a mixing channel pairs the current ray with: the longest
+// wavelength present, matching how specimenSignalWl picks the Stokes partner.
+function mixingPartner(ray, incidentBeams) {
+  let best = null;
+  for (const beam of incidentBeams || []) {
+    if (Math.abs(beam.wl - ray.wl) < MIXING_MIN_SEPARATION_NM) continue;
+    if (!best || beam.wl > best.wl) best = beam;
+  }
+  return best;
+}
+
 // The drawing color of one signal channel: true to its own wavelength by
 // default, or a custom tint so several channels can be told apart on a busy
 // multimodal sketch. Mirrors the laser's own auto/custom color toggle.
@@ -331,10 +513,44 @@ export function channelColor(channel, wl) {
   return channel.autoColor === false && channel.color ? channel.color : wavelengthToColor(wl);
 }
 
+// What one emission channel actually radiates: its band and how strongly it
+// is driven. A named fluorophore emits its own band and is excited according
+// to how well the beam matches its absorption; "custom" keeps the generic
+// behavior of absorbing whatever arrives and emitting a line one Stokes
+// offset above it. Returns null when nothing is emitted at all.
+export function specimenEmission(channel, rayWl, incidentWls) {
+  const order = EMISSION_ORDER[channel.kind];
+  if (!order) return null;
+  const excitation = drivingExcitationWl(incidentWls) ?? rayWl;
+  const spec = fluorophoreSpec(channel.fluorophore);
+  const gain = fluorophoreAbsorption(channel.fluorophore, excitation, order);
+  if (spec) {
+    // A dye emits its own band wherever it is excited from; only how
+    // strongly changes. A manual wavelength still overrides the label.
+    const wl = channel.autoWl === false ? channel.wl : spec.emPeak;
+    if (!(wl > excitation / order)) return null;
+    return { wl, bw: spec.emFwhm, spec: gaussianSpectrum(wl, spec.emFwhm), gain };
+  }
+  const wl = specimenSignalWl(channel, rayWl, incidentWls);
+  return wl > 0 ? { wl, bw: 0, spec: null, gain: 1 } : null;
+}
+
 export function specimenSignalWl(channel, rayWl, incidentWls) {
   if (!(rayWl > 0)) return null;
   if (channel.kind === 'shg') return rayWl / 2;
   if (channel.kind === 'thg') return rayWl / 3;
+  // Incoherent emission: one photon (fluorescence) or several combined
+  // (2PEF/3PEF) are absorbed and one longer-wavelength photon comes back
+  // out. The emitted photon must be the less energetic one, so a manual
+  // wavelength below excitation/order is unphysical and emits nothing —
+  // the inspector warns about exactly this case (see channelWarning).
+  const order = EMISSION_ORDER[channel.kind];
+  if (order) {
+    const excitation = drivingExcitationWl(incidentWls) ?? rayWl;
+    const floor = excitation / order;
+    if (channel.autoWl === false) return channel.wl > floor ? channel.wl : null;
+    return floor + EMISSION_OFFSET_NM;
+  }
   if (!MIXING_KINDS.has(channel.kind)) return null;
   if (channel.kind === 'cars' && channel.autoWl === false) return channel.wl > 0 ? channel.wl : null;
   const partners = (incidentWls || []).filter(w => w > 0 && Math.abs(w - rayWl) >= MIXING_MIN_SEPARATION_NM);
@@ -433,7 +649,8 @@ function fiberEmissionRays(c) {
   const common = {
     wl: c.wl, bw: c.bw || 0, spec: c.spec || null, speckle: false, intensity: Math.min(1, c.intensity * transmission),
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
-    pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, oplStart: (c.opl || 0) + lengthMm * ng + 2,
+    pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, sourceId: c.sourceId || null,
+    oplStart: (c.opl || 0) + lengthMm * ng + 2,
   };
   if (cfg.mode === 'focus') {
     const f = Math.max(2, cfg.focal || 20), ap = Math.max(1, cfg.dia || 6);
@@ -728,7 +945,13 @@ function interact(ray, hit) {
   switch (k) {
     case 'absorb': return [];
     case 'detector': return [];
-    case 'attenuate': return [{ d, intensity: ray.intensity * Math.min(1, Math.max(0, data.transmission ?? 1)) }];
+    case 'attenuate': {
+      // A specimen with no signals yet still reports what illuminates it, so
+      // the inspector can offer live emission defaults the moment one is
+      // added (see specimenIncidentWls).
+      if (specimenProbe && data.specimen) recordProbeBeam(s, ray);
+      return [{ d, intensity: ray.intensity * Math.min(1, Math.max(0, data.transmission ?? 1)) }];
+    }
     case 'mirror': {
       // partial reflectivity (cavity mirrors / output couplers): reflect R,
       // transmit 1-R. The transmitted ray is always traced — so a detector
@@ -1087,56 +1310,126 @@ function interact(ray, hit) {
       // with. Generating no signal here is what keeps the probe cheap and
       // stops signals from seeding further signals.
       if (specimenProbe) {
-        let seen = specimenProbe.get(s.id);
-        if (!seen) specimenProbe.set(s.id, seen = new Set());
-        seen.add(ray.wl);
+        recordProbeBeam(s, ray);
         return transmission > 0.001 ? [{ d, intensity: ray.intensity * transmission }] : [];
       }
       const out = [];
+      const channels = data.channels || [];
+      // Light generated here is a new source, not the excitation that drove
+      // it: the spectrometer's relative mode scales each source to its own
+      // peak, and a Raman line normalized against the pump that produced it
+      // would be invisible — which is the whole reason that mode exists.
+      const emittedFrom = s.el?.id || null;
       // Isotropic emission and two-beam mixing are per-spot events, not
       // per-ray ones: a beam split into K sampling rays must not emit K
       // copies of the same signal.
       const emitting = ray.sample == null || ray.sample === 0;
+      // With several beams on the spot, the shortest wavelength carries the
+      // most energy per photon and is the one that drives incoherent
+      // emission and Raman. Gating on it also stops each beam from emitting
+      // its own duplicate copy of the same signal.
+      const driver = drivingExcitationWl(data.incidentWls);
+      const isDriver = driver == null || Math.abs(ray.wl - driver) < 1e-6;
+
       // The excitation is attenuated by the specimen's own transmission and
       // nothing else. Real conversion efficiencies are ~1e-6, so signal
       // generation depletes the pump negligibly; "Signal efficiency" is a
       // visibility gain for the diagram, not an energy budget. Keeping the
       // two independent also means stacking five channels never dims the
       // excitation, and matches what the transmission field claims to do.
-      if (transmission > 0.001) out.push({ d, intensity: ray.intensity * transmission, tag: 'x' });
-      for (let ci = 0; ci < (data.channels || []).length; ci++) {
-        const c = data.channels[ci];
+      // Phase contrast and SRS ride on this transmitted beam rather than
+      // emitting one of their own, so they are applied here.
+      if (transmission > 0.001) {
+        const exc = { d, intensity: ray.intensity * transmission, tag: 'x' };
+        let stokes = ray.stokes, retarded = false, pulse = ray.pulse, gated = false;
+        for (const c of channels) {
+          if (c.kind === 'phase' && stokes) {
+            stokes = applyRetarder(stokes, c.axis ?? 45, c.retardance ?? 90);
+            retarded = true;
+          } else if (c.kind === 'srs' && ray.pulse) {
+            const transferred = srsTransferGate(c, ray, data.incidentBeams);
+            if (transferred) { pulse = withGate(pulse, transferred); gated = true; }
+          }
+        }
+        if (retarded) exc.stokes = stokes;
+        if (gated) exc.pulse = pulse;
+        out.push(exc);
+      }
+
+      for (let ci = 0; ci < channels.length; ci++) {
+        const c = channels[ci];
         const eff = Math.min(1, Math.max(0, c.eff ?? 0.1));
+        // Phase contrast and SRS shape the transmitted beam above; they emit
+        // no light of their own and have no efficiency of their own.
+        if (MODIFIER_KINDS.has(c.kind)) continue;
         if (eff <= 0) continue;
-        if (c.kind === 'fluor') {
-          if (!emitting) continue;
-          const N = 16;
-          const emitted = ray.intensity * eff;
-          const tint = channelColor(c, c.wl);
-          for (let i = 0; i < N; i++) {
-            const a = i * 2 * Math.PI / N;
-            out.push({
-              d: { x: Math.cos(a), y: Math.sin(a) }, wl: c.wl, bw: 0, pol: undefined, stokes: null,
-              color: tint,
-              evan: true, evanLen: 25,
-              intensity: emitted > 0 ? 0.25 : 0,
-              power: Number.isFinite(ray.power) ? ray.power * eff / N : undefined,
-              tag: `f${ci}_${i}`,
+
+        if (c.kind === 'raman') {
+          // Spontaneous Raman scatters a handful of Stokes-shifted lines,
+          // isotropically and weakly, from the material's own fingerprint.
+          if (!emitting || !isDriver) continue;
+          const pump = driver ?? ray.wl;
+          const shifts = ramanShifts(c.material).slice(0, 4);
+          const N = RAMAN_RAYS_PER_LINE;
+          const axis = Math.atan2(d.y, d.x);
+          for (const shift of shifts) {
+            const line = ramanStokesWl(pump, shift);
+            if (!(line > 0)) continue;
+            const tint = channelColor(c, line);
+            emissionAngles(N, axis).forEach((a, i) => {
+              out.push({
+                d: { x: Math.cos(a), y: Math.sin(a) }, wl: line, bw: 0, pol: undefined, stokes: null,
+                color: tint, evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
+                sourceId: emittedFrom,
+                intensity: 0.25,
+                power: Number.isFinite(ray.power) ? ray.power * eff / (N * shifts.length) : undefined,
+                tag: `r${ci}_${Math.round(shift)}_${i}`,
+              });
             });
           }
           continue;
         }
+
+        if (ISOTROPIC_KINDS.has(c.kind)) {
+          if (!emitting || !isDriver) continue;
+          const emission = specimenEmission(c, ray.wl, data.incidentWls);
+          if (!emission || emission.gain <= 1e-4) continue;
+          const N = EMISSION_RAYS;
+          const tint = channelColor(c, emission.wl);
+          const strength = eff * emission.gain;
+          emissionAngles(N, Math.atan2(d.y, d.x)).forEach((a, i) => {
+            out.push({
+              d: { x: Math.cos(a), y: Math.sin(a) },
+              wl: emission.wl, bw: emission.bw, spec: emission.spec,
+              pol: undefined, stokes: null,
+              color: tint, sourceId: emittedFrom,
+              evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
+              intensity: 0.25,
+              power: Number.isFinite(ray.power) ? ray.power * strength / N : undefined,
+              tag: `f${ci}_${i}`,
+            });
+          });
+          continue;
+        }
+
         const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
         if (!(wl > 0)) continue;
-        const forward = ray.intensity * eff;
+        // Sum-frequency and CARS are wave mixing: no temporal overlap between
+        // the two beams, no signal.
+        let overlap = 1;
+        if (MIXING_KINDS.has(c.kind) && c.autoWl !== false) {
+          overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams));
+          if (overlap < MIN_OVERLAP) continue;
+        }
+        const forward = ray.intensity * eff * overlap;
         const tint = channelColor(c, wl);
-        out.push({ d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, intensity: forward, tag: `c${ci}` });
+        out.push({ d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, sourceId: emittedFrom, intensity: forward, tag: `c${ci}` });
         if (c.epi && EPI_KINDS.has(c.kind)) {
           const ratio = Math.min(1, Math.max(0, c.epiRatio ?? 0.15));
           if (ratio > 0) {
             out.push({
               d: { x: -d.x, y: -d.y }, wl, bw: 0, spec: null, pol: undefined, stokes: null,
-              color: tint,
+              color: tint, sourceId: emittedFrom,
               intensity: forward * ratio,
               power: Number.isFinite(ray.power) ? ray.power * eff * ratio : undefined,
               tag: `e${ci}`,
@@ -1163,7 +1456,7 @@ function interact(ray, hit) {
           const a = i * 2 * Math.PI / N;
           out.push({
             d: { x: Math.cos(a), y: Math.sin(a) }, wl: data.wl, bw: 0, pol: undefined, stokes: null,
-            evan: true, evanLen: 25,
+            evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
             intensity: emitted > 0 ? 0.25 : 0, power: Number.isFinite(ray.power) ? ray.power * (1 - transmission) * Math.min(1, Math.max(0, data.efficiency ?? 0.1)) / N : undefined,
             tag: 'f' + i,
           });
@@ -1342,7 +1635,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         // the fade boundary still counts); otherwise the light is simply
         // gone and never reaches downstream detectors.
         const EVAN_LEN = r.evanLen || 22;
-        const CAPTURE = EVAN_LEN * 1.5;
+        // How far the glow is DRAWN and how far an optic can still collect it
+        // are separate: a collection lens routinely sits well outside the few
+        // centimetres of visible glow, and the light is really there.
+        const CAPTURE = r.captureLen || EVAN_LEN * 1.5;
         const captured = hit && hit.t <= CAPTURE
           && (hit.surface.kind === 'lens' || hit.surface.kind === 'fiberin');
         if (!captured) {
@@ -1421,7 +1717,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           couplings.push({
             beam: fb, end: hit.surface.data.end, wl: r.wl, bw: r.bw, spec: r.spec,
             intensity: r.intensity, power: r.power, pol: r.pol, stokes: cloneStokes(r.stokes),
-            pulse: r.pulse, opl: r.opl,
+            pulse: r.pulse, opl: r.opl, sourceId: r.sourceId || null,
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -1464,6 +1760,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           chopped: c.chopped || r.chopped || undefined,
           evan: c.evan || false,
           evanLen: c.evanLen,
+          captureLen: c.captureLen,
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,
@@ -1471,6 +1768,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           // a signal. It overrides the source's own fixed color, because a
           // signal at a new wavelength is not the source's light any more.
           color: 'color' in c ? c.color : r.color,
+          sourceId: 'sourceId' in c ? c.sourceId : r.sourceId,
           medium: 'medium' in c ? c.medium : r.medium,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           pulse: 'pulse' in c ? c.pulse : r.pulse,
@@ -1653,6 +1951,7 @@ export function traceScene(elements, beams = []) {
   lastPaths = [];
   detectorHits = new Map();
   gateTransmissionCache = new Map();
+  specimenIncident = new Map();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
@@ -1713,6 +2012,9 @@ export function traceScene(elements, beams = []) {
         evan: r.evan || false, evanLen: r.evanLen,
         medium: initialBody?.id || null, ior: initialIor,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,
+        // Which source this light started from, so the spectrometer can
+        // normalize each source's own contribution independently.
+        sourceId: el.id,
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
       };
     });
@@ -1733,14 +2035,24 @@ export function traceScene(elements, beams = []) {
   }
   };
 
-  const needsMixing = surfaces.some(s => s.kind === 'specimen'
-    && (s.data.channels || []).some(c => MIXING_KINDS.has(c.kind) && c.autoWl !== false));
-  if (needsMixing) {
+  // Probe whenever a signal-bearing specimen is on the table: its channels
+  // may need to know the other colours present, and even a specimen with no
+  // channels yet reports what illuminates it so the inspector can offer live
+  // emission defaults. SHG/THG-only benches still skip it.
+  const needsProbe = surfaces.some(s =>
+    (s.kind === 'specimen' && (s.data.channels || []).some(channelNeedsExcitationProbe))
+    || (s.kind === 'attenuate' && s.data.specimen && s.el
+        && ['linear', 'nonlinear'].includes(specimenTypeOf(s.el.params))));
+  if (needsProbe) {
     specimenProbe = new Map();
     try {
       emitSources(false);
       for (const s of surfaces) {
-        if (s.kind === 'specimen') s.data.incidentWls = [...(specimenProbe.get(s.id) || [])];
+        if (s.kind !== 'specimen' && !(s.kind === 'attenuate' && s.data.specimen)) continue;
+        const beams = specimenProbe.get(s.id) || [];
+        s.data.incidentBeams = beams;
+        s.data.incidentWls = beams.map(b => b.wl);
+        if (s.el) specimenIncident.set(s.el.id, beams);
       }
     } finally {
       specimenProbe = null;

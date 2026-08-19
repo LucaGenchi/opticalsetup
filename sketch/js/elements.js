@@ -15,6 +15,7 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
+import { pulseOverlap } from './pulses.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -127,6 +128,28 @@ function availableDisplaySensors(display, elements = []) {
     && registry[candidate?.type]?.readoutKind) : [];
 }
 
+// Which screen views a linked sensor actually has data for. Only the camera
+// and the general detector carry more than one readout; a photodiode has a
+// single channel of information, so offering it a "wavelength samples" view
+// drew a spectrum it never measured underneath its own oscilloscope.
+const DISPLAY_VIEWS = {
+  camera: ['main', 'spectrum', 'detail'],
+  generaldetector: ['main', 'spectrum', 'detail'],
+};
+
+export function displayViewsFor(sensorType) {
+  return DISPLAY_VIEWS[sensorType] || ['main'];
+}
+
+// The view actually rendered: the stored one when the linked sensor supports
+// it, else its primary readout. A display keeps its stored view when it is
+// re-pointed at a sensor that cannot show it, rather than being rewritten.
+export function resolvedDisplayView(display, sensor) {
+  const views = displayViewsFor(sensor?.type);
+  const stored = display?.params?.displayView;
+  return views.includes(stored) ? stored : 'main';
+}
+
 export function displayActionUpdate(display, action, elements = []) {
   if (!display || display.type !== 'display') return null;
   if (action === 'power') {
@@ -134,7 +157,11 @@ export function displayActionUpdate(display, action, elements = []) {
     return { updates: { screenOn }, message: screenOn ? 'Sensor display on' : 'Sensor display standby' };
   }
   if (action === 'view') {
-    const views = ['main', 'spectrum', 'detail'];
+    const sensor = resolveDisplaySensor(display, elements);
+    const views = displayViewsFor(sensor?.type);
+    if (views.length < 2) {
+      return { updates: {}, message: sensor ? `${displaySensorName(sensor)} has one readout` : 'No sensor connected' };
+    }
     const current = views.includes(display.params.displayView) ? display.params.displayView : 'main';
     const displayView = views[(views.indexOf(current) + 1) % views.length];
     return { updates: { displayView }, message: `Display view: ${displayView}` };
@@ -327,8 +354,8 @@ function displayScreenSVG(el, elements = []) {
   const scale = displayRenderScale(el.params.displayScale);
   const density = displayDensity(scale);
   const screenOn = el.params.screenOn !== false;
-  const view = ['main', 'spectrum', 'detail'].includes(el.params.displayView) ? el.params.displayView : 'main';
   const sensor = resolveDisplaySensor(el, elements);
+  const view = resolvedDisplayView(el, sensor);
   const hasConfiguredLink = Boolean(el.params.sensorId);
   const rd = sensor ? detectorReading(sensor.id) : null;
   const sensorName = sensor ? displaySensorName(sensor) : '';
@@ -597,24 +624,130 @@ function probeCardPlacement(el, card, scale) {
 // optically inert specimen that only attenuates the excitation.
 export const MAX_SAMPLE_CHANNELS = 5;
 
-export const SIGNAL_KINDS = [
-  ['fluor', 'Fluorescence — isotropic'],
-  ['shg', 'SHG — λ/2'],
-  ['thg', 'THG — λ/3'],
-  ['sfg', 'SFG — sum frequency'],
-  ['cars', 'CARS — anti-Stokes'],
+// A specimen is one of four kinds. Absorbing and resin have no signal
+// channels at all; the two "specimen" types each offer their own menu of
+// stackable signals, because a linear process and a nonlinear one are never
+// alternatives for the same physical sample.
+export const SPECIMEN_TYPES = [
+  ['absorbing', 'Absorbing specimen'],
+  ['resin', 'Photocurable resin'],
+  ['linear', 'Linear specimen'],
+  ['nonlinear', 'Nonlinear specimen'],
 ];
+
+export const LINEAR_SIGNAL_KINDS = [
+  ['fluor', 'Fluorescence — isotropic'],
+  ['raman', 'Spontaneous Raman — isotropic'],
+  ['phase', 'Phase contrast — retardance'],
+];
+export const NONLINEAR_SIGNAL_KINDS = [
+  ['tpef', 'Two-photon fluorescence (2PEF)'],
+  ['thpef', 'Three-photon fluorescence (3PEF)'],
+  ['shg', 'Second harmonic (SHG)'],
+  ['thg', 'Third harmonic (THG)'],
+  ['sfg', 'Sum frequency (SFG)'],
+  ['cars', 'CARS — anti-Stokes'],
+  ['srs', 'Stimulated Raman (SRS)'],
+];
+
+export function signalKindsFor(specimenType) {
+  if (specimenType === 'linear') return LINEAR_SIGNAL_KINDS;
+  if (specimenType === 'nonlinear') return NONLINEAR_SIGNAL_KINDS;
+  return [];
+}
+
+const LINEAR_KIND_SET = new Set(LINEAR_SIGNAL_KINDS.map(([k]) => k));
+const NONLINEAR_KIND_SET = new Set(NONLINEAR_SIGNAL_KINDS.map(([k]) => k));
+export const ALL_SIGNAL_KINDS = [...LINEAR_SIGNAL_KINDS, ...NONLINEAR_SIGNAL_KINDS];
+
+// Kept for the legacy single-`mode` reader and any external caller.
+export const SIGNAL_KINDS = ALL_SIGNAL_KINDS;
+
 // Four- and three-wave mixing need two DIFFERENT excitation colours present
-// at the same spot; the others are driven by a single beam.
+// at the same spot; the others are driven by a single beam. SRS likewise
+// needs two beams — one to carry the modulation and one to receive it.
 export const MIXING_KINDS = new Set(['sfg', 'cars']);
-// Fluorescence is incoherent and radiates in every direction, so it has no
-// forward/epi distinction to offer. The parametric signals are generated
-// along the excitation direction and are forward-dominant, with a weaker
-// backward (epi) lobe that real epi-detected CARS/SHG setups rely on.
+export const TWO_BEAM_KINDS = new Set(['sfg', 'cars', 'srs']);
+// Incoherent emission radiates in every direction, so it has no forward/epi
+// distinction to offer. The parametric signals are generated along the
+// excitation direction and are forward-dominant, with a weaker backward
+// (epi) lobe that real epi-detected CARS/SHG setups rely on.
+export const ISOTROPIC_KINDS = new Set(['fluor', 'raman', 'tpef', 'thpef']);
 export const EPI_CAPABLE_KINDS = new Set(['shg', 'thg', 'sfg', 'cars']);
+// These modify the excitation beam in place rather than emitting a new one.
+export const MODIFIER_KINDS = new Set(['phase', 'srs']);
+
+// How far above the driving photon energy an emission sits by default: real
+// Stokes shifts are tens of nm, and the same offset reads sensibly for
+// one-, two- and three-photon excitation.
+export const EMISSION_OFFSET_NM = 20;
+
+// The photon order each emission is pumped by — 1 for ordinary
+// fluorescence, 2 for 2PEF, 3 for 3PEF. The emitted photon must be less
+// energetic than the combined excitation photons, i.e. its wavelength must
+// exceed excitation/order.
+export const EMISSION_ORDER = { fluor: 1, tpef: 2, thpef: 3 };
+
+// Spontaneous Raman lines, as Stokes shifts in cm^-1. Real reference values
+// for a handful of specimens people actually image, so a spectrometer
+// downstream reconstructs a recognizable fingerprint rather than noise.
+export const RAMAN_MATERIALS = [
+  ['lipid', 'Lipids (CH₂)', [1440, 1650, 2845, 2880]],
+  ['protein', 'Protein (amide I)', [1004, 1450, 1660, 2930]],
+  ['dmso', 'DMSO', [670, 1042, 2913, 2994]],
+  ['pmma', 'PMMA (acrylic)', [812, 1452, 1730, 2952]],
+  ['polystyrene', 'Polystyrene', [1001, 1602, 3054]],
+  ['water', 'Water (O–H)', [1640, 3250, 3400]],
+];
+const RAMAN_BY_ID = new Map(RAMAN_MATERIALS.map(([id, label, shifts]) => [id, { label, shifts }]));
+export const ramanShifts = material => RAMAN_BY_ID.get(material)?.shifts || RAMAN_BY_ID.get('lipid').shifts;
+
+// A Stokes-shifted wavelength: 1/lambda_s = 1/lambda_p - shift, with the
+// shift converted from cm^-1 to nm^-1 (1 cm^-1 = 1e-7 nm^-1).
+export function ramanStokesWl(pumpWl, shiftCm) {
+  if (!(pumpWl > 0)) return null;
+  const inv = 1 / pumpWl - shiftCm * 1e-7;
+  return inv > 1e-9 ? 1 / inv : null;
+}
+
+// Real fluorophores, as the two numbers that matter for a sketch: where
+// they absorb and where they emit, each as a peak plus a full width at half
+// maximum. Excitation away from the absorption peak still works, just more
+// weakly — which is the point of picking a dye at all. "Custom" keeps the
+// generic behavior: absorbs whatever arrives and emits one Stokes offset
+// above it.
+export const FLUOROPHORES = [
+  ['custom', 'Custom (any excitation)', null],
+  ['dapi', 'DAPI', { absPeak: 358, absFwhm: 70, emPeak: 461, emFwhm: 70 }],
+  ['hoechst', 'Hoechst 33342', { absPeak: 350, absFwhm: 70, emPeak: 461, emFwhm: 75 }],
+  ['gfp', 'GFP (EGFP)', { absPeak: 488, absFwhm: 40, emPeak: 507, emFwhm: 45 }],
+  ['rhodamine', 'Rhodamine (TRITC)', { absPeak: 555, absFwhm: 45, emPeak: 580, emFwhm: 45 }],
+];
+const FLUOROPHORE_BY_ID = new Map(FLUOROPHORES.map(([id, label, spec]) => [id, spec]));
+export const fluorophoreSpec = id => FLUOROPHORE_BY_ID.get(id) || null;
+
+// How well a dye absorbs at one wavelength, relative to its own peak. A
+// multiphoton process is driven by the combined energy of its photons, so
+// n-photon excitation at lambda behaves like one-photon excitation at
+// lambda/n — an 800 nm beam reaches DAPI's 358 nm band two photons at a time.
+export function fluorophoreAbsorption(id, excitationWl, order = 1) {
+  const spec = fluorophoreSpec(id);
+  if (!spec || !(excitationWl > 0)) return 1;
+  const effective = excitationWl / Math.max(1, order);
+  const halfWidth = Math.max(1, spec.absFwhm) / 2;
+  return Math.exp(-Math.LN2 * ((effective - spec.absPeak) / halfWidth) ** 2);
+}
 
 export function newSampleChannel(kind = 'fluor') {
-  return { kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true, autoColor: true, color: '#22c55e' };
+  return {
+    kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true,
+    autoColor: true, color: '#22c55e',
+    material: 'lipid',        // spontaneous Raman fingerprint
+    fluorophore: 'custom',    // emission band for the fluorescence kinds
+    retardance: 90, axis: 45, // phase contrast
+    transferEff: 0.1,         // SRS modulation transfer
+    requireOverlap: true,     // two-beam signals need the pulses to coincide
+  };
 }
 
 // Photon-energy conservation, in nm. Returns null when a combination is not
@@ -640,16 +773,144 @@ export function legacySampleChannels(p) {
   return [];
 }
 
+// Which of the four specimen kinds this element is. Sketches saved before
+// the type existed are read from whatever they do carry: an explicit resin
+// material, the signal channels they already stack, or the old per-material
+// `sampleKind` — so nothing silently changes behavior on load.
+export function specimenTypeOf(p) {
+  if (p?.specimenType) return p.specimenType;
+  const legacy = p?.sampleKind;
+  if (legacy === 'resin') return 'resin';
+  const stacked = Array.isArray(p?.channels) && p.channels.length ? p.channels : legacySampleChannels(p);
+  if (stacked.length) return stacked.some(c => NONLINEAR_KIND_SET.has(c.kind)) ? 'nonlinear' : 'linear';
+  if (legacy === 'fluorescent') return 'linear';
+  if (legacy === 'nonlinear') return 'nonlinear';
+  return 'absorbing';
+}
+
 export function sampleChannels(p) {
-  if (Array.isArray(p?.channels) && p.channels.length) return p.channels.slice(0, MAX_SAMPLE_CHANNELS);
-  return legacySampleChannels(p);
+  const type = specimenTypeOf(p);
+  // Absorbing and resin specimens emit nothing. Channels the user configured
+  // under another type are kept in params (so switching back restores them)
+  // but take no part in the trace, and a channel is only ever honored under
+  // the type whose menu offers it.
+  const allowed = type === 'linear' ? LINEAR_KIND_SET : type === 'nonlinear' ? NONLINEAR_KIND_SET : null;
+  if (!allowed) return [];
+  const raw = Array.isArray(p?.channels) && p.channels.length ? p.channels : legacySampleChannels(p);
+  return raw.filter(c => allowed.has(c.kind)).slice(0, MAX_SAMPLE_CHANNELS);
+}
+
+// Two-beam signals only happen while both pulses are at the spot together.
+// When they are not, say by how much and in which direction to fix it, so a
+// silent signal is diagnosable instead of mysterious.
+function overlapWarning(channel, records) {
+  if (channel.requireOverlap === false) return null;
+  const sorted = [...records].sort((a, b) => a.wl - b.wl);
+  const a = sorted[0], b = sorted[sorted.length - 1];
+  const { factor, skewNs, comparable } = pulseOverlap(a, b);
+  if (!comparable || factor >= 0.5) return null;
+  const skewPs = skewNs * 1000;
+  const pathMm = skewNs * 299.792458;
+  const what = channel.kind === 'srs' ? 'Stimulated Raman' : channel.kind === 'sfg' ? 'Sum frequency' : 'CARS';
+  return `${what} needs the two pulses to arrive together: they are ${skewPs.toFixed(skewPs < 10 ? 2 : 0)} ps apart `
+    + `(${pathMm.toFixed(pathMm < 10 ? 2 : 0)} mm of path). Match the arms, or add a delay line.`;
+}
+
+// Whether a channel has to know what else is illuminating the specimen —
+// which colours are present, and whether any of them carries a modulation.
+// SHG, THG and phase contrast derive everything from the ray in front of
+// them, so a specimen made only of those never pays for the probe pass.
+export function channelNeedsExcitationProbe(c) {
+  if (TWO_BEAM_KINDS.has(c.kind)) return !(c.kind === 'cars' && c.autoWl === false);
+  if (c.kind === 'raman') return true;
+  // Emission channels need it even when the wavelength is pinned: the
+  // photon-energy floor a manual value has to clear is set by the SHORTEST
+  // beam on the spot, which a single ray cannot know on its own.
+  if (EMISSION_ORDER[c.kind]) return true;
+  return false;
+}
+
+// The excitation colour a single-beam signal is driven by. With several
+// beams on the spot the shortest wavelength carries the most energy per
+// photon, so it is the one that drives fluorescence and Raman.
+export function drivingExcitationWl(incidentWls) {
+  const list = (incidentWls || []).filter(w => Number.isFinite(w) && w > 0);
+  return list.length ? Math.min(...list) : null;
+}
+
+// The wavelength an emission channel defaults to for a given excitation:
+// one Stokes offset above the energy its pump photons can reach.
+export function defaultEmissionWl(kind, excitationWl) {
+  const order = EMISSION_ORDER[kind];
+  if (!order || !(excitationWl > 0)) return null;
+  return Math.round(excitationWl / order + EMISSION_OFFSET_NM);
+}
+
+// Physically impossible or under-specified configurations, reported as a
+// short sentence for the inspector to surface. Returns null when the channel
+// is fine. `incidentWls` is what actually reaches this specimen.
+export function channelWarning(channel, incident) {
+  // `incident` is either the plain wavelengths or the full probe records
+  // (wavelength, path length, pulse train) needed to judge arrival timing.
+  const records = (incident || []).map(b => (typeof b === 'number' ? { wl: b } : b))
+    .filter(b => Number.isFinite(b?.wl) && b.wl > 0);
+  const distinct = [...new Set(records.map(b => Math.round(b.wl)))];
+  if (TWO_BEAM_KINDS.has(channel.kind)) {
+    if (channel.kind === 'cars' && channel.autoWl === false) return null;
+    if (distinct.length < 2) {
+      return channel.kind === 'srs'
+        ? 'Stimulated Raman needs two excitation beams — one carrying the modulation, one to receive it.'
+        : `${channel.kind === 'sfg' ? 'Sum frequency' : 'CARS'} needs two different excitation wavelengths at the sample.`;
+    }
+    return overlapWarning(channel, records);
+  }
+  const order = EMISSION_ORDER[channel.kind];
+  if (!order) return null;
+  const excitation = drivingExcitationWl(records.map(b => b.wl));
+  const dye = fluorophoreSpec(channel.fluorophore);
+  if (dye && excitation > 0) {
+    const absorbed = fluorophoreAbsorption(channel.fluorophore, excitation, order);
+    if (absorbed < 0.05) {
+      const label = (FLUOROPHORES.find(([id]) => id === channel.fluorophore) || [, 'This dye'])[1];
+      const effective = Math.round(excitation / order);
+      const via = order === 1 ? `${effective} nm` : `${Math.round(excitation)} nm at ${order} photons (${effective} nm effective)`;
+      return `${label} barely absorbs ${via} — its band peaks at ${dye.absPeak} nm. `
+        + `Emission is ${(absorbed * 100).toFixed(absorbed < 0.01 ? 2 : 1)}% of what it would be on peak.`;
+    }
+    return null;
+  }
+  if (channel.autoWl !== false) return null;
+  if (!(excitation > 0) || !(channel.wl > 0)) return null;
+  const floor = excitation / order;
+  if (channel.wl < floor) {
+    const what = order === 1 ? 'Fluorescence' : `${order}-photon fluorescence`;
+    return `${what} cannot emit at ${Math.round(channel.wl)} nm: that is more energetic than `
+      + `${order === 1 ? 'the' : `${order} combined`} ${Math.round(excitation)} nm excitation photon${order === 1 ? '' : 's'} `
+      + `(must exceed ${Math.round(floor)} nm).`;
+  }
+  return null;
 }
 
 function sampleModeParams() {
   return [
-    { key: 'channels', label: 'Signals generated', type: 'signals', def: [] },
-    { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true },
-    { key: 'transmission', label: 'Excitation transmission', type: 'number', min: 0, max: 1, step: 0.05, def: 0.8, show: p => p.transmitExc },
+    { key: 'specimenType', label: 'Specimen type', type: 'select', def: 'absorbing', options: SPECIMEN_TYPES,
+      // Sketches predating the type selector are read from what they do
+      // carry — stacked channels, a legacy single `mode`, or the old
+      // per-material `sampleKind`.
+      migrate: p => specimenTypeOf({ ...p, specimenType: null }) },
+    // Only the two signal-bearing types show a channel list; the resin's own
+    // preview controls live on the stage, next to its piezo scan.
+    { key: 'channels', label: 'Signals generated', type: 'signals', def: [], show: p => {
+      const type = specimenTypeOf(p);
+      return type === 'linear' || type === 'nonlinear';
+    } },
+    { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
+    { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
+    { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
+    { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
+    // An absorbing specimen is exactly this one dial: full transmission down
+    // to zero, where it blocks the beam outright.
+    { key: 'transmission', label: 'Excitation transmission', type: 'number', min: 0, max: 1, step: 0.05, def: 0.8, show: p => specimenTypeOf(p) === 'absorbing' || p.transmitExc },
     // Legacy single-signal fields: hidden, kept so pre-channels sketches keep
     // loading and are read through legacySampleChannels() above.
     { key: 'mode', label: 'Signal generated', type: 'select', def: 'none', show: () => false, options: [['none', 'None'], ['fluor', 'Fluorescence (isotropic)'], ['shg', 'SHG λ/2 (forward)'], ['thg', 'THG λ/3 (forward)'], ['cars', 'CARS (forward)']] },
@@ -745,39 +1006,26 @@ function stageSampleColor(params) {
   // incident colour, so they fall through to the material tint below.
   const named = sampleChannels(params).find(c => c.kind === 'fluor' || (c.kind === 'cars' && c.autoWl === false));
   if (named) return wavelengthToColor(named.wl);
-  if (params.sampleKind === 'resin') return '#9b5de5';
-  if (params.sampleKind === 'nonlinear') return '#e6a23c';
-  if (params.sampleKind === 'opaque') return '#69737e';
+  const type = specimenTypeOf(params);
+  if (type === 'resin') return '#9b5de5';
+  if (type === 'nonlinear') return '#e6a23c';
+  if (type === 'absorbing') return '#69737e';
   return '#e2758f';
 }
 
-function stageSampleLabel(params) {
-  if (params.sampleKind === 'resin') return 'Resin';
-  if (params.sampleKind === 'fluorescent') return 'Fluor';
-  if (params.sampleKind === 'nonlinear') return 'NL';
-  if (params.sampleKind === 'opaque') return 'Opaque';
-  return 'Sample';
+// The live excitation spot, coloured by the signal actually generated there
+// when the tracer reports one (canvas.js attaches _signalHitLocal), else by
+// the specimen's own material tint.
+function signalSpotSVG(el) {
+  const hit = el._signalHitLocal;
+  if (!el.params.showSignalSpot || !hit) return '';
+  const color = Number.isFinite(hit.wl) ? wavelengthToColor(hit.wl) : stageSampleColor(el.params);
+  return `<circle cx="${hit.x.toFixed(2)}" cy="${hit.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
 }
 
-// The material label always reads upright, independent of the stage's own
-// rotation — same world-space, non-rotated pattern as the generic
-// el.label/showLabel system in labelSVG() below.
-export function stageSampleLabelSVG(el) {
-  if (el.type !== 'stage' || el.params.showMaterialLabel === false) return '';
-  const sz = getSize(el);
-  const a = (el.rot || 0) * Math.PI / 180;
-  const ey = (Math.abs(sz.w * Math.sin(a)) + Math.abs(sz.h * Math.cos(a))) / 2;
-  const y = el.y - ey - 3;
-  return `<text x="${el.x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="5.5" fill="#5b6472">${esc(stageSampleLabel(el.params))}</text>`;
-}
-
-// The specimen's optical surface, horizontal in local coordinates: it spans
-// local x (the clear-aperture/long axis, drawn left-right at rot 0) and the
-// beam crosses it along local y — see the "horizontal at rot 0" baseline on
-// the sample/stage entries below.
 function sampleSurfaces(el, h) {
   const p = el.params;
-  const writeVoxel = p.sampleKind === 'resin' && p.voxelPreview === true;
+  const writeVoxel = specimenTypeOf(p) === 'resin' && p.voxelPreview === true;
   const reportHit = true;
   const channels = sampleChannels(p);
   // One surface carries every channel, so a multimodal specimen emits all of
@@ -790,7 +1038,7 @@ function sampleSurfaces(el, h) {
     }];
   }
   return p.transmitExc
-    ? [{ x1: -h, y1: 0, x2: h, y2: 0, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit } }]
+    ? [{ x1: -h, y1: 0, x2: h, y2: 0, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit, specimen: true } }]
     : rectAbsorb(2 * h, 8).map(s => ({ ...s, data: { reportHit } }));
 }
 
@@ -1986,7 +2234,8 @@ export const registry = {
       const c = stageSampleColor(p);
       const h = (p.aperture || 34) / 2;
       return `<rect x="${-h}" y="-3" width="${2 * h}" height="6" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
-        `<circle cx="0" cy="0" r="4" fill="${c}" opacity="0.85"/>`;
+        `<circle cx="0" cy="0" r="4" fill="${c}" opacity="0.85"/>` +
+        signalSpotSVG(el);
     },
     surfaces: el => sampleSurfaces(el, (el.params.aperture || 34) / 2),
   },
@@ -2008,22 +2257,16 @@ export const registry = {
       { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.pzMode === 'sync' },
       { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true },
-      { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
-      { key: 'showMaterialLabel', label: 'Show material label', type: 'checkbox', def: true, appearance: true },
-      { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, appearance: true },
-      { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => p.sampleKind === 'resin' },
-      { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => p.sampleKind === 'resin' && p.voxelPreview },
+      // Legacy per-material selector, replaced by `specimenType`. Hidden but
+      // still declared so pre-existing sketches keep loading and can be read
+      // by specimenTypeOf().
+      { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: () => false, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
       ...sampleModeParams(),
     ],
     svg(el) {
       const p = el.params;
       const clear = (p.aperture || 50) / 2, outer = clear + 12;
-      let spot = '';
-      if (p.showSignalSpot && el._signalHitLocal) {
-        const liveWl = el._signalHitLocal.wl;
-        const color = Number.isFinite(liveWl) ? wavelengthToColor(liveWl) : stageSampleColor(p);
-        spot = `<circle cx="${el._signalHitLocal.x.toFixed(2)}" cy="${el._signalHitLocal.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
-      }
+      const spot = signalSpotSVG(el);
       // Two separate L brackets (short-side cap + rail) grip the glass from
       // its left and right short edges and protrude 20% of the glass length
       // inward, leaving a 60%-of-length window between them for the beam.

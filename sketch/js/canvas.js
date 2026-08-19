@@ -4,7 +4,7 @@
 import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
-  stageOffsetAt, retroOffsetAt, stageSampleLabelSVG, voxelDepthFactor, displayCableSVG,
+  stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
   displayActionUpdate,
 } from './elements.js';
 import { traceScene } from './raytrace.js';
@@ -167,12 +167,18 @@ function animatedRetroElement(el) {
   return { ...el, x: el.x + offset.x, y: el.y + offset.y };
 }
 
-function stageWithSignalSpot(el) {
-  const moved = animatedStageElement(el);
+// The live excitation spot, drawn where the beam actually lands on the
+// specimen. Offered by both holders, so the plain sample gets it too — only
+// the piezo stage additionally moves under it.
+function withSignalSpot(el, moved = el) {
   if (!moved.params.showSignalSpot) return moved;
   const hit = sampleHitPositions.get(el.id);
   if (!hit) return moved;
   return { ...moved, _signalHitLocal: { ...toLocal(moved, hit.x, hit.y), wl: hit.wl } };
+}
+
+function stageWithSignalSpot(el) {
+  return withSignalSpot(el, animatedStageElement(el));
 }
 
 // The one simulated-time axis shared by pulse packets, chopper gating, AOM
@@ -236,6 +242,7 @@ function animatedVisualElements() {
     }
     if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     if (el.type === 'stage') return stageWithSignalSpot(el);
+    if (el.type === 'sample') return withSignalSpot(el);
     if (el.type === 'retroreflector') return animatedRetroElement(el);
     return el;
   });
@@ -261,7 +268,7 @@ function hasRetroMotion() {
 }
 
 function hasSignalSpotStage() {
-  return state.elements.some(el => el.type === 'stage' && el.params.showSignalSpot);
+  return state.elements.some(el => (el.type === 'stage' || el.type === 'sample') && el.params.showSignalSpot);
 }
 
 function hasChopperMotion() {
@@ -386,7 +393,7 @@ function recordVoxelHits(fromTimeNs, toTimeNs) {
   if (toTimeNs <= fromTimeNs || !writeHits.length) return;
   for (const hit of writeHits) {
     const stage = state.elements.find(el => el.id === hit.stageId && el.type === 'stage');
-    if (stage?.params.sampleKind !== 'resin' || !stage.params.voxelPreview || !Number.isFinite(hit.opl)) continue;
+    if (!stage || specimenTypeOf(stage.params) !== 'resin' || !stage.params.voxelPreview || !Number.isFinite(hit.opl)) continue;
     const track = {
       pts: [{ x: hit.x - 1, y: hit.y }, { x: hit.x + 1, y: hit.y }],
       opls: [Math.max(0, hit.opl - 1), hit.opl + 1],
@@ -655,7 +662,6 @@ function renderElements() {
     if (!def) continue;
     s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${def.svg(el, elements)}</g>`;
     s += labelSVG(el);
-    if (el.type === 'stage') s += stageSampleLabelSVG(el);
   }
   // placement ghost
   if (placing && placing.pos) {

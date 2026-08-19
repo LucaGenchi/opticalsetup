@@ -8,6 +8,29 @@ const positiveMod = (value, modulus) => ((value % modulus) + modulus) % modulus;
 // Instantaneous transmission of one temporal gate. `emissionTimeNs` is the
 // source emission time when `gate.opl` is an optical path from the source, or
 // the local gate time when `gate.opl` is zero (used by the live CW preview).
+// Whether two pulse trains actually meet at the same instant. Wave mixing
+// and stimulated Raman only happen while both pulses are physically present,
+// so a path-length difference between the two arms switches the signal off —
+// which is exactly what a delay line exists to correct.
+//
+// Returns a 0..1 overlap factor (a Gaussian in the arrival skew, measured in
+// pulse widths) plus the skew itself for reporting. Continuous-wave light is
+// always present, and two trains at genuinely different repetition rates
+// drift through each other rather than being permanently mismatched, so both
+// count as fully overlapping.
+export function pulseOverlap(a, b) {
+  const full = { factor: 1, skewNs: 0, comparable: false };
+  if (!a?.pulse || !b?.pulse) return full;
+  const repA = a.pulse.repRateMHz, repB = b.pulse.repRateMHz;
+  if (!(repA > 0) || !(repB > 0) || Math.abs(repA - repB) > 1e-9) return full;
+  const periodNs = 1000 / repA;
+  const arrivalOf = beam => (beam.opl || 0) / C_MM_PER_NS + (beam.pulse.phaseNs || 0);
+  const offset = positiveMod(arrivalOf(a) - arrivalOf(b), periodNs);
+  const skewNs = Math.min(offset, periodNs - offset);
+  const widthNs = Math.max(1, Math.max(a.pulse.pulseWidthFs || 100, b.pulse.pulseWidthFs || 100)) * 1e-6;
+  return { factor: Math.exp(-((skewNs / widthNs) ** 2)), skewNs, comparable: true };
+}
+
 export function gateTransmissionAt(gate, emissionTimeNs) {
   if (!Number.isFinite(gate?.opl) || !Number.isFinite(emissionTimeNs)) return 1;
   const frequencyMHz = Math.min(1e6, Math.max(0.000001, gate.frequencyMHz || 1));
@@ -18,7 +41,14 @@ export function gateTransmissionAt(gate, emissionTimeNs) {
   let transmission;
   if (gate.shape === 'sine') {
     const depth = Math.min(1, Math.max(0, gate.depth ?? 1));
-    transmission = 1 - depth * (1 - Math.cos(2 * Math.PI * phase)) / 2;
+    // A sine gate swings between two levels the same way a square one does;
+    // when both are given explicitly it can also express gain (high > 1),
+    // which stimulated Raman needs. The default pair reproduces the original
+    // 1 .. 1-depth swing exactly.
+    const wave = (1 + Math.cos(2 * Math.PI * phase)) / 2;
+    const high = Number.isFinite(gate.high) ? gate.high : 1;
+    const low = Number.isFinite(gate.low) ? gate.low : 1 - depth;
+    transmission = low + (high - low) * wave;
   } else {
     // A square gate alternates between two transmission levels. A chopper or
     // an RF-gated AOM uses the default full-on/full-off pair, but a
@@ -185,6 +215,23 @@ export function pointAtOpticalPath(track, target) {
 // In physical mode, spacing and packet length use cT and c*tau. Schematic mode
 // intentionally uses a fixed workbench-scale spacing while detector timing
 // remains physical; the UI labels that distinction explicitly.
+// How far apart packets are drawn along the path, in millimetres of optical
+// path. The schematic spacing is an integer sub-multiple of the true one
+// rather than a flat ~140 mm: packets stay visible on a bench-sized sketch,
+// but a path difference of one whole repetition period still lands packets
+// back on top of each other. That keeps the animation honest about
+// synchronization — two beams that genuinely coincide in time always *look*
+// coincident where they meet, which is how a delay line actually gets
+// aligned. (Alignment is necessary rather than sufficient: every
+// sub-multiple looks aligned too, and only the inspector's picosecond
+// readout tells those apart.)
+function packetSpacing(periodNs, physical, schematicSpacingMm) {
+  const trueSpacing = C_MM_PER_NS * periodNs;
+  if (physical) return trueSpacing;
+  const divisions = Math.max(1, Math.round(trueSpacing / Math.max(20, schematicSpacingMm)));
+  return trueSpacing / divisions;
+}
+
 export function pulseMarkers(track, timeNs, {
   mode = 'schematic',
   schematicSpacingMm = 140,
@@ -196,7 +243,7 @@ export function pulseMarkers(track, timeNs, {
   const pulseWidthFs = Math.min(1e9, Math.max(1, track.pulse.pulseWidthFs || 100));
   const periodNs = 1000 / repRateMHz;
   const physical = mode === 'physical';
-  const spacing = physical ? C_MM_PER_NS * periodNs : Math.max(20, schematicSpacingMm);
+  const spacing = packetSpacing(periodNs, physical, schematicSpacingMm);
   const speed = physical ? C_MM_PER_NS : spacing / periodNs;
   const width = physical ? C_MM_PER_NS * pulseWidthFs * 1e-6 : Math.max(2, schematicWidthMm);
   const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
@@ -242,7 +289,7 @@ export function pulseArrivalsAtPath(track, fromTimeNs, toTimeNs, targetOpl, {
   const repRateMHz = Math.min(1e6, Math.max(0.001, track.pulse.repRateMHz || 80));
   const periodNs = 1000 / repRateMHz;
   const physical = mode === 'physical';
-  const spacing = physical ? C_MM_PER_NS * periodNs : Math.max(20, schematicSpacingMm);
+  const spacing = packetSpacing(periodNs, physical, schematicSpacingMm);
   const speed = physical ? C_MM_PER_NS : spacing / periodNs;
   const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
   const firstArrival = phaseNs + targetOpl / speed;

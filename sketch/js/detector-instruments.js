@@ -2,6 +2,7 @@
 
 import {
   OBJ_SHAPES, createElement, displayDensity, displayRenderScale, getElementMeta, registry, resolveDisplaySensor,
+  resolvedDisplayView,
 } from './elements.js';
 import { detectorReading } from './raytrace.js';
 import { enhancedReading, objectImageAtCamera } from './detector-measurements.js';
@@ -121,6 +122,16 @@ registry.spectrometer.params.push(
   { key: 'rangeMode', label: 'Displayed wavelength range', type: 'select', def: 'auto', options: [['auto', 'Automatic'], ['manual', 'Manual']] },
   { key: 'rangeMin', label: 'Range min (nm)', type: 'number', min: 100, max: 12000, step: 5, def: 480, show: p => p.rangeMode === 'manual' },
   { key: 'rangeMax', label: 'Range max (nm)', type: 'number', min: 100, max: 12000, step: 5, def: 580, show: p => p.rangeMode === 'manual' },
+  // A laser line concentrates its whole power into a single colour, so on a
+  // spectral-density axis it dwarfs anything broadband beside it — which is
+  // physically true and practically useless when the point is to see a weak
+  // Raman line next to its own pump. Relative mode scales each source's
+  // contribution to its own peak so every source stays readable.
+  { key: 'intensityScale', label: 'Intensity axis', type: 'select', def: 'density', options: [
+    ['density', 'Spectral density (per nm)'],
+    ['relative', 'Relative — each source to 1'],
+  ] },
+  { key: 'labelPeaks', label: 'Label peaks on the axis', type: 'checkbox', def: true },
 );
 registry.generaldetector = instrumentDefinition({
   label: 'General detector', code: 'ALL', readoutKind: 'general', paletteOrder: 8, width: 54, accent: '#67e8f9',
@@ -183,52 +194,6 @@ function spectrumRange(reading, sensor) {
   return [reading.wavelength - 2 * sigma - 5, reading.wavelength + 2 * sigma + 5];
 }
 
-function spectrumPlot(reading, sensor, baseline = 8) {
-  const samples = reading.spectrum?.length ? reading.spectrum : [{ wavelength: reading.wavelength, power: reading.signal, color: reading.color }];
-  const [lo, hi] = spectrumRange(reading, sensor);
-  const span = Math.max(1e-6, hi - lo);
-  const visible = samples.filter(sample => sample.wavelength >= lo && sample.wavelength <= hi);
-  const maximum = Math.max(...visible.map(sample => sample.power || 0), 1e-9);
-  const xAt = wl => -35 + 70 * (wl - lo) / span;
-  const tick = (wl, anchor) => {
-    const x = xAt(wl).toFixed(2);
-    return `<line x1="${x}" y1="${baseline}" x2="${x}" y2="${baseline + 1.4}" stroke="#3d5566" stroke-width="0.6"/>` +
-      `<text x="${x}" y="${baseline + 5.8}" text-anchor="${anchor}" font-size="3.6" fill="#5f7d8e">${Math.round(wl)}</text>`;
-  };
-  const axis = `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
-  const ticks = tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end');
-
-  if (visible.length < 2) {
-    // nothing to smooth through — a single line (monochromatic, or a
-    // manual range that clipped everything but one sample) draws as a spike
-    const sample = visible[0];
-    if (!sample) return axis + ticks;
-    const x = xAt(sample.wavelength).toFixed(2);
-    const height = Math.max(1.2, 15 * Math.max(0, sample.power || 0) / maximum);
-    return axis + `<line data-spectrum-points="1" x1="${x}" y1="${baseline}" x2="${x}" y2="${(baseline - height).toFixed(2)}" stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="2" stroke-linecap="round"/>` + ticks;
-  }
-
-  const points = visible.map(sample => ({
-    x: xAt(sample.wavelength),
-    y: baseline - Math.max(0, 15 * Math.max(0, sample.power || 0) / maximum),
-  }));
-  // the fill traces the same curve but pinned to the baseline at both ends,
-  // so it reads as a filled lineshape rather than a floating ribbon
-  const fillPoints = [{ x: points[0].x, y: baseline }, ...points, { x: points[points.length - 1].x, y: baseline }];
-  const clipId = `specClip${esc(sensor?.id || 'x')}`, gradientId = `specGrad${esc(sensor?.id || 'x')}`;
-  const stops = visible.map((sample, i) => {
-    const offset = visible.length > 1 ? (i / (visible.length - 1) * 100).toFixed(1) : 0;
-    return `<stop offset="${offset}%" stop-color="${sample.color || wavelengthToColor(sample.wavelength)}"/>`;
-  }).join('');
-  return `<defs><clipPath id="${clipId}"><rect x="-35" y="${(baseline - 17).toFixed(2)}" width="70" height="17.5"/></clipPath>` +
-    `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">${stops}</linearGradient></defs>` +
-    axis +
-    `<g clip-path="url(#${clipId})">` +
-    `<path data-spectrum-points="${visible.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.35" stroke="none"/>` +
-    `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.4" stroke-linecap="round"/>` +
-    `</g>` + ticks;
-}
-
 const formatTimeNs = ns => (ns <= 0 ? '0 ns'
   : ns >= 1e6 ? `${(ns / 1e6).toFixed(ns < 1e7 ? 1 : 0)} ms`
   : ns >= 1000 ? `${(ns / 1000).toFixed(ns < 1e4 ? 1 : 0)} µs`
@@ -251,7 +216,11 @@ function scopePlot(reading) {
   if (!trace) return null;
   const baseline = 6, height = 17;
   const xAt = ns => -35 + 70 * (trace.spanNs > 0 ? ns / trace.spanNs : 0);
-  const yAt = value => baseline - Math.max(0, Math.min(1, value)) * height;
+  // Scaled to the trace's own peak, never below 1, so a stimulated-Raman
+  // GAIN (which lifts the receiving beam above its unmodulated level) reads
+  // as taller pulses instead of being clipped flat against the ceiling.
+  const peak = Math.max(1, ...trace.pulses.map(p => p.amplitude || 0), ...trace.envelope.map(e => e.value || 0));
+  const yAt = value => baseline - Math.max(0, Math.min(1, value / peak)) * height;
 
   const axis = `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
   const tick = (ns, anchor) => {
@@ -282,6 +251,171 @@ function scopePlot(reading) {
     tick(0, 'start') + tick(trace.spanNs / 2, 'middle') + tick(trace.spanNs, 'end') + `</g>` +
     `<text x="-35" y="17" font-size="4.6" fill="#fde68a">${esc(caption)}</text>` +
     `<text x="35" y="17" text-anchor="end" font-size="4.6" fill="#7892a1">Σw ${compactNumber(reading.signal)}</text>`;
+}
+
+// A laser line has no physical width of its own; LINE_WIDTH_NM is the
+// nominal width it is spread over so a density axis can assign it a finite
+// height and a drawn line has a finite thickness. Not a configurable
+// instrument resolution — modeling a real spectrometer's resolving power is
+// outside what this app is for.
+const LINE_WIDTH_NM = 0.1;
+
+// Height each sample contributes to the plot.
+//
+// "density" is the honest physical axis: power per nanometre. A broadband
+// sample owns one bin of its profile, so its density is power/binWidth; a
+// laser line owns no width at all, so it is spread over LINE_WIDTH_NM. That
+// makes a line and a band comparable instead of depending on how finely the
+// band happened to be sampled — but it also means a line towers over
+// everything, which is exactly what a real spectrometer shows.
+//
+// "relative" instead scales every source's own contribution to its own peak,
+// so a weak Raman line stays visible beside the pump that excited it.
+function spectralHeights(samples, sensor) {
+  const relative = sensor?.params?.intensityScale === 'relative';
+  const density = samples.map(sample => {
+    const width = sample.continuum && sample.widthNm > 0 ? sample.widthNm : LINE_WIDTH_NM;
+    return Math.max(0, sample.power || 0) / width;
+  });
+  if (!relative) return density;
+  const peakOf = new Map();
+  samples.forEach((sample, i) => {
+    const key = sample.sourceId || '';
+    peakOf.set(key, Math.max(peakOf.get(key) || 0, density[i]));
+  });
+  return density.map((value, i) => value / Math.max(1e-12, peakOf.get(samples[i].sourceId || '') || 1));
+}
+
+function spectrumPlot(reading, sensor, baseline = 8) {
+  const samples = reading.spectrum?.length
+    ? reading.spectrum
+    : [{ wavelength: reading.wavelength, power: reading.signal, color: reading.color, continuum: false }];
+  const [lo, hi] = spectrumRange(reading, sensor);
+  const span = Math.max(1e-6, hi - lo);
+  const inRange = samples.filter(sample => sample.wavelength >= lo && sample.wavelength <= hi);
+  const heights = spectralHeights(inRange, sensor);
+  const visible = inRange.map((sample, i) => ({ ...sample, height: heights[i] }));
+  const maximum = Math.max(...visible.map(sample => sample.height), 1e-12);
+  const xAt = wl => -35 + 70 * (wl - lo) / span;
+  const yFor = height => Math.max(0, 15 * height / maximum);
+  const lines0 = visible.filter(sample => !sample.continuum);
+  const band0 = visible.filter(sample => sample.continuum);
+  const peaks = choosePeaks(visible, lines0, band0, sensor, xAt);
+  const tick = (wl, anchor) => {
+    const x = xAt(wl);
+    const crowded = peaks.some(peak => Math.abs(xAt(peak.wavelength) - x) < 6);
+    return `<line x1="${x.toFixed(2)}" y1="${baseline}" x2="${x.toFixed(2)}" y2="${baseline + 1.4}" stroke="#3d5566" stroke-width="0.6"/>` +
+      (crowded ? '' : `<text x="${x.toFixed(2)}" y="${baseline + 5.8}" text-anchor="${anchor}" font-size="3.6" fill="#5f7d8e">${Math.round(wl)}</text>`);
+  };
+  const axis = `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
+  const ticks = tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end');
+  const unit = sensor?.params?.intensityScale === 'relative' ? 'rel.' : 'per nm';
+  const yLabel = `<text x="-35" y="${(baseline - 16.5).toFixed(2)}" font-size="3.4" fill="#5f7d8e">I (${unit})</text>`;
+
+  // Discrete lines and a continuum are different measurements and are drawn
+  // differently: two laser lines, or a set of Raman lines, are separate peaks
+  // with nothing in between, while a broadband source really does carry light
+  // at every wavelength across its width. Smoothing through discrete lines
+  // invented a rainbow between them. A reading can hold both — a
+  // supercontinuum plus a Raman line — so each part is drawn its own way.
+  const lines = visible.filter(sample => !sample.continuum);
+  const band = visible.filter(sample => sample.continuum);
+  const stemFor = sample => {
+    const x = xAt(sample.wavelength).toFixed(2);
+    const height = Math.max(1.2, yFor(sample.height));
+    return `<line x1="${x}" y1="${baseline}" x2="${x}" y2="${(baseline - height).toFixed(2)}" ` +
+      `stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="2" stroke-linecap="round"/>`;
+  };
+
+  if (!visible.length) return axis + ticks;
+  const marks = peakLabels(peaks, xAt, baseline);
+  if (band.length < 2) {
+    // Nothing continuous to smooth through: every peak stands on its own.
+    return axis + yLabel + `<g data-spectrum-points="${visible.length}" data-spectrum-lines="${visible.length}">`
+      + visible.map(stemFor).join('') + `</g>` + ticks + marks;
+  }
+
+  const points = band.map(sample => ({ x: xAt(sample.wavelength), y: baseline - yFor(sample.height) }));
+  // the fill traces the same curve but pinned to the baseline at both ends,
+  // so it reads as a filled lineshape rather than a floating ribbon
+  const fillPoints = [{ x: points[0].x, y: baseline }, ...points, { x: points[points.length - 1].x, y: baseline }];
+  const clipId = `specClip${esc(sensor?.id || 'x')}`, gradientId = `specGrad${esc(sensor?.id || 'x')}`;
+  // The gradient spans the band's own extent, so its colours stay tied to the
+  // wavelengths underneath them even when discrete lines sit outside it.
+  const bandLo = band[0].wavelength, bandHi = band[band.length - 1].wavelength;
+  const bandSpan = Math.max(1e-6, bandHi - bandLo);
+  const stops = band.map(sample => {
+    const offset = ((sample.wavelength - bandLo) / bandSpan * 100).toFixed(1);
+    return `<stop offset="${offset}%" stop-color="${sample.color || wavelengthToColor(sample.wavelength)}"/>`;
+  }).join('');
+  return `<defs><clipPath id="${clipId}"><rect x="-35" y="${(baseline - 17).toFixed(2)}" width="70" height="17.5"/></clipPath>` +
+    `<linearGradient id="${gradientId}" x1="${xAt(bandLo).toFixed(2)}" y1="0" x2="${xAt(bandHi).toFixed(2)}" y2="0" gradientUnits="userSpaceOnUse">${stops}</linearGradient></defs>` +
+    axis + yLabel +
+    `<g clip-path="url(#${clipId})">` +
+    `<path data-spectrum-points="${band.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.35" stroke="none"/>` +
+    `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.4" stroke-linecap="round"/>` +
+    (lines.length ? `<g data-spectrum-lines="${lines.length}">${lines.map(stemFor).join('')}</g>` : '') +
+    `</g>` + ticks + marks;
+}
+
+// Wavelength captions on the axis: every discrete line, plus the peak of each
+// continuous band, so a reading can be read off without counting pixels
+// against the endpoint ticks. Labels are dropped when they would collide, and
+// the strongest peaks win.
+function choosePeaks(visible, lines, band, sensor, xAt) {
+  if (sensor?.params?.labelPeaks === false) return [];
+  const peaks = [...lines];
+  if (band.length >= 2) {
+    // One caption per band, at its brightest point. A sampled profile rarely
+    // has a sample exactly on its maximum, so the peak is interpolated from
+    // the three samples around the brightest one — a parabola through them
+    // is exact for a Gaussian near its top, and reports 532 nm for a 532 nm
+    // line rather than whichever gridpoint happened to land closest.
+    const bySource = new Map();
+    for (const sample of band) {
+      const key = sample.sourceId || '';
+      const list = bySource.get(key) || [];
+      list.push(sample);
+      bySource.set(key, list);
+    }
+    for (const list of bySource.values()) {
+      let top = 0;
+      list.forEach((sample, i) => { if (sample.height > list[top].height) top = i; });
+      const peak = list[top];
+      const before = list[top - 1], after = list[top + 1];
+      let wavelength = peak.wavelength;
+      if (before && after) {
+        const denominator = before.height - 2 * peak.height + after.height;
+        if (Math.abs(denominator) > 1e-12) {
+          const shift = 0.5 * (before.height - after.height) / denominator;
+          // Only trust the correction inside the bracketing samples.
+          if (Math.abs(shift) <= 1) {
+            wavelength = peak.wavelength + shift * (after.wavelength - before.wavelength) / 2;
+          }
+        }
+      }
+      peaks.push({ ...peak, wavelength });
+    }
+  }
+  // Strongest first, dropping any that would overprint one already placed,
+  // then back into wavelength order for a readable axis.
+  const chosen = [];
+  for (const peak of [...peaks].sort((a, b) => b.height - a.height)) {
+    if (chosen.length >= 6) break;
+    const x = xAt(peak.wavelength);
+    if (chosen.some(other => Math.abs(xAt(other.wavelength) - x) < 6)) continue;
+    chosen.push(peak);
+  }
+  return chosen.sort((a, b) => a.wavelength - b.wavelength);
+}
+
+function peakLabels(peaks, xAt, baseline) {
+  return `<g data-spectrum-labels="${peaks.length}">` + peaks.map(peak => {
+    const x = xAt(peak.wavelength);
+    const anchor = x < -28 ? 'start' : x > 28 ? 'end' : 'middle';
+    return `<text x="${x.toFixed(2)}" y="${(baseline + 5.8).toFixed(2)}" text-anchor="${anchor}" ` +
+      `font-size="3.6" font-weight="700" fill="${peak.color || wavelengthToColor(peak.wavelength)}">${Math.round(peak.wavelength)}</text>`;
+  }).join('') + `</g>`;
 }
 
 function profile(reading) {
@@ -390,14 +524,13 @@ function panel(sensor, reading, elements, view) {
     // the bandwidth caption to visually collide with both. Dropping it frees
     // room to raise the plot itself, so its axis ticks stop crowding the
     // caption underneath.
-    return header(name, null, reading.pulse) + spectrumPlot(reading, sensor, 1)
-      + `<text x="-35" y="13" font-size="4.6" fill="#fde68a">BANDWIDTH ${compactNumber(reading.bandwidth)} nm</text>`;
+    // No bandwidth caption: a single number cannot describe several lines,
+    // and it read as the span between the outermost ones.
+    return header(name, null, reading.pulse) + spectrumPlot(reading, sensor, 1);
   }
-  if (sensor.type === 'generaldetector' && view === 'spectrum') return header(name, 'GENERAL · SPECTRUM', reading.pulse) + spectrumPlot(reading, sensor)
-    // The detected λ range used to be captioned here too, but it duplicated
-    // (and visually collided with) the plot's own axis, which already shows
-    // the displayed range — auto or manual — via its endpoint tick labels.
-    + `<text x="-35" y="17" font-size="4.6" fill="#fde68a">BANDWIDTH ${compactNumber(reading.bandwidth)} nm</text>`;
+  if (sensor.type === 'generaldetector' && view === 'spectrum') {
+    return header(name, 'GENERAL · SPECTRUM', reading.pulse) + spectrumPlot(reading, sensor);
+  }
   if (sensor.type === 'generaldetector' && view === 'detail') return header(name, 'STOKES + PULSE TIMING', reading.pulse) + metrics([
     ['S0', compactNumber(reading.stokes.s0)], ['S1', compactNumber(reading.stokes.s1)], ['S2', compactNumber(reading.stokes.s2)],
     ['S3', compactNumber(reading.stokes.s3)], ['REP RATE', pulseRate(reading.pulse)], ['PULSE DURATION', pulseDuration(reading.pulse)],
@@ -422,7 +555,7 @@ registry.display.svg = function detectorAwareDisplaySVG(display, elements = []) 
   const reading = enhancedReading(sensor, elements);
   if (!reading) return base;
   const scale = displayRenderScale(display.params.displayScale);
-  const view = ['main', 'spectrum', 'detail'].includes(display.params.displayView) ? display.params.displayView : 'main';
+  const view = resolvedDisplayView(display, sensor);
   const content = panel(sensor, reading, elements, view);
   return base + `<g transform="scale(${scale})" data-detector-readout="${esc(sensor.type)}" data-display-density="${displayDensity(scale)}" pointer-events="none"><rect x="-42.2" y="-28.2" width="84.4" height="45.4" rx="2.5" fill="#061822"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${content}</g></g>`;
 };

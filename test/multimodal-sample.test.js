@@ -3,12 +3,19 @@ import assert from 'node:assert/strict';
 
 import {
   createElement, registry, newSampleChannel, sampleChannels, legacySampleChannels,
-  sumFrequencyWl, carsAntiStokesWl, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS,
+  sumFrequencyWl, carsAntiStokesWl, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, specimenTypeOf,
 } from '../sketch/js/elements.js';
 import { traceAll, traceScene, detectorReading, specimenSignalWl } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 
 const ch = (kind, over = {}) => ({ ...newSampleChannel(kind), ...over });
+
+// These benches stack signals directly, so they must also say which kind of
+// specimen offers them — the trace only honors channels a specimen's own
+// type actually provides.
+const LINEAR = new Set(['fluor', 'raman', 'phase']);
+const specimenTypeFor = channels =>
+  (channels.length && channels.every(c => LINEAR.has(c.kind)) ? 'linear' : 'nonlinear');
 
 // Wavelengths (rounded) a forward detector sees, strongest-first order removed.
 function detectedWls(elements) {
@@ -29,6 +36,7 @@ function twoColourBench(channels, { aperture = 40 } = {}) {
   const sample = createElement('sample', 200, 0);
   sample.rot = 90;
   sample.params.aperture = aperture;
+  sample.params.specimenType = specimenTypeFor(channels);
   sample.params.channels = channels;
   const detector = createElement('detector', 400, 0);
   detector.params.aperture = 60;
@@ -40,6 +48,7 @@ function singleColourBench(channels, wavelength = 800) {
   laser.params.wavelength = wavelength;
   const sample = createElement('sample', 200, 0);
   sample.rot = 90;
+  sample.params.specimenType = specimenTypeFor(channels);
   sample.params.channels = channels;
   const detector = createElement('detector', 400, 0);
   return [laser, sample, detector];
@@ -144,6 +153,7 @@ test('every signal kind survives a 700 nm shortpass placed after the specimen', 
     laser.params.wavelength = 800;
     const sample = createElement('sample', 200, 0);
     sample.rot = 90;
+    sample.params.specimenType = specimenTypeFor(channels);
     sample.params.channels = channels;
     const filter = createElement('filter', 300, 0);
     filter.params.ftype = 'shortpass';
@@ -192,6 +202,7 @@ test('the channel list is capped and an empty list is an optically inert specime
   assert.equal(MAX_SAMPLE_CHANNELS, 5);
   const over = Array.from({ length: 8 }, () => ch('shg'));
   const sample = createElement('sample', 0, 0);
+  sample.params.specimenType = 'nonlinear';
   sample.params.channels = over;
   assert.equal(sampleChannels(sample.params).length, 5, 'never more than five stacked signals');
 
@@ -222,6 +233,9 @@ test('sketches saved before stacked channels keep working through their legacy m
   laser.params.wavelength = 800;
   const sample = createElement('sample', 200, 0);
   sample.rot = 90;
+  // A pre-type sketch has no specimenType at all; loading one runs the
+  // migrate hook, so mimic that here rather than the plain default.
+  sample.params.specimenType = specimenTypeOf({ mode: 'shg' });
   sample.params.mode = 'shg';
   sample.params.signalEff = 0.5;
   const detector = createElement('detector', 400, 0);
@@ -246,6 +260,8 @@ test('channels survive a save/load round trip and are clamped on the way in', ()
   assert.deepEqual(saved, {
     kind: 'cars', wl: 660, eff: 0.4, epi: true, epiRatio: 0.2,
     autoWl: false, autoColor: false, color: '#00e5ff',
+    // Fields belonging to other signal kinds round-trip at their defaults.
+    material: 'lipid', fluorophore: 'custom', retardance: 90, axis: 45, transferEff: 0.1, requireOverlap: true,
   });
   assert.equal(coerced.kind, 'fluor', 'an unknown signal kind falls back rather than breaking the load');
   assert.equal(coerced.eff, 1, 'efficiency clamps into 0..1');
@@ -264,6 +280,7 @@ test('a generated signal is coloured by its own wavelength, not by its source la
     laser.params.color = '#ff0000';
     const sample = createElement('sample', 200, 0);
     sample.rot = 90;
+    sample.params.specimenType = specimenTypeFor(channels);
     sample.params.channels = channels;
     const scene = traceScene([laser, sample]);
     return new Set(scene.drawables.filter(d => d.pts && d.pts[0].x >= 199).map(d => d.color));
@@ -286,6 +303,7 @@ test('channels colour themselves from their own wavelength across the spectrum',
     laser.params.wavelength = wl;
     const sample = createElement('sample', 200, 0);
     sample.rot = 90;
+    sample.params.specimenType = 'nonlinear';
     sample.params.channels = [ch('shg', { eff: 0.5 })];
     const scene = traceScene([laser, sample]);
     return scene.drawables.filter(d => d.pts && d.pts[0].x >= 199).map(d => d.color);
@@ -303,6 +321,7 @@ test('stacking signals never dims the transmitted excitation', () => {
     laser.params.wavelength = 800;
     const sample = createElement('sample', 200, 0);
     sample.rot = 90;
+    sample.params.specimenType = specimenTypeFor(channels);
     sample.params.channels = channels;
     sample.params.transmission = 0.8;
     const detector = createElement('detector', 400, 0);
