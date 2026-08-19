@@ -199,17 +199,29 @@ function spectrumPlot(reading, sensor, baseline = 8) {
   const axis = `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
   const ticks = tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end');
 
-  if (visible.length < 2) {
-    // nothing to smooth through — a single line (monochromatic, or a
-    // manual range that clipped everything but one sample) draws as a spike
-    const sample = visible[0];
-    if (!sample) return axis + ticks;
+  // Discrete lines and a continuum are different measurements and are drawn
+  // differently: two laser lines, or a set of Raman lines, are separate
+  // peaks with nothing in between, while a broadband source really does
+  // carry light at every wavelength across its width. Smoothing through
+  // discrete lines invented a rainbow between them. A reading can hold both
+  // — a supercontinuum plus a Raman line — so each part is drawn its own way.
+  const lines = visible.filter(sample => !sample.continuum);
+  const band = visible.filter(sample => sample.continuum);
+  const stemFor = sample => {
     const x = xAt(sample.wavelength).toFixed(2);
     const height = Math.max(1.2, 15 * Math.max(0, sample.power || 0) / maximum);
-    return axis + `<line data-spectrum-points="1" x1="${x}" y1="${baseline}" x2="${x}" y2="${(baseline - height).toFixed(2)}" stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="2" stroke-linecap="round"/>` + ticks;
+    return `<line x1="${x}" y1="${baseline}" x2="${x}" y2="${(baseline - height).toFixed(2)}" ` +
+      `stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="2" stroke-linecap="round"/>`;
+  };
+
+  if (!visible.length) return axis + ticks;
+  if (band.length < 2) {
+    // Nothing continuous to smooth through: every peak stands on its own.
+    return axis + `<g data-spectrum-points="${visible.length}" data-spectrum-lines="${visible.length}">`
+      + visible.map(stemFor).join('') + `</g>` + ticks;
   }
 
-  const points = visible.map(sample => ({
+  const points = band.map(sample => ({
     x: xAt(sample.wavelength),
     y: baseline - Math.max(0, 15 * Math.max(0, sample.power || 0) / maximum),
   }));
@@ -217,16 +229,21 @@ function spectrumPlot(reading, sensor, baseline = 8) {
   // so it reads as a filled lineshape rather than a floating ribbon
   const fillPoints = [{ x: points[0].x, y: baseline }, ...points, { x: points[points.length - 1].x, y: baseline }];
   const clipId = `specClip${esc(sensor?.id || 'x')}`, gradientId = `specGrad${esc(sensor?.id || 'x')}`;
-  const stops = visible.map((sample, i) => {
-    const offset = visible.length > 1 ? (i / (visible.length - 1) * 100).toFixed(1) : 0;
+  // The gradient spans the band's own extent, so its colours stay tied to the
+  // wavelengths underneath them even when discrete lines sit outside it.
+  const bandLo = band[0].wavelength, bandHi = band[band.length - 1].wavelength;
+  const bandSpan = Math.max(1e-6, bandHi - bandLo);
+  const stops = band.map(sample => {
+    const offset = ((sample.wavelength - bandLo) / bandSpan * 100).toFixed(1);
     return `<stop offset="${offset}%" stop-color="${sample.color || wavelengthToColor(sample.wavelength)}"/>`;
   }).join('');
   return `<defs><clipPath id="${clipId}"><rect x="-35" y="${(baseline - 17).toFixed(2)}" width="70" height="17.5"/></clipPath>` +
-    `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">${stops}</linearGradient></defs>` +
+    `<linearGradient id="${gradientId}" x1="${xAt(bandLo).toFixed(2)}" y1="0" x2="${xAt(bandHi).toFixed(2)}" y2="0" gradientUnits="userSpaceOnUse">${stops}</linearGradient></defs>` +
     axis +
     `<g clip-path="url(#${clipId})">` +
-    `<path data-spectrum-points="${visible.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.35" stroke="none"/>` +
+    `<path data-spectrum-points="${band.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.35" stroke="none"/>` +
     `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.4" stroke-linecap="round"/>` +
+    (lines.length ? `<g data-spectrum-lines="${lines.length}">${lines.map(stemFor).join('')}</g>` : '') +
     `</g>` + ticks;
 }
 

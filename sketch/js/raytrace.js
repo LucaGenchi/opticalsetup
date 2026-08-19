@@ -105,15 +105,15 @@ function detectorConvergence(hits) {
   };
 }
 
-function bucketizeSpectrum(samples) {
-  const ordered = [...samples.values()].sort((a, b) => a.wavelength - b.wavelength);
-  if (ordered.length <= 24) return ordered.map(sample => ({
-    ...sample,
-    color: wavelengthToColor(sample.wavelength),
-  }));
-  // Keep the readout bounded for sources that produce many wavelength samples.
-  const stride = ordered.length / 24;
-  return Array.from({ length: 24 }, (_, index) => {
+const MAX_SPECTRUM_SAMPLES = 24;
+
+// Reduce a broadband profile to a bounded number of samples by merging
+// neighbours. Grouping only ever merges adjacent wavelengths, so a bucket
+// holding more than one really does span a range of colours.
+function bucketize(ordered, limit) {
+  if (ordered.length <= limit) return ordered;
+  const stride = ordered.length / limit;
+  return Array.from({ length: limit }, (_, index) => {
     const start = Math.floor(index * stride);
     const end = Math.max(start + 1, Math.floor((index + 1) * stride));
     const group = ordered.slice(start, end);
@@ -121,14 +121,31 @@ function bucketizeSpectrum(samples) {
     const wavelength = power > 0
       ? group.reduce((sum, sample) => sum + sample.wavelength * sample.power, 0) / power
       : group[0].wavelength;
-    return { wavelength, power, color: wavelengthToColor(wavelength) };
+    return { wavelength, power, continuum: group.length > 1 || group.some(sample => sample.continuum) };
   });
 }
 
-function addSample(samples, wl, power) {
+function bucketizeSpectrum(samples) {
+  const ordered = [...samples.values()].sort((a, b) => a.wavelength - b.wavelength);
+  // Discrete lines are summarized separately from any continuum, so a laser
+  // line alongside a broadband source is never averaged into the band — it
+  // is a peak at one wavelength, not part of a smear across a range. Only
+  // the weakest lines are dropped if there are somehow too many.
+  const lines = ordered.filter(sample => !sample.continuum);
+  const band = ordered.filter(sample => sample.continuum);
+  const keptLines = lines.length <= MAX_SPECTRUM_SAMPLES
+    ? lines
+    : [...lines].sort((a, b) => b.power - a.power).slice(0, MAX_SPECTRUM_SAMPLES);
+  return [...bucketize(band, MAX_SPECTRUM_SAMPLES), ...keptLines]
+    .sort((a, b) => a.wavelength - b.wavelength)
+    .map(sample => ({ ...sample, color: wavelengthToColor(sample.wavelength) }));
+}
+
+function addSample(samples, wl, power, continuum = false) {
   const key = Math.round(wl * 10) / 10;
-  const sample = samples.get(key) || { wavelength: key, power: 0 };
+  const sample = samples.get(key) || { wavelength: key, power: 0, continuum: false };
   sample.power += power;
+  if (continuum) sample.continuum = true;
   samples.set(key, sample);
 }
 
@@ -145,7 +162,7 @@ function detectorSpectrum(hits) {
     if (!Number.isFinite(hit.power) || hit.power <= 0) continue;
     if (hit.spec) {
       const profile = spectrumSamples(hit.spec, 48);
-      if (profile) { for (const { wl, weight } of profile) addSample(samples, wl, weight * hit.power); continue; }
+      if (profile) { for (const { wl, weight } of profile) addSample(samples, wl, weight * hit.power, true); continue; }
     }
     if (Number.isFinite(hit.wl)) addSample(samples, hit.wl, hit.power);
   }

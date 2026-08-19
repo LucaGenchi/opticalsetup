@@ -367,6 +367,42 @@ function signalsHTML(sel) {
   return h;
 }
 
+// Renders one param's control. Used by both the section loop and the
+// Label & appearance block, so a checkbox is a checkbox wherever it sits —
+// the appearance block previously assumed everything routed to it was
+// numeric and drew "Show excitation spot" as a number box.
+function paramField(p, sel) {
+  const v = sel.params[p.key];
+  if (p.type === 'number') return numberField(p.label, `data-p="${p.key}"`, v, p);
+  if (p.type === 'optsize') return optsizeField(p, v);
+  if (p.type === 'text') return field(p.label, `<input type="text" data-p="${p.key}" ${p.key === 'orders' ? 'maxlength="200"' : ''} value="${esc(v)}">`);
+  if (p.type === 'checkbox') return field(p.label, `<input type="checkbox" data-p="${p.key}" ${v ? 'checked' : ''}>`);
+  if (p.type === 'color') return field(p.label, `<input type="color" data-p="${p.key}" value="${v}">`);
+  if (p.type === 'select') {
+    return field(p.label, `<select data-p="${p.key}">`
+      + p.options.map(([ov, ol]) => `<option value="${ov}" ${ov === v ? 'selected' : ''}>${esc(ol)}</option>`).join('')
+      + `</select>`);
+  }
+  if (p.type === 'sensor') {
+    const sensors = state.elements.filter(candidate => candidate.id !== sel.id && registry[candidate.type]?.readoutKind);
+    const hasCurrent = sensors.some(candidate => candidate.id === v);
+    const options = [
+      `<option value="" ${v ? '' : 'selected'}>Not connected</option>`,
+      ...(!hasCurrent && v ? [`<option value="${esc(v)}" selected>Missing sensor</option>`] : []),
+      ...sensors.map(sensor => {
+        const name = sensorName(sensor);
+        const position = `${Math.round(sensor.x)}, ${Math.round(sensor.y)} mm`;
+        return `<option value="${esc(sensor.id)}" ${sensor.id === v ? 'selected' : ''}>${esc(`${name} · ${position}`)}</option>`;
+      }),
+    ];
+    return field(p.label, `<select data-p="${p.key}">${options.join('')}</select>`)
+      + (sensors.length ? '' : `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`);
+  }
+  if (p.type === 'layers') return layersHTML(Array.isArray(v) ? v : []);
+  if (p.type === 'signals') return signalsHTML(sel);
+  return '';
+}
+
 export function renderInspector() {
   const sel = findSelected();
   undoArmed = false;
@@ -442,34 +478,7 @@ export function renderInspector() {
         }
         sectionCount++;
         if (p.type === 'heading') { sectionFields += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
-        const v = sel.params[p.key];
-        if (p.type === 'number') {
-          sectionFields += numberField(p.label, `data-p="${p.key}"`, v, p);
-        }
-        else if (p.type === 'text') sectionFields += field(p.label, `<input type="text" data-p="${p.key}" ${p.key === 'orders' ? 'maxlength="200"' : ''} value="${esc(v)}">`);
-        else if (p.type === 'checkbox') sectionFields += field(p.label, `<input type="checkbox" data-p="${p.key}" ${v ? 'checked' : ''}>`);
-        else if (p.type === 'color') sectionFields += field(p.label, `<input type="color" data-p="${p.key}" value="${v}">`);
-        else if (p.type === 'select') {
-          sectionFields += field(p.label, `<select data-p="${p.key}">` + p.options.map(([ov, ol]) => `<option value="${ov}" ${ov === v ? 'selected' : ''}>${esc(ol)}</option>`).join('') + `</select>`);
-        }
-        else if (p.type === 'sensor') {
-          const sensors = state.elements.filter(candidate => candidate.id !== sel.id && registry[candidate.type]?.readoutKind);
-          const hasCurrent = sensors.some(candidate => candidate.id === v);
-          const options = [
-            `<option value="" ${v ? '' : 'selected'}>Not connected</option>`,
-            ...(!hasCurrent && v ? [`<option value="${esc(v)}" selected>Missing sensor</option>`] : []),
-            ...sensors.map(sensor => {
-              const name = sensorName(sensor);
-              const position = `${Math.round(sensor.x)}, ${Math.round(sensor.y)} mm`;
-              return `<option value="${esc(sensor.id)}" ${sensor.id === v ? 'selected' : ''}>${esc(`${name} · ${position}`)}</option>`;
-            }),
-          ];
-          sectionFields += field(p.label, `<select data-p="${p.key}">${options.join('')}</select>`);
-          if (!sensors.length) sectionFields += `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`;
-        }
-        else if (p.type === 'layers') sectionFields += layersHTML(Array.isArray(sel.params[p.key]) ? sel.params[p.key] : []);
-        else if (p.type === 'signals') sectionFields += signalsHTML(sel);
-        else if (p.type === 'optsize') sectionFields += optsizeField(p, v);
+        sectionFields += paramField(p, sel);
       }
       insertVoxelHint();
       flushSection();
@@ -490,9 +499,7 @@ export function renderInspector() {
         for (const p of def.params || []) {
           if (!p.appearance || p.hidden) continue;
           if (p.show && !p.show(sel.params)) continue;
-          appearanceFields += p.type === 'optsize'
-            ? optsizeField(p, sel.params[p.key])
-            : numberField(p.label, `data-p="${p.key}"`, sel.params[p.key], p);
+          appearanceFields += paramField(p, sel);
         }
         appearanceFields += field('Label', `<input type="text" data-k="label" value="${esc(sel.label || '')}">`);
         appearanceFields += field('Show label', `<input type="checkbox" data-k="showLabel" ${sel.showLabel ? 'checked' : ''}>`);

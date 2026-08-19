@@ -11,6 +11,7 @@ import {
 import '../sketch/js/detector-instruments.js';
 import { traceAll, traceScene, detectorReading, specimenSignalWl, specimenIncidentWls } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
+import { C_MM_PER_NS, pulseMarkers, pulseOverlap } from '../sketch/js/pulses.js';
 
 const ch = (kind, over = {}) => ({ ...newSampleChannel(kind), ...over });
 
@@ -532,4 +533,140 @@ test('a camera screen still cycles through its three readouts', () => {
     seen.push(view);
   }
   assert.deepEqual(seen, ['spectrum', 'detail', 'main'], 'cycles and wraps');
+});
+
+// ---------------- the animation agrees with the timing ----------------
+
+test('packet positions agree with real synchronization, exactly in physical mode', () => {
+  // Two beams reaching the same plane by paths differing by `extra` mm. The
+  // animation should not contradict the physics: a pair the tracer treats as
+  // synchronized must never be drawn as visibly offset, which is how a delay
+  // line gets aligned by eye.
+  const C = C_MM_PER_NS, rep = 1000, periodNs = 1000 / rep;
+  const pulse = { sourceId: 's', repRateMHz: rep, pulseWidthFs: 200, phaseNs: 0 };
+  const trackTo = oplAtSample => ({
+    pts: [{ x: 0, y: 0 }, { x: 1200, y: 0 }],
+    opls: [oplAtSample - 600, oplAtSample + 600],
+    pulse,
+  });
+  // Distance from the sample plane to that beam's nearest packet.
+  const gap = (oplAtSample, mode) => {
+    const markers = pulseMarkers(trackTo(oplAtSample), 2.3, { mode });
+    return Math.min(...markers.map(m => Math.abs(m.opl - oplAtSample)));
+  };
+  const aligned = (extra, mode) => Math.abs(gap(600, mode) - gap(600 + extra, mode)) < 0.01;
+  const synced = extra => pulseOverlap({ opl: 600, pulse }, { opl: 600 + extra, pulse }).factor > 0.999;
+
+  const period = C * periodNs;
+  // A whole period of extra path is still synchronized — the pulse trains are
+  // periodic, so any replica will do — and both modes draw it as aligned.
+  for (const extra of [0, period, 2 * period]) {
+    assert.ok(synced(extra), `${extra} mm should stay synchronized`);
+    assert.ok(aligned(extra, 'physical'), `${extra} mm should look aligned in physical mode`);
+    assert.ok(aligned(extra, 'schematic'), `${extra} mm should look aligned in schematic mode`);
+  }
+  // A genuine mismatch is drawn as one, and physical mode tracks it exactly.
+  for (const extra of [1, 50, period / 2]) {
+    assert.ok(!synced(extra), `${extra} mm should not be synchronized`);
+    assert.ok(!aligned(extra, 'physical'), `${extra} mm should look misaligned in physical mode`);
+  }
+  // Schematic packets are compressed to stay visible, so they also line up at
+  // each sub-multiple: looking aligned is necessary but not sufficient there.
+  assert.ok(aligned(period / 2, 'schematic'));
+});
+
+// ---------------- discrete lines vs a real continuum ----------------
+
+function spectrumScreen(elements, sensor) {
+  const display = createElement('display', 700, 200);
+  display.params.sensorId = sensor.id;
+  const scene = [...elements, display];
+  traceAll(scene);
+  const svg = registry.display.svg(display, scene);
+  return {
+    lines: Number((svg.match(/data-spectrum-lines="(\d+)"/) || [0, 0])[1]),
+    smoothed: Number((svg.match(/data-spectrum-points="(\d+)"/) || [0, 0])[1]),
+    smoothFill: /fill="url\(#specGrad/.test(svg),
+  };
+}
+
+function monoLaser(wl, y) {
+  const laser = createElement('laser', 0, y);
+  Object.assign(laser.params, { wavelength: wl, beamMode: 'line' });
+  return laser;
+}
+
+test('separate laser lines read as separate peaks, not a rainbow between them', () => {
+  // Regression: the spectrometer smoothed a gradient-filled curve through
+  // every sample, so 532 nm and 580 nm arriving together were drawn as a
+  // continuous band covering everything in between.
+  const spectrometer = createElement('spectrometer', 400, 0);
+  spectrometer.params.aperture = 40;
+  const screen = spectrumScreen([monoLaser(532, -3), monoLaser(580, 3), spectrometer], spectrometer);
+  assert.equal(screen.lines, 2, 'two discrete peaks');
+  assert.equal(screen.smoothFill, false, 'and nothing smoothed between them');
+
+  const reading = detectorReading(spectrometer.id);
+  assert.deepEqual(reading.spectrum.map(s => Math.round(s.wavelength)), [532, 580]);
+  assert.ok(reading.spectrum.every(s => !s.continuum), 'monochromatic rays are lines, not a band');
+});
+
+test('spontaneous Raman lines stay resolved on a spectrometer', () => {
+  const laser = monoLaser(532, 0);
+  const sample = createElement('sample', 150, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 40, specimenType: 'linear', transmitExc: true, transmission: 0.8,
+    channels: [ch('raman', { eff: 0.5, material: 'dmso' })],
+  });
+  const objective = createElement('objective', 154, 0);
+  objective.params.f = 20;
+  const spectrometer = createElement('spectrometer', 360, 0);
+  spectrometer.params.aperture = 60;
+
+  const screen = spectrumScreen([laser, sample, objective, spectrometer], spectrometer);
+  assert.ok(screen.lines >= 3, `expected resolved Raman peaks, got ${screen.lines}`);
+  assert.equal(screen.smoothFill, false, 'no rainbow smeared across the fingerprint');
+});
+
+test('a genuinely broadband source still draws as a smooth band', () => {
+  const laser = createElement('sclaser', 0, 0);
+  laser.params.beamMode = 'line';
+  const spectrometer = createElement('spectrometer', 400, 0);
+  spectrometer.params.aperture = 40;
+  const screen = spectrumScreen([laser, spectrometer], spectrometer);
+  assert.ok(screen.smoothed > 2, 'sampled across its width');
+  assert.equal(screen.smoothFill, true, 'and filled as a continuum');
+  assert.equal(screen.lines, 0, 'with no spurious discrete peaks');
+
+  const reading = detectorReading(spectrometer.id);
+  assert.ok(reading.spectrum.every(s => s.continuum), 'every sample belongs to the band');
+});
+
+test('a laser line on top of a broadband source keeps both, drawn each its own way', () => {
+  const sc = createElement('sclaser', 0, -3);
+  sc.params.beamMode = 'line';
+  const spectrometer = createElement('spectrometer', 400, 0);
+  spectrometer.params.aperture = 40;
+  const screen = spectrumScreen([sc, monoLaser(1064, 3), spectrometer], spectrometer);
+  assert.equal(screen.smoothFill, true, 'the continuum is still a band');
+  assert.equal(screen.lines, 1, 'and the laser line is still a discrete peak on top of it');
+
+  // The discrete line must never be averaged into the band by the sample cap.
+  const reading = detectorReading(spectrometer.id);
+  const line = reading.spectrum.find(s => Math.round(s.wavelength) === 1064);
+  assert.ok(line, `the 1064 nm line survived summarizing, got ${reading.spectrum.map(s => Math.round(s.wavelength))}`);
+  assert.equal(line.continuum, false);
+});
+
+test('a filtered broadband source stays a band — narrower, but still continuous', () => {
+  const sc = createElement('sclaser', 0, 0);
+  sc.params.beamMode = 'line';
+  const filter = createElement('filter', 200, 0);
+  Object.assign(filter.params, { ftype: 'bandpass', center: 600, band: 40, length: 30 });
+  const spectrometer = createElement('spectrometer', 400, 0);
+  spectrometer.params.aperture = 40;
+  const screen = spectrumScreen([sc, filter, spectrometer], spectrometer);
+  assert.equal(screen.smoothFill, true, 'filtering a continuum leaves a continuum');
+  assert.equal(screen.lines, 0);
 });

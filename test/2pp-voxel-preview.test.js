@@ -22,9 +22,15 @@ test('2PP preview arrivals use the same physical and schematic clocks as pulse p
   closeTo(physical[0].timeNs, 50 / 299.792458);
   closeTo(physical[1].timeNs - physical[0].timeNs, 10);
 
+  // Schematic packets are spaced at an integer sub-multiple of the true
+  // period (see packetSpacing), so the compressed clock is derived from the
+  // real one rather than being a flat 140 mm.
+  const periodNs = 10; // 100 MHz
+  const trueSpacing = 299.792458 * periodNs;
+  const schematicSpacing = trueSpacing / Math.round(trueSpacing / 140);
   const schematic = pulseArrivalsAtPath(track, 0, 30, 50, { mode: 'schematic' });
   assert.equal(schematic.length, 3);
-  closeTo(schematic[0].timeNs, 50 / 14);
+  closeTo(schematic[0].timeNs, 50 / (schematicSpacing / periodNs));
   closeTo(schematic[1].timeNs - schematic[0].timeNs, 10);
   assert.deepEqual(pulseArrivalsAtPath(track, 0, 30, 101), []);
 });
