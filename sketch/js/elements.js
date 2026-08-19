@@ -668,9 +668,12 @@ function sampleModeParams() {
 //            discrete step each time XY completes a pass, bouncing back
 //            down once it reaches the far end — a serpentine line-by-line
 //            scan, not a calibrated piezo trajectory.
-// Internally XY maps to the world-Y offset and Z maps to the world-X offset,
-// matching the sample surface's local geometry (the beam crosses it at
-// local x=0, spanning y across the clear aperture).
+// XY maps to the local-x offset and Z to the local-y offset, matching the
+// sample's local geometry (its long/clear-aperture axis is local x, the
+// beam crosses it along local y — see sampleSurfaces). The caller rotates
+// this local offset into world space by the element's own rot (same
+// pattern as retroOffsetAt below), so XY stays parallel to the specimen's
+// long axis and Z stays perpendicular to it at any placed angle.
 function triangleWave(timeSeconds, frequency, travel) {
   const phase = ((timeSeconds * frequency) % 1 + 1) % 1;
   const triangle = phase < 0.5 ? phase * 2 : 2 - phase * 2;
@@ -691,8 +694,9 @@ function syncZOffset(timeSeconds, freqXY, travelZ, steps) {
 // A retroreflector's delay-line motion translates the whole element along
 // its own apex axis (local x, pointing from the mouth toward the apex); the
 // caller rotates this local offset into world space by the element's own
-// rot, since the retroreflector — unlike the piezo stage — is routinely
-// placed at an arbitrary angle to fold a beam path. The offset ranges over
+// rot (same pattern the piezo stage uses — see stageOffsetAt above), since
+// a retroreflector is routinely placed at an arbitrary angle to fold a beam
+// path. The offset ranges over
 // [0, travel], starting at 0 (the placed position, the shortest path) and
 // moving only in the positive-x direction — away from the mouth, which
 // always lengthens the round-trip optical path, never shortens it.
@@ -709,26 +713,26 @@ export function stageOffsetAt(params = {}, timeSeconds = 0) {
   const travelXY = Math.min(150, Math.max(0, params.pzTravelXY ?? 12));
   const freqXY = Math.min(10, Math.max(0.01, params.pzFreqXY ?? 0.15));
   const travelZ = Math.min(150, Math.max(0, params.pzTravelZ ?? 8));
-  if (mode === 'xy') return { x: 0, y: triangleWave(timeSeconds, freqXY, travelXY) };
+  if (mode === 'xy') return { x: triangleWave(timeSeconds, freqXY, travelXY), y: 0 };
   if (mode === 'z') {
     const freqZ = Math.min(10, Math.max(0.01, params.pzFreqZ ?? 0.1));
-    return { x: triangleWave(timeSeconds, freqZ, travelZ), y: 0 };
+    return { x: 0, y: triangleWave(timeSeconds, freqZ, travelZ) };
   }
   if (mode === 'sync') {
     const steps = Math.min(50, Math.max(2, Math.round(params.pzZSteps ?? 5)));
-    return { x: syncZOffset(timeSeconds, freqXY, travelZ, steps), y: triangleWave(timeSeconds, freqXY, travelXY) };
+    return { x: triangleWave(timeSeconds, freqXY, travelXY), y: syncZOffset(timeSeconds, freqXY, travelZ, steps) };
   }
   return { x: 0, y: 0 };
 }
 
 // A 2PP voxel's apparent size/opacity qualitatively broadens and fades the
-// further the sample currently sits from the stage's nominal X=0 (focus)
+// further the sample currently sits from the stage's nominal Z=0 (focus)
 // plane — a stand-in for real defocus-broadened, threshold-limited exposure
 // in a system with no true third axis. `travelZ` scales what "far" means so
 // the falloff tracks whatever axial range the user configured.
-export function voxelDepthFactor(xOffset = 0, travelZ = 8) {
+export function voxelDepthFactor(zOffset = 0, travelZ = 8) {
   const halfTravel = Math.max(1e-6, travelZ / 2);
-  return Math.min(1, Math.abs(xOffset) / halfTravel);
+  return Math.min(1, Math.abs(zOffset) / halfTravel);
 }
 
 // Fallback material-identity color, used only when no live traced hit is
@@ -767,6 +771,10 @@ export function stageSampleLabelSVG(el) {
   return `<text x="${el.x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="5.5" fill="#5b6472">${esc(stageSampleLabel(el.params))}</text>`;
 }
 
+// The specimen's optical surface, horizontal in local coordinates: it spans
+// local x (the clear-aperture/long axis, drawn left-right at rot 0) and the
+// beam crosses it along local y — see the "horizontal at rot 0" baseline on
+// the sample/stage entries below.
 function sampleSurfaces(el, h) {
   const p = el.params;
   const writeVoxel = p.sampleKind === 'resin' && p.voxelPreview === true;
@@ -777,13 +785,13 @@ function sampleSurfaces(el, h) {
   // (no channels) keeps the plain attenuate/absorb behavior it always had.
   if (channels.length) {
     return [{
-      x1: 0, y1: -h, x2: 0, y2: h, kind: 'specimen',
+      x1: -h, y1: 0, x2: h, y2: 0, kind: 'specimen',
       data: { channels, transmitExc: p.transmitExc, transmission: p.transmission, writeVoxel, reportHit },
     }];
   }
   return p.transmitExc
-    ? [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit } }]
-    : rectAbsorb(8, 2 * h).map(s => ({ ...s, data: { reportHit } }));
+    ? [{ x1: -h, y1: 0, x2: h, y2: 0, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit } }]
+    : rectAbsorb(2 * h, 8).map(s => ({ ...s, data: { reportHit } }));
 }
 
 // lens outline at x=cx: biconvex for f>=0, biconcave for f<0.
@@ -1968,22 +1976,28 @@ export const registry = {
 
   // ---------------- Microscopy ----------------
   sample: {
-    label: 'Sample', category: 'Microscopy', size: { w: 14, h: 40 },
-    size_: el => ({ w: 14, h: (el.params.aperture || 34) + 6 }),
+    // Horizontal at rot 0: the clear-aperture/long axis runs left-right
+    // (local x), the beam crosses it top-to-bottom (local y).
+    label: 'Sample', category: 'Microscopy', size: { w: 40, h: 14 },
+    size_: el => ({ w: (el.params.aperture || 34) + 6, h: 14 }),
     params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 34, appearance: true }, ...sampleModeParams()],
     svg(el) {
       const p = el.params;
       const c = stageSampleColor(p);
       const h = (p.aperture || 34) / 2;
-      return `<rect x="-3" y="${-h}" width="6" height="${2 * h}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
+      return `<rect x="${-h}" y="-3" width="${2 * h}" height="6" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         `<circle cx="0" cy="0" r="4" fill="${c}" opacity="0.85"/>`;
     },
     surfaces: el => sampleSurfaces(el, (el.params.aperture || 34) / 2),
   },
 
   stage: {
-    label: 'Sample on piezo stage', category: 'Microscopy', size: { w: 22, h: 56 },
-    size_: el => ({ w: 22, h: (el.params.aperture || 25.4) + 30 }),
+    // Horizontal at rot 0, same convention as 'sample': the clear-aperture
+    // axis runs left-right (local x), the beam crosses top-to-bottom
+    // (local y). The mounting brackets grip the specimen's left/right short
+    // edges accordingly.
+    label: 'Sample on piezo stage', category: 'Microscopy', size: { w: 56, h: 22 },
+    size_: el => ({ w: (el.params.aperture || 25.4) + 30, h: 22 }),
     params: [
       { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
       { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
@@ -2011,20 +2025,20 @@ export const registry = {
         spot = `<circle cx="${el._signalHitLocal.x.toFixed(2)}" cy="${el._signalHitLocal.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
       }
       // Two separate L brackets (short-side cap + rail) grip the glass from
-      // its top and bottom short edges and protrude 20% of the glass length
+      // its left and right short edges and protrude 20% of the glass length
       // inward, leaving a 60%-of-length window between them for the beam.
-      const windowY = clear * 0.6;
-      return `<path d="M 8,${-outer} L -6,${-outer} L -6,${-windowY}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<path d="M 8,${outer} L -6,${outer} L -6,${windowY}" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<rect x="-2" y="${-clear}" width="5" height="${2 * clear}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
+      const windowX = clear * 0.6;
+      return `<path d="M ${-outer},-8 L ${-outer},6 L ${-windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
+        `<path d="M ${outer},-8 L ${outer},6 L ${windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
+        `<rect x="${-clear}" y="-3" width="${2 * clear}" height="5" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         spot +
-        (p.voxelPreview ? `<circle cx="0.5" cy="0" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
+        (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
     surfaces(el) {
       const clear = Math.max(2, (el.params.aperture || 25.4) / 2), outer = clear + 12;
       const mount = [
-        { x1: -6, y1: -outer, x2: -6, y2: -clear, kind: 'absorb' },
-        { x1: -6, y1: clear, x2: -6, y2: outer, kind: 'absorb' },
+        { x1: -outer, y1: 6, x2: -clear, y2: 6, kind: 'absorb' },
+        { x1: clear, y1: 6, x2: outer, y2: 6, kind: 'absorb' },
       ];
       return [...mount, ...sampleSurfaces(el, clear)];
     },
@@ -2377,8 +2391,8 @@ const DIRECT = {
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
   crystal: { resize: { y: 'aperture' }, tune: { key: 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n' } },
-  sample: { resize: { y: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
-  stage: { resize: { y: 'aperture' } },
+  sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
+  stage: { resize: { x: 'aperture' } },
   microscope: { resize: { y: 'housingHeight' }, tune: { key: 'objectiveF', short: 'f obj' } },
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
   figureframe: { resize: { x: 'w', y: 'h', anchor: true } },

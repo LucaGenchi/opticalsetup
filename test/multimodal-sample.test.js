@@ -19,12 +19,15 @@ function detectedWls(elements) {
 }
 
 // A two-colour bench: 800 nm pump + 1040 nm Stokes onto one specimen.
+// The specimen surface is horizontal at rot 0 (its clear aperture runs
+// left-right); a left-to-right test beam needs it rotated 90° to be crossed.
 function twoColourBench(channels, { aperture = 40 } = {}) {
   const pump = createElement('laser', 0, -5);
   pump.params.wavelength = 800;
   const stokes = createElement('laser', 0, 5);
   stokes.params.wavelength = 1040;
   const sample = createElement('sample', 200, 0);
+  sample.rot = 90;
   sample.params.aperture = aperture;
   sample.params.channels = channels;
   const detector = createElement('detector', 400, 0);
@@ -36,6 +39,7 @@ function singleColourBench(channels, wavelength = 800) {
   const laser = createElement('laser', 0, 0);
   laser.params.wavelength = wavelength;
   const sample = createElement('sample', 200, 0);
+  sample.rot = 90;
   sample.params.channels = channels;
   const detector = createElement('detector', 400, 0);
   return [laser, sample, detector];
@@ -139,6 +143,7 @@ test('every signal kind survives a 700 nm shortpass placed after the specimen', 
     const laser = createElement('laser', 0, 0);
     laser.params.wavelength = 800;
     const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
     sample.params.channels = channels;
     const filter = createElement('filter', 300, 0);
     filter.params.ftype = 'shortpass';
@@ -216,6 +221,7 @@ test('sketches saved before stacked channels keep working through their legacy m
   const laser = createElement('laser', 0, 0);
   laser.params.wavelength = 800;
   const sample = createElement('sample', 200, 0);
+  sample.rot = 90;
   sample.params.mode = 'shg';
   sample.params.signalEff = 0.5;
   const detector = createElement('detector', 400, 0);
@@ -257,6 +263,7 @@ test('a generated signal is coloured by its own wavelength, not by its source la
     laser.params.autoColor = false;
     laser.params.color = '#ff0000';
     const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
     sample.params.channels = channels;
     const scene = traceScene([laser, sample]);
     return new Set(scene.drawables.filter(d => d.pts && d.pts[0].x >= 199).map(d => d.color));
@@ -278,6 +285,7 @@ test('channels colour themselves from their own wavelength across the spectrum',
     const laser = createElement('laser', 0, 0);
     laser.params.wavelength = wl;
     const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
     sample.params.channels = [ch('shg', { eff: 0.5 })];
     const scene = traceScene([laser, sample]);
     return scene.drawables.filter(d => d.pts && d.pts[0].x >= 199).map(d => d.color);
@@ -294,6 +302,7 @@ test('stacking signals never dims the transmitted excitation', () => {
     const laser = createElement('laser', 0, 0);
     laser.params.wavelength = 800;
     const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
     sample.params.channels = channels;
     sample.params.transmission = 0.8;
     const detector = createElement('detector', 400, 0);
@@ -318,6 +327,7 @@ test('the piezo holder always carries a specimen — no "Sample installed" switc
   const kinds = registry.stage.surfaces(stage).map(s => s.kind);
   assert.ok(kinds.includes('attenuate'), `the mounted specimen is always in the beam, got ${kinds}`);
 
+  stage.rot = 90;
   const laser = createElement('laser', 0, 0);
   const detector = createElement('detector', 400, 0);
   assert.deepEqual(detectedWls([laser, stage, detector]), [532], 'excitation passes, no signal added');

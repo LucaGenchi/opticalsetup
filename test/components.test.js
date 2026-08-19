@@ -72,6 +72,7 @@ test('deformable mirror defocuses an off-axis reflected ray through its focus', 
 test('sample attenuation and holder aperture have distinct bounded behavior', () => {
   const laser = createElement('laser', 0, 0);
   const sample = createElement('sample', 150, 0);
+  sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
   const detector = createElement('detector', 300, 0);
   traceAll([laser, sample, detector]);
   assert.ok(Math.abs(detectorReading(detector.id).signal - 0.8) < 1e-9);
@@ -81,6 +82,7 @@ test('sample attenuation and holder aperture have distinct bounded behavior', ()
   assert.equal(detectorReading(detector.id), null);
 
   const holder = createElement('stage', 150, 0);
+  holder.rot = 90;
   traceAll([laser, holder, detector]);
   assert.ok(detectorReading(detector.id));
   laser.y = 20; detector.y = 20;
@@ -91,6 +93,7 @@ test('sample attenuation and holder aperture have distinct bounded behavior', ()
 test('uncollected fluorescence fades within 25 mm and never reaches a bare detector', () => {
   const laser = createElement('laser', 0, 0);
   const sample = createElement('sample', 150, 0);
+  sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
   sample.params.mode = 'fluor';
   sample.params.transmission = 0.8;
   sample.params.signalEff = 0.1;
@@ -117,6 +120,7 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
   const laser = createElement('laser', 0, 0);
   laser.params.beamMode = 'line';
   const sample = createElement('sample', 150, 0);
+  sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
   sample.params.mode = 'fluor';
   sample.params.transmission = 0.8;
   sample.params.signalEff = 0.1;
