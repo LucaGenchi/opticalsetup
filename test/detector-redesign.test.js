@@ -175,9 +175,11 @@ test('spectrometer reports wavelength, bandwidth, and spectrum samples', () => {
 
   // The "WAVELENGTH + BANDWIDTH" mode line was dropped as redundant — the
   // spectrometer only ever shows this one labeled plot, so restating its
-  // axes added nothing and crowded the bandwidth caption below it.
+  // axes added nothing. The bandwidth caption went too: one number cannot
+  // describe several lines, and it read as the span between the outermost
+  // ones rather than the width of anything real.
   assert.doesNotMatch(svg, /WAVELENGTH \+ BANDWIDTH/);
-  assert.match(svg, /BANDWIDTH 40\.0 nm/);
+  assert.doesNotMatch(svg, /BANDWIDTH/);
   assert.match(svg, /data-spectrum-points=/);
 });
 

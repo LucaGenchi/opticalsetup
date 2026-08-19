@@ -670,3 +670,114 @@ test('a filtered broadband source stays a band — narrower, but still continuou
   assert.equal(screen.smoothFill, true, 'filtering a continuum leaves a continuum');
   assert.equal(screen.lines, 0);
 });
+
+// ---------------- spectrometer intensity axis and peak labels ----------------
+
+function spectrometerScreen(elements, sensor) {
+  const display = createElement('display', 700, 200);
+  display.params.sensorId = sensor.id;
+  const scene = [...elements, display];
+  traceAll(scene);
+  const svg = registry.display.svg(display, scene);
+  const baseline = 1; // the spectrometer plots against this baseline
+  return {
+    svg,
+    stems: [...svg.matchAll(/<line x1="[-\d.]+" y1="([-\d.]+)" x2="[-\d.]+" y2="([-\d.]+)" stroke="#[0-9a-f]{6}" stroke-width="2"/g)]
+      .map(m => Number((Number(m[1]) - Number(m[2])).toFixed(2))).sort((a, b) => b - a),
+    bandPeak: (() => {
+      const path = (svg.match(/<path d="M ([^"]+)" fill="none" stroke="url\(#specGrad/) || [])[1];
+      if (!path) return null;
+      const ys = path.split(/[ ,CQ]+/).map(Number).filter((_, i) => i % 2 === 1);
+      return Number((baseline - Math.min(...ys)).toFixed(2));
+    })(),
+    labelled: [...svg.matchAll(/font-weight="700" fill="#[0-9a-f]{6}">(\d+)</g)].map(m => Number(m[1])),
+    yUnit: (svg.match(/I \(([^)]+)\)/) || [])[1],
+  };
+}
+
+const spectrometerAt = (x, params = {}) => {
+  const sensor = createElement('spectrometer', x, 0);
+  Object.assign(sensor.params, { aperture: 60, ...params });
+  return sensor;
+};
+
+test('the spectrometer no longer captions a single ambiguous bandwidth', () => {
+  // One number cannot describe several lines: it read as the span between
+  // the outermost peaks rather than the width of anything real.
+  const spectrometer = spectrometerAt(400);
+  const screen = spectrometerScreen([monoLaser(532, -3), monoLaser(580, 3), spectrometer], spectrometer);
+  assert.doesNotMatch(screen.svg, /BANDWIDTH/);
+});
+
+test('peaks are labelled with their wavelength, and the labels can be switched off', () => {
+  const spectrometer = spectrometerAt(400, { rangeMode: 'manual', rangeMin: 500, rangeMax: 620 });
+  const on = spectrometerScreen([monoLaser(532, -3), monoLaser(580, 3), spectrometer], spectrometer);
+  assert.deepEqual(on.labelled, [532, 580], 'each line names its own wavelength');
+
+  spectrometer.params.labelPeaks = false;
+  const off = spectrometerScreen([monoLaser(532, -3), monoLaser(580, 3), spectrometer], spectrometer);
+  assert.deepEqual(off.labelled, [], 'the toggle removes them');
+  assert.equal(registry.spectrometer.params.find(p => p.key === 'labelPeaks').def, true, 'on by default');
+});
+
+test('a continuous band is labelled at its peak, alongside any discrete lines', () => {
+  const sc = createElement('sclaser', 0, -3);
+  Object.assign(sc.params, { beamMode: 'line', scMin: 500, scMax: 700 });
+  const spectrometer = spectrometerAt(400, { rangeMode: 'manual', rangeMin: 480, rangeMax: 900 });
+  const screen = spectrometerScreen([sc, monoLaser(850, 3), spectrometer], spectrometer);
+  assert.ok(screen.labelled.includes(850), `the discrete line is named, got ${screen.labelled}`);
+  assert.ok(screen.labelled.some(wl => wl >= 500 && wl <= 700),
+    `the band's peak is named too, got ${screen.labelled}`);
+});
+
+test('the intensity axis is a spectral density, so a line and a band are comparable', () => {
+  // A laser line packs its whole power into one colour; a 40 nm band spreads
+  // the same power across many. On a per-nm axis the line towers over it,
+  // which is what a real spectrometer shows.
+  const mk = (y, broadband) => {
+    const laser = createElement('laser', 0, y);
+    Object.assign(laser.params, {
+      wavelength: 532, beamMode: 'line', avgPowerW: 1,
+      ...(broadband ? { bwMode: 'band', bandwidth: 40 } : {}),
+    });
+    return laser;
+  };
+  const spectrometer = spectrometerAt(400, { rangeMode: 'manual', rangeMin: 480, rangeMax: 600 });
+  const density = spectrometerScreen([mk(-3, false), mk(3, true), spectrometer], spectrometer);
+  assert.equal(density.yUnit, 'per nm');
+  assert.ok(density.stems[0] > density.bandPeak * 5,
+    `the line should dominate on a density axis, got line ${density.stems[0]} vs band ${density.bandPeak}`);
+
+  spectrometer.params.intensityScale = 'relative';
+  const relative = spectrometerScreen([mk(-3, false), mk(3, true), spectrometer], spectrometer);
+  assert.equal(relative.yUnit, 'rel.');
+  assert.ok(relative.bandPeak > relative.stems[0] * 0.8,
+    `relative mode should bring both to full height, got line ${relative.stems[0]} vs band ${relative.bandPeak}`);
+});
+
+test('relative mode rescues a weak signal beside its own pump, keeping the fingerprint intact', () => {
+  // Light generated in a specimen counts as its own source, so normalizing
+  // per source separates a Raman line from the laser that excited it.
+  const build = intensityScale => {
+    const laser = monoLaser(800, 0);
+    const sample = createElement('sample', 150, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear', transmitExc: true, transmission: 0.8,
+      channels: [ch('shg', { eff: 0.4 }), ch('thg', { eff: 0.1 })],
+    });
+    const spectrometer = spectrometerAt(360, { intensityScale, rangeMode: 'manual', rangeMin: 200, rangeMax: 900 });
+    return spectrometerScreen([laser, sample, spectrometer], spectrometer);
+  };
+
+  const density = build('density');
+  const relative = build('relative');
+  // Four times the power should still read as four times the height, in both
+  // modes — normalizing must not flatten a fingerprint into equal peaks.
+  const ratio = list => list[list.length - 2] / list[list.length - 1];
+  assert.ok(Math.abs(ratio(density.stems) - 4) < 0.2, `density keeps 4:1, got ${density.stems}`);
+  assert.ok(Math.abs(ratio(relative.stems) - 4) < 0.2, `relative keeps 4:1 too, got ${relative.stems}`);
+  // But the signal itself is lifted clear of the excitation.
+  assert.ok(relative.stems[1] > density.stems[1],
+    `the strongest signal should rise in relative mode, got ${density.stems} then ${relative.stems}`);
+});

@@ -121,7 +121,15 @@ function bucketize(ordered, limit) {
     const wavelength = power > 0
       ? group.reduce((sum, sample) => sum + sample.wavelength * sample.power, 0) / power
       : group[0].wavelength;
-    return { wavelength, power, continuum: group.length > 1 || group.some(sample => sample.continuum) };
+    return {
+      wavelength, power,
+      continuum: group.length > 1 || group.some(sample => sample.continuum),
+      sourceId: group[0].sourceId,
+      // Merged bins span from the first sample to the last, plus one bin.
+      widthNm: group.length > 1
+        ? Math.abs(group[group.length - 1].wavelength - group[0].wavelength) + (group[0].widthNm || 0)
+        : group[0].widthNm,
+    };
   });
 }
 
@@ -129,23 +137,38 @@ function bucketizeSpectrum(samples) {
   const ordered = [...samples.values()].sort((a, b) => a.wavelength - b.wavelength);
   // Discrete lines are summarized separately from any continuum, so a laser
   // line alongside a broadband source is never averaged into the band — it
-  // is a peak at one wavelength, not part of a smear across a range. Only
-  // the weakest lines are dropped if there are somehow too many.
+  // is a peak at one wavelength, not part of a smear across a range. Bands
+  // are summarized per source for the same reason, and only the weakest
+  // lines are dropped if there are somehow too many.
   const lines = ordered.filter(sample => !sample.continuum);
   const band = ordered.filter(sample => sample.continuum);
+  const bySource = new Map();
+  for (const sample of band) {
+    const list = bySource.get(sample.sourceId) || [];
+    list.push(sample);
+    bySource.set(sample.sourceId, list);
+  }
+  const perSourceLimit = Math.max(4, Math.floor(MAX_SPECTRUM_SAMPLES / Math.max(1, bySource.size)));
+  const keptBand = [...bySource.values()].flatMap(list => bucketize(list, perSourceLimit));
   const keptLines = lines.length <= MAX_SPECTRUM_SAMPLES
     ? lines
     : [...lines].sort((a, b) => b.power - a.power).slice(0, MAX_SPECTRUM_SAMPLES);
-  return [...bucketize(band, MAX_SPECTRUM_SAMPLES), ...keptLines]
+  return [...keptBand, ...keptLines]
     .sort((a, b) => a.wavelength - b.wavelength)
     .map(sample => ({ ...sample, color: wavelengthToColor(sample.wavelength) }));
 }
 
-function addSample(samples, wl, power, continuum = false) {
-  const key = Math.round(wl * 10) / 10;
-  const sample = samples.get(key) || { wavelength: key, power: 0, continuum: false };
+function addSample(samples, wl, power, continuum = false, sourceId = null, widthNm = null) {
+  // Keyed by source as well as wavelength: the spectrometer's relative mode
+  // scales each source's own contribution to its own peak, which it cannot
+  // do once two sources at the same colour have been added together.
+  const wavelength = Math.round(wl * 10) / 10;
+  const key = `${sourceId || ''}|${wavelength}`;
+  const sample = samples.get(key)
+    || { wavelength, power: 0, continuum: false, sourceId: sourceId || null, widthNm: null };
   sample.power += power;
   if (continuum) sample.continuum = true;
+  if (widthNm > 0) sample.widthNm = Math.max(sample.widthNm || 0, widthNm);
   samples.set(key, sample);
 }
 
@@ -156,15 +179,29 @@ function addSample(samples, wl, power, continuum = false) {
 // Without expanding it here, a spectrometer aimed straight at a broadband
 // laser would show a single spike at its centre wavelength instead of the
 // real curve.
+// The spectral width one sample stands for, in nm. A broadband profile is
+// sampled evenly across its span, so each sample owns one bin; a
+// monochromatic ray owns nothing at all, and is reported as a true line for
+// the display to render at whatever the instrument can resolve.
+function profileBinWidth(profile) {
+  if (!profile || profile.length < 2) return null;
+  const first = profile[0].wl, last = profile[profile.length - 1].wl;
+  return Math.abs(last - first) / (profile.length - 1) || null;
+}
+
 function detectorSpectrum(hits) {
   const samples = new Map();
   for (const hit of hits) {
     if (!Number.isFinite(hit.power) || hit.power <= 0) continue;
     if (hit.spec) {
       const profile = spectrumSamples(hit.spec, 48);
-      if (profile) { for (const { wl, weight } of profile) addSample(samples, wl, weight * hit.power, true); continue; }
+      if (profile) {
+        const widthNm = profileBinWidth(profile);
+        for (const { wl, weight } of profile) addSample(samples, wl, weight * hit.power, true, hit.sourceId, widthNm);
+        continue;
+      }
     }
-    if (Number.isFinite(hit.wl)) addSample(samples, hit.wl, hit.power);
+    if (Number.isFinite(hit.wl)) addSample(samples, hit.wl, hit.power, false, hit.sourceId, null);
   }
   return bucketizeSpectrum(samples);
 }
@@ -194,6 +231,7 @@ function recordDetectorHit(ray, hit) {
     wl: ray.wl,
     bw: ray.bw || 0,
     spec: ray.spec || null,
+    sourceId: ray.sourceId || null,
     pol: ray.pol,
     stokes: cloneStokes(ray.stokes),
     u: hit.u,
@@ -551,7 +589,8 @@ function fiberEmissionRays(c) {
   const common = {
     wl: c.wl, bw: c.bw || 0, spec: c.spec || null, speckle: false, intensity: Math.min(1, c.intensity * transmission),
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
-    pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, oplStart: (c.opl || 0) + lengthMm * ng + 2,
+    pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, sourceId: c.sourceId || null,
+    oplStart: (c.opl || 0) + lengthMm * ng + 2,
   };
   if (cfg.mode === 'focus') {
     const f = Math.max(2, cfg.focal || 20), ap = Math.max(1, cfg.dia || 6);
@@ -1216,6 +1255,11 @@ function interact(ray, hit) {
       }
       const out = [];
       const channels = data.channels || [];
+      // Light generated here is a new source, not the excitation that drove
+      // it: the spectrometer's relative mode scales each source to its own
+      // peak, and a Raman line normalized against the pump that produced it
+      // would be invisible — which is the whole reason that mode exists.
+      const emittedFrom = s.el?.id || null;
       // Isotropic emission and two-beam mixing are per-spot events, not
       // per-ray ones: a beam split into K sampling rays must not emit K
       // copies of the same signal.
@@ -1275,7 +1319,7 @@ function interact(ray, hit) {
               const a = i * 2 * Math.PI / N;
               out.push({
                 d: { x: Math.cos(a), y: Math.sin(a) }, wl: line, bw: 0, pol: undefined, stokes: null,
-                color: tint, evan: true, evanLen: 25,
+                color: tint, evan: true, evanLen: 25, sourceId: emittedFrom,
                 intensity: 0.25,
                 power: Number.isFinite(ray.power) ? ray.power * eff / (N * shifts.length) : undefined,
                 tag: `r${ci}_${Math.round(shift)}_${i}`,
@@ -1295,7 +1339,7 @@ function interact(ray, hit) {
             const a = i * 2 * Math.PI / N;
             out.push({
               d: { x: Math.cos(a), y: Math.sin(a) }, wl, bw: 0, pol: undefined, stokes: null,
-              color: tint,
+              color: tint, sourceId: emittedFrom,
               evan: true, evanLen: 25,
               intensity: 0.25,
               power: Number.isFinite(ray.power) ? ray.power * eff / N : undefined,
@@ -1316,13 +1360,13 @@ function interact(ray, hit) {
         }
         const forward = ray.intensity * eff * overlap;
         const tint = channelColor(c, wl);
-        out.push({ d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, intensity: forward, tag: `c${ci}` });
+        out.push({ d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, sourceId: emittedFrom, intensity: forward, tag: `c${ci}` });
         if (c.epi && EPI_KINDS.has(c.kind)) {
           const ratio = Math.min(1, Math.max(0, c.epiRatio ?? 0.15));
           if (ratio > 0) {
             out.push({
               d: { x: -d.x, y: -d.y }, wl, bw: 0, spec: null, pol: undefined, stokes: null,
-              color: tint,
+              color: tint, sourceId: emittedFrom,
               intensity: forward * ratio,
               power: Number.isFinite(ray.power) ? ray.power * eff * ratio : undefined,
               tag: `e${ci}`,
@@ -1607,7 +1651,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           couplings.push({
             beam: fb, end: hit.surface.data.end, wl: r.wl, bw: r.bw, spec: r.spec,
             intensity: r.intensity, power: r.power, pol: r.pol, stokes: cloneStokes(r.stokes),
-            pulse: r.pulse, opl: r.opl,
+            pulse: r.pulse, opl: r.opl, sourceId: r.sourceId || null,
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -1657,6 +1701,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           // a signal. It overrides the source's own fixed color, because a
           // signal at a new wavelength is not the source's light any more.
           color: 'color' in c ? c.color : r.color,
+          sourceId: 'sourceId' in c ? c.sourceId : r.sourceId,
           medium: 'medium' in c ? c.medium : r.medium,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           pulse: 'pulse' in c ? c.pulse : r.pulse,
@@ -1900,6 +1945,9 @@ export function traceScene(elements, beams = []) {
         evan: r.evan || false, evanLen: r.evanLen,
         medium: initialBody?.id || null, ior: initialIor,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,
+        // Which source this light started from, so the spectrometer can
+        // normalize each source's own contribution independently.
+        sourceId: el.id,
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
       };
     });
