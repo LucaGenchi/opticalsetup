@@ -3,9 +3,11 @@
 import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
-  newSampleChannel, MAX_SAMPLE_CHANNELS, SIGNAL_KINDS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
+  newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
+  signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
+  EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS,
 } from './elements.js';
-import { detectorReading } from './raytrace.js';
+import { detectorReading, specimenIncidentWls } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
 import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
 import { esc } from './util.js';
@@ -276,19 +278,57 @@ function layersHTML(layers) {
 
 // Specimen signal channels — the same stacked-overlay editor idea as the
 // wavefront shapers' layers, but each row is one emission the specimen adds.
-function signalsHTML(channels) {
+// The wavelengths actually reaching a specimen right now, read back from
+// the live trace so emission defaults and warnings track the real bench.
+function incidentWlsAt(sel) {
+  const reading = detectorReading(sel.id);
+  if (Array.isArray(reading?.incidentWls)) return reading.incidentWls;
+  return specimenIncidentWls(sel.id);
+}
+
+// Specimen signal channels — the same stacked-overlay editor idea as the
+// wavefront shapers' layers, but each row is one signal the specimen adds,
+// and the menu offered depends on whether it is a linear or nonlinear
+// specimen (a linear process and a nonlinear one are never alternatives for
+// the same physical sample).
+function signalsHTML(sel) {
+  const channels = sampleChannels(sel.params);
+  const kinds = signalKindsFor(specimenTypeOf(sel.params));
+  const incident = incidentWlsAt(sel);
+  const excitation = drivingExcitationWl(incident);
   let h = `<div class="lsechead">Signals generated — stack up to ${MAX_SAMPLE_CHANNELS}</div>`;
   channels.forEach((c, i) => {
     h += `<div class="layer"><div class="layerrow">
       <select data-ci="${i}" data-ck="kind" aria-label="Signal ${i + 1} type">` +
-      SIGNAL_KINDS.map(([v, l]) => `<option value="${v}" ${v === c.kind ? 'selected' : ''}>${l}</option>`).join('') +
+      kinds.map(([v, l]) => `<option value="${v}" ${v === c.kind ? 'selected' : ''}>${l}</option>`).join('') +
       `</select><button type="button" class="layerdel" data-cdel="${i}" title="Remove this signal" aria-label="Remove signal ${i + 1}">✕</button></div>`;
-    if (c.kind === 'fluor') {
-      h += field('Emission λ (nm)', `<input type="number" data-ci="${i}" data-ck="wl" min="200" max="1200" step="5" value="${c.wl}">`);
+
+    const order = EMISSION_ORDER[c.kind];
+    if (order) {
+      // Fluorescence and its multiphoton cousins emit one longer-wavelength
+      // photon per absorbed group. The default tracks the bench; typing a
+      // wavelength pins it and is checked against the photon-energy floor.
+      const auto = defaultEmissionWl(c.kind, excitation);
+      h += field('Emission λ', `<select data-ci="${i}" data-ck="autoWl">
+        <option value="auto" ${c.autoWl !== false ? 'selected' : ''}>From the excitation${auto ? ` (${auto} nm)` : ''}</option>
+        <option value="manual" ${c.autoWl === false ? 'selected' : ''}>Set manually</option>
+      </select>`);
+      if (c.autoWl === false) {
+        h += field('Emission λ (nm)', `<input type="number" data-ci="${i}" data-ck="wl" min="200" max="1600" step="5" value="${c.wl}">`);
+      }
+    } else if (c.kind === 'raman') {
+      h += field('Material', `<select data-ci="${i}" data-ck="material">` +
+        RAMAN_MATERIALS.map(([id, label]) => `<option value="${id}" ${id === c.material ? 'selected' : ''}>${esc(label)}</option>`).join('') +
+        `</select>`);
+      h += `<div class="hint">Stokes-shifted lines from the material's own fingerprint — a spectrometer downstream reconstructs it.</div>`;
+    } else if (c.kind === 'phase') {
+      h += numberField('Retardance (°)', `data-ci="${i}" data-ck="retardance"`, c.retardance ?? 90, { min: 0, max: 360, step: 5 });
+      h += numberField('Fast axis (°)', `data-ci="${i}" data-ck="axis"`, c.axis ?? 45, { min: 0, max: 180, step: 5 });
+      h += `<div class="hint">Retards the transmitted excitation without adding light of its own — read it with a waveplate and analyzer.</div>`;
+    } else if (c.kind === 'srs') {
+      h += numberField('Modulation transfer (%)', `data-ci="${i}" data-ck="transferEff"`, Math.round((c.transferEff ?? 0.1) * 100), { min: 1, max: 50, step: 1 });
+      h += `<div class="hint">Copies one beam's intensity modulation onto the other. No new wavelength — detect the receiving beam on a photodiode and read it on the screen.</div>`;
     } else if (MIXING_KINDS.has(c.kind)) {
-      // Both mixing signals derive their colour from the two beams actually
-      // present, so the wavelength is shown as derived, not typed — except
-      // CARS, which keeps a manual override for a known vibrational line.
       h += field('Wavelength', `<select data-ci="${i}" data-ck="autoWl">
         <option value="auto" ${c.autoWl !== false ? 'selected' : ''}>From the two beams present</option>
         ${c.kind === 'cars' ? `<option value="manual" ${c.autoWl === false ? 'selected' : ''}>Set manually</option>` : ''}
@@ -296,22 +336,27 @@ function signalsHTML(channels) {
       if (c.kind === 'cars' && c.autoWl === false) {
         h += field('CARS λ (nm)', `<input type="number" data-ci="${i}" data-ck="wl" min="200" max="1200" step="5" value="${c.wl}">`);
       }
-      h += `<div class="hint">Needs two different excitation wavelengths at the sample; silent under a single beam.</div>`;
     }
-    h += numberField('Efficiency', `data-ci="${i}" data-ck="eff"`, c.eff, { min: 0, max: 1, step: 0.05 });
-    // Same auto/custom colour choice a laser offers, per channel, so several
-    // signals on one specimen can be told apart on a busy sketch.
-    h += field('Color from λ', `<input type="checkbox" data-ci="${i}" data-ck="autoColor" ${c.autoColor !== false ? 'checked' : ''}>`);
-    if (c.autoColor === false) {
-      h += field('Signal color', `<input type="color" data-ci="${i}" data-ck="color" value="${esc(c.color || '#22c55e')}">`);
+
+    // Phase contrast and SRS shape the beam that is already there rather
+    // than emitting light of their own, so an emission efficiency would be
+    // meaningless for them.
+    if (!MODIFIER_KINDS.has(c.kind)) {
+      h += numberField('Efficiency', `data-ci="${i}" data-ck="eff"`, c.eff, { min: 0, max: 1, step: 0.05 });
+      h += field('Color from λ', `<input type="checkbox" data-ci="${i}" data-ck="autoColor" ${c.autoColor !== false ? 'checked' : ''}>`);
+      if (c.autoColor === false) {
+        h += field('Signal color', `<input type="color" data-ci="${i}" data-ck="color" value="${esc(c.color || '#22c55e')}">`);
+      }
     }
     if (EPI_CAPABLE_KINDS.has(c.kind)) {
       h += field('Epi (backward) signal', `<input type="checkbox" data-ci="${i}" data-ck="epi" ${c.epi ? 'checked' : ''}>`);
       if (c.epi) h += numberField('Epi / forward ratio', `data-ci="${i}" data-ck="epiRatio"`, c.epiRatio ?? 0.15, { min: 0, max: 1, step: 0.05 });
     }
+    const warning = channelWarning(c, incident);
+    if (warning) h += `<div class="signal-warning" role="alert">⚠ ${esc(warning)}</div>`;
     h += `</div>`;
   });
-  if (!channels.length) h += `<div class="hint">Optically inert specimen — it only attenuates the excitation. Add a signal to make it emit.</div>`;
+  if (!channels.length) h += `<div class="hint">No signals yet — this specimen only attenuates the excitation. Add one to make it emit.</div>`;
   if (channels.length < MAX_SAMPLE_CHANNELS) h += `<button type="button" id="signalAdd" class="layeradd">＋ Add signal</button>`;
   return h;
 }
@@ -367,7 +412,7 @@ export function renderInspector() {
       const insertVoxelHint = () => {
         if (voxelHintInserted) return;
         voxelHintInserted = true;
-        if (sel.type === 'stage' && sel.params.sampleKind === 'resin' && sel.params.voxelPreview) {
+        if (sel.type === 'stage' && specimenTypeOf(sel.params) === 'resin' && sel.params.voxelPreview) {
           sectionFields += `<div class="hint">Each visible pulsed arrival deposits a bounded square marker at the traced hit. The marker follows the moving sample and broadens/fades with X (depth) offset from focus; it is a 2D writing preview, not a dose, threshold, curing, or true 3D-volume calculation.</div>`;
           sectionFields += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
         }
@@ -417,7 +462,7 @@ export function renderInspector() {
           if (!sensors.length) sectionFields += `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`;
         }
         else if (p.type === 'layers') sectionFields += layersHTML(Array.isArray(sel.params[p.key]) ? sel.params[p.key] : []);
-        else if (p.type === 'signals') sectionFields += signalsHTML(sampleChannels(sel.params));
+        else if (p.type === 'signals') sectionFields += signalsHTML(sel);
         else if (p.type === 'optsize') sectionFields += optsizeField(p, v);
       }
       insertVoxelHint();
@@ -554,7 +599,9 @@ export function renderInspector() {
     if (!s) return;
     pushUndo();
     materializeChannels(s);
-    s.params.channels.push(newSampleChannel());
+    // Default to the first signal this specimen type actually offers.
+    const kinds = signalKindsFor(specimenTypeOf(s.params));
+    s.params.channels.push(seededChannel(kinds[0]?.[0] || 'fluor', s));
     changed();
     renderInspector();
   });
@@ -574,6 +621,14 @@ export function renderInspector() {
 // A pre-channels sketch shows its legacy single `mode` as one derived row.
 // The first edit writes that row into params.channels for real and retires
 // the legacy field, so the two can never disagree afterwards.
+// Surface an unphysical or under-specified channel as a toast the moment it
+// is configured, on top of the inline warning the row already carries — a
+// setting that silently emits nothing is worse than one that says why.
+function warnAboutChannel(channel, sel) {
+  const message = channelWarning(channel, incidentWlsAt(sel));
+  if (message) document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message } }));
+}
+
 function materializeChannels(sel) {
   if (!Array.isArray(sel.params.channels) || !sel.params.channels.length) {
     sel.params.channels = sampleChannels(sel.params).map(c => ({ ...c }));
@@ -581,30 +636,38 @@ function materializeChannels(sel) {
   if (sel.params.mode !== undefined) sel.params.mode = 'none';
 }
 
-// Picking a material seeds the signal channels. It writes params.channels
-// directly — the legacy `mode` is only a fallback for sketches that predate
-// channels, so a preset that set it would be ignored the moment the user
-// added a channel of their own.
-function applyStageSamplePreset(sel) {
-  if (sel.type !== 'stage') return;
+// Switching specimen type swaps in that type's own defaults. Channels are
+// cleared because the two signal menus share no entries — a linear
+// specimen's fluorescence is not a nonlinear specimen's 2PEF — and keeping
+// stale rows would leave the list showing signals the type cannot produce.
+function applySpecimenTypePreset(sel) {
   const p = sel.params;
-  const seed = channels => Object.assign(p, { mode: 'none', channels });
-  if (p.sampleKind === 'fluorescent') {
+  const type = specimenTypeOf(p);
+  p.channels = [];
+  if (type === 'absorbing') {
     Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
-    seed([{ ...newSampleChannel('fluor'), wl: 520, eff: 0.1 }]);
-  } else if (p.sampleKind === 'resin') {
+  } else if (type === 'resin') {
     Object.assign(p, { transmitExc: true, transmission: 0.85, voxelPreview: true });
-    seed([]);
-  } else if (p.sampleKind === 'nonlinear') {
+  } else if (type === 'linear') {
     Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
-    seed([{ ...newSampleChannel('shg'), eff: 0.1 }]);
-  } else if (p.sampleKind === 'opaque') {
-    Object.assign(p, { transmitExc: false, voxelPreview: false });
-    seed([]);
-  } else if (p.sampleKind === 'generic') {
+    p.channels = [seededChannel('fluor', sel)];
+  } else if (type === 'nonlinear') {
     Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
-    seed([]);
+    p.channels = [seededChannel('shg', sel)];
   }
+  // The legacy per-material field is what pre-type sketches were read from;
+  // once a type is chosen explicitly it must stop competing with it.
+  if (p.sampleKind !== undefined) p.sampleKind = 'generic';
+  p.mode = 'none';
+}
+
+// A new channel starts at whatever the bench currently implies, so adding
+// fluorescence to a 900 nm bench offers 920 nm rather than a fixed 520 nm.
+function seededChannel(kind, sel) {
+  const c = newSampleChannel(kind);
+  const seeded = defaultEmissionWl(kind, drivingExcitationWl(incidentWlsAt(sel)));
+  if (seeded) c.wl = seeded;
+  return c;
 }
 
 function applyInput(inp, rebuild = false) {
@@ -676,13 +739,25 @@ function applyInput(inp, rebuild = false) {
     const c = sel.params.channels[+inp.dataset.ci];
     if (!c) return;
     const ckey = inp.dataset.ck;
-    // The wavelength selector is a two-option enum standing in for a boolean.
-    if (ckey === 'autoWl') c.autoWl = val === 'auto';
-    else c[ckey] = val;
-    // Switching kind can change which fields apply (a mixing signal has no
-    // typed wavelength, fluorescence has no epi lobe), so rebuild the rows.
+    if (ckey === 'autoWl') {
+      // A two-option enum standing in for a boolean. Pinning the wavelength
+      // seeds the box with whatever the bench currently implies, so the user
+      // edits a sensible number instead of a stale one.
+      c.autoWl = val === 'auto';
+      if (!c.autoWl) {
+        const seeded = defaultEmissionWl(c.kind, drivingExcitationWl(incidentWlsAt(sel)));
+        if (seeded) c.wl = seeded;
+      }
+    } else if (ckey === 'transferEff') {
+      c.transferEff = Math.min(0.5, Math.max(0.01, val / 100)); // shown as a percentage
+    } else {
+      c[ckey] = val;
+    }
     changed();
-    if (rebuild && (ckey === 'kind' || ckey === 'autoWl' || ckey === 'epi' || ckey === 'autoColor')) renderInspector();
+    warnAboutChannel(c, sel);
+    // Switching kind changes which fields apply at all, so rebuild the rows.
+    // 'wl' redraws so the inline warning tracks the value just committed.
+    if (rebuild && ['kind', 'autoWl', 'epi', 'autoColor', 'material', 'wl'].includes(ckey)) renderInspector();
     return;
   }
 
@@ -700,7 +775,7 @@ function applyInput(inp, rebuild = false) {
   if (key) sel[key] = key === 'rot' ? ((val % 360) + 360) % 360 : val;
   else if (pkey) {
     sel.params[pkey] = val;
-    if (pkey === 'sampleKind') applyStageSamplePreset(sel);
+    if (pkey === 'specimenType') applySpecimenTypePreset(sel);
   }
   changed();
   // Transform-limited pulses tie bandwidth and pulse duration together via
@@ -736,5 +811,5 @@ function applyInput(inp, rebuild = false) {
   }
   if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'sampleKind', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode'].includes(pkey)) renderInspector();
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode'].includes(pkey)) renderInspector();
 }

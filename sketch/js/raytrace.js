@@ -5,7 +5,9 @@
 
 import {
   registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS,
-  sumFrequencyWl, carsAntiStokesWl,
+  ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
+  sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
+  drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission } from './pulses.js';
@@ -31,6 +33,14 @@ let gateTransmissionCache = new Map();
 // Non-null only during the mixing probe pass in traceScene(): surface id ->
 // Set of wavelengths observed arriving at that specimen.
 let specimenProbe = null;
+// element id -> wavelengths observed arriving at its specimen surface on the
+// last trace. Read by the inspector to derive emission defaults and warn
+// about channels the bench cannot drive; empty when nothing illuminates it.
+let specimenIncident = new Map();
+
+export function specimenIncidentWls(elementId) {
+  return specimenIncident.get(elementId) || [];
+}
 
 function hexChannels(color) {
   const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
@@ -324,6 +334,36 @@ const MIXING_MIN_SEPARATION_NM = 1;
 // this specimen during the mixing probe pass in traceScene(). Returns null
 // when the channel cannot produce anything for this ray, which is exactly
 // what makes CARS/SFG silent under single-beam illumination.
+// Stimulated Raman: a modulated beam drives gain on an unmodulated one at
+// the same spot, so the modulation crosses over between colours without any
+// new wavelength appearing. That is what makes SRS detectable at all — a
+// photodiode on the receiving beam, read on the oscilloscope, sees a
+// modulation that is only there because the specimen is Raman-active.
+//
+// The transferred gate copies the donor's timing verbatim (frequency, duty,
+// phase and the optical path the modulation was imposed at) and swaps in a
+// shallower depth, so the two trains stay phase-locked. This assumes the two
+// sources are synchronous, which is what a real SRS setup arranges.
+// Returns null when there is nothing to transfer.
+// Record the colour and, for SRS, whatever intensity modulation this beam is
+// already carrying, so the real pass afterwards can mix and transfer.
+function recordProbeBeam(surface, ray) {
+  let seen = specimenProbe.get(surface.id);
+  if (!seen) specimenProbe.set(surface.id, seen = []);
+  if (seen.some(b => Math.abs(b.wl - ray.wl) < 1e-9)) return;
+  seen.push({ wl: ray.wl, gates: (ray.pulse?.gates || []).map(g => ({ ...g })) });
+}
+
+function srsTransferGate(channel, ray, incidentBeams) {
+  if ((ray.pulse?.gates || []).length) return null; // this beam is the donor
+  const donor = (incidentBeams || []).find(b =>
+    Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM && b.gates?.length);
+  if (!donor) return null;
+  const source = donor.gates[donor.gates.length - 1];
+  const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1));
+  return { ...source, depth, high: 1, low: 1 - depth, invert: false };
+}
+
 // The drawing color of one signal channel: true to its own wavelength by
 // default, or a custom tint so several channels can be told apart on a busy
 // multimodal sketch. Mirrors the laser's own auto/custom color toggle.
@@ -335,6 +375,18 @@ export function specimenSignalWl(channel, rayWl, incidentWls) {
   if (!(rayWl > 0)) return null;
   if (channel.kind === 'shg') return rayWl / 2;
   if (channel.kind === 'thg') return rayWl / 3;
+  // Incoherent emission: one photon (fluorescence) or several combined
+  // (2PEF/3PEF) are absorbed and one longer-wavelength photon comes back
+  // out. The emitted photon must be the less energetic one, so a manual
+  // wavelength below excitation/order is unphysical and emits nothing —
+  // the inspector warns about exactly this case (see channelWarning).
+  const order = EMISSION_ORDER[channel.kind];
+  if (order) {
+    const excitation = drivingExcitationWl(incidentWls) ?? rayWl;
+    const floor = excitation / order;
+    if (channel.autoWl === false) return channel.wl > floor ? channel.wl : null;
+    return floor + EMISSION_OFFSET_NM;
+  }
   if (!MIXING_KINDS.has(channel.kind)) return null;
   if (channel.kind === 'cars' && channel.autoWl === false) return channel.wl > 0 ? channel.wl : null;
   const partners = (incidentWls || []).filter(w => w > 0 && Math.abs(w - rayWl) >= MIXING_MIN_SEPARATION_NM);
@@ -728,7 +780,13 @@ function interact(ray, hit) {
   switch (k) {
     case 'absorb': return [];
     case 'detector': return [];
-    case 'attenuate': return [{ d, intensity: ray.intensity * Math.min(1, Math.max(0, data.transmission ?? 1)) }];
+    case 'attenuate': {
+      // A specimen with no signals yet still reports what illuminates it, so
+      // the inspector can offer live emission defaults the moment one is
+      // added (see specimenIncidentWls).
+      if (specimenProbe && data.specimen) recordProbeBeam(s, ray);
+      return [{ d, intensity: ray.intensity * Math.min(1, Math.max(0, data.transmission ?? 1)) }];
+    }
     case 'mirror': {
       // partial reflectivity (cavity mirrors / output couplers): reflect R,
       // transmit 1-R. The transmitted ray is always traced — so a detector
@@ -1087,45 +1145,100 @@ function interact(ray, hit) {
       // with. Generating no signal here is what keeps the probe cheap and
       // stops signals from seeding further signals.
       if (specimenProbe) {
-        let seen = specimenProbe.get(s.id);
-        if (!seen) specimenProbe.set(s.id, seen = new Set());
-        seen.add(ray.wl);
+        recordProbeBeam(s, ray);
         return transmission > 0.001 ? [{ d, intensity: ray.intensity * transmission }] : [];
       }
       const out = [];
+      const channels = data.channels || [];
       // Isotropic emission and two-beam mixing are per-spot events, not
       // per-ray ones: a beam split into K sampling rays must not emit K
       // copies of the same signal.
       const emitting = ray.sample == null || ray.sample === 0;
+      // With several beams on the spot, the shortest wavelength carries the
+      // most energy per photon and is the one that drives incoherent
+      // emission and Raman. Gating on it also stops each beam from emitting
+      // its own duplicate copy of the same signal.
+      const driver = drivingExcitationWl(data.incidentWls);
+      const isDriver = driver == null || Math.abs(ray.wl - driver) < 1e-6;
+
       // The excitation is attenuated by the specimen's own transmission and
       // nothing else. Real conversion efficiencies are ~1e-6, so signal
       // generation depletes the pump negligibly; "Signal efficiency" is a
       // visibility gain for the diagram, not an energy budget. Keeping the
       // two independent also means stacking five channels never dims the
       // excitation, and matches what the transmission field claims to do.
-      if (transmission > 0.001) out.push({ d, intensity: ray.intensity * transmission, tag: 'x' });
-      for (let ci = 0; ci < (data.channels || []).length; ci++) {
-        const c = data.channels[ci];
+      // Phase contrast and SRS ride on this transmitted beam rather than
+      // emitting one of their own, so they are applied here.
+      if (transmission > 0.001) {
+        const exc = { d, intensity: ray.intensity * transmission, tag: 'x' };
+        let stokes = ray.stokes, retarded = false, pulse = ray.pulse, gated = false;
+        for (const c of channels) {
+          if (c.kind === 'phase' && stokes) {
+            stokes = applyRetarder(stokes, c.axis ?? 45, c.retardance ?? 90);
+            retarded = true;
+          } else if (c.kind === 'srs' && ray.pulse) {
+            const transferred = srsTransferGate(c, ray, data.incidentBeams);
+            if (transferred) { pulse = withGate(pulse, transferred); gated = true; }
+          }
+        }
+        if (retarded) exc.stokes = stokes;
+        if (gated) exc.pulse = pulse;
+        out.push(exc);
+      }
+
+      for (let ci = 0; ci < channels.length; ci++) {
+        const c = channels[ci];
         const eff = Math.min(1, Math.max(0, c.eff ?? 0.1));
+        // Phase contrast and SRS shape the transmitted beam above; they emit
+        // no light of their own and have no efficiency of their own.
+        if (MODIFIER_KINDS.has(c.kind)) continue;
         if (eff <= 0) continue;
-        if (c.kind === 'fluor') {
-          if (!emitting) continue;
+
+        if (c.kind === 'raman') {
+          // Spontaneous Raman scatters a handful of Stokes-shifted lines,
+          // isotropically and weakly, from the material's own fingerprint.
+          if (!emitting || !isDriver) continue;
+          const pump = driver ?? ray.wl;
+          const shifts = ramanShifts(c.material).slice(0, 4);
+          const N = 8;
+          for (const shift of shifts) {
+            const line = ramanStokesWl(pump, shift);
+            if (!(line > 0)) continue;
+            const tint = channelColor(c, line);
+            for (let i = 0; i < N; i++) {
+              const a = i * 2 * Math.PI / N;
+              out.push({
+                d: { x: Math.cos(a), y: Math.sin(a) }, wl: line, bw: 0, pol: undefined, stokes: null,
+                color: tint, evan: true, evanLen: 25,
+                intensity: 0.25,
+                power: Number.isFinite(ray.power) ? ray.power * eff / (N * shifts.length) : undefined,
+                tag: `r${ci}_${Math.round(shift)}_${i}`,
+              });
+            }
+          }
+          continue;
+        }
+
+        if (ISOTROPIC_KINDS.has(c.kind)) {
+          if (!emitting || !isDriver) continue;
+          const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
+          if (!(wl > 0)) continue;
           const N = 16;
-          const emitted = ray.intensity * eff;
-          const tint = channelColor(c, c.wl);
+          const tint = channelColor(c, wl);
           for (let i = 0; i < N; i++) {
             const a = i * 2 * Math.PI / N;
             out.push({
-              d: { x: Math.cos(a), y: Math.sin(a) }, wl: c.wl, bw: 0, pol: undefined, stokes: null,
+              d: { x: Math.cos(a), y: Math.sin(a) }, wl, bw: 0, pol: undefined, stokes: null,
               color: tint,
               evan: true, evanLen: 25,
-              intensity: emitted > 0 ? 0.25 : 0,
+              intensity: 0.25,
               power: Number.isFinite(ray.power) ? ray.power * eff / N : undefined,
               tag: `f${ci}_${i}`,
             });
           }
           continue;
         }
+
         const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
         if (!(wl > 0)) continue;
         const forward = ray.intensity * eff;
@@ -1653,6 +1766,7 @@ export function traceScene(elements, beams = []) {
   lastPaths = [];
   detectorHits = new Map();
   gateTransmissionCache = new Map();
+  specimenIncident = new Map();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
@@ -1733,14 +1847,24 @@ export function traceScene(elements, beams = []) {
   }
   };
 
-  const needsMixing = surfaces.some(s => s.kind === 'specimen'
-    && (s.data.channels || []).some(c => MIXING_KINDS.has(c.kind) && c.autoWl !== false));
-  if (needsMixing) {
+  // Probe whenever a signal-bearing specimen is on the table: its channels
+  // may need to know the other colours present, and even a specimen with no
+  // channels yet reports what illuminates it so the inspector can offer live
+  // emission defaults. SHG/THG-only benches still skip it.
+  const needsProbe = surfaces.some(s =>
+    (s.kind === 'specimen' && (s.data.channels || []).some(channelNeedsExcitationProbe))
+    || (s.kind === 'attenuate' && s.data.specimen && s.el
+        && ['linear', 'nonlinear'].includes(specimenTypeOf(s.el.params))));
+  if (needsProbe) {
     specimenProbe = new Map();
     try {
       emitSources(false);
       for (const s of surfaces) {
-        if (s.kind === 'specimen') s.data.incidentWls = [...(specimenProbe.get(s.id) || [])];
+        if (s.kind !== 'specimen' && !(s.kind === 'attenuate' && s.data.specimen)) continue;
+        const beams = specimenProbe.get(s.id) || [];
+        s.data.incidentBeams = beams;
+        s.data.incidentWls = beams.map(b => b.wl);
+        if (s.el) specimenIncident.set(s.el.id, s.data.incidentWls);
       }
     } finally {
       specimenProbe = null;

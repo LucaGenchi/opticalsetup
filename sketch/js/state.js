@@ -60,7 +60,8 @@ function normalizeLayers(value) {
 // through their legacy single `mode` instead (see legacySampleChannels).
 function normalizeChannels(value) {
   if (!Array.isArray(value)) return [];
-  const kinds = new Set(['fluor', 'shg', 'thg', 'sfg', 'cars']);
+  const kinds = new Set(['fluor', 'raman', 'phase', 'tpef', 'thpef', 'shg', 'thg', 'sfg', 'cars', 'srs']);
+  const materials = new Set(['lipid', 'protein', 'dmso', 'pmma', 'polystyrene', 'water']);
   return value.slice(0, 5).filter(record).map(raw => ({
     kind: kinds.has(raw.kind) ? raw.kind : 'fluor',
     wl: clamp(finite(raw.wl) ? raw.wl : 520, 100, 4000),
@@ -70,6 +71,10 @@ function normalizeChannels(value) {
     autoWl: raw.autoWl !== false,
     autoColor: raw.autoColor !== false,
     color: typeof raw.color === 'string' && COLOR.test(raw.color) ? raw.color : '#22c55e',
+    material: materials.has(raw.material) ? raw.material : 'lipid',
+    retardance: clamp(finite(raw.retardance) ? raw.retardance : 90, 0, 360),
+    axis: clamp(finite(raw.axis) ? raw.axis : 45, 0, 180),
+    transferEff: clamp(finite(raw.transferEff) ? raw.transferEff : 0.1, 0.01, 0.5),
   }));
 }
 
@@ -115,6 +120,13 @@ function normalizeElement(raw, definitions, used) {
   } else {
     if (!record(raw.params)) throw new Error(`Element ${raw.type} has invalid parameters`);
     Object.assign(params, raw.params);
+  }
+  // Params added after a sketch format was already in the wild can declare a
+  // `migrate` hook. It runs only when the saved element genuinely lacks the
+  // key, deriving a value from whatever the old format did carry — the
+  // plain default would otherwise erase that evidence before anyone reads it.
+  for (const spec of def?.params || []) {
+    if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params);
   }
   const rot = def?.rotatable === false ? 0 : finite(raw.rot) ? ((raw.rot % 360) + 360) % 360 : 0;
   let x = raw.x, y = raw.y;

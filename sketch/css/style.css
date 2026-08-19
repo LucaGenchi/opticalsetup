@@ -726,6 +726,19 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .btnrow button { flex: 1; }
 .hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 6px; }
 
+/* A signal channel the current bench cannot actually produce. Themed from
+   the shared danger tokens so it reads the same in light and dark. */
+.signal-warning {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--danger-border);
+  border-radius: 6px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
 .wiki-link {
   display: block;
   margin-top: 11px;

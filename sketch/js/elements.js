@@ -597,24 +597,100 @@ function probeCardPlacement(el, card, scale) {
 // optically inert specimen that only attenuates the excitation.
 export const MAX_SAMPLE_CHANNELS = 5;
 
-export const SIGNAL_KINDS = [
-  ['fluor', 'Fluorescence — isotropic'],
-  ['shg', 'SHG — λ/2'],
-  ['thg', 'THG — λ/3'],
-  ['sfg', 'SFG — sum frequency'],
-  ['cars', 'CARS — anti-Stokes'],
+// A specimen is one of four kinds. Absorbing and resin have no signal
+// channels at all; the two "specimen" types each offer their own menu of
+// stackable signals, because a linear process and a nonlinear one are never
+// alternatives for the same physical sample.
+export const SPECIMEN_TYPES = [
+  ['absorbing', 'Absorbing specimen'],
+  ['resin', 'Photocurable resin'],
+  ['linear', 'Linear specimen'],
+  ['nonlinear', 'Nonlinear specimen'],
 ];
+
+export const LINEAR_SIGNAL_KINDS = [
+  ['fluor', 'Fluorescence — isotropic'],
+  ['raman', 'Spontaneous Raman — isotropic'],
+  ['phase', 'Phase contrast — retardance'],
+];
+export const NONLINEAR_SIGNAL_KINDS = [
+  ['tpef', 'Two-photon fluorescence (2PEF)'],
+  ['thpef', 'Three-photon fluorescence (3PEF)'],
+  ['shg', 'Second harmonic (SHG)'],
+  ['thg', 'Third harmonic (THG)'],
+  ['sfg', 'Sum frequency (SFG)'],
+  ['cars', 'CARS — anti-Stokes'],
+  ['srs', 'Stimulated Raman (SRS)'],
+];
+
+export function signalKindsFor(specimenType) {
+  if (specimenType === 'linear') return LINEAR_SIGNAL_KINDS;
+  if (specimenType === 'nonlinear') return NONLINEAR_SIGNAL_KINDS;
+  return [];
+}
+
+const LINEAR_KIND_SET = new Set(LINEAR_SIGNAL_KINDS.map(([k]) => k));
+const NONLINEAR_KIND_SET = new Set(NONLINEAR_SIGNAL_KINDS.map(([k]) => k));
+export const ALL_SIGNAL_KINDS = [...LINEAR_SIGNAL_KINDS, ...NONLINEAR_SIGNAL_KINDS];
+
+// Kept for the legacy single-`mode` reader and any external caller.
+export const SIGNAL_KINDS = ALL_SIGNAL_KINDS;
+
 // Four- and three-wave mixing need two DIFFERENT excitation colours present
-// at the same spot; the others are driven by a single beam.
+// at the same spot; the others are driven by a single beam. SRS likewise
+// needs two beams — one to carry the modulation and one to receive it.
 export const MIXING_KINDS = new Set(['sfg', 'cars']);
-// Fluorescence is incoherent and radiates in every direction, so it has no
-// forward/epi distinction to offer. The parametric signals are generated
-// along the excitation direction and are forward-dominant, with a weaker
-// backward (epi) lobe that real epi-detected CARS/SHG setups rely on.
+export const TWO_BEAM_KINDS = new Set(['sfg', 'cars', 'srs']);
+// Incoherent emission radiates in every direction, so it has no forward/epi
+// distinction to offer. The parametric signals are generated along the
+// excitation direction and are forward-dominant, with a weaker backward
+// (epi) lobe that real epi-detected CARS/SHG setups rely on.
+export const ISOTROPIC_KINDS = new Set(['fluor', 'raman', 'tpef', 'thpef']);
 export const EPI_CAPABLE_KINDS = new Set(['shg', 'thg', 'sfg', 'cars']);
+// These modify the excitation beam in place rather than emitting a new one.
+export const MODIFIER_KINDS = new Set(['phase', 'srs']);
+
+// How far above the driving photon energy an emission sits by default: real
+// Stokes shifts are tens of nm, and the same offset reads sensibly for
+// one-, two- and three-photon excitation.
+export const EMISSION_OFFSET_NM = 20;
+
+// The photon order each emission is pumped by — 1 for ordinary
+// fluorescence, 2 for 2PEF, 3 for 3PEF. The emitted photon must be less
+// energetic than the combined excitation photons, i.e. its wavelength must
+// exceed excitation/order.
+export const EMISSION_ORDER = { fluor: 1, tpef: 2, thpef: 3 };
+
+// Spontaneous Raman lines, as Stokes shifts in cm^-1. Real reference values
+// for a handful of specimens people actually image, so a spectrometer
+// downstream reconstructs a recognizable fingerprint rather than noise.
+export const RAMAN_MATERIALS = [
+  ['lipid', 'Lipids (CH₂)', [1440, 1650, 2845, 2880]],
+  ['protein', 'Protein (amide I)', [1004, 1450, 1660, 2930]],
+  ['dmso', 'DMSO', [670, 1042, 2913, 2994]],
+  ['pmma', 'PMMA (acrylic)', [812, 1452, 1730, 2952]],
+  ['polystyrene', 'Polystyrene', [1001, 1602, 3054]],
+  ['water', 'Water (O–H)', [1640, 3250, 3400]],
+];
+const RAMAN_BY_ID = new Map(RAMAN_MATERIALS.map(([id, label, shifts]) => [id, { label, shifts }]));
+export const ramanShifts = material => RAMAN_BY_ID.get(material)?.shifts || RAMAN_BY_ID.get('lipid').shifts;
+
+// A Stokes-shifted wavelength: 1/lambda_s = 1/lambda_p - shift, with the
+// shift converted from cm^-1 to nm^-1 (1 cm^-1 = 1e-7 nm^-1).
+export function ramanStokesWl(pumpWl, shiftCm) {
+  if (!(pumpWl > 0)) return null;
+  const inv = 1 / pumpWl - shiftCm * 1e-7;
+  return inv > 1e-9 ? 1 / inv : null;
+}
 
 export function newSampleChannel(kind = 'fluor') {
-  return { kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true, autoColor: true, color: '#22c55e' };
+  return {
+    kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true,
+    autoColor: true, color: '#22c55e',
+    material: 'lipid',        // spontaneous Raman fingerprint
+    retardance: 90, axis: 45, // phase contrast
+    transferEff: 0.1,         // SRS modulation transfer
+  };
 }
 
 // Photon-energy conservation, in nm. Returns null when a combination is not
@@ -640,16 +716,111 @@ export function legacySampleChannels(p) {
   return [];
 }
 
+// Which of the four specimen kinds this element is. Sketches saved before
+// the type existed are read from whatever they do carry: an explicit resin
+// material, the signal channels they already stack, or the old per-material
+// `sampleKind` — so nothing silently changes behavior on load.
+export function specimenTypeOf(p) {
+  if (p?.specimenType) return p.specimenType;
+  const legacy = p?.sampleKind;
+  if (legacy === 'resin') return 'resin';
+  const stacked = Array.isArray(p?.channels) && p.channels.length ? p.channels : legacySampleChannels(p);
+  if (stacked.length) return stacked.some(c => NONLINEAR_KIND_SET.has(c.kind)) ? 'nonlinear' : 'linear';
+  if (legacy === 'fluorescent') return 'linear';
+  if (legacy === 'nonlinear') return 'nonlinear';
+  return 'absorbing';
+}
+
 export function sampleChannels(p) {
-  if (Array.isArray(p?.channels) && p.channels.length) return p.channels.slice(0, MAX_SAMPLE_CHANNELS);
-  return legacySampleChannels(p);
+  const type = specimenTypeOf(p);
+  // Absorbing and resin specimens emit nothing. Channels the user configured
+  // under another type are kept in params (so switching back restores them)
+  // but take no part in the trace, and a channel is only ever honored under
+  // the type whose menu offers it.
+  const allowed = type === 'linear' ? LINEAR_KIND_SET : type === 'nonlinear' ? NONLINEAR_KIND_SET : null;
+  if (!allowed) return [];
+  const raw = Array.isArray(p?.channels) && p.channels.length ? p.channels : legacySampleChannels(p);
+  return raw.filter(c => allowed.has(c.kind)).slice(0, MAX_SAMPLE_CHANNELS);
+}
+
+// Whether a channel has to know what else is illuminating the specimen —
+// which colours are present, and whether any of them carries a modulation.
+// SHG, THG and phase contrast derive everything from the ray in front of
+// them, so a specimen made only of those never pays for the probe pass.
+export function channelNeedsExcitationProbe(c) {
+  if (TWO_BEAM_KINDS.has(c.kind)) return !(c.kind === 'cars' && c.autoWl === false);
+  if (c.kind === 'raman') return true;
+  // Emission channels need it even when the wavelength is pinned: the
+  // photon-energy floor a manual value has to clear is set by the SHORTEST
+  // beam on the spot, which a single ray cannot know on its own.
+  if (EMISSION_ORDER[c.kind]) return true;
+  return false;
+}
+
+// The excitation colour a single-beam signal is driven by. With several
+// beams on the spot the shortest wavelength carries the most energy per
+// photon, so it is the one that drives fluorescence and Raman.
+export function drivingExcitationWl(incidentWls) {
+  const list = (incidentWls || []).filter(w => Number.isFinite(w) && w > 0);
+  return list.length ? Math.min(...list) : null;
+}
+
+// The wavelength an emission channel defaults to for a given excitation:
+// one Stokes offset above the energy its pump photons can reach.
+export function defaultEmissionWl(kind, excitationWl) {
+  const order = EMISSION_ORDER[kind];
+  if (!order || !(excitationWl > 0)) return null;
+  return Math.round(excitationWl / order + EMISSION_OFFSET_NM);
+}
+
+// Physically impossible or under-specified configurations, reported as a
+// short sentence for the inspector to surface. Returns null when the channel
+// is fine. `incidentWls` is what actually reaches this specimen.
+export function channelWarning(channel, incidentWls) {
+  const beams = (incidentWls || []).filter(w => Number.isFinite(w) && w > 0);
+  const distinct = [...new Set(beams.map(w => Math.round(w)))];
+  if (TWO_BEAM_KINDS.has(channel.kind)) {
+    if (channel.kind === 'cars' && channel.autoWl === false) return null;
+    if (distinct.length < 2) {
+      return channel.kind === 'srs'
+        ? 'Stimulated Raman needs two excitation beams — one carrying the modulation, one to receive it.'
+        : `${channel.kind === 'sfg' ? 'Sum frequency' : 'CARS'} needs two different excitation wavelengths at the sample.`;
+    }
+    return null;
+  }
+  const order = EMISSION_ORDER[channel.kind];
+  if (!order || channel.autoWl !== false) return null;
+  const excitation = drivingExcitationWl(beams);
+  if (!(excitation > 0) || !(channel.wl > 0)) return null;
+  const floor = excitation / order;
+  if (channel.wl < floor) {
+    const what = order === 1 ? 'Fluorescence' : `${order}-photon fluorescence`;
+    return `${what} cannot emit at ${Math.round(channel.wl)} nm: that is more energetic than `
+      + `${order === 1 ? 'the' : `${order} combined`} ${Math.round(excitation)} nm excitation photon${order === 1 ? '' : 's'} `
+      + `(must exceed ${Math.round(floor)} nm).`;
+  }
+  return null;
 }
 
 function sampleModeParams() {
   return [
-    { key: 'channels', label: 'Signals generated', type: 'signals', def: [] },
-    { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true },
-    { key: 'transmission', label: 'Excitation transmission', type: 'number', min: 0, max: 1, step: 0.05, def: 0.8, show: p => p.transmitExc },
+    { key: 'specimenType', label: 'Specimen type', type: 'select', def: 'absorbing', options: SPECIMEN_TYPES,
+      // Sketches predating the type selector are read from what they do
+      // carry — stacked channels, a legacy single `mode`, or the old
+      // per-material `sampleKind`.
+      migrate: p => specimenTypeOf({ ...p, specimenType: null }) },
+    // Only the two signal-bearing types show a channel list; the resin's own
+    // preview controls live on the stage, next to its piezo scan.
+    { key: 'channels', label: 'Signals generated', type: 'signals', def: [], show: p => {
+      const type = specimenTypeOf(p);
+      return type === 'linear' || type === 'nonlinear';
+    } },
+    { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
+    { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
+    { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
+    // An absorbing specimen is exactly this one dial: full transmission down
+    // to zero, where it blocks the beam outright.
+    { key: 'transmission', label: 'Excitation transmission', type: 'number', min: 0, max: 1, step: 0.05, def: 0.8, show: p => specimenTypeOf(p) === 'absorbing' || p.transmitExc },
     // Legacy single-signal fields: hidden, kept so pre-channels sketches keep
     // loading and are read through legacySampleChannels() above.
     { key: 'mode', label: 'Signal generated', type: 'select', def: 'none', show: () => false, options: [['none', 'None'], ['fluor', 'Fluorescence (isotropic)'], ['shg', 'SHG λ/2 (forward)'], ['thg', 'THG λ/3 (forward)'], ['cars', 'CARS (forward)']] },
@@ -745,17 +916,19 @@ function stageSampleColor(params) {
   // incident colour, so they fall through to the material tint below.
   const named = sampleChannels(params).find(c => c.kind === 'fluor' || (c.kind === 'cars' && c.autoWl === false));
   if (named) return wavelengthToColor(named.wl);
-  if (params.sampleKind === 'resin') return '#9b5de5';
-  if (params.sampleKind === 'nonlinear') return '#e6a23c';
-  if (params.sampleKind === 'opaque') return '#69737e';
+  const type = specimenTypeOf(params);
+  if (type === 'resin') return '#9b5de5';
+  if (type === 'nonlinear') return '#e6a23c';
+  if (type === 'absorbing') return '#69737e';
   return '#e2758f';
 }
 
 function stageSampleLabel(params) {
-  if (params.sampleKind === 'resin') return 'Resin';
-  if (params.sampleKind === 'fluorescent') return 'Fluor';
-  if (params.sampleKind === 'nonlinear') return 'NL';
-  if (params.sampleKind === 'opaque') return 'Opaque';
+  const type = specimenTypeOf(params);
+  if (type === 'resin') return 'Resin';
+  if (type === 'linear') return 'Linear';
+  if (type === 'nonlinear') return 'NL';
+  if (type === 'absorbing') return 'Absorbing';
   return 'Sample';
 }
 
@@ -777,7 +950,7 @@ export function stageSampleLabelSVG(el) {
 // the sample/stage entries below.
 function sampleSurfaces(el, h) {
   const p = el.params;
-  const writeVoxel = p.sampleKind === 'resin' && p.voxelPreview === true;
+  const writeVoxel = specimenTypeOf(p) === 'resin' && p.voxelPreview === true;
   const reportHit = true;
   const channels = sampleChannels(p);
   // One surface carries every channel, so a multimodal specimen emits all of
@@ -790,7 +963,7 @@ function sampleSurfaces(el, h) {
     }];
   }
   return p.transmitExc
-    ? [{ x1: -h, y1: 0, x2: h, y2: 0, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit } }]
+    ? [{ x1: -h, y1: 0, x2: h, y2: 0, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit, specimen: true } }]
     : rectAbsorb(2 * h, 8).map(s => ({ ...s, data: { reportHit } }));
 }
 
@@ -2008,11 +2181,12 @@ export const registry = {
       { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.pzMode === 'sync' },
       { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true },
-      { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
+      // Legacy per-material selector, replaced by `specimenType`. Hidden but
+      // still declared so pre-existing sketches keep loading and can be read
+      // by specimenTypeOf().
+      { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: () => false, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
       { key: 'showMaterialLabel', label: 'Show material label', type: 'checkbox', def: true, appearance: true },
       { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, appearance: true },
-      { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => p.sampleKind === 'resin' },
-      { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => p.sampleKind === 'resin' && p.voxelPreview },
       ...sampleModeParams(),
     ],
     svg(el) {

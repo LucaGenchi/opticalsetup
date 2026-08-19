@@ -44,7 +44,7 @@ test('a pulsed resin stage exposes one write location, and only for resin', () =
   const laser = createElement('laser', 0, 0);
   const stage = createElement('stage', 150, 0);
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it
-  Object.assign(stage.params, { sampleKind: 'resin', voxelPreview: true });
+  Object.assign(stage.params, { specimenType: 'resin', voxelPreview: true });
   assert.equal(traceScene([laser, stage]).writeHits.length, 0, 'CW light cannot create a 2PP preview mark');
 
   laser.params.temporalMode = 'pulsed';
@@ -56,7 +56,7 @@ test('a pulsed resin stage exposes one write location, and only for resin', () =
 
   // The holder always carries a specimen now, so "no marks" is expressed by
   // the material, not by an installed/empty switch.
-  stage.params.sampleKind = 'generic';
+  stage.params.specimenType = 'absorbing';
   assert.equal(traceScene([laser, stage]).writeHits.length, 0);
 });
 
@@ -67,11 +67,11 @@ test('voxel writing only ever fires for a resin sample, regardless of the voxelP
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it
   Object.assign(stage.params, { voxelPreview: true });
 
-  for (const sampleKind of ['generic', 'fluorescent', 'nonlinear', 'opaque']) {
-    stage.params.sampleKind = sampleKind;
-    assert.equal(traceScene([laser, stage]).writeHits.length, 0, `${sampleKind} must not write voxels`);
+  for (const specimenType of ['absorbing', 'linear', 'nonlinear']) {
+    stage.params.specimenType = specimenType;
+    assert.equal(traceScene([laser, stage]).writeHits.length, 0, `${specimenType} must not write voxels`);
   }
-  stage.params.sampleKind = 'resin';
+  stage.params.specimenType = 'resin';
   assert.equal(traceScene([laser, stage]).writeHits.length, 1);
 });
 
@@ -79,7 +79,7 @@ test('a mounted sample reports an excitation hit for the signal-spot indicator, 
   const laser = createElement('laser', 0, 0);
   const stage = createElement('stage', 150, 0);
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it
-  Object.assign(stage.params, { sampleKind: 'fluorescent', mode: 'fluor' });
+  Object.assign(stage.params, { specimenType: 'linear', mode: 'fluor' });
 
   const cw = traceScene([laser, stage]);
   assert.equal(cw.signalHits.length, 1);
@@ -95,7 +95,7 @@ test('a mounted sample reports an excitation hit for the signal-spot indicator, 
 test('an opaque (non-transmitting) sample still reports its excitation hit', () => {
   const laser = createElement('laser', 0, 0);
   const stage = createElement('stage', 150, 0);
-  Object.assign(stage.params, { sampleKind: 'opaque', transmitExc: false });
+  Object.assign(stage.params, { specimenType: 'absorbing', transmitExc: false });
   const scene = traceScene([laser, stage]);
   assert.equal(scene.signalHits.length, 1);
   assert.equal(scene.signalHits[0].stageId, stage.id);
@@ -107,10 +107,10 @@ test('the signal-spot indicator reports the real generated wavelength, not a fix
   const stage = createElement('stage', 150, 0);
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it
 
-  Object.assign(stage.params, { sampleKind: 'fluorescent', mode: 'fluor', fluorWl: 520 });
+  Object.assign(stage.params, { specimenType: 'linear', mode: 'fluor', fluorWl: 520 });
   closeTo(traceScene([laser, stage]).signalHits[0].wl, 520);
 
-  Object.assign(stage.params, { sampleKind: 'nonlinear', mode: 'shg' });
+  Object.assign(stage.params, { specimenType: 'nonlinear', mode: 'shg' });
   closeTo(traceScene([laser, stage]).signalHits[0].wl, 400); // 800 / 2
 
   stage.params.mode = 'thg';
@@ -120,7 +120,7 @@ test('the signal-spot indicator reports the real generated wavelength, not a fix
   closeTo(traceScene([laser, stage]).signalHits[0].wl, 660);
 
   // a plain attenuating (non-signal-generating) surface reports no wavelength
-  Object.assign(stage.params, { sampleKind: 'generic', mode: 'none' });
+  Object.assign(stage.params, { specimenType: 'absorbing', mode: 'none' });
   assert.equal(traceScene([laser, stage]).signalHits[0].wl, undefined);
 });
 
@@ -190,7 +190,7 @@ test('voxel depth factor grows from 0 at focus to 1 at the edge of the configure
 test('the material label is world-upright (no rotate transform) and respects the show/hide toggle', () => {
   const stage = createElement('stage', 100, 50);
   stage.rot = 137;
-  stage.params.sampleKind = 'resin';
+  stage.params.specimenType = 'resin';
   const svg = stageSampleLabelSVG(stage);
   assert.match(svg, /Resin/);
   assert.doesNotMatch(svg, /rotate/);

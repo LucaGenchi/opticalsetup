@@ -97,6 +97,7 @@ test('uncollected fluorescence fades within 25 mm and never reaches a bare detec
   const laser = createElement('laser', 0, 0);
   const sample = createElement('sample', 150, 0);
   sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
+  sample.params.specimenType = 'linear';
   sample.params.mode = 'fluor';
   sample.params.transmission = 0.8;
   sample.params.signalEff = 0.1;
@@ -124,6 +125,7 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
   laser.params.beamMode = 'line';
   const sample = createElement('sample', 150, 0);
   sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
+  sample.params.specimenType = 'linear';
   sample.params.mode = 'fluor';
   sample.params.transmission = 0.8;
   sample.params.signalEff = 0.1;
