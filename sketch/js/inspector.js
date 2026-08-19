@@ -6,6 +6,7 @@ import {
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
+  FLUOROPHORES, fluorophoreSpec,
 } from './elements.js';
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
@@ -308,6 +309,15 @@ function signalsHTML(sel) {
 
     const order = EMISSION_ORDER[c.kind];
     if (order) {
+      h += field('Fluorophore', `<select data-ci="${i}" data-ck="fluorophore">` +
+        FLUOROPHORES.map(([id, label]) => `<option value="${id}" ${id === c.fluorophore ? 'selected' : ''}>${esc(label)}</option>`).join('') +
+        `</select>`);
+      const dye = fluorophoreSpec(c.fluorophore);
+      if (dye) {
+        h += `<div class="hint">Absorbs around ${dye.absPeak} nm${order > 1 ? ` (${order} photons of ${Math.round(dye.absPeak * order)} nm)` : ''}, emits a ${dye.emFwhm} nm band at ${dye.emPeak} nm.</div>`;
+      }
+    }
+    if (order && !fluorophoreSpec(c.fluorophore)) {
       // Fluorescence and its multiphoton cousins emit one longer-wavelength
       // photon per absorbed group. The default tracks the bench; typing a
       // wavelength pins it and is checked against the photon-energy floor.
@@ -770,7 +780,7 @@ function applyInput(inp, rebuild = false) {
     warnAboutChannel(c, sel);
     // Switching kind changes which fields apply at all, so rebuild the rows.
     // 'wl' redraws so the inline warning tracks the value just committed.
-    if (rebuild && ['kind', 'autoWl', 'epi', 'autoColor', 'material', 'wl', 'requireOverlap'].includes(ckey)) renderInspector();
+    if (rebuild && ['kind', 'autoWl', 'epi', 'autoColor', 'material', 'wl', 'requireOverlap', 'fluorophore'].includes(ckey)) renderInspector();
     return;
   }
 

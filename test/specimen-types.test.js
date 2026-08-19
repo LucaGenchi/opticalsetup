@@ -6,6 +6,7 @@ import {
   signalKindsFor, channelWarning, defaultEmissionWl, drivingExcitationWl,
   ramanShifts, ramanStokesWl, LINEAR_SIGNAL_KINDS, NONLINEAR_SIGNAL_KINDS,
   SPECIMEN_TYPES, MODIFIER_KINDS, EMISSION_ORDER,
+  FLUOROPHORES, fluorophoreSpec, fluorophoreAbsorption,
   displayViewsFor, resolvedDisplayView, displayActionUpdate,
 } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
@@ -682,8 +683,12 @@ function spectrometerScreen(elements, sensor) {
   const baseline = 1; // the spectrometer plots against this baseline
   return {
     svg,
-    stems: [...svg.matchAll(/<line x1="[-\d.]+" y1="([-\d.]+)" x2="[-\d.]+" y2="([-\d.]+)" stroke="#[0-9a-f]{6}" stroke-width="2"/g)]
-      .map(m => Number((Number(m[1]) - Number(m[2])).toFixed(2))).sort((a, b) => b - a),
+    // Discrete lines render as a triangle of the instrument's own resolution
+    // width, peaking at their height above the baseline.
+    stems: [...svg.matchAll(/<path d="M ([-\d.]+),([-\d.]+) L ([-\d.]+),([-\d.]+) L ([-\d.]+),/g)]
+      .map(m => Number((Number(m[2]) - Number(m[4])).toFixed(2))).sort((a, b) => b - a),
+    lineWidths: [...svg.matchAll(/<path d="M ([-\d.]+),[-\d.]+ L [-\d.]+,[-\d.]+ L ([-\d.]+),/g)]
+      .map(m => Number((Number(m[2]) - Number(m[1])).toFixed(2))),
     bandPeak: (() => {
       const path = (svg.match(/<path d="M ([^"]+)" fill="none" stroke="url\(#specGrad/) || [])[1];
       if (!path) return null;
@@ -780,4 +785,162 @@ test('relative mode rescues a weak signal beside its own pump, keeping the finge
   // But the signal itself is lifted clear of the excitation.
   assert.ok(relative.stems[1] > density.stems[1],
     `the strongest signal should rise in relative mode, got ${density.stems} then ${relative.stems}`);
+});
+
+// ---------------- instrument resolution renders line width ----------------
+
+test('the spectrometer resolution sets how wide a line can be drawn', () => {
+  // Regression: resolution only ever divided into the density, and since the
+  // plot normalizes to its own maximum, a lines-only reading looked identical
+  // at every setting. A spectrometer cannot render a line narrower than it
+  // resolves, so the width now shows it.
+  const widthAt = resolutionNm => {
+    const spectrometer = spectrometerAt(400, {
+      resolutionNm, rangeMode: 'manual', rangeMin: 500, rangeMax: 620,
+    });
+    return spectrometerScreen([monoLaser(532, -3), monoLaser(580, 3), spectrometer], spectrometer).lineWidths[0];
+  };
+  const fine = widthAt(0.5), coarse = widthAt(20);
+  assert.ok(coarse > fine * 5, `coarsening the resolution should broaden lines, got ${fine} then ${coarse}`);
+});
+
+// ---------------- emission reach and sampling ----------------
+
+function emissionBench(channels, { lensAtMm, specimenType = 'linear' }) {
+  const laser = monoLaser(532, 0);
+  const sample = createElement('sample', 150, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 40, specimenType, transmitExc: true, transmission: 0.8, channels,
+  });
+  const lens = createElement('lens', 150 + lensAtMm, 0);
+  Object.assign(lens.params, { f: 40, dia: 60 });
+  const detector = createElement('detector', 150 + lensAtMm + 220, 0);
+  detector.params.aperture = 80;
+  const elements = [laser, sample, lens, detector];
+  traceAll(elements);
+  const reading = detectorReading(detector.id);
+  if (!reading) return [];
+  return [...new Set(reading.spectrum.map(s => Math.round(s.wavelength)))]
+    .filter(wl => Math.abs(wl - 532) > 5).sort((a, b) => a - b);
+}
+
+test('emission is collectable well past the distance its glow is drawn over', () => {
+  // The glow still fades by 25 mm, but a collection lens routinely sits
+  // further out than that and the light is really there.
+  for (const channels of [[ch('fluor', { eff: 0.5 })], [ch('raman', { eff: 0.5, material: 'dmso' })]]) {
+    assert.ok(emissionBench(channels, { lensAtMm: 20 }).length, 'a close lens collects');
+    assert.ok(emissionBench(channels, { lensAtMm: 95 }).length,
+      'a lens at ~10 cm still collects, well past the drawn glow');
+    assert.equal(emissionBench(channels, { lensAtMm: 140 }).length, 0,
+      'beyond the capture range the light is gone');
+  }
+});
+
+test('spontaneous Raman delivers its whole fingerprint to a distant lens', () => {
+  const lines = ramanShifts('dmso').map(shift => Math.round(ramanStokesWl(532, shift)));
+  const collected = emissionBench([ch('raman', { eff: 0.5, material: 'dmso' })], { lensAtMm: 95 });
+  for (const line of lines) assert.ok(collected.includes(line), `missing ${line} nm from ${collected}`);
+});
+
+test('emission directions are sampled denser along the beam axis', () => {
+  // Isotropic emission is still isotropic; the SAMPLING is concentrated where
+  // collection optics actually sit, so the rays that can be captured are the
+  // ones resolved finely.
+  const laser = monoLaser(532, 0);
+  const sample = createElement('sample', 150, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 40, specimenType: 'linear', transmitExc: true, transmission: 0.8,
+    channels: [ch('fluor', { eff: 0.5 })],
+  });
+  const scene = traceScene([laser, sample]);
+  const directions = new Set();
+  for (const d of scene.drawables) {
+    if (d.type !== 'path' || !d.pts || d.pts.length < 2) continue;
+    if (Math.hypot(d.pts[0].x - 150, d.pts[0].y) > 30) continue;
+    directions.add(Math.atan2(d.pts[1].y - d.pts[0].y, d.pts[1].x - d.pts[0].x).toFixed(4));
+  }
+  const angles = [...directions].map(Number);
+  assert.ok(angles.length >= 16, `emission should be sampled with many rays, got ${angles.length}`);
+  const nearAxis = angles.filter(a => {
+    const t = Math.abs(Math.atan2(Math.sin(a), Math.cos(a)));
+    return t < Math.PI / 6 || t > 5 * Math.PI / 6; // within 30° of forward or back
+  });
+  // A third of the circle lies within those cones, so uniform sampling would
+  // put about a third of the rays there.
+  assert.ok(nearAxis.length > angles.length * 0.45,
+    `expected the axis to be oversampled, got ${nearAxis.length} of ${angles.length}`);
+});
+
+// ---------------- named fluorophores ----------------
+
+function dyeEmission(kind, fluorophore, excitationWl) {
+  const laser = monoLaser(excitationWl, 0);
+  const sample = createElement('sample', 150, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 40, specimenType: kind === 'fluor' ? 'linear' : 'nonlinear',
+    transmitExc: true, transmission: 0.8,
+    channels: [ch(kind, { eff: 0.5, fluorophore })],
+  });
+  const objective = createElement('objective', 154, 0);
+  objective.params.f = 20;
+  const detector = createElement('detector', 320, 0);
+  detector.params.aperture = 60;
+  traceAll([laser, sample, objective, detector]);
+  const reading = detectorReading(detector.id);
+  if (!reading) return null;
+  const signal = reading.spectrum.filter(s => Math.abs(s.wavelength - excitationWl) > 5);
+  if (!signal.length) return null;
+  const peak = signal.reduce((a, b) => (a.power > b.power ? a : b));
+  return { peak: Math.round(peak.wavelength), samples: signal.length };
+}
+
+test('each fluorophore emits its own band when excited near its absorption peak', () => {
+  for (const [id, , spec] of FLUOROPHORES) {
+    if (!spec) continue;
+    const emission = dyeEmission('fluor', id, spec.absPeak);
+    assert.ok(emission, `${id} should emit when excited on its absorption peak`);
+    assert.ok(Math.abs(emission.peak - spec.emPeak) <= 10,
+      `${id} should peak near ${spec.emPeak} nm, got ${emission.peak}`);
+    assert.ok(emission.samples > 2, `${id} emits a band, not a single line`);
+  }
+});
+
+test('a fluorophore excited far from its band emits nothing, and says why', () => {
+  assert.equal(dyeEmission('fluor', 'gfp', 640), null, 'GFP is not excited by 640 nm');
+  const warning = channelWarning(ch('fluor', { fluorophore: 'gfp' }), [640]);
+  assert.match(warning, /GFP/);
+  assert.match(warning, /peaks at 488 nm/);
+  assert.equal(channelWarning(ch('fluor', { fluorophore: 'gfp' }), [488]), null, 'on peak, no complaint');
+});
+
+test('multiphoton excitation reaches a dye at twice and three times its absorption peak', () => {
+  for (const [id, , spec] of FLUOROPHORES) {
+    if (!spec) continue;
+    const two = dyeEmission('tpef', id, spec.absPeak * 2);
+    assert.ok(two, `${id} should be excited two photons at a time`);
+    assert.ok(Math.abs(two.peak - spec.emPeak) <= 10,
+      `${id} emits its own band however it was pumped, got ${two.peak}`);
+  }
+  const three = dyeEmission('thpef', 'dapi', 358 * 3);
+  assert.ok(three && Math.abs(three.peak - 461) <= 10, `three-photon DAPI should emit its band, got ${three?.peak}`);
+
+  // The warning names the photon order and the effective wavelength.
+  const warning = channelWarning(ch('tpef', { fluorophore: 'gfp' }), [1200]);
+  assert.match(warning, /2 photons/);
+  assert.match(warning, /600 nm effective/);
+});
+
+test('the custom fluorophore keeps the generic absorb-anything, emit-20-nm-longer rule', () => {
+  assert.equal(fluorophoreSpec('custom'), null);
+  assert.equal(fluorophoreAbsorption('custom', 1234, 1), 1, 'absorbs whatever arrives');
+
+  const one = dyeEmission('fluor', 'custom', 532);
+  assert.equal(one.peak, 552, 'one Stokes offset above the excitation');
+  assert.equal(one.samples, 1, 'and a discrete line, not a band');
+
+  const two = dyeEmission('tpef', 'custom', 800);
+  assert.equal(two.peak, 420, 'half the excitation plus the offset');
 });

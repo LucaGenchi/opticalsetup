@@ -261,7 +261,7 @@ test('channels survive a save/load round trip and are clamped on the way in', ()
     kind: 'cars', wl: 660, eff: 0.4, epi: true, epiRatio: 0.2,
     autoWl: false, autoColor: false, color: '#00e5ff',
     // Fields belonging to other signal kinds round-trip at their defaults.
-    material: 'lipid', retardance: 90, axis: 45, transferEff: 0.1, requireOverlap: true,
+    material: 'lipid', fluorophore: 'custom', retardance: 90, axis: 45, transferEff: 0.1, requireOverlap: true,
   });
   assert.equal(coerced.kind, 'fluor', 'an unknown signal kind falls back rather than breaking the load');
   assert.equal(coerced.eff, 1, 'efficiency clamps into 0..1');

@@ -710,11 +710,40 @@ export function ramanStokesWl(pumpWl, shiftCm) {
   return inv > 1e-9 ? 1 / inv : null;
 }
 
+// Real fluorophores, as the two numbers that matter for a sketch: where
+// they absorb and where they emit, each as a peak plus a full width at half
+// maximum. Excitation away from the absorption peak still works, just more
+// weakly — which is the point of picking a dye at all. "Custom" keeps the
+// generic behavior: absorbs whatever arrives and emits one Stokes offset
+// above it.
+export const FLUOROPHORES = [
+  ['custom', 'Custom (any excitation)', null],
+  ['dapi', 'DAPI', { absPeak: 358, absFwhm: 70, emPeak: 461, emFwhm: 70 }],
+  ['hoechst', 'Hoechst 33342', { absPeak: 350, absFwhm: 70, emPeak: 461, emFwhm: 75 }],
+  ['gfp', 'GFP (EGFP)', { absPeak: 488, absFwhm: 40, emPeak: 507, emFwhm: 45 }],
+  ['rhodamine', 'Rhodamine (TRITC)', { absPeak: 555, absFwhm: 45, emPeak: 580, emFwhm: 45 }],
+];
+const FLUOROPHORE_BY_ID = new Map(FLUOROPHORES.map(([id, label, spec]) => [id, spec]));
+export const fluorophoreSpec = id => FLUOROPHORE_BY_ID.get(id) || null;
+
+// How well a dye absorbs at one wavelength, relative to its own peak. A
+// multiphoton process is driven by the combined energy of its photons, so
+// n-photon excitation at lambda behaves like one-photon excitation at
+// lambda/n — an 800 nm beam reaches DAPI's 358 nm band two photons at a time.
+export function fluorophoreAbsorption(id, excitationWl, order = 1) {
+  const spec = fluorophoreSpec(id);
+  if (!spec || !(excitationWl > 0)) return 1;
+  const effective = excitationWl / Math.max(1, order);
+  const halfWidth = Math.max(1, spec.absFwhm) / 2;
+  return Math.exp(-Math.LN2 * ((effective - spec.absPeak) / halfWidth) ** 2);
+}
+
 export function newSampleChannel(kind = 'fluor') {
   return {
     kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true,
     autoColor: true, color: '#22c55e',
     material: 'lipid',        // spontaneous Raman fingerprint
+    fluorophore: 'custom',    // emission band for the fluorescence kinds
     retardance: 90, axis: 45, // phase contrast
     transferEff: 0.1,         // SRS modulation transfer
     requireOverlap: true,     // two-beam signals need the pulses to coincide
@@ -836,8 +865,21 @@ export function channelWarning(channel, incident) {
     return overlapWarning(channel, records);
   }
   const order = EMISSION_ORDER[channel.kind];
-  if (!order || channel.autoWl !== false) return null;
+  if (!order) return null;
   const excitation = drivingExcitationWl(records.map(b => b.wl));
+  const dye = fluorophoreSpec(channel.fluorophore);
+  if (dye && excitation > 0) {
+    const absorbed = fluorophoreAbsorption(channel.fluorophore, excitation, order);
+    if (absorbed < 0.05) {
+      const label = (FLUOROPHORES.find(([id]) => id === channel.fluorophore) || [, 'This dye'])[1];
+      const effective = Math.round(excitation / order);
+      const via = order === 1 ? `${effective} nm` : `${Math.round(excitation)} nm at ${order} photons (${effective} nm effective)`;
+      return `${label} barely absorbs ${via} — its band peaks at ${dye.absPeak} nm. `
+        + `Emission is ${(absorbed * 100).toFixed(absorbed < 0.01 ? 2 : 1)}% of what it would be on peak.`;
+    }
+    return null;
+  }
+  if (channel.autoWl !== false) return null;
   if (!(excitation > 0) || !(channel.wl > 0)) return null;
   const floor = excitation / order;
   if (channel.wl < floor) {

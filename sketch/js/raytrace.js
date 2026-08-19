@@ -8,6 +8,7 @@ import {
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
+  fluorophoreSpec, fluorophoreAbsorption,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
@@ -387,6 +388,43 @@ const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
 // Two beams count as "different colours" for wave mixing only if they are
 // resolvably apart; the same laser sampled twice must not mix with itself.
 const MIXING_MIN_SEPARATION_NM = 1;
+
+// Incoherent emission (fluorescence, its multiphoton cousins, spontaneous
+// Raman) is isotropic, but a microscope only ever collects the small solid
+// angle its optics subtend — which sits on the beam axis, forward and back.
+// Sampling that emission uniformly spends nearly every ray on directions no
+// optic will ever see. These rays are instead drawn from a distribution
+// denser along the axis, each still carrying an equal share of the power, so
+// the total is unchanged and the directions that can actually be captured
+// are the ones sampled finely. The glow is still drawn all the way round.
+const EMISSION_RAYS = 20;
+const RAMAN_RAYS_PER_LINE = 14;
+const AXIS_BIAS = 5;
+// How far the drawn glow reaches, and how far away an optic can still
+// collect it. Real collection optics sit well outside the few centimetres
+// the glow is drawn over, so the two are separate numbers.
+const EMISSION_GLOW_MM = 25;
+const EMISSION_CAPTURE_MM = 100;
+
+// Angles sampled with density proportional to 1 + AXIS_BIAS * cos^2 around
+// `axisAngle`, by inverting that distribution's CDF. Equal-probability
+// sampling means every ray still carries the same power.
+function emissionAngles(count, axisAngle, bias = AXIS_BIAS) {
+  const total = 2 * Math.PI * (1 + bias / 2);
+  // CDF of the density, measured from the axis direction.
+  const cdf = u => (u * (1 + bias / 2) + bias * Math.sin(2 * u) / 4) / total;
+  const angles = [];
+  for (let i = 0; i < count; i++) {
+    const target = (i + 0.5) / count;
+    let lo = 0, hi = 2 * Math.PI;
+    for (let step = 0; step < 40; step++) {
+      const mid = (lo + hi) / 2;
+      if (cdf(mid) < target) lo = mid; else hi = mid;
+    }
+    angles.push(axisAngle + (lo + hi) / 2);
+  }
+  return angles;
+}
 // Below this the two pulses barely meet and the signal is reported as absent
 // rather than as a vanishing sliver.
 const MIN_OVERLAP = 0.02;
@@ -473,6 +511,28 @@ function mixingPartner(ray, incidentBeams) {
 // multimodal sketch. Mirrors the laser's own auto/custom color toggle.
 export function channelColor(channel, wl) {
   return channel.autoColor === false && channel.color ? channel.color : wavelengthToColor(wl);
+}
+
+// What one emission channel actually radiates: its band and how strongly it
+// is driven. A named fluorophore emits its own band and is excited according
+// to how well the beam matches its absorption; "custom" keeps the generic
+// behavior of absorbing whatever arrives and emitting a line one Stokes
+// offset above it. Returns null when nothing is emitted at all.
+export function specimenEmission(channel, rayWl, incidentWls) {
+  const order = EMISSION_ORDER[channel.kind];
+  if (!order) return null;
+  const excitation = drivingExcitationWl(incidentWls) ?? rayWl;
+  const spec = fluorophoreSpec(channel.fluorophore);
+  const gain = fluorophoreAbsorption(channel.fluorophore, excitation, order);
+  if (spec) {
+    // A dye emits its own band wherever it is excited from; only how
+    // strongly changes. A manual wavelength still overrides the label.
+    const wl = channel.autoWl === false ? channel.wl : spec.emPeak;
+    if (!(wl > excitation / order)) return null;
+    return { wl, bw: spec.emFwhm, spec: gaussianSpectrum(wl, spec.emFwhm), gain };
+  }
+  const wl = specimenSignalWl(channel, rayWl, incidentWls);
+  return wl > 0 ? { wl, bw: 0, spec: null, gain: 1 } : null;
 }
 
 export function specimenSignalWl(channel, rayWl, incidentWls) {
@@ -1310,42 +1370,45 @@ function interact(ray, hit) {
           if (!emitting || !isDriver) continue;
           const pump = driver ?? ray.wl;
           const shifts = ramanShifts(c.material).slice(0, 4);
-          const N = 8;
+          const N = RAMAN_RAYS_PER_LINE;
+          const axis = Math.atan2(d.y, d.x);
           for (const shift of shifts) {
             const line = ramanStokesWl(pump, shift);
             if (!(line > 0)) continue;
             const tint = channelColor(c, line);
-            for (let i = 0; i < N; i++) {
-              const a = i * 2 * Math.PI / N;
+            emissionAngles(N, axis).forEach((a, i) => {
               out.push({
                 d: { x: Math.cos(a), y: Math.sin(a) }, wl: line, bw: 0, pol: undefined, stokes: null,
-                color: tint, evan: true, evanLen: 25, sourceId: emittedFrom,
+                color: tint, evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
+                sourceId: emittedFrom,
                 intensity: 0.25,
                 power: Number.isFinite(ray.power) ? ray.power * eff / (N * shifts.length) : undefined,
                 tag: `r${ci}_${Math.round(shift)}_${i}`,
               });
-            }
+            });
           }
           continue;
         }
 
         if (ISOTROPIC_KINDS.has(c.kind)) {
           if (!emitting || !isDriver) continue;
-          const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
-          if (!(wl > 0)) continue;
-          const N = 16;
-          const tint = channelColor(c, wl);
-          for (let i = 0; i < N; i++) {
-            const a = i * 2 * Math.PI / N;
+          const emission = specimenEmission(c, ray.wl, data.incidentWls);
+          if (!emission || emission.gain <= 1e-4) continue;
+          const N = EMISSION_RAYS;
+          const tint = channelColor(c, emission.wl);
+          const strength = eff * emission.gain;
+          emissionAngles(N, Math.atan2(d.y, d.x)).forEach((a, i) => {
             out.push({
-              d: { x: Math.cos(a), y: Math.sin(a) }, wl, bw: 0, pol: undefined, stokes: null,
+              d: { x: Math.cos(a), y: Math.sin(a) },
+              wl: emission.wl, bw: emission.bw, spec: emission.spec,
+              pol: undefined, stokes: null,
               color: tint, sourceId: emittedFrom,
-              evan: true, evanLen: 25,
+              evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
               intensity: 0.25,
-              power: Number.isFinite(ray.power) ? ray.power * eff / N : undefined,
+              power: Number.isFinite(ray.power) ? ray.power * strength / N : undefined,
               tag: `f${ci}_${i}`,
             });
-          }
+          });
           continue;
         }
 
@@ -1393,7 +1456,7 @@ function interact(ray, hit) {
           const a = i * 2 * Math.PI / N;
           out.push({
             d: { x: Math.cos(a), y: Math.sin(a) }, wl: data.wl, bw: 0, pol: undefined, stokes: null,
-            evan: true, evanLen: 25,
+            evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
             intensity: emitted > 0 ? 0.25 : 0, power: Number.isFinite(ray.power) ? ray.power * (1 - transmission) * Math.min(1, Math.max(0, data.efficiency ?? 0.1)) / N : undefined,
             tag: 'f' + i,
           });
@@ -1572,7 +1635,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         // the fade boundary still counts); otherwise the light is simply
         // gone and never reaches downstream detectors.
         const EVAN_LEN = r.evanLen || 22;
-        const CAPTURE = EVAN_LEN * 1.5;
+        // How far the glow is DRAWN and how far an optic can still collect it
+        // are separate: a collection lens routinely sits well outside the few
+        // centimetres of visible glow, and the light is really there.
+        const CAPTURE = r.captureLen || EVAN_LEN * 1.5;
         const captured = hit && hit.t <= CAPTURE
           && (hit.surface.kind === 'lens' || hit.surface.kind === 'fiberin');
         if (!captured) {
@@ -1694,6 +1760,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           chopped: c.chopped || r.chopped || undefined,
           evan: c.evan || false,
           evanLen: c.evanLen,
+          captureLen: c.captureLen,
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,

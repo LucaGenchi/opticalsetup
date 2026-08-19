@@ -62,6 +62,7 @@ function normalizeChannels(value) {
   if (!Array.isArray(value)) return [];
   const kinds = new Set(['fluor', 'raman', 'phase', 'tpef', 'thpef', 'shg', 'thg', 'sfg', 'cars', 'srs']);
   const materials = new Set(['lipid', 'protein', 'dmso', 'pmma', 'polystyrene', 'water']);
+  const dyes = new Set(['custom', 'dapi', 'hoechst', 'gfp', 'rhodamine']);
   return value.slice(0, 5).filter(record).map(raw => ({
     kind: kinds.has(raw.kind) ? raw.kind : 'fluor',
     wl: clamp(finite(raw.wl) ? raw.wl : 520, 100, 4000),
@@ -72,6 +73,7 @@ function normalizeChannels(value) {
     autoColor: raw.autoColor !== false,
     color: typeof raw.color === 'string' && COLOR.test(raw.color) ? raw.color : '#22c55e',
     material: materials.has(raw.material) ? raw.material : 'lipid',
+    fluorophore: dyes.has(raw.fluorophore) ? raw.fluorophore : 'custom',
     retardance: clamp(finite(raw.retardance) ? raw.retardance : 90, 0, 360),
     axis: clamp(finite(raw.axis) ? raw.axis : 45, 0, 180),
     transferEff: clamp(finite(raw.transferEff) ? raw.transferEff : 0.1, 0.01, 0.5),

@@ -113,10 +113,14 @@ test('uncollected fluorescence fades within 25 mm and never reaches a bare detec
     && d.pts.some(p => Math.hypot(p.x - 150, p.y) > 1));
   assert.ok(glow.length > 0, 'evanescent fluorescence glow is drawn near the sample');
   // the drawn glow decays with distance (1/r² profile: near-segment opacity
-  // strictly higher than far-segment opacity along the same direction)
-  const upward = glow.filter(d => d.pts.every(p => Math.abs(p.x - 150) < 1e-6 && p.y < 0));
-  const nearest = upward.reduce((a, b) => (Math.abs(a.pts[0].y) < Math.abs(b.pts[0].y) ? a : b));
-  const farthest = upward.reduce((a, b) => (Math.abs(a.pts[1].y) > Math.abs(b.pts[1].y) ? a : b));
+  // strictly higher than far-segment opacity along the same direction).
+  // Emission directions are sampled denser along the beam axis, so pick a
+  // direction that exists rather than assuming one lands exactly upward.
+  // Every fade sub-segment of one emitted ray shares that ray's direction.
+  const bearing = d => Math.atan2(d.pts[1].y - d.pts[0].y, d.pts[1].x - d.pts[0].x);
+  const along = glow.filter(d => Math.abs(bearing(d) - bearing(glow[0])) < 1e-6);
+  const nearest = along.reduce((a, b) => (Math.hypot(a.pts[0].x - 150, a.pts[0].y) < Math.hypot(b.pts[0].x - 150, b.pts[0].y) ? a : b));
+  const farthest = along.reduce((a, b) => (Math.hypot(a.pts[1].x - 150, a.pts[1].y) > Math.hypot(b.pts[1].x - 150, b.pts[1].y) ? a : b));
   assert.ok(nearest.opacity > farthest.opacity * 3, 'glow opacity falls off steeply with distance');
 });
 
@@ -141,8 +145,15 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
   assert.ok(reading.signal > 0.8 + 1e-4, `collected fluorescence adds to the excitation signal, got ${reading.signal}`);
   assert.ok(reading.bandMax >= 520, 'the detected spectrum includes the emission wavelength');
 
-  // move the objective far beyond the capture window: fluorescence dies again
-  objective.x = 228; // lens plane 94 mm from the sample
+  // Collection optics routinely sit well outside the few centimetres the
+  // glow is DRAWN over, so capture reaches 100 mm even though the visible
+  // glow still fades by 25 mm. Push the objective past that to lose it.
+  objective.x = 228; // lens plane 94 mm from the sample: still within reach
+  traceAll([laser, sample, objective, detector]);
+  assert.ok(detectorReading(detector.id).signal > 0.8 + 1e-4,
+    'a lens within the capture range still collects, even past the drawn glow');
+
+  objective.x = 300; // lens plane 166 mm away: beyond any collection
   traceAll([laser, sample, objective, detector]);
   const uncollected = detectorReading(detector.id);
   assert.ok(Math.abs(uncollected.signal - 0.8) < 1e-9, 'a distant objective no longer collects the evanescent light');

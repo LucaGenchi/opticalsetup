@@ -316,11 +316,21 @@ function spectrumPlot(reading, sensor, baseline = 8) {
   // supercontinuum plus a Raman line — so each part is drawn its own way.
   const lines = visible.filter(sample => !sample.continuum);
   const band = visible.filter(sample => sample.continuum);
+  // A spectrometer cannot render a line narrower than it can resolve, so
+  // each line is drawn at the instrument's own resolution rather than as a
+  // hairline. Coarsening the resolution visibly broadens every line until
+  // neighbours run together — which is what losing resolution looks like.
+  const resolutionNm = Math.max(0.1, sensor?.params?.resolutionNm ?? 2);
+  const lineHalfWidth = Math.min(12, Math.max(0.55, resolutionNm * 70 / span / 2));
   const stemFor = sample => {
-    const x = xAt(sample.wavelength).toFixed(2);
+    const x = xAt(sample.wavelength);
     const height = Math.max(1.2, yFor(sample.height));
-    return `<line x1="${x}" y1="${baseline}" x2="${x}" y2="${(baseline - height).toFixed(2)}" ` +
-      `stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="2" stroke-linecap="round"/>`;
+    const colour = sample.color || wavelengthToColor(sample.wavelength);
+    const top = (baseline - height).toFixed(2);
+    return `<path d="M ${(x - lineHalfWidth).toFixed(2)},${baseline} L ${x.toFixed(2)},${top} `
+      + `L ${(x + lineHalfWidth).toFixed(2)},${baseline} Z" fill="${colour}" opacity="0.9"/>`
+      + `<line x1="${x.toFixed(2)}" y1="${baseline}" x2="${x.toFixed(2)}" y2="${top}" `
+      + `stroke="${colour}" stroke-width="0.9" stroke-linecap="round"/>`;
   };
 
   if (!visible.length) return axis + ticks;
