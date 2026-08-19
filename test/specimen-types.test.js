@@ -6,6 +6,7 @@ import {
   signalKindsFor, channelWarning, defaultEmissionWl, drivingExcitationWl,
   ramanShifts, ramanStokesWl, LINEAR_SIGNAL_KINDS, NONLINEAR_SIGNAL_KINDS,
   SPECIMEN_TYPES, MODIFIER_KINDS, EMISSION_ORDER,
+  displayViewsFor, resolvedDisplayView, displayActionUpdate,
 } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { traceAll, traceScene, detectorReading, specimenSignalWl, specimenIncidentWls } from '../sketch/js/raytrace.js';
@@ -203,31 +204,48 @@ test('phase contrast retards the transmitted beam without adding light of its ow
 
 // ---------------- 4e: stimulated Raman ----------------
 
-function srsBench({ transferEff = 0.1, withSrs = true, secondBeam = true } = {}) {
-  const pump = createElement('laser', 0, -6);
-  Object.assign(pump.params, { wavelength: 800, temporalMode: 'pulsed', repRateMHz: 40, beamMode: 'line' });
-  const chopper = createElement('chopper', 80, -6);
+// Two synchronized trains at 800 (pump) and 1040 nm (Stokes). `modulate`
+// picks which one carries the chopper, `read` which one the detector sees,
+// and `extraOplMm` lengthens the OTHER arm to break their timing.
+function srsBench({
+  transferEff = 0.1, withSrs = true, secondBeam = true,
+  modulate = 800, read = 1040, extraOplMm = 0, requireOverlap = true,
+} = {}) {
+  const makeLaser = (wl, y) => {
+    const laser = createElement('laser', 0, y);
+    Object.assign(laser.params, {
+      wavelength: wl, temporalMode: 'pulsed', repRateMHz: 40, pulseWidthFs: 200, beamMode: 'line',
+    });
+    return laser;
+  };
+  const pumpY = -6, stokesY = 6;
+  const elements = [makeLaser(800, pumpY)];
+  if (secondBeam) elements.push(makeLaser(1040, stokesY));
+  const chopper = createElement('chopper', 80, modulate === 800 ? pumpY : stokesY);
   Object.assign(chopper.params, { modulate: true, frequencyHz: 1e7, diameter: 10 });
-  const elements = [pump, chopper];
-  if (secondBeam) {
-    const stokes = createElement('laser', 0, 6);
-    Object.assign(stokes.params, { wavelength: 1040, temporalMode: 'pulsed', repRateMHz: 40, beamMode: 'line' });
-    elements.push(stokes);
+  elements.push(chopper);
+  if (extraOplMm) {
+    const delay = createElement('delayline', 120, modulate === 800 ? stokesY : pumpY);
+    Object.assign(delay.params, { delayMm: extraOplMm, aperture: 10 });
+    elements.push(delay);
   }
   const sample = createElement('sample', 200, 0);
   sample.rot = 90;
   Object.assign(sample.params, {
     aperture: 40, specimenType: 'nonlinear',
-    channels: withSrs ? [ch('srs', { transferEff })] : [],
+    channels: withSrs ? [ch('srs', { transferEff, requireOverlap })] : [],
   });
-  const longpass = createElement('filter', 300, 6);
-  Object.assign(longpass.params, { ftype: 'longpass', cutoff: 900, length: 8 });
-  const detector = createElement('detector', 380, 6);
+  const readY = read === 1040 ? stokesY : pumpY;
+  const filter = createElement('filter', 300, readY);
+  Object.assign(filter.params, { ftype: read === 1040 ? 'longpass' : 'shortpass', cutoff: 900, length: 8 });
+  const detector = createElement('detector', 380, readY);
   detector.params.aperture = 8;
-  elements.push(sample, longpass, detector);
+  elements.push(sample, filter, detector);
   traceAll(elements);
   return { reading: detectorReading(detector.id), detector, elements };
 }
+
+const srsGates = opts => ((srsBench(opts).reading?.pulse?.trains) || []).flatMap(t => t.gates || []);
 
 test('SRS copies one beam’s modulation onto the other without creating a wavelength', () => {
   const bare = srsBench({ withSrs: false }).reading;
@@ -240,18 +258,102 @@ test('SRS copies one beam’s modulation onto the other without creating a wavel
   const gates = (srs.pulse?.trains || []).flatMap(t => t.gates || []);
   assert.equal(gates.length, 1, 'the Stokes beam picked up exactly one transferred modulation');
   assert.equal(gates[0].frequencyMHz, 10, 'at the donor’s own frequency');
-  assert.ok(Math.abs(gates[0].high - 1) < 1e-9);
-  assert.ok(Math.abs(gates[0].low - 0.7) < 1e-9, 'modulation depth equals the transfer efficiency');
 });
 
-test('the SRS transfer efficiency sets the depth, and is clamped to a sane 1–50%', () => {
-  for (const [set, low] of [[0.1, 0.9], [0.5, 0.5], [0.01, 0.99]]) {
-    const gates = (srsBench({ transferEff: set }).reading.pulse?.trains || []).flatMap(t => t.gates || []);
-    assert.ok(Math.abs(gates[0].low - low) < 1e-9, `transfer ${set} should give low=${low}`);
+test('a modulated pump gives the Stokes beam gain, a modulated Stokes gives the pump loss', () => {
+  // Energy flows from the blue photon to the red one, so the two directions
+  // are not symmetric: the receiving Stokes beam is amplified while the pump
+  // is on (SRG, a rise above its unmodulated level), while the receiving
+  // pump beam is depleted while the Stokes is on (SRL, a dip).
+  const gain = srsGates({ modulate: 800, read: 1040, transferEff: 0.3 })[0];
+  assert.ok(gain.high > 1, `stimulated Raman gain should lift the Stokes beam, got high=${gain.high}`);
+  assert.ok(Math.abs(gain.high - 1.3) < 1e-9);
+  assert.ok(Math.abs(gain.low - 1) < 1e-9, 'and sit at its unmodulated level in between');
+
+  const loss = srsGates({ modulate: 1040, read: 800, transferEff: 0.3 })[0];
+  assert.ok(loss.high < 1, `stimulated Raman loss should dip the pump, got high=${loss.high}`);
+  assert.ok(Math.abs(loss.high - 0.7) < 1e-9);
+  assert.ok(Math.abs(loss.low - 1) < 1e-9);
+});
+
+test('the SRS transfer efficiency sets the excursion, and is clamped to a sane 1–50%', () => {
+  for (const [set, high] of [[0.1, 1.1], [0.5, 1.5], [0.01, 1.01]]) {
+    const gate = srsGates({ transferEff: set })[0];
+    assert.ok(Math.abs(gate.high - high) < 1e-9, `transfer ${set} should give high=${high}`);
   }
-  // Out-of-range values clamp rather than producing a nonsense gate.
-  const tooDeep = (srsBench({ transferEff: 5 }).reading.pulse?.trains || []).flatMap(t => t.gates || []);
-  assert.ok(Math.abs(tooDeep[0].low - 0.5) < 1e-9, 'clamped to 50%');
+  assert.ok(Math.abs(srsGates({ transferEff: 5 })[0].high - 1.5) < 1e-9, 'clamped to 50%');
+});
+
+// ---------------- pulse synchronization ----------------
+
+test('SRS stops when the two arms are no longer path-matched, and the toggle overrides it', () => {
+  // 200 fs pulses are ~0.06 mm long, so a fraction of a millimetre of extra
+  // path in one arm is enough to pull them apart — which is exactly what a
+  // delay line exists to correct.
+  assert.ok(srsGates({ extraOplMm: 0 }).length, 'matched arms transfer');
+  const slight = srsGates({ extraOplMm: 0.02 })[0];
+  assert.ok(slight && slight.high - 1 < 0.1 && slight.high > 1,
+    'a small mismatch weakens the transfer rather than switching it off');
+  assert.equal(srsGates({ extraOplMm: 1 }).length, 0, 'a millimetre of mismatch kills it');
+  assert.equal(srsGates({ extraOplMm: 50 }).length, 0);
+
+  // Opting out restores the un-timed behavior, for a schematic that is about
+  // the signal rather than about path matching.
+  assert.ok(srsGates({ extraOplMm: 50, requireOverlap: false }).length,
+    'the overlap requirement can be switched off per channel');
+});
+
+test('CARS and SFG also need the pulses to coincide', () => {
+  const mixed = (kind, extraOplMm, requireOverlap = true) => {
+    const makeLaser = (wl, y) => {
+      const laser = createElement('laser', 0, y);
+      Object.assign(laser.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz: 40, pulseWidthFs: 200, beamMode: 'line',
+      });
+      return laser;
+    };
+    const elements = [makeLaser(800, -6), makeLaser(1040, 6)];
+    if (extraOplMm) {
+      const delay = createElement('delayline', 120, 6);
+      Object.assign(delay.params, { delayMm: extraOplMm, aperture: 10 });
+      elements.push(delay);
+    }
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear', channels: [ch(kind, { eff: 0.5, requireOverlap })],
+    });
+    const detector = createElement('detector', 400, 0);
+    detector.params.aperture = 60;
+    elements.push(sample, detector);
+    traceAll(elements);
+    const reading = detectorReading(detector.id);
+    return reading ? [...new Set(reading.spectrum.map(s => Math.round(s.wavelength)))] : [];
+  };
+
+  assert.ok(mixed('cars', 0).includes(650), 'matched arms give the anti-Stokes line');
+  assert.ok(!mixed('cars', 5).includes(650), 'a mismatched arm switches CARS off');
+  assert.ok(mixed('cars', 5, false).includes(650), 'unless the requirement is switched off');
+
+  assert.ok(mixed('sfg', 0).includes(452), 'matched arms give the sum-frequency line');
+  assert.ok(!mixed('sfg', 5).includes(452), 'a mismatched arm switches SFG off');
+});
+
+test('a mismatched pair is explained, in picoseconds and in millimetres of path', () => {
+  const beams = skewMm => ([
+    { wl: 800, opl: 200, pulse: { repRateMHz: 40, pulseWidthFs: 200, phaseNs: 0 } },
+    { wl: 1040, opl: 200 + skewMm, pulse: { repRateMHz: 40, pulseWidthFs: 200, phaseNs: 0 } },
+  ]);
+  assert.equal(channelWarning(ch('cars'), beams(0)), null, 'matched arms need no warning');
+  const warning = channelWarning(ch('cars'), beams(3));
+  assert.match(warning, /pulses to arrive together/);
+  assert.match(warning, /ps apart/);
+  assert.match(warning, /3\.00 mm of path/);
+  assert.match(warning, /delay line/);
+  // Continuous-wave light is always present, so timing never applies to it.
+  assert.equal(channelWarning(ch('cars'), [{ wl: 800, opl: 200 }, { wl: 1040, opl: 900 }]), null);
+  // And the per-channel opt-out silences it.
+  assert.equal(channelWarning(ch('cars', { requireOverlap: false }), beams(3)), null);
 });
 
 test('SRS needs a second beam, and says so when there is only one', () => {
@@ -372,4 +474,62 @@ test('every offered signal kind is reachable and produces something', () => {
   for (const [id] of NONLINEAR_SIGNAL_KINDS) {
     assert.equal(specimenTypeOf({ channels: [{ kind: id }] }), 'nonlinear', `${id} implies a nonlinear specimen`);
   }
+});
+
+// ---------------- display views follow the linked sensor ----------------
+
+test('a photodiode screen offers only its own readout, never a spectrum it never measured', () => {
+  // Regression: the VIEW button cycled main -> spectrum -> detail for every
+  // sensor. A photodiode has one channel of information, so "wavelength
+  // samples" drew a spectrum plot underneath its own oscilloscope.
+  assert.deepEqual(displayViewsFor('detector'), ['main']);
+  assert.deepEqual(displayViewsFor('pmt'), ['main']);
+  assert.deepEqual(displayViewsFor('spectrometer'), ['main']);
+  assert.deepEqual(displayViewsFor('polarimeter'), ['main']);
+  // The two sensors that really do carry alternate readouts keep them.
+  assert.deepEqual(displayViewsFor('camera'), ['main', 'spectrum', 'detail']);
+  assert.deepEqual(displayViewsFor('generaldetector'), ['main', 'spectrum', 'detail']);
+});
+
+test('cycling the view on a single-readout sensor is a no-op that says why', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.temporalMode = 'pulsed';
+  const detector = createElement('detector', 300, 0);
+  const display = createElement('display', 420, 100);
+  display.params.sensorId = detector.id;
+  const scene = [laser, detector, display];
+  traceAll(scene);
+
+  const update = displayActionUpdate(display, 'view', scene);
+  assert.deepEqual(update.updates, {}, 'nothing to cycle to');
+  assert.match(update.message, /one readout/);
+
+  // Even a stored spectrum view (from an older sketch, or from re-pointing
+  // the screen at a camera and back) renders as the primary readout.
+  display.params.displayView = 'spectrum';
+  assert.equal(resolvedDisplayView(display, detector), 'main');
+  const svg = registry.display.svg(display, scene);
+  assert.match(svg, /OSCILLOSCOPE/);
+  assert.doesNotMatch(svg, /λ SAMPLES/, 'no spectrum caption leaks through');
+  assert.doesNotMatch(svg, /data-spectrum-points/, 'and no spectrum plot is drawn underneath');
+});
+
+test('a camera screen still cycles through its three readouts', () => {
+  const laser = createElement('laser', 0, 0);
+  laser.params.beamMode = 'beam';
+  const camera = createElement('camera', 300, 0);
+  const display = createElement('display', 420, 100);
+  display.params.sensorId = camera.id;
+  const scene = [laser, camera, display];
+  traceAll(scene);
+
+  let view = 'main';
+  const seen = [];
+  for (let i = 0; i < 3; i++) {
+    display.params.displayView = view;
+    const update = displayActionUpdate(display, 'view', scene);
+    view = update.updates.displayView;
+    seen.push(view);
+  }
+  assert.deepEqual(seen, ['spectrum', 'detail', 'main'], 'cycles and wraps');
 });

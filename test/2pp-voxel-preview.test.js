@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, stageOffsetAt, stageSampleLabelSVG, voxelDepthFactor } from '../sketch/js/elements.js';
+import { createElement, registry, stageOffsetAt, voxelDepthFactor } from '../sketch/js/elements.js';
 import { pulseArrivalsAtPath } from '../sketch/js/pulses.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { rotPt } from '../sketch/js/util.js';
@@ -187,28 +187,15 @@ test('voxel depth factor grows from 0 at focus to 1 at the edge of the configure
   closeTo(voxelDepthFactor(-5, 20), 0.5);
 });
 
-test('the material label is world-upright (no rotate transform) and respects the show/hide toggle', () => {
+// The automatic per-material label ("Resin", "NL", ...) was removed: it
+// captioned every holder on the canvas whether or not anyone wanted it, and
+// the element's own label field already covers naming a specimen.
+test('the holder draws no automatic material caption', () => {
   const stage = createElement('stage', 100, 50);
-  stage.rot = 137;
   stage.params.specimenType = 'resin';
-  const svg = stageSampleLabelSVG(stage);
-  assert.match(svg, /Resin/);
-  assert.doesNotMatch(svg, /rotate/);
-
-  stage.params.showMaterialLabel = false;
-  assert.equal(stageSampleLabelSVG(stage), '');
-
-  stage.params.showMaterialLabel = true;
-  assert.match(stageSampleLabelSVG(stage), /Resin/, 'the toggle is the only thing that hides it');
-});
-
-test('the label position accounts for the stage rotating its bounding box', () => {
-  const upright = createElement('stage', 0, 0);
-  const svgUpright = stageSampleLabelSVG(upright);
-
-  const rotated = createElement('stage', 0, 0);
-  rotated.rot = 90;
-  const svgRotated = stageSampleLabelSVG(rotated);
-
-  assert.notEqual(svgUpright, svgRotated);
+  const svg = registry.stage.svg(stage);
+  for (const caption of ['Resin', 'Linear', 'NL', 'Absorbing', 'Sample', 'Fluor', 'Opaque']) {
+    assert.doesNotMatch(svg, new RegExp(caption), `no "${caption}" caption should be drawn`);
+  }
+  assert.doesNotMatch(svg, /<text/, 'the holder graphic carries no text at all');
 });

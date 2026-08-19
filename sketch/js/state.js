@@ -75,6 +75,7 @@ function normalizeChannels(value) {
     retardance: clamp(finite(raw.retardance) ? raw.retardance : 90, 0, 360),
     axis: clamp(finite(raw.axis) ? raw.axis : 45, 0, 180),
     transferEff: clamp(finite(raw.transferEff) ? raw.transferEff : 0.1, 0.01, 0.5),
+    requireOverlap: raw.requireOverlap !== false,
   }));
 }
 

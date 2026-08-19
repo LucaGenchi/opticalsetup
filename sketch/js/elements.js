@@ -15,6 +15,7 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
+import { pulseOverlap } from './pulses.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -127,6 +128,28 @@ function availableDisplaySensors(display, elements = []) {
     && registry[candidate?.type]?.readoutKind) : [];
 }
 
+// Which screen views a linked sensor actually has data for. Only the camera
+// and the general detector carry more than one readout; a photodiode has a
+// single channel of information, so offering it a "wavelength samples" view
+// drew a spectrum it never measured underneath its own oscilloscope.
+const DISPLAY_VIEWS = {
+  camera: ['main', 'spectrum', 'detail'],
+  generaldetector: ['main', 'spectrum', 'detail'],
+};
+
+export function displayViewsFor(sensorType) {
+  return DISPLAY_VIEWS[sensorType] || ['main'];
+}
+
+// The view actually rendered: the stored one when the linked sensor supports
+// it, else its primary readout. A display keeps its stored view when it is
+// re-pointed at a sensor that cannot show it, rather than being rewritten.
+export function resolvedDisplayView(display, sensor) {
+  const views = displayViewsFor(sensor?.type);
+  const stored = display?.params?.displayView;
+  return views.includes(stored) ? stored : 'main';
+}
+
 export function displayActionUpdate(display, action, elements = []) {
   if (!display || display.type !== 'display') return null;
   if (action === 'power') {
@@ -134,7 +157,11 @@ export function displayActionUpdate(display, action, elements = []) {
     return { updates: { screenOn }, message: screenOn ? 'Sensor display on' : 'Sensor display standby' };
   }
   if (action === 'view') {
-    const views = ['main', 'spectrum', 'detail'];
+    const sensor = resolveDisplaySensor(display, elements);
+    const views = displayViewsFor(sensor?.type);
+    if (views.length < 2) {
+      return { updates: {}, message: sensor ? `${displaySensorName(sensor)} has one readout` : 'No sensor connected' };
+    }
     const current = views.includes(display.params.displayView) ? display.params.displayView : 'main';
     const displayView = views[(views.indexOf(current) + 1) % views.length];
     return { updates: { displayView }, message: `Display view: ${displayView}` };
@@ -327,8 +354,8 @@ function displayScreenSVG(el, elements = []) {
   const scale = displayRenderScale(el.params.displayScale);
   const density = displayDensity(scale);
   const screenOn = el.params.screenOn !== false;
-  const view = ['main', 'spectrum', 'detail'].includes(el.params.displayView) ? el.params.displayView : 'main';
   const sensor = resolveDisplaySensor(el, elements);
+  const view = resolvedDisplayView(el, sensor);
   const hasConfiguredLink = Boolean(el.params.sensorId);
   const rd = sensor ? detectorReading(sensor.id) : null;
   const sensorName = sensor ? displaySensorName(sensor) : '';
@@ -690,6 +717,7 @@ export function newSampleChannel(kind = 'fluor') {
     material: 'lipid',        // spontaneous Raman fingerprint
     retardance: 90, axis: 45, // phase contrast
     transferEff: 0.1,         // SRS modulation transfer
+    requireOverlap: true,     // two-beam signals need the pulses to coincide
   };
 }
 
@@ -743,6 +771,22 @@ export function sampleChannels(p) {
   return raw.filter(c => allowed.has(c.kind)).slice(0, MAX_SAMPLE_CHANNELS);
 }
 
+// Two-beam signals only happen while both pulses are at the spot together.
+// When they are not, say by how much and in which direction to fix it, so a
+// silent signal is diagnosable instead of mysterious.
+function overlapWarning(channel, records) {
+  if (channel.requireOverlap === false) return null;
+  const sorted = [...records].sort((a, b) => a.wl - b.wl);
+  const a = sorted[0], b = sorted[sorted.length - 1];
+  const { factor, skewNs, comparable } = pulseOverlap(a, b);
+  if (!comparable || factor >= 0.5) return null;
+  const skewPs = skewNs * 1000;
+  const pathMm = skewNs * 299.792458;
+  const what = channel.kind === 'srs' ? 'Stimulated Raman' : channel.kind === 'sfg' ? 'Sum frequency' : 'CARS';
+  return `${what} needs the two pulses to arrive together: they are ${skewPs.toFixed(skewPs < 10 ? 2 : 0)} ps apart `
+    + `(${pathMm.toFixed(pathMm < 10 ? 2 : 0)} mm of path). Match the arms, or add a delay line.`;
+}
+
 // Whether a channel has to know what else is illuminating the specimen —
 // which colours are present, and whether any of them carries a modulation.
 // SHG, THG and phase contrast derive everything from the ray in front of
@@ -776,9 +820,12 @@ export function defaultEmissionWl(kind, excitationWl) {
 // Physically impossible or under-specified configurations, reported as a
 // short sentence for the inspector to surface. Returns null when the channel
 // is fine. `incidentWls` is what actually reaches this specimen.
-export function channelWarning(channel, incidentWls) {
-  const beams = (incidentWls || []).filter(w => Number.isFinite(w) && w > 0);
-  const distinct = [...new Set(beams.map(w => Math.round(w)))];
+export function channelWarning(channel, incident) {
+  // `incident` is either the plain wavelengths or the full probe records
+  // (wavelength, path length, pulse train) needed to judge arrival timing.
+  const records = (incident || []).map(b => (typeof b === 'number' ? { wl: b } : b))
+    .filter(b => Number.isFinite(b?.wl) && b.wl > 0);
+  const distinct = [...new Set(records.map(b => Math.round(b.wl)))];
   if (TWO_BEAM_KINDS.has(channel.kind)) {
     if (channel.kind === 'cars' && channel.autoWl === false) return null;
     if (distinct.length < 2) {
@@ -786,11 +833,11 @@ export function channelWarning(channel, incidentWls) {
         ? 'Stimulated Raman needs two excitation beams — one carrying the modulation, one to receive it.'
         : `${channel.kind === 'sfg' ? 'Sum frequency' : 'CARS'} needs two different excitation wavelengths at the sample.`;
     }
-    return null;
+    return overlapWarning(channel, records);
   }
   const order = EMISSION_ORDER[channel.kind];
   if (!order || channel.autoWl !== false) return null;
-  const excitation = drivingExcitationWl(beams);
+  const excitation = drivingExcitationWl(records.map(b => b.wl));
   if (!(excitation > 0) || !(channel.wl > 0)) return null;
   const floor = excitation / order;
   if (channel.wl < floor) {
@@ -815,6 +862,7 @@ function sampleModeParams() {
       const type = specimenTypeOf(p);
       return type === 'linear' || type === 'nonlinear';
     } },
+    { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
     { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
@@ -923,31 +971,16 @@ function stageSampleColor(params) {
   return '#e2758f';
 }
 
-function stageSampleLabel(params) {
-  const type = specimenTypeOf(params);
-  if (type === 'resin') return 'Resin';
-  if (type === 'linear') return 'Linear';
-  if (type === 'nonlinear') return 'NL';
-  if (type === 'absorbing') return 'Absorbing';
-  return 'Sample';
+// The live excitation spot, coloured by the signal actually generated there
+// when the tracer reports one (canvas.js attaches _signalHitLocal), else by
+// the specimen's own material tint.
+function signalSpotSVG(el) {
+  const hit = el._signalHitLocal;
+  if (!el.params.showSignalSpot || !hit) return '';
+  const color = Number.isFinite(hit.wl) ? wavelengthToColor(hit.wl) : stageSampleColor(el.params);
+  return `<circle cx="${hit.x.toFixed(2)}" cy="${hit.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
 }
 
-// The material label always reads upright, independent of the stage's own
-// rotation — same world-space, non-rotated pattern as the generic
-// el.label/showLabel system in labelSVG() below.
-export function stageSampleLabelSVG(el) {
-  if (el.type !== 'stage' || el.params.showMaterialLabel === false) return '';
-  const sz = getSize(el);
-  const a = (el.rot || 0) * Math.PI / 180;
-  const ey = (Math.abs(sz.w * Math.sin(a)) + Math.abs(sz.h * Math.cos(a))) / 2;
-  const y = el.y - ey - 3;
-  return `<text x="${el.x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="5.5" fill="#5b6472">${esc(stageSampleLabel(el.params))}</text>`;
-}
-
-// The specimen's optical surface, horizontal in local coordinates: it spans
-// local x (the clear-aperture/long axis, drawn left-right at rot 0) and the
-// beam crosses it along local y — see the "horizontal at rot 0" baseline on
-// the sample/stage entries below.
 function sampleSurfaces(el, h) {
   const p = el.params;
   const writeVoxel = specimenTypeOf(p) === 'resin' && p.voxelPreview === true;
@@ -2159,7 +2192,8 @@ export const registry = {
       const c = stageSampleColor(p);
       const h = (p.aperture || 34) / 2;
       return `<rect x="${-h}" y="-3" width="${2 * h}" height="6" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
-        `<circle cx="0" cy="0" r="4" fill="${c}" opacity="0.85"/>`;
+        `<circle cx="0" cy="0" r="4" fill="${c}" opacity="0.85"/>` +
+        signalSpotSVG(el);
     },
     surfaces: el => sampleSurfaces(el, (el.params.aperture || 34) / 2),
   },
@@ -2185,19 +2219,12 @@ export const registry = {
       // still declared so pre-existing sketches keep loading and can be read
       // by specimenTypeOf().
       { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: () => false, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
-      { key: 'showMaterialLabel', label: 'Show material label', type: 'checkbox', def: true, appearance: true },
-      { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, appearance: true },
       ...sampleModeParams(),
     ],
     svg(el) {
       const p = el.params;
       const clear = (p.aperture || 50) / 2, outer = clear + 12;
-      let spot = '';
-      if (p.showSignalSpot && el._signalHitLocal) {
-        const liveWl = el._signalHitLocal.wl;
-        const color = Number.isFinite(liveWl) ? wavelengthToColor(liveWl) : stageSampleColor(p);
-        spot = `<circle cx="${el._signalHitLocal.x.toFixed(2)}" cy="${el._signalHitLocal.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
-      }
+      const spot = signalSpotSVG(el);
       // Two separate L brackets (short-side cap + rail) grip the glass from
       // its left and right short edges and protrude 20% of the glass length
       // inward, leaving a 60%-of-length window between them for the beam.

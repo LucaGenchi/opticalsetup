@@ -5,9 +5,9 @@ import {
   registry, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
-  EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS,
+  EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
 } from './elements.js';
-import { detectorReading, specimenIncidentWls } from './raytrace.js';
+import { detectorReading, specimenIncidentWls, specimenIncidentBeams } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
 import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
 import { esc } from './util.js';
@@ -281,9 +281,12 @@ function layersHTML(layers) {
 // The wavelengths actually reaching a specimen right now, read back from
 // the live trace so emission defaults and warnings track the real bench.
 function incidentWlsAt(sel) {
-  const reading = detectorReading(sel.id);
-  if (Array.isArray(reading?.incidentWls)) return reading.incidentWls;
   return specimenIncidentWls(sel.id);
+}
+
+// The full incident records, so a warning can also judge arrival timing.
+function incidentBeamsAt(sel) {
+  return specimenIncidentBeams(sel.id);
 }
 
 // Specimen signal channels — the same stacked-overlay editor idea as the
@@ -348,11 +351,14 @@ function signalsHTML(sel) {
         h += field('Signal color', `<input type="color" data-ci="${i}" data-ck="color" value="${esc(c.color || '#22c55e')}">`);
       }
     }
+    if (TWO_BEAM_KINDS.has(c.kind) && !(c.kind === 'cars' && c.autoWl === false)) {
+      h += field('Needs pulse overlap', `<input type="checkbox" data-ci="${i}" data-ck="requireOverlap" ${c.requireOverlap !== false ? 'checked' : ''}>`);
+    }
     if (EPI_CAPABLE_KINDS.has(c.kind)) {
       h += field('Epi (backward) signal', `<input type="checkbox" data-ci="${i}" data-ck="epi" ${c.epi ? 'checked' : ''}>`);
       if (c.epi) h += numberField('Epi / forward ratio', `data-ci="${i}" data-ck="epiRatio"`, c.epiRatio ?? 0.15, { min: 0, max: 1, step: 0.05 });
     }
-    const warning = channelWarning(c, incident);
+    const warning = channelWarning(c, incidentBeamsAt(sel));
     if (warning) h += `<div class="signal-warning" role="alert">⚠ ${esc(warning)}</div>`;
     h += `</div>`;
   });
@@ -625,7 +631,7 @@ export function renderInspector() {
 // is configured, on top of the inline warning the row already carries — a
 // setting that silently emits nothing is worse than one that says why.
 function warnAboutChannel(channel, sel) {
-  const message = channelWarning(channel, incidentWlsAt(sel));
+  const message = channelWarning(channel, incidentBeamsAt(sel));
   if (message) document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message } }));
 }
 
@@ -757,7 +763,7 @@ function applyInput(inp, rebuild = false) {
     warnAboutChannel(c, sel);
     // Switching kind changes which fields apply at all, so rebuild the rows.
     // 'wl' redraws so the inline warning tracks the value just committed.
-    if (rebuild && ['kind', 'autoWl', 'epi', 'autoColor', 'material', 'wl'].includes(ckey)) renderInspector();
+    if (rebuild && ['kind', 'autoWl', 'epi', 'autoColor', 'material', 'wl', 'requireOverlap'].includes(ckey)) renderInspector();
     return;
   }
 
@@ -811,5 +817,5 @@ function applyInput(inp, rebuild = false) {
   }
   if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode'].includes(pkey)) renderInspector();
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode'].includes(pkey)) renderInspector();
 }

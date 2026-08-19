@@ -10,7 +10,7 @@ import {
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
-import { C_MM_PER_NS, pulseGateTransmission } from './pulses.js';
+import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -39,6 +39,12 @@ let specimenProbe = null;
 let specimenIncident = new Map();
 
 export function specimenIncidentWls(elementId) {
+  return (specimenIncident.get(elementId) || []).map(b => b.wl);
+}
+
+// The full incident record — wavelength, path length and pulse train — used
+// by the inspector to report how far apart two beams arrive.
+export function specimenIncidentBeams(elementId) {
   return specimenIncident.get(elementId) || [];
 }
 
@@ -326,6 +332,9 @@ const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
 // Two beams count as "different colours" for wave mixing only if they are
 // resolvably apart; the same laser sampled twice must not mix with itself.
 const MIXING_MIN_SEPARATION_NM = 1;
+// Below this the two pulses barely meet and the signal is reported as absent
+// rather than as a vanishing sliver.
+const MIN_OVERLAP = 0.02;
 
 // The wavelength one signal channel produces for a ray of wavelength rayWl.
 // Single-beam channels scale the incident colour. Mixing channels (SFG,
@@ -351,7 +360,11 @@ function recordProbeBeam(surface, ray) {
   let seen = specimenProbe.get(surface.id);
   if (!seen) specimenProbe.set(surface.id, seen = []);
   if (seen.some(b => Math.abs(b.wl - ray.wl) < 1e-9)) return;
-  seen.push({ wl: ray.wl, gates: (ray.pulse?.gates || []).map(g => ({ ...g })) });
+  seen.push({
+    wl: ray.wl, opl: ray.opl,
+    pulse: ray.pulse ? { ...ray.pulse } : null,
+    gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
+  });
 }
 
 function srsTransferGate(channel, ray, incidentBeams) {
@@ -359,9 +372,45 @@ function srsTransferGate(channel, ray, incidentBeams) {
   const donor = (incidentBeams || []).find(b =>
     Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM && b.gates?.length);
   if (!donor) return null;
+  // Both pulses must be at the spot together for the interaction to happen.
+  const overlap = channelOverlap(channel, ray, donor);
+  if (overlap < MIN_OVERLAP) return null;
   const source = donor.gates[donor.gates.length - 1];
-  const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1));
-  return { ...source, depth, high: 1, low: 1 - depth, invert: false };
+  const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1)) * overlap;
+  // The two beams are not symmetric. Energy flows from the blue photon to
+  // the red one, so when the PUMP (the shorter wavelength) carries the
+  // modulation the Stokes beam is amplified while the pump is on — that is
+  // stimulated Raman GAIN, and the receiving beam rises above its
+  // unmodulated level. When the STOKES beam carries it, the pump is
+  // depleted while the Stokes is on — stimulated Raman LOSS, a dip. Both
+  // excursions happen during the donor's own "on" half, so they differ in
+  // sign, not in phase.
+  const receiverIsStokes = donor.wl < ray.wl;
+  return {
+    opl: source.opl, frequencyMHz: source.frequencyMHz, duty: source.duty,
+    phaseNs: source.phaseNs, shape: source.shape, depth, invert: false,
+    high: receiverIsStokes ? 1 + depth : 1 - depth,
+    low: 1,
+  };
+}
+
+// How much of a two-beam signal survives the arrival mismatch between the
+// beams driving it. Channels can opt out, for a schematic that is about the
+// signal rather than about timing.
+function channelOverlap(channel, ray, partner) {
+  if (!partner || channel.requireOverlap === false) return 1;
+  return pulseOverlap({ opl: ray.opl, pulse: ray.pulse }, partner).factor;
+}
+
+// The incident beam a mixing channel pairs the current ray with: the longest
+// wavelength present, matching how specimenSignalWl picks the Stokes partner.
+function mixingPartner(ray, incidentBeams) {
+  let best = null;
+  for (const beam of incidentBeams || []) {
+    if (Math.abs(beam.wl - ray.wl) < MIXING_MIN_SEPARATION_NM) continue;
+    if (!best || beam.wl > best.wl) best = beam;
+  }
+  return best;
 }
 
 // The drawing color of one signal channel: true to its own wavelength by
@@ -1241,7 +1290,14 @@ function interact(ray, hit) {
 
         const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
         if (!(wl > 0)) continue;
-        const forward = ray.intensity * eff;
+        // Sum-frequency and CARS are wave mixing: no temporal overlap between
+        // the two beams, no signal.
+        let overlap = 1;
+        if (MIXING_KINDS.has(c.kind) && c.autoWl !== false) {
+          overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams));
+          if (overlap < MIN_OVERLAP) continue;
+        }
+        const forward = ray.intensity * eff * overlap;
         const tint = channelColor(c, wl);
         out.push({ d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, intensity: forward, tag: `c${ci}` });
         if (c.epi && EPI_KINDS.has(c.kind)) {
@@ -1864,7 +1920,7 @@ export function traceScene(elements, beams = []) {
         const beams = specimenProbe.get(s.id) || [];
         s.data.incidentBeams = beams;
         s.data.incidentWls = beams.map(b => b.wl);
-        if (s.el) specimenIncident.set(s.el.id, s.data.incidentWls);
+        if (s.el) specimenIncident.set(s.el.id, beams);
       }
     } finally {
       specimenProbe = null;

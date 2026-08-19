@@ -2,6 +2,7 @@
 
 import {
   OBJ_SHAPES, createElement, displayDensity, displayRenderScale, getElementMeta, registry, resolveDisplaySensor,
+  resolvedDisplayView,
 } from './elements.js';
 import { detectorReading } from './raytrace.js';
 import { enhancedReading, objectImageAtCamera } from './detector-measurements.js';
@@ -251,7 +252,11 @@ function scopePlot(reading) {
   if (!trace) return null;
   const baseline = 6, height = 17;
   const xAt = ns => -35 + 70 * (trace.spanNs > 0 ? ns / trace.spanNs : 0);
-  const yAt = value => baseline - Math.max(0, Math.min(1, value)) * height;
+  // Scaled to the trace's own peak, never below 1, so a stimulated-Raman
+  // GAIN (which lifts the receiving beam above its unmodulated level) reads
+  // as taller pulses instead of being clipped flat against the ceiling.
+  const peak = Math.max(1, ...trace.pulses.map(p => p.amplitude || 0), ...trace.envelope.map(e => e.value || 0));
+  const yAt = value => baseline - Math.max(0, Math.min(1, value / peak)) * height;
 
   const axis = `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
   const tick = (ns, anchor) => {
@@ -422,7 +427,7 @@ registry.display.svg = function detectorAwareDisplaySVG(display, elements = []) 
   const reading = enhancedReading(sensor, elements);
   if (!reading) return base;
   const scale = displayRenderScale(display.params.displayScale);
-  const view = ['main', 'spectrum', 'detail'].includes(display.params.displayView) ? display.params.displayView : 'main';
+  const view = resolvedDisplayView(display, sensor);
   const content = panel(sensor, reading, elements, view);
   return base + `<g transform="scale(${scale})" data-detector-readout="${esc(sensor.type)}" data-display-density="${displayDensity(scale)}" pointer-events="none"><rect x="-42.2" y="-28.2" width="84.4" height="45.4" rx="2.5" fill="#061822"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${content}</g></g>`;
 };
