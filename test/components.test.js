@@ -85,7 +85,10 @@ test('sample attenuation and holder aperture have distinct bounded behavior', ()
   holder.rot = 90;
   traceAll([laser, holder, detector]);
   assert.ok(detectorReading(detector.id));
-  laser.y = 20; detector.y = 20;
+  // Beyond the 25 mm clear aperture but still within the mount's outer edge
+  // (clear + 12 = 37 mm), so the ray is blocked by the mount rather than
+  // missing the holder geometry entirely.
+  laser.y = 30; detector.y = 30;
   traceAll([laser, holder, detector]);
   assert.equal(detectorReading(detector.id), null);
 });

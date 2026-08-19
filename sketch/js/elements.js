@@ -1980,7 +1980,7 @@ export const registry = {
     // (local x), the beam crosses it top-to-bottom (local y).
     label: 'Sample', category: 'Microscopy', size: { w: 40, h: 14 },
     size_: el => ({ w: (el.params.aperture || 34) + 6, h: 14 }),
-    params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 34, appearance: true }, ...sampleModeParams()],
+    params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true }, ...sampleModeParams()],
     svg(el) {
       const p = el.params;
       const c = stageSampleColor(p);
@@ -1997,7 +1997,7 @@ export const registry = {
     // (local y). The mounting brackets grip the specimen's left/right short
     // edges accordingly.
     label: 'Sample on piezo stage', category: 'Microscopy', size: { w: 56, h: 22 },
-    size_: el => ({ w: (el.params.aperture || 25.4) + 30, h: 22 }),
+    size_: el => ({ w: (el.params.aperture || 50) + 30, h: 22 }),
     params: [
       { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
       { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
@@ -2007,7 +2007,7 @@ export const registry = {
       { key: 'pzFreqZ', label: 'Z scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.1, show: p => p.pzMode === 'z' },
       { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.pzMode === 'sync' },
       { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
-      { key: 'aperture', label: 'Clear aperture', type: 'optsize', min: 4, max: 150, def: 25.4, appearance: true },
+      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true },
       { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
       { key: 'showMaterialLabel', label: 'Show material label', type: 'checkbox', def: true, appearance: true },
       { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, appearance: true },
@@ -2017,7 +2017,7 @@ export const registry = {
     ],
     svg(el) {
       const p = el.params;
-      const clear = (p.aperture || 25.4) / 2, outer = clear + 12;
+      const clear = (p.aperture || 50) / 2, outer = clear + 12;
       let spot = '';
       if (p.showSignalSpot && el._signalHitLocal) {
         const liveWl = el._signalHitLocal.wl;
@@ -2035,7 +2035,7 @@ export const registry = {
         (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
     surfaces(el) {
-      const clear = Math.max(2, (el.params.aperture || 25.4) / 2), outer = clear + 12;
+      const clear = Math.max(2, (el.params.aperture || 50) / 2), outer = clear + 12;
       const mount = [
         { x1: -outer, y1: 6, x2: -clear, y2: 6, kind: 'absorb' },
         { x1: clear, y1: 6, x2: outer, y2: 6, kind: 'absorb' },
