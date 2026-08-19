@@ -3,7 +3,10 @@
 // and returns drawables: stroked polylines (line-mode / beam edges) and filled
 // polygons (beam-mode envelope between the two edge rays).
 
-import { registry, OBJ_SHAPES } from './elements.js';
+import {
+  registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS,
+  sumFrequencyWl, carsAntiStokesWl,
+} from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission } from './pulses.js';
 
@@ -25,6 +28,9 @@ import {
 let lastPaths = [];
 let detectorHits = new Map();
 let gateTransmissionCache = new Map();
+// Non-null only during the mixing probe pass in traceScene(): surface id ->
+// Set of wavelengths observed arriving at that specimen.
+let specimenProbe = null;
 
 function hexChannels(color) {
   const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
@@ -306,6 +312,33 @@ export function probeAt(x, y, tol = 16) {
 }
 
 const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
+
+// Two beams count as "different colours" for wave mixing only if they are
+// resolvably apart; the same laser sampled twice must not mix with itself.
+const MIXING_MIN_SEPARATION_NM = 1;
+
+// The wavelength one signal channel produces for a ray of wavelength rayWl.
+// Single-beam channels scale the incident colour. Mixing channels (SFG,
+// CARS) need a second, different colour present at the same spot, supplied
+// by the caller as `incidentWls` — the wavelengths measured arriving at
+// this specimen during the mixing probe pass in traceScene(). Returns null
+// when the channel cannot produce anything for this ray, which is exactly
+// what makes CARS/SFG silent under single-beam illumination.
+export function specimenSignalWl(channel, rayWl, incidentWls) {
+  if (!(rayWl > 0)) return null;
+  if (channel.kind === 'shg') return rayWl / 2;
+  if (channel.kind === 'thg') return rayWl / 3;
+  if (!MIXING_KINDS.has(channel.kind)) return null;
+  if (channel.kind === 'cars' && channel.autoWl === false) return channel.wl > 0 ? channel.wl : null;
+  const partners = (incidentWls || []).filter(w => w > 0 && Math.abs(w - rayWl) >= MIXING_MIN_SEPARATION_NM);
+  if (!partners.length) return null;
+  // Emit once per pair rather than once per ray: only the shorter-wavelength
+  // (pump) beam of a pair drives the mixing, so a two-colour spot produces
+  // one anti-Stokes/sum-frequency signal, not one from each beam.
+  const partner = partners.reduce((a, b) => (b > a ? b : a), partners[0]);
+  if (rayWl > partner) return null;
+  return channel.kind === 'sfg' ? sumFrequencyWl(rayWl, partner) : carsAntiStokesWl(rayWl, partner);
+}
 
 function fiberEndDirection(pts, end, outward = false) {
   const j = end === 0 ? 0 : pts.length - 1;
@@ -1033,6 +1066,75 @@ function interact(ray, hit) {
       if (1 - ft > 0.02) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - ft), pol: 90, stokes: linearStokes(90), tag: 'R' });
       return out;
     }
+    case 'specimen': {
+      // A multimodal specimen emits every configured channel from the same
+      // spot on one crossing. Fluorescence is incoherent — isotropic, weak,
+      // and drawn as evanescent rays that die within 25 mm unless a nearby
+      // lens/objective/fiber collects them. The parametric signals (SHG,
+      // THG, SFG, CARS) are coherent and generated along the excitation
+      // direction, with an optional weaker backward (epi) lobe.
+      const transmission = data.transmitExc ? Math.min(1, Math.max(0, data.transmission ?? 1)) : 0;
+      // Mixing probe pass (see traceScene): record which colours actually
+      // arrive here and let the excitation through untouched, so the real
+      // pass afterwards knows whether CARS/SFG have a second beam to mix
+      // with. Generating no signal here is what keeps the probe cheap and
+      // stops signals from seeding further signals.
+      if (specimenProbe) {
+        let seen = specimenProbe.get(s.id);
+        if (!seen) specimenProbe.set(s.id, seen = new Set());
+        seen.add(ray.wl);
+        return transmission > 0.001 ? [{ d, intensity: ray.intensity * transmission }] : [];
+      }
+      const out = [];
+      // Isotropic emission and two-beam mixing are per-spot events, not
+      // per-ray ones: a beam split into K sampling rays must not emit K
+      // copies of the same signal.
+      const emitting = ray.sample == null || ray.sample === 0;
+      // The excitation is attenuated by the specimen's own transmission and
+      // nothing else. Real conversion efficiencies are ~1e-6, so signal
+      // generation depletes the pump negligibly; "Signal efficiency" is a
+      // visibility gain for the diagram, not an energy budget. Keeping the
+      // two independent also means stacking five channels never dims the
+      // excitation, and matches what the transmission field claims to do.
+      if (transmission > 0.001) out.push({ d, intensity: ray.intensity * transmission, tag: 'x' });
+      for (let ci = 0; ci < (data.channels || []).length; ci++) {
+        const c = data.channels[ci];
+        const eff = Math.min(1, Math.max(0, c.eff ?? 0.1));
+        if (eff <= 0) continue;
+        if (c.kind === 'fluor') {
+          if (!emitting) continue;
+          const N = 16;
+          const emitted = ray.intensity * eff;
+          for (let i = 0; i < N; i++) {
+            const a = i * 2 * Math.PI / N;
+            out.push({
+              d: { x: Math.cos(a), y: Math.sin(a) }, wl: c.wl, bw: 0, pol: undefined, stokes: null,
+              evan: true, evanLen: 25,
+              intensity: emitted > 0 ? 0.25 : 0,
+              power: Number.isFinite(ray.power) ? ray.power * eff / N : undefined,
+              tag: `f${ci}_${i}`,
+            });
+          }
+          continue;
+        }
+        const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
+        if (!(wl > 0)) continue;
+        const forward = ray.intensity * eff;
+        out.push({ d, wl, bw: 0, spec: null, pol: undefined, stokes: null, intensity: forward, tag: `c${ci}` });
+        if (c.epi && EPI_KINDS.has(c.kind)) {
+          const ratio = Math.min(1, Math.max(0, c.epiRatio ?? 0.15));
+          if (ratio > 0) {
+            out.push({
+              d: { x: -d.x, y: -d.y }, wl, bw: 0, spec: null, pol: undefined, stokes: null,
+              intensity: forward * ratio,
+              power: Number.isFinite(ray.power) ? ray.power * eff * ratio : undefined,
+              tag: `e${ci}`,
+            });
+          }
+        }
+      }
+      return out;
+    }
     case 'fluor': {
       // fluorescence is isotropic and weak: emitted in all directions from
       // the sample as EVANESCENT rays whose drawn glow decays like 1/r² and
@@ -1268,7 +1370,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           // conversion) — used to color the excitation-spot indicator by
           // the real signal color rather than a fixed per-material color.
           let signalWl;
-          if (hit.surface.kind === 'fluor') {
+          if (hit.surface.kind === 'specimen') {
+            // A multimodal specimen has several signal colours at once; the
+            // spot shows the first channel that produces light for this ray.
+            for (const c of hit.surface.data.channels || []) {
+              const wl = c.kind === 'fluor' ? c.wl : specimenSignalWl(c, r.wl, hit.surface.data.incidentWls);
+              if (wl > 0) { signalWl = wl; break; }
+            }
+          } else if (hit.surface.kind === 'fluor') {
             signalWl = hit.surface.data.wl;
           } else if (hit.surface.kind === 'transmit' && hit.surface.data.convert) {
             const conv = hit.surface.data.convert;
@@ -1526,6 +1635,13 @@ export function traceScene(elements, beams = []) {
   detectorHits = new Map();
   gateTransmissionCache = new Map();
 
+  // Sources are emitted twice when a specimen needs two-colour mixing: once
+  // as a cheap probe that only records which wavelengths reach each specimen
+  // (the `specimenProbe` branch in interact()), then for real with that
+  // knowledge attached. The tracer only ever sees one ray at a time, so
+  // without the probe a CARS or SFG channel has no way to know whether a
+  // second beam is present at the same spot.
+  const emitSources = collect => {
   for (const el of elements) {
     const def = registry[el.type];
     if (!def || !def.source) continue;
@@ -1581,7 +1697,9 @@ export function traceScene(elements, beams = []) {
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
       };
     });
-    const allPaths = traceRays(rays0, surfaces, couplings, writeHits, signalHits);
+    const allPaths = traceRays(rays0, surfaces,
+      collect ? couplings : null, collect ? writeHits : [], collect ? signalHits : []);
+    if (!collect) continue;
     // Rays tagged hidden (a partial mirror's transmitted leak with its
     // "Display transmitted beam" toggle off) are always fully traced above,
     // for correct detector/power-budget physics — but stay out of every
@@ -1594,6 +1712,24 @@ export function traceScene(elements, beams = []) {
     }, drawables);
     collectPulseTracks(paths, K, p.autoColor === false && p.color ? baseColor : null, pulseTracks);
   }
+  };
+
+  const needsMixing = surfaces.some(s => s.kind === 'specimen'
+    && (s.data.channels || []).some(c => MIXING_KINDS.has(c.kind) && c.autoWl !== false));
+  if (needsMixing) {
+    specimenProbe = new Map();
+    try {
+      emitSources(false);
+      for (const s of surfaces) {
+        if (s.kind === 'specimen') s.data.incidentWls = [...(specimenProbe.get(s.id) || [])];
+      }
+    } finally {
+      specimenProbe = null;
+      detectorHits = new Map();
+      gateTransmissionCache = new Map();
+    }
+  }
+  emitSources(true);
 
   // fibers that received light re-emit at their far end (up to 3 chained hops)
   const emitted = new Set();

@@ -55,7 +55,24 @@ function normalizeLayers(value) {
   });
 }
 
+// Specimen signal channels: up to five stacked emissions on one sample.
+// Sketches saved before this existed carry no `channels` at all and are read
+// through their legacy single `mode` instead (see legacySampleChannels).
+function normalizeChannels(value) {
+  if (!Array.isArray(value)) return [];
+  const kinds = new Set(['fluor', 'shg', 'thg', 'sfg', 'cars']);
+  return value.slice(0, 5).filter(record).map(raw => ({
+    kind: kinds.has(raw.kind) ? raw.kind : 'fluor',
+    wl: clamp(finite(raw.wl) ? raw.wl : 520, 100, 4000),
+    eff: clamp(finite(raw.eff) ? raw.eff : 0.1, 0, 1),
+    epi: raw.epi === true,
+    epiRatio: clamp(finite(raw.epiRatio) ? raw.epiRatio : 0.15, 0, 1),
+    autoWl: raw.autoWl !== false,
+  }));
+}
+
 function normalizeParam(value, spec) {
+  if (spec.type === 'signals') return normalizeChannels(value);
   if (spec.type === 'layers') return normalizeLayers(value);
   if (spec.type === 'boundary') return normalizeBoundaryPoints(value, spec.def || []);
   if (spec.type === 'points') return normalizePolygonPoints(value, spec.def || []);

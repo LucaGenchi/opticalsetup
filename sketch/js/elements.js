@@ -591,14 +591,71 @@ function probeCardPlacement(el, card, scale) {
 
 // samples can generate signal (fluorescence / SHG / THG / CARS) and
 // independently transmit or block the excitation beam
+// A specimen can emit several signals at once — up to five stacked channels,
+// the same overlay pattern the wavefront shapers use for their optical
+// function (see layersParam / newShaperLayer above). An empty list is an
+// optically inert specimen that only attenuates the excitation.
+export const MAX_SAMPLE_CHANNELS = 5;
+
+export const SIGNAL_KINDS = [
+  ['fluor', 'Fluorescence — isotropic'],
+  ['shg', 'SHG — λ/2'],
+  ['thg', 'THG — λ/3'],
+  ['sfg', 'SFG — sum frequency'],
+  ['cars', 'CARS — anti-Stokes'],
+];
+// Four- and three-wave mixing need two DIFFERENT excitation colours present
+// at the same spot; the others are driven by a single beam.
+export const MIXING_KINDS = new Set(['sfg', 'cars']);
+// Fluorescence is incoherent and radiates in every direction, so it has no
+// forward/epi distinction to offer. The parametric signals are generated
+// along the excitation direction and are forward-dominant, with a weaker
+// backward (epi) lobe that real epi-detected CARS/SHG setups rely on.
+export const EPI_CAPABLE_KINDS = new Set(['shg', 'thg', 'sfg', 'cars']);
+
+export function newSampleChannel(kind = 'fluor') {
+  return { kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true };
+}
+
+// Photon-energy conservation, in nm. Returns null when a combination is not
+// physical (e.g. an anti-Stokes photon needing more energy than the two pump
+// photons carry).
+export function sumFrequencyWl(a, b) {
+  const inv = 1 / a + 1 / b;
+  return inv > 1e-9 ? 1 / inv : null;
+}
+export function carsAntiStokesWl(pumpWl, stokesWl) {
+  const inv = 2 / pumpWl - 1 / stokesWl;
+  return inv > 1e-9 ? 1 / inv : null;
+}
+
+// Legacy scenes stored one `mode` plus its own wavelength/efficiency fields.
+// They keep loading unchanged by being read as a single-channel list.
+export function legacySampleChannels(p) {
+  if (!p || !p.mode || p.mode === 'none') return [];
+  const eff = Number.isFinite(p.signalEff) ? p.signalEff : 0.1;
+  if (p.mode === 'fluor') return [{ ...newSampleChannel('fluor'), wl: p.fluorWl ?? 520, eff }];
+  if (p.mode === 'cars') return [{ ...newSampleChannel('cars'), wl: p.carsWl ?? 660, eff, autoWl: false }];
+  if (p.mode === 'shg' || p.mode === 'thg') return [{ ...newSampleChannel(p.mode), eff }];
+  return [];
+}
+
+export function sampleChannels(p) {
+  if (Array.isArray(p?.channels) && p.channels.length) return p.channels.slice(0, MAX_SAMPLE_CHANNELS);
+  return legacySampleChannels(p);
+}
+
 function sampleModeParams() {
   return [
-    { key: 'mode', label: 'Signal generated', type: 'select', def: 'none', options: [['none', 'None'], ['fluor', 'Fluorescence (isotropic)'], ['shg', 'SHG λ/2 (forward)'], ['thg', 'THG λ/3 (forward)'], ['cars', 'CARS (forward)']] },
-    { key: 'fluorWl', label: 'Emission λ (nm)', type: 'number', min: 200, max: 1200, step: 5, def: 520, show: p => p.mode === 'fluor' },
-    { key: 'carsWl', label: 'CARS λ (nm)', type: 'number', min: 200, max: 1200, step: 5, def: 660, show: p => p.mode === 'cars' },
+    { key: 'channels', label: 'Signals generated', type: 'signals', def: [] },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true },
     { key: 'transmission', label: 'Excitation transmission', type: 'number', min: 0, max: 1, step: 0.05, def: 0.8, show: p => p.transmitExc },
-    { key: 'signalEff', label: 'Signal efficiency', type: 'number', min: 0, max: 1, step: 0.05, def: 0.1, show: p => p.mode !== 'none' },
+    // Legacy single-signal fields: hidden, kept so pre-channels sketches keep
+    // loading and are read through legacySampleChannels() above.
+    { key: 'mode', label: 'Signal generated', type: 'select', def: 'none', show: () => false, options: [['none', 'None'], ['fluor', 'Fluorescence (isotropic)'], ['shg', 'SHG λ/2 (forward)'], ['thg', 'THG λ/3 (forward)'], ['cars', 'CARS (forward)']] },
+    { key: 'fluorWl', label: 'Emission λ (nm)', type: 'number', min: 200, max: 1200, step: 5, def: 520, show: () => false },
+    { key: 'carsWl', label: 'CARS λ (nm)', type: 'number', min: 200, max: 1200, step: 5, def: 660, show: () => false },
+    { key: 'signalEff', label: 'Signal efficiency', type: 'number', min: 0, max: 1, step: 0.05, def: 0.1, show: () => false },
   ];
 }
 // A piezo stage can translate the mounted specimen along its own XY (long
@@ -679,8 +736,11 @@ export function voxelDepthFactor(xOffset = 0, travelZ = 8) {
 // hits, the actual generated-signal wavelength (computed in raytrace.js)
 // takes over for fluorescence and nonlinear signals.
 function stageSampleColor(params) {
-  if (params.mode === 'fluor') return wavelengthToColor(params.fluorWl);
-  if (params.mode === 'cars') return wavelengthToColor(params.carsWl);
+  // The first channel whose wavelength is known without knowing what is
+  // actually illuminating the specimen — SHG/THG/SFG/CARS all depend on the
+  // incident colour, so they fall through to the material tint below.
+  const named = sampleChannels(params).find(c => c.kind === 'fluor' || (c.kind === 'cars' && c.autoWl === false));
+  if (named) return wavelengthToColor(named.wl);
   if (params.sampleKind === 'resin') return '#9b5de5';
   if (params.sampleKind === 'nonlinear') return '#e6a23c';
   if (params.sampleKind === 'opaque') return '#69737e';
@@ -711,11 +771,15 @@ function sampleSurfaces(el, h) {
   const p = el.params;
   const writeVoxel = p.sampleKind === 'resin' && p.voxelPreview === true;
   const reportHit = true;
-  if (p.mode === 'fluor') {
-    return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'fluor', data: { wl: p.fluorWl, transmitExc: p.transmitExc, transmission: p.transmission, efficiency: p.signalEff, writeVoxel, reportHit } }];
-  }
-  if (p.mode === 'shg' || p.mode === 'thg' || p.mode === 'cars') {
-    return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: { convert: p.mode, outWl: p.carsWl, transmitExc: p.transmitExc, transmission: p.transmission, efficiency: p.signalEff, writeVoxel, reportHit } }];
+  const channels = sampleChannels(p);
+  // One surface carries every channel, so a multimodal specimen emits all of
+  // its signals from the same spot on a single crossing. An inert specimen
+  // (no channels) keeps the plain attenuate/absorb behavior it always had.
+  if (channels.length) {
+    return [{
+      x1: 0, y1: -h, x2: 0, y2: h, kind: 'specimen',
+      data: { channels, transmitExc: p.transmitExc, transmission: p.transmission, writeVoxel, reportHit },
+    }];
   }
   return p.transmitExc
     ? [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit } }]
@@ -1909,7 +1973,7 @@ export const registry = {
     params: [{ key: 'aperture', label: 'Sample height (mm)', type: 'number', min: 6, max: 150, step: 2, def: 34 }, ...sampleModeParams()],
     svg(el) {
       const p = el.params;
-      const c = p.mode === 'fluor' ? wavelengthToColor(p.fluorWl) : p.mode === 'cars' ? wavelengthToColor(p.carsWl) : '#e2758f';
+      const c = stageSampleColor(p);
       const h = (p.aperture || 34) / 2;
       return `<rect x="-3" y="${-h}" width="6" height="${2 * h}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         `<circle cx="0" cy="0" r="4" fill="${c}" opacity="0.85"/>`;
@@ -2395,7 +2459,7 @@ const ELEMENT_HELP = {
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
-  sample: 'Attenuates excitation and can convert a bounded fraction into fluorescence or nonlinear signal.',
+  sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
   microscope: 'Models a configurable objective, tube lens, clear aperture, and absorbing housing.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
