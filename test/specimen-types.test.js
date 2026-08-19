@@ -683,12 +683,10 @@ function spectrometerScreen(elements, sensor) {
   const baseline = 1; // the spectrometer plots against this baseline
   return {
     svg,
-    // Discrete lines render as a triangle of the instrument's own resolution
-    // width, peaking at their height above the baseline.
-    stems: [...svg.matchAll(/<path d="M ([-\d.]+),([-\d.]+) L ([-\d.]+),([-\d.]+) L ([-\d.]+),/g)]
-      .map(m => Number((Number(m[2]) - Number(m[4])).toFixed(2))).sort((a, b) => b - a),
-    lineWidths: [...svg.matchAll(/<path d="M ([-\d.]+),[-\d.]+ L [-\d.]+,[-\d.]+ L ([-\d.]+),/g)]
-      .map(m => Number((Number(m[2]) - Number(m[1])).toFixed(2))),
+    // Discrete lines render as a plain hairline stem at their height above
+    // the baseline.
+    stems: [...svg.matchAll(/<line x1="[-\d.]+" y1="([-\d.]+)" x2="[-\d.]+" y2="([-\d.]+)" stroke="#[0-9a-f]{6}" stroke-width="2"/g)]
+      .map(m => Number((Number(m[1]) - Number(m[2])).toFixed(2))).sort((a, b) => b - a),
     bandPeak: (() => {
       const path = (svg.match(/<path d="M ([^"]+)" fill="none" stroke="url\(#specGrad/) || [])[1];
       if (!path) return null;
@@ -787,21 +785,8 @@ test('relative mode rescues a weak signal beside its own pump, keeping the finge
     `the strongest signal should rise in relative mode, got ${density.stems} then ${relative.stems}`);
 });
 
-// ---------------- instrument resolution renders line width ----------------
-
-test('the spectrometer resolution sets how wide a line can be drawn', () => {
-  // Regression: resolution only ever divided into the density, and since the
-  // plot normalizes to its own maximum, a lines-only reading looked identical
-  // at every setting. A spectrometer cannot render a line narrower than it
-  // resolves, so the width now shows it.
-  const widthAt = resolutionNm => {
-    const spectrometer = spectrometerAt(400, {
-      resolutionNm, rangeMode: 'manual', rangeMin: 500, rangeMax: 620,
-    });
-    return spectrometerScreen([monoLaser(532, -3), monoLaser(580, 3), spectrometer], spectrometer).lineWidths[0];
-  };
-  const fine = widthAt(0.5), coarse = widthAt(20);
-  assert.ok(coarse > fine * 5, `coarsening the resolution should broaden lines, got ${fine} then ${coarse}`);
+test('the spectrometer has no configurable line resolution — that is outside what this app models', () => {
+  assert.ok(!registry.spectrometer.params.some(p => p.key === 'resolutionNm'));
 });
 
 // ---------------- emission reach and sampling ----------------
