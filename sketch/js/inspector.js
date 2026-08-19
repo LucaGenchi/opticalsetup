@@ -3,6 +3,7 @@
 import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
+  newSampleChannel, MAX_SAMPLE_CHANNELS, SIGNAL_KINDS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
 } from './elements.js';
 import { detectorReading } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
@@ -65,6 +66,17 @@ function numberField(labelText, attrs, value, param = {}) {
       <span class="number-wrap">${negative ? '<span class="negsign">−</span>' : ''}<input type="number" ${attrs}${negAttr} data-control-id="${id}" data-control-role="number" ${limits} value="${displayValue}" aria-label="${esc(labelText)} exact value"></span>
     </div>
   </div>`;
+}
+
+// Standard-optic size control: the common ½″/1″/2″ picks plus a custom box.
+function optsizeField(p, v) {
+  const STD = [[12.7, '\u00bd\u2033 (12.7 mm)'], [25.4, '1\u2033 (25.4 mm)'], [50.8, '2\u2033 (50.8 mm)']];
+  const isStd = STD.some(([size]) => size === v);
+  let out = field(p.label, `<select data-p="${p.key}" data-optsize="1">` +
+    STD.map(([size, label]) => `<option value="${size}" ${v === size ? 'selected' : ''}>${label}</option>`).join('') +
+    `<option value="custom" ${!isStd ? 'selected' : ''}>Custom\u2026</option></select>`);
+  if (!isStd) out += field('\u21b3 size (mm)', `<input type="number" data-p="${p.key}" min="1" max="500" step="0.5" value="${v}">`);
+  return out;
 }
 
 function inspectorSection(key, title, content, { open = true, meta = '' } = {}) {
@@ -262,6 +274,48 @@ function layersHTML(layers) {
   return h;
 }
 
+// Specimen signal channels — the same stacked-overlay editor idea as the
+// wavefront shapers' layers, but each row is one emission the specimen adds.
+function signalsHTML(channels) {
+  let h = `<div class="lsechead">Signals generated — stack up to ${MAX_SAMPLE_CHANNELS}</div>`;
+  channels.forEach((c, i) => {
+    h += `<div class="layer"><div class="layerrow">
+      <select data-ci="${i}" data-ck="kind" aria-label="Signal ${i + 1} type">` +
+      SIGNAL_KINDS.map(([v, l]) => `<option value="${v}" ${v === c.kind ? 'selected' : ''}>${l}</option>`).join('') +
+      `</select><button type="button" class="layerdel" data-cdel="${i}" title="Remove this signal" aria-label="Remove signal ${i + 1}">✕</button></div>`;
+    if (c.kind === 'fluor') {
+      h += field('Emission λ (nm)', `<input type="number" data-ci="${i}" data-ck="wl" min="200" max="1200" step="5" value="${c.wl}">`);
+    } else if (MIXING_KINDS.has(c.kind)) {
+      // Both mixing signals derive their colour from the two beams actually
+      // present, so the wavelength is shown as derived, not typed — except
+      // CARS, which keeps a manual override for a known vibrational line.
+      h += field('Wavelength', `<select data-ci="${i}" data-ck="autoWl">
+        <option value="auto" ${c.autoWl !== false ? 'selected' : ''}>From the two beams present</option>
+        ${c.kind === 'cars' ? `<option value="manual" ${c.autoWl === false ? 'selected' : ''}>Set manually</option>` : ''}
+      </select>`);
+      if (c.kind === 'cars' && c.autoWl === false) {
+        h += field('CARS λ (nm)', `<input type="number" data-ci="${i}" data-ck="wl" min="200" max="1200" step="5" value="${c.wl}">`);
+      }
+      h += `<div class="hint">Needs two different excitation wavelengths at the sample; silent under a single beam.</div>`;
+    }
+    h += numberField('Efficiency', `data-ci="${i}" data-ck="eff"`, c.eff, { min: 0, max: 1, step: 0.05 });
+    // Same auto/custom colour choice a laser offers, per channel, so several
+    // signals on one specimen can be told apart on a busy sketch.
+    h += field('Color from λ', `<input type="checkbox" data-ci="${i}" data-ck="autoColor" ${c.autoColor !== false ? 'checked' : ''}>`);
+    if (c.autoColor === false) {
+      h += field('Signal color', `<input type="color" data-ci="${i}" data-ck="color" value="${esc(c.color || '#22c55e')}">`);
+    }
+    if (EPI_CAPABLE_KINDS.has(c.kind)) {
+      h += field('Epi (backward) signal', `<input type="checkbox" data-ci="${i}" data-ck="epi" ${c.epi ? 'checked' : ''}>`);
+      if (c.epi) h += numberField('Epi / forward ratio', `data-ci="${i}" data-ck="epiRatio"`, c.epiRatio ?? 0.15, { min: 0, max: 1, step: 0.05 });
+    }
+    h += `</div>`;
+  });
+  if (!channels.length) h += `<div class="hint">Optically inert specimen — it only attenuates the excitation. Add a signal to make it emit.</div>`;
+  if (channels.length < MAX_SAMPLE_CHANNELS) h += `<button type="button" id="signalAdd" class="layeradd">＋ Add signal</button>`;
+  return h;
+}
+
 export function renderInspector() {
   const sel = findSelected();
   undoArmed = false;
@@ -326,6 +380,9 @@ export function renderInspector() {
       };
       for (const p of def.params || []) {
         if (p.hidden) continue;
+        // Physical-size fields that read as presentation rather than physics
+        // are rendered down in Label & appearance instead (see below).
+        if (p.appearance) continue;
         if (p.show && !p.show(sel.params)) continue;
         if (p.type === 'section') {
           flushSection();
@@ -360,14 +417,8 @@ export function renderInspector() {
           if (!sensors.length) sectionFields += `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`;
         }
         else if (p.type === 'layers') sectionFields += layersHTML(Array.isArray(sel.params[p.key]) ? sel.params[p.key] : []);
-        else if (p.type === 'optsize') {
-          const STD = [[12.7, '½″ (12.7 mm)'], [25.4, '1″ (25.4 mm)'], [50.8, '2″ (50.8 mm)']];
-          const isStd = STD.some(([s]) => s === v);
-          sectionFields += field(p.label, `<select data-p="${p.key}" data-optsize="1">` +
-            STD.map(([s, l]) => `<option value="${s}" ${v === s ? 'selected' : ''}>${l}</option>`).join('') +
-            `<option value="custom" ${!isStd ? 'selected' : ''}>Custom…</option></select>`);
-          if (!isStd) sectionFields += field('↳ size (mm)', `<input type="number" data-p="${p.key}" min="1" max="500" step="0.5" value="${v}">`);
-        }
+        else if (p.type === 'signals') sectionFields += signalsHTML(sampleChannels(sel.params));
+        else if (p.type === 'optsize') sectionFields += optsizeField(p, v);
       }
       insertVoxelHint();
       flushSection();
@@ -384,7 +435,15 @@ export function renderInspector() {
       }
       h += inspectorSection('position', 'Position & rotation', positionFields, { open: false });
       if (!def.noLabel) {
-        let appearanceFields = field('Label', `<input type="text" data-k="label" value="${esc(sel.label || '')}">`);
+        let appearanceFields = '';
+        for (const p of def.params || []) {
+          if (!p.appearance || p.hidden) continue;
+          if (p.show && !p.show(sel.params)) continue;
+          appearanceFields += p.type === 'optsize'
+            ? optsizeField(p, sel.params[p.key])
+            : numberField(p.label, `data-p="${p.key}"`, sel.params[p.key], p);
+        }
+        appearanceFields += field('Label', `<input type="text" data-k="label" value="${esc(sel.label || '')}">`);
         appearanceFields += field('Show label', `<input type="checkbox" data-k="showLabel" ${sel.showLabel ? 'checked' : ''}>`);
         if (sel.showLabel) {
           const lp = sel.labelPos || 'b';
@@ -488,21 +547,63 @@ export function renderInspector() {
       renderInspector();
     });
   });
+  // specimen signal-channel add/remove
+  const addSignal = panel.querySelector('#signalAdd');
+  if (addSignal) addSignal.addEventListener('click', () => {
+    const s = findSelected();
+    if (!s) return;
+    pushUndo();
+    materializeChannels(s);
+    s.params.channels.push(newSampleChannel());
+    changed();
+    renderInspector();
+  });
+  panel.querySelectorAll('[data-cdel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = findSelected();
+      if (!s) return;
+      pushUndo();
+      materializeChannels(s);
+      s.params.channels.splice(+btn.dataset.cdel, 1);
+      changed();
+      renderInspector();
+    });
+  });
 }
 
+// A pre-channels sketch shows its legacy single `mode` as one derived row.
+// The first edit writes that row into params.channels for real and retires
+// the legacy field, so the two can never disagree afterwards.
+function materializeChannels(sel) {
+  if (!Array.isArray(sel.params.channels) || !sel.params.channels.length) {
+    sel.params.channels = sampleChannels(sel.params).map(c => ({ ...c }));
+  }
+  if (sel.params.mode !== undefined) sel.params.mode = 'none';
+}
+
+// Picking a material seeds the signal channels. It writes params.channels
+// directly — the legacy `mode` is only a fallback for sketches that predate
+// channels, so a preset that set it would be ignored the moment the user
+// added a channel of their own.
 function applyStageSamplePreset(sel) {
   if (sel.type !== 'stage') return;
   const p = sel.params;
+  const seed = channels => Object.assign(p, { mode: 'none', channels });
   if (p.sampleKind === 'fluorescent') {
-    Object.assign(p, { mode: 'fluor', fluorWl: 520, transmitExc: true, transmission: 0.8, signalEff: 0.1, voxelPreview: false });
+    Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
+    seed([{ ...newSampleChannel('fluor'), wl: 520, eff: 0.1 }]);
   } else if (p.sampleKind === 'resin') {
-    Object.assign(p, { mode: 'none', transmitExc: true, transmission: 0.85, voxelPreview: true });
+    Object.assign(p, { transmitExc: true, transmission: 0.85, voxelPreview: true });
+    seed([]);
   } else if (p.sampleKind === 'nonlinear') {
-    Object.assign(p, { mode: 'shg', transmitExc: true, transmission: 0.8, signalEff: 0.1, voxelPreview: false });
+    Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
+    seed([{ ...newSampleChannel('shg'), eff: 0.1 }]);
   } else if (p.sampleKind === 'opaque') {
-    Object.assign(p, { mode: 'none', transmitExc: false, voxelPreview: false });
+    Object.assign(p, { transmitExc: false, voxelPreview: false });
+    seed([]);
   } else if (p.sampleKind === 'generic') {
-    Object.assign(p, { mode: 'none', transmitExc: true, transmission: 0.8, voxelPreview: false });
+    Object.assign(p, { transmitExc: true, transmission: 0.8, voxelPreview: false });
+    seed([]);
   }
 }
 
@@ -569,6 +670,22 @@ function applyInput(inp, rebuild = false) {
     return;
   }
 
+  // specimen signal-channel fields
+  if (inp.dataset.ci !== undefined) {
+    materializeChannels(sel);
+    const c = sel.params.channels[+inp.dataset.ci];
+    if (!c) return;
+    const ckey = inp.dataset.ck;
+    // The wavelength selector is a two-option enum standing in for a boolean.
+    if (ckey === 'autoWl') c.autoWl = val === 'auto';
+    else c[ckey] = val;
+    // Switching kind can change which fields apply (a mixing signal has no
+    // typed wavelength, fluorescence has no epi lobe), so rebuild the rows.
+    changed();
+    if (rebuild && (ckey === 'kind' || ckey === 'autoWl' || ckey === 'epi' || ckey === 'autoColor')) renderInspector();
+    return;
+  }
+
   // wavefront-shaper layer fields
   if (inp.dataset.li !== undefined) {
     const layers = sel.params.layers;
@@ -619,5 +736,5 @@ function applyInput(inp, rebuild = false) {
   }
   if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'containsSample', 'sampleKind', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode'].includes(pkey)) renderInspector();
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'sampleKind', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showMaterialLabel', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode'].includes(pkey)) renderInspector();
 }

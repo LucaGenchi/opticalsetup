@@ -150,8 +150,14 @@ function notifyViewChange() {
 }
 
 function animatedStageElement(el) {
-  const offset = stageOffsetAt(el.params, motionTimeSeconds);
-  return (offset.x || offset.y) ? { ...el, x: el.x + offset.x, y: el.y + offset.y } : el;
+  const local = stageOffsetAt(el.params, motionTimeSeconds);
+  if (!local.x && !local.y) return el;
+  // Rotate the local XY/Z offset into world space by the element's own
+  // rotation (same pattern as animatedRetroElement below), so XY scan stays
+  // parallel to the stage's long axis and Z stays perpendicular to it
+  // whatever angle the stage is placed at.
+  const offset = rotPt(local.x, local.y, el.rot || 0);
+  return { ...el, x: el.x + offset.x, y: el.y + offset.y };
 }
 
 function animatedRetroElement(el) {
@@ -380,7 +386,7 @@ function recordVoxelHits(fromTimeNs, toTimeNs) {
   if (toTimeNs <= fromTimeNs || !writeHits.length) return;
   for (const hit of writeHits) {
     const stage = state.elements.find(el => el.id === hit.stageId && el.type === 'stage');
-    if (!stage?.params.containsSample || stage.params.sampleKind !== 'resin' || !stage.params.voxelPreview || !Number.isFinite(hit.opl)) continue;
+    if (stage?.params.sampleKind !== 'resin' || !stage.params.voxelPreview || !Number.isFinite(hit.opl)) continue;
     const track = {
       pts: [{ x: hit.x - 1, y: hit.y }, { x: hit.x + 1, y: hit.y }],
       opls: [Math.max(0, hit.opl - 1), hit.opl + 1],
@@ -391,14 +397,13 @@ function recordVoxelHits(fromTimeNs, toTimeNs) {
     });
     if (!arrivals.length) continue;
     const offset = stageOffsetAt(stage.params, motionTimeSeconds);
-    const displayedStage = { ...stage, x: stage.x + offset.x, y: stage.y + offset.y };
-    const local = toLocal(displayedStage, hit.x, hit.y);
+    const local = toLocal(animatedStageElement(stage), hit.x, hit.y);
     if (!Number.isFinite(local.x) || !Number.isFinite(local.y)) continue;
     // Volumetric qualitative effect: the further the sample currently sits
-    // from the stage's nominal X=0 focal plane, the more the voxel broadens
-    // and fades — a 2D stand-in for real axial defocus, not a calculated
-    // point-spread function.
-    const depthFactor = voxelDepthFactor(offset.x, stage.params.pzTravelZ ?? 8);
+    // from the stage's nominal Z=0 focal plane (the local-y axis — see
+    // stageOffsetAt), the more the voxel broadens and fades — a 2D stand-in
+    // for real axial defocus, not a calculated point-spread function.
+    const depthFactor = voxelDepthFactor(offset.y, stage.params.pzTravelZ ?? 8);
     const baseSize = Math.min(6, Math.max(0.1, stage.params.voxelSize ?? 0.6));
     const size = Math.min(10, baseSize * (1 + depthFactor * 1.5));
     for (const arrival of arrivals) {

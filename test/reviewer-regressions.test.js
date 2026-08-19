@@ -107,6 +107,7 @@ test('a passive diffuser redistributes but does not create optical power', () =>
 test('beam probes report state at their position rather than the final path state', () => {
   const laser = createElement('laser', 0, 0);
   const sample = createElement('sample', 150, 0);
+  sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
   sample.params.transmission = 0.25;
 
   traceAll([laser, sample]);
