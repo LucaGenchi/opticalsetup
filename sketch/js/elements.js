@@ -614,7 +614,7 @@ export const MIXING_KINDS = new Set(['sfg', 'cars']);
 export const EPI_CAPABLE_KINDS = new Set(['shg', 'thg', 'sfg', 'cars']);
 
 export function newSampleChannel(kind = 'fluor') {
-  return { kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true };
+  return { kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true, autoColor: true, color: '#22c55e' };
 }
 
 // Photon-energy conservation, in nm. Returns null when a combination is not
@@ -759,7 +759,7 @@ function stageSampleLabel(params) {
 // rotation — same world-space, non-rotated pattern as the generic
 // el.label/showLabel system in labelSVG() below.
 export function stageSampleLabelSVG(el) {
-  if (el.type !== 'stage' || !el.params.containsSample || el.params.showMaterialLabel === false) return '';
+  if (el.type !== 'stage' || el.params.showMaterialLabel === false) return '';
   const sz = getSize(el);
   const a = (el.rot || 0) * Math.PI / 180;
   const ey = (Math.abs(sz.w * Math.sin(a)) + Math.abs(sz.h * Math.cos(a))) / 2;
@@ -1970,7 +1970,7 @@ export const registry = {
   sample: {
     label: 'Sample', category: 'Microscopy', size: { w: 14, h: 40 },
     size_: el => ({ w: 14, h: (el.params.aperture || 34) + 6 }),
-    params: [{ key: 'aperture', label: 'Sample height (mm)', type: 'number', min: 6, max: 150, step: 2, def: 34 }, ...sampleModeParams()],
+    params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 34, appearance: true }, ...sampleModeParams()],
     svg(el) {
       const p = el.params;
       const c = stageSampleColor(p);
@@ -1993,14 +1993,13 @@ export const registry = {
       { key: 'pzFreqZ', label: 'Z scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.1, show: p => p.pzMode === 'z' },
       { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.pzMode === 'sync' },
       { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
-      { key: 'containsSample', label: 'Sample installed', type: 'checkbox', def: false },
-      { key: 'aperture', label: 'Clear aperture', type: 'optsize', min: 4, max: 150, def: 25.4 },
-      { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: p => p.containsSample, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
-      { key: 'showMaterialLabel', label: 'Show material label', type: 'checkbox', def: true, show: p => p.containsSample },
-      { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, show: p => p.containsSample },
-      { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => p.containsSample && p.sampleKind === 'resin' },
-      { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => p.containsSample && p.sampleKind === 'resin' && p.voxelPreview },
-      ...sampleModeParams().map(spec => ({ ...spec, show: p => p.containsSample && (!spec.show || spec.show(p)) })),
+      { key: 'aperture', label: 'Clear aperture', type: 'optsize', min: 4, max: 150, def: 25.4, appearance: true },
+      { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
+      { key: 'showMaterialLabel', label: 'Show material label', type: 'checkbox', def: true, appearance: true },
+      { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: false, appearance: true },
+      { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => p.sampleKind === 'resin' },
+      { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => p.sampleKind === 'resin' && p.voxelPreview },
+      ...sampleModeParams(),
     ],
     svg(el) {
       const p = el.params;
@@ -2027,7 +2026,7 @@ export const registry = {
         { x1: -6, y1: -outer, x2: -6, y2: -clear, kind: 'absorb' },
         { x1: -6, y1: clear, x2: -6, y2: outer, kind: 'absorb' },
       ];
-      return el.params.containsSample ? [...mount, ...sampleSurfaces(el, clear)] : mount;
+      return [...mount, ...sampleSurfaces(el, clear)];
     },
   },
 

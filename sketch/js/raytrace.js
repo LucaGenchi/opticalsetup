@@ -324,6 +324,13 @@ const MIXING_MIN_SEPARATION_NM = 1;
 // this specimen during the mixing probe pass in traceScene(). Returns null
 // when the channel cannot produce anything for this ray, which is exactly
 // what makes CARS/SFG silent under single-beam illumination.
+// The drawing color of one signal channel: true to its own wavelength by
+// default, or a custom tint so several channels can be told apart on a busy
+// multimodal sketch. Mirrors the laser's own auto/custom color toggle.
+export function channelColor(channel, wl) {
+  return channel.autoColor === false && channel.color ? channel.color : wavelengthToColor(wl);
+}
+
 export function specimenSignalWl(channel, rayWl, incidentWls) {
   if (!(rayWl > 0)) return null;
   if (channel.kind === 'shg') return rayWl / 2;
@@ -1105,10 +1112,12 @@ function interact(ray, hit) {
           if (!emitting) continue;
           const N = 16;
           const emitted = ray.intensity * eff;
+          const tint = channelColor(c, c.wl);
           for (let i = 0; i < N; i++) {
             const a = i * 2 * Math.PI / N;
             out.push({
               d: { x: Math.cos(a), y: Math.sin(a) }, wl: c.wl, bw: 0, pol: undefined, stokes: null,
+              color: tint,
               evan: true, evanLen: 25,
               intensity: emitted > 0 ? 0.25 : 0,
               power: Number.isFinite(ray.power) ? ray.power * eff / N : undefined,
@@ -1120,12 +1129,14 @@ function interact(ray, hit) {
         const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
         if (!(wl > 0)) continue;
         const forward = ray.intensity * eff;
-        out.push({ d, wl, bw: 0, spec: null, pol: undefined, stokes: null, intensity: forward, tag: `c${ci}` });
+        const tint = channelColor(c, wl);
+        out.push({ d, wl, bw: 0, spec: null, pol: undefined, stokes: null, color: tint, intensity: forward, tag: `c${ci}` });
         if (c.epi && EPI_KINDS.has(c.kind)) {
           const ratio = Math.min(1, Math.max(0, c.epiRatio ?? 0.15));
           if (ratio > 0) {
             out.push({
               d: { x: -d.x, y: -d.y }, wl, bw: 0, spec: null, pol: undefined, stokes: null,
+              color: tint,
               intensity: forward * ratio,
               power: Number.isFinite(ray.power) ? ray.power * eff * ratio : undefined,
               tag: `e${ci}`,
@@ -1456,6 +1467,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,
+          // An explicit per-ray drawing color, set when a specimen generates
+          // a signal. It overrides the source's own fixed color, because a
+          // signal at a new wavelength is not the source's light any more.
+          color: 'color' in c ? c.color : r.color,
           medium: 'medium' in c ? c.medium : r.medium,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           pulse: 'pulse' in c ? c.pulse : r.pulse,
@@ -1487,6 +1502,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
 function assembleDrawables(paths, opts, drawables) {
   const { K, isBeam, fixedColor } = opts;
   const colorOf = r => {
+    // A signal generated in a specimen carries its own color and is no longer
+    // the source's light, so it outranks the source's fixed color — otherwise
+    // a custom-colored IR pump would paint its own green SHG red.
+    if (r.color) return r.color;
     if (fixedColor) return fixedColor;
     // Undispersed broadband light is co-propagating mixed light, not a rainbow
     // painted across the beam aperture. Dispersive optics split it into bw=0
@@ -1616,7 +1635,7 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
       opls: [...r.opls],
       pulse: { ...r.pulse },
       bw: r.bw || 0,
-      color: fixedColor || wavelengthToColor(r.wl),
+      color: r.color || fixedColor || wavelengthToColor(r.wl),
       intensity: r.intensity,
     });
   }

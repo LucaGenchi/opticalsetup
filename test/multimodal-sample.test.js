@@ -230,17 +230,60 @@ test('channels survive a save/load round trip and are clamped on the way in', ()
       params: {
         aperture: 34,
         channels: [
-          { kind: 'cars', wl: 660, eff: 0.4, epi: true, epiRatio: 0.2, autoWl: false },
-          { kind: 'bogus', eff: 99, epiRatio: -3 },
+          { kind: 'cars', wl: 660, eff: 0.4, epi: true, epiRatio: 0.2, autoWl: false, autoColor: false, color: '#00e5ff' },
+          { kind: 'bogus', eff: 99, epiRatio: -3, color: 'not-a-color' },
         ],
       },
     }],
   }), registry);
   const [saved, coerced] = scene.elements[0].params.channels;
-  assert.deepEqual(saved, { kind: 'cars', wl: 660, eff: 0.4, epi: true, epiRatio: 0.2, autoWl: false });
+  assert.deepEqual(saved, {
+    kind: 'cars', wl: 660, eff: 0.4, epi: true, epiRatio: 0.2,
+    autoWl: false, autoColor: false, color: '#00e5ff',
+  });
   assert.equal(coerced.kind, 'fluor', 'an unknown signal kind falls back rather than breaking the load');
   assert.equal(coerced.eff, 1, 'efficiency clamps into 0..1');
   assert.equal(coerced.epiRatio, 0, 'epi ratio clamps into 0..1');
+  assert.equal(coerced.color, '#22c55e', 'a malformed colour falls back to the default tint');
+  assert.equal(coerced.autoColor, true, 'channels colour themselves from their wavelength by default');
+});
+
+test('a generated signal is coloured by its own wavelength, not by its source laser', () => {
+  // Regression: a custom-coloured pump painted every signal it generated with
+  // the pump's colour, so an IR laser tinted red made its 515 nm SHG red too.
+  const signalColours = channels => {
+    const laser = createElement('laser', 0, 0);
+    laser.params.wavelength = 1030;
+    laser.params.autoColor = false;
+    laser.params.color = '#ff0000';
+    const sample = createElement('sample', 200, 0);
+    sample.params.channels = channels;
+    const scene = traceScene([laser, sample]);
+    return new Set(scene.drawables.filter(d => d.pts && d.pts[0].x >= 199).map(d => d.color));
+  };
+
+  const auto = signalColours([ch('shg', { eff: 0.5 })]);
+  assert.ok(auto.has('#1fff00'), `515 nm SHG should be drawn green, got ${[...auto]}`);
+  assert.ok(auto.has('#ff0000'), 'the pump keeps its own custom colour');
+
+  const custom = signalColours([ch('shg', { eff: 0.5, autoColor: false, color: '#00e5ff' })]);
+  assert.ok(custom.has('#00e5ff'), `a custom channel tint should win, got ${[...custom]}`);
+  assert.ok(!custom.has('#1fff00'));
+});
+
+test('channels colour themselves from their own wavelength across the spectrum', () => {
+
+  // 1030 nm doubled is green; 790 nm doubled is violet.
+  const shgOf = wl => {
+    const laser = createElement('laser', 0, 0);
+    laser.params.wavelength = wl;
+    const sample = createElement('sample', 200, 0);
+    sample.params.channels = [ch('shg', { eff: 0.5 })];
+    const scene = traceScene([laser, sample]);
+    return scene.drawables.filter(d => d.pts && d.pts[0].x >= 199).map(d => d.color);
+  };
+  assert.ok(shgOf(1030).includes('#1fff00'), 'SHG of 1030 nm reads green');
+  assert.ok(shgOf(790).includes('#8000a1'), 'SHG of 790 nm reads violet');
 });
 
 test('stacking signals never dims the transmitted excitation', () => {
@@ -260,4 +303,32 @@ test('stacking signals never dims the transmitted excitation', () => {
   const bare = read([]);
   const loaded = read([ch('shg', { eff: 0.4 }), ch('thg', { eff: 0.4 })]);
   assert.ok(Math.abs(bare - loaded) < 1e-9, `excitation should be ${bare} either way, got ${loaded}`);
+});
+
+// ---------------- inspector layout cleanup ----------------
+
+test('the piezo holder always carries a specimen — no "Sample installed" switch', () => {
+  const keys = registry.stage.params.map(p => p.key);
+  assert.ok(!keys.includes('containsSample'), 'the redundant installed/empty toggle is gone');
+
+  // A freshly placed holder is an inert specimen: it attenuates, emits
+  // nothing, and still presents its optical surface to the beam.
+  const stage = createElement('stage', 200, 0);
+  assert.deepEqual(stage.params.channels, []);
+  const kinds = registry.stage.surfaces(stage).map(s => s.kind);
+  assert.ok(kinds.includes('attenuate'), `the mounted specimen is always in the beam, got ${kinds}`);
+
+  const laser = createElement('laser', 0, 0);
+  const detector = createElement('detector', 400, 0);
+  assert.deepEqual(detectedWls([laser, stage, detector]), [532], 'excitation passes, no signal added');
+});
+
+test('size fields that read as presentation live in Label & appearance', () => {
+
+  const stageAperture = registry.stage.params.find(p => p.key === 'aperture');
+  assert.equal(stageAperture.appearance, true, 'the holder clear aperture moved out of Optical behavior');
+
+  const sampleAperture = registry.sample.params.find(p => p.key === 'aperture');
+  assert.equal(sampleAperture.appearance, true);
+  assert.equal(sampleAperture.label, 'Sample width (mm)', 'the sample size is a width, not a height');
 });

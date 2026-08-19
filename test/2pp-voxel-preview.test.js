@@ -39,10 +39,10 @@ test('a gated-off pulse train leaves no 2PP arrival events', () => {
   assert.deepEqual(pulseArrivalsAtPath(gated, 0, 30, 50, { mode: 'schematic' }), []);
 });
 
-test('a pulsed resin stage exposes one write location while an empty holder does not', () => {
+test('a pulsed resin stage exposes one write location, and only for resin', () => {
   const laser = createElement('laser', 0, 0);
   const stage = createElement('stage', 150, 0);
-  Object.assign(stage.params, { containsSample: true, sampleKind: 'resin', voxelPreview: true });
+  Object.assign(stage.params, { sampleKind: 'resin', voxelPreview: true });
   assert.equal(traceScene([laser, stage]).writeHits.length, 0, 'CW light cannot create a 2PP preview mark');
 
   laser.params.temporalMode = 'pulsed';
@@ -52,7 +52,9 @@ test('a pulsed resin stage exposes one write location while an empty holder does
   closeTo(scene.writeHits[0].x, stage.x);
   closeTo(scene.writeHits[0].y, stage.y);
 
-  stage.params.containsSample = false;
+  // The holder always carries a specimen now, so "no marks" is expressed by
+  // the material, not by an installed/empty switch.
+  stage.params.sampleKind = 'generic';
   assert.equal(traceScene([laser, stage]).writeHits.length, 0);
 });
 
@@ -60,7 +62,7 @@ test('voxel writing only ever fires for a resin sample, regardless of the voxelP
   const laser = createElement('laser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   const stage = createElement('stage', 150, 0);
-  Object.assign(stage.params, { containsSample: true, voxelPreview: true });
+  Object.assign(stage.params, { voxelPreview: true });
 
   for (const sampleKind of ['generic', 'fluorescent', 'nonlinear', 'opaque']) {
     stage.params.sampleKind = sampleKind;
@@ -70,24 +72,26 @@ test('voxel writing only ever fires for a resin sample, regardless of the voxelP
   assert.equal(traceScene([laser, stage]).writeHits.length, 1);
 });
 
-test('any installed sample reports an excitation hit for the signal-spot indicator, CW or pulsed', () => {
+test('a mounted sample reports an excitation hit for the signal-spot indicator, CW or pulsed', () => {
   const laser = createElement('laser', 0, 0);
   const stage = createElement('stage', 150, 0);
-  Object.assign(stage.params, { containsSample: true, sampleKind: 'fluorescent', mode: 'fluor' });
+  Object.assign(stage.params, { sampleKind: 'fluorescent', mode: 'fluor' });
 
   const cw = traceScene([laser, stage]);
   assert.equal(cw.signalHits.length, 1);
   assert.equal(cw.signalHits[0].stageId, stage.id);
   closeTo(cw.signalHits[0].x, stage.x);
 
-  stage.params.containsSample = false;
-  assert.equal(traceScene([laser, stage]).signalHits.length, 0);
+  laser.params.temporalMode = 'pulsed';
+  const pulsed = traceScene([laser, stage]);
+  assert.equal(pulsed.signalHits.length, 1, 'a pulsed source reports the same single hit');
+  closeTo(pulsed.signalHits[0].x, stage.x);
 });
 
 test('an opaque (non-transmitting) sample still reports its excitation hit', () => {
   const laser = createElement('laser', 0, 0);
   const stage = createElement('stage', 150, 0);
-  Object.assign(stage.params, { containsSample: true, sampleKind: 'opaque', transmitExc: false });
+  Object.assign(stage.params, { sampleKind: 'opaque', transmitExc: false });
   const scene = traceScene([laser, stage]);
   assert.equal(scene.signalHits.length, 1);
   assert.equal(scene.signalHits[0].stageId, stage.id);
@@ -98,7 +102,7 @@ test('the signal-spot indicator reports the real generated wavelength, not a fix
   laser.params.wavelength = 800;
   const stage = createElement('stage', 150, 0);
 
-  Object.assign(stage.params, { containsSample: true, sampleKind: 'fluorescent', mode: 'fluor', fluorWl: 520 });
+  Object.assign(stage.params, { sampleKind: 'fluorescent', mode: 'fluor', fluorWl: 520 });
   closeTo(traceScene([laser, stage]).signalHits[0].wl, 520);
 
   Object.assign(stage.params, { sampleKind: 'nonlinear', mode: 'shg' });
@@ -162,7 +166,6 @@ test('voxel depth factor grows from 0 at focus to 1 at the edge of the configure
 test('the material label is world-upright (no rotate transform) and respects the show/hide toggle', () => {
   const stage = createElement('stage', 100, 50);
   stage.rot = 137;
-  stage.params.containsSample = true;
   stage.params.sampleKind = 'resin';
   const svg = stageSampleLabelSVG(stage);
   assert.match(svg, /Resin/);
@@ -172,18 +175,15 @@ test('the material label is world-upright (no rotate transform) and respects the
   assert.equal(stageSampleLabelSVG(stage), '');
 
   stage.params.showMaterialLabel = true;
-  stage.params.containsSample = false;
-  assert.equal(stageSampleLabelSVG(stage), '', 'no label without an installed sample');
+  assert.match(stageSampleLabelSVG(stage), /Resin/, 'the toggle is the only thing that hides it');
 });
 
 test('the label position accounts for the stage rotating its bounding box', () => {
   const upright = createElement('stage', 0, 0);
-  upright.params.containsSample = true;
   const svgUpright = stageSampleLabelSVG(upright);
 
   const rotated = createElement('stage', 0, 0);
   rotated.rot = 90;
-  rotated.params.containsSample = true;
   const svgRotated = stageSampleLabelSVG(rotated);
 
   assert.notEqual(svgUpright, svgRotated);

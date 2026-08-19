@@ -68,6 +68,8 @@ function normalizeChannels(value) {
     epi: raw.epi === true,
     epiRatio: clamp(finite(raw.epiRatio) ? raw.epiRatio : 0.15, 0, 1),
     autoWl: raw.autoWl !== false,
+    autoColor: raw.autoColor !== false,
+    color: typeof raw.color === 'string' && COLOR.test(raw.color) ? raw.color : '#22c55e',
   }));
 }
 

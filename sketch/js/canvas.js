@@ -380,7 +380,7 @@ function recordVoxelHits(fromTimeNs, toTimeNs) {
   if (toTimeNs <= fromTimeNs || !writeHits.length) return;
   for (const hit of writeHits) {
     const stage = state.elements.find(el => el.id === hit.stageId && el.type === 'stage');
-    if (!stage?.params.containsSample || stage.params.sampleKind !== 'resin' || !stage.params.voxelPreview || !Number.isFinite(hit.opl)) continue;
+    if (stage?.params.sampleKind !== 'resin' || !stage.params.voxelPreview || !Number.isFinite(hit.opl)) continue;
     const track = {
       pts: [{ x: hit.x - 1, y: hit.y }, { x: hit.x + 1, y: hit.y }],
       opls: [Math.max(0, hit.opl - 1), hit.opl + 1],
