@@ -2,6 +2,7 @@
 
 import { distinctPoints, rotPt } from './util.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
+import { migrateLegacyObjectiveParams } from './objective.js';
 
 export const state = {
   elements: [],   // optical elements
@@ -91,8 +92,19 @@ function normalizeElement(raw, definitions, used) {
   if (definitions && !def) throw new Error(`Sketch uses an unknown element type: ${raw.type}`);
   if (!finite(raw.x) || !finite(raw.y)) throw new Error(`Element ${raw.type} has invalid coordinates`);
   const params = {};
+  let rawParams = record(raw.params) ? raw.params : {};
+  if (raw.type === 'objective') {
+    rawParams = migrateLegacyObjectiveParams(rawParams);
+  } else if (raw.type === 'microscope') {
+    rawParams = migrateLegacyObjectiveParams(rawParams, {
+      focalKey: 'objectiveF',
+      magnificationKey: 'objectiveMagnification',
+      naKey: 'objectiveNA',
+      tubeF: finite(rawParams.tubeF) ? rawParams.tubeF : 40,
+    });
+  }
   if (def) {
-    for (const spec of def.params || []) params[spec.key] = normalizeParam(raw.params?.[spec.key], spec);
+    for (const spec of def.params || []) params[spec.key] = normalizeParam(rawParams[spec.key], spec);
   } else {
     if (!record(raw.params)) throw new Error(`Element ${raw.type} has invalid parameters`);
     Object.assign(params, raw.params);

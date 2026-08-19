@@ -1251,6 +1251,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
+      if (Number.isFinite(hit.surface.data.objectiveNA) && hit.surface.el?.id) {
+        const objectives = Array.isArray(r.objectives) ? r.objectives : [];
+        if (!objectives.some(objective => objective.id === hit.surface.el.id)) {
+          r.objectives = [...objectives, {
+            id: hit.surface.el.id,
+            na: hit.surface.data.objectiveNA,
+          }];
+        }
+      }
       if (hit.surface.el?.type === 'stage' && r.writeReference) {
         if (writeHits && hit.surface.data.writeVoxel && r.pulse) {
           writeHits.push({
@@ -1283,6 +1292,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             y: hit.p.y,
             wl: signalWl,
             sourceId: r.pulse?.sourceId,
+            objectiveNA: r.objectives?.length === 1 ? r.objectives[0].na : undefined,
           });
         }
       }
@@ -1361,6 +1371,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
             : undefined,
           sample: r.sample, writeReference: r.writeReference,
+          objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),
           pts: [{ x: ox, y: oy }],
           opl: r.opl,
@@ -1582,6 +1593,7 @@ export function traceScene(elements, beams = []) {
         pol: typeof p.pol === 'number' ? p.pol : undefined,
         stokes: typeof p.pol === 'number' ? linearStokes(p.pol) : null,
         pulse,
+        objectives: [],
         evan: r.evan || false, evanLen: r.evanLen,
         medium: initialBody?.id || null, ior: initialIor,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,

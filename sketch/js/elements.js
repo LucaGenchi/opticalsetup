@@ -15,6 +15,9 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
+import {
+  objectiveFocalLength, objectiveNumericalAperture, objectivePupilDiameter,
+} from './objective.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -1134,21 +1137,28 @@ export const registry = {
     // drawing and the physics agree on which end focuses light.
     label: 'Objective', category: 'Lenses', paletteOrder: 3, size: { w: 36, h: 40 },
     snapPt: { x: 16, y: 0 }, // lens plane (sample-facing front tip)
-    size_: el => ({ w: 36, h: (el.params.aperture || 20) + 20 }),
+    size_: el => ({ w: 36, h: objectivePupilDiameter(el.params) + 20 }),
     params: [
-      { key: 'f', label: 'Focal length (mm)', type: 'number', min: 1, max: 500, step: 1, def: 10 },
-      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 5, max: 100, step: 1, def: 20 },
+      { key: 'magnification', label: 'Magnification (×)', type: 'number', min: 1, max: 200, step: 0.1, def: 20 },
+      { key: 'na', label: 'Numerical aperture (NA)', type: 'number', min: 0.05, max: 1.49, step: 0.01, def: 1 },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
     ],
     svg(el) {
-      const h = (el.params.aperture || 20) / 2, outer = h + 7;
+      const h = objectivePupilDiameter(el.params) / 2, outer = h + 7;
       return `<path d="M 16,${-h} L -2,${-outer} L -16,${-outer} L -16,${outer} L -2,${outer} L 16,${h} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
         `<line x1="-2" y1="${-outer}" x2="-2" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
         `<rect x="14.5" y="${-h}" width="3" height="${2 * h}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
     },
     surfaces(el) {
-      const h = (el.params.aperture || 20) / 2;
-      return [{ x1: 16, y1: -h, x2: 16, y2: h, kind: 'lens', data: { f: el.params.f, transEff: el.params.transEff } }];
+      const h = objectivePupilDiameter(el.params) / 2;
+      return [{
+        x1: 16, y1: -h, x2: 16, y2: h, kind: 'lens',
+        data: {
+          f: objectiveFocalLength(el.params),
+          objectiveNA: objectiveNumericalAperture(el.params),
+          transEff: el.params.transEff,
+        },
+      }];
     },
   },
 
@@ -1971,7 +1981,8 @@ export const registry = {
     label: 'Microscope', category: 'Microscopy', size: { w: 74, h: 54 },
     size_: el => ({ w: 74, h: (el.params.housingHeight || 50) + 4 }),
     params: [
-      { key: 'objectiveF', label: 'Objective focal (mm)', type: 'number', min: 2, max: 100, step: 1, def: 10 },
+      { key: 'objectiveMagnification', label: 'Objective magnification (×)', type: 'number', min: 1, max: 100, step: 1, def: 4 },
+      { key: 'objectiveNA', label: 'Objective numerical aperture (NA)', type: 'number', min: 0.05, max: 1.49, step: 0.01, def: 1 },
       { key: 'tubeF', label: 'Tube lens focal (mm)', type: 'number', min: 5, max: 300, step: 5, def: 40 },
       { key: 'housingHeight', label: 'Housing height (mm)', type: 'number', min: 20, max: 180, step: 2, def: 50 },
       { key: 'aperture', label: 'Clear aperture', type: 'optsize', min: 8, max: 150, def: 50.8 },
@@ -1980,12 +1991,17 @@ export const registry = {
     surfaces(el) {
       const x = 35, y = (el.params.housingHeight || 50) / 2;
       const h = Math.min(y, (el.params.aperture || 50.8) / 2);
-      // A compact objective + tube-lens assembly. The default focal lengths
-      // add to the 50 mm separation, producing an afocal 4x beam expansion;
-      // changing either value gives the same live thin-lens behavior as the
-      // standalone optics.
+      const objectiveParams = { magnification: el.params.objectiveMagnification, na: el.params.objectiveNA };
+      const objectiveF = objectiveFocalLength(objectiveParams, el.params.tubeF);
+      const objectiveH = Math.min(h, objectivePupilDiameter(objectiveParams, el.params.tubeF) / 2);
+      // A compact objective + tube-lens assembly. Magnification derives the
+      // internal thin-lens focal length from the configured tube lens; NA
+      // determines the objective pupil used by this qualitative 2D model.
       return [
-        { x1: -25, y1: -h, x2: -25, y2: h, kind: 'lens', data: { f: el.params.objectiveF } },
+        {
+          x1: -25, y1: -objectiveH, x2: -25, y2: objectiveH, kind: 'lens',
+          data: { f: objectiveF, objectiveNA: objectiveNumericalAperture(el.params, 'objectiveNA') },
+        },
         { x1: 25, y1: -h, x2: 25, y2: h, kind: 'lens', data: { f: el.params.tubeF } },
         { x1: -x, y1: -y, x2: x, y2: -y, kind: 'absorb' },
         { x1: x, y1: y, x2: -x, y2: y, kind: 'absorb' },
@@ -2237,7 +2253,7 @@ const DIRECT = {
   lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
-  objective: { resize: { y: 'aperture' }, tune: { key: 'f', short: 'f' } },
+  objective: { resize: { y: 'na' }, tune: { key: 'magnification', short: 'M' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
@@ -2269,7 +2285,7 @@ const DIRECT = {
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n' } },
   sample: { resize: { y: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { y: 'aperture' } },
-  microscope: { resize: { y: 'housingHeight' }, tune: { key: 'objectiveF', short: 'f obj' } },
+  microscope: { resize: { y: 'housingHeight' }, tune: { key: 'objectiveMagnification', short: 'M obj' } },
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
   figureframe: { resize: { x: 'w', y: 'h' } },
   box: { resize: { x: 'w', y: 'h' } },
@@ -2316,7 +2332,7 @@ const ELEMENT_HELP = {
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Applies a compact focusing thin-lens model; ƒ also sets the distance to the back focal plane (BFP) behind the lens — the plane a telescope or scan relay should image onto for pupil-matched scanning.',
+  objective: 'Uses objective magnification and NA. Magnification derives an internal thin-lens focus from a 200 mm reference tube lens; NA sets the qualitative entrance pupil and can be handed to the 2PP lab when this objective is on the traced sample path.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',

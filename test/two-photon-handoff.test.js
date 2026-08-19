@@ -6,7 +6,8 @@ import { initInspector, renderInspector } from '../sketch/js/inspector.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { state } from '../sketch/js/state.js';
 import {
-  buildTwoPhotonHandoffUrl, TWO_PHOTON_LAB_URL, twoPhotonLaserCandidates,
+  buildTwoPhotonHandoffUrl, TWO_PHOTON_LAB_URL, twoPhotonHandoffCandidates,
+  twoPhotonLaserCandidates,
 } from '../sketch/js/two-photon-handoff.js';
 
 function pulsedLaser(id = 'laser-1') {
@@ -113,13 +114,43 @@ test('uses real traced stage hits and exposes every incident pulsed laser explic
   );
 });
 
-function stageInspectorHTML(laser, stage) {
+test('carries an unambiguous traced objective NA into the 2PP handoff', () => {
+  const laser = pulsedLaser();
+  const objective = createElement('objective', 100, 0);
+  objective.params.magnification = 20;
+  objective.params.na = 1.2;
+  const stage = createElement('stage', 150, 0);
+  Object.assign(stage.params, { containsSample: true, sampleKind: 'resin' });
+  const elements = [laser, objective, stage];
+  const { signalHits } = traceScene(elements);
+  const [candidate] = twoPhotonHandoffCandidates(elements, signalHits, stage.id);
+
+  assert.equal(candidate.laser.id, laser.id);
+  assert.equal(candidate.numericalAperture, 1.2);
+  assert.equal(
+    new URL(buildTwoPhotonHandoffUrl(candidate.laser, undefined, candidate)).searchParams.get('numericalAperture'),
+    '1.2',
+  );
+});
+
+test('omits NA when the traced sample path has no single objective', () => {
+  const laser = pulsedLaser();
+  const hits = [
+    { stageId: 'stage', sourceId: laser.id, objectiveNA: 1.2 },
+    { stageId: 'stage', sourceId: laser.id },
+  ];
+  const [candidate] = twoPhotonHandoffCandidates([laser], hits, 'stage');
+  assert.equal(candidate.numericalAperture, null);
+  assert.equal(new URL(buildTwoPhotonHandoffUrl(laser, undefined, candidate)).searchParams.has('numericalAperture'), false);
+});
+
+function stageInspectorHTML(laser, stage, between = []) {
   const panel = {
     innerHTML: '',
     querySelector() { return null; },
     querySelectorAll() { return []; },
   };
-  state.elements = [laser, stage];
+  state.elements = [laser, ...between, stage];
   state.beams = [];
   state.selection = { kind: 'element', id: stage.id };
   state.demoMode = false;
@@ -140,6 +171,18 @@ test('the mounted resin inspector links the laser that actually illuminates it',
   assert.match(html, /Open Two-Photon Lab with Writer A/);
   assert.match(html, /href="https:\/\/twophotonlithography\.com\/lab\?from=opticalsetup&amp;v=1&amp;/);
   assert.match(html, /target="_blank" rel="noopener noreferrer"/);
+});
+
+test('the mounted resin inspector includes the traced objective NA', () => {
+  const laser = pulsedLaser();
+  const objective = createElement('objective', 100, 0);
+  objective.params.na = 1.3;
+  const stage = createElement('stage', 150, 0);
+  Object.assign(stage.params, { containsSample: true, sampleKind: 'resin' });
+
+  const html = stageInspectorHTML(laser, stage, [objective]);
+  assert.match(html, /numericalAperture=1\.3/);
+  assert.match(html, /traced objective NA/);
 });
 
 test('the inspector explains missing pulse illumination and stays hidden for other samples', () => {

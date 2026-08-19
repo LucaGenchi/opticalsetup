@@ -126,6 +126,37 @@ test('microscope assembly applies both internal lenses and blocks outside its ap
   assert.ok(blocked.pts.at(-1).x < 200, 'housing stops rays outside the clear aperture');
 });
 
+test('objectives expose magnification and NA while deriving thin-lens geometry internally', () => {
+  const objective = createElement('objective');
+  assert.deepEqual(registry.objective.params.map(param => param.key), ['magnification', 'na', 'transEff']);
+  assert.doesNotMatch(registry.objective.params.map(param => param.label).join(' '), /focal/i);
+  assert.equal(Object.hasOwn(objective.params, 'f'), false);
+  assert.equal(Object.hasOwn(objective.params, 'aperture'), false);
+  assert.equal(objective.params.magnification, 20);
+  assert.equal(objective.params.na, 1);
+
+  let surface = registry.objective.surfaces(objective)[0];
+  assert.equal(surface.data.f, 10);
+  assert.equal(surface.data.objectiveNA, 1);
+  assert.equal(surface.y2 - surface.y1, 20);
+
+  objective.params.magnification = 40;
+  objective.params.na = 1.4;
+  surface = registry.objective.surfaces(objective)[0];
+  assert.equal(surface.data.f, 5);
+  assert.equal(surface.data.objectiveNA, 1.4);
+  assert.ok(Math.abs(surface.y2 - surface.y1 - 14) < 1e-9);
+
+  const microscope = createElement('microscope');
+  assert.doesNotMatch(registry.microscope.params.map(param => param.label).join(' '), /objective focal/i);
+  assert.equal(Object.hasOwn(microscope.params, 'objectiveF'), false);
+  assert.equal(microscope.params.objectiveMagnification, 4);
+  assert.equal(microscope.params.objectiveNA, 1);
+  const [internalObjective] = registry.microscope.surfaces(microscope);
+  assert.equal(internalObjective.data.f, 10);
+  assert.equal(internalObjective.data.objectiveNA, 1);
+});
+
 test('detectors report qualitative signal, spectrum, polarization, and spot span', () => {
   const laser = createElement('laser', 0, 0);
   laser.params.beamMode = 'beam';

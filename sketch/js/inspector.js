@@ -7,7 +7,7 @@ import {
 import { detectorReading, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
 import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
-import { buildTwoPhotonHandoffUrl, twoPhotonLaserCandidates } from './two-photon-handoff.js';
+import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import { esc } from './util.js';
 
 let panel;
@@ -320,7 +320,7 @@ export function renderInspector() {
           sectionFields += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
         }
 
-        const candidates = twoPhotonLaserCandidates(
+        const candidates = twoPhotonHandoffCandidates(
           state.elements,
           signalHitsFromLastTrace(sel.id),
           sel.id,
@@ -330,13 +330,13 @@ export function renderInspector() {
           sectionFields += `<div class="hint">Aim a compatible ordinary pulsed Laser at this resin sample (500–1064 nm, up to 1 W source power, 10–100 MHz, 50–400 fs) to open the dedicated lithography lab with its settings.</div>`;
         } else {
           const multiple = candidates.length > 1;
-          sectionFields += candidates.map((laser, index) => {
+          sectionFields += candidates.map(({ laser, numericalAperture }, index) => {
             const configuredName = String(laser.label || '').trim();
             const name = configuredName || (multiple ? `Laser ${index + 1}` : 'this laser');
-            const url = buildTwoPhotonHandoffUrl(laser);
+            const url = buildTwoPhotonHandoffUrl(laser, undefined, { numericalAperture });
             return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>`;
           }).join('');
-          sectionFields += `<div class="hint">Transfers wavelength, configured source power, repetition rate, and pulse duration. Confirm specimen-plane power and pulse broadening in the destination lab; bandwidth, polarization, objective, scan, and material settings keep that lab's defaults.</div>`;
+          sectionFields += `<div class="hint">Transfers wavelength, configured source power, repetition rate, pulse duration, and the traced objective NA when one compatible objective is unambiguous. Confirm specimen-plane power and pulse broadening in the destination lab; bandwidth, polarization, scan, and material settings keep that lab's defaults.</div>`;
         }
         sectionFields += `</div>`;
       };

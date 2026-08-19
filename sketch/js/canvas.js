@@ -7,6 +7,7 @@ import {
   stageOffsetAt, retroOffsetAt, stageSampleLabelSVG, voxelDepthFactor, displayCableSVG,
   displayActionUpdate,
 } from './elements.js';
+import { objectiveFocalLength } from './objective.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
@@ -652,16 +653,22 @@ function focalPoints(el) {
   const p = el.params;
   switch (el.type) {
     case 'lens': case 'lensc': return [{ x: p.f, y: 0 }, { x: -p.f, y: 0 }];
-    case 'objective': return [{ x: 16 - p.f, y: 0, label: 'BFP' }, { x: 16 + p.f, y: 0 }];
+    case 'objective': {
+      const f = objectiveFocalLength(p);
+      return [{ x: 16 - f, y: 0, label: 'BFP' }, { x: 16 + f, y: 0 }];
+    }
     case 'cmirror': case 'cmirrorx': case 'oap': return [{ x: -p.f, y: 0 }];
     case 'telescope': {
       const s = Math.max(5, p.f1 + p.f2);
       return [{ x: -s / 2 + p.f1, y: 0 }, { x: -s / 2 - p.f1, y: 0 }, { x: s / 2 + p.f2, y: 0 }];
     }
-    case 'microscope': return [
-      { x: -25 - p.objectiveF, y: 0 }, { x: -25 + p.objectiveF, y: 0 },
-      { x: 25 - p.tubeF, y: 0 }, { x: 25 + p.tubeF, y: 0 },
-    ];
+    case 'microscope': {
+      const objectiveF = objectiveFocalLength({ magnification: p.objectiveMagnification }, p.tubeF);
+      return [
+        { x: -25 - objectiveF, y: 0 }, { x: -25 + objectiveF, y: 0 },
+        { x: 25 - p.tubeF, y: 0 }, { x: 25 + p.tubeF, y: 0 },
+      ];
+    }
     default: return null;
   }
 }
