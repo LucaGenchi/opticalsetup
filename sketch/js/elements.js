@@ -2514,6 +2514,120 @@ export const registry = {
     },
     surfaces: () => [],
   },
+
+  // ---------------- Lab elements ----------------
+  // Purely cosmetic hardware set dressing: gas cells, windows, and similar
+  // lab fixtures that appear in real beamline photos/diagrams but carry no
+  // ray-tracing role of their own (surfaces() always returns []). A fiber
+  // or manual beam drawn through one is just layered on top — no binding.
+  gascell: {
+    label: 'Gas cell', category: 'Lab elements', size: { w: 94, h: 59 },
+    size_: el => ({ w: el.params.length + 4, h: el.params.height + 4 }),
+    params: [
+      { key: 'length', label: 'Length (mm)', type: 'number', min: 30, max: 250, step: 5, def: 90 },
+      { key: 'height', label: 'Height (mm)', type: 'number', min: 20, max: 120, step: 2, def: 55 },
+      { key: 'windowLeft', label: 'Window (left)', type: 'checkbox', def: false },
+      { key: 'windowRight', label: 'Window (right)', type: 'checkbox', def: false },
+      { key: 'extension', label: 'Extension tube', type: 'checkbox', def: false },
+      {
+        key: 'extensionSide', label: 'Extension side', type: 'select', def: 'right',
+        options: [['left', 'Left'], ['right', 'Right']], show: p => p.extension,
+      },
+      {
+        key: 'gasDirection', label: 'Gas port', type: 'select', def: 'out',
+        options: [['out', 'Outward'], ['in', 'Inward'], ['closed', 'Closed']],
+      },
+      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 100 },
+    ],
+    svg(el) {
+      const p = el.params;
+      const hl = p.length / 2, hh = p.height / 2;
+      const bodyOpacity = (1 - p.transparency / 100).toFixed(2);
+      const screwX = hl * 0.82, screwY = hh * 0.72;
+      const winH = Math.min(20, p.height * 0.35);
+      const gaugeR = Math.max(8, Math.min(15, p.height * 0.16));
+      const tubeLen = Math.max(32, hl * 0.8);
+      const tubeH = Math.min(24, p.height * 0.4);
+      const leftOpen = p.extension && p.extensionSide === 'left';
+      const rightOpen = p.extension && p.extensionSide === 'right';
+      const r = 6;
+      let s = '';
+      if (p.extension) {
+        const side = p.extensionSide === 'left' ? -1 : 1;
+        const x0 = side > 0 ? hl : -hl - tubeLen;
+        const x1 = side > 0 ? hl + tubeLen : -hl;
+        s += `<rect x="${Math.min(x0, x1)}" y="${-tubeH / 2}" width="${tubeLen}" height="${tubeH}" fill="#b8933f" fill-opacity="${bodyOpacity}"/>` +
+          `<line x1="${x0}" y1="${-tubeH / 2}" x2="${x1}" y2="${-tubeH / 2}" stroke="#7a5f28" stroke-width="2.5" stroke-linecap="round"/>` +
+          `<line x1="${x0}" y1="${tubeH / 2}" x2="${x1}" y2="${tubeH / 2}" stroke="#7a5f28" stroke-width="2.5" stroke-linecap="round"/>`;
+      }
+      s += `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height}" rx="${r}" fill="#b8933f" fill-opacity="${bodyOpacity}"/>` +
+        `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height * 0.17}" rx="${r}" fill="#d9b968" fill-opacity="${(0.55 * bodyOpacity).toFixed(2)}"/>`;
+      // Housing outline: a normal rounded rect. Where an extension tube
+      // connects, only the short stretch of wall directly between its two
+      // rails is left undrawn -- the wall still runs from each rounded
+      // corner down to the rail, so the opening lines up with the tube.
+      let d = `M ${-hl + r} ${-hh} `;
+      d += `L ${hl - r} ${-hh} `;
+      d += `A ${r} ${r} 0 0 1 ${hl} ${-hh + r} `;
+      if (rightOpen) {
+        d += `L ${hl} ${-tubeH / 2} `;
+        d += `M ${hl} ${tubeH / 2} `;
+        d += `L ${hl} ${hh - r} `;
+      } else {
+        d += `L ${hl} ${hh - r} `;
+      }
+      d += `A ${r} ${r} 0 0 1 ${hl - r} ${hh} `;
+      d += `L ${-hl + r} ${hh} `;
+      d += `A ${r} ${r} 0 0 1 ${-hl} ${hh - r} `;
+      if (leftOpen) {
+        d += `L ${-hl} ${tubeH / 2} `;
+        d += `M ${-hl} ${-tubeH / 2} `;
+        d += `L ${-hl} ${-hh + r} `;
+      } else {
+        d += `L ${-hl} ${-hh + r} `;
+      }
+      d += `A ${r} ${r} 0 0 1 ${-hl + r} ${-hh} `;
+      s += `<path d="${d}" fill="none" stroke="#7a5f28" stroke-width="2"/>` +
+        `<circle cx="${-screwX}" cy="${-screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
+        `<circle cx="${screwX}" cy="${-screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
+        `<circle cx="${-screwX}" cy="${screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
+        `<circle cx="${screwX}" cy="${screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>`;
+      if (p.windowLeft) {
+        s += `<rect x="${-hl - 3}" y="${-winH / 2}" width="6" height="${winH}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
+      }
+      if (p.windowRight) {
+        s += `<rect x="${hl - 3}" y="${-winH / 2}" width="6" height="${winH}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
+      }
+      const portX = hl * 0.5;
+      s += `<circle cx="0" cy="${-hh}" r="${gaugeR}" fill="#fff" stroke="#4d565f" stroke-width="1.5"/>` +
+        `<line x1="0" y1="${-hh}" x2="${gaugeR * 0.4}" y2="${-hh - gaugeR * 0.55}" stroke="#c0392b" stroke-width="1.5" stroke-linecap="round"/>` +
+        `<rect x="${portX - 4}" y="${-hh - 10}" width="8" height="10" fill="#6b7280" stroke="#3f4650" stroke-width="1"/>`;
+      if (p.gasDirection === 'in') {
+        s += `<line x1="${portX}" y1="${-hh - 10}" x2="${portX}" y2="${-hh - 22}" stroke="#1361fa" stroke-width="2.2"/>` +
+          `<polygon points="${portX},${-hh - 10} ${portX - 4},${-hh - 17} ${portX + 4},${-hh - 17}" fill="#1361fa"/>`;
+      } else if (p.gasDirection === 'out') {
+        s += `<line x1="${portX}" y1="${-hh - 22}" x2="${portX}" y2="${-hh - 10}" stroke="#1361fa" stroke-width="2.2"/>` +
+          `<polygon points="${portX},${-hh - 27} ${portX - 4},${-hh - 20} ${portX + 4},${-hh - 20}" fill="#1361fa"/>`;
+      }
+      return s;
+    },
+    surfaces: () => [],
+  },
+
+  window: {
+    label: 'Optical window', category: 'Lab elements', size: { w: 12, h: 32 },
+    size_: el => ({ w: 12, h: el.params.length + 6 }),
+    params: [
+      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
+      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 100 },
+    ],
+    svg(el) {
+      const p = el.params, L = p.length / 2;
+      const bodyOpacity = (1 - p.transparency / 100).toFixed(2);
+      return `<rect x="-3" y="${-L}" width="6" height="${p.length}" fill="${GLASS}" fill-opacity="${bodyOpacity}" stroke="${GLASS_S}" stroke-width="1.5"/>`;
+    },
+    surfaces: () => [],
+  },
 };
 
 // Where an element's local origin (el.x, el.y) sits relative to the center
@@ -2625,6 +2739,8 @@ const DIRECT = {
   blocker: { resize: { x: 'w', y: 'h' } },
   textlabel: { resize: { uniform: 'fontSize' } },
   probe: { resize: { uniform: 'displayScale' } },
+  gascell: { resize: { x: 'length', y: 'height' }, tune: { key: 'transparency', short: 'transp.' } },
+  window: { resize: { y: 'length' }, tune: { key: 'transparency', short: 'transp.' } },
 };
 
 for (const [type, direct] of Object.entries(DIRECT)) {
@@ -2704,9 +2820,11 @@ const ELEMENT_HELP = {
   textlabel: 'Diagram annotation; does not interact with rays.',
   highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
+  gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',
+  window: 'Diagram-only optical window; never bends, blocks, or absorbs a ray.',
 };
 
-const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight']);
+const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'gascell', 'window']);
 const SHAPERS = new Set(['slm']);
 
 export function getElementMeta(type, params = {}, context = {}) {
@@ -2736,7 +2854,7 @@ export function getElementMeta(type, params = {}, context = {}) {
     tier = 'configurable';
     note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
   } else if (DIAGRAM_ONLY.has(type)) {
-    note = 'Annotations are intentionally visual and never change traced rays.';
+    note = 'This element is intentionally visual and never changes traced rays.';
   } else if (type === 'freeglass') {
     note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
   } else if (type === 'stage' && params.voxelPreview) {
@@ -2773,6 +2891,7 @@ export const categories = [
   'Nonlinear Optics',
   'Microscopy',
   'Custom',
+  'Lab elements',
 ];
 
 export function getSize(el) {
