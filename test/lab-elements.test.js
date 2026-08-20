@@ -41,14 +41,16 @@ test('the gas cell extension tube is off by default and draws as an open pair of
   const cell = createElement('gascell', 0, 0);
   assert.equal(cell.params.extension, false);
   assert.equal(cell.params.extensionSide, 'right');
-  assert.doesNotMatch(registry.gascell.svg(cell), /stroke="#4d565f" stroke-width="2.5"/);
+  assert.doesNotMatch(registry.gascell.svg(cell), /stroke="#7a5f28" stroke-width="2.5"/);
 
   cell.params.extension = true;
   const rightSvg = registry.gascell.svg(cell);
   // no wall at the far (output) end -- just two parallel rails from the
   // housing edge (x=45) out to the open end (x=81), never a closing rect.
-  assert.match(rightSvg, /<line x1="45" y1="-11" x2="81" y2="-11"/);
-  assert.match(rightSvg, /<line x1="45" y1="11" x2="81" y2="11"/);
+  // The rails carry the same casing color as the housing outline so the
+  // extension reads as a continuation of it, not a separate grey pipe.
+  assert.match(rightSvg, /<line x1="45" y1="-11" x2="81" y2="-11" stroke="#7a5f28" stroke-width="2.5"/);
+  assert.match(rightSvg, /<line x1="45" y1="11" x2="81" y2="11" stroke="#7a5f28" stroke-width="2.5"/);
   assert.doesNotMatch(rightSvg, /<rect[^>]*fill="#8d98a5"/);
 
   cell.params.extensionSide = 'left';
@@ -116,6 +118,17 @@ test('the gas cell transparency slider fades the housing fill without touching t
   assert.match(svg, /stroke="#7a5f28" stroke-width="2"/, 'the housing outline must stay fully opaque');
 });
 
+test('the gas cell transparency slider now reaches a fully invisible fill, leaving the outline opaque', () => {
+  const cell = createElement('gascell', 0, 0);
+  const field = registry.gascell.params.find(f => f.key === 'transparency');
+  assert.equal(field.max, 100);
+
+  cell.params.transparency = 100;
+  const svg = registry.gascell.svg(cell);
+  assert.match(svg, /fill-opacity="0\.00"/, 'the inner fill can go fully transparent');
+  assert.match(svg, /<path d="[^"]+" fill="none" stroke="#7a5f28" stroke-width="2"\/>/, 'the outline stays a solid, fully opaque contour');
+});
+
 test('the gas cell resizes via length/height and tunes transparency on-canvas', () => {
   const direct = getDirectManipulation(createElement('gascell', 0, 0));
   assert.equal(direct.resize.x, 'length');
@@ -132,13 +145,21 @@ test('the optical window is a diagram-only element that never touches rays', () 
   assert.equal(getElementMeta('window', win.params).tier, 'diagram');
 });
 
-test('the optical window transparency slider fades its glass fill', () => {
+test('the optical window transparency slider fades its glass fill, up to fully invisible', () => {
   const win = createElement('window', 0, 0);
+  const field = registry.window.params.find(f => f.key === 'transparency');
+  assert.equal(field.max, 100);
+
   win.params.transparency = 0;
   assert.match(registry.window.svg(win), /fill-opacity="1\.00"/);
 
   win.params.transparency = 35;
   assert.match(registry.window.svg(win), /fill-opacity="0\.65"/);
+
+  win.params.transparency = 100;
+  const svg = registry.window.svg(win);
+  assert.match(svg, /fill-opacity="0\.00"/);
+  assert.match(svg, /stroke="#4a90c4" stroke-width="1.5"/, 'the glass edge outline stays fully opaque');
 });
 
 test('the optical window resizes via optic length and tunes transparency on-canvas', () => {

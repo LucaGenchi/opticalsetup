@@ -2537,7 +2537,7 @@ export const registry = {
         key: 'gasDirection', label: 'Gas port', type: 'select', def: 'out',
         options: [['out', 'Outward'], ['in', 'Inward'], ['closed', 'Closed']],
       },
-      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 90, step: 5, def: 10 },
+      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 10 },
     ],
     svg(el) {
       const p = el.params;
@@ -2556,8 +2556,8 @@ export const registry = {
         const side = p.extensionSide === 'left' ? -1 : 1;
         const x0 = side > 0 ? hl : -hl - tubeLen;
         const x1 = side > 0 ? hl + tubeLen : -hl;
-        s += `<line x1="${x0}" y1="${-tubeH / 2}" x2="${x1}" y2="${-tubeH / 2}" stroke="#4d565f" stroke-width="2.5" stroke-linecap="round"/>` +
-          `<line x1="${x0}" y1="${tubeH / 2}" x2="${x1}" y2="${tubeH / 2}" stroke="#4d565f" stroke-width="2.5" stroke-linecap="round"/>`;
+        s += `<line x1="${x0}" y1="${-tubeH / 2}" x2="${x1}" y2="${-tubeH / 2}" stroke="#7a5f28" stroke-width="2.5" stroke-linecap="round"/>` +
+          `<line x1="${x0}" y1="${tubeH / 2}" x2="${x1}" y2="${tubeH / 2}" stroke="#7a5f28" stroke-width="2.5" stroke-linecap="round"/>`;
       }
       s += `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height}" rx="${r}" fill="#b8933f" fill-opacity="${bodyOpacity}"/>` +
         `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height * 0.17}" rx="${r}" fill="#d9b968" fill-opacity="${(0.55 * bodyOpacity).toFixed(2)}"/>`;
@@ -2618,7 +2618,7 @@ export const registry = {
     size_: el => ({ w: 12, h: el.params.length + 6 }),
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 90, step: 5, def: 35 },
+      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 35 },
     ],
     svg(el) {
       const p = el.params, L = p.length / 2;
