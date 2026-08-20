@@ -724,7 +724,7 @@ function seededChannel(kind, sel) {
   return c;
 }
 
-function applyInput(inp, rebuild = false) {
+export function applyInput(inp, rebuild = false) {
   const sel = findSelected();
   if (!sel) return;
   const key = inp.dataset.k, pkey = inp.dataset.p;
@@ -846,5 +846,9 @@ function applyInput(inp, rebuild = false) {
   }
   if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension'].includes(pkey)) renderInspector();
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension'].includes(pkey)) { renderInspector(); return; }
+  // A readout is derived from the other params, so any committed edit can
+  // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
+  // peak power or a transform-limited bandwidth from going stale on screen.
+  if (rebuild && pkey && (registry[sel.type]?.params || []).some(p => p.type === 'readout')) renderInspector();
 }

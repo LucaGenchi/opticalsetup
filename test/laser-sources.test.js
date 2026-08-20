@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { categories, createElement, formatPower, getDirectManipulation, peakPowerW, registry } from '../sketch/js/elements.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { elementDriveHz, recommendedTimeScale } from '../sketch/js/timescale.js';
+import { applyInput, initInspector, renderInspector } from '../sketch/js/inspector.js';
+import { state } from '../sketch/js/state.js';
 import '../sketch/js/detector-instruments.js';
 
 const LASERS = ['cwlaser', 'pulsedlaser', 'sclaser'];
@@ -83,6 +85,32 @@ test('the pulsed laser reports peak power as a derived, non-editable readout', (
   assert.ok(peakPowerW({ ...laser.params, avgPowerW: 0.2 }) > base, 'more average power peaks higher');
   // sech² concentrates slightly less of its energy at the peak than a Gaussian
   assert.ok(peakPowerW({ ...laser.params, pulseShape: 'sech2' }) < base);
+});
+
+test('a committed edit refreshes every readout the element carries', () => {
+  // Readouts are derived, so an edit to any param can change them. Without a
+  // rebuild on commit, peak power and the transform-limited bandwidth would
+  // keep showing the values they had before the edit.
+  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  const laser = createElement('pulsedlaser', 0, 0);
+  state.elements = [laser];
+  state.beams = [];
+  state.selection = { kind: 'element', id: laser.id };
+  state.demoMode = false;
+  initInspector(panel);
+  renderInspector();
+  assert.match(panel.innerHTML, /7\.83 kW/);
+
+  const commit = (key, value) => {
+    const input = { dataset: { p: key }, type: 'number', value: String(value) };
+    applyInput(input, true);
+  };
+  commit('avgPowerW', 0.2);
+  assert.match(panel.innerHTML, /15\.7 kW/, 'doubling average power doubles the peak');
+
+  commit('pulseWidthFs', 300);
+  assert.match(panel.innerHTML, /7\.83 kW/, 'doubling the duration halves it again');
+  assert.match(panel.innerHTML, />1\.388</, 'and the derived bandwidth halves with it');
 });
 
 test('peak power is never stored on the element, only computed for display', () => {

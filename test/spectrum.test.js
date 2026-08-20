@@ -140,13 +140,29 @@ test('the CW laser exposes no temporal or spectral-width controls at all', () =>
 test('the pulsed laser swaps its derived bandwidth for an editable one when transform-limited is off', () => {
   const def = registry.pulsedlaser;
   const shape = def.params.find(p => p.key === 'pulseShape');
+  const derived = def.params.find(p => p.key === 'bandwidthTL');
   const bandwidth = def.params.find(p => p.key === 'bandwidth');
 
-  assert.equal(shape.show({ transformLimited: true }), true);
-  assert.equal(shape.show({ transformLimited: false }), false);
-  assert.equal(bandwidth.show({ transformLimited: true }), false, 'derived while transform-limited, so not shown');
-  assert.equal(bandwidth.show({ transformLimited: false }), true);
+  // The envelope shape applies either way — it sets the time-bandwidth
+  // constant while transform-limited, and the peak-power shape factor always.
+  assert.equal(shape.show, undefined, 'pulse shape is always available');
+
+  // Exactly one Bandwidth row is ever on screen, and both carry the same label
+  // so the field appears to change hands rather than move.
+  assert.equal(derived.label, bandwidth.label);
+  assert.equal(derived.type, 'readout');
+  assert.equal(derived.show({ transformLimited: true }), true, 'shown read-only while derived');
+  assert.equal(derived.show({ transformLimited: false }), false);
+  assert.equal(bandwidth.show({ transformLimited: true }), false);
+  assert.equal(bandwidth.show({ transformLimited: false }), true, 'editable for a chirped pulse');
   assert.equal(bandwidth.min, 0, '0 nm is a valid monochromatic pulse train');
+
+  // the read-only value is the real transform limit for the configured pulse
+  const laser = createElement('pulsedlaser');
+  assert.equal(derived.readout(laser.params),
+    String(Number(transformLimitedBandwidthNm(150, 532, 'gauss').toPrecision(4))));
+  assert.notEqual(derived.readout({ ...laser.params, pulseShape: 'sech2' }), derived.readout(laser.params),
+    'a sech2 envelope has a different time-bandwidth product');
 });
 
 // ---------------- resolved source spectra ----------------

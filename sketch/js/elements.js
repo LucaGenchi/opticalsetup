@@ -9,7 +9,7 @@
 import { distToSegment, esc, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
 import { detectorReading, probeAt } from './raytrace.js';
-import { fwhmToSigma, spectrumSamples } from './spectrum.js';
+import { fwhmToSigma, spectrumSamples, transformLimitedBandwidthNm } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
@@ -1249,15 +1249,24 @@ export const registry = {
       { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150 },
       { key: 'transformLimited', label: 'Transform-limited (time–bandwidth product)', type: 'checkbox', def: true },
       {
+        // The envelope shape matters either way: it sets the time–bandwidth
+        // constant while transform-limited, and the peak-power shape factor
+        // always.
         key: 'pulseShape', label: 'Pulse shape', type: 'select', def: 'gauss',
         options: [['gauss', 'Gaussian'], ['sech2', 'Sech²']],
+      },
+      // Bandwidth is one row that changes hands. While transform-limited it is
+      // an output — the minimum width this duration and shape allow — so it is
+      // shown read-only next to Peak power. Switching that off hands the field
+      // to the user, which is how a chirped pulse is described: a spectrum
+      // wider than its duration requires. 0 nm stays a deliberate, valid
+      // setting — an idealized monochromatic pulse train.
+      {
+        key: 'bandwidthTL', label: 'Bandwidth (nm)', type: 'readout',
+        readout: p => String(Number(transformLimitedBandwidthNm(p.pulseWidthFs, p.wavelength, p.pulseShape).toPrecision(4))),
         show: p => p.transformLimited,
       },
       {
-        // Only meaningful once the pulse is *not* transform-limited: while it
-        // is, the bandwidth is derived from the duration instead. 0 nm stays a
-        // deliberate, valid setting — an idealized monochromatic pulse train,
-        // for benches where the spectral width is not the point.
         key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 0, max: 400, step: 0.5, def: 5,
         show: p => !p.transformLimited,
       },

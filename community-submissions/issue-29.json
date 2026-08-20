@@ -11,7 +11,7 @@
     "issue": "https://github.com/LucaGenchi/optics-sketch/issues/29",
     "submittedAt": "2026-07-28T07:52:10.000Z"
   },
-  "sceneSha256": "e59ce8533ac64e4d11bd21f2568b84d83bd05bf170680924523382c402c3d7e2",
+  "sceneSha256": "f592351300f375f59512d513cf8889e28baa5cbb0adbc595025a6b5798ba3689",
   "scene": {
     "app": "optics2d",
     "version": 1,
@@ -92,7 +92,7 @@
         "type": "sample",
         "x": 175,
         "y": 230,
-        "rot": 90,
+        "rot": 180,
         "label": "sample",
         "showLabel": true,
         "labelPos": "r",

@@ -11,7 +11,7 @@
     "issue": "https://github.com/LucaGenchi/optics-sketch/issues/25",
     "submittedAt": "2026-07-26T15:08:35.000Z"
   },
-  "sceneSha256": "f22ea5d96de3a8412936875200f66d3f70120c93728f03c556ef2b35f4df1b5c",
+  "sceneSha256": "2c09959ae22d4a8bf2cd9482a66a97cac75a0e3576d949d4c7f572d055370916",
   "scene": {
     "app": "optics2d",
     "version": 1,
@@ -171,7 +171,7 @@
         "type": "stage",
         "x": 800,
         "y": 350,
-        "rot": 0,
+        "rot": 90,
         "label": "Engraving work plane",
         "showLabel": true,
         "labelPos": "b",
