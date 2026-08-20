@@ -2702,7 +2702,7 @@ const SHAPERS = new Set(['slm']);
 export function getElementMeta(type, params = {}, context = {}) {
   let tier = DIAGRAM_ONLY.has(type) ? 'diagram' : 'simulated';
   let note = '';
-  let description = ELEMENT_HELP[type] || 'Optical workbench component.';
+  let description = ELEMENT_HELP[type] || registry[type]?.description || 'Optical workbench component.';
   const displayLinkMissing = type === 'display' && params.sensorId
     && context.element && Array.isArray(context.elements)
     && !resolveDisplaySensor(context.element, context.elements);

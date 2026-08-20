@@ -430,7 +430,7 @@ export const wikiEntries = [
         For a splitter whose two outputs are cleanly separated by polarization state
         rather than a fixed ratio, see the Polarizing BS instead.</p>`,
     },
-    related: ['pbs', 'dichroic', 'mirror'],
+    related: ['pbs', 'dichroic', 'filter', 'mirror'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Beam Splitters', url: 'https://www.rp-photonics.com/beam_splitters.html' },
     ],
@@ -575,9 +575,190 @@ export const wikiEntries = [
         wavelength shifts at non-normal incidence — the configured cutoff is fixed
         regardless of the angle the dichroic is drawn at.</p>`,
     },
-    related: ['filter', 'bs', 'prism'],
+    related: ['filter', 'bs', 'etalon', 'prism'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Dichroic Mirrors', url: 'https://www.rp-photonics.com/dichroic_mirrors.html' },
+    ],
+  },
+
+  {
+    type: 'filter',
+    title: 'Filter',
+    category: 'Filters & Splitters',
+    realWorld: {
+      html: `
+        <p>Optical filters reject unwanted wavelengths by one of two physical
+        mechanisms. <strong>Absorptive filters</strong> — colored or doped glass, or a
+        dye suspended in a polymer — remove light by genuine absorption: photons in the
+        rejected band are converted to heat inside the material. <strong>Interference
+        filters</strong> instead use the same multilayer dielectric-coating physics as a
+        dichroic mirror, engineered so the rejected band destructively interferes in
+        transmission — which usually means it reflects back out rather than being
+        absorbed. A <strong>neutral-density (ND) filter</strong> is the wavelength-flat
+        special case of an absorptive or partially-reflective metallic coating, meant to
+        attenuate intensity uniformly across the visible band rather than reject a
+        specific color.</p>
+        <p>Absorptive and interference designs behave very differently under high power:
+        an absorptive filter converts the rejected light to heat and can be damaged or
+        even cracked if that exceeds its thermal budget, while an interference filter's
+        rejected light reflects back toward the source — a real hazard when placed near a
+        laser cavity, since that reflection can re-enter the gain medium.</p>`,
+      formulas: [
+        { tex: 'T(\\lambda) = e^{-\\alpha(\\lambda) L}', caption: "Beer–Lambert absorption through a filter of thickness L and wavelength-dependent absorption coefficient α(λ) — why a real absorptive filter's cut-on or cut-off is always a gradual slope, not a sharp step." },
+        { tex: '\\text{OD} = -\\log_{10} T, \\qquad T = 10^{-\\text{OD}}', caption: 'Optical density — the standard way neutral-density filters are specified and stacked: ODs simply add when filters are combined in series.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>One element models four filter families, selected by type: <em>Bandpass</em>,
+        <em>Longpass</em>, and <em>Shortpass</em> each define an idealized passband —
+        exactly the same hard-edged step-function model used by the <a
+        href="../dichroic/">dichroic mirror</a> — while <em>Neutral density</em> instead
+        attenuates every wavelength by the same configured transmission fraction. For a
+        broadband or supercontinuum beam, the transmitted spectrum is the exact overlap
+        between the beam's band and the passband, so a wide beam through a narrow
+        bandpass filter correctly comes out both dimmer and spectrally narrowed.</p>`,
+      formulas: [
+        { tex: 'T(\\lambda) = \\begin{cases} 1 & \\lambda \\in \\text{passband} \\\\ 0 & \\text{otherwise} \\end{cases}, \\qquad I_{\\text{nd}} = \\text{trans} \\cdot I_0', caption: 'The idealized step-function passband used for bandpass/longpass/shortpass, and the flat scalar attenuation used for neutral density.' },
+      ],
+      limitations: `<p>Rejected light simply vanishes rather than reflecting — this
+        matches the physical picture of an absorptive colored-glass filter, but not a
+        reflective interference filter (for a component that reflects its rejected band
+        instead, use the Dichroic mirror). The passband edge is a hard step with no
+        transition slope, no per-wavelength optical density curve, and no angle
+        dependence. The neutral-density mode is perfectly grey at every wavelength — real
+        ND filters have some spectral ripple — and there's no damage-threshold or thermal
+        modeling for either absorptive heating or reflected back-power.</p>`,
+    },
+    related: ['dichroic', 'bs', 'aotf'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Optical Filters', url: 'https://www.rp-photonics.com/optical_filters.html' },
+      { label: 'RP Photonics Encyclopedia — Interference Filters', url: 'https://www.rp-photonics.com/interference_filters.html' },
+    ],
+  },
+
+  {
+    type: 'etalon',
+    title: 'Etalon (Fabry–Pérot)',
+    category: 'Filters & Splitters',
+    realWorld: {
+      html: `
+        <p>A Fabry–Pérot etalon is just two closely spaced, parallel, partially
+        reflective surfaces — but unlike a single partial mirror, light inside that gap
+        bounces back and forth indefinitely, and every one of those internal reflections
+        leaks a little light out and interferes with all the others. Sum that infinite
+        series of multiply-reflected beams and, at most wavelengths, the interference is
+        destructive enough that the etalon simply reflects, behaving like an ordinary
+        partial mirror. But at a resonance — where the round-trip phase is a multiple of
+        2π — every reflected component cancels almost perfectly, and transmission surges
+        to a coating-limited peak that can approach 100% even through two mirrors that are
+        individually 99% reflective. That counterintuitive buildup, not a simple partial
+        transmission, is the entire operating principle.</p>
+        <p>Resonances repeat periodically in wavelength at the free spectral range (FSR),
+        and how sharp each resonance is — how far you can detune before transmission
+        collapses back toward zero — is set by the finesse, which climbs steeply as the
+        mirror reflectivity approaches 1.</p>`,
+      formulas: [
+        { tex: 'T(\\delta) = \\frac{T_{\\max}}{1 + F_c \\sin^2(\\delta/2)}, \\qquad F_c = \\frac{4R}{(1-R)^{2}}', caption: 'The Airy function — Fabry–Pérot transmission versus round-trip phase δ, for two matched mirrors of reflectivity R.' },
+        { tex: '\\text{FSR} = \\frac{\\lambda^{2}}{2nd\\cos\\theta}, \\qquad \\mathcal{F} = \\frac{\\pi\\sqrt{R}}{1-R} = \\frac{\\text{FSR}}{\\text{FWHM}}', caption: 'Free spectral range (spacing between resonances, set by cavity length d and refractive index n) and finesse (resonance sharpness, set by reflectivity alone) — together they fix the resonance linewidth.' },
+      ],
+      html2: `
+        <p>Because the round-trip phase δ depends on the incidence angle through
+        <span class="w">cos θ</span>, tilting an etalon shifts its resonance wavelength
+        without changing the mirrors at all — a standard tuning technique in real optical
+        systems, alongside temperature tuning of the spacing itself. Etalons are used
+        intracavity in lasers to force single-longitudinal-mode operation, and standalone
+        as narrowband spectral filters and scanning spectrum analyzers.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Etalon is specified the way a real one is speced on a datasheet — center
+        wavelength, transmission bandwidth (FWHM), free spectral range, and peak
+        transmission — rather than by the raw mirror spacing and reflectivity the Airy
+        function actually needs. Those spectral targets are inverted internally into the
+        matched-mirror reflectivity <span class="w">R</span> and cavity spacing that
+        produce them, then the exact closed-form Airy function above is evaluated at every
+        ray's real incidence angle: off-resonance light reflects, on-resonance light
+        transmits up to the configured peak, and rotating the element on the canvas shifts
+        the resonance exactly like tilting a real etalon — because the tracer uses the
+        ray's actual hit angle, not a separately stored tilt parameter.</p>`,
+      formulas: [],
+      limitations: `<p>This is one of only two elements in the library implementing genuine
+        multi-beam interference rather than an idealized on/off band — the app's ray
+        tracer otherwise never tracks phase, so the etalon is special-cased as a single
+        surface driven by the closed-form Airy result instead of actually summing repeated
+        internal bounces. There's no mirror-parallelism defect (wedge), no temperature
+        drift of the spacing, and peak transmission below 100% is reached with a single
+        lumped loss term rather than a modeled absorption or scatter mechanism on each
+        coating.</p>`,
+    },
+    related: ['vipa', 'dichroic', 'filter'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Etalons', url: 'https://www.rp-photonics.com/etalons.html' },
+      { label: 'RP Photonics Encyclopedia — Finesse', url: 'https://www.rp-photonics.com/finesse.html' },
+      { label: 'RP Photonics Encyclopedia — Tilt Tuning of Etalons', url: 'https://www.rp-photonics.com/spotlight_2009_12_31.html' },
+    ],
+  },
+
+  {
+    type: 'vipa',
+    title: 'VIPA (Virtually Imaged Phased Array)',
+    category: 'Filters & Splitters',
+    realWorld: {
+      html: `
+        <p>A VIPA is, at heart, the same tilted Fabry–Pérot cavity as an etalon — two
+        closely spaced reflective coatings — but illuminated and read out completely
+        differently. Light enters through a small uncoated window in an otherwise
+        near-perfectly reflective front face, focused to a line inside the cavity. Because
+        the plate is tilted relative to that incoming beam, each internal bounce off the
+        partially transmitting back face leaks light out at a slightly different lateral
+        position instead of retracing the same path — producing a fan of many spatially
+        offset, mutually coherent beams that interfere in the far field exactly like light
+        emerging from a real phased array of point sources, except every one of those
+        virtual sources is actually a single physical cavity imaged multiple times${cite(1)}.
+        That's the "virtually imaged" half of the name.</p>
+        <p>The result is angular dispersion 10–20× higher than an ordinary diffraction
+        grating in a device a few millimeters thick, at the cost of a much smaller free
+        spectral range — which is why VIPAs are typically paired with a grating in a
+        cross-dispersed configuration (the grating separates orders that would otherwise
+        overlap) in high-resolution spectrometers, optical coherence tomography systems,
+        and dense wavelength-division-multiplexing demultiplexers.</p>`,
+      formulas: [
+        { tex: '\\Delta\\lambda_{\\text{res}} = \\frac{\\text{FSR}}{\\mathcal{F}}, \\qquad \\mathcal{F} = \\frac{\\pi\\sqrt{R_{\\text{out}}}}{1-R_{\\text{out}}}', caption: "Spectral resolution and finesse — set by the output face's reflectivity, exactly as in an ordinary etalon; only the readout geometry differs." },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Because the walk-off between successive leaked beams is a purely geometric
+        consequence of the tilt — each bounce genuinely exits at a different point along
+        the plate — OpticalSetup traces it directly as repeated ordinary mirror
+        reflections rather than borrowing the Etalon's closed-form Airy transmission: an
+        entrance window in the front coating lets rays in, and each subsequent bounce off
+        the partially reflective rear face spawns both a continuing internal ray and a
+        leaked output ray, exactly reproducing the fan of offset beams a real VIPA
+        produces. Only the output face's reflectivity needs the Fabry–Pérot mathematics,
+        and it's derived the same way the Etalon derives its mirror reflectivity: you
+        specify center wavelength, resolution (FWHM), and free spectral range, and
+        <code>resolveVipaPhysical()</code> solves for the plate spacing and coating
+        reflectivity that would actually produce them — sharing its solver with the Etalon
+        element, since spectrally the two are the same cavity.</p>`,
+      formulas: [],
+      limitations: `<p>The fan of leaked beams is genuine ray-traced geometry, but each
+        individual leaked ray still carries only the ordinary (incoherent) intensity
+        propagated by the rest of the tracer — the far-field interference between those
+        beams that a real VIPA relies on to build its angular dispersion pattern isn't
+        computed; what you see is the correct geometric walk-off, not a simulated
+        diffraction pattern. There's also no modeled anti-reflection coating on the
+        entrance window, no cylindrical input-lens focusing, and no cross-dispersing
+        grating stage — this element models the VIPA plate alone.</p>`,
+    },
+    related: ['etalon', 'grating', 'dichroic'],
+    citations: [
+      { label: 'M. Shirasaki, "Large angular dispersion by a virtually imaged phased array and its application to a wavelength demultiplexer," Opt. Lett. 21, 366 (1996)', url: 'https://opg.optica.org/ol/abstract.cfm?uri=ol-21-5-366' },
+    ],
+    resources: [
+      { label: 'Wikipedia — Virtually imaged phased array', url: 'https://en.wikipedia.org/wiki/Virtually_imaged_phased_array' },
+      { label: 'RP Photonics Encyclopedia — Etalons', url: 'https://www.rp-photonics.com/etalons.html' },
     ],
   },
 
