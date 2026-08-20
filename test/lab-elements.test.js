@@ -52,6 +52,9 @@ test('the gas cell extension tube is off by default and draws as an open pair of
   assert.match(rightSvg, /<line x1="45" y1="-11" x2="81" y2="-11" stroke="#7a5f28" stroke-width="2.5"/);
   assert.match(rightSvg, /<line x1="45" y1="11" x2="81" y2="11" stroke="#7a5f28" stroke-width="2.5"/);
   assert.doesNotMatch(rightSvg, /<rect[^>]*fill="#8d98a5"/);
+  // the housing's own brass fill extends into the tube between the rails,
+  // so the two chambers read as one continuous filled body when joined.
+  assert.match(rightSvg, /<rect x="45" y="-11" width="36" height="22" fill="#b8933f"/);
 
   cell.params.extensionSide = 'left';
   const leftSvg = registry.gascell.svg(cell);

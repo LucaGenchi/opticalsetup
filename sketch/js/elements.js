@@ -2556,7 +2556,8 @@ export const registry = {
         const side = p.extensionSide === 'left' ? -1 : 1;
         const x0 = side > 0 ? hl : -hl - tubeLen;
         const x1 = side > 0 ? hl + tubeLen : -hl;
-        s += `<line x1="${x0}" y1="${-tubeH / 2}" x2="${x1}" y2="${-tubeH / 2}" stroke="#7a5f28" stroke-width="2.5" stroke-linecap="round"/>` +
+        s += `<rect x="${Math.min(x0, x1)}" y="${-tubeH / 2}" width="${tubeLen}" height="${tubeH}" fill="#b8933f" fill-opacity="${bodyOpacity}"/>` +
+          `<line x1="${x0}" y1="${-tubeH / 2}" x2="${x1}" y2="${-tubeH / 2}" stroke="#7a5f28" stroke-width="2.5" stroke-linecap="round"/>` +
           `<line x1="${x0}" y1="${tubeH / 2}" x2="${x1}" y2="${tubeH / 2}" stroke="#7a5f28" stroke-width="2.5" stroke-linecap="round"/>`;
       }
       s += `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height}" rx="${r}" fill="#b8933f" fill-opacity="${bodyOpacity}"/>` +
