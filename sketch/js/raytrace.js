@@ -1660,7 +1660,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
-      if (hit.surface.el?.type === 'stage' && r.writeReference) {
+      // Both specimen holders report where the beam lands, so the plain
+      // sample can draw its excitation spot too; only the piezo stage writes
+      // 2PP voxel marks, which its own writeVoxel flag already gates.
+      const holder = hit.surface.el?.type;
+      if ((holder === 'stage' || holder === 'sample') && r.writeReference) {
         if (writeHits && hit.surface.data.writeVoxel && r.pulse) {
           writeHits.push({
             stageId: hit.surface.el.id,

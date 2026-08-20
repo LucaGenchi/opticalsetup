@@ -85,14 +85,12 @@ test('grating order parsing is deduplicated and bounded', () => {
 test('component metadata distinguishes simulated, setup-dependent, and diagram-only elements', () => {
   assert.equal(getElementMeta('lens', createElement('lens').params).tier, 'simulated');
   assert.equal(getElementMeta('glassrod', createElement('glassrod').params).tier, 'simulated');
-  assert.equal(getElementMeta('microscope', createElement('microscope').params).tier, 'simulated');
   assert.equal(getElementMeta('textlabel', createElement('textlabel').params).tier, 'diagram');
   const eom = createElement('eom');
   assert.equal(getElementMeta('eom', eom.params).tier, 'configurable');
   eom.params.modulate = true;
   assert.equal(getElementMeta('eom', eom.params).tier, 'simulated');
   assert.equal(registry.glassrod.surfaces(createElement('glassrod')).length, 4);
-  assert.equal(registry.microscope.surfaces(createElement('microscope')).length, 8);
 });
 
 test('glass rods refract through their faces and return an exiting ray to air', () => {
@@ -108,22 +106,8 @@ test('glass rods refract through their faces and return an exiting ray to air', 
   assert.ok(Math.abs(slope(ray.pts.at(-2), ray.pts.at(-1))) < 1e-6, 'parallel faces return the ray to its incident direction');
 });
 
-test('microscope assembly applies both internal lenses and blocks outside its aperture', () => {
-  const laser = createElement('laser', 0, 5);
-  laser.params.beamMode = 'line';
-  const microscope = createElement('microscope', 200, 0);
-  const paths = traceAll([laser, microscope]).filter(d => d.type === 'path');
-  const ray = paths.find(d => d.pts.length >= 4);
-  assert.ok(ray, 'ray crosses objective and tube lens');
-  const middleSlope = (ray.pts[2].y - ray.pts[1].y) / (ray.pts[2].x - ray.pts[1].x);
-  const exitSlope = (ray.pts.at(-1).y - ray.pts.at(-2).y) / (ray.pts.at(-1).x - ray.pts.at(-2).x);
-  assert.ok(Math.abs(middleSlope) > 0.1, 'objective bends the off-axis ray');
-  assert.ok(Math.abs(exitSlope) < 1e-6, 'default afocal pair recollimates the ray');
-
-  laser.y = 20;
-  microscope.params.aperture = 10;
-  const blocked = traceAll([laser, microscope]).filter(d => d.type === 'path')[0];
-  assert.ok(blocked.pts.at(-1).x < 200, 'housing stops rays outside the clear aperture');
+test('the microscope element is gone — it was a grey box hiding an unaimable objective and tube lens, redundant with the standalone optics', () => {
+  assert.equal(registry.microscope, undefined);
 });
 
 test('detectors report qualitative signal, spectrum, polarization, and spot span', () => {
@@ -368,4 +352,38 @@ test('legacy fibers with repeated end points cannot create non-finite rays', () 
       assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y));
     }
   }
+});
+
+test('no component renders NaN geometry, at its defaults or at its parameter extremes', () => {
+  // A parameter removed from an element while something still reads it
+  // produces NaN coordinates, which SVG rejects silently apart from console
+  // noise — the microscope's retired lens focal lengths did exactly that.
+  const offenders = [];
+  for (const [type, def] of Object.entries(registry)) {
+    if (typeof def.svg !== 'function') continue;
+    const variants = [createElement(type)];
+    // Push every numeric parameter to each end of its range in turn.
+    for (const spec of def.params || []) {
+      if (spec.type !== 'number' && spec.type !== 'optsize') continue;
+      for (const edge of ['min', 'max']) {
+        if (!Number.isFinite(spec[edge])) continue;
+        const el = createElement(type);
+        el.params[spec.key] = spec[edge];
+        variants.push(el);
+      }
+    }
+    for (const el of variants) {
+      let svg;
+      try {
+        svg = def.svg(el, [el]);
+      } catch (error) {
+        offenders.push(`${type}: threw ${error.message}`);
+        continue;
+      }
+      if (String(svg).includes('NaN')) offenders.push(`${type}: NaN in svg()`);
+      const size = getSize(el);
+      if (!Number.isFinite(size.w) || !Number.isFinite(size.h)) offenders.push(`${type}: NaN size`);
+    }
+  }
+  assert.deepEqual(offenders, []);
 });

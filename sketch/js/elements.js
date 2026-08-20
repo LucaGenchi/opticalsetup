@@ -905,6 +905,7 @@ function sampleModeParams() {
       return type === 'linear' || type === 'nonlinear';
     } },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
+    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 1, max: 20, step: 0.5, def: 6, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
     { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
@@ -1013,14 +1014,16 @@ function stageSampleColor(params) {
   return '#e2758f';
 }
 
-// The live excitation spot, coloured by the signal actually generated there
-// when the tracer reports one (canvas.js attaches _signalHitLocal), else by
-// the specimen's own material tint.
+// How thick the specimen glass is DRAWN. The tracer crosses it as a thin
+// sheet whatever this says, so it is presentation only — it never changes
+// where a ray meets the specimen or what it does there.
+export const sampleThickness = p => Math.min(20, Math.max(1, p?.thickness ?? 6));
+
 function signalSpotSVG(el) {
   const hit = el._signalHitLocal;
   if (!el.params.showSignalSpot || !hit) return '';
   const color = Number.isFinite(hit.wl) ? wavelengthToColor(hit.wl) : stageSampleColor(el.params);
-  return `<circle cx="${hit.x.toFixed(2)}" cy="${hit.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
+  return `<circle cx="${hit.x.toFixed(2)}" cy="${hit.y.toFixed(2)}" r="1.4" fill="${color}" opacity="0.85"/>`;
 }
 
 function sampleSurfaces(el, h) {
@@ -2227,14 +2230,12 @@ export const registry = {
     // Horizontal at rot 0: the clear-aperture/long axis runs left-right
     // (local x), the beam crosses it top-to-bottom (local y).
     label: 'Sample', category: 'Microscopy', size: { w: 40, h: 14 },
-    size_: el => ({ w: (el.params.aperture || 34) + 6, h: 14 }),
+    size_: el => ({ w: (el.params.aperture || 34) + 6, h: Math.max(14, sampleThickness(el.params) + 8) }),
     params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true }, ...sampleModeParams()],
     svg(el) {
       const p = el.params;
-      const c = stageSampleColor(p);
-      const h = (p.aperture || 34) / 2;
-      return `<rect x="${-h}" y="-3" width="${2 * h}" height="6" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
-        `<circle cx="0" cy="0" r="4" fill="${c}" opacity="0.85"/>` +
+      const h = (p.aperture || 34) / 2, t = sampleThickness(p);
+      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         signalSpotSVG(el);
     },
     surfaces: el => sampleSurfaces(el, (el.params.aperture || 34) / 2),
@@ -2246,7 +2247,7 @@ export const registry = {
     // (local y). The mounting brackets grip the specimen's left/right short
     // edges accordingly.
     label: 'Sample on piezo stage', category: 'Microscopy', size: { w: 56, h: 22 },
-    size_: el => ({ w: (el.params.aperture || 50) + 30, h: 22 }),
+    size_: el => ({ w: (el.params.aperture || 50) + 30, h: Math.max(22, sampleThickness(el.params) + 14) }),
     params: [
       { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
       { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
@@ -2271,9 +2272,10 @@ export const registry = {
       // its left and right short edges and protrude 20% of the glass length
       // inward, leaving a 60%-of-length window between them for the beam.
       const windowX = clear * 0.6;
+      const t = sampleThickness(p);
       return `<path d="M ${-outer},-8 L ${-outer},6 L ${-windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<path d="M ${outer},-8 L ${outer},6 L ${windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<rect x="${-clear}" y="-3" width="${2 * clear}" height="5" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
+        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
@@ -2284,36 +2286,6 @@ export const registry = {
         { x1: clear, y1: 6, x2: outer, y2: 6, kind: 'absorb' },
       ];
       return [...mount, ...sampleSurfaces(el, clear)];
-    },
-  },
-
-  microscope: {
-    label: 'Microscope', category: 'Microscopy', size: { w: 74, h: 54 },
-    size_: el => ({ w: 74, h: (el.params.housingHeight || 50) + 4 }),
-    params: [
-      { key: 'objectiveF', label: 'Objective focal (mm)', type: 'number', min: 2, max: 100, step: 1, def: 10 },
-      { key: 'tubeF', label: 'Tube lens focal (mm)', type: 'number', min: 5, max: 300, step: 5, def: 40 },
-      { key: 'housingHeight', label: 'Housing height (mm)', type: 'number', min: 20, max: 180, step: 2, def: 50 },
-      { key: 'aperture', label: 'Clear aperture', type: 'optsize', min: 8, max: 150, def: 50.8 },
-    ],
-    svg(el) { return boxSVG(70, el.params.housingHeight || 50, '#e8eaee', '#7a828c', 'Microscope', '#3d444d', isFlipped(el)); },
-    surfaces(el) {
-      const x = 35, y = (el.params.housingHeight || 50) / 2;
-      const h = Math.min(y, (el.params.aperture || 50.8) / 2);
-      // A compact objective + tube-lens assembly. The default focal lengths
-      // add to the 50 mm separation, producing an afocal 4x beam expansion;
-      // changing either value gives the same live thin-lens behavior as the
-      // standalone optics.
-      return [
-        { x1: -25, y1: -h, x2: -25, y2: h, kind: 'lens', data: { f: el.params.objectiveF } },
-        { x1: 25, y1: -h, x2: 25, y2: h, kind: 'lens', data: { f: el.params.tubeF } },
-        { x1: -x, y1: -y, x2: x, y2: -y, kind: 'absorb' },
-        { x1: x, y1: y, x2: -x, y2: y, kind: 'absorb' },
-        { x1: -x, y1: -y, x2: -x, y2: -h, kind: 'absorb' },
-        { x1: -x, y1: h, x2: -x, y2: y, kind: 'absorb' },
-        { x1: x, y1: -y, x2: x, y2: -h, kind: 'absorb' },
-        { x1: x, y1: h, x2: x, y2: y, kind: 'absorb' },
-      ];
     },
   },
 
@@ -2448,7 +2420,7 @@ export const registry = {
   },
 
   highlight: {
-    label: 'Highlight', category: 'Annotations',
+    label: 'Highlight', category: 'Annotations', background: true,
     size: el => ({ w: el.params.w, h: el.params.h }),
     // Painted in its own layer behind the grid holes, beams, and every other
     // element (see renderHighlights() in canvas.js) — purely a background
@@ -2636,7 +2608,6 @@ const DIRECT = {
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
-  microscope: { resize: { y: 'housingHeight' }, tune: { key: 'objectiveF', short: 'f obj' } },
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
   figureframe: { resize: { x: 'w', y: 'h', anchor: true } },
   highlight: { resize: { x: 'w', y: 'h', anchor: true } },
@@ -2717,7 +2688,6 @@ const ELEMENT_HELP = {
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
-  microscope: 'Models a configurable objective, tube lens, clear aperture, and absorbing housing.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
@@ -2755,7 +2725,7 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (SHAPERS.has(type) && (!Array.isArray(params.layers) || params.layers.length === 0)) {
     tier = 'configurable';
     note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
-  } else if (type === 'arrowann' || type === 'textlabel' || type === 'figureframe' || type === 'highlight') {
+  } else if (DIAGRAM_ONLY.has(type)) {
     note = 'Annotations are intentionally visual and never change traced rays.';
   } else if (type === 'freeglass') {
     note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
