@@ -77,9 +77,34 @@ const demoScenes = {
     mkDemo('detector', 220, 60, -90, {}, { label: 'reflected', showLabel: true, labelPos: 'l' }),
   ],
   dichroic: () => [
-    mkDemo('laser', 60, 220, 0, { wavelength: 650 }, { label: 'transmitted (650 nm)', showLabel: true }),
-    mkDemo('laser', 260, 60, 90, { wavelength: 450 }, { label: 'reflected (450 nm)', showLabel: true, labelPos: 'l' }),
-    mkDemo('dichroic', 260, 220, -45, { length: 50.8 }),
+    mkDemo('laser', 60, 220, 0, { wavelength: 650 }, { label: '650 nm', showLabel: true }),
+    mkDemo('laser', 260, 60, 90, { wavelength: 450 }, { label: '450 nm', showLabel: true, labelPos: 'l' }),
+    mkDemo('dichroic', 260, 220, -45, { length: 50.8 }, { label: 'Long pass 550 nm', showLabel: true, labelPos: 'r' }),
+    mkDemo('textlabel', 90, 330, 0, {
+      text: 'Reflects any wavelength below 550 nm, transmits any wavelength above 550 nm.', fontSize: 12,
+    }),
+  ],
+  filter: () => [
+    mkDemo('laser', 40, 200, 0, { wavelength: 532, bwMode: 'band', bandwidth: 10 }, { label: '532 nm laser with 10 nm bandwidth', showLabel: true }),
+    mkDemo('probe', 150, 200, 0, { prop: 'spectrum' }),
+    mkDemo('filter', 260, 200, 0, { ftype: 'bandpass', center: 532, band: 2 }, { label: '532 - 2 nm bandpass filter', showLabel: true }),
+    mkDemo('probe', 370, 200, 0, { prop: 'spectrum' }),
+    mkDemo('detector', 460, 200, 0),
+  ],
+  etalon: () => [
+    mkDemo('laser', 40, 200, 0, { wavelength: 532, bwMode: 'band', bandwidth: 60 }, { label: '532 nm laser with 60 nm bandwidth', showLabel: true }),
+    mkDemo('probe', 150, 200, 0, { prop: 'spectrum' }),
+    mkDemo('etalon', 260, 200, 0, { fsr: 8 }, { label: '532 nm etalon, 8 nm FSR', showLabel: true }),
+    mkDemo('probe', 370, 200, 0, { prop: 'spectrum' }),
+    mkDemo('detector', 460, 200, 0),
+  ],
+  vipa: () => [
+    mkDemo('laser', 30, 200, 0, { wavelength: 532, bwMode: 'band', bandwidth: 60, beamMode: 'line' }, { label: '532 nm laser with 60 nm bandwidth', showLabel: true }),
+    mkDemo('probe', 120, 200, 0, { prop: 'spectrum' }),
+    mkDemo('vipa', 250, 192.65, 0, {
+      fsr: 0.002, bandwidth: 0.00185, tilt: 12, windowSize: 1.5, aperture: 90,
+    }, { label: 'VIPA — same spectrum leaks out at different points', showLabel: true, labelPos: 't' }),
+    mkDemo('box', 460, 200, 0, { text: '', w: 10, h: 200, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — one input beam, many spatially fanned-out outputs', showLabel: true, labelPos: 'r' }),
   ],
   prism: () => [
     mkDemo('laser', 60, 200, 0, { bwMode: 'sc' }),
@@ -90,6 +115,22 @@ const demoScenes = {
     mkDemo('laser', 60, 200, 0, { bwMode: 'sc' }),
     mkDemo('grating', 220, 200, 0, { orders: '-1,0,1', transmissive: true }),
     mkDemo('box', 340, 200, 0, { text: '', w: 10, h: 260, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen', showLabel: true, labelPos: 'r' }),
+  ],
+  freeglass: () => [
+    mkDemo('laser', 40, 200, 0, { wavelength: 550, beamMode: 'line' }),
+    mkDemo('freeglass', 230, 205, 20, { scale: 1.6, ior: 2 }),
+    mkDemo('box', 430, 200, 0, { text: '', w: 10, h: 160, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — beam bends at entry and exit', showLabel: true, labelPos: 'r' }),
+  ],
+  diffuser: () => [
+    mkDemo('laser', 60, 200, 0),
+    mkDemo('diffuser', 220, 200, 0, { div: 18 }),
+    mkDemo('box', 420, 200, 0, { text: '', w: 10, h: 220, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — scattered into a cone', showLabel: true, labelPos: 'r' }),
+  ],
+  glassrod: () => [
+    mkDemo('laser', 30, 200, 0, {
+      temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 100,
+    }, { label: 'pulsed laser', showLabel: true }),
+    mkDemo('glassrod', 220, 200, 0, { rodlen: 100, ior: 2.3 }, { label: 'n = 2.3 — watch the packet lag inside', showLabel: true, labelPos: 't' }),
   ],
   polarizer: () => [
     mkDemo('laser', 60, 200, 0, { pol: 0 }),
