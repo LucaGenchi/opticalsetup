@@ -110,6 +110,28 @@ test('the microscope element is gone — it was a grey box hiding an unaimable o
   assert.equal(registry.microscope, undefined);
 });
 
+test('objectives expose magnification and NA while deriving thin-lens geometry internally', () => {
+  const objective = createElement('objective');
+  assert.deepEqual(registry.objective.params.map(param => param.key), ['magnification', 'na', 'transEff']);
+  assert.doesNotMatch(registry.objective.params.map(param => param.label).join(' '), /focal/i);
+  assert.equal(Object.hasOwn(objective.params, 'f'), false);
+  assert.equal(Object.hasOwn(objective.params, 'aperture'), false);
+  assert.equal(objective.params.magnification, 20);
+  assert.equal(objective.params.na, 1);
+
+  let surface = registry.objective.surfaces(objective)[0];
+  assert.equal(surface.data.f, 10);
+  assert.equal(surface.data.objectiveNA, 1);
+  assert.equal(surface.y2 - surface.y1, 20);
+
+  objective.params.magnification = 40;
+  objective.params.na = 1.4;
+  surface = registry.objective.surfaces(objective)[0];
+  assert.equal(surface.data.f, 5);
+  assert.equal(surface.data.objectiveNA, 1.4);
+  assert.ok(Math.abs(surface.y2 - surface.y1 - 14) < 1e-9);
+});
+
 test('detectors report qualitative signal, spectrum, polarization, and spot span', () => {
   const laser = createElement('laser', 0, 0);
   laser.params.beamMode = 'beam';

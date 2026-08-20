@@ -8,9 +8,10 @@ import {
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec,
 } from './elements.js';
-import { detectorReading, specimenIncidentWls, specimenIncidentBeams } from './raytrace.js';
+import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
 import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
+import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import { esc } from './util.js';
 import { WIKI_TYPES } from './wiki-types.js';
 
@@ -465,10 +466,31 @@ export function renderInspector() {
       const insertVoxelHint = () => {
         if (voxelHintInserted) return;
         voxelHintInserted = true;
-        if (sel.type === 'stage' && specimenTypeOf(sel.params) === 'resin' && sel.params.voxelPreview) {
+        if (sel.type !== 'stage' || specimenTypeOf(sel.params) !== 'resin') return;
+        if (sel.params.voxelPreview) {
           sectionFields += `<div class="hint">Each visible pulsed arrival deposits a bounded square marker at the traced hit. The marker follows the moving sample and broadens/fades with X (depth) offset from focus; it is a 2D writing preview, not a dose, threshold, curing, or true 3D-volume calculation.</div>`;
           sectionFields += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
         }
+
+        const candidates = twoPhotonHandoffCandidates(
+          state.elements,
+          signalHitsFromLastTrace(sel.id),
+          sel.id,
+        );
+        sectionFields += `<div class="two-photon-handoff"><div class="lsechead">Continue the 2PP workflow</div>`;
+        if (!candidates.length) {
+          sectionFields += `<div class="hint">Aim a compatible ordinary pulsed Laser at this resin sample (500–1064 nm, up to 1 W source power, 10–100 MHz, 50–400 fs) to open the dedicated lithography lab with its settings.</div>`;
+        } else {
+          const multiple = candidates.length > 1;
+          sectionFields += candidates.map(({ laser, numericalAperture }, index) => {
+            const configuredName = String(laser.label || '').trim();
+            const name = configuredName || (multiple ? `Laser ${index + 1}` : 'this laser');
+            const url = buildTwoPhotonHandoffUrl(laser, undefined, { numericalAperture });
+            return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>`;
+          }).join('');
+          sectionFields += `<div class="hint">Transfers wavelength, configured source power, repetition rate, pulse duration, and the traced objective NA when one compatible objective is unambiguous. Confirm specimen-plane power and pulse broadening in the destination lab; bandwidth, polarization, scan, and material settings keep that lab's defaults.</div>`;
+        }
+        sectionFields += `</div>`;
       };
       const flushSection = () => {
         if (!sectionFields) return;

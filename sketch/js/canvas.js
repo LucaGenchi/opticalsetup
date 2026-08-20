@@ -7,6 +7,7 @@ import {
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
   displayActionUpdate,
 } from './elements.js';
+import { objectiveFocalLength } from './objective.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
@@ -682,7 +683,10 @@ function focalPoints(el) {
   const p = el.params;
   switch (el.type) {
     case 'lens': case 'lensc': return [{ x: p.f, y: 0 }, { x: -p.f, y: 0 }];
-    case 'objective': return [{ x: 16 - p.f, y: 0, label: 'BFP' }, { x: 16 + p.f, y: 0 }];
+    case 'objective': {
+      const f = objectiveFocalLength(p);
+      return [{ x: 16 - f, y: 0, label: 'BFP' }, { x: 16 + f, y: 0 }];
+    }
     case 'cmirror': case 'cmirrorx': case 'oap': return [{ x: -p.f, y: 0 }];
     case 'telescope': {
       const s = Math.max(5, p.f1 + p.f2);

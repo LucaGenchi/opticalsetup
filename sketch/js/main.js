@@ -67,8 +67,8 @@ const demoScenes = {
   ],
   objective: () => [
     mkDemo('laser', 60, 300, 0, { beamMode: 'beam', beamWidth: 18 }),
-    mkDemo('objective', 300, 300, 0, { f: 10, aperture: 24 }),
-    mkDemo('box', 326, 300, 0, { text: '', w: 2, h: 50, behavior: 'block', fill: '#c9d4e0' }, { label: 'focus (f = 10 mm)', showLabel: true, labelPos: 't' }),
+    mkDemo('objective', 300, 300, 0, { magnification: 20, na: 1.2 }),
+    mkDemo('box', 326, 300, 0, { text: '', w: 2, h: 50, behavior: 'block', fill: '#c9d4e0' }, { label: '20× · NA 1.20', showLabel: true, labelPos: 't' }),
   ],
   bs: () => [
     mkDemo('laser', 60, 200, 0),

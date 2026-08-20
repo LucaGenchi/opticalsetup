@@ -56,7 +56,10 @@ figures as SVG or PNG.
 - **2PP write preview**: a sample holder can be set to photocurable resin. Pulsed
   arrivals leave bounded voxel markers at the traced sample hit while an optional
   2D Y-stage scan translates the mounted sample. It is a visual writing preview,
-  not a dose, threshold, curing, or 3D fabrication model.
+  not a dose, threshold, curing, or 3D fabrication model. An illuminated resin
+  sample can continue into the dedicated Two-Photon Lithography Lab with the
+  compatible pulsed-laser settings prefilled. When one objective is
+  unambiguously present on the traced path, its NA is transferred too.
 - **Qualitative detector readouts**: photodetectors, PMTs, cameras, and the eye
   report relative ray signal, spectrum, polarization, and spot span at their active
   surface; pulsed paths add optical-path delay and path spread. A data-only sensor
@@ -106,6 +109,11 @@ The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
 shows their positions in the moving 2D sample. It does not calculate focal volume,
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
+
+Standalone objectives are configured by magnification and numerical aperture,
+matching microscope-objective specifications. The qualitative ray tracer derives
+its internal thin-lens focus from a 200 mm reference tube lens and estimates the
+entrance pupil from NA; this is not a diffraction or immersion-medium model.
 
 Freeform glass is a directly editable boundary of straight segments and exact
 three-point circular arcs with constant-index or qualitative BK7-like dispersion,

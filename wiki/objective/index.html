@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Objective — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Applies a compact focusing thin-lens model; ƒ also sets the distance to the back focal plane (BFP) behind the lens — the plane a telescope or scan relay should image onto for pupil-matched scanning. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Uses objective magnification and NA. Magnification derives an internal thin-lens focus from a 200 mm reference tube lens; NA sets the qualitative entrance pupil and can be handed to the 2PP lab when this objective is on the traced sample path. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/objective/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Objective — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Applies a compact focusing thin-lens model; ƒ also sets the distance to the back focal plane (BFP) behind the lens — the plane a telescope or scan relay should image onto for pupil-matched scanning.">
+<meta property="og:description" content="Uses objective magnification and NA. Magnification derives an internal thin-lens focus from a 200 mm reference tube lens; NA sets the qualitative entrance pupil and can be handed to the 2PP lab when this objective is on the traced sample path.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/objective/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -117,7 +117,7 @@
           <h1>Objective</h1>
         </div>
       </div>
-      <p class="tagline">Applies a compact focusing thin-lens model; ƒ also sets the distance to the back focal plane (BFP) behind the lens — the plane a telescope or scan relay should image onto for pupil-matched scanning.</p>
+      <p class="tagline">Uses objective magnification and NA. Magnification derives an internal thin-lens focus from a 200 mm reference tube lens; NA sets the qualitative entrance pupil and can be handed to the 2PP lab when this objective is on the traced sample path.</p>
       <a class="place-cta" href="../../sketch/?place=objective">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -176,28 +176,40 @@
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
         
-        <p>Optically this is the same single thin-lens surface as the plain
-        <a href="../lens/">lens</a> element, using the same paraxial ray-transfer
-        relation <span class="w">u' = u − h/f</span> at the lens plane marked by the
-        housing's flat front glass — just with a short default focal length and a drawn
-        clear aperture typical of a real objective. What's modeled precisely, though, is
-        <em>where the back focal plane actually sits</em>: toggle "Show focal points"
-        (the <span class="w">ƒ</span> button) or select the objective, and a marker
-        labeled <span class="w">BFP</span> appears exactly <span class="w">f</span>
+        <p>The objective is configured the way a real one is spec'd — magnification and
+        numerical aperture — rather than by a bare focal length. Internally it's still the
+        same single thin-lens surface as the plain <a href="../lens/">lens</a> element,
+        using the same paraxial ray-transfer relation <span class="w">u' = u − h/f</span>
+        at the lens plane marked by the housing's flat front glass, but
+        <span class="w">f</span> is now <em>derived</em> from magnification exactly the
+        way the real-world formula above works in reverse: a fixed 200&nbsp;mm reference
+        tube length divided by the configured magnification. NA does real work too — it
+        sets the drawn and traced pupil diameter via the paraxial entrance-pupil estimate
+        <span class="w">2fNA</span>, so a higher-NA objective at the same magnification
+        visibly draws (and clips rays against) a wider aperture. Toggle "Show focal
+        points" (the <span class="w">ƒ</span> button) or select the objective, and a
+        marker labeled <span class="w">BFP</span> appears exactly <span class="w">f</span>
         behind the lens plane, on the side the beam arrives from — the real coordinate to
         position (or image, via a <a href="../telescope/">telescope</a>) a scan mirror
         onto for correct pupil-matched scanning, not just an illustrative icon.</p>
+        <p>When this objective sits between a pulsed laser and an illuminated
+        photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
+        to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
+        power, repetition rate, and pulse duration — see the inspector on a resin
+        sample's stage.</p>
         
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The BFP's <em>position</em> is geometrically exact for this
-        thin-lens model, but its <em>size</em> is not modeled — there's no numerical
-        aperture parameter, so the pupil radius formula above isn't computed or enforced
-        anywhere, and no aberration correction, immersion media, or field-flatness
-        limits exist either. It's a single idealized thin lens wearing an objective's
-        housing, with one genuinely precise feature: the BFP marker's location. There's
-        also no separate tube lens or reported magnification number — changing
-        <span class="w">f</span> changes how tightly the element focuses, which is the
-        real effect behind the magnification formula above, but OpticalSetup never
-        computes or displays a magnification value.</p></div>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The 200&nbsp;mm reference tube length is a real, common convention
+        (Nikon and Leica both design infinity objectives against 200&nbsp;mm) but not a
+        universal one — Olympus uses 180&nbsp;mm and Zeiss 165&nbsp;mm — and OpticalSetup
+        doesn't model a manufacturer choice or a separate tube-lens element the way the
+        standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
+        reference length is simply baked into the magnification-to-focal-length formula.
+        The drawn pupil from <span class="w">2fNA</span> is the same simple paraxial
+        estimate as the real-world formula above, not a diffraction-limited or
+        aberration-corrected computation, and there's still no aberration correction,
+        immersion medium, or field-flatness modeling — a single idealized thin lens
+        wearing an objective's housing, with two genuinely precise features: the BFP
+        marker's location and the drawn pupil's size.</p></div>
       </div>
 
       

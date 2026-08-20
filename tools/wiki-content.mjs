@@ -296,28 +296,40 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>Optically this is the same single thin-lens surface as the plain
-        <a href="../lens/">lens</a> element, using the same paraxial ray-transfer
-        relation <span class="w">u' = u − h/f</span> at the lens plane marked by the
-        housing's flat front glass — just with a short default focal length and a drawn
-        clear aperture typical of a real objective. What's modeled precisely, though, is
-        <em>where the back focal plane actually sits</em>: toggle "Show focal points"
-        (the <span class="w">ƒ</span> button) or select the objective, and a marker
-        labeled <span class="w">BFP</span> appears exactly <span class="w">f</span>
+        <p>The objective is configured the way a real one is spec'd — magnification and
+        numerical aperture — rather than by a bare focal length. Internally it's still the
+        same single thin-lens surface as the plain <a href="../lens/">lens</a> element,
+        using the same paraxial ray-transfer relation <span class="w">u' = u − h/f</span>
+        at the lens plane marked by the housing's flat front glass, but
+        <span class="w">f</span> is now <em>derived</em> from magnification exactly the
+        way the real-world formula above works in reverse: a fixed 200&nbsp;mm reference
+        tube length divided by the configured magnification. NA does real work too — it
+        sets the drawn and traced pupil diameter via the paraxial entrance-pupil estimate
+        <span class="w">2fNA</span>, so a higher-NA objective at the same magnification
+        visibly draws (and clips rays against) a wider aperture. Toggle "Show focal
+        points" (the <span class="w">ƒ</span> button) or select the objective, and a
+        marker labeled <span class="w">BFP</span> appears exactly <span class="w">f</span>
         behind the lens plane, on the side the beam arrives from — the real coordinate to
         position (or image, via a <a href="../telescope/">telescope</a>) a scan mirror
-        onto for correct pupil-matched scanning, not just an illustrative icon.</p>`,
+        onto for correct pupil-matched scanning, not just an illustrative icon.</p>
+        <p>When this objective sits between a pulsed laser and an illuminated
+        photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
+        to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
+        power, repetition rate, and pulse duration — see the inspector on a resin
+        sample's stage.</p>`,
       formulas: [],
-      limitations: `<p>The BFP's <em>position</em> is geometrically exact for this
-        thin-lens model, but its <em>size</em> is not modeled — there's no numerical
-        aperture parameter, so the pupil radius formula above isn't computed or enforced
-        anywhere, and no aberration correction, immersion media, or field-flatness
-        limits exist either. It's a single idealized thin lens wearing an objective's
-        housing, with one genuinely precise feature: the BFP marker's location. There's
-        also no separate tube lens or reported magnification number — changing
-        <span class="w">f</span> changes how tightly the element focuses, which is the
-        real effect behind the magnification formula above, but OpticalSetup never
-        computes or displays a magnification value.</p>`,
+      limitations: `<p>The 200&nbsp;mm reference tube length is a real, common convention
+        (Nikon and Leica both design infinity objectives against 200&nbsp;mm) but not a
+        universal one — Olympus uses 180&nbsp;mm and Zeiss 165&nbsp;mm — and OpticalSetup
+        doesn't model a manufacturer choice or a separate tube-lens element the way the
+        standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
+        reference length is simply baked into the magnification-to-focal-length formula.
+        The drawn pupil from <span class="w">2fNA</span> is the same simple paraxial
+        estimate as the real-world formula above, not a diffraction-limited or
+        aberration-corrected computation, and there's still no aberration correction,
+        immersion medium, or field-flatness modeling — a single idealized thin lens
+        wearing an objective's housing, with two genuinely precise features: the BFP
+        marker's location and the drawn pupil's size.</p>`,
     },
     related: ['lens', 'telescope'],
     resources: [
