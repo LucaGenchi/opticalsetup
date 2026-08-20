@@ -27,3 +27,8 @@ test('long self-contained setup URLs fit while oversized inputs fail clearly', (
   assert.match(svg, /<path/);
   assert.throws(() => qrMatrix('x'.repeat(4000)), /too long/i);
 });
+
+test('QR capacity failure does not depend on character count alone', () => {
+  assert.doesNotThrow(() => qrMatrix('a'.repeat(2900)));
+  assert.throws(() => qrMatrix('λ'.repeat(1600)), /too long/i);
+});

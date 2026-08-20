@@ -754,7 +754,7 @@ function showToast(message) {
 }
 
 function bindToolbar() {
-  let shareUrl = '', shareQrSvg = '';
+  let shareUrl = '', shareQrSvg = '', shareSceneText = '';
   const closeShare = () => $('shareDialog').close();
   $('shareClose').addEventListener('click', closeShare);
   $('shareDialog').addEventListener('click', event => { if (event.target === $('shareDialog')) closeShare(); });
@@ -767,6 +767,11 @@ function bindToolbar() {
     'opticalsetup-qr.svg',
     shareQrSvg,
     'image/svg+xml',
+  ));
+  $('shareDownloadSetup').addEventListener('click', () => download(
+    'optical-setup.json',
+    shareSceneText,
+    'application/json',
   ));
   const proposalDialog = $('proposalDialog');
   const proposalForm = $('proposalForm');
@@ -839,7 +844,8 @@ function bindToolbar() {
     const button = $('btnShare');
     button.disabled = true;
     try {
-      const url = await buildShareURL(serialize());
+      const sketch = serialize();
+      const url = await buildShareURL(sketch);
       history.replaceState(null, '', url);
       // The auto-copy is best-effort: restrictive clipboard permissions must
       // not block the dialog, which offers its own Copy button and a
@@ -847,10 +853,19 @@ function bindToolbar() {
       let copied = true;
       try { await copyText(url); } catch (_) { copied = false; }
       shareUrl = url;
-      shareQrSvg = qrSVG(url);
+      shareSceneText = sketch;
       $('shareURL').value = url;
-      $('shareQR').innerHTML = shareQrSvg;
-      $('shareQRNote').textContent = 'Scan to open this exact optical setup.';
+      try {
+        shareQrSvg = qrSVG(url);
+        $('shareQR').innerHTML = shareQrSvg;
+        $('shareQRNote').textContent = 'Scan to open this exact optical setup.';
+        $('shareDownloadQR').disabled = false;
+      } catch (err) {
+        shareQrSvg = '';
+        $('shareQR').innerHTML = '<div class="share-qr-unavailable"><strong>QR unavailable</strong><br>This self-contained link contains more data than one QR code can hold.</div>';
+        $('shareQRNote').textContent = 'Copy the complete link or download the setup file instead.';
+        $('shareDownloadQR').disabled = true;
+      }
       $('shareDialog').showModal();
       if (copied) {
         button.textContent = 'Copied!';
