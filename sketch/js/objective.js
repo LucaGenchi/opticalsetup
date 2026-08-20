@@ -7,6 +7,7 @@
 export const OBJECTIVE_REFERENCE_TUBE_F_MM = 200;
 export const OBJECTIVE_NA_MIN = 0.05;
 export const OBJECTIVE_NA_MAX = 1.49;
+export const OBJECTIVE_CLEAR_APERTURE_MM = 20;
 
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -24,11 +25,12 @@ export function objectiveFocalLength(params = {}, tubeF = OBJECTIVE_REFERENCE_TU
   return reference / objectiveMagnification(params);
 }
 
-export function objectivePupilDiameter(params = {}, tubeF = OBJECTIVE_REFERENCE_TUBE_F_MM, naKey = 'na') {
-  const focal = objectiveFocalLength(params, tubeF);
-  const na = objectiveNumericalAperture(params, naKey);
-  // Paraxial entrance-pupil estimate used only by this qualitative 2D tracer.
-  return clamp(2 * focal * na, 0.5, 150);
+export function objectivePupilDiameter() {
+  // Keep the objective's drawn body and physical clear aperture independent of
+  // magnification and NA. NA is an angular acceptance property and is carried
+  // separately on the objective surface for the tracer; changing optical
+  // parameters must not resize the draggable objective on the canvas.
+  return OBJECTIVE_CLEAR_APERTURE_MM;
 }
 
 export function migrateLegacyObjectiveParams(rawParams = {}, {
