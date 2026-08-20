@@ -1014,25 +1014,6 @@ function stageSampleColor(params) {
   return '#e2758f';
 }
 
-// The live excitation spot, coloured by the signal actually generated there
-// when the tracer reports one (canvas.js attaches _signalHitLocal), else by
-// the specimen's own material tint.
-export const microscopeScale = p => Math.min(3, Math.max(0.4, p?.scale ?? 1));
-
-// Lighten (amount > 0) or darken (amount < 0) a #rrggbb colour, so one body
-// colour can supply a whole instrument's shading.
-export function shadeHex(hex, amount) {
-  const match = /^#([0-9a-f]{6})$/i.exec(hex || '');
-  if (!match) return hex || '#8b95a3';
-  const value = parseInt(match[1], 16);
-  const mix = channel => {
-    const target = amount >= 0 ? 255 : 0;
-    return Math.round(channel + (target - channel) * Math.abs(amount));
-  };
-  const r = mix((value >> 16) & 255), g = mix((value >> 8) & 255), b = mix(value & 255);
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
-}
-
 // How thick the specimen glass is DRAWN. The tracer crosses it as a thin
 // sheet whatever this says, so it is presentation only — it never changes
 // where a ray meets the specimen or what it does there.
@@ -2308,52 +2289,6 @@ export const registry = {
     },
   },
 
-  microscope: {
-    // Scenery, not optics. It used to be a grey box that hid an objective and
-    // a tube lens inside itself — redundant with the standalone Objective and
-    // lenses, and impossible to aim because its surfaces were invisible. It is
-    // now a recognizable microscope body drawn behind the beam path, so a
-    // figure can show the instrument the light belongs to without the drawing
-    // secretly bending anything. Its stage sits at local y = 0, which is where
-    // a specimen and the beam line up.
-    label: 'Microscope', category: 'Microscopy', background: true,
-    size_: el => {
-      const k = microscopeScale(el.params);
-      return { w: 96 * k, h: 128 * k };
-    },
-    params: [
-      { key: 'scale', label: 'Size', type: 'number', min: 0.4, max: 3, step: 0.1, def: 1 },
-      { key: 'bodyColor', label: 'Body color', type: 'color', def: '#8b95a3' },
-    ],
-    svg(el) {
-      const k = microscopeScale(el.params);
-      const body = el.params.bodyColor || '#8b95a3';
-      const dark = shadeHex(body, -0.35), light = shadeHex(body, 0.18);
-      return `<g transform="scale(${k})" opacity="0.9">` +
-        // base foot, and the arm rising from it to carry the head
-        `<path d="M -34,58 L 34,58 Q 40,58 40,52 L 40,46 Q 40,40 34,40 L -34,40 Q -40,40 -40,46 L -40,52 Q -40,58 -34,58 Z" fill="${dark}"/>` +
-        `<path d="M 16,40 L 16,-4 Q 16,-30 30,-42 L 30,-14 Q 30,10 24,26 L 24,40 Z" fill="${body}"/>` +
-        // stage: the plane a specimen sits on, at y = 0
-        `<rect x="-32" y="-3" width="56" height="6" rx="1.5" fill="${dark}"/>` +
-        `<rect x="-18" y="-5.5" width="22" height="2.5" rx="0.8" fill="${light}" opacity="0.85"/>` +
-        // condenser and illuminator below the stage
-        `<path d="M -6,10 L 6,10 L 3,20 L -3,20 Z" fill="${body}"/>` +
-        `<rect x="-7" y="26" width="14" height="5" rx="1.5" fill="${dark}"/>` +
-        // nosepiece turret with two objectives pointing down at the stage
-        `<path d="M -20,-32 L 20,-32 Q 25,-32 25,-27 Q 25,-22 20,-22 L -20,-22 Q -25,-22 -25,-27 Q -25,-32 -20,-32 Z" fill="${body}"/>` +
-        `<path d="M -13,-22 L -5,-22 L -7,-9 L -11,-9 Z" fill="${dark}"/>` +
-        `<path d="M 6,-22 L 14,-22 L 12,-13 L 8,-13 Z" fill="${dark}" opacity="0.75"/>` +
-        // head and eyepiece
-        `<path d="M -8,-46 L 26,-46 Q 32,-46 32,-40 L 32,-34 Q 32,-32 26,-32 L -8,-32 Q -14,-32 -14,-39 Q -14,-46 -8,-46 Z" fill="${body}"/>` +
-        `<path d="M -30,-62 L -12,-52 L -8,-58 L -26,-68 Z" fill="${dark}"/>` +
-        `<rect x="-34" y="-70" width="10" height="5" rx="1.5" transform="rotate(29 -29 -67)" fill="${light}"/>` +
-        // focus knobs on the arm
-        `<circle cx="22" cy="22" r="6" fill="${dark}"/><circle cx="22" cy="22" r="2.4" fill="${light}"/>` +
-        `</g>`;
-    },
-    surfaces: () => [],
-  },
-
   // ---------------- Imaging ----------------
   objarrow: {
     label: 'Object', category: 'Sources', size: { w: 20, h: 60 },
@@ -2673,7 +2608,6 @@ const DIRECT = {
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
-  microscope: { resize: { uniform: 'scale' } },
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
   figureframe: { resize: { x: 'w', y: 'h', anchor: true } },
   highlight: { resize: { x: 'w', y: 'h', anchor: true } },
@@ -2754,7 +2688,6 @@ const ELEMENT_HELP = {
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
-  microscope: 'A drawing of a microscope body, placed behind the optics so a figure can show the instrument the light belongs to. Its stage sits on the element position, where a specimen and the beam line up. It never touches traced rays.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
@@ -2763,7 +2696,7 @@ const ELEMENT_HELP = {
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
 };
 
-const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'microscope']);
+const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight']);
 const SHAPERS = new Set(['slm']);
 
 export function getElementMeta(type, params = {}, context = {}) {

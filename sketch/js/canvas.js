@@ -641,8 +641,7 @@ function renderManual() {
 // Background elements draw in their own layer, behind the grid holes and
 // everything else, so they read as scenery and never sit on top of a beam or
 // a device — see the layer order set up in mountCanvas(). A registry entry
-// opts in with `background: true`; today that is the highlight wash and the
-// microscope body.
+// opts in with `background: true`; today that is only the highlight wash.
 const isBackground = el => registry[el.type]?.background === true;
 
 function renderHighlights() {
@@ -689,8 +688,6 @@ function focalPoints(el) {
       const s = Math.max(5, p.f1 + p.f2);
       return [{ x: -s / 2 + p.f1, y: 0 }, { x: -s / 2 - p.f1, y: 0 }, { x: s / 2 + p.f2, y: 0 }];
     }
-    // The microscope used to hide an objective and a tube lens and marked
-    // their focal points here. It is scenery now, with no optics to mark.
     default: return null;
   }
 }

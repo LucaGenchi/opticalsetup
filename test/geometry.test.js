@@ -85,14 +85,12 @@ test('grating order parsing is deduplicated and bounded', () => {
 test('component metadata distinguishes simulated, setup-dependent, and diagram-only elements', () => {
   assert.equal(getElementMeta('lens', createElement('lens').params).tier, 'simulated');
   assert.equal(getElementMeta('glassrod', createElement('glassrod').params).tier, 'simulated');
-  assert.equal(getElementMeta('microscope', createElement('microscope').params).tier, 'diagram');
   assert.equal(getElementMeta('textlabel', createElement('textlabel').params).tier, 'diagram');
   const eom = createElement('eom');
   assert.equal(getElementMeta('eom', eom.params).tier, 'configurable');
   eom.params.modulate = true;
   assert.equal(getElementMeta('eom', eom.params).tier, 'simulated');
   assert.equal(registry.glassrod.surfaces(createElement('glassrod')).length, 4);
-  assert.equal(registry.microscope.surfaces(createElement('microscope')).length, 0);
 });
 
 test('glass rods refract through their faces and return an exiting ray to air', () => {
@@ -108,26 +106,8 @@ test('glass rods refract through their faces and return an exiting ray to air', 
   assert.ok(Math.abs(slope(ray.pts.at(-2), ray.pts.at(-1))) < 1e-6, 'parallel faces return the ray to its incident direction');
 });
 
-test('the microscope is scenery: it draws a body but never touches a ray', () => {
-  // It used to be a grey box hiding an objective and a tube lens, redundant
-  // with the standalone optics and impossible to aim because its surfaces
-  // were invisible. It is now a drawing behind the beam path.
-  const laser = createElement('laser', 0, 5);
-  laser.params.beamMode = 'line';
-  const microscope = createElement('microscope', 200, 0);
-  assert.equal(registry.microscope.background, true, 'drawn in the background layer');
-  assert.deepEqual(registry.microscope.surfaces(microscope), []);
-
-  const straight = traceAll([laser, microscope]).filter(d => d.type === 'path')[0];
-  assert.ok(straight.pts.at(-1).x > 1000, 'the ray sails past it');
-  assert.ok(Math.abs(straight.pts.at(-1).y - 5) < 1e-6, 'undeviated');
-
-  // It draws something recognizable, sized by one uniform control.
-  const small = registry.microscope.svg(microscope);
-  assert.match(small, /scale\(1\)/);
-  microscope.params.scale = 2;
-  assert.match(registry.microscope.svg(microscope), /scale\(2\)/);
-  assert.ok(getSize(microscope).w > getSize(createElement('microscope')).w, 'and grows with it');
+test('the microscope element is gone — it was a grey box hiding an unaimable objective and tube lens, redundant with the standalone optics', () => {
+  assert.equal(registry.microscope, undefined);
 });
 
 test('detectors report qualitative signal, spectrum, polarization, and spot span', () => {
