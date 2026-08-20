@@ -7,11 +7,12 @@ import {
   ramanShifts, ramanStokesWl, LINEAR_SIGNAL_KINDS, NONLINEAR_SIGNAL_KINDS,
   SPECIMEN_TYPES, MODIFIER_KINDS, EMISSION_ORDER,
   FLUOROPHORES, fluorophoreSpec, fluorophoreAbsorption,
-  displayViewsFor, resolvedDisplayView, displayActionUpdate,
+  displayViewsFor, resolvedDisplayView, displayActionUpdate, getSize,
 } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { traceAll, traceScene, detectorReading, specimenSignalWl, specimenIncidentWls } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
+import { wavelengthToColor } from '../sketch/js/util.js';
 import { C_MM_PER_NS, pulseMarkers, pulseOverlap } from '../sketch/js/pulses.js';
 
 const ch = (kind, over = {}) => ({ ...newSampleChannel(kind), ...over });
@@ -928,4 +929,58 @@ test('the custom fluorophore keeps the generic absorb-anything, emit-20-nm-longe
 
   const two = dyeEmission('tpef', 'custom', 800);
   assert.equal(two.peak, 420, 'half the excitation plus the offset');
+});
+
+// ---------------- specimen presentation ----------------
+
+test('the excitation spot is the only circle a specimen draws, and the toggle governs it', () => {
+  // Regression: the plain Sample drew a hardcoded circle at its centre on
+  // every render, in a fixed per-material colour, independent of both the
+  // toggle and the emission wavelength. Only the piezo holder behaved.
+  for (const type of ['sample', 'stage']) {
+    const el = createElement(type, 0, 0);
+    Object.assign(el.params, { specimenType: 'linear', channels: [ch('fluor')] });
+
+    el.params.showSignalSpot = false;
+    assert.doesNotMatch(registry[type].svg(el), /<circle/, `${type} draws no spot when the toggle is off`);
+
+    el.params.showSignalSpot = true;
+    assert.doesNotMatch(registry[type].svg(el), /<circle/,
+      `${type} draws no spot until the tracer reports a hit`);
+
+    // The canvas attaches the live hit; the spot then takes that signal's colour.
+    el._signalHitLocal = { x: 0, y: 0, wl: 620 };
+    const lit = registry[type].svg(el);
+    assert.match(lit, /<circle/, `${type} draws the spot once there is a hit`);
+    assert.ok(lit.includes(wavelengthToColor(620)), `${type} colours the spot by the emission wavelength`);
+
+    el._signalHitLocal = { x: 0, y: 0, wl: 480 };
+    assert.ok(registry[type].svg(el).includes(wavelengthToColor(480)), `${type} follows the wavelength`);
+  }
+});
+
+test('sample thickness is a presentation control that never moves the optical surface', () => {
+  for (const type of ['sample', 'stage']) {
+    const el = createElement(type, 0, 0);
+    const spec = registry[type].params.find(p => p.key === 'thickness');
+    assert.ok(spec, `${type} exposes a thickness`);
+    assert.equal(spec.appearance, true, 'and it lives in Label & appearance');
+    assert.equal(spec.def, 6);
+
+    const glassHeight = svg => Number((svg.match(/<rect [^>]*height="([\d.]+)"[^>]*fill="[^"]*"[^>]*stroke="#/) || [])[1]
+      ?? (svg.match(/height="([\d.]+)"/) || [])[1]);
+    const thin = glassHeight(registry[type].svg(el));
+    el.params.thickness = 16;
+    const thick = glassHeight(registry[type].svg(el));
+    assert.ok(thick > thin, `${type} glass should be drawn thicker, got ${thin} then ${thick}`);
+    assert.ok(getSize(el).h >= 16, 'and the element box grows to contain it');
+
+    // The traced surface is a thin sheet at the same place either way.
+    const surfaceOf = e => registry[type].surfaces(e).find(su => su.kind === 'attenuate' || su.kind === 'specimen');
+    el.params.thickness = 2;
+    const thinSurface = surfaceOf(el);
+    el.params.thickness = 20;
+    const thickSurface = surfaceOf(el);
+    assert.deepEqual(thinSurface, thickSurface, `${type} thickness must not move or change the optical surface`);
+  }
 });

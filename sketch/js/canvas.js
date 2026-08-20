@@ -638,14 +638,18 @@ function renderManual() {
   manualLayer.innerHTML = s;
 }
 
-// Highlights draw in their own layer, behind the grid holes and everything
-// else, so they read as background wash and never sit on top of a beam or
-// a device — see the layer order set up in mountCanvas().
+// Background elements draw in their own layer, behind the grid holes and
+// everything else, so they read as scenery and never sit on top of a beam or
+// a device — see the layer order set up in mountCanvas(). A registry entry
+// opts in with `background: true`; today that is the highlight wash and the
+// microscope body.
+const isBackground = el => registry[el.type]?.background === true;
+
 function renderHighlights() {
   let s = '';
   for (const el of state.elements) {
-    if (el.type !== 'highlight') continue;
-    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${registry.highlight.svg(el)}</g>`;
+    if (!isBackground(el)) continue;
+    s += `<g data-element-id="${esc(el.id)}" transform="translate(${el.x} ${el.y}) rotate(${el.rot || 0})" vector-effect="non-scaling-stroke">${registry[el.type].svg(el)}</g>`;
     s += labelSVG(el);
   }
   highlightLayer.innerHTML = s;
@@ -653,7 +657,7 @@ function renderHighlights() {
 
 function renderElements() {
   let s = '';
-  const elements = animatedVisualElements().filter(el => el.type !== 'highlight');
+  const elements = animatedVisualElements().filter(el => !isBackground(el));
   for (const el of elements) {
     if (el.type === 'display') s += displayCableSVG(el, elements);
   }
@@ -685,10 +689,8 @@ function focalPoints(el) {
       const s = Math.max(5, p.f1 + p.f2);
       return [{ x: -s / 2 + p.f1, y: 0 }, { x: -s / 2 - p.f1, y: 0 }, { x: s / 2 + p.f2, y: 0 }];
     }
-    case 'microscope': return [
-      { x: -25 - p.objectiveF, y: 0 }, { x: -25 + p.objectiveF, y: 0 },
-      { x: 25 - p.tubeF, y: 0 }, { x: 25 + p.tubeF, y: 0 },
-    ];
+    // The microscope used to hide an objective and a tube lens and marked
+    // their focal points here. It is scenery now, with no optics to mark.
     default: return null;
   }
 }
@@ -818,7 +820,7 @@ function hitElement(w) {
   // then fall back to highlights in the same order.
   const front = [], back = [];
   for (let i = state.elements.length - 1; i >= 0; i--) {
-    (state.elements[i].type === 'highlight' ? back : front).push(state.elements[i]);
+    (isBackground(state.elements[i]) ? back : front).push(state.elements[i]);
   }
   for (const el of [...front, ...back]) {
     const def = registry[el.type];

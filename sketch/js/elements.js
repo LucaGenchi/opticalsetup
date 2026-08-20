@@ -905,6 +905,7 @@ function sampleModeParams() {
       return type === 'linear' || type === 'nonlinear';
     } },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
+    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 1, max: 20, step: 0.5, def: 6, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
     { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
@@ -1016,11 +1017,32 @@ function stageSampleColor(params) {
 // The live excitation spot, coloured by the signal actually generated there
 // when the tracer reports one (canvas.js attaches _signalHitLocal), else by
 // the specimen's own material tint.
+export const microscopeScale = p => Math.min(3, Math.max(0.4, p?.scale ?? 1));
+
+// Lighten (amount > 0) or darken (amount < 0) a #rrggbb colour, so one body
+// colour can supply a whole instrument's shading.
+export function shadeHex(hex, amount) {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex || '');
+  if (!match) return hex || '#8b95a3';
+  const value = parseInt(match[1], 16);
+  const mix = channel => {
+    const target = amount >= 0 ? 255 : 0;
+    return Math.round(channel + (target - channel) * Math.abs(amount));
+  };
+  const r = mix((value >> 16) & 255), g = mix((value >> 8) & 255), b = mix(value & 255);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+// How thick the specimen glass is DRAWN. The tracer crosses it as a thin
+// sheet whatever this says, so it is presentation only — it never changes
+// where a ray meets the specimen or what it does there.
+export const sampleThickness = p => Math.min(20, Math.max(1, p?.thickness ?? 6));
+
 function signalSpotSVG(el) {
   const hit = el._signalHitLocal;
   if (!el.params.showSignalSpot || !hit) return '';
   const color = Number.isFinite(hit.wl) ? wavelengthToColor(hit.wl) : stageSampleColor(el.params);
-  return `<circle cx="${hit.x.toFixed(2)}" cy="${hit.y.toFixed(2)}" r="2.24" fill="${color}" opacity="0.75"/>`;
+  return `<circle cx="${hit.x.toFixed(2)}" cy="${hit.y.toFixed(2)}" r="1.4" fill="${color}" opacity="0.85"/>`;
 }
 
 function sampleSurfaces(el, h) {
@@ -2227,14 +2249,12 @@ export const registry = {
     // Horizontal at rot 0: the clear-aperture/long axis runs left-right
     // (local x), the beam crosses it top-to-bottom (local y).
     label: 'Sample', category: 'Microscopy', size: { w: 40, h: 14 },
-    size_: el => ({ w: (el.params.aperture || 34) + 6, h: 14 }),
+    size_: el => ({ w: (el.params.aperture || 34) + 6, h: Math.max(14, sampleThickness(el.params) + 8) }),
     params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true }, ...sampleModeParams()],
     svg(el) {
       const p = el.params;
-      const c = stageSampleColor(p);
-      const h = (p.aperture || 34) / 2;
-      return `<rect x="${-h}" y="-3" width="${2 * h}" height="6" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
-        `<circle cx="0" cy="0" r="4" fill="${c}" opacity="0.85"/>` +
+      const h = (p.aperture || 34) / 2, t = sampleThickness(p);
+      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         signalSpotSVG(el);
     },
     surfaces: el => sampleSurfaces(el, (el.params.aperture || 34) / 2),
@@ -2246,7 +2266,7 @@ export const registry = {
     // (local y). The mounting brackets grip the specimen's left/right short
     // edges accordingly.
     label: 'Sample on piezo stage', category: 'Microscopy', size: { w: 56, h: 22 },
-    size_: el => ({ w: (el.params.aperture || 50) + 30, h: 22 }),
+    size_: el => ({ w: (el.params.aperture || 50) + 30, h: Math.max(22, sampleThickness(el.params) + 14) }),
     params: [
       { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
       { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', options: [['static', 'Static'], ['xy', 'XY — long axis'], ['z', 'Z — depth'], ['sync', 'XYZ sync — raster']] },
@@ -2271,9 +2291,10 @@ export const registry = {
       // its left and right short edges and protrude 20% of the glass length
       // inward, leaving a 60%-of-length window between them for the beam.
       const windowX = clear * 0.6;
+      const t = sampleThickness(p);
       return `<path d="M ${-outer},-8 L ${-outer},6 L ${-windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<path d="M ${outer},-8 L ${outer},6 L ${windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<rect x="${-clear}" y="-3" width="${2 * clear}" height="5" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
+        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
@@ -2288,33 +2309,49 @@ export const registry = {
   },
 
   microscope: {
-    label: 'Microscope', category: 'Microscopy', size: { w: 74, h: 54 },
-    size_: el => ({ w: 74, h: (el.params.housingHeight || 50) + 4 }),
-    params: [
-      { key: 'objectiveF', label: 'Objective focal (mm)', type: 'number', min: 2, max: 100, step: 1, def: 10 },
-      { key: 'tubeF', label: 'Tube lens focal (mm)', type: 'number', min: 5, max: 300, step: 5, def: 40 },
-      { key: 'housingHeight', label: 'Housing height (mm)', type: 'number', min: 20, max: 180, step: 2, def: 50 },
-      { key: 'aperture', label: 'Clear aperture', type: 'optsize', min: 8, max: 150, def: 50.8 },
-    ],
-    svg(el) { return boxSVG(70, el.params.housingHeight || 50, '#e8eaee', '#7a828c', 'Microscope', '#3d444d', isFlipped(el)); },
-    surfaces(el) {
-      const x = 35, y = (el.params.housingHeight || 50) / 2;
-      const h = Math.min(y, (el.params.aperture || 50.8) / 2);
-      // A compact objective + tube-lens assembly. The default focal lengths
-      // add to the 50 mm separation, producing an afocal 4x beam expansion;
-      // changing either value gives the same live thin-lens behavior as the
-      // standalone optics.
-      return [
-        { x1: -25, y1: -h, x2: -25, y2: h, kind: 'lens', data: { f: el.params.objectiveF } },
-        { x1: 25, y1: -h, x2: 25, y2: h, kind: 'lens', data: { f: el.params.tubeF } },
-        { x1: -x, y1: -y, x2: x, y2: -y, kind: 'absorb' },
-        { x1: x, y1: y, x2: -x, y2: y, kind: 'absorb' },
-        { x1: -x, y1: -y, x2: -x, y2: -h, kind: 'absorb' },
-        { x1: -x, y1: h, x2: -x, y2: y, kind: 'absorb' },
-        { x1: x, y1: -y, x2: x, y2: -h, kind: 'absorb' },
-        { x1: x, y1: h, x2: x, y2: y, kind: 'absorb' },
-      ];
+    // Scenery, not optics. It used to be a grey box that hid an objective and
+    // a tube lens inside itself — redundant with the standalone Objective and
+    // lenses, and impossible to aim because its surfaces were invisible. It is
+    // now a recognizable microscope body drawn behind the beam path, so a
+    // figure can show the instrument the light belongs to without the drawing
+    // secretly bending anything. Its stage sits at local y = 0, which is where
+    // a specimen and the beam line up.
+    label: 'Microscope', category: 'Microscopy', background: true,
+    size_: el => {
+      const k = microscopeScale(el.params);
+      return { w: 96 * k, h: 128 * k };
     },
+    params: [
+      { key: 'scale', label: 'Size', type: 'number', min: 0.4, max: 3, step: 0.1, def: 1 },
+      { key: 'bodyColor', label: 'Body color', type: 'color', def: '#8b95a3' },
+    ],
+    svg(el) {
+      const k = microscopeScale(el.params);
+      const body = el.params.bodyColor || '#8b95a3';
+      const dark = shadeHex(body, -0.35), light = shadeHex(body, 0.18);
+      return `<g transform="scale(${k})" opacity="0.9">` +
+        // base foot, and the arm rising from it to carry the head
+        `<path d="M -34,58 L 34,58 Q 40,58 40,52 L 40,46 Q 40,40 34,40 L -34,40 Q -40,40 -40,46 L -40,52 Q -40,58 -34,58 Z" fill="${dark}"/>` +
+        `<path d="M 16,40 L 16,-4 Q 16,-30 30,-42 L 30,-14 Q 30,10 24,26 L 24,40 Z" fill="${body}"/>` +
+        // stage: the plane a specimen sits on, at y = 0
+        `<rect x="-32" y="-3" width="56" height="6" rx="1.5" fill="${dark}"/>` +
+        `<rect x="-18" y="-5.5" width="22" height="2.5" rx="0.8" fill="${light}" opacity="0.85"/>` +
+        // condenser and illuminator below the stage
+        `<path d="M -6,10 L 6,10 L 3,20 L -3,20 Z" fill="${body}"/>` +
+        `<rect x="-7" y="26" width="14" height="5" rx="1.5" fill="${dark}"/>` +
+        // nosepiece turret with two objectives pointing down at the stage
+        `<path d="M -20,-32 L 20,-32 Q 25,-32 25,-27 Q 25,-22 20,-22 L -20,-22 Q -25,-22 -25,-27 Q -25,-32 -20,-32 Z" fill="${body}"/>` +
+        `<path d="M -13,-22 L -5,-22 L -7,-9 L -11,-9 Z" fill="${dark}"/>` +
+        `<path d="M 6,-22 L 14,-22 L 12,-13 L 8,-13 Z" fill="${dark}" opacity="0.75"/>` +
+        // head and eyepiece
+        `<path d="M -8,-46 L 26,-46 Q 32,-46 32,-40 L 32,-34 Q 32,-32 26,-32 L -8,-32 Q -14,-32 -14,-39 Q -14,-46 -8,-46 Z" fill="${body}"/>` +
+        `<path d="M -30,-62 L -12,-52 L -8,-58 L -26,-68 Z" fill="${dark}"/>` +
+        `<rect x="-34" y="-70" width="10" height="5" rx="1.5" transform="rotate(29 -29 -67)" fill="${light}"/>` +
+        // focus knobs on the arm
+        `<circle cx="22" cy="22" r="6" fill="${dark}"/><circle cx="22" cy="22" r="2.4" fill="${light}"/>` +
+        `</g>`;
+    },
+    surfaces: () => [],
   },
 
   // ---------------- Imaging ----------------
@@ -2448,7 +2485,7 @@ export const registry = {
   },
 
   highlight: {
-    label: 'Highlight', category: 'Annotations',
+    label: 'Highlight', category: 'Annotations', background: true,
     size: el => ({ w: el.params.w, h: el.params.h }),
     // Painted in its own layer behind the grid holes, beams, and every other
     // element (see renderHighlights() in canvas.js) — purely a background
@@ -2636,7 +2673,7 @@ const DIRECT = {
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
-  microscope: { resize: { y: 'housingHeight' }, tune: { key: 'objectiveF', short: 'f obj' } },
+  microscope: { resize: { uniform: 'scale' } },
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
   figureframe: { resize: { x: 'w', y: 'h', anchor: true } },
   highlight: { resize: { x: 'w', y: 'h', anchor: true } },
@@ -2717,7 +2754,7 @@ const ELEMENT_HELP = {
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
-  microscope: 'Models a configurable objective, tube lens, clear aperture, and absorbing housing.',
+  microscope: 'A drawing of a microscope body, placed behind the optics so a figure can show the instrument the light belongs to. Its stage sits on the element position, where a specimen and the beam line up. It never touches traced rays.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
@@ -2726,7 +2763,7 @@ const ELEMENT_HELP = {
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
 };
 
-const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight']);
+const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'microscope']);
 const SHAPERS = new Set(['slm']);
 
 export function getElementMeta(type, params = {}, context = {}) {
@@ -2755,7 +2792,7 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (SHAPERS.has(type) && (!Array.isArray(params.layers) || params.layers.length === 0)) {
     tier = 'configurable';
     note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
-  } else if (type === 'arrowann' || type === 'textlabel' || type === 'figureframe' || type === 'highlight') {
+  } else if (DIAGRAM_ONLY.has(type)) {
     note = 'Annotations are intentionally visual and never change traced rays.';
   } else if (type === 'freeglass') {
     note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
