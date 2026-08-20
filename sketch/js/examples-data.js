@@ -2,21 +2,26 @@
 // Scans Examples/<Category>/*.json and lists them here so the Examples
 // dropdown can fetch them at runtime without a directory listing (this is a
 // static site). Re-run the generator after adding/removing/renaming a file
-// under Examples/.
+// under Examples/. Each entry's `slug` is a stable id used by the
+// `?example=<slug>` demo boot (see main.js) and by
+// tools/build-examples-pages.mjs's generated pages.
 export const examples = [
   {
     "group": null,
     "name": "OPTICAL SETUP — pulsed component panorama",
-    "path": "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json"
+    "path": "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json",
+    "slug": "optical-setup-pulsed-component-panorama"
   },
   {
     "group": "Optics Bench",
     "name": "Mach–Zehnder interferometer",
-    "path": "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json"
+    "path": "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
+    "slug": "mach-zehnder-interferometer"
   },
   {
     "group": "Optics Bench",
     "name": "Michelson interferometer",
-    "path": "../Examples/Optics%20Bench/Michelson%20interferometer.json"
+    "path": "../Examples/Optics%20Bench/Michelson%20interferometer.json",
+    "slug": "michelson-interferometer"
   }
 ];

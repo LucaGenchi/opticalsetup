@@ -78,6 +78,7 @@ function header(base) {
     <a class="brand" href="${base}/">${brandMark()}<span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
     <div class="header-actions">
       <a class="plain" href="${base}/wiki/">Wiki</a>
+      <a class="plain" href="${base}/example-setups/">Examples</a>
       <a class="plain" href="${base}/community/">Community</a>
       <a class="btn" href="${base}/sketch/">Open the canvas</a>
     </div>
@@ -256,21 +257,6 @@ ${header(base)}
 `;
 }
 
-async function updateSitemap(entries) {
-  const path = join(ROOT, 'sitemap.xml');
-  const urls = [
-    { loc: `${SITE_URL}/`, priority: '1.0', freq: 'monthly' },
-    { loc: `${SITE_URL}/sketch/`, priority: '0.9', freq: 'weekly' },
-    { loc: `${SITE_URL}/wiki/`, priority: '0.8', freq: 'weekly' },
-    ...entries.map(e => ({ loc: `${SITE_URL}/wiki/${e.type}/`, priority: '0.7', freq: 'monthly' })),
-  ];
-  const today = new Date().toISOString().slice(0, 10);
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    urls.map(u => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${u.freq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`).join('\n') +
-    `\n</urlset>\n`;
-  await writeFile(path, xml, 'utf-8');
-}
-
 async function writeWikiTypesManifest() {
   const types = wikiEntries.map(e => e.type).sort();
   const path = join(ROOT, 'sketch', 'js', 'wiki-types.js');
@@ -292,9 +278,8 @@ async function main() {
     await writeFile(join(pageDir, 'index.html'), pageHTML(entry, wikiEntries), 'utf-8');
   }
   await writeFile(join(dir, 'index.html'), hubHTML(wikiEntries), 'utf-8');
-  await updateSitemap(wikiEntries);
   await writeWikiTypesManifest();
-  console.log(`Built ${wikiEntries.length} wiki pages + index + sitemap.xml + wiki-types.js`);
+  console.log(`Built ${wikiEntries.length} wiki pages + index + wiki-types.js. Run tools/build-sitemap.mjs next to update sitemap.xml.`);
 }
 
 main().catch(err => { console.error(err); process.exitCode = 1; });

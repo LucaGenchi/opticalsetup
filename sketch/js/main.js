@@ -1024,9 +1024,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
+  const exampleSlug = params.get('example');
   const isTypeDemo = Boolean(demoType && registry[demoType] && !registry[demoType].hidden);
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
-  const isDemo = isTypeDemo || isCommunityDemo;
+  const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1071,6 +1073,22 @@ window.addEventListener('DOMContentLoaded', async () => {
       state.beams.push(...scene.beams);
     } catch (err) {
       console.error('Could not load community setup:', err);
+    }
+  } else if (isExampleDemo) {
+    // Example embed: same locked treatment as the community embed above —
+    // the whole curated setup is there to click through. Examples/*.json is
+    // the plain native save format (no {scene: ...} wrapper), same as
+    // loadExample() above.
+    try {
+      const entry = examples.find(e => e.slug === exampleSlug);
+      if (!entry) throw new Error('Unknown example');
+      const res = await fetch(entry.path);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      state.elements.push(...scene.elements);
+      state.beams.push(...scene.beams);
+    } catch (err) {
+      console.error('Could not load example:', err);
     }
   } else {
     let sharedScene = null;

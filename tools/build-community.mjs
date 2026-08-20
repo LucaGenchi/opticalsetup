@@ -101,6 +101,7 @@ function header(base) {
     <a class="brand" href="${base}/">${brandMark()}<span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
     <div class="header-actions">
       <a class="plain" href="${base}/wiki/">Wiki</a>
+      <a class="plain" href="${base}/example-setups/">Examples</a>
       <a class="plain" href="${base}/community/">Community</a>
       <a class="btn" href="${base}/sketch/">Open the canvas</a>
     </div>
