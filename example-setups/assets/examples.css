@@ -1,0 +1,13 @@
+/* Builds on wiki.css tokens/layout — link that stylesheet directly before
+   this one (see pageHTML/hubHTML in tools/build-examples-pages.mjs), same
+   convention as community/assets/community.css. */
+
+.example-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.example-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 18px 18px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--panel);
+}
+.example-card:hover { border-color: var(--accent); text-decoration: none; }
+.example-card .name { font-weight: 650; color: var(--text); font-size: 15.5px; }
+.example-card .snippet { color: var(--muted); font-size: 13px; line-height: 1.5; }

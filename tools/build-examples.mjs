@@ -12,6 +12,13 @@
 // parseSketch() the app itself uses to open a file), so a typo'd element
 // type or malformed file fails the build instead of silently 404ing or
 // crashing the dropdown at runtime.
+//
+// Each entry also gets a stable `slug`, the same slugify() convention
+// build-community.mjs uses. tools/build-examples-pages.mjs matches its
+// content entries against this slug, and the app's `?example=<slug>` demo
+// boot (see main.js) uses it to find which example to load into a locked
+// embed — so the slug is part of this manifest's public contract, not an
+// incidental field.
 
 import { readdir, readFile, writeFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +43,23 @@ function humanize(baseName) {
   return baseName.replace(/[_-]+/g, ' ').trim();
 }
 
+// Same convention as build-community.mjs's slugify/uniqueSlug, duplicated
+// rather than shared: each generator is a self-contained script in this
+// project, and neither depends on the other's internals.
+function slugify(name) {
+  return name
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    || 'example';
+}
+
+function uniqueSlug(base, taken) {
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+}
+
 async function main() {
   let listing;
   try {
@@ -46,6 +70,7 @@ async function main() {
   const categories = listing.filter(d => d.isDirectory()).map(d => d.name).sort((a, b) => a.localeCompare(b));
 
   const entries = [];
+  const takenSlugs = new Set();
 
   // Files directly under Examples/ (not inside a category subdirectory) are
   // standalone — no optgroup, listed before every category so they can never
@@ -64,7 +89,9 @@ async function main() {
     if (!parsed.elements.length) throw new Error(`Examples/${file}: sketch has no elements`);
     const name = humanize(file.replace(/\.json$/i, ''));
     const path = `../Examples/${encodeURIComponent(file)}`;
-    entries.push({ group: null, name, path });
+    const slug = uniqueSlug(slugify(name), takenSlugs);
+    takenSlugs.add(slug);
+    entries.push({ group: null, name, path, slug });
   }
 
   for (const category of categories) {
@@ -86,7 +113,9 @@ async function main() {
       }
       const name = humanize(file.replace(/\.json$/i, ''));
       const path = `../Examples/${encodeURIComponent(category)}/${encodeURIComponent(file)}`;
-      entries.push({ group: category, name, path });
+      const slug = uniqueSlug(slugify(name), takenSlugs);
+      takenSlugs.add(slug);
+      entries.push({ group: category, name, path, slug });
     }
   }
 
@@ -94,7 +123,9 @@ async function main() {
 // Scans Examples/<Category>/*.json and lists them here so the Examples
 // dropdown can fetch them at runtime without a directory listing (this is a
 // static site). Re-run the generator after adding/removing/renaming a file
-// under Examples/.
+// under Examples/. Each entry's \`slug\` is a stable id used by the
+// \`?example=<slug>\` demo boot (see main.js) and by
+// tools/build-examples-pages.mjs's generated pages.
 export const examples = ${JSON.stringify(entries, null, 2)};
 `;
   await writeFile(OUT_FILE, body, 'utf-8');
