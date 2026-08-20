@@ -2526,7 +2526,17 @@ export const registry = {
     params: [
       { key: 'length', label: 'Length (mm)', type: 'number', min: 30, max: 250, step: 5, def: 90 },
       { key: 'height', label: 'Height (mm)', type: 'number', min: 20, max: 120, step: 2, def: 55 },
-      { key: 'showCapillary', label: 'Show fiber line', type: 'checkbox', def: true },
+      { key: 'windowLeft', label: 'Window (left)', type: 'checkbox', def: false },
+      { key: 'windowRight', label: 'Window (right)', type: 'checkbox', def: false },
+      { key: 'extension', label: 'Extension tube', type: 'checkbox', def: false },
+      {
+        key: 'extensionSide', label: 'Extension side', type: 'select', def: 'right',
+        options: [['left', 'Left'], ['right', 'Right']], show: p => p.extension,
+      },
+      {
+        key: 'gasDirection', label: 'Gas port', type: 'select', def: 'out',
+        options: [['out', 'Outward'], ['in', 'Inward']],
+      },
       { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 90, step: 5, def: 10 },
     ],
     svg(el) {
@@ -2536,25 +2546,35 @@ export const registry = {
       const screwX = hl * 0.82, screwY = hh * 0.72;
       const winH = Math.min(20, p.height * 0.35);
       const gaugeR = Math.max(8, Math.min(15, p.height * 0.16));
+      const tubeLen = Math.max(16, hl * 0.4);
+      const tubeH = Math.min(24, p.height * 0.4);
       let s = '';
-      if (p.showCapillary) {
-        const ext = hl + Math.max(30, hl * 0.5);
-        s += `<line x1="${-ext}" y1="0" x2="${ext}" y2="0" stroke="#2b2f36" stroke-width="3" stroke-linecap="round"/>` +
-          `<line x1="${-ext}" y1="0" x2="${ext}" y2="0" stroke="#8fd8ff" stroke-width="1" stroke-linecap="round"/>`;
+      if (p.extension) {
+        const side = p.extensionSide === 'left' ? -1 : 1;
+        s += `<rect x="${side > 0 ? hl : -hl - tubeLen}" y="${-tubeH / 2}" width="${tubeLen}" height="${tubeH}" fill="#8d98a5" fill-opacity="${bodyOpacity}" stroke="#4d565f" stroke-width="1.5"/>`;
       }
       s += `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height}" rx="6" fill="#b8933f" fill-opacity="${bodyOpacity}" stroke="#7a5f28" stroke-width="2"/>` +
         `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height * 0.17}" rx="6" fill="#d9b968" fill-opacity="${(0.55 * bodyOpacity).toFixed(2)}"/>` +
         `<circle cx="${-screwX}" cy="${-screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
         `<circle cx="${screwX}" cy="${-screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
         `<circle cx="${-screwX}" cy="${screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
-        `<circle cx="${screwX}" cy="${screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
-        `<rect x="${-hl - 3}" y="${-winH / 2}" width="6" height="${winH}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>` +
-        `<rect x="${hl - 3}" y="${-winH / 2}" width="6" height="${winH}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>` +
-        `<circle cx="0" cy="${-hh}" r="${gaugeR}" fill="#fff" stroke="#4d565f" stroke-width="1.5"/>` +
+        `<circle cx="${screwX}" cy="${screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>`;
+      if (p.windowLeft) {
+        s += `<rect x="${-hl - 3}" y="${-winH / 2}" width="6" height="${winH}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
+      }
+      if (p.windowRight) {
+        s += `<rect x="${hl - 3}" y="${-winH / 2}" width="6" height="${winH}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
+      }
+      s += `<circle cx="0" cy="${-hh}" r="${gaugeR}" fill="#fff" stroke="#4d565f" stroke-width="1.5"/>` +
         `<line x1="0" y1="${-hh}" x2="${gaugeR * 0.4}" y2="${-hh - gaugeR * 0.55}" stroke="#c0392b" stroke-width="1.5" stroke-linecap="round"/>` +
-        `<rect x="-4" y="${-hh - gaugeR - 12}" width="8" height="10" fill="#6b7280" stroke="#3f4650" stroke-width="1"/>` +
-        `<line x1="0" y1="${-hh - gaugeR - 24}" x2="0" y2="${-hh - gaugeR - 12}" stroke="#1361fa" stroke-width="2.2"/>` +
-        `<polygon points="0,${-hh - gaugeR - 29} -4,${-hh - gaugeR - 22} 4,${-hh - gaugeR - 22}" fill="#1361fa"/>`;
+        `<rect x="-4" y="${-hh - gaugeR - 12}" width="8" height="10" fill="#6b7280" stroke="#3f4650" stroke-width="1"/>`;
+      if (p.gasDirection === 'in') {
+        s += `<line x1="0" y1="${-hh - gaugeR - 12}" x2="0" y2="${-hh - gaugeR - 24}" stroke="#1361fa" stroke-width="2.2"/>` +
+          `<polygon points="0,${-hh - gaugeR - 12} -4,${-hh - gaugeR - 19} 4,${-hh - gaugeR - 19}" fill="#1361fa"/>`;
+      } else {
+        s += `<line x1="0" y1="${-hh - gaugeR - 24}" x2="0" y2="${-hh - gaugeR - 12}" stroke="#1361fa" stroke-width="2.2"/>` +
+          `<polygon points="0,${-hh - gaugeR - 29} -4,${-hh - gaugeR - 22} 4,${-hh - gaugeR - 22}" fill="#1361fa"/>`;
+      }
       return s;
     },
     surfaces: () => [],

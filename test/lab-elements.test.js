@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry, categories, getElementMeta, getDirectManipulation } from '../sketch/js/elements.js';
 
+const GLASS_FILL = 'fill="#c9e4f5"';
+
 // ---------------- Lab elements category ----------------
 
 test('Lab elements is registered as the last category', () => {
@@ -19,13 +21,46 @@ test('the gas cell is a diagram-only element that never touches rays', () => {
   assert.equal(getElementMeta('gascell', cell.params).tier, 'diagram');
 });
 
-test('the gas cell fiber line only renders when showCapillary is enabled', () => {
+test('the gas cell end windows are off by default and toggle independently per side', () => {
   const cell = createElement('gascell', 0, 0);
-  cell.params.showCapillary = true;
-  assert.match(registry.gascell.svg(cell), /stroke="#8fd8ff"/);
+  assert.equal(cell.params.windowLeft, false);
+  assert.equal(cell.params.windowRight, false);
+  assert.doesNotMatch(registry.gascell.svg(cell), new RegExp(GLASS_FILL));
 
-  cell.params.showCapillary = false;
-  assert.doesNotMatch(registry.gascell.svg(cell), /stroke="#8fd8ff"/);
+  cell.params.windowLeft = true;
+  const leftOnly = registry.gascell.svg(cell);
+  assert.match(leftOnly, new RegExp(GLASS_FILL));
+  assert.equal((leftOnly.match(new RegExp(GLASS_FILL, 'g')) || []).length, 1);
+
+  cell.params.windowRight = true;
+  const both = registry.gascell.svg(cell);
+  assert.equal((both.match(new RegExp(GLASS_FILL, 'g')) || []).length, 2);
+});
+
+test('the gas cell extension tube is off by default and draws on the chosen side only', () => {
+  const cell = createElement('gascell', 0, 0);
+  assert.equal(cell.params.extension, false);
+  assert.equal(cell.params.extensionSide, 'right');
+  assert.doesNotMatch(registry.gascell.svg(cell), /fill="#8d98a5"/);
+
+  cell.params.extension = true;
+  const rightSvg = registry.gascell.svg(cell);
+  assert.match(rightSvg, /<rect x="45"[^>]*fill="#8d98a5"/);
+
+  cell.params.extensionSide = 'left';
+  const leftSvg = registry.gascell.svg(cell);
+  assert.match(leftSvg, /<rect x="-[\d.]+"[^>]*fill="#8d98a5"/);
+});
+
+test('the gas port arrow flips direction between outward and inward', () => {
+  const cell = createElement('gascell', 0, 0);
+  assert.equal(cell.params.gasDirection, 'out');
+  const out = registry.gascell.svg(cell);
+  assert.match(out, /<line x1="0" y1="-60.3" x2="0" y2="-48.3"/);
+
+  cell.params.gasDirection = 'in';
+  const inward = registry.gascell.svg(cell);
+  assert.match(inward, /<line x1="0" y1="-48.3" x2="0" y2="-60.3"/);
 });
 
 test('the gas cell transparency slider fades the housing fill without touching the strokes', () => {
