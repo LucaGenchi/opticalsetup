@@ -52,15 +52,21 @@ test('the gas cell extension tube is off by default and draws on the chosen side
   assert.match(leftSvg, /<rect x="-[\d.]+"[^>]*fill="#8d98a5"/);
 });
 
+test('the gas port sits off-center, clear of the pressure gauge and rotate handle', () => {
+  const cell = createElement('gascell', 0, 0);
+  const svg = registry.gascell.svg(cell);
+  assert.match(svg, /<line x1="22.5"/, 'the port should be offset toward 3/4 width, not centered at x=0');
+});
+
 test('the gas port arrow flips direction between outward and inward', () => {
   const cell = createElement('gascell', 0, 0);
   assert.equal(cell.params.gasDirection, 'out');
   const out = registry.gascell.svg(cell);
-  assert.match(out, /<line x1="0" y1="-60.3" x2="0" y2="-48.3"/);
+  assert.match(out, /<line x1="22.5" y1="-49.5" x2="22.5" y2="-37.5"/);
 
   cell.params.gasDirection = 'in';
   const inward = registry.gascell.svg(cell);
-  assert.match(inward, /<line x1="0" y1="-48.3" x2="0" y2="-60.3"/);
+  assert.match(inward, /<line x1="22.5" y1="-37.5" x2="22.5" y2="-49.5"/);
 });
 
 test('the gas cell transparency slider fades the housing fill without touching the strokes', () => {

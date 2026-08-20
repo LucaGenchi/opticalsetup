@@ -2565,15 +2565,16 @@ export const registry = {
       if (p.windowRight) {
         s += `<rect x="${hl - 3}" y="${-winH / 2}" width="6" height="${winH}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
       }
+      const portX = hl * 0.5;
       s += `<circle cx="0" cy="${-hh}" r="${gaugeR}" fill="#fff" stroke="#4d565f" stroke-width="1.5"/>` +
         `<line x1="0" y1="${-hh}" x2="${gaugeR * 0.4}" y2="${-hh - gaugeR * 0.55}" stroke="#c0392b" stroke-width="1.5" stroke-linecap="round"/>` +
-        `<rect x="-4" y="${-hh - gaugeR - 12}" width="8" height="10" fill="#6b7280" stroke="#3f4650" stroke-width="1"/>`;
+        `<rect x="${portX - 4}" y="${-hh - 10}" width="8" height="10" fill="#6b7280" stroke="#3f4650" stroke-width="1"/>`;
       if (p.gasDirection === 'in') {
-        s += `<line x1="0" y1="${-hh - gaugeR - 12}" x2="0" y2="${-hh - gaugeR - 24}" stroke="#1361fa" stroke-width="2.2"/>` +
-          `<polygon points="0,${-hh - gaugeR - 12} -4,${-hh - gaugeR - 19} 4,${-hh - gaugeR - 19}" fill="#1361fa"/>`;
+        s += `<line x1="${portX}" y1="${-hh - 10}" x2="${portX}" y2="${-hh - 22}" stroke="#1361fa" stroke-width="2.2"/>` +
+          `<polygon points="${portX},${-hh - 10} ${portX - 4},${-hh - 17} ${portX + 4},${-hh - 17}" fill="#1361fa"/>`;
       } else {
-        s += `<line x1="0" y1="${-hh - gaugeR - 24}" x2="0" y2="${-hh - gaugeR - 12}" stroke="#1361fa" stroke-width="2.2"/>` +
-          `<polygon points="0,${-hh - gaugeR - 29} -4,${-hh - gaugeR - 22} 4,${-hh - gaugeR - 22}" fill="#1361fa"/>`;
+        s += `<line x1="${portX}" y1="${-hh - 22}" x2="${portX}" y2="${-hh - 10}" stroke="#1361fa" stroke-width="2.2"/>` +
+          `<polygon points="${portX},${-hh - 27} ${portX - 4},${-hh - 20} ${portX + 4},${-hh - 20}" fill="#1361fa"/>`;
       }
       return s;
     },
