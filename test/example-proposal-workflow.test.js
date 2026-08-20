@@ -13,7 +13,7 @@ const scene = {
   version: 1,
   elements: [
     {
-      id: 'e-source', type: 'laser', x: 80, y: 120, rot: 0, label: 'proposal source', showLabel: true,
+      id: 'e-source', type: 'cwlaser', x: 80, y: 120, rot: 0, label: 'proposal source', showLabel: true,
       params: { wavelength: 532 },
     },
     {

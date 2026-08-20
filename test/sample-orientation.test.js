@@ -21,7 +21,7 @@ test('sample and stage are wider than tall at rot 0 — the new horizontal basel
 });
 
 test('at rot 0 the specimen surface runs left-right and does not cross a standard left-to-right beam', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const sample = createElement('sample', 150, 0);
   sample.params.transmission = 0.5;
   const detector = createElement('detector', 300, 0);
@@ -33,7 +33,7 @@ test('at rot 0 the specimen surface runs left-right and does not cross a standar
 });
 
 test('rotating 90° restores the familiar beam-crossing behavior', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const sample = createElement('sample', 150, 0);
   sample.rot = 90;
   sample.params.transmission = 0.5;

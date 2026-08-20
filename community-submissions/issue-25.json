@@ -11,7 +11,7 @@
     "issue": "https://github.com/LucaGenchi/optics-sketch/issues/25",
     "submittedAt": "2026-07-26T15:08:35.000Z"
   },
-  "sceneSha256": "90d0f86f9cb714b5c878fdca3974583c7455249ece684f926a14f6bfd9e4c3d7",
+  "sceneSha256": "2c09959ae22d4a8bf2cd9482a66a97cac75a0e3576d949d4c7f572d055370916",
   "scene": {
     "app": "optics2d",
     "version": 1,
@@ -60,7 +60,7 @@
       },
       {
         "id": "blue-450",
-        "type": "laser",
+        "type": "cwlaser",
         "x": 120,
         "y": 220,
         "rot": 0,
@@ -71,20 +71,14 @@
           "wavelength": 450,
           "beamMode": "beam",
           "beamWidth": 10,
-          "bwMode": "mono",
-          "bandwidth": 40,
           "pol": 0,
-          "temporalMode": "cw",
-          "repRateMHz": 80,
-          "pulseWidthFs": 100,
-          "pulsePhaseNs": 0,
           "autoColor": true,
           "color": "#e02020"
         }
       },
       {
         "id": "ir-1064",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 350,
         "y": 430,
         "rot": 270,
@@ -95,15 +89,14 @@
           "wavelength": 1064,
           "beamMode": "beam",
           "beamWidth": 4,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 1,
           "pulseWidthFs": 5000000,
           "pulsePhaseNs": 0,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -178,7 +171,7 @@
         "type": "stage",
         "x": 800,
         "y": 350,
-        "rot": 0,
+        "rot": 90,
         "label": "Engraving work plane",
         "showLabel": true,
         "labelPos": "b",

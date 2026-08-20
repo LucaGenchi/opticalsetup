@@ -11,7 +11,7 @@
     "issue": "https://github.com/LucaGenchi/optics-sketch/issues/33",
     "submittedAt": "2026-07-29T15:04:26.000Z"
   },
-  "sceneSha256": "a16825dec3712bdcda3d5d24ec4e59024a3779f19f2640cbea6cda6f22f62a29",
+  "sceneSha256": "9405ad1e3ed466ba38ee2bbb2798a3463ce78e50b1bbaabf333f9d828e1af2b2",
   "scene": {
     "app": "optics2d",
     "version": 1,
@@ -46,7 +46,7 @@
       },
       {
         "id": "eega2fx6",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 105.33239818471611,
         "y": 125.51499550681008,
         "rot": 0,
@@ -57,15 +57,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 13.5,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 80,
           "pulseWidthFs": 100,
           "pulsePhaseNs": 0,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -170,7 +169,7 @@
       },
       {
         "id": "eoriz5x9",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 335.57184741318247,
         "y": 260.53373281357784,
         "rot": 270,
@@ -181,15 +180,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 13,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 20,
           "pulseWidthFs": 120,
           "pulsePhaseNs": 1.6,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -297,7 +295,7 @@
       },
       {
         "id": "ealoa8hz",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 800.5718474131825,
         "y": 134.33429992916626,
         "rot": 90,
@@ -308,15 +306,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 12.5,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 20,
           "pulseWidthFs": 120,
           "pulsePhaseNs": 4.800000000000001,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -351,7 +348,7 @@
       },
       {
         "id": "ef7fg21z",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 1060.0670328031101,
         "y": 121.704558603755,
         "rot": 180,
@@ -362,15 +359,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 8.5,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 20,
           "pulseWidthFs": 120,
           "pulsePhaseNs": 6.4,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -458,7 +454,7 @@
       },
       {
         "id": "el9jqbcq",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 1174.5274027744445,
         "y": 265.19464039588564,
         "rot": 287.81888891452286,
@@ -469,15 +465,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 11.5,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 20,
           "pulseWidthFs": 120,
           "pulsePhaseNs": 8,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -524,7 +519,7 @@
       },
       {
         "id": "edazsscr",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 1386.143694826365,
         "y": 148.05863784554552,
         "rot": 90,
@@ -535,15 +530,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 14.5,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 20,
           "pulseWidthFs": 120,
           "pulsePhaseNs": 11.200000000000001,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -610,7 +604,7 @@
       },
       {
         "id": "e72y9ybh",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 323,
         "y": 575,
         "rot": 0,
@@ -621,15 +615,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 7,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 20,
           "pulseWidthFs": 120,
           "pulsePhaseNs": 12.8,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -762,7 +755,7 @@
       },
       {
         "id": "eplwudba",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 627,
         "y": 425,
         "rot": 180,
@@ -773,15 +766,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 9,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 20,
           "pulseWidthFs": 120,
           "pulsePhaseNs": 14.4,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -951,7 +943,7 @@
       },
       {
         "id": "e0cr5gu6",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 965,
         "y": 378,
         "rot": 90,
@@ -962,15 +954,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 5.5,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 20,
           "pulseWidthFs": 120,
           "pulsePhaseNs": 17.6,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -1001,7 +992,7 @@
       },
       {
         "id": "e9xej9i6",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 1175,
         "y": 622,
         "rot": 270,
@@ -1012,15 +1003,14 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 11.5,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 20,
           "pulseWidthFs": 120,
           "pulsePhaseNs": 19.200000000000003,
           "autoColor": true,
-          "color": "#e02020"
+          "color": "#e02020",
+          "transformLimited": false
         }
       },
       {
@@ -1151,16 +1141,12 @@
         "showLabel": true,
         "labelPos": "b",
         "params": {
-          "wavelength": 650,
           "scMin": 430,
           "scMax": 870,
           "beamMode": "line",
           "beamWidth": 8,
-          "bwMode": "sc",
           "pol": 0,
-          "temporalMode": "pulsed",
           "repRateMHz": 80,
-          "pulseWidthFs": 100,
           "pulsePhaseNs": 0,
           "autoColor": true,
           "color": "#e02020"

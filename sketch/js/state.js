@@ -113,8 +113,45 @@ function normalizeParam(value, spec) {
   return value ?? spec.def;
 }
 
+// The old all-in-one `laser` split into three types whose behavior used to be
+// selected by params. A saved sketch (or a shared link, which encodes the
+// whole scene in a URL) still names the old type, so it is routed here to
+// whichever of the three now describes what it was configured to do. This is
+// a type-level rename, so it has to happen before the registry lookup below.
+function migrateLegacySourceType(raw) {
+  if (raw.type !== 'laser') return raw.type;
+  const p = record(raw.params) ? raw.params : {};
+  if (p.bwMode === 'sc') return 'sclaser';
+  return p.temporalMode === 'pulsed' ? 'pulsedlaser' : 'cwlaser';
+}
+
+// Params the old laser carried that the type it became no longer has. Runs
+// only for elements literally saved as `laser`, never for the new types, so
+// it cannot disturb a sketch written by the current format.
+//
+// `bwMode` is the one that matters: it used to decide whether `bandwidth`
+// counted at all, and a monochromatic laser still stored whatever unused
+// bandwidth sat in the field. Dropping bwMode without folding it in would
+// hand that stale number to a source that now always honours it.
+function migrateLegacyLaserParams(rawParams, migratedType) {
+  const p = { ...rawParams };
+  if (migratedType === 'pulsedlaser') {
+    p.transformLimited = p.transformLimited === true; // the old default was off
+    if (!p.transformLimited && p.bwMode !== 'band') p.bandwidth = 0;
+  }
+  if (migratedType === 'sclaser') {
+    // A plain laser set to "Supercontinuum (white)" had no endpoint fields of
+    // its own; the tracer gave it this fixed band.
+    if (!finite(p.scMin)) p.scMin = 430;
+    if (!finite(p.scMax)) p.scMax = 870;
+  }
+  return p;
+}
+
 function normalizeElement(raw, definitions, used) {
   if (!record(raw) || typeof raw.type !== 'string') throw new Error('Sketch contains an invalid element');
+  const wasLegacyLaser = raw.type === 'laser';
+  raw = { ...raw, type: migrateLegacySourceType(raw) };
   const def = definitions && Object.hasOwn(definitions, raw.type) ? definitions[raw.type] : null;
   if (definitions && !def) throw new Error(`Sketch uses an unknown element type: ${raw.type}`);
   if (!finite(raw.x) || !finite(raw.y)) throw new Error(`Element ${raw.type} has invalid coordinates`);
@@ -127,6 +164,9 @@ function normalizeElement(raw, definitions, used) {
   let rawParams = record(raw.params) ? raw.params : {};
   if (raw.type === 'objective') {
     rawParams = migrateLegacyObjectiveParams(rawParams);
+  }
+  if (wasLegacyLaser) {
+    rawParams = migrateLegacyLaserParams(rawParams, raw.type);
   }
   if (def) {
     for (const spec of def.params || []) params[spec.key] = normalizeParam(rawParams[spec.key], spec);

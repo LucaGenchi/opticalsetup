@@ -19,7 +19,19 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://opticalsetup.com/wiki/laser/</loc>
+    <loc>https://opticalsetup.com/wiki/cwlaser/</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/wiki/pulsedlaser/</loc>
+    <lastmod>2026-08-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/wiki/sclaser/</loc>
     <lastmod>2026-08-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

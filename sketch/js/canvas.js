@@ -501,7 +501,7 @@ function announcePulseRepresentation(nowCw) {
   lastCwFallback = nowCw;
   if (firstObservation) return; // the initial state is not a switch
   const source = state.elements.find(el =>
-    (el.type === 'laser' || el.type === 'sclaser') && el.params.temporalMode === 'pulsed');
+    (el.type === 'pulsedlaser' || el.type === 'sclaser') && el.params.showPulse !== false);
   if (!source) return;
   const v = state.view;
   document.dispatchEvent(new CustomEvent('optics:pulserepresentation', {

@@ -9,7 +9,7 @@
 import { distToSegment, esc, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
 import { detectorReading, probeAt } from './raytrace.js';
-import { fwhmToSigma, spectrumSamples } from './spectrum.js';
+import { fwhmToSigma, spectrumSamples, transformLimitedBandwidthNm } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
@@ -1129,70 +1129,162 @@ export function galvoAngleAt(params = {}, timeSeconds = 0) {
   return Math.min(45, Math.max(-45, center + amplitude * wave));
 }
 
+// ---- shared laser-source building blocks --------------------------------
+// CW Laser, Pulsed Laser and Supercontinuum laser are three separate palette
+// entries over one emission contract, rather than a single element with an
+// "Emission" switch. Folding them together meant the icon could disagree with
+// the configured behavior (a laser drawn as a plain box while set to emit a
+// supercontinuum), and buried each source's real controls behind others that
+// did not apply. They still share beam geometry, polarization, color and the
+// (wl, bw, spec) spectrum resolved by resolveSourceSpectrum().
+const beamShapeParams = beamWidthDef => [
+  { key: 'beamMode', label: 'Beam style', type: 'select', def: 'beam', options: [['line', 'Simple line'], ['beam', 'Beam with size']] },
+  { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: beamWidthDef, show: p => p.beamMode === 'beam' },
+];
+
+const POL_PARAM = { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };
+
+// Repetition rate and emission offset are the pulse-train timing both pulsed
+// sources expose. Pulse duration is not shared: it is a property of the laser
+// line itself, while a supercontinuum's duration is set by whatever generated
+// it upstream, so the SC source does not claim to know it.
+const pulseTrainParams = () => [
+  { key: 'repRateMHz', label: 'Repetition rate (MHz)', type: 'number', min: 0.001, max: 1000000, step: 1, def: 80 },
+  { key: 'pulsePhaseNs', label: 'Emission offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0 },
+];
+
+// Purely a rendering choice: the pulse train stays fully simulated when this
+// is off — it still drives the time-scale picker and still gates two-colour
+// temporal overlap — only the travelling pulse packets stop being drawn, so
+// the beam reads as a steady CW line.
+const SHOW_PULSE_PARAM = { key: 'showPulse', label: 'Show pulse dynamics', type: 'checkbox', def: true };
+
+// `temporalMode` stopped being a user-facing switch when the sources split —
+// the element type is the answer now — but the tracer, the time-scale picker
+// and the pulse animation all still read it, so each type pins its own value
+// as a single-option, never-rendered param that survives save/load intact.
+const pinnedParam = (key, value) => ({ key, label: key, type: 'select', def: value, options: [[value, value]], show: () => false });
+
+// Exit aperture half-height: tracks the configured beam width so a wide beam
+// visibly leaves a wide port.
+function laserAperture(el) {
+  const hh = laserH(el) / 2;
+  return el.params.beamMode === 'beam' ? Math.min(hh - 4, el.params.beamWidth / 2 + 3) : 6;
+}
+
+function laserSource(el) {
+  const p = el.params;
+  if (p.beamMode === 'beam') {
+    // sample rays across the beam width; adjacent samples with an identical
+    // interaction history are filled as an envelope strip, so a lenslet
+    // array splits the beam into visibly separate focusing beamlets
+    const K = 25, w = p.beamWidth;
+    const out = [];
+    for (let i = 0; i < K; i++) out.push({ x: 52, y: -w / 2 + w * i / (K - 1), dx: 1, dy: 0, sample: i });
+    return out;
+  }
+  return [{ x: 52, y: 0, dx: 1, dy: 0 }];
+}
+
+// Peak power of a mode-locked pulse train: the pulse energy (average power
+// spread over one repetition period) delivered within a single pulse, scaled
+// by the shape factor relating an envelope's FWHM duration to its true peak.
+const PEAK_SHAPE_FACTOR = { gauss: 0.9394, sech2: 0.8815 };
+
+export function peakPowerW(params = {}) {
+  const avg = Number(params.avgPowerW);
+  const repHz = Number(params.repRateMHz) * 1e6;
+  const tau = Number(params.pulseWidthFs) * 1e-15;
+  if (!(avg > 0) || !(repHz > 0) || !(tau > 0)) return null;
+  const shape = PEAK_SHAPE_FACTOR[params.pulseShape] ?? PEAK_SHAPE_FACTOR.gauss;
+  return shape * (avg / repHz) / tau;
+}
+
+const POWER_UNITS = [[1e12, 'TW'], [1e9, 'GW'], [1e6, 'MW'], [1e3, 'kW'], [1, 'W'], [1e-3, 'mW'], [1e-6, 'µW']];
+
+export function formatPower(watts) {
+  if (!(watts > 0)) return '—';
+  for (const [scale, unit] of POWER_UNITS) {
+    if (watts >= scale) return `${Number((watts / scale).toPrecision(3))} ${unit}`;
+  }
+  return `${Number((watts * 1e9).toPrecision(3))} nW`;
+}
+
 export const registry = {
 
   // ---------------- Sources ----------------
-  laser: {
-    label: 'Laser', category: 'Sources', paletteOrder: 0, size: { w: 104, h: 38 },
+  cwlaser: {
+    label: 'CW Laser', category: 'Sources', paletteOrder: 0, size: { w: 104, h: 38 },
+    aliases: ['laser', 'continuous wave laser', 'cw laser', 'diode laser', 'helium neon', 'he-ne'],
     snapPt: { x: 52, y: 0 }, // beam exit aperture
     size_: el => ({ w: 104, h: laserH(el) + 4 }),
     params: [
       P.wavelength,
-      { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
-      { key: 'beamMode', label: 'Beam style', type: 'select', def: 'beam', options: [['line', 'Simple line'], ['beam', 'Beam with size']] },
-      { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: 5, show: p => p.beamMode === 'beam' },
-      { key: 'temporalMode', label: 'Emission', type: 'select', def: 'cw', options: [['cw', 'Continuous wave'], ['pulsed', 'Pulsed']] },
-      { key: 'repRateMHz', label: 'Repetition rate (MHz)', type: 'number', min: 0.001, max: 1000000, step: 1, def: 80, show: p => p.temporalMode === 'pulsed' },
-      { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 100, show: p => p.temporalMode === 'pulsed' },
-      {
-        key: 'transformLimited', label: 'Transform-limited (time–bandwidth product)', type: 'checkbox', def: false,
-        show: p => p.temporalMode === 'pulsed',
-      },
-      {
-        key: 'pulseShape', label: 'Pulse shape', type: 'select', def: 'gauss',
-        options: [['gauss', 'Gaussian'], ['sech2', 'Sech²']],
-        show: p => p.temporalMode === 'pulsed' && p.transformLimited,
-      },
-      { key: 'pulsePhaseNs', label: 'Emission offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.temporalMode === 'pulsed' },
-      {
-        key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono',
-        options: [['mono', 'Monochromatic'], ['band', 'Broadband'], ['sc', 'Supercontinuum (white)']],
-        show: p => !(p.temporalMode === 'pulsed' && p.transformLimited),
-      },
-      {
-        // Also editable while transform-limited: entering a bandwidth there
-        // recomputes pulse duration (and vice versa) via the time–bandwidth
-        // product — see inspector.js's applyInput(). bwMode is irrelevant
-        // (and hidden) in that state, so it isn't part of this show check.
-        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 0.001, max: 400, step: 0.5, def: 40,
-        show: p => p.bwMode === 'band' || (p.temporalMode === 'pulsed' && p.transformLimited),
-      },
-      { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 },
+      { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
+      ...beamShapeParams(3),
+      POL_PARAM,
       P.autoColor, P.color,
+      pinnedParam('temporalMode', 'cw'),
     ],
     svg(el) {
-      const h = laserH(el), hh = h / 2;
-      const ap = el.params.beamMode === 'beam' ? Math.min(hh - 4, el.params.beamWidth / 2 + 3) : 6;
-      const pulsed = el.params.temporalMode === 'pulsed';
+      const h = laserH(el), hh = h / 2, ap = laserAperture(el);
       return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
-        `<text x="0" y="${pulsed ? -3 : 0}" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="${pulsed ? 10 : 12}" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text>` +
-        (pulsed ? `<g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>` : '') +
+        `<text x="0" y="0" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text>` +
         `<rect x="46" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`;
     },
     surfaces: el => rectAbsorb(92, laserH(el)),
-    source(el) {
-      const p = el.params;
-      if (p.beamMode === 'beam') {
-        // sample rays across the beam width; adjacent samples with an identical
-        // interaction history are filled as an envelope strip, so a lenslet
-        // array splits the beam into visibly separate focusing beamlets
-        const K = 25, w = p.beamWidth;
-        const out = [];
-        for (let i = 0; i < K; i++) out.push({ x: 52, y: -w / 2 + w * i / (K - 1), dx: 1, dy: 0, sample: i });
-        return out;
-      }
-      return [{ x: 52, y: 0, dx: 1, dy: 0 }];
+    source: laserSource,
+  },
+
+  pulsedlaser: {
+    label: 'Pulsed Laser', category: 'Sources', paletteOrder: 1, size: { w: 104, h: 38 },
+    aliases: ['pulsed laser', 'ultrafast laser', 'femtosecond laser', 'mode-locked laser', 'fs laser', 'ti:sapphire'],
+    snapPt: { x: 52, y: 0 },
+    size_: el => ({ w: 104, h: laserH(el) + 4 }),
+    params: [
+      P.wavelength,
+      { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
+      ...beamShapeParams(3),
+      ...pulseTrainParams(),
+      { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150 },
+      { key: 'transformLimited', label: 'Transform-limited (time–bandwidth product)', type: 'checkbox', def: true },
+      {
+        // The envelope shape matters either way: it sets the time–bandwidth
+        // constant while transform-limited, and the peak-power shape factor
+        // always.
+        key: 'pulseShape', label: 'Pulse shape', type: 'select', def: 'gauss',
+        options: [['gauss', 'Gaussian'], ['sech2', 'Sech²']],
+      },
+      // Bandwidth is one row that changes hands. While transform-limited it is
+      // an output — the minimum width this duration and shape allow — so it is
+      // shown read-only next to Peak power. Switching that off hands the field
+      // to the user, which is how a chirped pulse is described: a spectrum
+      // wider than its duration requires. 0 nm stays a deliberate, valid
+      // setting — an idealized monochromatic pulse train.
+      {
+        key: 'bandwidthTL', label: 'Bandwidth (nm)', type: 'readout',
+        readout: p => String(Number(transformLimitedBandwidthNm(p.pulseWidthFs, p.wavelength, p.pulseShape).toPrecision(4))),
+        show: p => p.transformLimited,
+      },
+      {
+        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 0, max: 400, step: 0.5, def: 5,
+        show: p => !p.transformLimited,
+      },
+      POL_PARAM,
+      P.autoColor, P.color,
+      { key: 'peakPower', label: 'Peak power', type: 'readout', readout: p => formatPower(peakPowerW(p)) },
+      SHOW_PULSE_PARAM,
+      pinnedParam('temporalMode', 'pulsed'),
+    ],
+    svg(el) {
+      const h = laserH(el), hh = h / 2, ap = laserAperture(el);
+      return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
+        `<text x="0" y="-3" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text>` +
+        `<g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>` +
+        `<rect x="46" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`;
     },
+    surfaces: el => rectAbsorb(92, laserH(el)),
+    source: laserSource,
   },
 
   // Unified replacement for the old LED + Light source: one isotropic point
@@ -1200,7 +1292,7 @@ export const registry = {
   // specimen's range) unless a nearby lens / objective / fiber tip collects
   // them, which keeps 360° emission from flooding the canvas.
   pointsource: {
-    label: 'Point source', category: 'Sources', paletteOrder: 2, size: { w: 30, h: 30 },
+    label: 'Point source', category: 'Sources', paletteOrder: 3, size: { w: 30, h: 30 },
     aliases: ['led', 'lamp', 'light source', 'bulb', 'isotropic source', 'point emitter'],
     size_: el => ({ w: 30 * (el.params.displayScale || 1), h: 30 * (el.params.displayScale || 1) }),
     params: [
@@ -2650,31 +2742,32 @@ registry.lensc = {
   params: registry.lens.params.map(p => (p.key === 'f' ? { ...p, def: -100 } : p)),
 };
 
-// A first-class registry type reuses the Laser physics contract while making
-// the broadband source discoverable. Legacy lasers with bwMode="sc" continue
-// to load as before.
+// The third laser source. Its spectrum is a flat top between two endpoints
+// rather than a line, so it replaces wavelength with a range and defaults to
+// a fixed broadband white instead of a colour derived from a centroid λ that
+// no longer means much once the band is hundreds of nm wide.
 registry.sclaser = {
-  ...registry.laser,
+  ...registry.pulsedlaser,
   label: 'Supercontinuum laser',
-  paletteOrder: 1,
+  paletteOrder: 2,
   aliases: ['super continuum', 'white laser', 'broadband pulsed source', 'sc laser'],
   params: [
-    { ...P.wavelength, def: 650, show: () => false },
-    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200, max: 11999, step: 10, def: 430 },
-    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number', min: 201, max: 12000, step: 10, def: 870 },
-    { key: 'beamMode', label: 'Beam style', type: 'select', def: 'beam', options: [['line', 'Simple line'], ['beam', 'Beam with size']] },
-    { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: 8, show: p => p.beamMode === 'beam' },
-    { key: 'bwMode', label: 'Spectrum', type: 'select', def: 'sc', options: [['sc', 'Supercontinuum (white)']], show: () => false },
-    { key: 'pol', label: 'Polarization (°)', type: 'number', min: 0, max: 180, step: 5, def: 0 },
-    { key: 'temporalMode', label: 'Emission', type: 'select', def: 'pulsed', options: [['cw', 'Continuous wave'], ['pulsed', 'Pulsed']] },
-    { key: 'repRateMHz', label: 'Repetition rate (MHz)', type: 'number', min: 0.001, max: 1000000, step: 1, def: 80, show: p => p.temporalMode === 'pulsed' },
-    { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 100, show: p => p.temporalMode === 'pulsed' },
-    { key: 'pulsePhaseNs', label: 'Emission offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.temporalMode === 'pulsed' },
-    P.autoColor, P.color,
+    { ...P.wavelength, def: 500, show: () => false },
+    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200, max: 11999, step: 10, def: 300 },
+    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number', min: 201, max: 12000, step: 10, def: 700 },
+    { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
+    ...beamShapeParams(3),
+    ...pulseTrainParams(),
+    POL_PARAM,
+    // Broadband white by default: a supercontinuum has no single colour to
+    // derive, and this is the shade the tracer already paints wide-band light.
+    { ...P.autoColor, def: false },
+    { ...P.color, def: '#cbd8ea' },
+    SHOW_PULSE_PARAM,
+    pinnedParam('temporalMode', 'pulsed'),
   ],
   svg(el) {
-    const h = laserH(el), hh = h / 2;
-    const ap = el.params.beamMode === 'beam' ? Math.min(hh - 4, el.params.beamWidth / 2 + 3) : 6;
+    const h = laserH(el), hh = h / 2, ap = laserAperture(el);
     const stripes = ['#7c3aed', '#2563eb', '#10b981', '#eab308', '#f97316', '#ef4444']
       .map((c, i) => `<rect x="${46 + i * 0.85}" y="${-ap}" width="1" height="${2 * ap}" fill="${c}"/>`).join('');
     return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#24233a" stroke="#171629" stroke-width="1.5"/>` +
@@ -2687,7 +2780,8 @@ registry.sclaser = {
 // generic resize/tune descriptors; the component definition decides which
 // real physical parameter a handle changes.
 const DIRECT = {
-  laser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ', when: p => p.bwMode !== 'sc' } },
+  cwlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
+  pulsedlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
   sclaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'scMax', short: 'λ max' } },
   pointsource: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
@@ -2768,7 +2862,8 @@ export function getDirectManipulation(el) {
 // simulated elements affect traced rays, configurable elements need an active
 // mode, and diagram-only elements are honest visual annotations/placeholders.
 const ELEMENT_HELP = {
-  laser: 'Emits a CW or pulsed monochromatic, broadband, supercontinuum, or sized collimated beam.',
+  cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
+  pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam.',
   pointsource: 'Emits isotropic light (360° by default, optionally broadband) that fades over a short evanescent range unless captured by a nearby lens, objective, or fiber tip.',
   objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',

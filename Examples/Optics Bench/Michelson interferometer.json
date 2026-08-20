@@ -18,7 +18,7 @@
   },
   {
    "id": "eun826tk",
-   "type": "laser",
+   "type": "cwlaser",
    "x": 100,
    "y": 300,
    "rot": 0,
@@ -28,13 +28,7 @@
     "wavelength": 633,
     "beamMode": "line",
     "beamWidth": 6,
-    "bwMode": "mono",
-    "bandwidth": 40,
     "pol": 0,
-    "temporalMode": "cw",
-    "repRateMHz": 80,
-    "pulseWidthFs": 100,
-    "pulsePhaseNs": 0,
     "autoColor": true,
     "color": "#e02020"
    }

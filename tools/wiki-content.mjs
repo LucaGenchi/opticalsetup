@@ -21,8 +21,8 @@ function cite(...nums) {
 
 export const wikiEntries = [
   {
-    type: 'laser',
-    title: 'Laser',
+    type: 'cwlaser',
+    title: 'CW Laser',
     category: 'Sources',
     realWorld: {
       html: `
@@ -32,17 +32,11 @@ export const wikiEntries = [
         spatial coherence, which permits propagation over considerable distances with
         minimal divergence — frequently limited only by diffraction — and allows the beam
         to be focused to a very small spot, yielding a correspondingly high intensity.</p>
-        <p>This coherence typically extends to the temporal domain as well: most lasers
-        emit within a very narrow spectral bandwidth, in contrast to sources such as
-        incandescent or gas-discharge lamps, which radiate across a broad spectral range.
-        An exception exists among ultrafast lasers, several of which are inherently
-        broadband, since a sufficiently short pulse duration necessarily corresponds to a
-        correspondingly broad frequency spectrum.</p>
-        <p>Laser emission may be continuous or pulsed, with pulse durations ranging from
-        microseconds down to a few femtoseconds. Concentrating a given pulse energy into a
-        shorter duration — in addition to spatial concentration at a focus — enables
-        substantially higher intensities than continuous-wave operation can achieve; the
-        most extreme intensities produced this way are employed in high-field physics.</p>
+        <p>This coherence typically extends to the temporal domain as well: a
+        continuous-wave laser emits within a very narrow spectral bandwidth, in contrast
+        to sources such as incandescent or gas-discharge lamps, which radiate across a
+        broad spectral range. Emission is steady rather than pulsed: the output power a
+        detector reads is the same at every instant.</p>
         <p>The theoretical foundation for the laser predates its experimental realization:
         Townes, Schawlow, Basov, and Prokhorov independently developed the theory of
         stimulated emission as a mechanism for light amplification, building on the
@@ -69,26 +63,152 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>The Laser element emits either a single collimated ray or, in <em>Beam with
+        <p>The CW Laser emits either a single collimated ray or, in <em>Beam with
         size</em> mode, a fan of 25 parallel rays sampling a finite beam width — this is
         what lets the tracer show a lens actually focusing a beam of nonzero extent,
         rather than a single infinitesimal ray that can never miss an aperture.</p>
-        <p>Spectrum is monochromatic, broadband (a symmetric bandwidth around the center
-        wavelength), or supercontinuum (a fixed 430–870&nbsp;nm white-light band) — dispersive
-        elements downstream (prisms, gratings) sample this band at several discrete
-        wavelengths and fan them out individually. Pulsed mode adds a repetition rate and
-        pulse duration that drive the timing overlay; polarization is set directly as a
-        Stokes vector rather than emerging from a modeled cavity.</p>`,
+        <p>Its spectrum is monochromatic by construction: one wavelength, no bandwidth
+        control. That is the whole point of the split between the three laser sources —
+        if a bench needs spectral width, it needs the Pulsed Laser or the Supercontinuum
+        laser instead, both of which model where that width comes from. Polarization is
+        set directly as a Stokes vector rather than emerging from a modeled cavity.</p>`,
       formulas: [],
       limitations: `<p>There is no modeled gain medium, cavity round trip, or threshold —
-        wavelength, spectrum, polarization, and pulse timing are configured directly as
-        source parameters, not derived from first principles. Divergence and M² are not
-        modeled: a collimated beam stays perfectly parallel over any distance.</p>`,
+        wavelength, polarization, and power are configured directly as source parameters,
+        not derived from first principles. Divergence and M² are not modeled: a collimated
+        beam stays perfectly parallel over any distance.</p>`,
     },
-    related: ['sclaser', 'pointsource', 'mirror'],
+    related: ['pulsedlaser', 'sclaser', 'pointsource', 'mirror'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Lasers', url: 'https://www.rp-photonics.com/lasers.html' },
       { label: 'RP Photonics Encyclopedia — Laser Light', url: 'https://www.rp-photonics.com/laser_light.html' },
+    ],
+  },
+
+  {
+    type: 'pulsedlaser',
+    title: 'Pulsed Laser',
+    category: 'Sources',
+    realWorld: {
+      html: `
+        <p>A pulsed laser concentrates its output into short bursts separated by a fixed
+        repetition period, rather than emitting steadily. Concentrating a given pulse
+        energy into a shorter duration — in addition to spatial concentration at a focus —
+        enables substantially higher intensities than continuous-wave operation can
+        achieve; the most extreme intensities produced this way are employed in high-field
+        physics, and more modest ones drive the nonlinear processes behind multiphoton
+        microscopy and two-photon polymerization.</p>
+        <p>Pulse durations range from microseconds down to a few femtoseconds. The average
+        power a power meter reads is the pulse energy divided by the repetition period; the
+        peak power reached within a pulse is far larger, by roughly the ratio of the
+        repetition period to the pulse duration.</p>
+        <p>Ultrafast lasers are inherently broadband: a sufficiently short pulse duration
+        necessarily corresponds to a correspondingly broad frequency spectrum. A pulse
+        whose spectral width is exactly the minimum its duration allows is called
+        transform-limited — it carries no residual chirp, and it is the shortest pulse
+        that spectrum could possibly support. The dimensionless product below depends only
+        on the envelope shape.</p>`,
+      formulas: [
+        { tex: '\\Delta\\nu \\, \\Delta t \\geq K', caption: 'Time–bandwidth product. K = 0.441 for a Gaussian envelope, 0.315 for a sech². Equality is the transform-limited case.' },
+        { tex: 'P_{\\text{peak}} \\approx K_{s} \\, \\frac{P_{\\text{avg}}}{f_{\\text{rep}} \\, \\tau}', caption: 'Peak power: the pulse energy P_avg / f_rep delivered within one pulse duration τ, with a shape factor K_s (0.94 Gaussian, 0.88 sech²).' },
+      ],
+      html2: `
+        <p>Short pulses are produced by mode locking: a fixed phase relationship is
+        enforced across many longitudinal cavity modes, so that they interfere
+        constructively for a brief instant on each cavity round trip and destructively the
+        rest of the time. The repetition rate that results is set by the cavity round-trip
+        time, which is why typical mode-locked oscillators sit in the tens of MHz.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Pulsed Laser emits the same collimated ray or 25-ray sampled beam as the CW
+        Laser, plus a pulse train: a repetition rate, a pulse duration, and an emission
+        offset that shifts this source's pulses in time relative to any other. That timing
+        is what drives the travelling packet overlay, the oscilloscope view on a
+        photodetector, chopper and AOM/EOM gating, and the two-colour temporal overlap
+        that CARS and SFG require.</p>
+        <p>Bandwidth follows the pulse: while <em>Transform-limited</em> is on, the
+        spectral width is computed from the duration and the chosen envelope shape, so a
+        shorter pulse automatically becomes a wider spectrum. Turning it off exposes the
+        bandwidth directly for a chirped or spectrally shaped pulse; setting it to 0&nbsp;nm
+        models an idealized monochromatic pulse train. Peak power is reported back as a
+        derived readout, never entered.</p>
+        <p><em>Show pulse dynamics</em> is a drawing choice only — switching it off leaves
+        the beam rendered as a steady CW line while every bit of the pulse physics above
+        keeps running.</p>`,
+      formulas: [],
+      limitations: `<p>There is no modeled gain medium, cavity, or mode-locking mechanism —
+        repetition rate, duration, and shape are configured directly. Dispersion does not
+        broaden a pulse as it propagates: the duration a source is given is the duration it
+        keeps, so a chirped pulse must be described by turning transform-limited off rather
+        than by sending a short pulse through glass. Divergence and M² are not modeled.</p>`,
+    },
+    related: ['cwlaser', 'sclaser', 'objective', 'stage'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Mode Locking', url: 'https://www.rp-photonics.com/mode_locking.html' },
+      { label: 'RP Photonics Encyclopedia — Time–Bandwidth Product', url: 'https://www.rp-photonics.com/time_bandwidth_product.html' },
+    ],
+  },
+
+  {
+    type: 'sclaser',
+    title: 'Supercontinuum laser',
+    category: 'Sources',
+    realWorld: {
+      html: `
+        <p>A supercontinuum source produces light spanning hundreds of nanometres — often
+        the whole visible range and beyond — while retaining the spatial coherence and
+        collimation of a laser beam. It is, in effect, white light that behaves optically
+        like a laser: it can be focused to a diffraction-limited spot and coupled into a
+        single-mode fibre, neither of which a lamp of comparable bandwidth allows.</p>
+        <p>The broadening is not produced by the gain medium. A pump laser — typically a
+        mode-locked oscillator delivering high peak power — is launched into a strongly
+        nonlinear medium, most often a photonic crystal fibre engineered so that its zero
+        dispersion wavelength sits near the pump. Over a few centimetres, a cascade of
+        nonlinear processes redistributes the pump energy across a vastly wider spectrum:
+        self-phase modulation broadens it initially, then soliton fission, Raman
+        self-frequency shift, and dispersive wave generation extend the edges.</p>
+        <p>Because the process is pump-driven, the output inherits the pump's pulse train:
+        a supercontinuum is emitted as pulses at the pump's repetition rate, not as steady
+        light, even though it looks white. Spectral flatness and pulse-to-pulse stability
+        vary considerably with how far into the anomalous-dispersion regime the source is
+        driven.</p>`,
+      formulas: [
+        { tex: '\\gamma = \\frac{2\\pi n_2}{\\lambda A_{\\text{eff}}}', caption: 'Nonlinear coefficient of the broadening fibre — small effective area A_eff is what makes photonic crystal fibre so much more nonlinear than standard fibre.' },
+      ],
+      html2: `
+        <p>Supercontinuum sources became practical laboratory instruments after photonic
+        crystal fibre made it possible to place the zero-dispersion wavelength wherever the
+        available pump happened to be, rather than the other way round. They are now
+        standard in broadband spectroscopy, optical coherence tomography, and as tunable
+        excitation sources for fluorescence microscopy, where a single box replaces a rack
+        of discrete laser lines.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Supercontinuum laser replaces a single wavelength with a spectrum minimum
+        and maximum, and emits a flat-top band between them. Downstream wavelength-selective
+        elements — filters, dichroics, etalons, the spectrometer — integrate against that
+        true flat profile rather than a centroid, so a 20&nbsp;nm bandpass placed on a
+        400&nbsp;nm-wide source transmits the fraction of power it actually overlaps.</p>
+        <p>Dispersive elements (prisms, gratings) sample the band at several discrete
+        wavelengths and fan them out individually, each carrying its own wavelength-derived
+        colour — which is why a prism turns this source into a visible rainbow even though
+        the undispersed beam is drawn as a single broadband white line.</p>
+        <p>It carries the same pulse train as the Pulsed Laser, since a real supercontinuum
+        inherits its pump's timing, but exposes no pulse duration of its own: that is a
+        property of whatever generated the continuum upstream, which is not modeled here.</p>`,
+      formulas: [],
+      limitations: `<p>The spectrum is an idealized flat top, not a measured shape with the
+        peaks, dips, and edge roll-off of a real continuum, and its shape does not change
+        with pump power. No broadening is simulated: the band is declared, not generated
+        from a pump and a nonlinear fibre. Pulse-to-pulse spectral noise, a real limitation
+        of these sources, is not represented.</p>`,
+    },
+    related: ['cwlaser', 'pulsedlaser', 'prism', 'filter'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Supercontinuum Generation', url: 'https://www.rp-photonics.com/supercontinuum_generation.html' },
+      { label: 'RP Photonics Encyclopedia — Photonic Crystal Fibers', url: 'https://www.rp-photonics.com/photonic_crystal_fibers.html' },
     ],
   },
 

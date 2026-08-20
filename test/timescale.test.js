@@ -11,7 +11,7 @@ import { gateTransmissionAt } from '../sketch/js/pulses.js';
 const scaleOf = elements => recommendedTimeScale(elements).scaleNsPerSecond;
 
 const pulsedLaser = (repRateMHz, x = 0) => {
-  const laser = createElement('laser', x, 0);
+  const laser = createElement('pulsedlaser', x, 0);
   laser.params.temporalMode = 'pulsed';
   laser.params.repRateMHz = repRateMHz;
   return laser;
@@ -47,7 +47,7 @@ test('the fastest source in the scene sets the pulsed tier', () => {
 });
 
 test('continuous-wave sources contribute no timing requirement', () => {
-  const cw = createElement('laser', 0, 0);
+  const cw = createElement('cwlaser', 0, 0);
   assert.equal(elementDriveHz(cw), null);
   assert.equal(scaleOf([cw]), 10, 'a scene with nothing animated falls back to the 10 ns/s default');
 });

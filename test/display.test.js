@@ -29,7 +29,7 @@ test('sensor display resolves only a linked detector and draws a finite data cab
 });
 
 test('sensor display mirrors live photodetector output and handles a missing signal', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.wavelength = 532;
   const detector = createElement('detector', 300, 0);
@@ -56,7 +56,7 @@ test('sensor display mirrors live photodetector output and handles a missing sig
 });
 
 test('sensor display renders a linked camera profile and reports connection state honestly', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const camera = createElement('camera', 300, 0);
   camera.params.pixels = 12;
   const display = createElement('display', 420, 80);
@@ -77,7 +77,7 @@ test('sensor display renders a linked camera profile and reports connection stat
 });
 
 test('sensor display adapts information density and exposes direct instrument controls', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const camera = createElement('camera', 300, 0);
   const display = createElement('display', 420, 80);
   display.params.sensorId = camera.id;
@@ -143,9 +143,9 @@ test('display buttons cycle power, view, and available sensor inputs without ins
 });
 
 test('camera profile colors follow the wavelength mixture in each occupied sensor bin', () => {
-  const green = createElement('laser', 0, -20);
+  const green = createElement('cwlaser', 0, -20);
   green.params.wavelength = 532;
-  const red = createElement('laser', 0, 20);
+  const red = createElement('cwlaser', 0, 20);
   red.params.wavelength = 650;
   const camera = createElement('camera', 300, 0);
   camera.params.ch = 100;
@@ -167,7 +167,7 @@ test('camera profile colors follow the wavelength mixture in each occupied senso
 });
 
 test('a long sensor name never shares a text baseline with the readout mode label', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const detector = createElement('detector', 300, 0);
   detector.label = ''; // falls back to the registry label, "Photodetector"
   const display = createElement('display', 420, 0);
@@ -183,7 +183,7 @@ test('a long sensor name never shares a text baseline with the readout mode labe
 });
 
 test('elliptical polarization is abbreviated, not truncated, in the sensor display', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 0;
   const qwp = createElement('qwp', 150, 0);
   qwp.params.a = 100;
@@ -202,7 +202,7 @@ test('elliptical polarization is abbreviated, not truncated, in the sensor displ
 });
 
 test('sensor display and its data cable are preserved in deterministic SVG export', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const detector = createElement('detector', 300, 0);
   const display = createElement('display', 390, 80);
   display.params.sensorId = detector.id;

@@ -20,7 +20,7 @@ test('finite optics preserve the shared beam before adjacent samples split', () 
   ];
 
   for (const [label, type, configure] of cases) {
-    const laser = createElement('laser', 0, 0);
+    const laser = createElement('cwlaser', 0, 0);
     laser.params.beamMode = 'beam';
     laser.params.beamWidth = 60;
     const optic = createElement(type, 200, 0);
@@ -51,17 +51,21 @@ test('finite optics preserve the shared beam before adjacent samples split', () 
 });
 
 test('zero-power gated hits cannot contaminate detector metadata', () => {
-  const blocked = createElement('laser', 0, 0);
+  // Monochromatic on purpose: this asserts on the exact wavelength the camera
+  // reports back, so neither source may carry a transform-limited spread.
+  const blocked = createElement('pulsedlaser', 0, 0);
   blocked.params.beamMode = 'line';
-  blocked.params.temporalMode = 'pulsed';
   blocked.params.repRateMHz = 80;
   blocked.params.wavelength = 400;
+  blocked.params.transformLimited = false;
+  blocked.params.bandwidth = 0;
 
-  const passing = createElement('laser', 0, 30);
+  const passing = createElement('pulsedlaser', 0, 30);
   passing.params.beamMode = 'line';
-  passing.params.temporalMode = 'pulsed';
   passing.params.repRateMHz = 80;
   passing.params.wavelength = 800;
+  passing.params.transformLimited = false;
+  passing.params.bandwidth = 0;
 
   const first = createElement('chopper', 150, 0);
   const second = createElement('chopper', 200, 0);
@@ -89,7 +93,7 @@ test('zero-power gated hits cannot contaminate detector metadata', () => {
 });
 
 test('a passive diffuser redistributes but does not create optical power', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const diffuser = createElement('diffuser', 150, 0);
   const camera = createElement('camera', 300, 0);
@@ -105,7 +109,7 @@ test('a passive diffuser redistributes but does not create optical power', () =>
 });
 
 test('beam probes report state at their position rather than the final path state', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const sample = createElement('sample', 150, 0);
   sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
   sample.params.transmission = 0.25;
@@ -121,7 +125,7 @@ test('beam probes report state at their position rather than the final path stat
 });
 
 test('beam probe reports elliptical, not unpolarized, downstream of an off-axis waveplate', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 0;
   const qwp = createElement('qwp', 150, 0);
   qwp.params.a = 100;
@@ -141,7 +145,7 @@ test('beam probe reports elliptical, not unpolarized, downstream of an off-axis 
 });
 
 test('pulsed AOM zero order complements the gated first order', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   laser.params.repRateMHz = 1;
 

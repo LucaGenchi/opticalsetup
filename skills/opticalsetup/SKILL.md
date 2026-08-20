@@ -62,7 +62,7 @@ A normal element has this shape:
 ```json
 {
   "id": "e-laser-1",
-  "type": "laser",
+  "type": "cwlaser",
   "x": 100,
   "y": 200,
   "rot": 0,

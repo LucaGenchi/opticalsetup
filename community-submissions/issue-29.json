@@ -11,7 +11,7 @@
     "issue": "https://github.com/LucaGenchi/optics-sketch/issues/29",
     "submittedAt": "2026-07-28T07:52:10.000Z"
   },
-  "sceneSha256": "ba2a16135878e1653bf4114fc28cfc052967adbfd98a50a2961f40e9b5fba3f0",
+  "sceneSha256": "f592351300f375f59512d513cf8889e28baa5cbb0adbc595025a6b5798ba3689",
   "scene": {
     "app": "optics2d",
     "version": 1,
@@ -92,7 +92,7 @@
         "type": "sample",
         "x": 175,
         "y": 230,
-        "rot": 90,
+        "rot": 180,
         "label": "sample",
         "showLabel": true,
         "labelPos": "r",
@@ -151,7 +151,7 @@
       },
       {
         "id": "efpipbp2",
-        "type": "laser",
+        "type": "cwlaser",
         "x": 175,
         "y": -127,
         "rot": 90,
@@ -162,13 +162,7 @@
           "avgPowerW": 0.01,
           "beamMode": "beam",
           "beamWidth": 14,
-          "bwMode": "mono",
-          "bandwidth": 40,
           "pol": 0,
-          "temporalMode": "cw",
-          "repRateMHz": 80,
-          "pulseWidthFs": 100,
-          "pulsePhaseNs": 0,
           "autoColor": true,
           "color": "#e02020"
         }

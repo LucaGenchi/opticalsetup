@@ -18,7 +18,7 @@
   },
   {
    "id": "e9incbv0",
-   "type": "laser",
+   "type": "cwlaser",
    "x": 100,
    "y": 200,
    "rot": 0,
@@ -28,13 +28,7 @@
     "wavelength": 532,
     "beamMode": "line",
     "beamWidth": 6,
-    "bwMode": "mono",
-    "bandwidth": 40,
     "pol": 0,
-    "temporalMode": "cw",
-    "repRateMHz": 80,
-    "pulseWidthFs": 100,
-    "pulsePhaseNs": 0,
     "autoColor": true,
     "color": "#e02020"
    }

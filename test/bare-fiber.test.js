@@ -82,7 +82,7 @@ test('the beam leaving a fiber starts right at the output connector, not a coupl
   // dead gap between the drawn fiber end and where the beam appeared to
   // begin. nearestHit() already ignores any surface within 0.05 mm of a
   // ray's own origin, so a much smaller push is enough.
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const pointB = { x: 200, y: 0 };
   const patch = fiber({ pts: [{ x: 100, y: 0 }, pointB] });
   const drawables = traceAll([laser], [patch]);

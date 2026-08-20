@@ -30,7 +30,7 @@ test('published OpticalSetup skill builds a valid self-contained scene link', ()
   const text = (encoding === 'g' ? gunzipSync(bytes) : bytes).toString('utf8');
   const scene = parseSketch(text, registry);
 
-  assert.deepEqual(scene.elements.map(element => element.type), ['laser', 'lens']);
+  assert.deepEqual(scene.elements.map(element => element.type), ['cwlaser', 'lens']);
   assert.equal(scene.beams.length, 0);
 });
 

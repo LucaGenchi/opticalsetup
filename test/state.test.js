@@ -9,7 +9,7 @@ import {
 const file = (elements = [], beams = []) => JSON.stringify({ app: 'optics2d', version: 1, elements, beams });
 
 test('sketch loading fills defaults and normalizes unsafe values', () => {
-  const raw = createElement('laser', 10, 20);
+  const raw = createElement('pulsedlaser', 10, 20);
   raw.rot = -90;
   raw.params = {
     wavelength: 99, beamWidth: 999, color: 'red', temporalMode: 'pulsed',
@@ -51,17 +51,50 @@ test('sketch loading rejects data that would crash the canvas', () => {
   assert.throws(() => parseSketch(JSON.stringify({ app: 'optics2d', version: 2, elements: [] }), registry), /Unsupported sketch version/);
 });
 
-test('legacy lasers without temporal fields remain continuous-wave sources', () => {
-  const laser = createElement('laser', 0, 0);
-  delete laser.params.temporalMode;
-  delete laser.params.repRateMHz;
-  delete laser.params.pulseWidthFs;
-  delete laser.params.pulsePhaseNs;
-  const [loaded] = parseSketch(file([laser]), registry).elements;
+// ---------------- legacy `laser` -> three source types ----------------
+// Sketches saved before the split — including every shared link, which encodes
+// the whole scene in a URL — still name the old all-in-one `laser` type.
+
+test('a legacy continuous-wave laser loads as the CW source', () => {
+  const raw = { type: 'laser', x: 0, y: 0, params: { wavelength: 633, avgPowerW: 0.5, beamWidth: 4 } };
+  const [loaded] = parseSketch(file([raw]), registry).elements;
+  assert.equal(loaded.type, 'cwlaser');
   assert.equal(loaded.params.temporalMode, 'cw');
-  assert.equal(loaded.params.repRateMHz, 80);
-  assert.equal(loaded.params.pulseWidthFs, 100);
-  assert.equal(loaded.params.pulsePhaseNs, 0);
+  assert.equal(loaded.params.wavelength, 633);
+  assert.equal(loaded.params.avgPowerW, 0.5);
+  assert.equal(loaded.params.beamWidth, 4);
+});
+
+test('a legacy pulsed laser loads as the pulsed source, keeping its own spectral width', () => {
+  const band = { type: 'laser', x: 0, y: 0, params: { temporalMode: 'pulsed', bwMode: 'band', bandwidth: 40, pulseWidthFs: 120 } };
+  const [loadedBand] = parseSketch(file([band]), registry).elements;
+  assert.equal(loadedBand.type, 'pulsedlaser');
+  assert.equal(loadedBand.params.transformLimited, false, 'the old default was off');
+  assert.equal(loadedBand.params.bandwidth, 40);
+  assert.equal(loadedBand.params.pulseWidthFs, 120);
+
+  // A monochromatic pulsed laser still stored an unused bandwidth alongside
+  // bwMode:'mono'. Folding bwMode in is what stops that stale number from
+  // suddenly counting against a source that now always honours bandwidth.
+  const mono = { type: 'laser', x: 0, y: 0, params: { temporalMode: 'pulsed', bwMode: 'mono', bandwidth: 40 } };
+  const [loadedMono] = parseSketch(file([mono]), registry).elements;
+  assert.equal(loadedMono.type, 'pulsedlaser');
+  assert.equal(loadedMono.params.bandwidth, 0);
+});
+
+test('a legacy laser set to supercontinuum loads as the SC source with the band it used to trace', () => {
+  const raw = { type: 'laser', x: 0, y: 0, params: { bwMode: 'sc', temporalMode: 'pulsed' } };
+  const [loaded] = parseSketch(file([raw]), registry).elements;
+  assert.equal(loaded.type, 'sclaser');
+  assert.equal(loaded.params.scMin, 430);
+  assert.equal(loaded.params.scMax, 870);
+});
+
+test('legacy lasers without any temporal fields remain continuous-wave sources', () => {
+  const raw = { type: 'laser', x: 0, y: 0, params: { wavelength: 532 } };
+  const [loaded] = parseSketch(file([raw]), registry).elements;
+  assert.equal(loaded.type, 'cwlaser');
+  assert.equal(loaded.params.temporalMode, 'cw');
 });
 
 test('legacy objective focal lengths migrate to magnification and numerical aperture', () => {
@@ -88,7 +121,7 @@ test('sketches from before the LED/lamp -> Point source merge no longer load', (
 });
 
 test('duplicate object ids are repaired during import', () => {
-  const a = createElement('laser', 0, 0);
+  const a = createElement('cwlaser', 0, 0);
   const b = createElement('lens', 100, 0);
   b.id = a.id;
   const scene = parseSketch(file([a, b]), registry);
@@ -145,7 +178,7 @@ test('DMD no longer accepts the superseded layer-based shaping fields', () => {
 });
 
 test('scene replacement remains undoable when requested by the caller', () => {
-  const first = { elements: [createElement('laser', 0, 0)], beams: [] };
+  const first = { elements: [createElement('cwlaser', 0, 0)], beams: [] };
   const second = { elements: [createElement('lens', 100, 0)], beams: [] };
   deserialize(file(first.elements), { definitions: registry, resetHistory: true });
   assert.equal(canUndo(), false);
@@ -153,7 +186,7 @@ test('scene replacement remains undoable when requested by the caller', () => {
   replaceScene(second);
   assert.equal(canUndo(), true);
   undo();
-  assert.equal(state.elements[0].type, 'laser');
+  assert.equal(state.elements[0].type, 'cwlaser');
   assert.equal(canRedo(), true);
   redo();
   assert.equal(state.elements[0].type, 'lens');

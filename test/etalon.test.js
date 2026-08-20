@@ -12,7 +12,7 @@ function nearly(actual, expected, tolerance) {
 }
 
 function signalAt({ rot = 0, wavelength, etalonParams = {} } = {}) {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   if (wavelength !== undefined) laser.params.wavelength = wavelength;
   const etalon = createElement('etalon', 150, 0);
   etalon.rot = rot;
@@ -95,7 +95,7 @@ test('rotating the element shifts the resonance away from the tuned wavelength',
 });
 
 test('off-resonance light reflects rather than being silently absorbed', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const etalon = createElement('etalon', 150, 0);
   etalon.rot = 45; // large tilt detunes the default 532nm resonance and folds the reflection 90° off-axis
   const reflectedDetector = createElement('detector', 150, -300);
