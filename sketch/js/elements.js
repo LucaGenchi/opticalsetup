@@ -1628,9 +1628,9 @@ export const registry = {
     },
   },
 
-  // ---------------- Dispersive & apertures ----------------
+  // ---------------- Dispersive elements ----------------
   grating: {
-    label: 'Diffraction grating', category: 'Dispersive & Apertures', size: { w: 16, h: 56 },
+    label: 'Diffraction grating', category: 'Dispersive elements', size: { w: 16, h: 56 },
     params: [
       { key: 'lines', label: 'Lines / mm', type: 'number', min: 50, max: 3600, step: 50, def: 600 },
       { key: 'orders', label: 'Orders (e.g. -1,0,1)', type: 'text', def: '1' },
@@ -1675,7 +1675,7 @@ export const registry = {
   },
 
   prism: {
-    label: 'Prism', category: 'Dispersive & Apertures', size: { w: 44, h: 44 },
+    label: 'Prism', category: 'Dispersive elements', size: { w: 44, h: 44 },
     size_: el => { const g = prismGeometry(el); return { w: g.width + 6, h: g.height + 6 }; },
     params: [
       { key: 'apex', label: 'Apex angle (°)', type: 'number', min: 10, max: 80, step: 5, def: 60 },
@@ -1697,7 +1697,7 @@ export const registry = {
   },
 
   freeglass: {
-    label: 'Freeform glass', category: 'Dispersive & Apertures', paletteOrder: 3,
+    label: 'Freeform glass', category: 'Dispersive elements', paletteOrder: 3,
     aliases: ['custom prism', 'polygon glass', 'arbitrary glass', 'glass polygon', 'curved glass', 'circular arc glass'],
     construction: { kind: 'polygon', pointsKey: 'vertices', minPoints: 3, circularArcs: true },
     size_(el) {
@@ -1749,7 +1749,7 @@ export const registry = {
   },
 
   diffuser: {
-    label: 'Diffuser', category: 'Dispersive & Apertures', size: { w: 14, h: 56 },
+    label: 'Diffuser', category: 'Dispersive elements', size: { w: 14, h: 56 },
     size_: el => ({ w: 14, h: el.params.length + 6 }),
     params: [
       { key: 'div', label: 'Divergence (°)', type: 'number', min: 0.5, max: 40, step: 0.5, def: 8 },
@@ -2199,7 +2199,7 @@ export const registry = {
   },
 
   glassrod: {
-    label: 'Glass rod', category: 'Dispersive & Apertures', size: { w: 64, h: 14 },
+    label: 'Glass rod', category: 'Dispersive elements', size: { w: 64, h: 14 },
     params: [
       { key: 'rodlen', label: 'Length (mm)', type: 'number', min: 20, max: 300, step: 5, def: 60 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 12.7 },
@@ -2208,7 +2208,7 @@ export const registry = {
     size_: el => ({ w: el.params.rodlen + 4, h: (el.params.dia || 10) + 4 }),
     svg(el) {
       const L = el.params.rodlen / 2, d = el.params.dia || 10;
-      return `<rect x="${-L}" y="${-d / 2}" width="${el.params.rodlen}" height="${d}" rx="${Math.min(4, d / 3)}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.5"/>`;
+      return `<rect x="${-L}" y="${-d / 2}" width="${el.params.rodlen}" height="${d}" rx="${Math.min(4, d / 3)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5"/>`;
     },
     surfaces(el) {
       const x = el.params.rodlen / 2, y = (el.params.dia || 10) / 2;
@@ -2753,7 +2753,7 @@ export const categories = [
   'Lenses',
   'Fibers',
   'Filters & Splitters',
-  'Dispersive & Apertures',
+  'Dispersive elements',
   'Polarization',
   'Beam Block',
   'Wavefront Shaping',

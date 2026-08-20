@@ -329,7 +329,7 @@ export const wikiEntries = [
   {
     type: 'prism',
     title: 'Prism',
-    category: 'Dispersive & Apertures',
+    category: 'Dispersive elements',
     realWorld: {
       html: `
         <p>A prism disperses light because its refractive index depends on wavelength.
@@ -370,7 +370,7 @@ export const wikiEntries = [
   {
     type: 'grating',
     title: 'Diffraction grating',
-    category: 'Dispersive & Apertures',
+    category: 'Dispersive elements',
     realWorld: {
       html: `
         <p>A diffraction grating is a surface ruled with closely, evenly spaced lines
@@ -400,6 +400,163 @@ export const wikiEntries = [
     related: ['prism', 'dmd', 'slm'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Diffraction Gratings', url: 'https://www.rp-photonics.com/diffraction_gratings.html' },
+    ],
+  },
+
+  {
+    type: 'freeglass',
+    title: 'Freeform glass',
+    category: 'Dispersive elements',
+    realWorld: {
+      html: `
+        <p>Real glass optics are rarely limited to a lens's spherical curve or a
+        prism's flat triangular faces — aspheric correctors, light pipes, freeform
+        illumination optics, and hand-ground custom prisms all refract light through an
+        arbitrary boundary shape. However exotic the outline, the physics at every point
+        on the surface is the same vector Snell's law that governs a plain prism or lens
+        face; only the local surface normal changes from point to point.</p>
+        <p>This is also literally how any CAD or ray-tracing renderer handles a smoothly
+        curved optical surface in practice: an arbitrarily smooth boundary is approximated
+        as a fine mesh of flat facets (or, for a closer fit, circular arcs), each
+        refracting independently, with the approximation error shrinking as the facets get
+        smaller. A coarse hand-built approximation and a smooth manufactured asphere differ
+        only in how fine that mesh is.</p>`,
+      formulas: [
+        { tex: 'n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2', caption: "Snell's law, applied independently at every straight or curved boundary segment — the only physics a freeform refracting surface needs." },
+        { tex: 'n(\\lambda) = 1.5046 + \\frac{4680}{\\lambda^{2}} \\quad (\\lambda \\text{ in nm})', caption: 'The same simplified "BK7-like" dispersion curve used by the Prism, available here as an optional material model.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The boundary is drawn as a chain of straight edges and true circular arcs —
+        editable directly on the canvas by dragging anchor and curve-control points — and
+        each segment becomes its own independent refracting surface, so a completely
+        custom cross-section (a light pipe's tapered profile, a freeform prism, a
+        corrective wedge) refracts and totally-internally-reflects exactly like the
+        fixed-geometry <a href="../prism/">Prism</a>, just without being locked to a
+        triangle. Two material models are available: a constant refractive index, or the
+        same simplified "BK7-like" dispersion curve the Prism uses, so a supercontinuum
+        beam through a custom freeform shape still visibly disperses into a spectrum.</p>`,
+      formulas: [],
+      limitations: `<p>Same caveats as the Prism: the BK7-like dispersion curve is a
+        deliberately simplified two-term stand-in for a real glass catalog entry, only one
+        glass "family" is modeled, and per-surface transmission is a flat configurable
+        number rather than a computed coating or absorption loss. Circular-arc segments
+        are true 2D arcs, but the whole element is still a 2D cross-section — there's no
+        third dimension, so it represents a freeform profile, not a true freeform 3D
+        surface.</p>`,
+    },
+    related: ['prism', 'glassrod', 'lens'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Prisms', url: 'https://www.rp-photonics.com/prisms.html' },
+    ],
+  },
+
+  {
+    type: 'diffuser',
+    title: 'Diffuser',
+    category: 'Dispersive elements',
+    realWorld: {
+      html: `
+        <p>An optical diffuser scatters a beam into a cone of directions by refracting
+        light through a microscopically rough or engineered surface — ground or frosted
+        glass, a holographic diffuser with an embossed random microstructure, or an
+        engineered "top-hat" diffuser designed for a specific divergence angle and
+        intensity profile. Each microscopic facet still obeys ordinary Snell's law; what
+        differs from a diffuser to a plain glass window is only the local surface normal,
+        which varies randomly (or by design) from point to point at a scale far smaller
+        than the beam.</p>
+        <p>Diffusers homogenize illumination and convert a laser's narrow beam into broad,
+        uniform lighting — and, critically for coherent sources, reduce speckle. A static
+        diffuser illuminated by coherent laser light produces a grainy interference
+        pattern (speckle) from the random path-length differences between scattered
+        wavelets; spinning the diffuser fast enough that its pattern changes within a
+        camera's or eye's integration time averages that speckle out into smooth
+        illumination.</p>`,
+      formulas: [
+        { tex: 'I(\\theta) \\propto \\exp\\!\\left(-\\frac{\\theta^{2}}{2\\sigma^{2}}\\right), \\qquad \\text{FWHM} \\approx 2.355\\,\\sigma', caption: "A common engineering model for a ground-glass diffuser's angular scattering profile — its divergence is usually specified by this FWHM cone angle." },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Each incident ray is split into a small fan of rays (five, for a single traced
+        ray), scattered within the configured divergence half-angle around the original
+        direction. The scatter angle for each ray isn't randomized frame to frame — it's a
+        deterministic pseudo-random offset computed from the surface's own ID, so the same
+        diffuser always produces the exact same fan on every render, which is what keeps
+        the speckled pattern stable and inspectable rather than flickering as you pan or
+        re-render the sketch.</p>`,
+      formulas: [],
+      limitations: `<p>Divergence is set directly as a configured half-angle rather than
+        derived from any surface-roughness or microstructure spec, and the scattered
+        directions are a small fixed-count sample (five rays for a single incident ray)
+        rather than a continuous or wavelength-dependent angular distribution — there's no
+        Gaussian or top-hat irradiance profile actually computed, just a jittered fan. The
+        speckled look is a fixed, deterministic pattern with no real interference behind
+        it: unlike true laser speckle, it never changes with viewing angle, beam position,
+        or a spinning diffuser, since no coherence or interference is modeled anywhere in
+        the app.</p>`,
+    },
+    related: ['freeglass', 'prism', 'slm'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Diffusers', url: 'https://www.rp-photonics.com/diffusers.html' },
+      { label: 'RP Photonics Encyclopedia — Scattering', url: 'https://www.rp-photonics.com/scattering.html' },
+    ],
+  },
+
+  {
+    type: 'glassrod',
+    title: 'Glass rod',
+    category: 'Dispersive elements',
+    realWorld: {
+      html: `
+        <p>The geometry OpticalSetup draws for a glass rod is a plane-parallel slab: two
+        flat, parallel long faces and two flat ends — the classic "glass block" of an
+        introductory optics course. At normal incidence, light passes straight through
+        with no net angular deviation but a real velocity change: phase velocity inside
+        the medium drops to <span class="w">c/n</span>, so light takes longer to cross the
+        same physical distance than it would in vacuum or air — the basis of every optical
+        delay produced by inserting glass into a beam path, from picosecond fiber-stretcher
+        spools to the fraction-of-a-picosecond thickness of a camera sensor's cover
+        glass.</p>
+        <p>At any nonzero angle of incidence, Snell's law bends the ray at entry and bends
+        it back by the same amount at exit — the two parallel faces cancel the angular
+        deviation exactly — but the beam still emerges shifted sideways from where it would
+        have gone straight through, a lateral displacement that grows with thickness,
+        incidence angle, and index. It's the same "apparent depth" effect that makes a
+        straw look bent in a glass of water, just viewed from the side instead of from
+        above.</p>`,
+      formulas: [
+        { tex: '\\Delta t = \\frac{nL}{c} - \\frac{L}{c} = \\frac{(n-1)L}{c}', caption: 'Extra transit time a slab of thickness L and refractive index n adds compared to the same distance in vacuum — equivalently, an extra optical path length of (n − 1)L.' },
+        { tex: 'd = t\\,\\sec r\\,\\sin(i-r)', caption: 'Lateral displacement of a beam through a plane-parallel slab of thickness t, for incidence angle i and refraction angle r (related by Snell\'s law) — zero at normal incidence, growing with angle, thickness, and index.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The rod is four independent flat refracting boundaries — two long faces and two
+        ends — each obeying the exact vector form of Snell's law and total internal
+        reflection used by every dielectric surface in the app, so tilting the rod at an
+        angle reproduces the real lateral-displacement geometry above, not an idealized
+        straight pass-through. Inside the medium, the tracer accumulates optical path
+        length as geometric distance × refractive index; on the shared pulse-timing
+        overlay this means a packet visibly slows down while crossing the rod, lagging a
+        same-time packet on a vacuum path by exactly the extra delay the formula above
+        predicts for the configured index. The rod's fill is deliberately translucent so
+        that lag is something you can actually watch happen, rather than a number hidden
+        behind an opaque block.</p>`,
+      formulas: [],
+      limitations: `<p>The refractive index is a single flat number with no wavelength
+        dependence — unlike the <a href="../freeglass/">Freeform glass</a> element's
+        optional BK7-like dispersion curve, every color slows down by exactly the same
+        amount here, so a broadband or supercontinuum pulse crossing the rod doesn't
+        spread out in time the way real material dispersion would stretch it. There's no
+        cylindrical or lensing geometry either: despite the name, this is a rectangular
+        slab cross-section with flat ends, not a focusing rod lens.</p>`,
+    },
+    related: ['freeglass', 'prism', 'delayline'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Group Velocity', url: 'https://www.rp-photonics.com/group_velocity.html' },
+      { label: 'RP Photonics Encyclopedia — Group Index', url: 'https://www.rp-photonics.com/group_index.html' },
     ],
   },
 
