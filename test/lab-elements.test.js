@@ -57,23 +57,26 @@ test('the gas cell extension tube is off by default and draws as an open pair of
   assert.match(leftSvg, /<line x1="-81" y1="11" x2="-45" y2="11"/);
 });
 
-test('the housing outline omits the wall on the side an extension tube connects to', () => {
+test('the housing outline keeps its rounded corners and only gaps the wall between the extension rails', () => {
   const cell = createElement('gascell', 0, 0);
   const closed = registry.gascell.svg(cell);
-  assert.match(closed, /A 6 6 0 0 1 45 -21.5/, 'a normal (no extension) cell keeps its right wall corner');
-  assert.match(closed, /A 6 6 0 0 1 -45 21.5/, 'and its left wall corner');
+  assert.match(closed, /A 6 6 0 0 1 45 -21.5/, 'a normal (no extension) cell keeps its top-right corner');
+  assert.match(closed, /A 6 6 0 0 1 39 27.5/, 'and its bottom-right corner');
+  assert.match(closed, /L 45 21.5/, 'and a single unbroken right wall');
 
   cell.params.extension = true;
   cell.params.extensionSide = 'right';
   const rightOpenSvg = registry.gascell.svg(cell);
-  assert.doesNotMatch(rightOpenSvg, /A 6 6 0 0 1 45 -21.5/, 'no top-right corner when the right wall is open');
-  assert.doesNotMatch(rightOpenSvg, /A 6 6 0 0 1 39 27.5/, 'no bottom-right corner when the right wall is open');
-  assert.match(rightOpenSvg, /A 6 6 0 0 1 -45 21.5/, 'the left wall stays intact');
+  // corners (and the stretch from each corner down to the rail) survive --
+  // only the middle strip level with the tube rails (y -11..11) opens up.
+  assert.match(rightOpenSvg, /A 6 6 0 0 1 45 -21.5/, 'the top-right corner still rounds normally');
+  assert.match(rightOpenSvg, /A 6 6 0 0 1 39 27.5/, 'the bottom-right corner still rounds normally');
+  assert.match(rightOpenSvg, /L 45 -11 M 45 11 L 45 21.5/, 'the wall gap lines up exactly with the tube rails');
 
   cell.params.extensionSide = 'left';
   const leftOpenSvg = registry.gascell.svg(cell);
-  assert.doesNotMatch(leftOpenSvg, /A 6 6 0 0 1 -45 21.5/, 'no left wall corner when the left wall is open');
-  assert.match(leftOpenSvg, /A 6 6 0 0 1 45 -21.5/, 'the right wall stays intact');
+  assert.match(leftOpenSvg, /A 6 6 0 0 1 -45 21.5/, 'the bottom-left corner still rounds normally');
+  assert.match(leftOpenSvg, /L -45 11 M -45 -11 L -45 -21.5/, 'the left wall gap lines up with the tube rails too');
 });
 
 test('the gas port sits off-center, clear of the pressure gauge and rotate handle', () => {
