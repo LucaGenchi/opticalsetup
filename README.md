@@ -76,9 +76,10 @@ figures as SVG or PNG.
 - **Community section**: propose your own setup for review directly from the
   toolbar; accepted submissions get their own page with a locked, click-to-inspect
   canvas embed, and a "From the community" menu loads them straight into the editor.
-- **Paper-ready export**: sketches save/load as `.json` files; figures export as
-  SVG/PNG. An optional resizable Figure frame sets the exact export crop and never
-  appears in the exported artwork.
+- **Paper-ready and animated export**: sketches save/load as `.json` files; figures
+  export as SVG/PNG, while pulse and mechanical playback can be captured as a looping
+  GIF with a chosen acquisition time, frame rate, and size. An optional resizable
+  Figure frame sets the exact export crop and never appears in the exported artwork.
 - **Self-contained share links and QR codes**: the Share action compresses the
   current sketch into the URL fragment and copies the link. When the complete URL fits
   in one QR code it also generates a downloadable QR; larger setups keep the link and
@@ -97,8 +98,9 @@ polarization, thin-lens elements, refractive boundaries, timed pulse trains, and
 simple detector responses. It does not model coherent carrier phase, interference,
 diffraction-limited propagation, material dispersion beyond the stated simplified
 models, or laboratory-specific calibration. Paraxial image markers do not account
-for downstream clipping. Animated pulse packets are a canvas aid;
-SVG and PNG exports intentionally remain static and deterministic.
+for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
+and PNG exports remain static and deterministic; GIF exports capture that illustrative
+playback rather than claiming a calibrated high-speed recording.
 
 The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
 shows their positions in the moving 2D sample. It does not calculate focal volume,

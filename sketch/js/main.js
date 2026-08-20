@@ -19,7 +19,7 @@ import {
   getPulsePlayback, setPulsePlaying, setPulseSpeed, setMechanicsMode, setPulseDisplayMode, resetPulseTime, clearVoxelPreview,
 } from './canvas.js';
 import { initInspector, renderInspector, refreshMeasurements } from './inspector.js';
-import { buildSVG, exportSVG, exportPNG } from './export.js';
+import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
@@ -879,6 +879,46 @@ function bindToolbar() {
   });
   $('btnSVG').addEventListener('click', exportSVG);
   $('btnPNG').addEventListener('click', () => exportPNG(3));
+  const gifDialog = $('gifDialog');
+  const closeGIF = () => gifDialog.close();
+  $('btnGIF').addEventListener('click', () => {
+    $('gifStatus').classList.remove('is-error');
+    $('gifStatus').textContent = 'Figure frame sets the crop; otherwise the whole animation is fitted.';
+    gifDialog.showModal();
+  });
+  $('gifClose').addEventListener('click', closeGIF);
+  $('gifCancel').addEventListener('click', closeGIF);
+  gifDialog.addEventListener('click', event => { if (event.target === gifDialog) closeGIF(); });
+  $('gifForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const submit = $('gifSubmit');
+    const status = $('gifStatus');
+    const durationSeconds = Number($('gifDuration').value);
+    const fps = Number($('gifFPS').value);
+    if (durationSeconds * fps > 240) {
+      status.classList.add('is-error');
+      status.textContent = 'This capture exceeds 240 frames. Shorten the acquisition or lower the frame rate.';
+      return;
+    }
+    submit.disabled = true;
+    status.classList.remove('is-error');
+    status.textContent = 'Rendering frames 0%…';
+    try {
+      await exportGIF({
+        durationSeconds,
+        fps,
+        maxDimension: Number($('gifSize').value),
+        playback: getPulsePlayback(),
+        onProgress: value => { status.textContent = `Rendering frames ${Math.round(value * 100)}%…`; },
+      });
+      status.textContent = 'GIF downloaded. It loops continuously.';
+    } catch (err) {
+      status.classList.add('is-error');
+      status.textContent = err.message || 'Could not export the GIF.';
+    } finally {
+      submit.disabled = false;
+    }
+  });
   $('btnUndo').addEventListener('click', () => { undo(); renderInspector(); });
   $('btnRedo').addEventListener('click', () => { redo(); renderInspector(); });
   $('btnGrid').addEventListener('click', () => { state.showGrid = !state.showGrid; syncToolbar(); renderAll(); });
@@ -903,7 +943,7 @@ function bindToolbar() {
   mobileMenu.querySelectorAll('[data-mobile-action]').forEach(button => {
     button.addEventListener('click', () => {
       const target = {
-        new: 'btnNew', open: 'btnOpen', save: 'btnSave', share: 'btnShare', propose: 'btnPropose', svg: 'btnSVG', png: 'btnPNG',
+        new: 'btnNew', open: 'btnOpen', save: 'btnSave', share: 'btnShare', propose: 'btnPropose', svg: 'btnSVG', png: 'btnPNG', gif: 'btnGIF',
       }[button.dataset.mobileAction];
       $(target)?.click();
       mobileMenu.close();
