@@ -162,10 +162,11 @@ button.danger:hover { background: var(--danger-bg); }
 .eyebrow { color: var(--accent); font-size: 9px; font-weight: 760; letter-spacing: .7px; text-transform: uppercase; }
 .share-qr { width: min(290px, 100%); margin: 17px auto 10px; padding: 9px; border: 1px solid var(--border); border-radius: 9px; background: #fff; }
 .share-qr svg { display: block; width: 100%; height: auto; }
+.share-qr-unavailable { display: grid; place-items: center; min-height: 150px; padding: 22px; color: #526173; text-align: center; font-size: 12px; line-height: 1.45; }
 .share-qr-note { min-height: 18px; text-align: center; color: var(--muted); font-size: 10.5px; }
 .share-url-label { display: block; margin: 14px 0 5px; color: var(--muted); font-size: 9px; font-weight: 720; letter-spacing: .45px; text-transform: uppercase; }
 .share-url { width: 100%; resize: none; padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--muted); font: 9.5px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; }
-.share-actions { display: flex; gap: 7px; margin-top: 12px; }
+.share-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
 
 .proposal-dialog {
   width: min(510px, calc(100vw - 28px)); max-height: calc(100vh - 28px); overflow: auto;

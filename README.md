@@ -80,8 +80,10 @@ figures as SVG or PNG.
   SVG/PNG. An optional resizable Figure frame sets the exact export crop and never
   appears in the exported artwork.
 - **Self-contained share links and QR codes**: the Share action compresses the
-  current sketch into the URL fragment, copies the link, and generates a downloadable
-  QR code. Opening it restores the setup without an account or server-side scene storage.
+  current sketch into the URL fragment and copies the link. When the complete URL fits
+  in one QR code it also generates a downloadable QR; larger setups keep the link and
+  offer a `.json` download instead. Opening a link restores the setup without an account
+  or server-side scene storage.
 - **Installable and offline-ready**: add OpticalSetup to a desktop or mobile home
   screen as a standalone app. After the first online visit, the workbench and its
   bundled examples continue to load without a network connection; sketches still
