@@ -2548,6 +2548,9 @@ export const registry = {
       const gaugeR = Math.max(8, Math.min(15, p.height * 0.16));
       const tubeLen = Math.max(32, hl * 0.8);
       const tubeH = Math.min(24, p.height * 0.4);
+      const leftOpen = p.extension && p.extensionSide === 'left';
+      const rightOpen = p.extension && p.extensionSide === 'right';
+      const r = 6;
       let s = '';
       if (p.extension) {
         const side = p.extensionSide === 'left' ? -1 : 1;
@@ -2556,8 +2559,27 @@ export const registry = {
         s += `<line x1="${x0}" y1="${-tubeH / 2}" x2="${x1}" y2="${-tubeH / 2}" stroke="#4d565f" stroke-width="2.5" stroke-linecap="round"/>` +
           `<line x1="${x0}" y1="${tubeH / 2}" x2="${x1}" y2="${tubeH / 2}" stroke="#4d565f" stroke-width="2.5" stroke-linecap="round"/>`;
       }
-      s += `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height}" rx="6" fill="#b8933f" fill-opacity="${bodyOpacity}" stroke="#7a5f28" stroke-width="2"/>` +
-        `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height * 0.17}" rx="6" fill="#d9b968" fill-opacity="${(0.55 * bodyOpacity).toFixed(2)}"/>` +
+      s += `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height}" rx="${r}" fill="#b8933f" fill-opacity="${bodyOpacity}"/>` +
+        `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height * 0.17}" rx="${r}" fill="#d9b968" fill-opacity="${(0.55 * bodyOpacity).toFixed(2)}"/>`;
+      // Housing outline: a normal rounded rect, except the wall on the side
+      // an extension tube connects to is left undrawn so the chamber reads
+      // as continuing straight into the tube instead of being sealed there.
+      let d = `M ${leftOpen ? -hl : -hl + r} ${-hh} `;
+      d += `L ${rightOpen ? hl : hl - r} ${-hh} `;
+      if (!rightOpen) {
+        d += `A ${r} ${r} 0 0 1 ${hl} ${-hh + r} `;
+        d += `L ${hl} ${hh - r} `;
+        d += `A ${r} ${r} 0 0 1 ${hl - r} ${hh} `;
+      } else {
+        d += `M ${hl} ${hh} `;
+      }
+      d += `L ${leftOpen ? -hl : -hl + r} ${hh} `;
+      if (!leftOpen) {
+        d += `A ${r} ${r} 0 0 1 ${-hl} ${hh - r} `;
+        d += `L ${-hl} ${-hh + r} `;
+        d += `A ${r} ${r} 0 0 1 ${-hl + r} ${-hh} `;
+      }
+      s += `<path d="${d}" fill="none" stroke="#7a5f28" stroke-width="2"/>` +
         `<circle cx="${-screwX}" cy="${-screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
         `<circle cx="${screwX}" cy="${-screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
         `<circle cx="${-screwX}" cy="${screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
