@@ -17,7 +17,7 @@ test('every lens and the objective have a transmission efficiency param defaulti
 });
 
 test('a convex lens at 100% transmission passes power through unchanged', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const lens = createElement('lens', 150, 0);
   lens.params.f = 100;
   const detector = createElement('detector', 300, 0);
@@ -26,7 +26,7 @@ test('a convex lens at 100% transmission passes power through unchanged', () => 
 });
 
 test('a lens below 100% transmission attenuates power/intensity by exactly that fraction', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const lens = createElement('lens', 150, 0);
   lens.params.f = 100;
   lens.params.transEff = 80;
@@ -36,7 +36,7 @@ test('a lens below 100% transmission attenuates power/intensity by exactly that 
 });
 
 test('the objective attenuates by its own transmission efficiency', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const objective = createElement('objective', 150, 0);
   objective.params.magnification = 10;
@@ -47,7 +47,7 @@ test('the objective attenuates by its own transmission efficiency', () => {
 });
 
 test('a telescope applies its shared transmission efficiency at each of its two lens surfaces', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const telescope = createElement('telescope', 300, 0);
   telescope.params.f1 = 100;
   telescope.params.f2 = 50;
@@ -59,7 +59,7 @@ test('a telescope applies its shared transmission efficiency at each of its two 
 });
 
 test('a concave lens (lensc) inherits the same transmission efficiency behavior as the convex lens', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const lensc = createElement('lensc', 150, 0);
   lensc.params.transEff = 60;
   const detector = createElement('detector', 300, 0);

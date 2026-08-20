@@ -47,59 +47,59 @@ function mkDemo(type, x, y, rot = 0, params = {}, extra = {}) {
 
 const demoScenes = {
   mirror: () => [
-    mkDemo('laser', 60, 150, 0),
+    mkDemo('cwlaser', 60, 150, 0),
     mkDemo('mirror', 220, 150, 45, { length: 50.8 }),
   ],
   lens: () => [
-    mkDemo('laser', 60, 220, 0, { beamMode: 'beam', beamWidth: 20 }),
+    mkDemo('cwlaser', 60, 220, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('lens', 220, 220, 0, { f: 100, dia: 40 }),
     mkDemo('box', 320, 220, 0, { text: '', w: 2, h: 60, behavior: 'block', fill: '#c9d4e0' }, { label: 'focus (f = 100 mm)', showLabel: true, labelPos: 't' }),
   ],
   lensc: () => [
-    mkDemo('laser', 60, 220, 0, { beamMode: 'beam', beamWidth: 20 }),
+    mkDemo('cwlaser', 60, 220, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('lensc', 220, 220, 0, { f: -100, dia: 40 }),
     mkDemo('box', 340, 220, 0, { text: '', w: 2, h: 2, behavior: 'pass', fill: '#c9d4e0' }, { label: 'diverges — virtual image on the source side', showLabel: true, labelPos: 't' }),
   ],
   telescope: () => [
-    mkDemo('laser', 60, 300, 0, { beamMode: 'beam', beamWidth: 10 }),
+    mkDemo('cwlaser', 60, 300, 0, { beamMode: 'beam', beamWidth: 10 }),
     mkDemo('telescope', 280, 300, 0, { f1: 50, f2: 150, dia: 50.8 }),
     mkDemo('box', 460, 300, 0, { text: '', w: 2, h: 2, behavior: 'pass', fill: '#c9d4e0' }, { label: 'still parallel — 3× wider', showLabel: true, labelPos: 't' }),
   ],
   objective: () => [
-    mkDemo('laser', 60, 300, 0, { beamMode: 'beam', beamWidth: 18 }),
+    mkDemo('cwlaser', 60, 300, 0, { beamMode: 'beam', beamWidth: 18 }),
     mkDemo('objective', 300, 300, 0, { magnification: 20, na: 1.2 }),
     mkDemo('box', 326, 300, 0, { text: '', w: 2, h: 50, behavior: 'block', fill: '#c9d4e0' }, { label: '20× · NA 1.20', showLabel: true, labelPos: 't' }),
   ],
   bs: () => [
-    mkDemo('laser', 60, 200, 0),
+    mkDemo('cwlaser', 60, 200, 0),
     mkDemo('bs', 220, 200, 0, { ratio: 0.5 }),
     mkDemo('detector', 380, 200, 0, {}, { label: 'transmitted', showLabel: true }),
     mkDemo('detector', 220, 60, -90, {}, { label: 'reflected', showLabel: true, labelPos: 'l' }),
   ],
   dichroic: () => [
-    mkDemo('laser', 60, 220, 0, { wavelength: 650 }, { label: '650 nm', showLabel: true }),
-    mkDemo('laser', 260, 60, 90, { wavelength: 450 }, { label: '450 nm', showLabel: true, labelPos: 'l' }),
+    mkDemo('cwlaser', 60, 220, 0, { wavelength: 650 }, { label: '650 nm', showLabel: true }),
+    mkDemo('cwlaser', 260, 60, 90, { wavelength: 450 }, { label: '450 nm', showLabel: true, labelPos: 'l' }),
     mkDemo('dichroic', 260, 220, -45, { length: 50.8 }, { label: 'Long pass 550 nm', showLabel: true, labelPos: 'r' }),
     mkDemo('textlabel', 90, 330, 0, {
       text: 'Reflects any wavelength below 550 nm, transmits any wavelength above 550 nm.', fontSize: 12,
     }),
   ],
   filter: () => [
-    mkDemo('laser', 40, 200, 0, { wavelength: 532, bwMode: 'band', bandwidth: 10 }, { label: '532 nm laser with 10 nm bandwidth', showLabel: true }),
+    mkDemo('pulsedlaser', 40, 200, 0, { wavelength: 532, transformLimited: false, bandwidth: 10, showPulse: false }, { label: '532 nm laser with 10 nm bandwidth', showLabel: true }),
     mkDemo('probe', 150, 200, 0, { prop: 'spectrum' }),
     mkDemo('filter', 260, 200, 0, { ftype: 'bandpass', center: 532, band: 2 }, { label: '532 - 2 nm bandpass filter', showLabel: true }),
     mkDemo('probe', 370, 200, 0, { prop: 'spectrum' }),
     mkDemo('detector', 460, 200, 0),
   ],
   etalon: () => [
-    mkDemo('laser', 40, 200, 0, { wavelength: 532, bwMode: 'band', bandwidth: 60 }, { label: '532 nm laser with 60 nm bandwidth', showLabel: true }),
+    mkDemo('pulsedlaser', 40, 200, 0, { wavelength: 532, transformLimited: false, bandwidth: 60, showPulse: false }, { label: '532 nm laser with 60 nm bandwidth', showLabel: true }),
     mkDemo('probe', 150, 200, 0, { prop: 'spectrum' }),
     mkDemo('etalon', 260, 200, 0, { fsr: 8 }, { label: '532 nm etalon, 8 nm FSR', showLabel: true }),
     mkDemo('probe', 370, 200, 0, { prop: 'spectrum' }),
     mkDemo('detector', 460, 200, 0),
   ],
   vipa: () => [
-    mkDemo('laser', 30, 200, 0, { wavelength: 532, bwMode: 'band', bandwidth: 60, beamMode: 'line' }, { label: '532 nm laser with 60 nm bandwidth', showLabel: true }),
+    mkDemo('pulsedlaser', 30, 200, 0, { wavelength: 532, transformLimited: false, bandwidth: 60, beamMode: 'line', showPulse: false }, { label: '532 nm laser with 60 nm bandwidth', showLabel: true }),
     mkDemo('probe', 120, 200, 0, { prop: 'spectrum' }),
     mkDemo('vipa', 250, 192.65, 0, {
       fsr: 0.002, bandwidth: 0.00185, tilt: 12, windowSize: 1.5, aperture: 90,
@@ -107,40 +107,40 @@ const demoScenes = {
     mkDemo('box', 460, 200, 0, { text: '', w: 10, h: 200, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — one input beam, many spatially fanned-out outputs', showLabel: true, labelPos: 'r' }),
   ],
   prism: () => [
-    mkDemo('laser', 60, 200, 0, { bwMode: 'sc' }),
+    mkDemo('sclaser', 60, 200, 0, { scMin: 400, scMax: 700, showPulse: false }),
     mkDemo('prism', 220, 206, 0, { apex: 55, psize: 50 }),
     mkDemo('box', 480, 405, 0, { text: '', w: 10, h: 150, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen', showLabel: true, labelPos: 'r' }),
   ],
   grating: () => [
-    mkDemo('laser', 60, 200, 0, { bwMode: 'sc' }),
+    mkDemo('sclaser', 60, 200, 0, { scMin: 400, scMax: 700, showPulse: false }),
     mkDemo('grating', 220, 200, 0, { orders: '-1,0,1', transmissive: true }),
     mkDemo('box', 340, 200, 0, { text: '', w: 10, h: 260, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen', showLabel: true, labelPos: 'r' }),
   ],
   freeglass: () => [
-    mkDemo('laser', 40, 200, 0, { wavelength: 550, beamMode: 'line' }),
+    mkDemo('cwlaser', 40, 200, 0, { wavelength: 550, beamMode: 'line' }),
     mkDemo('freeglass', 230, 205, 20, { scale: 1.6, ior: 2 }),
     mkDemo('box', 430, 200, 0, { text: '', w: 10, h: 160, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — beam bends at entry and exit', showLabel: true, labelPos: 'r' }),
   ],
   diffuser: () => [
-    mkDemo('laser', 60, 200, 0),
+    mkDemo('cwlaser', 60, 200, 0),
     mkDemo('diffuser', 220, 200, 0, { div: 18 }),
     mkDemo('box', 420, 200, 0, { text: '', w: 10, h: 220, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — scattered into a cone', showLabel: true, labelPos: 'r' }),
   ],
   glassrod: () => [
-    mkDemo('laser', 30, 200, 0, {
-      temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 100,
+    mkDemo('pulsedlaser', 30, 200, 0, {
+      repRateMHz: 80, pulseWidthFs: 100,
     }, { label: 'pulsed laser', showLabel: true }),
     mkDemo('glassrod', 220, 200, 0, { rodlen: 100, ior: 2.3 }, { label: 'n = 2.3 — watch the packet lag inside', showLabel: true, labelPos: 't' }),
   ],
   polarizer: () => [
-    mkDemo('laser', 60, 200, 0, { pol: 0 }),
+    mkDemo('cwlaser', 60, 200, 0, { pol: 0 }),
     mkDemo('probe', 150, 200, 0, { prop: 'pol' }),
     mkDemo('polarizer', 240, 200, 0, { pangle: 90 }),
     mkDemo('detector', 360, 200, 0, {}, { label: 'transmitted power', showLabel: true }),
   ],
   aom: () => [
-    mkDemo('laser', 60, 200, 0, {
-      temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 100,
+    mkDemo('pulsedlaser', 60, 200, 0, {
+      repRateMHz: 80, pulseWidthFs: 100,
     }),
     mkDemo('aom', 220, 200, 0, {
       deflect: 15, rfMHz: 80, zero: true, eff: 1,
@@ -149,30 +149,30 @@ const demoScenes = {
     mkDemo('box', 370, 200, 0, { text: '', w: 10, h: 90, behavior: 'block', fill: '#f2f3f5' }, { label: '1st order (deflected) + 0th order', showLabel: true, labelPos: 'r' }),
   ],
   detector: () => [
-    mkDemo('laser', 60, 200, 0),
+    mkDemo('cwlaser', 60, 200, 0),
     mkDemo('detector', 220, 200, 0),
   ],
   cmirror: () => [
-    mkDemo('laser', 60, 150, 0, { beamMode: 'beam', beamWidth: 20 }),
+    mkDemo('cwlaser', 60, 150, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('cmirror', 220, 150, 45, { f: 100, length: 50.8 }),
     mkDemo('box', 220, 50, 0, { text: '', w: 70, h: 2, behavior: 'pass', fill: '#c9d4e0' }, { label: 'focus (f = 100 mm)', showLabel: true, labelPos: 't' }),
   ],
   cmirrorx: () => [
-    mkDemo('laser', 60, 150, 0, { beamMode: 'beam', beamWidth: 20 }),
+    mkDemo('cwlaser', 60, 150, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('cmirrorx', 220, 150, 45, { f: -100, length: 50.8 }),
     mkDemo('box', 220, 50, 0, { text: '', w: 70, h: 2, behavior: 'pass', fill: '#c9d4e0' }, { label: 'diverges — virtual focus behind mirror', showLabel: true, labelPos: 't' }),
   ],
   oap: () => [
-    mkDemo('laser', 60, 300, 0, { beamMode: 'beam', beamWidth: 20 }),
+    mkDemo('cwlaser', 60, 300, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('oap', 300, 300, 0, { f: 50, length: 80 }),
   ],
   galvo: () => [
-    mkDemo('laser', 60, 200, 0),
+    mkDemo('cwlaser', 60, 200, 0),
     mkDemo('galvo', 220, 200, 45, { scanMode: 'sine', scanAmplitude: 8, scanFrequencyHz: 0.4 }),
     mkDemo('box', 220, 60, 0, { text: '', w: 200, h: 2, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — the reflected beam sweeps back and forth', showLabel: true, labelPos: 't' }),
   ],
   retroreflector: () => [
-    mkDemo('laser', 60, 145, 0),
+    mkDemo('cwlaser', 60, 145, 0),
     mkDemo('retroreflector', 260, 160, 0, {
       length: 50.8, moveMode: 'linear', travel: 50, freqHz: 0.15,
     }, { label: 'slides only away from the laser — round-trip path only ever gets longer', showLabel: true, labelPos: 'b' }),
@@ -1103,14 +1103,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       replaceScene(sharedScene, { resetHistory: true });
       zoomFit();
     } else if (!loadAutosave(registry)) {
-      // starter scene: laser -> lens -> beamsplitter -> two detection arms
+      // starter scene: CW laser -> lens -> beamsplitter -> two detection arms
       const mk = (t, x, y, rot = 0, params = {}, label = '') => {
         const e = createElement(t, x, y); e.rot = rot; Object.assign(e.params, params);
         if (label) { e.label = label; e.showLabel = true; }
         return e;
       };
       state.elements.push(
-        mk('laser', 75, 200, 0, { wavelength: 488 }, 'Laser 488 nm'),
+        mk('cwlaser', 75, 200, 0, { wavelength: 488 }, 'Laser 488 nm'),
         mk('lens', 275, 200, 0, { f: 150 }, 'f = 150 mm'),
         mk('bs', 425, 200, 0),
         mk('mirror', 625, 200, 135),

@@ -24,7 +24,7 @@ import {
 } from './polarization.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
-  gaussianSpectrum, flatSpectrum, spectrumSamples, applyTransmission, transformLimitedBandwidthNm,
+  gaussianSpectrum, flatSpectrum, spectrumSamples, applyTransmission, resolveSourceSpectrum,
 } from './spectrum.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -1010,16 +1010,22 @@ function interact(ray, hit) {
         // pass-through, so the stack push's `'spec' in c` inheritance rule
         // still sees "unset" and keeps the ray's real profile.
         const specField = bandwidth === ray.bw ? {} : { spec: null };
+        // A dispersion sample now stands for one wavelength alone, so it owns
+        // a wavelength-derived color outright. Without this, a source with a
+        // fixed beam color (a supercontinuum, whose band has no single λ to
+        // derive from) would paint its whole dispersed fan that one color
+        // instead of the rainbow the prism actually produces.
+        const colorField = bandwidth === ray.bw ? {} : { color: wavelengthToColor(wl) };
         const transmitted = refract(d, n, n1, n2);
         if (!transmitted) {
           return {
-            d: reflect(d, n), wl, bw: bandwidth, ...specField, intensity,
+            d: reflect(d, n), wl, bw: bandwidth, ...specField, ...colorField, intensity,
             ior: inside ? materialIor : (ray.ior || 1),
             tag: tag ? `${tag}-tir` : 'tir',
           };
         }
         return {
-          d: transmitted, wl, bw: bandwidth, ...specField, tag,
+          d: transmitted, wl, bw: bandwidth, ...specField, ...colorField, tag,
           medium: inside ? null : materialId,
           ior: n2,
           intensity: intensity * Math.min(1, Math.max(0, data.transmission ?? 1)),
@@ -1993,26 +1999,13 @@ export function traceScene(elements, beams = []) {
     const p = el.params;
     const baseColor = p.autoColor === false && p.color ? p.color : wavelengthToColor(p.wavelength);
     const local = def.source(el);
-    const scLo = el.type === 'sclaser' ? Math.min(p.scMin || 430, p.scMax || 870) : 430;
-    const scHi = el.type === 'sclaser' ? Math.max(p.scMin || 430, p.scMax || 870) : 870;
-    // Transform-limited pulsed emission drives the spectral width from the
-    // pulse duration (time-bandwidth product) rather than a separately
-    // chosen bandwidth — it overrides bwMode/bandwidth entirely while active.
-    const transformLimited = el.type === 'laser' && p.temporalMode === 'pulsed' && p.transformLimited;
-    const effectiveBwMode = transformLimited ? 'band' : p.bwMode;
-    const effectiveBandwidth = transformLimited
-      ? transformLimitedBandwidthNm(p.pulseWidthFs || 100, p.wavelength, p.pulseShape)
-      : p.bandwidth;
-    const srcBw = effectiveBwMode === 'band' ? (effectiveBandwidth || 0)
-      : effectiveBwMode === 'sc' ? scHi - scLo : 0;
-    const srcWl = effectiveBwMode === 'sc' ? (scHi + scLo) / 2 : p.wavelength;
     // A ray's (wl, bw) stay the centroid/FWHM summary every part of the
     // tracer already reads; `spec` is the true shape — Gaussian for a
     // broadband laser line, flat for a supercontinuum — that wavelength-
     // selective elements and the spectrometer display integrate against.
-    const srcSpec = effectiveBwMode === 'band' ? gaussianSpectrum(srcWl, srcBw)
-      : effectiveBwMode === 'sc' ? flatSpectrum(scLo, scHi)
-      : null;
+    // Each source type's own rule for arriving at the three lives in
+    // resolveSourceSpectrum(), so nothing here branches on element type.
+    const { wl: srcWl, bw: srcBw, spec: srcSpec } = resolveSourceSpectrum(el.type, p);
     const K = local.length;
     const pulse = p.temporalMode === 'pulsed' ? {
       sourceId: el.id,
@@ -2059,7 +2052,12 @@ export function traceScene(elements, beams = []) {
       K, isBeam: p.beamMode === 'beam',
       fixedColor: p.autoColor === false && p.color ? baseColor : null,
     }, drawables);
-    collectPulseTracks(paths, K, p.autoColor === false && p.color ? baseColor : null, pulseTracks);
+    // "Show pulse dynamics" is a rendering choice only: the pulse train above
+    // is still traced and still gates temporal overlap downstream — skipping
+    // the tracks just leaves the steady CW beam graphic in place of packets.
+    if (p.showPulse !== false) {
+      collectPulseTracks(paths, K, p.autoColor === false && p.color ? baseColor : null, pulseTracks);
+    }
   }
   };
 

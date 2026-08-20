@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
   gaussianSpectrum, flatSpectrum, spectrumWeight, spectrumSamples, spectrumStats,
-  applyTransmission, transformLimitedBandwidthNm, transformLimitedDurationFs,
+  applyTransmission, transformLimitedBandwidthNm, transformLimitedDurationFs, resolveSourceSpectrum,
 } from '../sketch/js/spectrum.js';
-import { createElement, getVisualBounds, probeScale, registry } from '../sketch/js/elements.js';
+import { createElement, formatPower, getVisualBounds, peakPowerW, probeScale, registry } from '../sketch/js/elements.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
 import '../sketch/js/detector-instruments.js';
 import '../sketch/js/etalon.js';
@@ -93,33 +93,113 @@ test('transformLimitedDurationFs is the inverse of transformLimitedBandwidthNm',
   nearly(dt, 200, 0.01);
 });
 
-// ---------------- laser element defaults ----------------
+// ---------------- laser source defaults ----------------
 
-test('the laser now defaults to a sized beam with 1 W average power', () => {
-  const laser = createElement('laser');
-  assert.equal(laser.params.beamMode, 'beam');
-  assert.equal(laser.params.beamWidth, 5);
-  assert.equal(laser.params.avgPowerW, 1);
-  assert.equal(laser.params.bwMode, 'mono');
+test('each laser source ships the defaults its own bench role implies', () => {
+  const cw = createElement('cwlaser');
+  assert.equal(cw.params.wavelength, 532);
+  assert.equal(cw.params.avgPowerW, 0.1);
+  assert.equal(cw.params.beamMode, 'beam');
+  assert.equal(cw.params.beamWidth, 3);
+  assert.equal(cw.params.pol, 0);
+  assert.equal(cw.params.autoColor, true);
+  assert.equal(cw.params.temporalMode, 'cw');
+
+  const pulsed = createElement('pulsedlaser');
+  assert.equal(pulsed.params.wavelength, 532);
+  assert.equal(pulsed.params.avgPowerW, 0.1);
+  assert.equal(pulsed.params.beamWidth, 3);
+  assert.equal(pulsed.params.repRateMHz, 80);
+  assert.equal(pulsed.params.pulsePhaseNs, 0);
+  assert.equal(pulsed.params.pulseWidthFs, 150);
+  assert.equal(pulsed.params.transformLimited, true);
+  assert.equal(pulsed.params.pulseShape, 'gauss');
+  assert.equal(pulsed.params.bandwidth, 5);
+  assert.equal(pulsed.params.showPulse, true);
+  assert.equal(pulsed.params.temporalMode, 'pulsed');
+
+  const sc = createElement('sclaser');
+  assert.equal(sc.params.scMin, 300);
+  assert.equal(sc.params.scMax, 700);
+  assert.equal(sc.params.avgPowerW, 1);
+  assert.equal(sc.params.beamWidth, 3);
+  assert.equal(sc.params.repRateMHz, 80);
+  assert.equal(sc.params.autoColor, false, 'a supercontinuum has no single colour to derive');
+  assert.equal(sc.params.color, '#cbd8ea');
+  assert.equal(sc.params.showPulse, true);
+  assert.equal(sc.params.temporalMode, 'pulsed');
 });
 
-test('transform-limited and pulse-shape params only appear while pulsed', () => {
-  const def = registry.laser;
-  const tl = def.params.find(p => p.key === 'transformLimited');
+test('the CW laser exposes no temporal or spectral-width controls at all', () => {
+  const keys = registry.cwlaser.params.map(p => p.key);
+  for (const gone of ['repRateMHz', 'pulseWidthFs', 'pulsePhaseNs', 'transformLimited', 'bwMode', 'bandwidth', 'showPulse']) {
+    assert.equal(keys.includes(gone), false, `CW laser must not offer ${gone}`);
+  }
+});
+
+test('the pulsed laser swaps its derived bandwidth for an editable one when transform-limited is off', () => {
+  const def = registry.pulsedlaser;
   const shape = def.params.find(p => p.key === 'pulseShape');
-  assert.equal(tl.show({ temporalMode: 'cw' }), false);
-  assert.equal(tl.show({ temporalMode: 'pulsed' }), true);
-  assert.equal(shape.show({ temporalMode: 'pulsed', transformLimited: false }), false);
-  assert.equal(shape.show({ temporalMode: 'pulsed', transformLimited: true }), true);
-  const bwMode = def.params.find(p => p.key === 'bwMode');
-  assert.equal(bwMode.show({ temporalMode: 'pulsed', transformLimited: true }), false);
-  assert.equal(bwMode.show({ temporalMode: 'cw', transformLimited: true }), true);
+  const bandwidth = def.params.find(p => p.key === 'bandwidth');
+
+  assert.equal(shape.show({ transformLimited: true }), true);
+  assert.equal(shape.show({ transformLimited: false }), false);
+  assert.equal(bandwidth.show({ transformLimited: true }), false, 'derived while transform-limited, so not shown');
+  assert.equal(bandwidth.show({ transformLimited: false }), true);
+  assert.equal(bandwidth.min, 0, '0 nm is a valid monochromatic pulse train');
+});
+
+// ---------------- resolved source spectra ----------------
+
+test('a transform-limited pulse derives its bandwidth from its own duration', () => {
+  const pulsed = createElement('pulsedlaser');
+  const { wl, bw, spec } = resolveSourceSpectrum('pulsedlaser', pulsed.params);
+  assert.equal(wl, 532);
+  nearly(bw, transformLimitedBandwidthNm(150, 532, 'gauss'), 1e-9);
+  assert.equal(spec.kind, 'gauss');
+});
+
+test('turning transform-limited off hands the spectrum over to the bandwidth field, 0 nm included', () => {
+  const pulsed = createElement('pulsedlaser');
+  pulsed.params.transformLimited = false;
+  pulsed.params.bandwidth = 12;
+  assert.equal(resolveSourceSpectrum('pulsedlaser', pulsed.params).bw, 12);
+
+  pulsed.params.bandwidth = 0;
+  const mono = resolveSourceSpectrum('pulsedlaser', pulsed.params);
+  assert.equal(mono.bw, 0);
+  assert.equal(mono.spec, null, 'a 0 nm bandwidth is an exactly monochromatic pulse train');
+});
+
+test('the CW laser is monochromatic no matter what stray params it carries', () => {
+  const cw = createElement('cwlaser');
+  const { bw, spec } = resolveSourceSpectrum('cwlaser', { ...cw.params, bandwidth: 40 });
+  assert.equal(bw, 0);
+  assert.equal(spec, null);
+});
+
+test('the supercontinuum resolves to a flat band centred between its endpoints', () => {
+  const sc = createElement('sclaser');
+  const { wl, bw, spec } = resolveSourceSpectrum('sclaser', sc.params);
+  assert.equal(wl, 500);
+  assert.equal(bw, 400);
+  assert.deepEqual(spec, { kind: 'flat', lo: 300, hi: 700 });
+});
+
+test('peak power concentrates the pulse energy into one pulse duration', () => {
+  const pulsed = createElement('pulsedlaser');
+  // 0.1 W / 80 MHz = 1.25 nJ per pulse, delivered in 150 fs
+  nearly(peakPowerW(pulsed.params), 0.9394 * (0.1 / 80e6) / 150e-15, 1e-6);
+  assert.match(formatPower(peakPowerW(pulsed.params)), /kW$/);
+
+  assert.equal(peakPowerW({ ...pulsed.params, avgPowerW: 0 }), null);
+  assert.equal(formatPower(null), '—');
 });
 
 // ---------------- end-to-end: a spectrometer sees the real Gaussian shape ----------------
 
 test('a monochromatic laser reads as a single spike on a spectrometer', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const spectrometer = createElement('spectrometer', 300, 0);
   traceAll([laser, spectrometer]);
   const reading = detectorReading(spectrometer.id);
@@ -128,7 +208,7 @@ test('a monochromatic laser reads as a single spike on a spectrometer', () => {
 });
 
 test('a broadband laser reads as a real Gaussian curve on a spectrometer, not a single spike', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40;
@@ -154,7 +234,7 @@ test('a broadband laser reads as a real Gaussian curve on a spectrometer, not a 
 });
 
 test('a transform-limited pulsed laser drives its bandwidth from pulse duration, not a manual setting', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.temporalMode = 'pulsed';
   laser.params.pulseWidthFs = 100;
@@ -180,7 +260,7 @@ test('a transform-limited pulsed laser drives its bandwidth from pulse duration,
 // ---------------- broadband light through wavelength-selective elements ----------------
 
 test('a bandpass filter partially transmits a Gaussian laser line, proportional to spectral overlap', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40; // wide relative to a 20 nm passband
@@ -203,7 +283,7 @@ test('a bandpass filter partially transmits a Gaussian laser line, proportional 
 });
 
 test('a dichroic mirror splits a Gaussian laser line into transmitted and reflected halves', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40;
@@ -222,7 +302,7 @@ test('a dichroic mirror splits a Gaussian laser line into transmitted and reflec
 });
 
 test('two filters in series on a Gaussian source: the second sees the first\'s reshaped output, not the raw line', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 60;
@@ -277,7 +357,7 @@ test('the exact flat-spectrum overlap through a filter is unaffected by the Gaus
 // ---------------- dispersion weighting ----------------
 
 test('a Gaussian-mode broadband laser disperses through a prism with a brighter centre, not a flat fan', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 200; // >=200 uses the finer 9-sample dispersion grid
@@ -308,7 +388,7 @@ test('a supercontinuum source still disperses through a prism with uniform weigh
 // ---------------- etalon interaction with the new Gaussian model ----------------
 
 test('a monochromatic laser exactly on an etalon resonance is unaffected by the spectrum redesign', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const etalon = createElement('etalon', 150, 0);
   const detector = createElement('detector', 300, 0);
   traceAll([laser, etalon, detector]);
@@ -317,7 +397,7 @@ test('a monochromatic laser exactly on an etalon resonance is unaffected by the 
 });
 
 test('a broadband Gaussian laser through an etalon degrades gracefully (no crash, finite result)', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40; // far broader than the etalon's default 1 nm linewidth
@@ -344,7 +424,7 @@ function screenFor(sensor, elements, view = 'main') {
 }
 
 test('the beam probe plots real sampled data for a broadband line as a smooth curve, not a hand-drawn bump', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40; // centre 532, so bandMin=512, bandMax=552
@@ -356,7 +436,7 @@ test('the beam probe plots real sampled data for a broadband line as a smooth cu
 });
 
 test('the beam probe shows the range as ±2σ of the FWHM bandwidth plus 5 nm, with extremes and centre labeled', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40; // FWHM 40 -> sigma ~16.99 -> padded [~493, ~571], centre 532
@@ -375,7 +455,7 @@ test('the beam probe spectrum plot never overflows the white box, even when the 
   // bandwidth (sigma ~85 nm) makes the ±2σ+5 display window (~180 nm) much
   // narrower than the ±3σ sample support (~255 nm), so some of the 28 raw
   // samples must now be filtered out.
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 200;
@@ -389,7 +469,7 @@ test('the beam probe spectrum plot never overflows the white box, even when the 
 });
 
 test('the beam probe pads a monochromatic line by 5 nm on each side too', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const probe = createElement('probe', 150, 0);
   traceAll([laser, probe]);
@@ -400,7 +480,7 @@ test('the beam probe pads a monochromatic line by 5 nm on each side too', () => 
 });
 
 test('the beam probe readout card renders at 1.5x the original baseline, and its crosshair never scales', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const probe = createElement('probe', 150, 0);
   traceAll([laser, probe]);
   assert.equal(probe.params.displayScale, 1);
@@ -426,7 +506,7 @@ test('the beam probe scale dial spans 0.5x to 2x around its new default', () => 
 });
 
 test('the probe card stays upright and clear of the beam however the probe is rotated', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const probe = createElement('probe', 150, 0);
   traceAll([laser, probe]);
 
@@ -451,7 +531,7 @@ test('the probe card stays upright and clear of the beam however the probe is ro
 // ---------------- spectrometer: default padded range + manual override ----------------
 
 test('a spectrometer defaults to the ±2σ (FWHM) + 5 nm range, extremes and centre labeled', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40; // FWHM 40 -> sigma ~16.99 -> padded [~493, ~571]
@@ -464,7 +544,7 @@ test('a spectrometer defaults to the ±2σ (FWHM) + 5 nm range, extremes and cen
 });
 
 test('a spectrometer\'s manual range overrides the auto-computed one and clips out-of-range samples', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40; // bandMin=512, bandMax=552
@@ -486,7 +566,7 @@ test('a spectrometer\'s manual range overrides the auto-computed one and clips o
 });
 
 test('an invalid manual range (max <= min) falls back to the automatic range', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40;

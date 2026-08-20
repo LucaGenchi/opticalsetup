@@ -94,7 +94,7 @@ test('component metadata distinguishes simulated, setup-dependent, and diagram-o
 });
 
 test('glass rods refract through their faces and return an exiting ray to air', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const rod = createElement('glassrod', 180, 0);
   rod.rot = 10;
@@ -133,7 +133,7 @@ test('objectives expose magnification and NA while deriving thin-lens geometry i
 });
 
 test('detectors report qualitative signal, spectrum, polarization, and spot span', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'beam';
   laser.params.beamWidth = 8;
   laser.params.wavelength = 488;
@@ -154,7 +154,7 @@ test('detectors report qualitative signal, spectrum, polarization, and spot span
 });
 
 test('detector signal follows upstream attenuation', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const splitter = createElement('bs', 150, 0);
   splitter.params.ratio = 0.35;
   const detector = createElement('detector', 300, 0);
@@ -163,7 +163,7 @@ test('detector signal follows upstream attenuation', () => {
 });
 
 test('pulsed lasers produce optical-path tracks and physical detector arrival times', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   laser.params.repRateMHz = 80;
   laser.params.pulseWidthFs = 120;
@@ -181,10 +181,10 @@ test('pulsed lasers produce optical-path tracks and physical detector arrival ti
 });
 
 test('detectors distinguish mixed pulse trains instead of inventing one setting', () => {
-  const fast = createElement('laser', 0, 0);
+  const fast = createElement('pulsedlaser', 0, 0);
   fast.params.temporalMode = 'pulsed';
   fast.params.repRateMHz = 80;
-  const slow = createElement('laser', 0, 0);
+  const slow = createElement('pulsedlaser', 0, 0);
   slow.params.temporalMode = 'pulsed';
   slow.params.repRateMHz = 10;
   slow.params.pulsePhaseNs = 2;
@@ -222,7 +222,7 @@ test('detector timeline is generated from repetition rate, phase, and path delay
 });
 
 test('pulsed scenes export as deterministic static SVGs without animation markup', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   state.elements = [laser, createElement('mirror', 200, 0)];
   state.beams = [];
@@ -233,7 +233,7 @@ test('pulsed scenes export as deterministic static SVGs without animation markup
 });
 
 test('fiber relaunch adds configured group delay and finite loss', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   const fiber = {
     id: 'timed-fiber', kind: 'fiber', pts: [{ x: 100, y: 0 }, { x: 200, y: 0 }],
@@ -249,7 +249,7 @@ test('fiber relaunch adds configured group delay and finite loss', () => {
 });
 
 test('glass group index adds the expected pulse arrival delay', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   const detector = createElement('detector', 369, 0); // front face at x=350
   traceAll([laser, detector]);
@@ -277,7 +277,7 @@ test('every Examples/**/*.json file parses, traces, and exports without invalid 
 });
 
 test('speckle dot drawables are included in export bounds', () => {
-  state.elements = [createElement('laser', 0, 0), createElement('diffuser', 100, 0)];
+  state.elements = [createElement('cwlaser', 0, 0), createElement('diffuser', 100, 0)];
   state.beams = [];
   const svg = buildSVG();
   assert.match(svg, /<circle /);
@@ -285,7 +285,7 @@ test('speckle dot drawables are included in export bounds', () => {
 });
 
 test('invisible blockers bound rays without appearing in the export', () => {
-  state.elements = [createElement('laser', 0, 0), createElement('blocker', 1000, 0)];
+  state.elements = [createElement('cwlaser', 0, 0), createElement('blocker', 1000, 0)];
   state.beams = [];
   const svg = buildSVG();
   const viewBox = svg.match(/viewBox="([^\"]+)"/)[1].split(' ').map(Number);
@@ -294,7 +294,7 @@ test('invisible blockers bound rays without appearing in the export', () => {
 });
 
 test('long labels and probe cards are inside fitted export bounds', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.label = 'A very long optical source label that must remain fully visible in an exported figure';
   laser.showLabel = true;
   state.elements = [laser, createElement('probe', 200, 0)];
@@ -306,7 +306,7 @@ test('long labels and probe cards are inside fitted export bounds', () => {
 });
 
 test('SVG and PNG exports reach the browser download trigger', async () => {
-  state.elements = [createElement('laser', 0, 0), createElement('diffuser', 100, 0)];
+  state.elements = [createElement('cwlaser', 0, 0), createElement('diffuser', 100, 0)];
   state.beams = [];
   const originals = {
     document: globalThis.document, Image: globalThis.Image, URL: globalThis.URL,
@@ -363,7 +363,7 @@ test('consecutive duplicate drawing points are removed', () => {
 });
 
 test('legacy fibers with repeated end points cannot create non-finite rays', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const fiber = {
     id: 'fiber', kind: 'fiber', color: '#e8a800', width: 4, propagate: true,
     pts: [{ x: 150, y: 0 }, { x: 150, y: 0 }, { x: 250, y: 0 }],

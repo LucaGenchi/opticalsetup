@@ -22,7 +22,7 @@ const ch = (kind, over = {}) => ({ ...newSampleChannel(kind), ...over });
 // the way a real microscope does.
 function collectBench(specimenType, channels, wavelengths = [800]) {
   const lasers = wavelengths.map((wl, i) => {
-    const laser = createElement('laser', 0, (i - (wavelengths.length - 1) / 2) * 6);
+    const laser = createElement('cwlaser', 0, (i - (wavelengths.length - 1) / 2) * 6);
     Object.assign(laser.params, { wavelength: wl, beamMode: 'line' });
     return laser;
   });
@@ -64,7 +64,7 @@ test('both the plain sample and the piezo holder offer the same specimen types',
 });
 
 test('an absorbing specimen attenuates, and blocks the beam outright at zero transmission', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const sample = createElement('sample', 150, 0);
   sample.rot = 90;
   Object.assign(sample.params, { specimenType: 'absorbing', transmission: 0.4 });
@@ -186,7 +186,7 @@ test('an anti-Stokes-side shift that would need more energy than the pump is dro
 
 test('phase contrast retards the transmitted beam without adding light of its own', () => {
   const readPolarization = (retardance, axis) => {
-    const laser = createElement('laser', 0, 0);
+    const laser = createElement('cwlaser', 0, 0);
     Object.assign(laser.params, { pol: 0, beamMode: 'line' });
     const sample = createElement('sample', 150, 0);
     sample.rot = 90;
@@ -215,7 +215,7 @@ function srsBench({
   modulate = 800, read = 1040, extraOplMm = 0, requireOverlap = true,
 } = {}) {
   const makeLaser = (wl, y) => {
-    const laser = createElement('laser', 0, y);
+    const laser = createElement('pulsedlaser', 0, y);
     Object.assign(laser.params, {
       wavelength: wl, temporalMode: 'pulsed', repRateMHz: 40, pulseWidthFs: 200, beamMode: 'line',
     });
@@ -309,7 +309,7 @@ test('SRS stops when the two arms are no longer path-matched, and the toggle ove
 test('CARS and SFG also need the pulses to coincide', () => {
   const mixed = (kind, extraOplMm, requireOverlap = true) => {
     const makeLaser = (wl, y) => {
-      const laser = createElement('laser', 0, y);
+      const laser = createElement('pulsedlaser', 0, y);
       Object.assign(laser.params, {
         wavelength: wl, temporalMode: 'pulsed', repRateMHz: 40, pulseWidthFs: 200, beamMode: 'line',
       });
@@ -432,7 +432,7 @@ test('a migrated legacy specimen still traces the signal it always did', () => {
   const scene = parseSketch(JSON.stringify({
     app: 'optics2d', version: 1, beams: [],
     elements: [
-      { type: 'laser', x: 0, y: 0, params: { wavelength: 800, beamMode: 'line' } },
+      { type: 'cwlaser', x: 0, y: 0, params: { wavelength: 800, beamMode: 'line' } },
       { type: 'sample', x: 200, y: 0, rot: 90, params: { mode: 'shg', signalEff: 0.5 } },
       { type: 'detector', x: 400, y: 0, params: {} },
     ],
@@ -495,7 +495,7 @@ test('a photodiode screen offers only its own readout, never a spectrum it never
 });
 
 test('cycling the view on a single-readout sensor is a no-op that says why', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   const detector = createElement('detector', 300, 0);
   const display = createElement('display', 420, 100);
@@ -518,7 +518,7 @@ test('cycling the view on a single-readout sensor is a no-op that says why', () 
 });
 
 test('a camera screen still cycles through its three readouts', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'beam';
   const camera = createElement('camera', 300, 0);
   const display = createElement('display', 420, 100);
@@ -593,7 +593,7 @@ function spectrumScreen(elements, sensor) {
 }
 
 function monoLaser(wl, y) {
-  const laser = createElement('laser', 0, y);
+  const laser = createElement('cwlaser', 0, y);
   Object.assign(laser.params, { wavelength: wl, beamMode: 'line' });
   return laser;
 }
@@ -739,7 +739,7 @@ test('the intensity axis is a spectral density, so a line and a band are compara
   // the same power across many. On a per-nm axis the line towers over it,
   // which is what a real spectrometer shows.
   const mk = (y, broadband) => {
-    const laser = createElement('laser', 0, y);
+    const laser = createElement('cwlaser', 0, y);
     Object.assign(laser.params, {
       wavelength: 532, beamMode: 'line', avgPowerW: 1,
       ...(broadband ? { bwMode: 'band', bandwidth: 40 } : {}),

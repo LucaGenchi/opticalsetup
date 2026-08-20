@@ -197,3 +197,32 @@ export function transformLimitedDurationFs(bandwidthNm, wavelengthNm, shape = 'g
   const lambda = Math.max(1, wavelengthNm);
   return (lambda * lambda * K) / (C_NM_PER_FS * dl);
 }
+
+// Every emitting element resolves to the same three-value spectral contract
+// the tracer consumes: a centroid wavelength, an FWHM-style width, and the
+// true spectral shape (null = exactly monochromatic). Each source type
+// arrives at it differently — a CW line is monochromatic by construction, a
+// supercontinuum is a flat band between two endpoints, and a pulsed laser
+// either derives its width from its own duration (transform-limited) or
+// takes an explicitly entered bandwidth, where 0 nm means monochromatic.
+// Keeping every one of those rules here is what lets the tracer stay free of
+// per-source-type branching.
+export function resolveSourceSpectrum(type, params = {}) {
+  const p = params;
+  if (type === 'sclaser') {
+    const lo = Math.min(p.scMin ?? 300, p.scMax ?? 700);
+    const hi = Math.max(p.scMin ?? 300, p.scMax ?? 700);
+    return { wl: (lo + hi) / 2, bw: hi - lo, spec: flatSpectrum(lo, hi) };
+  }
+  const wl = p.wavelength;
+  if (type === 'pulsedlaser') {
+    const bw = p.transformLimited
+      ? transformLimitedBandwidthNm(p.pulseWidthFs || 150, wl, p.pulseShape)
+      : Math.max(0, p.bandwidth || 0);
+    return { wl, bw, spec: gaussianSpectrum(wl, bw) };
+  }
+  // Remaining sources (CW laser, point source, object) select a spectrum
+  // through the generic `bwMode` switch they each expose.
+  const bw = p.bwMode === 'band' ? Math.max(0, p.bandwidth || 0) : 0;
+  return { wl, bw, spec: gaussianSpectrum(wl, bw) };
+}

@@ -27,7 +27,7 @@ test('Detectors contains the eight requested instruments in order', () => {
 });
 
 test('camera screen shows a 2D intensity map and beam diameter', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'beam';
   laser.params.beamWidth = 12;
   const camera = createElement('camera', 300, 0);
@@ -58,7 +58,7 @@ test('camera shows an object image when the paraxial image falls on its sensor',
 });
 
 test('photodetector screen is an intensity readout', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const detector = createElement('detector', 300, 0);
   const svg = screenFor(detector, [laser, detector]);
 
@@ -70,7 +70,7 @@ test('photodetector screen is an intensity readout', () => {
 // ---------------- photodetector screen as an oscilloscope ----------------
 
 test('a pulsed photodetector screen becomes an oscilloscope showing the train in time', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   laser.params.repRateMHz = 20;
   const detector = createElement('detector', 300, 0);
@@ -83,7 +83,7 @@ test('a pulsed photodetector screen becomes an oscilloscope showing the train in
 });
 
 test('the oscilloscope reports the modulation frequency and window for a switched beam', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.pol = 0;
   laser.params.temporalMode = 'pulsed';
   laser.params.repRateMHz = 20;
@@ -107,7 +107,7 @@ test('the oscilloscope reports the modulation frequency and window for a switche
 });
 
 test('continuous-wave light keeps the plain intensity readout, with nothing to plot in time', () => {
-  const laser = createElement('laser', 0, 0); // CW by default
+  const laser = createElement('cwlaser', 0, 0); // CW by default
   const detector = createElement('detector', 300, 0);
   const svg = screenFor(detector, [laser, detector]);
   assert.match(svg, /REL INTENSITY/);
@@ -116,7 +116,7 @@ test('continuous-wave light keeps the plain intensity readout, with nothing to p
 });
 
 test('PMT screen reports low-light input, gain, output, and saturation state', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const pmt = createElement('pmt', 300, 0);
   pmt.params.gain = 25;
   const svg = screenFor(pmt, [laser, pmt]);
@@ -128,7 +128,7 @@ test('PMT screen reports low-light input, gain, output, and saturation state', (
 });
 
 test('power meter uses configured source power', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.avgPowerW = 0.25;
   const meter = createElement('powermeter', 300, 0);
   const svg = screenFor(meter, [laser, meter]);
@@ -142,7 +142,7 @@ test('power meter uses configured source power', () => {
 });
 
 test('wavefront detector reports collimation and intensity', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'beam';
   laser.params.beamWidth = 10;
   const detector = createElement('wavefrontdetector', 300, 0);
@@ -154,7 +154,7 @@ test('wavefront detector reports collimation and intensity', () => {
 });
 
 test('polarimeter reports state, Stokes parameters, and a visual glyph', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 30;
   const polarimeter = createElement('polarimeter', 300, 0);
   const svg = screenFor(polarimeter, [laser, polarimeter]);
@@ -167,7 +167,7 @@ test('polarimeter reports state, Stokes parameters, and a visual glyph', () => {
 });
 
 test('spectrometer reports wavelength, bandwidth, and spectrum samples', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 40;
   const spectrometer = createElement('spectrometer', 300, 0);
@@ -184,7 +184,7 @@ test('spectrometer reports wavelength, bandwidth, and spectrum samples', () => {
 });
 
 test('general detector includes Stokes parameters and pulsed timing', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   laser.params.repRateMHz = 80;
   laser.params.pulseWidthFs = 100;
@@ -206,7 +206,7 @@ test('wavefront classification is monotonic through a focus and independent of d
   // quantization noise near a focus (reported: converging AT the focus,
   // diverging at +25, collimated at +50/+75, diverging again at +100).
   const stateAt = (distanceFromLens, aperture) => {
-    const laser = createElement('laser', 0, 0);
+    const laser = createElement('cwlaser', 0, 0);
     laser.params.beamMode = 'beam';
     laser.params.beamWidth = 20;
     const lens = createElement('lens', 200, 0);
@@ -236,7 +236,7 @@ test('wavefront classification is monotonic through a focus and independent of d
 });
 
 test('a genuinely collimated beam still reads as collimated', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'beam';
   laser.params.beamWidth = 12;
   const wf = createElement('wavefrontdetector', 300, 0);

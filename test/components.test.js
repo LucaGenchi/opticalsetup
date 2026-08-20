@@ -24,7 +24,7 @@ test('galvo command changes the physical mirror surface', () => {
 test('triangular prism uses drawn boundaries and disperses blue more than red', () => {
   const angles = [];
   for (const wavelength of [450, 650]) {
-    const laser = createElement('laser', 0, 0);
+    const laser = createElement('cwlaser', 0, 0);
     laser.params.beamMode = 'line';
     laser.params.wavelength = wavelength;
     const prism = createElement('prism', 180, 0);
@@ -38,9 +38,9 @@ test('triangular prism uses drawn boundaries and disperses blue more than red', 
 });
 
 test('DMD routes ON and OFF micromirror stripes into distinct orders', () => {
-  const onLaser = createElement('laser', 0, 0);
+  const onLaser = createElement('cwlaser', 0, 0);
   onLaser.params.beamMode = 'line';
-  const offLaser = createElement('laser', 0, 4);
+  const offLaser = createElement('cwlaser', 0, 4);
   offLaser.params.beamMode = 'line';
   const dmd = createElement('dmd', 180, 0);
   dmd.params.routeOff = true;
@@ -54,7 +54,7 @@ test('DMD routes ON and OFF micromirror stripes into distinct orders', () => {
 });
 
 test('deformable mirror defocuses an off-axis reflected ray through its focus', () => {
-  const laser = createElement('laser', 0, 5);
+  const laser = createElement('cwlaser', 0, 5);
   laser.params.beamMode = 'line';
   const dm = createElement('dm', 400, 0);
   dm.params.f = 200;
@@ -70,7 +70,7 @@ test('deformable mirror defocuses an off-axis reflected ray through its focus', 
 });
 
 test('sample attenuation and holder aperture have distinct bounded behavior', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const sample = createElement('sample', 150, 0);
   sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
   const detector = createElement('detector', 300, 0);
@@ -94,7 +94,7 @@ test('sample attenuation and holder aperture have distinct bounded behavior', ()
 });
 
 test('uncollected fluorescence fades within 25 mm and never reaches a bare detector', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const sample = createElement('sample', 150, 0);
   sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
   sample.params.specimenType = 'linear';
@@ -125,7 +125,7 @@ test('uncollected fluorescence fades within 25 mm and never reaches a bare detec
 });
 
 test('fluorescence collected by a nearby objective propagates to a detector', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const sample = createElement('sample', 150, 0);
   sample.rot = 90; // horizontal at rot 0; rotate to cross a left-to-right beam
@@ -160,7 +160,7 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
 });
 
 test('PMT gain/saturation and camera pixels produce detector-specific readings', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const pmt = createElement('pmt', 300, 0);
   pmt.params.gain = 10;
@@ -185,7 +185,7 @@ test('PMT gain/saturation and camera pixels produce detector-specific readings',
 });
 
 test('eye detects focused light at its retina and clips outside the pupil', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const eye = createElement('eye', 200, 0);
   traceAll([laser, eye]);
   assert.equal(detectorReading(eye.id).detectorType, 'Retina');
@@ -195,7 +195,8 @@ test('eye detects focused light at its retina and clips outside the pupil', () =
 });
 
 test('chopper averages static CW power, draws it as a chunked pattern, and gates pulses', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
+  const pulsedLaser = createElement('pulsedlaser', 0, 0);
   const chopper = createElement('chopper', 150, 0);
   chopper.params.frequencyHz = 1000;
   chopper.params.chopDuty = 0.4;
@@ -217,16 +218,14 @@ test('chopper averages static CW power, draws it as a chunked pattern, and gates
   const [on, off] = chopped.dash.split(' ').map(Number);
   assert.ok(Math.abs(on / (on + off) - 0.4) < 1e-6, 'dash/gap ratio should match the duty cycle');
 
-  laser.params.temporalMode = 'pulsed';
-  const pulsedScene = traceScene([laser, chopper, detector]);
+  const pulsedScene = traceScene([pulsedLaser, chopper, detector]);
   const gated = pulsedScene.pulseTracks.find(track => track.pulse.gates?.length);
   assert.ok(gated);
   assert.ok(Math.abs(gated.pulse.gates[0].duty - 0.4) < 1e-9);
 });
 
 test('detector signal follows overlap of chained pulse gates', () => {
-  const laser = createElement('laser', 0, 0);
-  laser.params.temporalMode = 'pulsed';
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.repRateMHz = 80;
   const first = createElement('chopper', 150, 0);
   const second = createElement('chopper', 200, 0);
@@ -246,7 +245,7 @@ test('detector signal follows overlap of chained pulse gates', () => {
 });
 
 test('AOM deflects, frequency-shifts, and attenuates first-order light', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const aom = createElement('aom', 150, 0);
   aom.params.deflect = 4;
   aom.params.eff = 0.85;
@@ -260,7 +259,7 @@ test('AOM deflects, frequency-shifts, and attenuates first-order light', () => {
 });
 
 test('mechanical delay line adds bounded optical path without steering the beam', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.temporalMode = 'pulsed';
   const delay = createElement('delayline', 150, 0);
@@ -282,7 +281,7 @@ test('mechanical delay line adds bounded optical path without steering the beam'
 });
 
 test('AOTF selects its passband and deflects only the selected order', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.wavelength = 800;
   const aotf = createElement('aotf', 150, 0);
   aotf.params.center = 800;
@@ -301,7 +300,7 @@ test('AOTF selects its passband and deflects only the selected order', () => {
 });
 
 test('nonlinear crystal partitions converted and residual pump power', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const crystal = createElement('crystal', 150, 0);
   crystal.params.convert = 'shg';
   crystal.params.efficiency = 0.4;
@@ -324,18 +323,18 @@ test('fiber input NA rejects steep incidence and accepts an aligned source', () 
     out0: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },
     out1: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },
   };
-  const aligned = createElement('laser', 0, 0);
+  const aligned = createElement('pulsedlaser', 0, 0);
   aligned.params.temporalMode = 'pulsed';
   assert.ok(traceScene([aligned], [fiber]).pulseTracks.some(track => track.opls[0] > 100));
 
-  const steep = createElement('laser', 0, -17.6336);
+  const steep = createElement('pulsedlaser', 0, -17.6336);
   steep.rot = 10;
   steep.params.temporalMode = 'pulsed';
   assert.equal(traceScene([steep], [fiber]).pulseTracks.some(track => track.opls[0] > 100), false);
 });
 
 test('configured SLM steering changes the reflected ray direction', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const slm = createElement('slm', 180, 0);
   slm.params.layers = [{ type: 'steer', n: 3, f: 50, lines: 600, orders: '1', angle: 10, div: 8 }];
@@ -344,7 +343,7 @@ test('configured SLM steering changes the reflected ray direction', () => {
 });
 
 test('retroreflector returns a beam antiparallel to its incidence, mirrored about its axis', () => {
-  const laser = createElement('laser', 0, 10);
+  const laser = createElement('cwlaser', 0, 10);
   laser.params.beamMode = 'line';
   const retro = createElement('retroreflector', 150, 0);
   const ray = paths([laser, retro])[0];

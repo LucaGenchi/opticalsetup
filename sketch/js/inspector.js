@@ -10,7 +10,7 @@ import {
 } from './elements.js';
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
-import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
+import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import { esc } from './util.js';
 import { WIKI_TYPES } from './wiki-types.js';
@@ -412,6 +412,12 @@ function paramField(p, sel) {
   }
   if (p.type === 'layers') return layersHTML(Array.isArray(v) ? v : []);
   if (p.type === 'signals') return signalsHTML(sel);
+  // A derived quantity, shown in the same box shape as an editable field so
+  // it reads as part of the source's settings, but computed from the other
+  // params on every render and never stored or saved.
+  if (p.type === 'readout') {
+    return field(p.label, `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params))}</output>`);
+  }
   return '';
 }
 
@@ -826,33 +832,14 @@ function applyInput(inp, rebuild = false) {
     if (pkey === 'specimenType') applySpecimenTypePreset(sel);
   }
   changed();
-  // Transform-limited pulses tie bandwidth and pulse duration together via
-  // the time–bandwidth product: committing an edit to either one on a TL
-  // laser recomputes the other, so the pair always describes one physically
-  // consistent pulse. Only on commit (rebuild), not every keystroke, so
-  // typing a new value doesn't get overwritten mid-edit.
-  if (rebuild && sel.type === 'laser' && sel.params.temporalMode === 'pulsed' && sel.params.transformLimited
-    && (pkey === 'bandwidth' || pkey === 'pulseWidthFs')) {
-    const shape = sel.params.pulseShape || 'gauss';
-    if (pkey === 'bandwidth') {
-      sel.params.pulseWidthFs = roundSig(transformLimitedDurationFs(val, sel.params.wavelength, shape));
-      document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message: 'Pulse duration calculated for a transform-limited pulse.' } }));
-    } else {
-      sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(val, sel.params.wavelength, shape));
-      document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message: 'Bandwidth calculated for a transform-limited pulse.' } }));
-    }
-    changed();
-    renderInspector();
-    return;
-  }
-  // Flipping transform-limited on (or switching pulse shape while it's on)
-  // instantly makes bandwidth and pulse duration inconsistent with each
-  // other unless one is recomputed right away — duration drives bandwidth,
-  // matching the per-field sync above.
-  if (rebuild && sel.type === 'laser' && sel.params.temporalMode === 'pulsed' && sel.params.transformLimited
-    && (pkey === 'transformLimited' || pkey === 'pulseShape')) {
-    const shape = sel.params.pulseShape || 'gauss';
-    sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(sel.params.pulseWidthFs, sel.params.wavelength, shape));
+  // While a pulsed laser is transform-limited its bandwidth is derived from
+  // the pulse duration, so the field is hidden and nothing needs syncing.
+  // Switching TL off reveals it — seed it from the width the pulse actually
+  // had a moment ago, so the spectrum stays continuous across the toggle
+  // instead of jumping to an unrelated stored default.
+  if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === false) {
+    sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(
+      sel.params.pulseWidthFs, sel.params.wavelength, sel.params.pulseShape || 'gauss'));
     changed();
     renderInspector();
     return;

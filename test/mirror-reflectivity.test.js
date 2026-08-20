@@ -21,7 +21,7 @@ test('every mirror-category element has a reflectivity param defaulting to 100%,
 });
 
 test('a partial flat mirror keeps the transmitted beam undrawn by default, but a detector behind it still reads the leaked power', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const mirror = createElement('mirror', 150, 0);
   mirror.rot = 45; // folds the reflected beam off-axis; the 20% leak keeps going straight through
@@ -43,7 +43,7 @@ test('a partial flat mirror keeps the transmitted beam undrawn by default, but a
 });
 
 test('curved mirrors (convex/concave) now split reflectivity too, always tracing the leak for detector physics', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const cmirror = createElement('cmirror', 150, 0);
   cmirror.rot = 45;
@@ -61,7 +61,7 @@ test('curved mirrors (convex/concave) now split reflectivity too, always tracing
 });
 
 test('a fully reflective mirror is unaffected: no leak traced or drawn', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const mirror = createElement('mirror', 150, 0);
   mirror.rot = 45;
   const detector = createElement('detector', 300, 0);
@@ -70,11 +70,13 @@ test('a fully reflective mirror is unaffected: no leak traced or drawn', () => {
   assert.equal(detectorReading(detector.id), null, 'a 100%-reflective mirror should leak nothing');
 });
 
-test('the laser has an Average power (W) parameter', () => {
-  const laser = createElement('laser');
-  assert.ok(Number.isFinite(laser.params.avgPowerW));
-  assert.ok(laser.params.avgPowerW > 0);
-  const spec = registry.laser.params.find(p => p.key === 'avgPowerW');
-  assert.ok(spec, 'laser registry should declare avgPowerW');
-  assert.equal(spec.label, 'Average power (W)');
+test('every laser source has an Average power (W) parameter', () => {
+  for (const type of ['cwlaser', 'pulsedlaser', 'sclaser']) {
+    const laser = createElement(type);
+    assert.ok(Number.isFinite(laser.params.avgPowerW), `${type} avgPowerW`);
+    assert.ok(laser.params.avgPowerW > 0, `${type} avgPowerW > 0`);
+    const spec = registry[type].params.find(p => p.key === 'avgPowerW');
+    assert.ok(spec, `${type} registry should declare avgPowerW`);
+    assert.equal(spec.label, 'Average power (W)');
+  }
 });

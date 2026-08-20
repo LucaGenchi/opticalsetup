@@ -57,7 +57,8 @@ test('concave lens outline curves on the vertical refracting faces', () => {
 
 test('optically active elements carry surface-aware snap anchors', () => {
   const expected = {
-    laser: { x: 52, y: 0 },
+    cwlaser: { x: 52, y: 0 },
+    pulsedlaser: { x: 52, y: 0 },
     objective: { x: 16, y: 0 },
     slm: { x: -9, y: 0 },
     dmd: { x: -9, y: 0 },
@@ -69,6 +70,6 @@ test('optically active elements carry surface-aware snap anchors', () => {
   for (const [type, pt] of Object.entries(expected)) {
     assert.deepEqual(registry[type].snapPt, pt, `${type} snapPt`);
   }
-  // the supercontinuum laser inherits the laser's exit-aperture anchor
+  // the supercontinuum laser inherits the same exit-aperture anchor
   assert.deepEqual(registry.sclaser.snapPt, { x: 52, y: 0 });
 });

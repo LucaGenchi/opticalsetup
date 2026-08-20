@@ -669,6 +669,15 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
 .field select { flex-basis: 120px; width: 120px; padding-right: 19px; font-size: 11px; }
+/* Derived value, shaped like an input so it lines up with the editable rows
+   above it, but visibly inert — no border focus, no pointer, muted surface. */
+.field .readout {
+  flex: 0 0 112px; width: 112px; font: inherit; min-height: 30px;
+  display: flex; align-items: center; padding: 5px 7px;
+  border: 1px dashed var(--border); border-radius: 6px;
+  background: var(--surface-hover); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 .field input[type="color"] { flex: 0 0 40px; width: 40px; height: 26px; padding: 1px; border: 1px solid var(--border); border-radius: 5px; background: none; }
 .field input[type="checkbox"] {
   appearance: none; position: relative; flex: 0 0 34px; width: 34px; height: 19px;

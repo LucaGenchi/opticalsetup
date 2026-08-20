@@ -138,7 +138,7 @@ test('vertex editing preserves untouched world points and rejects self-crossing 
 
 test('a freeform wedge refracts finite rays and produces wavelength-dependent dispersion', () => {
   const finalSlope = wavelength => {
-    const laser = createElement('laser', 0, 10);
+    const laser = createElement('cwlaser', 0, 10);
     laser.params.wavelength = wavelength;
     const glass = createElement('freeglass', 180, 0);
     glass.params.material = 'bk7';
@@ -158,7 +158,7 @@ test('a circular-arc glass face uses exact circle intersections and radial refra
     { x: 50, y: -20 }, { x: 50, y: 30 }, { x: -50, y: 30 },
   ];
   const arc = circularArcThrough(vertices[0], vertices[1], vertices[2]);
-  const laser = createElement('laser', 25, -120);
+  const laser = createElement('cwlaser', 25, -120);
   laser.params.beamMode = 'line';
   laser.rot = 90;
   const glass = createElement('freeglass', 0, 0);
@@ -177,7 +177,7 @@ test('an exact circular-arc endpoint hit stops instead of choosing either adjoin
   const target = { x: 50, y: -20 };
   const angleDeg = 60, angle = angleDeg * Math.PI / 180;
   const direction = { x: Math.cos(angle), y: Math.sin(angle) };
-  const laser = createElement('laser', target.x - direction.x * 212, target.y - direction.y * 212);
+  const laser = createElement('cwlaser', target.x - direction.x * 212, target.y - direction.y * 212);
   laser.params.beamMode = 'line';
   laser.rot = angleDeg;
   const glass = createElement('freeglass', 0, 0);
@@ -194,7 +194,7 @@ test('an exact circular-arc endpoint hit stops instead of choosing either adjoin
 
 test('a source born inside freeform glass undergoes TIR and exits without non-finite rays', () => {
   const angle = 20 * Math.PI / 180;
-  const laser = createElement('laser', -52 * Math.cos(angle), -52 * Math.sin(angle));
+  const laser = createElement('cwlaser', -52 * Math.cos(angle), -52 * Math.sin(angle));
   laser.rot = 20; // emission begins at the glass centre
   const glass = createElement('freeglass', 0, 0);
   glass.params.ior = 1.5;
@@ -258,7 +258,7 @@ test('broadband BK7 branches retain wavelength-specific index through TIR and ex
 test('an exact polygon-corner hit terminates at the vertex instead of choosing an arbitrary normal', () => {
   const target = { x: 170, y: -30 }, angleDeg = -15, angle = angleDeg * Math.PI / 180;
   const direction = { x: Math.cos(angle), y: Math.sin(angle) };
-  const laser = createElement('laser', target.x - direction.x * 212, target.y - direction.y * 212);
+  const laser = createElement('cwlaser', target.x - direction.x * 212, target.y - direction.y * 212);
   laser.params.beamMode = 'line';
   laser.rot = angleDeg;
   const glass = createElement('freeglass', 200, 0);
@@ -272,7 +272,7 @@ test('an exact polygon-corner hit terminates at the vertex instead of choosing a
 test('figure frame sets the export viewBox and remains canvas-only', () => {
   const previous = { elements: state.elements, beams: state.beams };
   try {
-    const laser = createElement('laser', 100, 80);
+    const laser = createElement('cwlaser', 100, 80);
     const frame = createElement('figureframe', 100, 80);
     frame.params.w = 200; frame.params.h = 100; frame.params.background = 'white';
     state.elements = [laser, frame]; state.beams = [];

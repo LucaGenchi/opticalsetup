@@ -10,7 +10,7 @@ import {
 
 const scene = JSON.stringify({
   app: 'optics2d', version: 1,
-  elements: [{ id: 'e1', type: 'laser', x: 12, y: 34, params: { wavelength: 532 } }],
+  elements: [{ id: 'e1', type: 'cwlaser', x: 12, y: 34, params: { wavelength: 532 } }],
   beams: [],
 });
 

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createElement, galvoAngleAt, registry } from '../sketch/js/elements.js';
 import { detectorReading, traceAll } from '../sketch/js/raytrace.js';
+import { resolveSourceSpectrum } from '../sketch/js/spectrum.js';
 import { wavelengthToColor } from '../sketch/js/util.js';
 
 const EPS = 1e-9;
@@ -23,7 +24,7 @@ function signedAngleDelta(from, to) {
 }
 
 function reflectedAngle(params, timeSeconds = 0) {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   const galvo = createElement('galvo', 180, 0);
   Object.assign(galvo.params, params);
@@ -40,11 +41,11 @@ test('supercontinuum laser is a first-class pulsed source with a readable defaul
   assert.equal(registry.sclaser.label, 'Supercontinuum laser');
 
   const source = createElement('sclaser', 0, 0);
-  assert.equal(source.params.bwMode, 'sc');
   assert.equal(source.params.temporalMode, 'pulsed');
-  assert.equal(source.params.scMin, 430);
-  assert.equal(source.params.scMax, 870);
-  assert.equal(source.params.wavelength, (source.params.scMin + source.params.scMax) / 2);
+  assert.equal(source.params.scMin, 300);
+  assert.equal(source.params.scMax, 700);
+  assert.equal(resolveSourceSpectrum('sclaser', source.params).wl,
+    (source.params.scMin + source.params.scMax) / 2);
 
   source.params.beamMode = 'line';
   const detector = createElement('detector', 300, 0);
@@ -82,7 +83,6 @@ test('a broadband filter transmits the true spectral overlap without a visibilit
 test('one broadband source produces wavelength-dependent paths through a prism', () => {
   const source = createElement('sclaser', 0, 0);
   source.params.beamMode = 'line';
-  source.params.temporalMode = 'cw';
   source.params.scMin = 450;
   source.params.scMax = 700;
   const prism = createElement('prism', 180, 0);

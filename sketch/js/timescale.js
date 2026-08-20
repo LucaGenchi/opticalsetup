@@ -76,7 +76,7 @@ export function elementDriveHz(el) {
   if (!el || !el.params) return null;
   const p = el.params;
   switch (el.type) {
-    case 'laser':
+    case 'pulsedlaser':
     case 'sclaser':
       return p.temporalMode === 'pulsed' && p.repRateMHz > 0 ? p.repRateMHz * 1e6 : null;
     case 'galvo':
@@ -133,12 +133,12 @@ export function recommendedTimeScale(elements = []) {
     if (!best || scale > best.scaleNsPerSecond) best = { scaleNsPerSecond: scale, driver, mechanics: false };
   };
 
-  const repRates = list.map(el => (el?.type === 'laser' || el?.type === 'sclaser') ? elementDriveHz(el) : null)
+  const repRates = list.map(el => (el?.type === 'pulsedlaser' || el?.type === 'sclaser') ? elementDriveHz(el) : null)
     .filter(Number.isFinite);
   if (repRates.length) consider(laserScaleFor(Math.max(...repRates)), 'the pulsed source');
 
   for (const el of list) {
-    if (el?.type === 'laser' || el?.type === 'sclaser') continue;
+    if (el?.type === 'pulsedlaser' || el?.type === 'sclaser') continue;
     const hz = elementDriveHz(el);
     if (!Number.isFinite(hz)) continue;
     consider(motionScaleFor(hz), MOTION_LABELS[el.type] || 'the animated element');

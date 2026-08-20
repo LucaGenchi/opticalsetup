@@ -11,12 +11,11 @@ import {
 } from '../sketch/js/two-photon-handoff.js';
 
 function pulsedLaser(id = 'laser-1') {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.id = id;
   Object.assign(laser.params, {
     wavelength: 780,
     avgPowerW: 0.016,
-    temporalMode: 'pulsed',
     repRateMHz: 80,
     pulseWidthFs: 100,
   });
@@ -55,8 +54,10 @@ test('preserves an allowed destination base URL while replacing handoff keys', (
 });
 
 test('rejects incompatible, continuous-wave, and malformed sources', () => {
-  const cw = pulsedLaser();
-  cw.params.temporalMode = 'cw';
+  // Since the sources split, "not a pulse train" is a type, not a param: a CW
+  // laser can never satisfy the handoff no matter how it is configured.
+  const cw = createElement('cwlaser', 0, 0);
+  Object.assign(cw.params, { wavelength: 780, avgPowerW: 0.016 });
   assert.equal(buildTwoPhotonHandoffUrl(cw), null);
 
   const supercontinuum = { ...pulsedLaser(), type: 'sclaser' };
@@ -81,8 +82,9 @@ test('rejects incompatible, continuous-wave, and malformed sources', () => {
 test('resolves only ordinary pulsed lasers traced to the selected stage', () => {
   const first = pulsedLaser('first');
   const second = pulsedLaser('second');
-  const cw = pulsedLaser('cw');
-  cw.params.temporalMode = 'cw';
+  const cw = createElement('cwlaser', 0, 0);
+  cw.id = 'cw';
+  Object.assign(cw.params, { wavelength: 780, avgPowerW: 0.016 });
   const hits = [
     { stageId: 'stage-a', sourceId: 'first' },
     { stageId: 'stage-a', sourceId: 'first' },

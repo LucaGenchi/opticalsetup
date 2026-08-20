@@ -47,13 +47,13 @@ test('a gated-off pulse train leaves no 2PP arrival events', () => {
 });
 
 test('a pulsed resin stage exposes one write location, and only for resin', () => {
-  const laser = createElement('laser', 0, 0);
+  const cwLaser = createElement('cwlaser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   const stage = createElement('stage', 150, 0);
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it
   Object.assign(stage.params, { specimenType: 'resin', voxelPreview: true });
-  assert.equal(traceScene([laser, stage]).writeHits.length, 0, 'CW light cannot create a 2PP preview mark');
+  assert.equal(traceScene([cwLaser, stage]).writeHits.length, 0, 'CW light cannot create a 2PP preview mark');
 
-  laser.params.temporalMode = 'pulsed';
   const scene = traceScene([laser, stage]);
   assert.equal(scene.writeHits.length, 1);
   assert.equal(scene.writeHits[0].stageId, stage.id);
@@ -67,8 +67,7 @@ test('a pulsed resin stage exposes one write location, and only for resin', () =
 });
 
 test('voxel writing only ever fires for a resin sample, regardless of the voxelPreview flag', () => {
-  const laser = createElement('laser', 0, 0);
-  laser.params.temporalMode = 'pulsed';
+  const laser = createElement('pulsedlaser', 0, 0);
   const stage = createElement('stage', 150, 0);
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it
   Object.assign(stage.params, { voxelPreview: true });
@@ -82,18 +81,18 @@ test('voxel writing only ever fires for a resin sample, regardless of the voxelP
 });
 
 test('a mounted sample reports an excitation hit for the signal-spot indicator, CW or pulsed', () => {
-  const laser = createElement('laser', 0, 0);
+  const cwLaser = createElement('cwlaser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   const stage = createElement('stage', 150, 0);
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it
   Object.assign(stage.params, { specimenType: 'linear', mode: 'fluor' });
 
-  const cw = traceScene([laser, stage]);
+  const cw = traceScene([cwLaser, stage]);
   assert.equal(cw.signalHits.length, 1);
   assert.equal(cw.signalHits[0].stageId, stage.id);
   assert.equal(cw.signalHits[0].sourceId, undefined);
   closeTo(cw.signalHits[0].x, stage.x);
 
-  laser.params.temporalMode = 'pulsed';
   const pulsed = traceScene([laser, stage]);
   assert.equal(pulsed.signalHits.length, 1, 'a pulsed source reports the same single hit');
   assert.equal(pulsed.signalHits[0].sourceId, laser.id);
@@ -101,7 +100,7 @@ test('a mounted sample reports an excitation hit for the signal-spot indicator, 
 });
 
 test('an opaque (non-transmitting) sample still reports its excitation hit', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   const stage = createElement('stage', 150, 0);
   Object.assign(stage.params, { specimenType: 'absorbing', transmitExc: false });
   const scene = traceScene([laser, stage]);
@@ -110,7 +109,7 @@ test('an opaque (non-transmitting) sample still reports its excitation hit', () 
 });
 
 test('the signal-spot indicator reports the real generated wavelength, not a fixed per-material color', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.wavelength = 800;
   const stage = createElement('stage', 150, 0);
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it

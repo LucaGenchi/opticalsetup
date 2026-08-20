@@ -23,7 +23,7 @@ test('quarter-wave retardance respects fast-axis alignment and handedness', () =
 });
 
 test('waveplate integration preserves aligned linear input', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 0;
   const qwp = createElement('qwp', 150, 0);
   qwp.params.a = 0;
@@ -33,7 +33,7 @@ test('waveplate integration preserves aligned linear input', () => {
 });
 
 test('EOM retardance changes polarization and an analyzer converts it to extinction', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 45;
   const eom = createElement('eom', 120, 0);
   eom.params.modulate = true;
@@ -63,7 +63,7 @@ test('a switching EOM at 45° to the input toggles cleanly between horizontal an
 });
 
 test('a switching EOM plus a downstream analyzer gives a 0-to-1 intensity modulation, duty-averaged for a static reading', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 0; // horizontal
   const eom = createElement('eom', 120, 0);
   eom.params.modulate = true;
@@ -114,7 +114,7 @@ test('the H↔V flip drive needs no crystal-axis tuning and works from any input
   // both states — a silent no-op that made the feature look broken. The flip
   // drive derives the required half-wave action from whatever arrives.
   for (const inputPol of [0, 30, 90]) {
-    const laser = createElement('laser', 0, 0);
+    const laser = createElement('cwlaser', 0, 0);
     laser.params.pol = inputPol;
     const eom = createElement('eom', 120, 0);
     eom.params.modulate = true;
@@ -142,7 +142,7 @@ test('a waveplate between a switching EOM and a PBS retards both states, and its
   // opposite circular polarizations, which a PBS cannot tell apart at all —
   // it splits both 50/50 and the modulation vanishes.
   const modulationDepth = qwpAxis => {
-    const laser = createElement('laser', 0, 0);
+    const laser = createElement('pulsedlaser', 0, 0);
     laser.params.pol = 0;
     laser.params.temporalMode = 'pulsed';
     laser.params.repRateMHz = 20;
@@ -164,7 +164,7 @@ test('a waveplate between a switching EOM and a PBS retards both states, and its
 });
 
 test('switching to static drive mode falls back to the plain fixed-retardance behavior unchanged', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 45;
   const eom = createElement('eom', 120, 0);
   eom.params.modulate = true;
@@ -214,7 +214,7 @@ test('a beam alternating between orthogonal states reads as unpolarized, not as 
 });
 
 test('the beam probe names both modulation states and the rate instead of their average', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 0;
   laser.params.beamMode = 'line';
   const eom = createElement('eom', 120, 0);
@@ -248,7 +248,7 @@ test('the EOM inspector explains the switching feature once voltage is applied',
 // these modulation-transfer techniques (SRS microscopy and friends) rely on.
 
 function pbsBench({ repRateMHz = 20, switchFreqMHz = 10, duty = 0.5 } = {}) {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.pol = 0;
   laser.params.temporalMode = 'pulsed';
   laser.params.repRateMHz = repRateMHz;
@@ -350,7 +350,7 @@ test('a modulation synchronous with the rep rate parks every pulse in the same s
 });
 
 test('an unmodulated pulsed beam still traces as a plain train, with no modulation frequency', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('pulsedlaser', 0, 0);
   laser.params.temporalMode = 'pulsed';
   laser.params.repRateMHz = 10;
   const detector = createElement('detector', 300, 0);
@@ -362,7 +362,7 @@ test('an unmodulated pulsed beam still traces as a plain train, with no modulati
 });
 
 test('continuous-wave light through the same chain keeps the averaged behavior it always had', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   laser.params.pol = 0; // CW by default
   const eom = createElement('eom', 200, 0);
   eom.params.modulate = true;

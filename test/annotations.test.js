@@ -20,7 +20,7 @@ test('a text label anchors its left edge and grows to the right as text is typed
 });
 
 test('boxAnchor is the identity offset for every element type except the left-anchored text label', () => {
-  const laser = createElement('laser', 0, 0);
+  const laser = createElement('cwlaser', 0, 0);
   assert.deepEqual(boxAnchor(laser), { x: 0, y: 0 });
 
   const label = createElement('textlabel', 0, 0);

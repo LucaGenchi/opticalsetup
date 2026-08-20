@@ -11,7 +11,7 @@
     "issue": "https://github.com/LucaGenchi/optics-sketch/pull/42",
     "submittedAt": "2026-08-17T10:38:16.000Z"
   },
-  "sceneSha256": "23da36958eb0ab55f0fc8f9bddcdf057dfdf68283160c2cdcfa8b6902f1b459d",
+  "sceneSha256": "4b09e58fbc1af72f6c6c6c0e4d8dbaf89ed21e759d21c171b914722e8bc63850",
   "scene": {
     "app": "optics2d",
     "version": 1,
@@ -102,7 +102,7 @@
       },
       {
         "id": "nif-e007",
-        "type": "laser",
+        "type": "pulsedlaser",
         "x": 80,
         "y": 900,
         "rot": 0,
@@ -114,14 +114,12 @@
           "avgPowerW": 1,
           "beamMode": "line",
           "beamWidth": 5,
-          "temporalMode": "pulsed",
           "repRateMHz": 0.001,
           "pulseWidthFs": 20000000,
           "transformLimited": false,
           "pulseShape": "gauss",
           "pulsePhaseNs": 0,
-          "bwMode": "mono",
-          "bandwidth": 40,
+          "bandwidth": 0,
           "pol": 0,
           "autoColor": true,
           "color": "#e02020"
