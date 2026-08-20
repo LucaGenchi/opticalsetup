@@ -91,6 +91,7 @@
     <div class="toolgroup export-group" aria-label="Export actions">
       <button type="button" id="btnSVG" class="primary" title="Export vector SVG">Export SVG</button>
       <button type="button" id="btnPNG" title="Export PNG (3×)">PNG</button>
+      <button type="button" id="btnGIF" title="Export the animated setup as a looping GIF">GIF</button>
     </div>
     <div class="mobile-toolbar-actions">
       <button type="button" id="btnMobileMenu" class="mobile-icon-button" aria-label="Open sketch menu" aria-haspopup="dialog">•••</button>
@@ -110,6 +111,25 @@
       <button type="button" id="shareCopy" class="primary">Copy link</button>
       <button type="button" id="shareDownloadQR">Download QR SVG</button>
     </div>
+  </dialog>
+  <dialog id="gifDialog" class="export-dialog" aria-labelledby="gifTitle">
+    <form id="gifForm">
+      <div class="export-dialog-head">
+        <div><span class="eyebrow">Animated export</span><h2 id="gifTitle">Export looping GIF</h2></div>
+        <button type="button" id="gifClose" class="icon-button" aria-label="Close GIF export dialog">×</button>
+      </div>
+      <p class="export-intro">Captures the current pulse and mechanical animation. Use a duration matching the shared cycle for a seamless loop.</p>
+      <div class="export-fields">
+        <label class="export-field" for="gifDuration"><span>Acquisition time</span><input id="gifDuration" type="number" min="0.25" max="12" step="0.25" value="4"><small>seconds · maximum 12</small></label>
+        <label class="export-field" for="gifFPS"><span>Frame rate</span><select id="gifFPS"><option value="12">12 fps</option><option value="20" selected>20 fps</option><option value="30">30 fps</option></select><small>maximum 240 frames</small></label>
+        <label class="export-field" for="gifSize"><span>Longest edge</span><select id="gifSize"><option value="640">640 px</option><option value="960" selected>960 px</option><option value="1200">1200 px</option></select><small>GIF uses a 256-colour palette</small></label>
+      </div>
+      <p id="gifStatus" class="export-status" aria-live="polite">Figure frame sets the crop; otherwise the whole animation is fitted.</p>
+      <div class="export-actions">
+        <button type="button" id="gifCancel">Cancel</button>
+        <button type="submit" id="gifSubmit" class="primary">Export GIF</button>
+      </div>
+    </form>
   </dialog>
   <dialog id="proposalDialog" class="proposal-dialog" aria-labelledby="proposalTitle">
     <form id="proposalForm">
@@ -159,6 +179,7 @@
       <button type="button" id="btnMobilePropose" data-mobile-action="propose">Propose setup</button>
       <button type="button" data-mobile-action="svg">Export SVG</button>
       <button type="button" data-mobile-action="png">Export PNG</button>
+      <button type="button" data-mobile-action="gif">Export GIF</button>
     </div>
   </dialog>
   <div id="mobileBackdrop" hidden></div>

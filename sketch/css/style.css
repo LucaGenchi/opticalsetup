@@ -167,6 +167,26 @@ button.danger:hover { background: var(--danger-bg); }
 .share-url { width: 100%; resize: none; padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--muted); font: 9.5px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .share-actions { display: flex; gap: 7px; margin-top: 12px; }
 
+.export-dialog {
+  width: min(520px, calc(100vw - 28px)); max-height: calc(100vh - 28px); overflow: auto;
+  margin: auto; padding: 22px; border: 1px solid var(--border-strong); border-radius: 13px;
+  background: var(--panel); color: var(--text); box-shadow: 0 24px 70px rgba(22, 31, 44, .24);
+}
+.export-dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+.export-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.export-dialog h2 { margin-top: 2px; font-size: 19px; letter-spacing: -.3px; }
+.export-intro { margin: 14px 0 17px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.export-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.export-field > span, .export-field small { display: block; }
+.export-field > span { margin-bottom: 6px; color: var(--muted); font-size: 10px; font-weight: 730; letter-spacing: .35px; text-transform: uppercase; }
+.export-field input, .export-field select { width: 100%; min-height: 34px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+.export-field small { margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.35; }
+.export-status { min-height: 34px; margin-top: 16px; padding: 9px 10px; border-left: 2px solid var(--accent); background: var(--surface); color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+.export-status.is-error { border-left-color: var(--danger); color: var(--danger); }
+.export-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 17px; }
+
+@media (max-width: 560px) { .export-fields { grid-template-columns: 1fr; } }
+
 .proposal-dialog {
   width: min(510px, calc(100vw - 28px)); max-height: calc(100vh - 28px); overflow: auto;
   margin: auto; padding: 22px; border: 1px solid var(--border-strong); border-radius: 13px;
