@@ -2535,7 +2535,7 @@ export const registry = {
       },
       {
         key: 'gasDirection', label: 'Gas port', type: 'select', def: 'out',
-        options: [['out', 'Outward'], ['in', 'Inward']],
+        options: [['out', 'Outward'], ['in', 'Inward'], ['closed', 'Closed']],
       },
       { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 90, step: 5, def: 10 },
     ],
@@ -2546,12 +2546,15 @@ export const registry = {
       const screwX = hl * 0.82, screwY = hh * 0.72;
       const winH = Math.min(20, p.height * 0.35);
       const gaugeR = Math.max(8, Math.min(15, p.height * 0.16));
-      const tubeLen = Math.max(16, hl * 0.4);
+      const tubeLen = Math.max(32, hl * 0.8);
       const tubeH = Math.min(24, p.height * 0.4);
       let s = '';
       if (p.extension) {
         const side = p.extensionSide === 'left' ? -1 : 1;
-        s += `<rect x="${side > 0 ? hl : -hl - tubeLen}" y="${-tubeH / 2}" width="${tubeLen}" height="${tubeH}" fill="#8d98a5" fill-opacity="${bodyOpacity}" stroke="#4d565f" stroke-width="1.5"/>`;
+        const x0 = side > 0 ? hl : -hl - tubeLen;
+        const x1 = side > 0 ? hl + tubeLen : -hl;
+        s += `<line x1="${x0}" y1="${-tubeH / 2}" x2="${x1}" y2="${-tubeH / 2}" stroke="#4d565f" stroke-width="2.5" stroke-linecap="round"/>` +
+          `<line x1="${x0}" y1="${tubeH / 2}" x2="${x1}" y2="${tubeH / 2}" stroke="#4d565f" stroke-width="2.5" stroke-linecap="round"/>`;
       }
       s += `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height}" rx="6" fill="#b8933f" fill-opacity="${bodyOpacity}" stroke="#7a5f28" stroke-width="2"/>` +
         `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height * 0.17}" rx="6" fill="#d9b968" fill-opacity="${(0.55 * bodyOpacity).toFixed(2)}"/>` +
@@ -2572,7 +2575,7 @@ export const registry = {
       if (p.gasDirection === 'in') {
         s += `<line x1="${portX}" y1="${-hh - 10}" x2="${portX}" y2="${-hh - 22}" stroke="#1361fa" stroke-width="2.2"/>` +
           `<polygon points="${portX},${-hh - 10} ${portX - 4},${-hh - 17} ${portX + 4},${-hh - 17}" fill="#1361fa"/>`;
-      } else {
+      } else if (p.gasDirection === 'out') {
         s += `<line x1="${portX}" y1="${-hh - 22}" x2="${portX}" y2="${-hh - 10}" stroke="#1361fa" stroke-width="2.2"/>` +
           `<polygon points="${portX},${-hh - 27} ${portX - 4},${-hh - 20} ${portX + 4},${-hh - 20}" fill="#1361fa"/>`;
       }

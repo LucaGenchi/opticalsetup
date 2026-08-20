@@ -37,19 +37,24 @@ test('the gas cell end windows are off by default and toggle independently per s
   assert.equal((both.match(new RegExp(GLASS_FILL, 'g')) || []).length, 2);
 });
 
-test('the gas cell extension tube is off by default and draws on the chosen side only', () => {
+test('the gas cell extension tube is off by default and draws as an open pair of rails on the chosen side', () => {
   const cell = createElement('gascell', 0, 0);
   assert.equal(cell.params.extension, false);
   assert.equal(cell.params.extensionSide, 'right');
-  assert.doesNotMatch(registry.gascell.svg(cell), /fill="#8d98a5"/);
+  assert.doesNotMatch(registry.gascell.svg(cell), /stroke="#4d565f" stroke-width="2.5"/);
 
   cell.params.extension = true;
   const rightSvg = registry.gascell.svg(cell);
-  assert.match(rightSvg, /<rect x="45"[^>]*fill="#8d98a5"/);
+  // no wall at the far (output) end -- just two parallel rails from the
+  // housing edge (x=45) out to the open end (x=81), never a closing rect.
+  assert.match(rightSvg, /<line x1="45" y1="-11" x2="81" y2="-11"/);
+  assert.match(rightSvg, /<line x1="45" y1="11" x2="81" y2="11"/);
+  assert.doesNotMatch(rightSvg, /<rect[^>]*fill="#8d98a5"/);
 
   cell.params.extensionSide = 'left';
   const leftSvg = registry.gascell.svg(cell);
-  assert.match(leftSvg, /<rect x="-[\d.]+"[^>]*fill="#8d98a5"/);
+  assert.match(leftSvg, /<line x1="-81" y1="-11" x2="-45" y2="-11"/);
+  assert.match(leftSvg, /<line x1="-81" y1="11" x2="-45" y2="11"/);
 });
 
 test('the gas port sits off-center, clear of the pressure gauge and rotate handle', () => {
@@ -67,6 +72,15 @@ test('the gas port arrow flips direction between outward and inward', () => {
   cell.params.gasDirection = 'in';
   const inward = registry.gascell.svg(cell);
   assert.match(inward, /<line x1="22.5" y1="-37.5" x2="22.5" y2="-49.5"/);
+});
+
+test('a closed gas port draws the valve stem but no arrow', () => {
+  const cell = createElement('gascell', 0, 0);
+  cell.params.gasDirection = 'closed';
+  const svg = registry.gascell.svg(cell);
+  assert.match(svg, /fill="#6b7280" stroke="#3f4650"/, 'the valve stem body should still be drawn');
+  assert.doesNotMatch(svg, /stroke="#1361fa"/, 'no arrow line for a closed port');
+  assert.doesNotMatch(svg, /fill="#1361fa"/, 'no arrowhead for a closed port');
 });
 
 test('the gas cell transparency slider fades the housing fill without touching the strokes', () => {
