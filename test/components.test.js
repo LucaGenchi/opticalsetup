@@ -137,7 +137,7 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
   // 20 mm from the sample: within the 1.5x capture window of the 25 mm
   // evanescent range
   const objective = createElement('objective', 154, 0);
-  objective.params.f = 20;
+  objective.params.magnification = 10;
   const detector = createElement('detector', 320, 0);
   traceAll([laser, sample, objective, detector]);
   const reading = detectorReading(detector.id);

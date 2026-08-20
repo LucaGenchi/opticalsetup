@@ -15,6 +15,9 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
+import {
+  objectiveFocalLength, objectiveNumericalAperture, objectivePupilDiameter,
+} from './objective.js';
 import { pulseOverlap } from './pulses.js';
 
 // true when the element's rotation would render baked-in text upside down
@@ -1457,21 +1460,28 @@ export const registry = {
     // drawing and the physics agree on which end focuses light.
     label: 'Objective', category: 'Lenses', paletteOrder: 3, size: { w: 36, h: 40 },
     snapPt: { x: 16, y: 0 }, // lens plane (sample-facing front tip)
-    size_: el => ({ w: 36, h: (el.params.aperture || 20) + 20 }),
+    size_: el => ({ w: 36, h: objectivePupilDiameter(el.params) + 20 }),
     params: [
-      { key: 'f', label: 'Focal length (mm)', type: 'number', min: 1, max: 500, step: 1, def: 10 },
-      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 5, max: 100, step: 1, def: 20 },
+      { key: 'magnification', label: 'Magnification (×)', type: 'number', min: 1, max: 200, step: 0.1, def: 20 },
+      { key: 'na', label: 'Numerical aperture (NA)', type: 'number', min: 0.05, max: 1.49, step: 0.01, def: 1 },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
     ],
     svg(el) {
-      const h = (el.params.aperture || 20) / 2, outer = h + 7;
+      const h = objectivePupilDiameter(el.params) / 2, outer = h + 7;
       return `<path d="M 16,${-h} L -2,${-outer} L -16,${-outer} L -16,${outer} L -2,${outer} L 16,${h} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
         `<line x1="-2" y1="${-outer}" x2="-2" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
         `<rect x="14.5" y="${-h}" width="3" height="${2 * h}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
     },
     surfaces(el) {
-      const h = (el.params.aperture || 20) / 2;
-      return [{ x1: 16, y1: -h, x2: 16, y2: h, kind: 'lens', data: { f: el.params.f, transEff: el.params.transEff } }];
+      const h = objectivePupilDiameter(el.params) / 2;
+      return [{
+        x1: 16, y1: -h, x2: 16, y2: h, kind: 'lens',
+        data: {
+          f: objectiveFocalLength(el.params),
+          objectiveNA: objectiveNumericalAperture(el.params),
+          transEff: el.params.transEff,
+        },
+      }];
     },
   },
 
@@ -2576,7 +2586,7 @@ const DIRECT = {
   lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
-  objective: { resize: { y: 'aperture' }, tune: { key: 'f', short: 'f' } },
+  objective: { resize: { y: 'na' }, tune: { key: 'magnification', short: 'M' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
@@ -2655,7 +2665,7 @@ const ELEMENT_HELP = {
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Applies a compact focusing thin-lens model; ƒ also sets the distance to the back focal plane (BFP) behind the lens — the plane a telescope or scan relay should image onto for pupil-matched scanning.',
+  objective: 'Uses objective magnification and NA. Magnification derives an internal thin-lens focus from a 200 mm reference tube lens; NA sets the qualitative entrance pupil and can be handed to the 2PP lab when this objective is on the traced sample path.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',

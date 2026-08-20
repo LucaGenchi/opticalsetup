@@ -29,6 +29,7 @@ import {
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
+let lastSignalHits = [];
 let detectorHits = new Map();
 let gateTransmissionCache = new Map();
 // Non-null only during the mixing probe pass in traceScene(): surface id ->
@@ -381,6 +382,10 @@ export function probeAt(x, y, tol = 16) {
     // probe reports the alternation itself rather than its average.
     polMod: best.polMod || null,
   } : null;
+}
+
+export function signalHitsFromLastTrace(stageId) {
+  return lastSignalHits.filter(hit => hit.stageId === stageId);
 }
 
 const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
@@ -1660,6 +1665,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
+      if (Number.isFinite(hit.surface.data.objectiveNA) && hit.surface.el?.id) {
+        const objectives = Array.isArray(r.objectives) ? r.objectives : [];
+        if (!objectives.some(objective => objective.id === hit.surface.el.id)) {
+          r.objectives = [...objectives, {
+            id: hit.surface.el.id,
+            na: hit.surface.data.objectiveNA,
+          }];
+        }
+      }
       // Both specimen holders report where the beam lands, so the plain
       // sample can draw its excitation spot too; only the piezo stage writes
       // 2PP voxel marks, which its own writeVoxel flag already gates.
@@ -1697,7 +1711,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
                 : (conv === 'cars' || conv === 'custom') ? hit.surface.data.outWl
                   : undefined;
           }
-          signalHits.push({ stageId: hit.surface.el.id, x: hit.p.x, y: hit.p.y, wl: signalWl });
+          signalHits.push({
+            stageId: hit.surface.el.id,
+            x: hit.p.x,
+            y: hit.p.y,
+            wl: signalWl,
+            sourceId: r.pulse?.sourceId,
+            objectiveNA: r.objectives?.length === 1 ? r.objectives[0].na : undefined,
+          });
         }
       }
       if (hit.surface.kind === 'detector') recordDetectorHit(r, hit);
@@ -1781,6 +1802,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
             : undefined,
           sample: r.sample, writeReference: r.writeReference,
+          objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),
           pts: [{ x: ox, y: oy }],
           opl: r.opl,
@@ -1951,6 +1973,7 @@ export function traceScene(elements, beams = []) {
   const pulseTracks = [];
   const writeHits = [];
   const signalHits = [];
+  lastSignalHits = [];
   const couplings = [];
   lastPaths = [];
   detectorHits = new Map();
@@ -2013,6 +2036,7 @@ export function traceScene(elements, beams = []) {
         pol: typeof p.pol === 'number' ? p.pol : undefined,
         stokes: typeof p.pol === 'number' ? linearStokes(p.pol) : null,
         pulse,
+        objectives: [],
         evan: r.evan || false, evanLen: r.evanLen,
         medium: initialBody?.id || null, ior: initialIor,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,
@@ -2162,6 +2186,7 @@ export function traceScene(elements, beams = []) {
     }
   }
 
+  lastSignalHits = signalHits;
   return { drawables, pulseTracks, writeHits, signalHits };
 }
 

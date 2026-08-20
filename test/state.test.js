@@ -64,6 +64,22 @@ test('legacy lasers without temporal fields remain continuous-wave sources', () 
   assert.equal(loaded.params.pulsePhaseNs, 0);
 });
 
+test('legacy objective focal lengths migrate to magnification and numerical aperture', () => {
+  const objective = createElement('objective', 100, 0);
+  objective.params = { f: 20, aperture: 24, transEff: 90 };
+
+  const scene = parseSketch(file([objective]), registry);
+  const [loadedObjective] = scene.elements;
+  assert.deepEqual(loadedObjective.params, {
+    magnification: 10,
+    na: 0.6,
+    transEff: 90,
+  });
+  assert.equal(registry.objective.surfaces(loadedObjective)[0].data.f, 20);
+  assert.equal(Object.hasOwn(loadedObjective.params, 'f'), false);
+  assert.equal(Object.hasOwn(loadedObjective.params, 'aperture'), false);
+});
+
 test('sketches from before the LED/lamp -> Point source merge no longer load', () => {
   // No back-compat is kept at this stage: an old element type is simply an
   // unknown type, same as any other invalid sketch reference.

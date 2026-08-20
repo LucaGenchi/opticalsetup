@@ -760,6 +760,17 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   line-height: 1.45;
 }
 
+.two-photon-handoff { margin-top: 13px; }
+.two-photon-handoff .lsechead { margin-top: 0; }
+.two-photon-link {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 7px; padding: 8px 10px; border: 1px solid var(--accent-border);
+  border-radius: 7px; background: var(--accent-soft); color: var(--accent);
+  font-size: 11.5px; font-weight: 700; line-height: 1.35; text-decoration: none;
+}
+.two-photon-link:hover { border-color: var(--accent); background: var(--surface-active); }
+.two-photon-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .wiki-link {
   display: block;
   margin-top: 11px;

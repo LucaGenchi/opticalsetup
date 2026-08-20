@@ -30,7 +30,7 @@ function collectBench(specimenType, channels, wavelengths = [800]) {
   sample.rot = 90; // the specimen surface is horizontal at rot 0
   Object.assign(sample.params, { aperture: 40, specimenType, channels });
   const objective = createElement('objective', 154, 0);
-  objective.params.f = 20;
+  objective.params.magnification = 10; // f = 200/10 = 20 mm
   const detector = createElement('detector', 320, 0);
   detector.params.aperture = 60;
   return [...lasers, sample, objective, detector];
@@ -622,7 +622,7 @@ test('spontaneous Raman lines stay resolved on a spectrometer', () => {
     channels: [ch('raman', { eff: 0.5, material: 'dmso' })],
   });
   const objective = createElement('objective', 154, 0);
-  objective.params.f = 20;
+  objective.params.magnification = 10; // f = 200/10 = 20 mm
   const spectrometer = createElement('spectrometer', 360, 0);
   spectrometer.params.aperture = 60;
 
@@ -871,7 +871,7 @@ function dyeEmission(kind, fluorophore, excitationWl) {
     channels: [ch(kind, { eff: 0.5, fluorophore })],
   });
   const objective = createElement('objective', 154, 0);
-  objective.params.f = 20;
+  objective.params.magnification = 10; // f = 200/10 = 20 mm
   const detector = createElement('detector', 320, 0);
   detector.params.aperture = 60;
   traceAll([laser, sample, objective, detector]);

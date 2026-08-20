@@ -39,7 +39,7 @@ test('the objective attenuates by its own transmission efficiency', () => {
   const laser = createElement('laser', 0, 0);
   laser.params.beamMode = 'line';
   const objective = createElement('objective', 150, 0);
-  objective.params.f = 20;
+  objective.params.magnification = 10;
   objective.params.transEff = 75;
   const detector = createElement('detector', 400, 0);
   traceAll([laser, objective, detector]);

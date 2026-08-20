@@ -90,11 +90,13 @@ test('a mounted sample reports an excitation hit for the signal-spot indicator, 
   const cw = traceScene([laser, stage]);
   assert.equal(cw.signalHits.length, 1);
   assert.equal(cw.signalHits[0].stageId, stage.id);
+  assert.equal(cw.signalHits[0].sourceId, undefined);
   closeTo(cw.signalHits[0].x, stage.x);
 
   laser.params.temporalMode = 'pulsed';
   const pulsed = traceScene([laser, stage]);
   assert.equal(pulsed.signalHits.length, 1, 'a pulsed source reports the same single hit');
+  assert.equal(pulsed.signalHits[0].sourceId, laser.id);
   closeTo(pulsed.signalHits[0].x, stage.x);
 });
 

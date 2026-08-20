@@ -2,6 +2,7 @@
 
 import { distinctPoints, rotPt } from './util.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
+import { migrateLegacyObjectiveParams } from './objective.js';
 
 export const state = {
   elements: [],   // optical elements
@@ -118,8 +119,17 @@ function normalizeElement(raw, definitions, used) {
   if (definitions && !def) throw new Error(`Sketch uses an unknown element type: ${raw.type}`);
   if (!finite(raw.x) || !finite(raw.y)) throw new Error(`Element ${raw.type} has invalid coordinates`);
   const params = {};
+  // The objective's old `f`/`aperture` params were retired outright in favor
+  // of `magnification`/`na` — unlike the per-param `migrate` hook below,
+  // which only ever sees keys that are still part of the current param
+  // list, this needs the raw legacy values before they'd otherwise be
+  // silently dropped for not matching any current spec.
+  let rawParams = record(raw.params) ? raw.params : {};
+  if (raw.type === 'objective') {
+    rawParams = migrateLegacyObjectiveParams(rawParams);
+  }
   if (def) {
-    for (const spec of def.params || []) params[spec.key] = normalizeParam(raw.params?.[spec.key], spec);
+    for (const spec of def.params || []) params[spec.key] = normalizeParam(rawParams[spec.key], spec);
   } else {
     if (!record(raw.params)) throw new Error(`Element ${raw.type} has invalid parameters`);
     Object.assign(params, raw.params);
