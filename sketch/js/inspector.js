@@ -12,6 +12,7 @@ import { detectorReading, specimenIncidentWls, specimenIncidentBeams } from './r
 import { pulseTransmissionAt } from './pulses.js';
 import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
 import { esc } from './util.js';
+import { WIKI_TYPES } from './wiki-types.js';
 
 let panel;
 let undoArmed = false; // push one undo snapshot per editing session
@@ -523,7 +524,9 @@ export function renderInspector() {
     }
     if (!state.demoMode) {
       h += `<div class="btnrow">${def.singleton ? '' : '<button type="button" id="inspDup">Duplicate</button>'}<button type="button" id="inspDel" class="danger">Delete</button></div>`;
-      h += `<a class="wiki-link" href="../wiki/${sel.type}/">Explore this element on the Wiki →</a>`;
+      if (WIKI_TYPES.has(sel.type)) {
+        h += `<a class="wiki-link" href="../wiki/${sel.type}/">Explore this element on the Wiki →</a>`;
+      }
     }
     panel.innerHTML = h;
   } else {
