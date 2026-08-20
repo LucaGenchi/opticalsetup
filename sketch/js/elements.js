@@ -2537,7 +2537,7 @@ export const registry = {
         key: 'gasDirection', label: 'Gas port', type: 'select', def: 'out',
         options: [['out', 'Outward'], ['in', 'Inward'], ['closed', 'Closed']],
       },
-      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 10 },
+      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 100 },
     ],
     svg(el) {
       const p = el.params;
@@ -2619,7 +2619,7 @@ export const registry = {
     size_: el => ({ w: 12, h: el.params.length + 6 }),
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 35 },
+      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 100 },
     ],
     svg(el) {
       const p = el.params, L = p.length / 2;
