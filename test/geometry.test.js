@@ -117,7 +117,7 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   const objective = createElement('objective');
   assert.deepEqual(registry.objective.params.map(param => param.key), [
     'efl', 'magnification', 'workingDistance', 'immersion', 'immersionIndex',
-    'na', 'acceptanceHalfAngle', 'showAcceptance', 'pupilFill', 'transEff', 'frontAperture',
+    'na', 'acceptanceHalfAngle', 'showAcceptance', 'pupilFill', 'effectiveNA', 'transEff', 'frontAperture',
   ]);
   assert.equal(Object.hasOwn(objective.params, 'f'), false);
   assert.equal(Object.hasOwn(objective.params, 'aperture'), false);

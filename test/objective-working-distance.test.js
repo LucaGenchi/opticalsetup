@@ -411,3 +411,29 @@ test('a fresh objective is a 20x dry NA 0.65 with full transmission', () => {
   assert.equal(objective.params.transEff, 100);
   assert.equal(objective.params.workingDistance, 10, 'WD starts equal to EFL');
 });
+
+test('an underfilled pupil reports the smaller NA the experiment actually runs at', () => {
+  const objective = createElement('objective', 400, 0);
+  objective.params.efl = 10;
+  objective.params.na = 0.65;  // 13 mm pupil
+  objective.params.frontAperture = 40;
+  const laser = createElement('cwlaser', 60, 0);
+  laser.params.beamMode = 'beam';
+
+  const effectiveNA = () => {
+    traceAll([laser, objective], []);
+    const fill = objectivePupilFill(objective.id);
+    return objectiveNumericalAperture(objective.params) * Math.min(1, fill.fill);
+  };
+
+  laser.params.beamWidth = 13;
+  assert.ok(Math.abs(effectiveNA() - 0.65) < 0.005, 'a filled pupil gives the full rated NA');
+
+  // Half the pupil diameter is half the convergence angle, so half the NA.
+  laser.params.beamWidth = 6.5;
+  assert.ok(Math.abs(effectiveNA() - 0.325) < 0.005, 'half-filled means half the NA');
+
+  // Overfilling cannot buy more than the objective is rated for.
+  laser.params.beamWidth = 26;
+  assert.ok(Math.abs(effectiveNA() - 0.65) < 0.005, 'overfilling is capped at the rating');
+});

@@ -1628,6 +1628,21 @@ export const registry = {
             `${(fill.transmitted * 100).toFixed(0)}% through (${((1 - fill.transmitted) * 100).toFixed(0)}% lost)`;
         },
       },
+      // Underfilling the pupil does not just waste the rating — it hands you a
+      // smaller NA, and with it a bigger focal spot. That is the number the
+      // experiment actually runs at, so report it next to the fill.
+      {
+        key: 'effectiveNA', label: 'Effective NA in use', type: 'readout',
+        readout: (p, el) => {
+          const rated = objectiveNumericalAperture(p);
+          const fill = el ? objectivePupilFill(el.id) : null;
+          if (!fill) return `${rated.toFixed(2)} rated · no beam`;
+          const effective = rated * Math.min(1, fill.fill);
+          if (fill.fill >= 0.999) return `${rated.toFixed(2)} — the full rated NA`;
+          return `${effective.toFixed(2)} of ${rated.toFixed(2)} — the pupil is only ` +
+            `${(fill.fill * 100).toFixed(0)}% filled, so the spot is ${(rated / effective).toFixed(1)}× wider`;
+        },
+      },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
       {
         key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.5, def: 20,
