@@ -3,143 +3,437 @@ import assert from 'node:assert/strict';
 
 import { createElement, getDirectManipulation, getSize, registry } from '../sketch/js/elements.js';
 import { applyInput, initInspector, renderInspector } from '../sketch/js/inspector.js';
+import { detectorReading, objectivePupilFill, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import {
-  magnificationForWorkingDistance, objectiveFocalLength, objectiveNumericalAperture, objectivePupilDiameter,
-  OBJECTIVE_REFERENCE_TUBE_F_MM,
+  OBJECTIVE_DEFAULT_BACK_X,
+  OBJECTIVE_FRONT_X,
+  OBJECTIVE_SHOULDER_X,
+  objectiveAcceptanceHalfAngleDeg,
+  objectiveMagnification,
+  objectiveBackFocalPlaneX,
+  objectiveBackX,
+  objectiveLensPlaneX,
+  objectiveStopX,
+  objectiveFocalLength,
+  objectiveFrontAperture,
+  objectiveMediumIndex,
+  objectiveNumericalAperture,
+  objectivePupilDiameter,
+  objectiveWorkingDistance,
 } from '../sketch/js/objective.js';
 
 const file = (elements = []) => JSON.stringify({ app: 'optics2d', version: 1, elements, beams: [] });
 
-// ---------------- geometry: NA never resizes, magnification does ----------------
+function inspectorFor(objective, extras = []) {
+  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  state.elements = [objective, ...extras];
+  state.beams = [];
+  state.selection = { kind: 'element', id: objective.id };
+  state.demoMode = false;
+  initInspector(panel);
+  renderInspector();
+  return panel;
+}
 
-test('the objective pupil (drawn body + traced aperture) tracks magnification, never NA alone', () => {
-  const base = { magnification: 20, na: 1 };
-  assert.equal(objectivePupilDiameter(base), 20); // 2 * (200/20)
+// ---------------- independent catalogue properties ----------------
 
-  for (const na of [0.05, 0.5, 1.0, 1.49]) {
-    assert.equal(objectivePupilDiameter({ magnification: 20, na }), 20, `NA ${na} must not change the pupil`);
-  }
+test('rated pupil follows EFL and NA while the physical front aperture remains independent', () => {
+  assert.equal(objectivePupilDiameter({ magnification: 20, immersion: 'air', na: 0.2 }), 4);
+  assert.equal(objectivePupilDiameter({ magnification: 20, immersion: 'air', na: 0.5 }), 10);
+  assert.equal(objectivePupilDiameter({ magnification: 20, immersion: 'air', na: 0.85 }), 17);
+  assert.equal(objectivePupilDiameter({ magnification: 40, immersion: 'air', na: 0.85 }), 8.5);
+  assert.equal(objectivePupilDiameter({ magnification: 20, immersion: 'oil', na: 1.4 }), 28);
 
-  assert.equal(objectivePupilDiameter({ magnification: 40, na: 1 }), 10); // 2 * (200/40)
-  assert.equal(objectivePupilDiameter({ magnification: 10, na: 1 }), 40); // 2 * (200/10)
+  assert.equal(objectiveFrontAperture({ magnification: 20, frontAperture: 24, na: 0.2 }), 24);
+  assert.equal(objectiveFrontAperture({ magnification: 80, frontAperture: 24, na: 1.4, immersion: 'oil' }), 24);
 });
 
-test('NA still flows into the traced surface for downstream consumers (e.g. the 2PP handoff)', () => {
+test('the equivalent lens moves so EFL and working distance are both true', () => {
   const objective = createElement('objective');
+  let surface = registry.objective.surfaces(objective)[0];
+  assert.equal(objectiveFocalLength(objective.params), 10);
+  assert.equal(objectiveWorkingDistance(objective.params), 10);
+  assert.equal(surface.x1, 16, 'the trace surface is the physical front boundary');
+  assert.equal(surface.x1 + surface.data.f, 26, 'collimated light focuses at front + WD');
+
+  objective.params.workingDistance = 2;
+  surface = registry.objective.surfaces(objective)[0];
+  assert.equal(surface.x1, 8, 'a short working distance moves the equivalent lens into the housing, as in a real objective');
+  assert.equal(surface.data.f, 10, 'the traced lens keeps the real EFL');
+  assert.equal(surface.x1 + surface.data.f, 18, 'and still focuses exactly WD beyond the front tip');
+
+  objective.params.efl = 5;
+  surface = registry.objective.surfaces(objective)[0];
+  assert.equal(objectiveFocalLength(objective.params), 5);
+  assert.equal(surface.data.effectiveFocalLength, 5);
+  assert.equal(surface.data.f, 5, 'the traced lens carries the real EFL');
+  assert.equal(objectiveWorkingDistance(objective.params), 2, 'EFL must not rewrite WD');
+  assert.equal(surface.x1, 13, 'lens plane = 16 + WD - EFL = 16 + 2 - 5');
+  assert.equal(surface.x1 + surface.data.f, 18, 'the independently authored specimen focus stays put');
+});
+
+test('medium, NA, and half-angle flow into the objective surface without rewriting WD', () => {
+  const objective = createElement('objective');
+  objective.params.workingDistance = 3.5;
+  objective.params.immersion = 'oil';
   objective.params.na = 1.35;
   const surface = registry.objective.surfaces(objective)[0];
+
   assert.equal(surface.data.objectiveNA, 1.35);
+  assert.equal(surface.data.objectiveMediumIndex, 1.518);
+  assert.equal(surface.data.workingDistance, 3.5);
   assert.equal(objectiveNumericalAperture(objective.params), 1.35);
+  assert.equal(objectiveMediumIndex(objective.params), 1.518);
+  const expectedAngle = Math.asin(1.35 / 1.518) * 180 / Math.PI;
+  assert.ok(Math.abs(objectiveAcceptanceHalfAngleDeg(objective.params) - expectedAngle) < 1e-9);
 });
 
-// ---------------- working distance: a derived, unstored, always-live param ----------------
+test('changing rated NA changes qualitative angular ray acceptance', () => {
+  const signalFor = na => {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'beam';
+    laser.params.beamWidth = 20;
+    const objective = createElement('objective', 150, 0);
+    Object.assign(objective.params, {
+      magnification: 20,
+      workingDistance: 10,
+      frontAperture: 20,
+      immersion: 'air',
+      na,
+    });
+    const detector = createElement('detector', 205, 0);
+    detector.params.aperture = 100;
+    traceAll([laser, objective, detector]);
+    return detectorReading(detector.id)?.signal || 0;
+  };
 
-test('working distance has no storage of its own', () => {
+  const narrow = signalFor(0.2);
+  const wide = signalFor(1);
+  assert.ok(narrow > 0, 'the low-NA objective still accepts its central rays');
+  assert.ok(wide > narrow * 3, 'opening NA must accept visibly more of the same input beam');
+});
+
+// ---------------- inspector behavior ----------------
+
+test('the inspector resolves medium-dependent NA bounds, angle, and medium changes without touching WD', () => {
   const objective = createElement('objective');
-  assert.equal(Object.hasOwn(objective.params, 'workingDistance'), false);
-  const spec = registry.objective.params.find(p => p.key === 'workingDistance');
-  assert.equal(spec.type, 'derived');
-  assert.equal(typeof spec.get, 'function');
-  assert.equal(typeof spec.set, 'function');
+  objective.params.immersion = 'oil';
+  objective.params.na = 1.4;
+  objective.params.workingDistance = 4.2;
+  const panel = inspectorFor(objective);
+
+  assert.match(panel.innerHTML, /data-p="na"[^>]*max="1\.49"/);
+  assert.match(panel.innerHTML, /data-p="acceptanceHalfAngle">67\.3°/);
+
+  applyInput({ dataset: { p: 'immersion' }, type: 'select-one', value: 'air' }, true);
+  assert.equal(objective.params.immersion, 'air');
+  assert.equal(objective.params.na, 0.85, 'dry objectives cap at the practical 0.85, not at n = 1');
+  assert.equal(objective.params.workingDistance, 4.2);
+  assert.match(panel.innerHTML, /data-p="na"[^>]*max="0\.85"/);
+  assert.match(panel.innerHTML, /data-p="acceptanceHalfAngle">58\.2°/);
+  assert.doesNotMatch(panel.innerHTML, /data-p="immersionIndex"/);
+
+  applyInput({ dataset: { p: 'immersion' }, type: 'select-one', value: 'custom' }, true);
+  assert.match(panel.innerHTML, /data-p="immersionIndex"/);
+  assert.equal(objective.params.workingDistance, 4.2);
 });
 
-test('working distance reads as the same thin-lens focal length as magnification, in mm', () => {
-  const spec = registry.objective.params.find(p => p.key === 'workingDistance');
-  assert.equal(spec.get({ magnification: 20 }), objectiveFocalLength({ magnification: 20 }));
-  assert.equal(spec.get({ magnification: 20 }), 10);
-  assert.equal(spec.get({ magnification: 40 }), 5);
-  assert.equal(spec.get({ magnification: 4 }), 50);
-});
-
-test('setting working distance writes back through magnification, and clamps like any other field', () => {
-  const spec = registry.objective.params.find(p => p.key === 'workingDistance');
-  const params = { magnification: 20 };
-
-  spec.set(params, 20); // 200/20 = 10x
-  assert.equal(params.magnification, 10);
-  assert.equal(spec.get(params), 20);
-
-  spec.set(params, 2); // 200/2 = 100x
-  assert.equal(params.magnification, 100);
-  assert.equal(spec.get(params), 2);
-
-  // out of range requests clamp to the nearest valid magnification, and the
-  // readback reflects what that magnification actually implies
-  spec.set(params, 1000);
-  assert.equal(params.magnification, 1, 'clamped to the minimum magnification (1x)');
-  spec.set(params, 0.01);
-  assert.equal(params.magnification, 200, 'clamped to the maximum magnification (200x)');
-});
-
-test('magnificationForWorkingDistance is the exact inverse relationship used by the tracer', () => {
-  assert.equal(magnificationForWorkingDistance(10), 20);
-  assert.equal(magnificationForWorkingDistance(OBJECTIVE_REFERENCE_TUBE_F_MM), 1);
-  assert.equal(magnificationForWorkingDistance(1), 200);
-});
-
-// ---------------- editing either field in the inspector keeps the other live ----------------
-
-test('committing a magnification edit refreshes the displayed working distance', () => {
-  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+test('the theta readout follows NA during live input without rebuilding the inspector', () => {
   const objective = createElement('objective');
+  objective.params.immersion = 'oil';
+  objective.params.na = 1.4;
+  const angleOutput = { dataset: { p: 'acceptanceHalfAngle' }, textContent: '67.3°' };
+  const panel = {
+    innerHTML: '',
+    querySelector: () => null,
+    querySelectorAll: selector => selector === 'output.readout[data-p]' ? [angleOutput] : [],
+  };
   state.elements = [objective];
   state.beams = [];
   state.selection = { kind: 'element', id: objective.id };
   state.demoMode = false;
   initInspector(panel);
   renderInspector();
-  assert.match(panel.innerHTML, /value="10"[^>]*data-derived="1"|data-derived="1"[^>]*value="10"/);
 
-  applyInput({ dataset: { p: 'magnification' }, type: 'number', value: '40' }, true);
-  assert.equal(objective.params.magnification, 40);
-  assert.match(panel.innerHTML, /value="5"[^>]*data-derived="1"|data-derived="1"[^>]*value="5"/,
-    'working distance display must follow the new magnification, not the value it had at render time');
+  applyInput({ dataset: { p: 'na' }, type: 'number', value: '0.3' });
+  assert.equal(objective.params.na, 0.3);
+  assert.equal(angleOutput.textContent, '11.4°');
 });
 
-test('committing a working-distance edit writes back to magnification and stays consistent on rerender', () => {
-  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+test('an unresolved legacy medium is visible for repair but cannot be newly selected', () => {
   const objective = createElement('objective');
-  state.elements = [objective];
-  state.beams = [];
-  state.selection = { kind: 'element', id: objective.id };
-  state.demoMode = false;
-  initInspector(panel);
-  renderInspector();
+  objective.params.immersion = 'legacy';
+  objective.params.na = 1.4;
+  const panel = inspectorFor(objective);
 
-  applyInput({ dataset: { p: 'workingDistance', derived: '1' }, type: 'number', value: '25' }, true);
-  assert.equal(objective.params.magnification, 8, '200mm tube / 25mm working distance = 8x');
-  assert.equal(objective.params.na, 1, 'NA is untouched by a working-distance edit');
+  assert.match(panel.innerHTML, /option value="legacy" selected disabled/);
+  assert.match(panel.innerHTML, /older high-NA sketch did not record one/i);
 });
 
-// ---------------- direct manipulation: resize/tune wired to working distance ----------------
+test('committing objective coordinates refreshes the derived immersion-bridge hint', () => {
+  const objective = createElement('objective', 0, 0);
+  objective.params.immersion = 'water';
+  const sample = createElement('sample', 27, 0);
+  sample.rot = 90;
+  const panel = inspectorFor(objective, [sample]);
 
-test('the objective resize handle and tune knob are wired to working distance, not NA', () => {
+  assert.match(panel.innerHTML, /data-objective-coupling-status="connected"/);
+  assert.match(panel.innerHTML, /actual gap 8\.0 mm/);
+  assert.match(panel.innerHTML, /WD 10\.0 mm/);
+
+  applyInput({ dataset: { k: 'x' }, type: 'number', value: '-100', min: '-500', max: '500' }, true);
+  assert.doesNotMatch(panel.innerHTML, /data-objective-coupling-status="connected"/);
+  assert.match(panel.innerHTML, /data-objective-coupling-status="open"/);
+});
+
+test('editing EFL updates the reported magnification and carries WD down with it', () => {
+  const objective = createElement('objective');
+  const panel = inspectorFor(objective);
+  assert.equal(objective.params.workingDistance, 10);
+  assert.match(panel.innerHTML, /data-p="magnification">20\.0/);
+
+  // Raising EFL leaves an already-configured WD where the author put it.
+  applyInput({ dataset: { p: 'efl' }, type: 'number', value: '40' }, true);
+  assert.equal(objective.params.workingDistance, 10, 'a longer EFL must not rewrite WD');
+  assert.match(panel.innerHTML, /data-p="magnification">5\.0/, 'the reported magnification follows EFL');
+
+  // Shortening it past WD does move WD: an objective cannot focus further
+  // away than its own focal length.
+  applyInput({ dataset: { p: 'efl' }, type: 'number', value: '5' }, true);
+  assert.equal(objective.params.efl, 5);
+  assert.equal(objective.params.workingDistance, 5, 'WD follows EFL down to stay physical');
+  assert.match(panel.innerHTML, /data-p="magnification">40\.0/);
+  assert.match(panel.innerHTML, /data-p="workingDistance"[^>]*value="5"/);
+});
+
+test('working-distance edits move focus without changing EFL or NA', () => {
+  const objective = createElement('objective');
+  objective.params.efl = 40;
+  inspectorFor(objective);
+
+  applyInput({ dataset: { p: 'workingDistance' }, type: 'number', value: '25' }, true);
+  assert.equal(objective.params.workingDistance, 25);
+  assert.equal(objective.params.efl, 40, 'WD must not rewrite EFL');
+  assert.equal(objective.params.na, 0.65);
+  const surface = registry.objective.surfaces(objective)[0];
+  assert.equal(surface.x1, 1, 'lens plane = 16 + 25 - 40');
+  assert.equal(surface.x1 + surface.data.f, 41, 'front boundary 16 mm + 25 mm WD');
+});
+
+test('working distance is capped at the effective focal length', () => {
+  const objective = createElement('objective');
+  objective.params.efl = 8;
+  objective.params.workingDistance = 40;
+  assert.equal(objectiveWorkingDistance(objective.params), 8, 'WD can equal EFL but never exceed it');
+  // Which is what keeps the equivalent plane inside the barrel.
+  assert.ok(registry.objective.surfaces(objective)[0].x1 <= OBJECTIVE_FRONT_X);
+
+  objective.params.workingDistance = 0.05;
+  assert.equal(objectiveWorkingDistance(objective.params), 1, 'and never shorter than 1 mm');
+});
+
+// ---------------- direct manipulation and persistence ----------------
+
+test('the objective resize handle changes its front aperture while tune changes EFL', () => {
   const objective = createElement('objective');
   const direct = getDirectManipulation(objective);
-  assert.equal(direct.resize.y, 'workingDistance');
-  assert.equal(direct.tune.key, 'workingDistance');
-  assert.equal(direct.tune.param.type, 'derived');
-});
+  assert.equal(direct.resize.y, 'frontAperture');
+  assert.equal(direct.tune.key, 'efl');
+  assert.equal(direct.tune.param.type, 'number');
 
-test('dragging the resize handle out (working distance up) visibly grows the objective', () => {
-  const objective = createElement('objective');
-  const spec = registry.objective.params.find(p => p.key === 'workingDistance');
   const before = getSize(objective);
-
-  spec.set(objective.params, 40); // longer working distance
-  const after = getSize(objective);
-  assert.ok(after.h > before.h, 'a longer working distance draws a visibly bigger barrel');
+  objective.params.workingDistance = 12;
+  assert.deepEqual(getSize(objective), before, 'a modest WD change moves focus, not the barrel boundary');
+  objective.params.frontAperture = 40;
+  assert.ok(getSize(objective).h > before.h, 'front aperture is the actual resizable boundary');
 });
 
-// ---------------- legacy sketches: no working-distance key to migrate ----------------
-
-test('a sketch saved before working distance existed just derives it fresh from magnification', () => {
+test('legacy objectives receive compatibility WD/aperture values that then persist independently', () => {
   const raw = createElement('objective');
   raw.params = { magnification: 25, na: 0.8, transEff: 90 };
   const [loaded] = parseSketch(file([raw]), registry).elements;
-  assert.equal(loaded.params.magnification, 25);
-  assert.equal(Object.hasOwn(loaded.params, 'workingDistance'), false);
-  const spec = registry.objective.params.find(p => p.key === 'workingDistance');
-  assert.equal(spec.get(loaded.params), 8); // 200 / 25
+
+  assert.equal(loaded.params.efl, 8, 'magnification 25 converts to EFL 200/25');
+  assert.equal(loaded.params.workingDistance, 8, 'old geometry used WD = 200 / M');
+  assert.equal(loaded.params.frontAperture, 16, 'old body used 2 × EFL');
+  assert.equal(loaded.params.immersion, 'air');
+
+  loaded.params.efl = 12;
+  assert.equal(objectiveFocalLength(loaded.params), 12);
+  assert.equal(objectiveWorkingDistance(loaded.params), 8, 'after migration a longer EFL leaves WD alone');
+  assert.equal(loaded.params.frontAperture, 16);
+});
+
+test('malformed legacy magnification seeds compatibility geometry from its bounded value', () => {
+  const zero = createElement('objective');
+  zero.params = { magnification: 0, na: 0.8 };
+  const huge = createElement('objective');
+  huge.params = { magnification: 10000, na: 0.8 };
+
+  const [loadedZero, loadedHuge] = parseSketch(file([zero, huge]), registry).elements;
+  // A malformed magnification is bounded first, then converted, so the
+  // objective it becomes is the one the bounded value describes.
+  assert.equal(loadedZero.params.efl, 200, 'magnification 0 -> bounded to 1x -> EFL 200');
+  assert.equal(loadedZero.params.workingDistance, 200);
+  assert.equal(loadedHuge.params.efl, 1, 'magnification 10000 -> bounded to 200x -> EFL 1');
+  assert.equal(loadedHuge.params.workingDistance, 1);
+});
+
+
+// ---------------- the back pupil is a real stop ----------------
+
+test('rated NA sets the back pupil, so it sets the focusing cone and what overfilling costs', () => {
+  const objective = createElement('objective', 400, 0);
+  objective.params.efl = 10;
+  objective.params.frontAperture = 40; // wide enough that the tip is never the limit
+
+  const coneHalfAngle = na => {
+    objective.params.na = na;
+    const laser = createElement('cwlaser', 60, 0);
+    laser.params.beamMode = 'beam';
+    laser.params.beamWidth = objectivePupilDiameter(objective.params); // fill the pupil
+    const slopes = traceScene([laser, objective], []).drawables
+      .filter(d => d.pts?.length >= 2)
+      .map(d => {
+        const a = d.pts.at(-2), b = d.pts.at(-1);
+        return (b.y - a.y) / (b.x - a.x);
+      });
+    const steepest = slopes.reduce((a, b) => Math.abs(b) > Math.abs(a) ? b : a, 0);
+    return Math.abs(Math.atan(steepest)) * 180 / Math.PI;
+  };
+
+  // A paraxial stop in a thin-lens tracer: filling 2fNA converges at atan(NA).
+  for (const na of [0.2, 0.6, 0.85]) {
+    const want = Math.atan(na) * 180 / Math.PI;
+    assert.ok(Math.abs(coneHalfAngle(na) - want) < 0.01, `NA ${na} must focus at atan(NA) = ${want.toFixed(2)} deg`);
+  }
+});
+
+test('the aperture stop sits at the back focal plane, where an infinity pupil belongs', () => {
+  const objective = createElement('objective');
+  objective.params.efl = 10;
+  // Default WD = EFL puts the BFP inside the barrel, so the stop is exactly there.
+  assert.equal(objectiveStopX(objective.params), objectiveBackFocalPlaneX(objective.params));
+
+  // The single-plane model can push the BFP further back than any real
+  // barrel; the stop is then clamped into the housing rather than left
+  // blocking light in mid-air behind it.
+  objective.params.efl = 120;
+  assert.ok(objectiveBackFocalPlaneX(objective.params) < objectiveBackX(objective.params));
+  assert.equal(objectiveStopX(objective.params), objectiveBackX(objective.params) + 1);
+});
+
+test('overfilling the back pupil reports what it costs', () => {
+  const objective = createElement('objective', 400, 0);
+  objective.params.efl = 10;
+  objective.params.na = 0.6; // 12 mm pupil
+  objective.params.frontAperture = 40;
+  const laser = createElement('cwlaser', 60, 0);
+  laser.params.beamMode = 'beam';
+
+  laser.params.beamWidth = 12;
+  traceAll([laser, objective], []);
+  let fill = objectivePupilFill(objective.id);
+  assert.equal(fill.pupilDiameter, 12);
+  assert.ok(Math.abs(fill.beamDiameter - 12) < 0.05);
+  assert.equal(fill.transmitted, 1, 'a beam that exactly fills the pupil is not clipped');
+
+  laser.params.beamWidth = 24;
+  traceAll([laser, objective], []);
+  fill = objectivePupilFill(objective.id);
+  assert.ok(Math.abs(fill.beamDiameter - 24) < 0.05);
+  // uniform round beam through a round stop: the area ratio survives
+  assert.ok(Math.abs(fill.transmitted - 0.25) < 0.01, 'double the fill costs three quarters');
+});
+
+test('a scan pivoted on the BFP marker never vignettes; one pivoted elsewhere does', () => {
+  // The reason the BFP marker is worth relaying a scan mirror onto: pivot
+  // there and the beam stays centred in the stop at every angle, pivot
+  // somewhere else and it walks across the pupil and is cut.
+  const objective = createElement('objective', 400, 0);
+  objective.params.efl = 10;
+  objective.params.na = 0.6; // 12 mm pupil
+  objective.params.frontAperture = 40;
+  const stopWorldX = objective.x + objectiveStopX(objective.params);
+  const lensWorldX = objective.x + objectiveLensPlaneX(objective.params);
+
+  // how much of the beam gets past the objective, as a beam pivoting at
+  // `pivotX` is tilted by `deg`
+  const throughput = (pivotX, deg) => {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'beam';
+    laser.params.beamWidth = 6;
+    laser.params.wavelength = 532;
+    const rad = deg * Math.PI / 180;
+    laser.rot = deg;
+    laser.x = pivotX - Math.cos(rad) * 52;
+    laser.y = -Math.sin(rad) * 52;
+    return traceScene([laser, objective], []).drawables
+      .filter(d => d.pts?.length >= 2 && d.pts.some(pt => pt.x > lensWorldX + 1)).length;
+  };
+
+  const straight = throughput(stopWorldX, 0);
+  assert.ok(straight > 10, 'sanity: an on-axis beam inside the pupil gets through');
+  assert.equal(throughput(stopWorldX, 4), straight, 'a pivot on the BFP loses nothing when it scans');
+  assert.ok(
+    throughput(stopWorldX - 120, 4) < straight / 2,
+    'a pivot 120 mm short of the BFP walks the beam off the pupil and is cut',
+  );
+});
+
+test('the barrel is a stubby taper on a long straight body, and only the body grows', () => {
+  const taper = OBJECTIVE_FRONT_X - OBJECTIVE_SHOULDER_X;
+  const body = OBJECTIVE_SHOULDER_X - OBJECTIVE_DEFAULT_BACK_X;
+  assert.equal(taper, 9, 'the tapered nose is short');
+  assert.equal(body, 28, 'the straight section carries the length');
+
+  const objective = createElement('objective');
+  assert.equal(objectiveBackX(objective.params), OBJECTIVE_DEFAULT_BACK_X);
+
+  // A short working distance pushes the lens plane back; the nose must not
+  // stretch with it, only the straight section.
+  objective.params.efl = 40;
+  objective.params.workingDistance = 2;
+  const grown = objectiveBackX(objective.params);
+  assert.ok(grown < OBJECTIVE_DEFAULT_BACK_X, 'the barrel grew');
+  assert.equal(OBJECTIVE_FRONT_X - OBJECTIVE_SHOULDER_X, taper, 'the nose is fixed geometry');
+  assert.match(registry.objective.svg(objective), new RegExp(`L ${OBJECTIVE_SHOULDER_X},-`), 'and it is drawn at the fixed shoulder');
+  assert.ok(registry.objective.svg(objective).includes(`L ${grown},-`), 'while the body reaches the grown rear face');
+});
+
+test('a fresh objective is a 20x dry NA 0.65 with full transmission', () => {
+  const objective = createElement('objective');
+  assert.equal(objective.params.efl, 10);
+  assert.equal(objectiveMagnification(objective.params), 20);
+  assert.equal(objective.params.immersion, 'air');
+  assert.equal(objective.params.na, 0.65);
+  assert.equal(objective.params.transEff, 100);
+  assert.equal(objective.params.workingDistance, 10, 'WD starts equal to EFL');
+});
+
+test('an underfilled pupil reports the smaller NA the experiment actually runs at', () => {
+  const objective = createElement('objective', 400, 0);
+  objective.params.efl = 10;
+  objective.params.na = 0.65;  // 13 mm pupil
+  objective.params.frontAperture = 40;
+  const laser = createElement('cwlaser', 60, 0);
+  laser.params.beamMode = 'beam';
+
+  const effectiveNA = () => {
+    traceAll([laser, objective], []);
+    const fill = objectivePupilFill(objective.id);
+    return objectiveNumericalAperture(objective.params) * Math.min(1, fill.fill);
+  };
+
+  laser.params.beamWidth = 13;
+  assert.ok(Math.abs(effectiveNA() - 0.65) < 0.005, 'a filled pupil gives the full rated NA');
+
+  // Half the pupil diameter is half the convergence angle, so half the NA.
+  laser.params.beamWidth = 6.5;
+  assert.ok(Math.abs(effectiveNA() - 0.325) < 0.005, 'half-filled means half the NA');
+
+  // Overfilling cannot buy more than the objective is rated for.
+  laser.params.beamWidth = 26;
+  assert.ok(Math.abs(effectiveNA() - 0.65) < 0.005, 'overfilling is capped at the rating');
 });

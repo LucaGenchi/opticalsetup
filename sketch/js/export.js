@@ -8,6 +8,7 @@ import { traceScene } from './raytrace.js';
 import { pulseMarkers } from './pulses.js';
 import { pulsePeriodNs, pulsesReadAsCW } from './timescale.js';
 import { encodeGIF, imageDataToRGB332, validateGIFOptions } from './gif.js';
+import { immersionLayerSVG } from './immersion.js';
 import { download, manualBeamSVG, rotPt } from './util.js';
 
 function sceneBounds(elements = state.elements, drawables = null) {
@@ -120,6 +121,11 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
   const frame = [...elements].reverse().find(el => registry[el.type]?.exportFrame);
 
   if (whiteBg || frame?.params.background === 'white') body += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#ffffff"/>`;
+
+  // Objective-owned medium is derived from authored target identity, then
+  // follows the current animation pose. Draw it below optical energy and
+  // components so it reads as a relationship rather than a selectable part.
+  body += immersionLayerSVG(elements, state.beams, { baseElements: state.elements });
 
   for (const d of traced.drawables) {
     if (d.type === 'poly') body += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}"/>`;

@@ -178,6 +178,17 @@ h2.section-head.sim .sw { background: var(--accent); }
 .wiki-article p { margin-bottom: 14px; max-width: 64ch; }
 .wiki-article .w { font-style: italic; color: var(--ink); }
 
+/* Sub-headings and lists inside a long "In OpticalSetup" section. Deliberately
+   quieter than h2.section-head, which marks the real-world/simulated split. */
+.wiki-article h3 {
+  margin: 26px 0 10px; max-width: 64ch;
+  font-size: 14px; font-weight: 650; letter-spacing: -.01em; color: var(--ink);
+}
+.wiki-article h3:first-child { margin-top: 0; }
+.wiki-article ul { margin: 0 0 14px 0; padding-left: 20px; max-width: 64ch; }
+.wiki-article ul li { margin-bottom: 7px; }
+.wiki-article ul li::marker { color: var(--muted); }
+
 .sim-block {
   background: var(--sim-tint);
   border: 1px solid var(--sim-border);

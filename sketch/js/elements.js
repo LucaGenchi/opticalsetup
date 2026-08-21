@@ -1,14 +1,15 @@
 // Registry of optical elements.
 // Local coordinates: element centered at (0,0); default optical propagation is along +x.
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
-//         surfaces(el)->[{x1,y1,x2,y2,kind,data}], source(el)->[rays] }
+//         surfaces(el)->[{x1,y1,x2,y2,kind,data}], source(el)->[rays],
+//         immersionSource(el)->{x,y}, immersionContact(el)->segment|segments }
 // Surface kinds handled by the tracer: mirror, lens, cmirror, refract,
 // dichroic, filter, split, grating, absorb, transmit (data may change
 // wavelength / deflect).
 
 import { distToSegment, esc, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
-import { detectorReading, probeAt } from './raytrace.js';
+import { detectorReading, objectivePupilFill, probeAt } from './raytrace.js';
 import { fwhmToSigma, spectrumSamples, transformLimitedBandwidthNm } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -16,8 +17,12 @@ import {
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import {
-  objectiveFocalLength, objectiveNumericalAperture, objectivePupilDiameter,
-  magnificationForWorkingDistance,
+  OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
+  objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
+  objectiveBarrelHalfHeightAt, objectiveStopX,
+  objectiveEffectiveFocalLength, objectiveFrontAperture, objectiveLensPlaneX, objectiveMagnification,
+  objectiveMaximumNA, objectiveMaximumWorkingDistance, objectiveMediumIndex, objectiveMediumKey,
+  objectiveNumericalAperture, objectivePupilDiameter, objectivePupilRadius, objectiveWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
 
@@ -1546,48 +1551,175 @@ export const registry = {
   },
 
   objective: {
-    // Back (tube-lens/infinity side, where a telescope or scan relay
-    // delivers collimated light) is the wide barrel at local x=-16; front
-    // (sample side) is the narrow tip and glass at local x=+16, which is
-    // also where the single thin-lens surface actually bends rays — so the
-    // drawing and the physics agree on which end focuses light.
+    // Back (tube-lens/infinity side, where a telescope or scan relay delivers
+    // collimated light) is the wide barrel and carries the back pupil; front
+    // (sample side) is the narrow tip at local x=+16, the physical boundary
+    // the working distance is measured from. The equivalent refracting plane
+    // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
+    // because WD is capped at EFL. It is never drawn — an objective is an
+    // opaque barrel, not a visible singlet. See objective.js.
     label: 'Objective', category: 'Lenses', paletteOrder: 3, size: { w: 36, h: 40 },
-    snapPt: { x: 16, y: 0 }, // lens plane (sample-facing front tip)
-    size_: el => ({ w: 36, h: objectivePupilDiameter(el.params) + 20 }),
+    snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
+    // The objective owns the medium; immersion.js derives the disposable
+    // relationship from this front tip to a compatible scene contact.
+    immersionSource: () => ({ x: OBJECTIVE_FRONT_X, y: 0 }),
+    size_: el => ({
+      w: (OBJECTIVE_FRONT_X - objectiveBackX(el.params)) + 4,
+      h: 2 * objectiveBarrelHalfHeight(el.params) + 6,
+    }),
+    // the barrel is no longer centred on the element origin once it grows
+    boxAnchor: el => ({ x: (OBJECTIVE_FRONT_X + objectiveBackX(el.params)) / 2, y: 0 }),
     params: [
-      { key: 'magnification', label: 'Magnification (×)', type: 'number', min: 1, max: 200, step: 0.1, def: 20 },
+      // EFL is the objective's real optical power and the thing the tracer
+      // uses. Magnification is what it produces once the user's own tube lens
+      // images it, so it is reported rather than set.
+      { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 1, max: 200, step: 0.1, def: 10 },
       {
-        // The same thin-lens focal length as Magnification (f = 200 mm tube /
-        // M), just in the unit that actually answers "how far in front of the
-        // objective does it focus" — a `derived` param has no storage of its
-        // own: its value is always freshly computed from magnification for
-        // display, and committing an edit here writes back through `set`
-        // instead of storing itself. That's what keeps it from ever going
-        // stale when magnification changes some other way (the on-canvas
-        // tune knob, a demo scene, a loaded sketch).
-        key: 'workingDistance', label: 'Working distance (mm)', type: 'derived', min: 1, max: 200, step: 0.1,
-        get: p => Math.round(objectiveFocalLength(p) * 100) / 100,
-        set: (p, v) => { p.magnification = magnificationForWorkingDistance(v); },
+        key: 'magnification', label: 'Magnification with a 200 mm tube lens (×)', type: 'readout',
+        readout: p => `${objectiveMagnification(p).toFixed(1)}×`,
       },
-      { key: 'na', label: 'Numerical aperture (NA)', type: 'number', min: 0.05, max: 1.49, step: 0.01, def: 1 },
+      // A real objective focuses at or inside its own focal length, so WD
+      // starts equal to EFL and can only be shortened from there.
+      {
+        key: 'workingDistance', label: 'Working distance (mm)', type: 'number',
+        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.1, def: 10,
+      },
+      {
+        key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
+        options: [
+          ['air', OBJECTIVE_MEDIA.air.label],
+          ['water', OBJECTIVE_MEDIA.water.label],
+          ['oil', OBJECTIVE_MEDIA.oil.label],
+          ['custom', OBJECTIVE_MEDIA.custom.label],
+        ],
+        // Accepted only when loading an older high-NA sketch. The inspector
+        // shows it as a disabled current value, never as a new choice.
+        legacyOptions: [['legacy', OBJECTIVE_MEDIA.legacy.label]],
+      },
+      {
+        key: 'immersionIndex', label: 'Medium index (n)', type: 'number', min: 1, max: 2, step: 0.001, def: 1.333,
+        show: p => p.immersion === 'custom',
+      },
+      {
+        key: 'na', label: 'Rated numerical aperture (NA)', type: 'number', min: 0.05,
+        max: p => objectiveMaximumNA(p), step: 0.01, def: OBJECTIVE_NA_DEFAULT,
+      },
+      {
+        key: 'acceptanceHalfAngle', label: 'Object-side half-angle θ', type: 'readout',
+        readout: p => {
+          const angle = objectiveAcceptanceHalfAngleDeg(p);
+          return Number.isFinite(angle) ? `${angle.toFixed(1)}°` : 'Resolve medium';
+        },
+      },
+      { key: 'showAcceptance', label: 'Show acceptance angle', type: 'checkbox', def: false },
+      // What the rated NA costs you in practice: the back pupil is a real
+      // stop, so a beam wider than 2*f*NA loses its overflow to the barrel.
+      {
+        key: 'pupilFill', label: 'Back-pupil fill', type: 'readout',
+        readout: (p, el) => {
+          const pupil = objectivePupilDiameter(p);
+          const fill = el ? objectivePupilFill(el.id) : null;
+          if (!fill) return `${pupil.toFixed(1)} mm pupil · no beam`;
+          const ratio = fill.beamDiameter / pupil;
+          if (ratio <= 1.001) {
+            return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — ${(ratio * 100).toFixed(0)}% filled, all through`;
+          }
+          return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — overfilled, ` +
+            `${(fill.transmitted * 100).toFixed(0)}% through (${((1 - fill.transmitted) * 100).toFixed(0)}% lost)`;
+        },
+      },
+      // Underfilling the pupil does not just waste the rating — it hands you a
+      // smaller NA, and with it a bigger focal spot. That is the number the
+      // experiment actually runs at, so report it next to the fill.
+      {
+        key: 'effectiveNA', label: 'Effective NA in use', type: 'readout',
+        readout: (p, el) => {
+          const rated = objectiveNumericalAperture(p);
+          const fill = el ? objectivePupilFill(el.id) : null;
+          if (!fill) return `${rated.toFixed(2)} rated · no beam`;
+          const effective = rated * Math.min(1, fill.fill);
+          if (fill.fill >= 0.999) return `${rated.toFixed(2)} — the full rated NA`;
+          return `${effective.toFixed(2)} of ${rated.toFixed(2)} — the pupil is only ` +
+            `${(fill.fill * 100).toFixed(0)}% filled, so the spot is ${(rated / effective).toFixed(1)}× wider`;
+        },
+      },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+      {
+        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.5, def: 20,
+        appearance: true,
+      },
     ],
     svg(el) {
-      const h = objectivePupilDiameter(el.params) / 2, outer = h + 7;
-      return `<path d="M 16,${-h} L -2,${-outer} L -16,${-outer} L -16,${outer} L -2,${outer} L 16,${h} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
-        `<line x1="-2" y1="${-outer}" x2="-2" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
-        `<rect x="14.5" y="${-h}" width="3" height="${2 * h}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
+      const h = objectiveFrontAperture(el.params) / 2;
+      const outer = objectiveBarrelHalfHeight(el.params);
+      const back = objectiveBackX(el.params);
+      // The nose taper is fixed geometry: only the straight rear section
+      // lengthens when a short working distance pushes the lens plane back,
+      // so a long objective still reads as an objective.
+      const shoulder = OBJECTIVE_SHOULDER_X;
+      const pupilHalf = Math.min(outer - 1, Math.max(0.8, objectivePupilRadius(el.params)));
+      return `<path d="M 16,${-h} L ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer} L 16,${h} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
+        `<line x1="${shoulder}" y1="${-outer}" x2="${shoulder}" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
+        // No lens is drawn: an objective is an opaque barrel. What IS visible
+        // at the back is the iris the rated NA leaves open — the dark bars
+        // are the metal a beam overfilling the pupil is lost to.
+        `<rect x="${back}" y="${-outer}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>` +
+        `<rect x="${back}" y="${pupilHalf.toFixed(2)}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>` +
+        // the front tip is a boundary, not a slab of glass: a working distance
+        // shorter than a drawn thickness would otherwise look like it focused
+        // inside solid glass
+        `<line x1="16" y1="${-h}" x2="16" y2="${h}" stroke="${GLASS_S}" stroke-width="2"/>`;
     },
     surfaces(el) {
-      const h = objectivePupilDiameter(el.params) / 2;
+      const lensX = objectiveLensPlaneX(el.params);
+      const outer = objectiveBarrelHalfHeight(el.params);
+      const pupil = Math.min(outer, objectivePupilRadius(el.params));
+      // The stop sits at the back focal plane, which for an infinity objective
+      // is where its entrance pupil is — see objectiveStopX. Its outer extent
+      // follows the barrel at that point so it cannot swallow light that
+      // visually passes outside the housing.
+      const stopX = objectiveStopX(el.params);
+      const stopOuter = objectiveBarrelHalfHeightAt(el.params, stopX);
+      // The stop starts a hair outside the rated pupil, and the clear bore
+      // matches it. A beam sized to exactly fill the pupil lands its edge rays
+      // right on the boundary, and without this margin the stop — which the
+      // ray reaches first — would swallow them and report a full beam as lost.
+      const edge = Math.min(outer, pupil + 0.02);
+      const shared = {
+        effectiveFocalLength: objectiveEffectiveFocalLength(el.params),
+        workingDistance: objectiveWorkingDistance(el.params),
+        objectiveMediumIndex: objectiveMediumIndex(el.params),
+        // A legacy >1 NA is kept in the editor so old sketches are not
+        // rewritten with an invented medium. Until the author resolves
+        // that medium, however, it is not a configured NA that downstream
+        // sample calculations or handoffs may rely on.
+        ...(objectiveMediumKey(el.params) === 'legacy'
+          ? {}
+          : { objectiveNA: objectiveNumericalAperture(el.params) }),
+      };
+      // `pupilSpan` is the segment's local y-range, so the tracer can turn a
+      // hit into a distance from the barrel axis for the overfill readout.
       return [{
-        x1: 16, y1: -h, x2: 16, y2: h, kind: 'lens',
+        // The equivalent refracting plane carries the objective's REAL focal
+        // length, positioned so that collimated light focuses exactly one
+        // working distance beyond the front tip. That is what makes the back
+        // focal plane a true conjugate and the magnification honest. Its
+        // clear aperture is the rated pupil, so NA really does set the
+        // convergence angle of a beam that fills it.
+        x1: lensX, y1: -edge, x2: lensX, y2: edge, kind: 'lens',
         data: {
-          f: objectiveFocalLength(el.params),
-          objectiveNA: objectiveNumericalAperture(el.params),
-          transEff: el.params.transEff,
+          ...shared, f: shared.effectiveFocalLength, transEff: el.params.transEff,
+          pupilRadius: pupil, pupilSpan: [-edge, edge],
         },
-      }];
+      },
+      // The metal around the pupil. Overfilling it is normal practice — you do
+      // it to reach the full rated NA — and the light that lands outside is
+      // genuinely lost, so it stops here rather than sailing through as if the
+      // housing were not there.
+      ...(stopOuter > edge + 0.01 ? [
+        { x1: stopX, y1: edge, x2: stopX, y2: stopOuter, kind: 'absorb', data: { ...shared, pupilRadius: pupil, pupilSpan: [edge, stopOuter] } },
+        { x1: stopX, y1: -edge, x2: stopX, y2: -stopOuter, kind: 'absorb', data: { ...shared, pupilRadius: pupil, pupilSpan: [-edge, -stopOuter] } },
+      ] : [])];
     },
   },
 
@@ -2354,6 +2486,17 @@ export const registry = {
       return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         signalSpotSVG(el);
     },
+    // Both visible specimen faces are explicit immersion contacts. They are
+    // target surfaces, not separate liquid elements, and never move merely
+    // because an objective couples to one.
+    immersionContact: el => {
+      const halfWidth = (el.params.aperture || 34) / 2;
+      const halfThickness = sampleThickness(el.params) / 2;
+      return [
+        { x1: -halfWidth, y1: -halfThickness, x2: halfWidth, y2: -halfThickness },
+        { x1: -halfWidth, y1: halfThickness, x2: halfWidth, y2: halfThickness },
+      ];
+    },
     surfaces: el => sampleSurfaces(el, (el.params.aperture || 34) / 2),
   },
 
@@ -2394,6 +2537,14 @@ export const registry = {
         `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
+    },
+    immersionContact: el => {
+      const halfWidth = (el.params.aperture || 50) / 2;
+      const halfThickness = sampleThickness(el.params) / 2;
+      return [
+        { x1: -halfWidth, y1: -halfThickness, x2: halfWidth, y2: -halfThickness },
+        { x1: -halfWidth, y1: halfThickness, x2: halfWidth, y2: halfThickness },
+      ];
     },
     surfaces(el) {
       const clear = Math.max(2, (el.params.aperture || 50) / 2), outer = clear + 12;
@@ -2744,6 +2895,7 @@ export const registry = {
 // draws or hit-tests a selection box around an element (canvas.js).
 export function boxAnchor(el) {
   const d = registry[el.type];
+  if (typeof d?.boxAnchor === 'function') return d.boxAnchor(el);
   if (d?.anchorX === 'left') return { x: getSize(el).w / 2, y: 0 };
   return { x: 0, y: 0 };
 }
@@ -2808,11 +2960,9 @@ const DIRECT = {
   lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
-  // Both handles drive working distance directly (dragging outward = a
-  // longer working distance = a visibly bigger barrel — magnification moves
-  // with it, inversely, as the same underlying quantity). NA is deliberately
-  // wired to neither: it must never resize the body (see objective.js).
-  objective: { resize: { y: 'workingDistance' }, tune: { key: 'workingDistance', short: 'WD' } },
+  // The blue handle changes the physical front opening. The purple control
+  // moves the independently specified specimen focus; neither rewrites M/NA.
+  objective: { resize: { y: 'frontAperture' }, tune: { key: 'efl', short: 'EFL' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
@@ -2894,7 +3044,7 @@ const ELEMENT_HELP = {
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Uses objective magnification and NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways — editing either updates the other, and the drawn barrel tracks it. NA sets only the qualitative acceptance, never the drawn size, and can be handed to the 2PP lab when this objective is on the traced sample path.',
+  objective: 'Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
@@ -2948,7 +3098,14 @@ export function getElementMeta(type, params = {}, context = {}) {
     && context.element && Array.isArray(context.elements)
     && !resolveDisplaySensor(context.element, context.elements);
 
-  if (type === 'eom' && !params.modulate) {
+  if (type === 'objective' && objectiveMediumKey(params) === 'legacy') {
+    tier = 'configurable';
+    note = 'This older high-NA sketch did not record a front medium. Choose air, water, oil, or a custom index before treating its rated NA as configured.';
+  } else if (type === 'objective' && objectiveMediumKey(params) !== 'air') {
+    note = 'Medium and NA set a qualitative angular acceptance guide. The curved immersion bridge is schematic; it does not add refraction, focal shift, wetting, or aberration correction.';
+  } else if (type === 'objective') {
+    note = 'Dry objectives are capped at NA 0.85, the practical ceiling for real dry designs. NA sets the back-pupil diameter 2fNA, so it changes the focusing cone and what an overfilled beam costs.';
+  } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
   } else if (type === 'eom' && params.modulate && params.driveMode === 'switching') {
