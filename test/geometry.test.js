@@ -110,15 +110,19 @@ test('the microscope element is gone — it was a grey box hiding an unaimable o
   assert.equal(registry.microscope, undefined);
 });
 
-test('objectives expose magnification, working distance and NA while deriving thin-lens geometry internally', () => {
+test('objectives expose magnification, working distance, designed medium and NA while deriving thin-lens geometry internally', () => {
   const objective = createElement('objective');
-  assert.deepEqual(registry.objective.params.map(param => param.key), ['magnification', 'workingDistance', 'na', 'transEff']);
+  assert.deepEqual(registry.objective.params.map(param => param.key), [
+    'magnification', 'workingDistance', 'immersion', 'immersionIndex', 'na', 'transEff',
+  ]);
   assert.doesNotMatch(registry.objective.params.map(param => param.label).join(' '), /focal/i);
   assert.equal(Object.hasOwn(objective.params, 'f'), false);
   assert.equal(Object.hasOwn(objective.params, 'aperture'), false);
   // Working distance has no storage of its own — it's a `derived` param.
   assert.equal(Object.hasOwn(objective.params, 'workingDistance'), false);
   assert.equal(objective.params.magnification, 20);
+  assert.equal(objective.params.immersion, 'air');
+  assert.equal(objective.params.immersionIndex, 1.333);
   assert.equal(objective.params.na, 1);
 
   let surface = registry.objective.surfaces(objective)[0];
@@ -132,8 +136,17 @@ test('objectives expose magnification, working distance and NA while deriving th
 
   objective.params.na = 1.4;
   surface = registry.objective.surfaces(objective)[0];
-  assert.equal(surface.data.objectiveNA, 1.4);
+  assert.equal(surface.data.objectiveNA, 1, 'a dry objective cannot claim NA above its surrounding index');
   assert.equal(surface.y2 - surface.y1, 20, 'NA alone must not resize the pupil');
+
+  objective.params.immersion = 'oil';
+  surface = registry.objective.surfaces(objective)[0];
+  assert.equal(surface.data.objectiveNA, 1.4);
+  assert.equal(surface.y2 - surface.y1, 20, 'changing designed medium must not resize the pupil');
+
+  objective.params.immersion = 'legacy';
+  surface = registry.objective.surfaces(objective)[0];
+  assert.equal(Object.hasOwn(surface.data, 'objectiveNA'), false, 'unresolved legacy NA is not downstream physics input');
 
   objective.params.magnification = 40;
   surface = registry.objective.surfaces(objective)[0];

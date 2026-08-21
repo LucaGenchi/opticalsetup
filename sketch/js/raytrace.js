@@ -1671,12 +1671,12 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
-      if (Number.isFinite(hit.surface.data.objectiveNA) && hit.surface.el?.id) {
+      if (hit.surface.el?.type === 'objective' && hit.surface.el?.id) {
         const objectives = Array.isArray(r.objectives) ? r.objectives : [];
         if (!objectives.some(objective => objective.id === hit.surface.el.id)) {
           r.objectives = [...objectives, {
             id: hit.surface.el.id,
-            na: hit.surface.data.objectiveNA,
+            na: Number.isFinite(hit.surface.data.objectiveNA) ? hit.surface.data.objectiveNA : null,
           }];
         }
       }
@@ -1723,7 +1723,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             y: hit.p.y,
             wl: signalWl,
             sourceId: r.pulse?.sourceId,
-            objectiveNA: r.objectives?.length === 1 ? r.objectives[0].na : undefined,
+            objectiveNA: r.objectives?.length === 1 && Number.isFinite(r.objectives[0].na)
+              ? r.objectives[0].na
+              : undefined,
           });
         }
       }

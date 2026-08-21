@@ -27,10 +27,70 @@ test('the objective pupil (drawn body + traced aperture) tracks magnification, n
 
 test('NA still flows into the traced surface for downstream consumers (e.g. the 2PP handoff)', () => {
   const objective = createElement('objective');
+  objective.params.immersion = 'oil';
   objective.params.na = 1.35;
   const surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.data.objectiveNA, 1.35);
   assert.equal(objectiveNumericalAperture(objective.params), 1.35);
+});
+
+test('the inspector resolves medium-dependent NA bounds and clamps immediately when medium changes', () => {
+  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  const objective = createElement('objective');
+  objective.params.immersion = 'oil';
+  objective.params.na = 1.4;
+  state.elements = [objective];
+  state.beams = [];
+  state.selection = { kind: 'element', id: objective.id };
+  state.demoMode = false;
+  initInspector(panel);
+  renderInspector();
+  assert.match(panel.innerHTML, /data-p="na"[^>]*max="1\.49"/);
+
+  applyInput({ dataset: { p: 'immersion' }, type: 'select-one', value: 'air' }, true);
+  assert.equal(objective.params.immersion, 'air');
+  assert.equal(objective.params.na, 1);
+  assert.match(panel.innerHTML, /data-p="na"[^>]*max="1"/);
+  assert.doesNotMatch(panel.innerHTML, /data-p="immersionIndex"/);
+
+  applyInput({ dataset: { p: 'immersion' }, type: 'select-one', value: 'custom' }, true);
+  assert.match(panel.innerHTML, /data-p="immersionIndex"/);
+});
+
+test('an unresolved legacy medium is visible for repair but cannot be newly selected', () => {
+  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  const objective = createElement('objective');
+  objective.params.immersion = 'legacy';
+  objective.params.na = 1.4;
+  state.elements = [objective];
+  state.beams = [];
+  state.selection = { kind: 'element', id: objective.id };
+  state.demoMode = false;
+  initInspector(panel);
+  renderInspector();
+
+  assert.match(panel.innerHTML, /option value="legacy" selected disabled/);
+  assert.match(panel.innerHTML, /older high-NA sketch did not record one/i);
+});
+
+test('committing objective coordinates refreshes the derived coupling hint', () => {
+  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  const objective = createElement('objective', 0, 0);
+  objective.params.immersion = 'water';
+  const sample = createElement('sample', 27, 0);
+  sample.rot = 90;
+  state.elements = [objective, sample];
+  state.beams = [];
+  state.selection = { kind: 'element', id: objective.id };
+  state.demoMode = false;
+  initInspector(panel);
+  renderInspector();
+  assert.match(panel.innerHTML, /data-objective-coupling-status="connected"/);
+  assert.match(panel.innerHTML, /placed gap 8\.0 mm/);
+
+  applyInput({ dataset: { k: 'x' }, type: 'number', value: '-100', min: '-500', max: '500' }, true);
+  assert.doesNotMatch(panel.innerHTML, /data-objective-coupling-status="connected"/);
+  assert.match(panel.innerHTML, /data-objective-coupling-status="open"/);
 });
 
 // ---------------- working distance: a derived, unstored, always-live param ----------------

@@ -12,6 +12,8 @@ import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHits
 import { pulseTransmissionAt } from './pulses.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
+import { OBJECTIVE_MEDIA, normalizeObjectiveParams, objectiveMediumKey } from './objective.js';
+import { immersionCouplingStatus } from './immersion.js';
 import { esc } from './util.js';
 import { WIKI_TYPES } from './wiki-types.js';
 
@@ -71,6 +73,11 @@ function numberField(labelText, attrs, value, param = {}) {
       <span class="number-wrap">${negative ? '<span class="negsign">−</span>' : ''}<input type="number" ${attrs}${negAttr} data-control-id="${id}" data-control-role="number" ${limits} value="${displayValue}" aria-label="${esc(labelText)} exact value"></span>
     </div>
   </div>`;
+}
+
+function resolvedParam(param, params) {
+  const resolve = value => typeof value === 'function' ? value(params) : value;
+  return { ...param, min: resolve(param.min), max: resolve(param.max) };
 }
 
 // Standard-optic size control: the common ½″/1″/2″ picks plus a custom box.
@@ -385,14 +392,18 @@ function signalsHTML(sel) {
 // numeric and drew "Show excitation spot" as a number box.
 function paramField(p, sel) {
   const v = sel.params[p.key];
-  if (p.type === 'number') return numberField(p.label, `data-p="${p.key}"`, v, p);
+  if (p.type === 'number') return numberField(p.label, `data-p="${p.key}"`, v, resolvedParam(p, sel.params));
   if (p.type === 'optsize') return optsizeField(p, v);
   if (p.type === 'text') return field(p.label, `<input type="text" data-p="${p.key}" ${p.key === 'orders' ? 'maxlength="200"' : ''} value="${esc(v)}">`);
   if (p.type === 'checkbox') return field(p.label, `<input type="checkbox" data-p="${p.key}" ${v ? 'checked' : ''}>`);
   if (p.type === 'color') return field(p.label, `<input type="color" data-p="${p.key}" value="${v}">`);
   if (p.type === 'select') {
+    const options = [
+      ...(p.options || []).map(([ov, ol]) => [ov, ol, false]),
+      ...(p.legacyOptions || []).filter(([ov]) => ov === v).map(([ov, ol]) => [ov, ol, true]),
+    ];
     return field(p.label, `<select data-p="${p.key}">`
-      + p.options.map(([ov, ol]) => `<option value="${ov}" ${ov === v ? 'selected' : ''}>${esc(ol)}</option>`).join('')
+      + options.map(([ov, ol, disabled]) => `<option value="${ov}" ${ov === v ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`).join('')
       + `</select>`);
   }
   if (p.type === 'sensor') {
@@ -423,9 +434,34 @@ function paramField(p, sel) {
   // value comes from `get`, and a commit writes through `set` rather than
   // into sel.params[p.key] — see applyInput()'s `data-derived` branch.
   if (p.type === 'derived') {
-    return numberField(p.label, `data-p="${p.key}" data-derived="1"`, p.get(sel.params), p);
+    return numberField(p.label, `data-p="${p.key}" data-derived="1"`, p.get(sel.params), resolvedParam(p, sel.params));
   }
   return '';
+}
+
+function objectiveCouplingHint(sel) {
+  const medium = objectiveMediumKey(sel.params);
+  if (medium === 'air') {
+    return `<div class="hint" data-objective-coupling-status="dry">Dry / air objective: NA is capped at 1.00 and no coupling gap is drawn.</div>`;
+  }
+  if (medium === 'legacy') {
+    return `<div class="signal-warning" role="alert" data-objective-coupling-status="legacy">⚠ Choose the objective's designed front medium. This older high-NA sketch did not record one.</div>`;
+  }
+
+  const couplingStatus = immersionCouplingStatus(sel, state.elements, state.beams);
+  if (couplingStatus.state === 'ambiguous') {
+    return `<div class="signal-warning" role="status" data-objective-coupling-status="ambiguous">⚠ Two contacts are equally near this objective. Move one clear of the axis so the coupling target is unambiguous.</div>`;
+  }
+  const coupling = couplingStatus.coupling;
+  if (!coupling) {
+    return `<div class="signal-warning" role="status" data-objective-coupling-status="open">⚠ No compatible contact in front of the objective. Place a sample, stage specimen, or facing fiber tip on its axis and within the nearby coupling range.</div>`;
+  }
+
+  const target = coupling.targetKind === 'element'
+    ? (String(coupling.target?.label || '').trim() || registry[coupling.targetType]?.label || 'sample')
+    : `${coupling.target?.bare ? 'Bare fiber' : 'Fiber'} end ${coupling.targetEnd === 0 ? 'A' : 'B'}`;
+  const index = Number.isFinite(coupling.refractiveIndex) ? ` · n ${coupling.refractiveIndex.toFixed(3)}` : '';
+  return `<div class="hint" data-objective-coupling-status="connected"><b>Auto-coupled:</b> ${esc(OBJECTIVE_MEDIA[medium].label)}${index} to ${esc(target)} · placed gap ${coupling.distance.toFixed(1)} mm. The visible gap follows motion but remains schematic.</div>`;
 }
 
 export function renderInspector() {
@@ -526,6 +562,7 @@ export function renderInspector() {
         if (p.type === 'heading') { sectionFields += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
         sectionFields += paramField(p, sel);
       }
+      if (sel.type === 'objective') sectionFields += objectiveCouplingHint(sel);
       insertVoxelHint();
       flushSection();
     }
@@ -849,6 +886,7 @@ export function applyInput(inp, rebuild = false) {
   else if (pkey) {
     sel.params[pkey] = val;
     if (pkey === 'specimenType') applySpecimenTypePreset(sel);
+    if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }
   changed();
   // While a pulsed laser is transform-limited its bandwidth is derived from
@@ -864,8 +902,12 @@ export function applyInput(inp, rebuild = false) {
     return;
   }
   if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
+  // The objective's coupling status is derived from its placed pose. Keep the
+  // hint in step with committed coordinate/rotation edits just as the canvas
+  // layer already is; otherwise the panel can describe the previous target.
+  if (rebuild && sel.type === 'objective' && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension'].includes(pkey)) { renderInspector(); return; }
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion'].includes(pkey)) { renderInspector(); return; }
   // A readout is derived from the other params, so any committed edit can
   // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
   // peak power or a transform-limited bandwidth from going stale on screen.

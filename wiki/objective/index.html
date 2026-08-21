@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Objective — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Uses objective magnification and NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways — editing either updates the other, and the drawn barrel tracks it. NA sets only the qualitative acceptance, never the drawn size, and can be handed to the 2PP lab when this objective is on the traced sample path. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Uses objective magnification, designed front medium, and rated NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways. The chosen medium caps NA and can draw a derived coupling gap to a nearby sample, stage specimen, or facing fiber tip; that gap is schematic and does not add refractive or focal-shift physics. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/objective/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Objective — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Uses objective magnification and NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways — editing either updates the other, and the drawn barrel tracks it. NA sets only the qualitative acceptance, never the drawn size, and can be handed to the 2PP lab when this objective is on the traced sample path.">
+<meta property="og:description" content="Uses objective magnification, designed front medium, and rated NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways. The chosen medium caps NA and can draw a derived coupling gap to a nearby sample, stage specimen, or facing fiber tip; that gap is schematic and does not add refractive or focal-shift physics.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/objective/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -117,7 +117,7 @@
           <h1>Objective</h1>
         </div>
       </div>
-      <p class="tagline">Uses objective magnification and NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways — editing either updates the other, and the drawn barrel tracks it. NA sets only the qualitative acceptance, never the drawn size, and can be handed to the 2PP lab when this objective is on the traced sample path.</p>
+      <p class="tagline">Uses objective magnification, designed front medium, and rated NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways. The chosen medium caps NA and can draw a derived coupling gap to a nearby sample, stage specimen, or facing fiber tip; that gap is schematic and does not add refractive or focal-shift physics.</p>
       <a class="place-cta" href="../../sketch/?place=objective">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -137,6 +137,9 @@
         sets the objective's light-gathering cone and, through diffraction, the finest
         detail it can ever resolve, regardless of magnification:</p>
       <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo>=</mo><mi>n</mi><mi>sin</mi><mo>⁡</mo><mi>θ</mi></mrow><annotation encoding="application/x-tex">\mathrm{NA} = n\sin\theta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">NA</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">n</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">sin</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span></span></span></span></span></div>
+      <div class="caption">Numerical aperture depends on both the accepted half-angle and the refractive index of the objective's designed front medium; NA above 1 therefore requires immersion.</div>
+    </div><div class="formula">
       <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>d</mi><mo>≈</mo><mfrac><mi>λ</mi><mrow><mn>2</mn><mtext> </mtext><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">d \approx \frac{\lambda}{2\,\mathrm{NA}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">d</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0574em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">NA</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
       <div class="caption">The Abbe diffraction limit — the smallest resolvable feature size, set by wavelength and numerical aperture alone.</div>
     </div><div class="formula">
@@ -176,8 +179,9 @@
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
         
-        <p>The objective is configured the way a real one is spec'd — magnification and
-        numerical aperture — rather than by a bare focal length. Internally it's still the
+        <p>The objective is configured the way a real one is spec'd — magnification,
+        designed front medium, and rated numerical aperture — rather than by a bare focal
+        length. Internally it's still the
         same single thin-lens surface as the plain <a href="../lens/">lens</a> element,
         using the same paraxial ray-transfer relation <span class="w">u' = u − h/f</span>
         at the lens plane marked by the housing's flat front glass, but
@@ -187,6 +191,16 @@
         exposed directly as <strong>working distance</strong> — the more graphically
         useful way to ask "how far in front of the objective does it focus" — and the two
         fields stay in sync: editing either one recomputes the other.</p>
+        <p>The objective owns its medium; there is no separately placeable liquid
+        component. Dry/air caps rated NA at 1.00, water at 1.27, oil at 1.49, and a
+        custom medium at the lesser of its index <span class="w">n</span> and 1.49.
+        Water, oil, and custom objectives derive a non-selectable coupling gap to the
+        nearest compatible contact in front: a Sample, a Sample on piezo stage, or a
+        facing fiber endpoint. The target is chosen from the authored geometry, so a
+        scanning stage carries the same relationship while it remains aligned and in
+        range, then disconnects instead of making the objective jump between nearby
+        samples. Older high-NA sketches that
+        never recorded a medium remain explicitly unresolved until one is chosen.</p>
         <p>The drawn barrel and the traced pupil track that same focal length (twice it,
         as a continuous stand-in for a real pupil calculation), so the blue resize handle
         and the purple tune knob both work directly on working distance: drag outward for
@@ -200,7 +214,9 @@
         from — the real coordinate to position (or image, via a
         <a href="../telescope/">telescope</a>) a scan mirror onto for correct
         pupil-matched scanning, not just an illustrative icon.</p>
-        <p>When this objective sits between a pulsed laser and an illuminated
+        <p>The colored gap is included in SVG, PNG, and GIF output, but it is only a
+        schematic relationship: it adds no refracting surface and does not alter traced
+        rays. When this objective sits between a pulsed laser and an illuminated
         photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
         to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
         power, repetition rate, and pulse duration — see the inspector on a resin
@@ -217,8 +233,9 @@
         usually shorter, since a real design's front element doesn't sit at the effective
         lens plane. The drawn pupil (twice the focal length) is a plain, continuous stand-in
         for a real pupil calculation, not a diffraction-limited or aberration-corrected
-        one, and there's still no aberration correction, immersion medium, or
-        field-flatness modeling — a single idealized thin lens wearing an objective's
+        one. The coupling gap does not model a physical fluid boundary, cover glass,
+        meniscus, index mismatch, focal shift, immersion aberrations, or compound-objective
+        correction. It remains a single idealized thin lens wearing an objective's
         housing, with one genuinely precise feature: the BFP marker's location.</p></div>
       </div>
 
@@ -233,7 +250,7 @@
       
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
-        <li><a href="https://www.rp-photonics.com/microscope_objectives.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Microscope Objectives</a></li><li><a href="https://www.rp-photonics.com/numerical_aperture.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Numerical Aperture</a></li>
+        <li><a href="https://www.rp-photonics.com/microscope_objectives.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Microscope Objectives</a></li><li><a href="https://www.rp-photonics.com/numerical_aperture.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Numerical Aperture</a></li><li><a href="https://www.zeiss.com/microscopy/en/resources/insights-hub/foundational-knowledge/oil-immersion-refractive-index-and-lens-design.html" target="_blank" rel="noopener">ZEISS — Oil immersion, refractive index, and lens design</a></li>
       </ul>
     </main>
   </div>

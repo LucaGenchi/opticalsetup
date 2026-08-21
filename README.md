@@ -110,10 +110,15 @@ shows their positions in the moving 2D sample. It does not calculate focal volum
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
-Standalone objectives are configured by magnification and numerical aperture,
-matching microscope-objective specifications. The qualitative ray tracer derives
-its internal thin-lens focus from a 200 mm reference tube lens and estimates the
-entrance pupil from NA; this is not a diffraction or immersion-medium model.
+Standalone objectives are configured by magnification, designed objective medium,
+and rated numerical aperture. Dry/air, water, oil, and custom-index choices apply
+medium-specific NA limits. A non-air objective derives an exported schematic
+coupling gap to the nearest compatible sample, stage-mounted sample, or facing
+fiber end; a moving stage carries that same target while it remains aligned and in
+range, then disconnects rather than jumping elsewhere. The gap does
+not move components, refract rays, or model cover glass, meniscus shape, index
+mismatch, focal shift, or aberrations. The objective remains one qualitative
+thin-lens surface derived from the 200 mm tube-lens convention.
 
 Freeform glass is a directly editable boundary of straight segments and exact
 three-point circular arcs with constant-index or qualitative BK7-like dispersion,

@@ -468,6 +468,7 @@ function nudgeSelected(dx, dy) {
       if (b) for (const p of b.pts) { p.x += dx; p.y += dy; }
     }
     changed();
+    renderInspector();
     return;
   }
   const sel = findSelected();
@@ -476,6 +477,9 @@ function nudgeSelected(dx, dy) {
   if (state.selection.kind === 'element') { sel.x += dx; sel.y += dy; }
   else for (const p of sel.pts) { p.x += dx; p.y += dy; }
   changed();
+  // Geometry-derived inspector hints (notably objective immersion coupling)
+  // must follow keyboard movement as closely as the canvas itself does.
+  renderInspector();
 }
 
 // ---------- keyboard ----------

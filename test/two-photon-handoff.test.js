@@ -121,6 +121,7 @@ test('carries an unambiguous traced objective NA into the 2PP handoff', () => {
   const laser = pulsedLaser();
   const objective = createElement('objective', 100, 0);
   objective.params.magnification = 20;
+  objective.params.immersion = 'oil';
   objective.params.na = 1.2;
   const stage = createElement('stage', 150, 0);
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it
@@ -135,6 +136,42 @@ test('carries an unambiguous traced objective NA into the 2PP handoff', () => {
     new URL(buildTwoPhotonHandoffUrl(candidate.laser, undefined, candidate)).searchParams.get('numericalAperture'),
     '1.2',
   );
+});
+
+test('omits unresolved legacy objective NA from the 2PP handoff', () => {
+  const laser = pulsedLaser();
+  const objective = createElement('objective', 100, 0);
+  objective.params.immersion = 'legacy';
+  objective.params.na = 1.4;
+  const stage = createElement('stage', 150, 0);
+  stage.rot = 90;
+  Object.assign(stage.params, { specimenType: 'resin' });
+  const { signalHits } = traceScene([laser, objective, stage]);
+  const [candidate] = twoPhotonHandoffCandidates([laser, objective, stage], signalHits, stage.id);
+
+  assert.equal(candidate.numericalAperture, null);
+  assert.equal(
+    new URL(buildTwoPhotonHandoffUrl(candidate.laser, undefined, candidate)).searchParams.has('numericalAperture'),
+    false,
+  );
+});
+
+test('a legacy objective keeps a second resolved objective from looking unambiguous', () => {
+  const laser = pulsedLaser();
+  const legacy = createElement('objective', 60, 0);
+  legacy.params.immersion = 'legacy';
+  legacy.params.na = 1.4;
+  const resolved = createElement('objective', 100, 0);
+  resolved.params.immersion = 'oil';
+  resolved.params.na = 1.2;
+  const stage = createElement('stage', 150, 0);
+  stage.rot = 90;
+  Object.assign(stage.params, { specimenType: 'resin' });
+  const elements = [laser, legacy, resolved, stage];
+  const { signalHits } = traceScene(elements);
+  const [candidate] = twoPhotonHandoffCandidates(elements, signalHits, stage.id);
+
+  assert.equal(candidate.numericalAperture, null);
 });
 
 test('omits NA when the traced sample path has no single objective', () => {
@@ -181,6 +218,7 @@ test('the mounted resin inspector links the laser that actually illuminates it',
 test('the mounted resin inspector includes the traced objective NA', () => {
   const laser = pulsedLaser();
   const objective = createElement('objective', 100, 0);
+  objective.params.immersion = 'oil';
   objective.params.na = 1.3;
   const stage = createElement('stage', 150, 0);
   stage.rot = 90; // the specimen surface is horizontal at rot 0; a left-to-right beam needs it rotated to cross it

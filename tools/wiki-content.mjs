@@ -383,6 +383,7 @@ export const wikiEntries = [
         sets the objective's light-gathering cone and, through diffraction, the finest
         detail it can ever resolve, regardless of magnification:</p>`,
       formulas: [
+        { tex: '\\mathrm{NA} = n\\sin\\theta', caption: "Numerical aperture depends on both the accepted half-angle and the refractive index of the objective's designed front medium; NA above 1 therefore requires immersion." },
         { tex: 'd \\approx \\frac{\\lambda}{2\\,\\mathrm{NA}}', caption: "The Abbe diffraction limit — the smallest resolvable feature size, set by wavelength and numerical aperture alone." },
         { tex: 'r_{\\text{BFP}} \\approx f \\cdot \\mathrm{NA}', caption: "Entrance-pupil radius at the back focal plane, for a well-corrected objective (the Abbe sine condition)." },
         { tex: 'M = \\frac{f_{\\text{tube}}}{f_{\\text{objective}}}', caption: "Magnification of an infinity-corrected objective, set purely by comparing its focal length to the tube lens's." },
@@ -416,8 +417,9 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>The objective is configured the way a real one is spec'd — magnification and
-        numerical aperture — rather than by a bare focal length. Internally it's still the
+        <p>The objective is configured the way a real one is spec'd — magnification,
+        designed front medium, and rated numerical aperture — rather than by a bare focal
+        length. Internally it's still the
         same single thin-lens surface as the plain <a href="../lens/">lens</a> element,
         using the same paraxial ray-transfer relation <span class="w">u' = u − h/f</span>
         at the lens plane marked by the housing's flat front glass, but
@@ -427,6 +429,16 @@ export const wikiEntries = [
         exposed directly as <strong>working distance</strong> — the more graphically
         useful way to ask "how far in front of the objective does it focus" — and the two
         fields stay in sync: editing either one recomputes the other.</p>
+        <p>The objective owns its medium; there is no separately placeable liquid
+        component. Dry/air caps rated NA at 1.00, water at 1.27, oil at 1.49, and a
+        custom medium at the lesser of its index <span class="w">n</span> and 1.49.
+        Water, oil, and custom objectives derive a non-selectable coupling gap to the
+        nearest compatible contact in front: a Sample, a Sample on piezo stage, or a
+        facing fiber endpoint. The target is chosen from the authored geometry, so a
+        scanning stage carries the same relationship while it remains aligned and in
+        range, then disconnects instead of making the objective jump between nearby
+        samples. Older high-NA sketches that
+        never recorded a medium remain explicitly unresolved until one is chosen.</p>
         <p>The drawn barrel and the traced pupil track that same focal length (twice it,
         as a continuous stand-in for a real pupil calculation), so the blue resize handle
         and the purple tune knob both work directly on working distance: drag outward for
@@ -440,7 +452,9 @@ export const wikiEntries = [
         from — the real coordinate to position (or image, via a
         <a href="../telescope/">telescope</a>) a scan mirror onto for correct
         pupil-matched scanning, not just an illustrative icon.</p>
-        <p>When this objective sits between a pulsed laser and an illuminated
+        <p>The colored gap is included in SVG, PNG, and GIF output, but it is only a
+        schematic relationship: it adds no refracting surface and does not alter traced
+        rays. When this objective sits between a pulsed laser and an illuminated
         photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
         to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
         power, repetition rate, and pulse duration — see the inspector on a resin
@@ -457,14 +471,16 @@ export const wikiEntries = [
         usually shorter, since a real design's front element doesn't sit at the effective
         lens plane. The drawn pupil (twice the focal length) is a plain, continuous stand-in
         for a real pupil calculation, not a diffraction-limited or aberration-corrected
-        one, and there's still no aberration correction, immersion medium, or
-        field-flatness modeling — a single idealized thin lens wearing an objective's
+        one. The coupling gap does not model a physical fluid boundary, cover glass,
+        meniscus, index mismatch, focal shift, immersion aberrations, or compound-objective
+        correction. It remains a single idealized thin lens wearing an objective's
         housing, with one genuinely precise feature: the BFP marker's location.</p>`,
     },
     related: ['lens', 'telescope'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Microscope Objectives', url: 'https://www.rp-photonics.com/microscope_objectives.html' },
       { label: 'RP Photonics Encyclopedia — Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
+      { label: 'ZEISS — Oil immersion, refractive index, and lens design', url: 'https://www.zeiss.com/microscopy/en/resources/insights-hub/foundational-knowledge/oil-immersion-refractive-index-and-lens-design.html' },
     ],
   },
 

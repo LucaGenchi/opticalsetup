@@ -1,7 +1,8 @@
 // Registry of optical elements.
 // Local coordinates: element centered at (0,0); default optical propagation is along +x.
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
-//         surfaces(el)->[{x1,y1,x2,y2,kind,data}], source(el)->[rays] }
+//         surfaces(el)->[{x1,y1,x2,y2,kind,data}], source(el)->[rays],
+//         immersionSource(el)->{x,y}, immersionContact(el)->segment|segments }
 // Surface kinds handled by the tracer: mirror, lens, cmirror, refract,
 // dichroic, filter, split, grating, absorb, transmit (data may change
 // wavelength / deflect).
@@ -16,8 +17,8 @@ import {
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import {
-  objectiveFocalLength, objectiveNumericalAperture, objectivePupilDiameter,
-  magnificationForWorkingDistance,
+  OBJECTIVE_MEDIA, objectiveFocalLength, objectiveMaximumNA, objectiveMediumKey,
+  objectiveNumericalAperture, objectivePupilDiameter, magnificationForWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
 
@@ -1553,6 +1554,9 @@ export const registry = {
     // drawing and the physics agree on which end focuses light.
     label: 'Objective', category: 'Lenses', paletteOrder: 3, size: { w: 36, h: 40 },
     snapPt: { x: 16, y: 0 }, // lens plane (sample-facing front tip)
+    // The objective owns the medium; immersion.js derives the disposable
+    // relationship from this front tip to a compatible scene contact.
+    immersionSource: () => ({ x: 16, y: 0 }),
     size_: el => ({ w: 36, h: objectivePupilDiameter(el.params) + 20 }),
     params: [
       { key: 'magnification', label: 'Magnification (×)', type: 'number', min: 1, max: 200, step: 0.1, def: 20 },
@@ -1569,7 +1573,26 @@ export const registry = {
         get: p => Math.round(objectiveFocalLength(p) * 100) / 100,
         set: (p, v) => { p.magnification = magnificationForWorkingDistance(v); },
       },
-      { key: 'na', label: 'Numerical aperture (NA)', type: 'number', min: 0.05, max: 1.49, step: 0.01, def: 1 },
+      {
+        key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
+        options: [
+          ['air', OBJECTIVE_MEDIA.air.label],
+          ['water', OBJECTIVE_MEDIA.water.label],
+          ['oil', OBJECTIVE_MEDIA.oil.label],
+          ['custom', OBJECTIVE_MEDIA.custom.label],
+        ],
+        // Accepted only when loading an older high-NA sketch. The inspector
+        // shows it as a disabled current value, never as a new choice.
+        legacyOptions: [['legacy', OBJECTIVE_MEDIA.legacy.label]],
+      },
+      {
+        key: 'immersionIndex', label: 'Medium index (n)', type: 'number', min: 1, max: 2, step: 0.001, def: 1.333,
+        show: p => p.immersion === 'custom',
+      },
+      {
+        key: 'na', label: 'Rated numerical aperture (NA)', type: 'number', min: 0.05,
+        max: p => objectiveMaximumNA(p), step: 0.01, def: 1,
+      },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
     ],
     svg(el) {
@@ -1584,7 +1607,13 @@ export const registry = {
         x1: 16, y1: -h, x2: 16, y2: h, kind: 'lens',
         data: {
           f: objectiveFocalLength(el.params),
-          objectiveNA: objectiveNumericalAperture(el.params),
+          // A legacy >1 NA is kept in the editor so old sketches are not
+          // rewritten with an invented medium. Until the author resolves
+          // that medium, however, it is not a configured NA that downstream
+          // sample calculations or handoffs may rely on.
+          ...(objectiveMediumKey(el.params) === 'legacy'
+            ? {}
+            : { objectiveNA: objectiveNumericalAperture(el.params) }),
           transEff: el.params.transEff,
         },
       }];
@@ -2354,6 +2383,17 @@ export const registry = {
       return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         signalSpotSVG(el);
     },
+    // Both visible specimen faces are explicit immersion contacts. They are
+    // target surfaces, not separate liquid elements, and never move merely
+    // because an objective couples to one.
+    immersionContact: el => {
+      const halfWidth = (el.params.aperture || 34) / 2;
+      const halfThickness = sampleThickness(el.params) / 2;
+      return [
+        { x1: -halfWidth, y1: -halfThickness, x2: halfWidth, y2: -halfThickness },
+        { x1: -halfWidth, y1: halfThickness, x2: halfWidth, y2: halfThickness },
+      ];
+    },
     surfaces: el => sampleSurfaces(el, (el.params.aperture || 34) / 2),
   },
 
@@ -2394,6 +2434,14 @@ export const registry = {
         `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
+    },
+    immersionContact: el => {
+      const halfWidth = (el.params.aperture || 50) / 2;
+      const halfThickness = sampleThickness(el.params) / 2;
+      return [
+        { x1: -halfWidth, y1: -halfThickness, x2: halfWidth, y2: -halfThickness },
+        { x1: -halfWidth, y1: halfThickness, x2: halfWidth, y2: halfThickness },
+      ];
     },
     surfaces(el) {
       const clear = Math.max(2, (el.params.aperture || 50) / 2), outer = clear + 12;
@@ -2894,7 +2942,7 @@ const ELEMENT_HELP = {
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Uses objective magnification and NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways — editing either updates the other, and the drawn barrel tracks it. NA sets only the qualitative acceptance, never the drawn size, and can be handed to the 2PP lab when this objective is on the traced sample path.',
+  objective: 'Uses objective magnification, designed front medium, and rated NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways. The chosen medium caps NA and can draw a derived coupling gap to a nearby sample, stage specimen, or facing fiber tip; that gap is schematic and does not add refractive or focal-shift physics.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
@@ -2948,7 +2996,14 @@ export function getElementMeta(type, params = {}, context = {}) {
     && context.element && Array.isArray(context.elements)
     && !resolveDisplaySensor(context.element, context.elements);
 
-  if (type === 'eom' && !params.modulate) {
+  if (type === 'objective' && objectiveMediumKey(params) === 'legacy') {
+    tier = 'configurable';
+    note = 'This older high-NA sketch did not record a front medium. Choose air, water, oil, or a custom index before treating its rated NA as configured.';
+  } else if (type === 'objective' && objectiveMediumKey(params) !== 'air') {
+    note = 'The medium-dependent NA limit is enforced. Any visible coupling gap is derived and schematic; it does not refract rays or calculate immersion focal shift.';
+  } else if (type === 'objective') {
+    note = 'Dry objectives are capped at NA 1.00 and draw no coupling gap.';
+  } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
   } else if (type === 'eom' && params.modulate && params.driveMode === 'switching') {
