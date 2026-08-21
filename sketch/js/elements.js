@@ -17,8 +17,9 @@ import {
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import {
-  OBJECTIVE_MEDIA, objectiveFocalLength, objectiveMaximumNA, objectiveMediumKey,
-  objectiveNumericalAperture, objectivePupilDiameter, magnificationForWorkingDistance,
+  OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, objectiveAcceptanceHalfAngleDeg, objectiveFocalLength,
+  objectiveFrontAperture, objectiveMaximumNA, objectiveMediumIndex, objectiveMediumKey,
+  objectiveNumericalAperture, objectivePupilDiameter, objectiveWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
 
@@ -1549,30 +1550,22 @@ export const registry = {
   objective: {
     // Back (tube-lens/infinity side, where a telescope or scan relay
     // delivers collimated light) is the wide barrel at local x=-16; front
-    // (sample side) is the narrow tip and glass at local x=+16, which is
-    // also where the single thin-lens surface actually bends rays — so the
-    // drawing and the physics agree on which end focuses light.
+    // (sample side) is the narrow tip and glass at local x=+16. That physical
+    // boundary is also the tracer's black-box focus map: rear collimated rays
+    // leave it toward the independently specified WD focus.
     label: 'Objective', category: 'Lenses', paletteOrder: 3, size: { w: 36, h: 40 },
-    snapPt: { x: 16, y: 0 }, // lens plane (sample-facing front tip)
+    snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
-    immersionSource: () => ({ x: 16, y: 0 }),
-    size_: el => ({ w: 36, h: objectivePupilDiameter(el.params) + 20 }),
+    immersionSource: () => ({ x: OBJECTIVE_FRONT_X, y: 0 }),
+    size_: el => ({ w: 36, h: objectiveFrontAperture(el.params) + 20 }),
     params: [
-      { key: 'magnification', label: 'Magnification (×)', type: 'number', min: 1, max: 200, step: 0.1, def: 20 },
+      { key: 'magnification', label: 'Catalogue magnification (×)', type: 'number', min: 1, max: 200, step: 0.1, def: 20 },
       {
-        // The same thin-lens focal length as Magnification (f = 200 mm tube /
-        // M), just in the unit that actually answers "how far in front of the
-        // objective does it focus" — a `derived` param has no storage of its
-        // own: its value is always freshly computed from magnification for
-        // display, and committing an edit here writes back through `set`
-        // instead of storing itself. That's what keeps it from ever going
-        // stale when magnification changes some other way (the on-canvas
-        // tune knob, a demo scene, a loaded sketch).
-        key: 'workingDistance', label: 'Working distance (mm)', type: 'derived', min: 1, max: 200, step: 0.1,
-        get: p => Math.round(objectiveFocalLength(p) * 100) / 100,
-        set: (p, v) => { p.magnification = magnificationForWorkingDistance(v); },
+        key: 'effectiveFocalLength', label: 'Catalogue EFL · 200 mm tube lens (mm)', type: 'readout',
+        readout: p => objectiveFocalLength(p).toFixed(2),
       },
+      { key: 'workingDistance', label: 'Working distance (mm)', type: 'number', min: 0.1, max: 200, step: 0.1, def: 10 },
       {
         key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
         options: [
@@ -1593,20 +1586,40 @@ export const registry = {
         key: 'na', label: 'Rated numerical aperture (NA)', type: 'number', min: 0.05,
         max: p => objectiveMaximumNA(p), step: 0.01, def: 1,
       },
+      {
+        key: 'acceptanceHalfAngle', label: 'Object-side half-angle θ', type: 'readout',
+        readout: p => {
+          const angle = objectiveAcceptanceHalfAngleDeg(p);
+          return Number.isFinite(angle) ? `${angle.toFixed(1)}°` : 'Resolve medium';
+        },
+      },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+      {
+        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.5, def: 20,
+        appearance: true,
+      },
     ],
     svg(el) {
-      const h = objectivePupilDiameter(el.params) / 2, outer = h + 7;
+      const h = objectiveFrontAperture(el.params) / 2, outer = h + 7;
+      const pupilHalf = Math.min(outer - 1, Math.max(0.8, objectivePupilDiameter(el.params) / 2));
       return `<path d="M 16,${-h} L -2,${-outer} L -16,${-outer} L -16,${outer} L -2,${outer} L 16,${h} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
         `<line x1="-2" y1="${-outer}" x2="-2" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
+        `<line x1="-13" y1="${-pupilHalf}" x2="-13" y2="${pupilHalf}" stroke="#2f3e4d" stroke-width="2.2" opacity="0.75"/>` +
         `<rect x="14.5" y="${-h}" width="3" height="${2 * h}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
     },
     surfaces(el) {
-      const h = objectivePupilDiameter(el.params) / 2;
+      const h = objectiveFrontAperture(el.params) / 2;
       return [{
-        x1: 16, y1: -h, x2: 16, y2: h, kind: 'lens',
+        x1: OBJECTIVE_FRONT_X, y1: -h, x2: OBJECTIVE_FRONT_X, y2: h, kind: 'lens',
         data: {
-          f: objectiveFocalLength(el.params),
+          // This is a front-boundary focus map, not a claim that WD is the
+          // objective's focal length. The hidden internal principal planes
+          // needed to make catalogue EFL and WD simultaneously operative are
+          // outside this qualitative single-boundary model.
+          f: objectiveWorkingDistance(el.params),
+          effectiveFocalLength: objectiveFocalLength(el.params),
+          workingDistance: objectiveWorkingDistance(el.params),
+          objectiveMediumIndex: objectiveMediumIndex(el.params),
           // A legacy >1 NA is kept in the editor so old sketches are not
           // rewritten with an invented medium. Until the author resolves
           // that medium, however, it is not a configured NA that downstream
@@ -2856,11 +2869,9 @@ const DIRECT = {
   lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
-  // Both handles drive working distance directly (dragging outward = a
-  // longer working distance = a visibly bigger barrel — magnification moves
-  // with it, inversely, as the same underlying quantity). NA is deliberately
-  // wired to neither: it must never resize the body (see objective.js).
-  objective: { resize: { y: 'workingDistance' }, tune: { key: 'workingDistance', short: 'WD' } },
+  // The blue handle changes the physical front opening. The purple control
+  // moves the independently specified specimen focus; neither rewrites M/NA.
+  objective: { resize: { y: 'frontAperture' }, tune: { key: 'workingDistance', short: 'WD' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
@@ -2942,7 +2953,7 @@ const ELEMENT_HELP = {
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Uses objective magnification, designed front medium, and rated NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways. The chosen medium caps NA and can draw a derived coupling gap to a nearby sample, stage specimen, or facing fiber tip; that gap is schematic and does not add refractive or focal-shift physics.',
+  objective: 'Uses a front-boundary black-box focus map with independent working distance. Catalogue magnification derives EFL for a 200 mm tube lens; designed medium and rated NA set the object-side acceptance half-angle and schematic cone.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
@@ -3000,9 +3011,9 @@ export function getElementMeta(type, params = {}, context = {}) {
     tier = 'configurable';
     note = 'This older high-NA sketch did not record a front medium. Choose air, water, oil, or a custom index before treating its rated NA as configured.';
   } else if (type === 'objective' && objectiveMediumKey(params) !== 'air') {
-    note = 'The medium-dependent NA limit is enforced. Any visible coupling gap is derived and schematic; it does not refract rays or calculate immersion focal shift.';
+    note = 'Medium and NA set a qualitative angular acceptance guide. The curved immersion bridge is schematic; it does not add refraction, focal shift, wetting, or aberration correction.';
   } else if (type === 'objective') {
-    note = 'Dry objectives are capped at NA 1.00 and draw no coupling gap.';
+    note = 'Dry objectives are capped at NA 1.00. NA changes the qualitative acceptance guide; catalogue magnification/EFL and traced working distance remain separate.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';

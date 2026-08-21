@@ -7,7 +7,7 @@ import {
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
   displayActionUpdate,
 } from './elements.js';
-import { normalizeObjectiveParams, objectiveFocalLength } from './objective.js';
+import { normalizeObjectiveParams, objectiveWorkingDistance } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
@@ -687,18 +687,15 @@ function renderElements() {
   elementLayer.innerHTML = s;
 }
 
-// focal points of a focusing element, in local coordinates. A point may
-// carry a `label` to override the default italic "f" marker text — used
-// for the objective's back focal plane (BFP), the reference plane a
-// telescope or scan relay must image onto for pupil-matched scanning.
+// Focal points of a focusing element, in local coordinates. A point may
+// carry a `label` to override the default italic "f" marker text.
 function focalPoints(el) {
   const p = el.params;
   switch (el.type) {
     case 'lens': case 'lensc': return [{ x: p.f, y: 0 }, { x: -p.f, y: 0 }];
-    case 'objective': {
-      const f = objectiveFocalLength(p);
-      return [{ x: 16 - f, y: 0, label: 'BFP' }, { x: 16 + f, y: 0 }];
-    }
+    // The single-boundary objective model cannot locate an internal BFP or
+    // principal plane honestly, so only its authored specimen focus is shown.
+    case 'objective': return [{ x: 16 + objectiveWorkingDistance(p), y: 0, label: 'WD focus' }];
     case 'cmirror': case 'cmirrorx': case 'oap': return [{ x: -p.f, y: 0 }];
     case 'telescope': {
       const s = Math.max(5, p.f1 + p.f2);
@@ -920,8 +917,8 @@ function hitTuneHandle(sel, w) {
   return Math.hypot(w.x - p.x, w.y - p.y) < 11 / state.view.z;
 }
 
-// A `derived` param (e.g. the objective's Working distance) has no storage
-// of its own — reading it means recomputing from whatever it derives from,
+// A `derived` param has no storage of its own — reading it means
+// recomputing from whatever it derives from,
 // and writing it means going through its own setter instead of clobbering a
 // key that was never there. Direct-manipulation (resize/tune) drags read and
 // write params outside the inspector's normal commit path, so they need

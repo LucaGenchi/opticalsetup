@@ -105,10 +105,12 @@ test('legacy objective focal lengths migrate to magnification and numerical aper
   const [loadedObjective] = scene.elements;
   assert.deepEqual(loadedObjective.params, {
     magnification: 10,
+    workingDistance: 20,
     immersion: 'air',
     immersionIndex: 1.333,
     na: 0.6,
     transEff: 90,
+    frontAperture: 24,
   });
   assert.equal(registry.objective.surfaces(loadedObjective)[0].data.f, 20);
   assert.equal(Object.hasOwn(loadedObjective.params, 'f'), false);

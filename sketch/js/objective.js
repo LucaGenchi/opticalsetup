@@ -1,19 +1,21 @@
 // Shared microscope-objective parameter model.
 //
-// Infinity-corrected objectives are specified by magnification and numerical
-// aperture in the UI. The geometric tracer still needs an effective thin-lens
-// focal length, derived from the tube-lens convention f_obj = f_tube / M.
-// Working distance — how far in front of the objective it actually focuses —
-// is the same quantity expressed in a more graphically useful unit: this
-// single-surface qualitative model has nowhere else for that distance to
-// come from, so editing either magnification or working distance keeps the
-// other in sync (see inspector.js).
+// Infinity-corrected objectives have several catalogue properties that must
+// remain distinct. Magnification determines the equivalent focal length via
+// the reference tube lens. Working distance is the independently specified
+// clearance from the physical front boundary to the nominal specimen focus.
+// Rated NA and front-medium index determine the object-side acceptance angle.
 
 export const OBJECTIVE_REFERENCE_TUBE_F_MM = 200;
+export const OBJECTIVE_FRONT_X = 16;
 export const OBJECTIVE_NA_MIN = 0.05;
 export const OBJECTIVE_NA_MAX = 1.49;
 export const OBJECTIVE_MAG_MIN = 1;
 export const OBJECTIVE_MAG_MAX = 200;
+export const OBJECTIVE_WD_MIN = 0.1;
+export const OBJECTIVE_WD_MAX = 200;
+export const OBJECTIVE_FRONT_APERTURE_MIN = 1;
+export const OBJECTIVE_FRONT_APERTURE_MAX = 100;
 
 const CUSTOM_IMMERSION_INDEX_DEFAULT = 1.333;
 const IMMERSION_INDEX_MIN = 1;
@@ -85,6 +87,35 @@ export function objectiveNumericalAperture(params = {}, key = 'na') {
   return clamp(finite(params[key]) ? params[key] : 1, OBJECTIVE_NA_MIN, objectiveMaximumNA(params));
 }
 
+export function objectiveWorkingDistance(params = {}) {
+  const fallback = objectiveFocalLength(params);
+  return clamp(
+    finite(params.workingDistance) ? params.workingDistance : fallback,
+    OBJECTIVE_WD_MIN,
+    OBJECTIVE_WD_MAX,
+  );
+}
+
+export function objectiveFrontAperture(params = {}) {
+  const fallback = clamp(2 * objectiveFocalLength(params), OBJECTIVE_FRONT_APERTURE_MIN, OBJECTIVE_FRONT_APERTURE_MAX);
+  return clamp(
+    finite(params.frontAperture) ? params.frontAperture : fallback,
+    OBJECTIVE_FRONT_APERTURE_MIN,
+    OBJECTIVE_FRONT_APERTURE_MAX,
+  );
+}
+
+export function objectiveAcceptanceHalfAngle(params = {}) {
+  const index = objectiveMediumIndex(params);
+  if (!finite(index) || index <= 0) return null;
+  return Math.asin(clamp(objectiveNumericalAperture(params) / index, 0, 1));
+}
+
+export function objectiveAcceptanceHalfAngleDeg(params = {}) {
+  const radians = objectiveAcceptanceHalfAngle(params);
+  return finite(radians) ? radians * 180 / Math.PI : null;
+}
+
 export function normalizeObjectiveParams(params = {}) {
   const normalized = params && typeof params === 'object' && !Array.isArray(params)
     ? { ...params }
@@ -96,6 +127,8 @@ export function normalizeObjectiveParams(params = {}) {
     IMMERSION_INDEX_MAX,
   );
   normalized.na = objectiveNumericalAperture(normalized);
+  normalized.workingDistance = objectiveWorkingDistance(normalized);
+  normalized.frontAperture = objectiveFrontAperture(normalized);
   return normalized;
 }
 
@@ -104,26 +137,11 @@ export function objectiveFocalLength(params = {}, tubeF = OBJECTIVE_REFERENCE_TU
   return reference / objectiveMagnification(params);
 }
 
-// Magnification expressed the other way round: the tube-lens reference
-// distance divided by the desired working distance. Used only to translate a
-// user-entered working distance back into a magnification — the tracer
-// itself always reads magnification via objectiveFocalLength().
-export function magnificationForWorkingDistance(workingDistanceMm, tubeF = OBJECTIVE_REFERENCE_TUBE_F_MM) {
-  const reference = clamp(finite(tubeF) ? tubeF : OBJECTIVE_REFERENCE_TUBE_F_MM, 1, 1000);
-  const wd = clamp(finite(workingDistanceMm) ? workingDistanceMm : reference / 20, reference / OBJECTIVE_MAG_MAX, reference / OBJECTIVE_MAG_MIN);
-  return clamp(reference / wd, OBJECTIVE_MAG_MIN, OBJECTIVE_MAG_MAX);
-}
-
-// The drawn barrel/pupil width, and the actual ray-accepting aperture height
-// the tracer clips against — these always agree, so the box you see is the
-// box that vignettes. It tracks magnification/working distance (2x focal
-// length is a plain, continuous stand-in for a real pupil calculation) but
-// deliberately NOT NA: NA is an angular acceptance property of the design,
-// not a statement about how physically large the barrel is, so dragging the
-// NA field must never resize the objective — see the resize handle in
-// elements.js, wired to magnification instead.
+// Common first-order estimate for an infinity objective's entrance pupil.
+// The physical front opening remains an independently resizable boundary;
+// this derived value describes the rated pupil rather than the outer barrel.
 export function objectivePupilDiameter(params = {}, tubeF = OBJECTIVE_REFERENCE_TUBE_F_MM) {
-  return clamp(2 * objectiveFocalLength(params, tubeF), 0.5, 150);
+  return clamp(2 * objectiveFocalLength(params, tubeF) * objectiveNumericalAperture(params), 0.5, 150);
 }
 
 export function migrateLegacyObjectiveParams(rawParams = {}, {
@@ -144,6 +162,25 @@ export function migrateLegacyObjectiveParams(rawParams = {}, {
     if (!finite(params[naKey]) && finite(aperture) && aperture > 0) {
       params[naKey] = aperture / (2 * focal);
     }
+  }
+  const reference = finite(tubeF) && tubeF > 0 ? tubeF : OBJECTIVE_REFERENCE_TUBE_F_MM;
+  // Derive compatibility geometry from the same bounded magnification that
+  // the registry will retain. Otherwise malformed legacy values such as 0
+  // or 10000 would seed WD/aperture from a different objective than the one
+  // that actually finishes loading.
+  const magnification = clamp(
+    finite(params[magnificationKey]) ? params[magnificationKey] : 20,
+    OBJECTIVE_MAG_MIN,
+    OBJECTIVE_MAG_MAX,
+  );
+  const equivalentFocalLength = reference / magnification;
+  // The previous model made WD exactly equal to EFL. Preserve that geometry
+  // when opening an older sketch, then let future edits keep them separate.
+  if (!finite(params.workingDistance)) params.workingDistance = equivalentFocalLength;
+  if (!finite(params.frontAperture)) {
+    params.frontAperture = finite(params[apertureKey]) && params[apertureKey] > 0
+      ? params[apertureKey]
+      : 2 * equivalentFocalLength;
   }
   if (params.immersion === undefined) {
     params.immersion = finite(params[naKey]) && params[naKey] > 1 ? 'legacy' : 'air';

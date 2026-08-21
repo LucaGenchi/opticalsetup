@@ -87,6 +87,8 @@ test('objective normalization returns an independent copy with valid medium, ind
     immersionIndex: 1,
     na: 1,
     magnification: 40,
+    workingDistance: 5,
+    frontAperture: 10,
   });
   assert.deepEqual(raw, {
     immersion: 'custom',
@@ -99,16 +101,22 @@ test('objective normalization returns an independent copy with valid medium, ind
     immersion: 'air',
     immersionIndex: 1.333,
     na: 1,
+    workingDistance: 10,
+    frontAperture: 20,
   });
   assert.deepEqual(normalizeObjectiveParams({ na: 1.4 }), {
     immersion: 'legacy',
     immersionIndex: 1.333,
     na: 1.4,
+    workingDistance: 10,
+    frontAperture: 20,
   });
   assert.deepEqual(normalizeObjectiveParams(null), {
     immersion: 'air',
     immersionIndex: 1.333,
     na: 1,
+    workingDistance: 10,
+    frontAperture: 20,
   });
 });
 
@@ -116,8 +124,12 @@ test('legacy migration marks the missing medium without changing the saved NA', 
   const dry = { magnification: 20, na: 1, transEff: 90 };
   const unresolved = { magnification: 20, na: 1.4, transEff: 90 };
 
-  assert.deepEqual(migrateLegacyObjectiveParams(dry), { ...dry, immersion: 'air' });
-  assert.deepEqual(migrateLegacyObjectiveParams(unresolved), { ...unresolved, immersion: 'legacy' });
+  assert.deepEqual(migrateLegacyObjectiveParams(dry), {
+    ...dry, workingDistance: 10, frontAperture: 20, immersion: 'air',
+  });
+  assert.deepEqual(migrateLegacyObjectiveParams(unresolved), {
+    ...unresolved, workingDistance: 10, frontAperture: 20, immersion: 'legacy',
+  });
   assert.equal(Object.hasOwn(dry, 'immersion'), false);
   assert.equal(Object.hasOwn(unresolved, 'immersion'), false);
 
@@ -132,6 +144,8 @@ test('focal/aperture migration classifies the derived NA and preserves an author
     aperture: 40,
     magnification: 10,
     na: 1,
+    workingDistance: 20,
+    frontAperture: 40,
     immersion: 'air',
   });
   assert.deepEqual(migrateLegacyObjectiveParams({ f: 20, aperture: 48 }), {
@@ -139,6 +153,8 @@ test('focal/aperture migration classifies the derived NA and preserves an author
     aperture: 48,
     magnification: 10,
     na: 1.2,
+    workingDistance: 20,
+    frontAperture: 48,
     immersion: 'legacy',
   });
   assert.deepEqual(migrateLegacyObjectiveParams({ f: 20, aperture: 48, immersion: 'oil' }), {
@@ -146,6 +162,8 @@ test('focal/aperture migration classifies the derived NA and preserves an author
     aperture: 48,
     magnification: 10,
     na: 1.2,
+    workingDistance: 20,
+    frontAperture: 48,
     immersion: 'oil',
   });
 });

@@ -7,10 +7,12 @@
 import { registry } from './elements.js';
 import {
   OBJECTIVE_MEDIA,
-  objectiveFocalLength,
+  objectiveAcceptanceHalfAngle,
+  objectiveFrontAperture,
   objectiveMediumIndex,
   objectiveMediumKey,
-  objectivePupilDiameter,
+  objectiveNumericalAperture,
+  objectiveWorkingDistance,
 } from './objective.js';
 import { esc, rotPt, toWorld } from './util.js';
 
@@ -57,9 +59,9 @@ function objectiveFrame(objective) {
   const source = toWorld(objective, localSource.x, localSource.y);
   const forward = unit(rotPt(1, 0, finite(objective.rot) ? objective.rot : 0));
   if (!finitePoint(source) || !finitePoint(forward)) return null;
-  const workingDistance = objectiveFocalLength(objective.params || {});
+  const workingDistance = objectiveWorkingDistance(objective.params || {});
   const reach = Math.min(250, Math.max(10, 1.5 * workingDistance));
-  return finite(reach) ? { source, forward, reach } : null;
+  return finite(reach) ? { source, forward, reach, workingDistance } : null;
 }
 
 function normalizeSegment(raw) {
@@ -155,15 +157,17 @@ function fiberCandidate(objective, beam, end) {
   // contacted end. Its finite end face must also overlap the objective axis;
   // proximity to an arbitrary point on the cable body is not a coupling.
   if (dot(frame.forward, endpoint.inward) < FIBER_FACING_COS) return null;
-  const offset = sub(endpoint.contact, frame.source);
-  const axialDistance = dot(offset, frame.forward);
-  const distance = length(offset);
   const connectorHalfWidth = beam.bare
     ? Math.max(0.5, (finite(beam.width) ? beam.width : 4) / 2)
     : Math.max(0.5, ((finite(beam.width) ? beam.width : 4) + 6) / 2);
-  const lateralDistance = Math.abs(cross(frame.forward, offset));
-  if (!finite(distance) || axialDistance <= GEOMETRY_EPSILON || distance > frame.reach + GEOMETRY_EPSILON) return null;
-  if (lateralDistance > connectorHalfWidth + GEOMETRY_EPSILON) return null;
+
+  const faceSide = normal(endpoint.inward);
+  const targetSegment = {
+    a: add(endpoint.contact, mul(faceSide, connectorHalfWidth)),
+    b: add(endpoint.contact, mul(faceSide, -connectorHalfWidth)),
+  };
+  const hit = raySegmentIntersection(frame, targetSegment);
+  if (!hit) return null;
 
   return {
     targetKind: 'fiber',
@@ -172,9 +176,8 @@ function fiberCandidate(objective, beam, end) {
     targetEnd: end,
     targetKey: `fiber:${beam.id}:${end}`,
     target: beam,
-    targetSegment: null,
-    contact: endpoint.contact,
-    distance,
+    targetSegment,
+    ...hit,
   };
 }
 
@@ -290,7 +293,9 @@ export function immersionCouplingStatus(objective, elements = [], beams = [], { 
       objective,
       medium,
       refractiveIndex: objectiveMediumIndex(objective.params || {}),
+      numericalAperture: objectiveNumericalAperture(objective.params || {}),
       source: frame.source,
+      forward: frame.forward,
       reach: frame.reach,
       baseDistance: selected.distance,
       ...current,
@@ -304,37 +309,146 @@ const MEDIUM_STROKES = Object.freeze({
   custom: '#4c8e7c',
 });
 
-function polygonFor(coupling) {
-  if (!finitePoint(coupling?.source) || !finitePoint(coupling?.contact)) return null;
-  const direction = unit(sub(coupling.contact, coupling.source));
-  if (!direction) return null;
-  const side = normal(direction);
-  const pupil = objectivePupilDiameter(coupling.objective?.params || {});
-  const sourceHalfWidth = Math.min(8, Math.max(1.2, pupil / 4));
-  const targetHalfWidth = Math.min(1.8, Math.max(0.6, sourceHalfWidth * 0.22));
-  const points = [
-    add(coupling.source, mul(side, sourceHalfWidth)),
-    add(coupling.contact, mul(side, targetHalfWidth)),
-    add(coupling.contact, mul(side, -targetHalfWidth)),
-    add(coupling.source, mul(side, -sourceHalfWidth)),
-  ];
-  return points.every(finitePoint) ? points : null;
+const fmt = value => value.toFixed(2);
+const pathPoint = point => `${fmt(point.x)},${fmt(point.y)}`;
+
+function orderedTargetEdges(coupling, side) {
+  const segment = normalizeSegment(coupling?.targetSegment);
+  if (!segment || !finitePoint(coupling?.contact)) return null;
+  const aSide = dot(sub(segment.a, coupling.contact), side);
+  const bSide = dot(sub(segment.b, coupling.contact), side);
+  return aSide >= bSide
+    ? { positive: segment.a, negative: segment.b }
+    : { positive: segment.b, negative: segment.a };
 }
 
-const pointList = points => points.map(point => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
+// The bridge attaches to the objective's drawn front aperture and the full
+// contacted specimen/fiber face. Its exposed sides bow toward the optical
+// axis, giving the drop a legible meniscus profile without claiming a solved
+// capillary surface.
+function meniscusGeometry(coupling) {
+  if (!finitePoint(coupling?.source) || !finitePoint(coupling?.contact)) return null;
+  const forward = unit(coupling.forward) || unit(sub(coupling.contact, coupling.source));
+  if (!forward) return null;
+  const side = normal(forward);
+  const targetEdges = orderedTargetEdges(coupling, side);
+  const frontAperture = objectiveFrontAperture(coupling.objective?.params || {});
+  const sourceHalfWidth = finite(frontAperture) ? frontAperture / 2 : 0;
+  const axialGap = dot(sub(coupling.contact, coupling.source), forward);
+  if (!targetEdges || !(sourceHalfWidth > GEOMETRY_EPSILON) || !(axialGap > GEOMETRY_EPSILON)) return null;
+
+  const sourcePositive = add(coupling.source, mul(side, sourceHalfWidth));
+  const sourceNegative = add(coupling.source, mul(side, -sourceHalfWidth));
+  const targetSpan = sub(targetEdges.positive, targetEdges.negative);
+  let targetNormal = unit(normal(targetSpan)) || forward;
+  if (dot(targetNormal, forward) < 0) targetNormal = mul(targetNormal, -1);
+
+  const positiveTargetWidth = Math.abs(dot(sub(targetEdges.positive, coupling.contact), side));
+  const negativeTargetWidth = Math.abs(dot(sub(targetEdges.negative, coupling.contact), side));
+  const narrowHalfWidth = Math.min(sourceHalfWidth, positiveTargetWidth, negativeTargetWidth);
+  const handle = axialGap * 0.38;
+  const bow = Math.min(axialGap * 0.22, Math.max(0, narrowHalfWidth) * 0.18);
+  const positiveControlA = add(add(sourcePositive, mul(forward, handle)), mul(side, -bow));
+  const positiveControlB = add(add(targetEdges.positive, mul(targetNormal, -handle)), mul(side, -bow));
+  const negativeControlA = add(add(targetEdges.negative, mul(targetNormal, -handle)), mul(side, bow));
+  const negativeControlB = add(add(sourceNegative, mul(forward, handle)), mul(side, bow));
+
+  const points = [
+    sourcePositive, positiveControlA, positiveControlB, targetEdges.positive,
+    targetEdges.negative, negativeControlA, negativeControlB, sourceNegative,
+  ];
+  if (!points.every(finitePoint)) return null;
+  return {
+    d: `M ${pathPoint(sourcePositive)} C ${pathPoint(positiveControlA)} ${pathPoint(positiveControlB)} ${pathPoint(targetEdges.positive)} ` +
+      `L ${pathPoint(targetEdges.negative)} C ${pathPoint(negativeControlA)} ${pathPoint(negativeControlB)} ${pathPoint(sourceNegative)} Z`,
+    forward,
+    side,
+    axialGap,
+    sourceHalfWidth,
+    positiveTargetWidth,
+    negativeTargetWidth,
+  };
+}
+
+// A compact sector at the specimen contact makes the objective's configured
+// angular acceptance visible. It is deliberately local and bounded: this is
+// an NA glyph, not an additional traced beam or a solved objective prescription.
+function acceptanceGeometry(objective, anchor, frame, meniscus = null) {
+  const refractiveIndex = objectiveMediumIndex(objective?.params || {});
+  const numericalAperture = objectiveNumericalAperture(objective?.params || {});
+  if (!(refractiveIndex > 0) || !(numericalAperture >= 0) || !finitePoint(anchor) || !frame) return null;
+  const halfAngle = objectiveAcceptanceHalfAngle(objective?.params || {});
+  if (!finite(halfAngle)) return null;
+
+  const frontAperture = objectiveFrontAperture(objective?.params || {});
+  const sourceHalfWidth = finite(frontAperture) ? frontAperture / 2 : 0;
+  const axialGap = dot(sub(anchor, frame.source), frame.forward);
+  if (!(sourceHalfWidth > GEOMETRY_EPSILON) || !(axialGap > GEOMETRY_EPSILON)) return null;
+  const lateralLimit = Math.max(
+    GEOMETRY_EPSILON,
+    (meniscus
+      ? Math.min(sourceHalfWidth, meniscus.positiveTargetWidth, meniscus.negativeTargetWidth)
+      : sourceHalfWidth) * 0.72,
+  );
+  const sinTheta = Math.sin(halfAngle);
+  const radiusByWidth = sinTheta > GEOMETRY_EPSILON ? lateralLimit / sinTheta : Infinity;
+  const radius = Math.min(9, axialGap * 0.56, radiusByWidth);
+  if (!(radius > GEOMETRY_EPSILON) || !finite(radius)) return null;
+
+  const side = normal(frame.forward);
+  const backward = mul(frame.forward, -Math.cos(halfAngle) * radius);
+  const spread = mul(side, Math.sin(halfAngle) * radius);
+  const positive = add(add(anchor, backward), spread);
+  const negative = add(add(anchor, backward), mul(spread, -1));
+  if (![positive, negative].every(finitePoint)) return null;
+  return {
+    d: `M ${pathPoint(anchor)} L ${pathPoint(positive)} ` +
+      `A ${fmt(radius)},${fmt(radius)} 0 0 1 ${pathPoint(negative)} Z`,
+    numericalAperture,
+    refractiveIndex,
+    halfAngleDegrees: halfAngle * 180 / Math.PI,
+  };
+}
 
 export function immersionLayerSVG(elements = [], beams = [], { baseElements = elements } = {}) {
   let svg = '';
-  const couplings = resolveImmersionCouplings(elements, beams, { baseElements });
-  for (const coupling of couplings.values()) {
-    const points = polygonFor(coupling);
-    const fill = OBJECTIVE_MEDIA[coupling.medium]?.fill;
-    const stroke = MEDIUM_STROKES[coupling.medium];
-    if (!points || !fill || !stroke || !finite(coupling.refractiveIndex)) continue;
-    svg += `<polygon class="immersion-coupling immersion-${coupling.medium}" ` +
-      `data-immersion-objective-id="${esc(coupling.objectiveId)}" data-immersion-medium="${coupling.medium}" ` +
-      `data-immersion-index="${coupling.refractiveIndex.toFixed(3)}" points="${pointList(points)}" ` +
-      `fill="${fill}" fill-opacity="0.28" stroke="${stroke}" stroke-opacity="0.72" stroke-width="0.8" pointer-events="none"/>`;
+  const currentElements = Array.isArray(elements) ? elements : [];
+  const couplings = resolveImmersionCouplings(currentElements, beams, { baseElements });
+  for (const objective of currentElements) {
+    if (objective?.type !== 'objective' || typeof objective.id !== 'string') continue;
+    const medium = objectiveMediumKey(objective.params || {});
+    if (medium === 'legacy' || !OBJECTIVE_MEDIA[medium]) continue;
+    const frame = objectiveFrame(objective);
+    if (!frame) continue;
+
+    const coupling = couplings.get(objective.id) || null;
+    const meniscus = coupling ? meniscusGeometry(coupling) : null;
+    if (coupling && meniscus) {
+      const fill = OBJECTIVE_MEDIA[coupling.medium]?.fill;
+      const stroke = MEDIUM_STROKES[coupling.medium];
+      if (fill && stroke && finite(coupling.refractiveIndex)) {
+        svg += `<g class="immersion-coupling immersion-${coupling.medium}" ` +
+          `data-immersion-objective-id="${esc(coupling.objectiveId)}" data-immersion-medium="${coupling.medium}" ` +
+          `data-immersion-index="${coupling.refractiveIndex.toFixed(3)}" pointer-events="none">` +
+          `<path class="immersion-meniscus" d="${meniscus.d}" fill="${fill}" fill-opacity="0.3" ` +
+          `stroke="${stroke}" stroke-opacity="0.78" stroke-width="0.9"/></g>`;
+      }
+    }
+
+    const anchor = coupling
+      ? coupling.contact
+      : add(frame.source, mul(frame.forward, frame.workingDistance));
+    const acceptance = acceptanceGeometry(objective, anchor, frame, meniscus);
+    if (!acceptance) continue;
+    const anchorKind = coupling ? 'contact' : 'nominal-focus';
+    svg += `<g class="objective-na-overlay" data-objective-id="${esc(objective.id)}" ` +
+      `data-na-anchor="${anchorKind}" data-schematic="true" pointer-events="none">` +
+      `<path class="objective-na-acceptance" data-na="${acceptance.numericalAperture.toFixed(3)}" ` +
+      `data-medium-index="${acceptance.refractiveIndex.toFixed(3)}" ` +
+      `data-half-angle-deg="${acceptance.halfAngleDegrees.toFixed(3)}" d="${acceptance.d}" ` +
+      `fill="#6653b8" fill-opacity="0.16" stroke="#51409a" stroke-opacity="0.95" ` +
+      `stroke-width="0.9" stroke-dasharray="2 1.5">` +
+      `<title>Schematic NA acceptance half-angle ${acceptance.halfAngleDegrees.toFixed(1)} degrees</title></path></g>`;
   }
   return svg;
 }

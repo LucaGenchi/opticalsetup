@@ -180,9 +180,9 @@ function normalizeElement(raw, definitions, used) {
   }
   if (def) {
     for (const spec of def.params || []) {
-      // `readout`/`derived` params (e.g. the objective's Working distance)
-      // have no storage of their own — always computed fresh from other
-      // params — so there is nothing to normalize or persist for them.
+      // `readout`/`derived` params have no storage of their own — always
+      // computed fresh from other params — so there is nothing to normalize
+      // or persist for them.
       if (spec.type === 'readout' || spec.type === 'derived') continue;
       // Earlier normalized params override raw input so dependent bounds can
       // safely read the medium/index selected just above the objective's NA.

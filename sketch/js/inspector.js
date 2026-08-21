@@ -12,7 +12,9 @@ import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHits
 import { pulseTransmissionAt } from './pulses.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
-import { OBJECTIVE_MEDIA, normalizeObjectiveParams, objectiveMediumKey } from './objective.js';
+import {
+  OBJECTIVE_MEDIA, normalizeObjectiveParams, objectiveMediumKey, objectiveWorkingDistance,
+} from './objective.js';
 import { immersionCouplingStatus } from './immersion.js';
 import { esc } from './util.js';
 import { WIKI_TYPES } from './wiki-types.js';
@@ -429,20 +431,33 @@ function paramField(p, sel) {
   if (p.type === 'readout') {
     return field(p.label, `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params))}</output>`);
   }
-  // Editable, but backed by another param instead of its own storage (e.g.
-  // the objective's Working distance, backed by magnification): displayed
-  // value comes from `get`, and a commit writes through `set` rather than
-  // into sel.params[p.key] — see applyInput()'s `data-derived` branch.
+  // Editable, but backed by another param instead of its own storage:
+  // displayed value comes from `get`, and a commit writes through `set`
+  // rather than into sel.params[p.key] — see applyInput() below.
   if (p.type === 'derived') {
     return numberField(p.label, `data-p="${p.key}" data-derived="1"`, p.get(sel.params), resolvedParam(p, sel.params));
   }
   return '';
 }
 
+// Keep computed values causally live without rebuilding the inspector and
+// stealing focus from the field being edited. A full rebuild still happens
+// on committed structural changes (for example selecting Custom index), but
+// NA/EFL/theta-style readouts can follow every input event in place.
+function refreshReadouts(sel) {
+  if (!panel?.querySelectorAll) return;
+  const specs = registry[sel.type]?.params || [];
+  const readouts = new Map(specs.filter(spec => spec.type === 'readout').map(spec => [spec.key, spec]));
+  panel.querySelectorAll('output.readout[data-p]').forEach(output => {
+    const spec = readouts.get(output.dataset.p);
+    if (spec?.readout) output.textContent = String(spec.readout(sel.params));
+  });
+}
+
 function objectiveCouplingHint(sel) {
   const medium = objectiveMediumKey(sel.params);
   if (medium === 'air') {
-    return `<div class="hint" data-objective-coupling-status="dry">Dry / air objective: NA is capped at 1.00 and no coupling gap is drawn.</div>`;
+    return `<div class="hint" data-objective-coupling-status="dry">Dry / air objective: NA is capped at 1.00. The NA guide shows angular acceptance; no liquid meniscus is drawn.</div>`;
   }
   if (medium === 'legacy') {
     return `<div class="signal-warning" role="alert" data-objective-coupling-status="legacy">⚠ Choose the objective's designed front medium. This older high-NA sketch did not record one.</div>`;
@@ -454,14 +469,19 @@ function objectiveCouplingHint(sel) {
   }
   const coupling = couplingStatus.coupling;
   if (!coupling) {
-    return `<div class="signal-warning" role="status" data-objective-coupling-status="open">⚠ No compatible contact in front of the objective. Place a sample, stage specimen, or facing fiber tip on its axis and within the nearby coupling range.</div>`;
+    return `<div class="signal-warning" role="status" data-objective-coupling-status="open">⚠ No compatible immersion contact is in front of the objective. The NA guide ends at its nominal ${objectiveWorkingDistance(sel.params).toFixed(1)} mm working-distance focus.</div>`;
   }
 
   const target = coupling.targetKind === 'element'
     ? (String(coupling.target?.label || '').trim() || registry[coupling.targetType]?.label || 'sample')
     : `${coupling.target?.bare ? 'Bare fiber' : 'Fiber'} end ${coupling.targetEnd === 0 ? 'A' : 'B'}`;
   const index = Number.isFinite(coupling.refractiveIndex) ? ` · n ${coupling.refractiveIndex.toFixed(3)}` : '';
-  return `<div class="hint" data-objective-coupling-status="connected"><b>Auto-coupled:</b> ${esc(OBJECTIVE_MEDIA[medium].label)}${index} to ${esc(target)} · placed gap ${coupling.distance.toFixed(1)} mm. The visible gap follows motion but remains schematic.</div>`;
+  const workingDistance = objectiveWorkingDistance(sel.params);
+  const focusError = coupling.distance - workingDistance;
+  const focus = Math.abs(focusError) <= 0.1
+    ? 'at the nominal focus'
+    : `focus offset ${focusError > 0 ? '+' : '−'}${Math.abs(focusError).toFixed(1)} mm`;
+  return `<div class="hint" data-objective-coupling-status="connected"><b>Immersion bridge:</b> ${esc(OBJECTIVE_MEDIA[medium].label)}${index} to ${esc(target)} · actual gap ${coupling.distance.toFixed(1)} mm · WD ${workingDistance.toFixed(1)} mm (${focus}). Medium changes n and θ, not WD. The meniscus remains schematic.</div>`;
 }
 
 export function renderInspector() {
@@ -807,14 +827,15 @@ export function applyInput(inp, rebuild = false) {
   if (inp.dataset.neg) val = -Math.abs(val); // − sign lives outside the box
   if (!undoArmed) { pushUndo(); undoArmed = true; }
 
-  // A `derived` field (e.g. the objective's Working distance) has no
-  // storage of its own — commit through its declared setter instead of the
+  // A `derived` field has no storage of its own — commit through its
+  // declared setter instead of the
   // generic sel.params[pkey] assignment below, so it stays impossible for
   // it to hold a value that disagrees with the param it derives from.
   if (inp.dataset.derived) {
     const spec = (registry[sel.type]?.params || []).find(p => p.key === pkey);
     if (spec?.set) spec.set(sel.params, val);
     changed();
+    refreshReadouts(sel);
     if (rebuild) renderInspector();
     return;
   }
@@ -889,6 +910,7 @@ export function applyInput(inp, rebuild = false) {
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }
   changed();
+  if (pkey) refreshReadouts(sel);
   // While a pulsed laser is transform-limited its bandwidth is derived from
   // the pulse duration, so the field is hidden and nothing needs syncing.
   // Switching TL off reveals it — seed it from the width the pulse actually

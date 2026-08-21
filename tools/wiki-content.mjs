@@ -403,58 +403,64 @@ export const wikiEntries = [
         keeping the full aperture illuminated at every scan angle.</p>
         <p>That same magnification formula is also why widefield imaging systems pick
         the objective focal length they do. A high-power compound-microscope objective
-        (60×, 100×) has a very short focal length — often just a couple of millimeters —
-        paired with a long tube lens, and trades that magnification for a short working
-        distance and a narrow field of view. A <strong>stereomicroscope</strong> sits at
-        the opposite end on purpose: its objective (shared or paired, one per eye) has a
-        comparatively long focal length, giving low-to-moderate magnification, a wide
-        field of view, and — critically for a dissecting scope — enough physical working
-        distance to actually get hands or tools under the lens. Zoom stereomicroscopes
-        vary magnification with a separate afocal zoom system in between, but the same
-        rule holds at any zoom setting: a shorter effective objective focal length always
-        means higher magnification and a smaller field of view, at the cost of working
-        distance.</p>`,
+        (60×, 100×) has a very short effective focal length — often just a couple of
+        millimeters — paired with a long tube lens. Its <strong>working distance</strong>,
+        however, is a separate catalogue dimension: the axial clearance from the front
+        boundary to the in-focus specimen plane. High-magnification objectives often have
+        short working distances because of their practical optical and mechanical design,
+        but working distance is not obtained from the magnification formula and
+        long-working-distance objectives are specifically engineered exceptions. A
+        <strong>stereomicroscope</strong> uses low-to-moderate magnification, a wide field
+        of view, and enough working distance to get hands or tools under the lens; its zoom
+        system can vary magnification without turning working distance into focal length.</p>`,
     },
     inOpticalSetup: {
       html: `
-        <p>The objective is configured the way a real one is spec'd — magnification,
-        designed front medium, and rated numerical aperture — rather than by a bare focal
-        length. Internally it's still the
-        same single thin-lens surface as the plain <a href="../lens/">lens</a> element,
-        using the same paraxial ray-transfer relation <span class="w">u' = u − h/f</span>
-        at the lens plane marked by the housing's flat front glass, but
-        <span class="w">f</span> is now <em>derived</em> from magnification exactly the
-        way the real-world formula above works in reverse: a fixed 200&nbsp;mm reference
-        tube length divided by the configured magnification. That same distance is also
-        exposed directly as <strong>working distance</strong> — the more graphically
-        useful way to ask "how far in front of the objective does it focus" — and the two
-        fields stay in sync: editing either one recomputes the other.</p>
+        <p>The objective keeps four different catalogue-like dimensions separate:
+        magnification, working distance, front aperture, and rated numerical aperture.
+        Its physical sample-facing front boundary is also its one trace boundary. At that
+        boundary OpticalSetup applies a qualitative <strong>black-box focus map</strong>
+        whose mapping distance is the stored working distance: a collimated input is
+        directed toward the nominal specimen plane that far beyond the front tip.
+        Magnification does not move this focus or change traced ray directions. It only
+        produces the displayed effective-focal-length metadata from a fixed 200&nbsp;mm
+        reference tube length and contributes to the first-order pupil estimate. Editing
+        working distance changes the focus map without rewriting magnification; editing
+        magnification changes the catalogue readout without rewriting working distance.</p>
         <p>The objective owns its medium; there is no separately placeable liquid
         component. Dry/air caps rated NA at 1.00, water at 1.27, oil at 1.49, and a
         custom medium at the lesser of its index <span class="w">n</span> and 1.49.
-        Water, oil, and custom objectives derive a non-selectable coupling gap to the
+        The medium's index and the rated NA determine the displayed object-side
+        half-angle <span class="w">θ = asin(NA/n)</span>; changing medium may clamp an
+        out-of-range NA but never changes working distance. Water, oil, and custom
+        objectives derive a non-selectable <strong>immersion bridge</strong> to the
         nearest compatible contact in front: a Sample, a Sample on piezo stage, or a
         facing fiber endpoint. The target is chosen from the authored geometry, so a
         scanning stage carries the same relationship while it remains aligned and in
         range, then disconnects instead of making the objective jump between nearby
-        samples. Older high-NA sketches that
-        never recorded a medium remain explicitly unresolved until one is chosen.</p>
-        <p>The drawn barrel and the traced pupil track that same focal length (twice it,
-        as a continuous stand-in for a real pupil calculation), so the blue resize handle
-        and the purple tune knob both work directly on working distance: drag outward for
-        a longer working distance and a visibly bigger objective, or use the inspector
-        fields for exact values. Numerical aperture is deliberately wired to neither — it
-        is an angular acceptance property of the optical design, not a statement about how
-        physically large the barrel is, so changing NA alone never resizes anything.
-        Toggle "Show focal points" (the <span class="w">ƒ</span> button) or select the
-        objective, and a marker labeled <span class="w">BFP</span> appears exactly
-        <span class="w">f</span> behind the lens plane, on the side the beam arrives
-        from — the real coordinate to position (or image, via a
-        <a href="../telescope/">telescope</a>) a scan mirror onto for correct
-        pupil-matched scanning, not just an illustrative icon.</p>
-        <p>The colored gap is included in SVG, PNG, and GIF output, but it is only a
-        schematic relationship: it adds no refracting surface and does not alter traced
-        rays. When this objective sits between a pulsed laser and an illuminated
+        samples.</p>
+        <p>The bridge spans the objective's complete front aperture and the contacted
+        specimen or fiber face. Two cubic Bézier curves bow inward between those edges to
+        make a legible meniscus in the canvas and in SVG, PNG, and GIF output. This is an
+        authored schematic, not a capillary-surface calculation. If no contact is
+        available, no liquid is drawn and the angular guide ends at the nominal
+        working-distance focus;
+        a dry objective also shows the guide without a liquid bridge. Older high-NA
+        sketches that never recorded a medium remain explicitly unresolved until one is
+        chosen.</p>
+        <p>Rated NA now has two visible consequences. The dashed sector shows the
+        configured half-angle at the actual contact or nominal focus, and the tracer
+        qualitatively rejects object-side rays outside that cone. This is angular clipping
+        at the same black-box front boundary, not a high-NA or vector-diffraction model.
+        The separate front-aperture setting controls the objective outline and the blue
+        resize handle; the purple tune control changes working distance. A small pupil
+        mark uses the first-order diameter estimate <span class="w">2fNA</span>, so NA
+        or magnification can change that mark without pretending to resize the housing or
+        alter traced focusing. Toggle "Show focal points" (the <span class="w">ƒ</span>
+        button) or select the objective to see its nominal <span class="w">WD focus</span>.
+        OpticalSetup draws no BFP marker because this black-box model has no represented
+        internal objective plane or tube lens from which to locate one.</p>
+        <p>When this objective sits between a pulsed laser and an illuminated
         photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
         to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
         power, repetition rate, and pulse duration — see the inspector on a resin
@@ -465,16 +471,16 @@ export const wikiEntries = [
         universal one — Olympus uses 180&nbsp;mm and Zeiss 165&nbsp;mm — and OpticalSetup
         doesn't model a manufacturer choice or a separate tube-lens element the way the
         standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
-        reference length is simply baked into the magnification-to-focal-length formula.
-        Working distance in this simplified single-surface model is exactly that focal
-        length, front-tip to focus — a real objective's catalog working distance is
-        usually shorter, since a real design's front element doesn't sit at the effective
-        lens plane. The drawn pupil (twice the focal length) is a plain, continuous stand-in
-        for a real pupil calculation, not a diffraction-limited or aberration-corrected
-        one. The coupling gap does not model a physical fluid boundary, cover glass,
-        meniscus, index mismatch, focal shift, immersion aberrations, or compound-objective
-        correction. It remains a single idealized thin lens wearing an objective's
-        housing, with one genuinely precise feature: the BFP marker's location.</p>`,
+        reference length is used only for effective-focal-length metadata and the
+        first-order pupil estimate; it does not define the trace boundary or focus map.
+        Working distance is an independent saved property here, not a value predicted by
+        magnification or immersion medium. The black-box map does not expose an equivalent
+        principal plane or locate a BFP, and it does not model a compound objective's
+        conjugates. The pupil mark and NA clipping remain qualitative and do not model
+        diffraction, aberration correction, internal stops, or polarization at high
+        angle. The drawn meniscus does not solve wetting, contact angle, surface tension,
+        volume, or gravity; it adds no refracting boundary and does not model cover glass,
+        index mismatch, focal shift, or immersion aberrations.</p>`,
     },
     related: ['lens', 'telescope'],
     resources: [

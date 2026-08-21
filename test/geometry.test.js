@@ -110,28 +110,32 @@ test('the microscope element is gone — it was a grey box hiding an unaimable o
   assert.equal(registry.microscope, undefined);
 });
 
-test('objectives expose magnification, working distance, designed medium and NA while deriving thin-lens geometry internally', () => {
+test('objectives expose catalogue and immersion properties while tracing a front-boundary focus map', () => {
   const objective = createElement('objective');
   assert.deepEqual(registry.objective.params.map(param => param.key), [
-    'magnification', 'workingDistance', 'immersion', 'immersionIndex', 'na', 'transEff',
+    'magnification', 'effectiveFocalLength', 'workingDistance', 'immersion', 'immersionIndex',
+    'na', 'acceptanceHalfAngle', 'transEff', 'frontAperture',
   ]);
-  assert.doesNotMatch(registry.objective.params.map(param => param.label).join(' '), /focal/i);
   assert.equal(Object.hasOwn(objective.params, 'f'), false);
   assert.equal(Object.hasOwn(objective.params, 'aperture'), false);
-  // Working distance has no storage of its own — it's a `derived` param.
-  assert.equal(Object.hasOwn(objective.params, 'workingDistance'), false);
+  assert.equal(Object.hasOwn(objective.params, 'effectiveFocalLength'), false, 'EFL is derived from magnification');
+  assert.equal(Object.hasOwn(objective.params, 'acceptanceHalfAngle'), false, 'theta is derived from NA and n');
+  assert.equal(Object.hasOwn(objective.params, 'workingDistance'), true, 'WD is an independent saved objective spec');
   assert.equal(objective.params.magnification, 20);
+  assert.equal(objective.params.workingDistance, 10);
+  assert.equal(objective.params.frontAperture, 20);
   assert.equal(objective.params.immersion, 'air');
   assert.equal(objective.params.immersionIndex, 1.333);
   assert.equal(objective.params.na, 1);
 
   let surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.data.f, 10);
+  assert.equal(surface.data.effectiveFocalLength, 10);
+  assert.equal(surface.data.workingDistance, 10);
   assert.equal(surface.data.objectiveNA, 1);
-  // The drawn/traced pupil (2x focal length) tracks magnification/working
-  // distance, so it stays a genuinely resizable body on the canvas — but NA
-  // alone must never move it (PR #57's actual complaint: NA is an angular
-  // acceptance property, not a statement about barrel size).
+  assert.equal(surface.data.objectiveMediumIndex, 1);
+  assert.equal(surface.x1, 16);
+  // The physical front opening is independent of rated NA, EFL, and WD.
   assert.equal(surface.y2 - surface.y1, 20);
 
   objective.params.na = 1.4;
@@ -150,8 +154,15 @@ test('objectives expose magnification, working distance, designed medium and NA 
 
   objective.params.magnification = 40;
   surface = registry.objective.surfaces(objective)[0];
-  assert.equal(surface.data.f, 5);
-  assert.ok(Math.abs(surface.y2 - surface.y1 - 10) < 1e-9, 'magnification does resize the pupil (2x focal length)');
+  assert.equal(surface.data.effectiveFocalLength, 5);
+  assert.equal(surface.data.f, 10, 'the front-boundary map distance is WD, not catalogue EFL');
+  assert.equal(surface.data.workingDistance, 10, 'magnification does not rewrite WD');
+  assert.equal(surface.x1, 16, 'the trace boundary remains ahead of every compatible front contact');
+  assert.equal(surface.y2 - surface.y1, 20, 'magnification does not resize the physical front boundary');
+
+  objective.params.frontAperture = 30;
+  surface = registry.objective.surfaces(objective)[0];
+  assert.equal(surface.y2 - surface.y1, 30, 'front aperture is the explicit physical-size control');
 });
 
 test('detectors report qualitative signal, spectrum, polarization, and spot span', () => {

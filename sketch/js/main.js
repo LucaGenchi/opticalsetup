@@ -67,8 +67,8 @@ const demoScenes = {
   ],
   objective: () => [
     mkDemo('cwlaser', 60, 300, 0, { beamMode: 'beam', beamWidth: 18 }),
-    mkDemo('objective', 300, 300, 0, { magnification: 20, na: 1.2 }),
-    mkDemo('box', 326, 300, 0, { text: '', w: 2, h: 50, behavior: 'block', fill: '#c9d4e0' }, { label: '20× · NA 1.20', showLabel: true, labelPos: 't' }),
+    mkDemo('objective', 300, 300, 0, { magnification: 20, immersion: 'oil', na: 1.2 }),
+    mkDemo('sample', 329, 300, 90, {}, { label: '20× · NA 1.20 · oil', showLabel: true, labelPos: 't' }),
   ],
   bs: () => [
     mkDemo('cwlaser', 60, 200, 0),

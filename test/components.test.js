@@ -133,11 +133,12 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
   sample.params.mode = 'fluor';
   sample.params.transmission = 0.8;
   sample.params.signalEff = 0.1;
-  // objective lens plane (local x = +16, the sample-facing front tip) sits
-  // 20 mm from the sample: within the 1.5x capture window of the 25 mm
-  // evanescent range
+  // The objective's sample-facing front boundary sits 20 mm from the sample;
+  // give its independent focus map the same WD so the specimen is nominally
+  // in focus (catalogue magnification no longer supplies traced WD).
   const objective = createElement('objective', 154, 0);
   objective.params.magnification = 10;
+  objective.params.workingDistance = 20;
   const detector = createElement('detector', 320, 0);
   traceAll([laser, sample, objective, detector]);
   const reading = detectorReading(detector.id);

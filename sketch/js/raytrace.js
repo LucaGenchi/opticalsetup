@@ -985,7 +985,22 @@ function interact(ray, hit) {
       // transmission efficiency (AR-coating/absorption loss): a straight
       // power/intensity attenuation, no deviation of the focused direction.
       const T = Math.min(1, Math.max(0, (data.transEff ?? 100) / 100));
-      return [{ d: lensBend(d, hit.p, s, data.f), intensity: ray.intensity * T }];
+      const bent = lensBend(d, hit.p, s, data.f);
+      if (Number.isFinite(data.objectiveNA) && Number.isFinite(data.objectiveMediumIndex)) {
+        // An objective remains an equivalent paraxial plane, but its rated
+        // object-space cone is a real acceptance boundary. From the rear,
+        // validate the outgoing sample-side direction; from the sample,
+        // validate the incoming collection direction. This clips rays
+        // qualitatively without pretending to model the internal groups.
+        const forward = rotPt(1, 0, s.el?.rot || 0);
+        const rearToFront = dot(d, forward) >= 0;
+        const objectDirection = rearToFront ? bent : d;
+        const objectAxis = rearToFront ? forward : mul(forward, -1);
+        const sinAngle = Math.abs(objectDirection.x * objectAxis.y - objectDirection.y * objectAxis.x);
+        const acceptedSin = Math.min(1, Math.max(0, data.objectiveNA / data.objectiveMediumIndex));
+        if (sinAngle > acceptedSin + 1e-9) return [];
+      }
+      return [{ d: bent, intensity: ray.intensity * T }];
     }
     case 'refract': {
       const materialId = s.el?.id || null;

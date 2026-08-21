@@ -30,7 +30,8 @@ function collectBench(specimenType, channels, wavelengths = [800]) {
   sample.rot = 90; // the specimen surface is horizontal at rot 0
   Object.assign(sample.params, { aperture: 40, specimenType, channels });
   const objective = createElement('objective', 154, 0);
-  objective.params.magnification = 10; // f = 200/10 = 20 mm
+  objective.params.magnification = 10; // catalogue EFL = 20 mm
+  objective.params.workingDistance = 20; // front boundary is 20 mm from the sample
   const detector = createElement('detector', 320, 0);
   detector.params.aperture = 60;
   return [...lasers, sample, objective, detector];

@@ -16,7 +16,9 @@ function objective(medium = 'water', y = 0) {
   const element = createElement('objective', 0, y);
   element.id = `objective-${++nextId}`;
   element.params.immersion = medium;
-  element.params.magnification = 10; // WD 20 mm; derived coupling reach 30 mm
+  element.params.magnification = 10;
+  element.params.workingDistance = 20;
+  element.params.frontAperture = 40; // independent 40 mm front opening; coupling reach 30 mm
   return element;
 }
 
@@ -66,7 +68,9 @@ test('equal-distance contacts are ambiguous and produce no coupling', () => {
 
   assert.equal(resolveImmersionCouplings([obj, one, two]).has(obj.id), false);
   assert.equal(immersionCouplingStatus(obj, [obj, one, two]).state, 'ambiguous');
-  assert.equal(immersionLayerSVG([obj, one, two]), '');
+  const svg = immersionLayerSVG([obj, one, two]);
+  assert.doesNotMatch(svg, /immersion-meniscus/);
+  assert.match(svg, /class="objective-na-overlay"[^>]*data-na-anchor="nominal-focus"/);
 });
 
 test('a physical optic before the target blocks coupling while annotations do not', () => {
@@ -103,6 +107,15 @@ test('only the aligned fiber end facing into the cable can couple', () => {
   coupling = resolveImmersionCouplings([obj], [facingAtEnd]).get(obj.id);
   assert.ok(coupling);
   assert.equal(coupling.targetEnd, 1);
+
+  const overlappingOffset = {
+    id: 'fiber-overlap', kind: 'fiber', width: 4,
+    pts: [{ x: source.x + 8, y: source.y + 3 }, { x: source.x + 20, y: source.y + 3 }],
+  };
+  coupling = resolveImmersionCouplings([obj], [overlappingOffset]).get(obj.id);
+  assert.ok(coupling, 'a finite fiber face that crosses the axis remains eligible');
+  assert.equal(coupling.distance, 8, 'focus distance is measured axially to the face intersection');
+  assert.deepEqual(coupling.contact, { x: source.x + 8, y: source.y });
 
   const facingAway = {
     id: 'fiber-away', kind: 'fiber', width: 4,
@@ -181,13 +194,18 @@ test('a moving specimen face blocks a locked gap before its centre surface cross
   ).has(currentObjective.id), false, 'the nearer visible face must disconnect the gap');
 });
 
-test('air, unresolved legacy objectives, and non-air objectives without a target render no bridge', () => {
-  for (const medium of ['air', 'legacy']) {
-    const obj = objective(medium);
-    const target = contactElement('sample', `target-${medium}`, sourceOf(obj), 8);
-    assert.equal(resolveImmersionCouplings([obj, target]).size, 0);
-    assert.equal(immersionLayerSVG([obj, target]), '');
-  }
+test('dry and open objectives render NA without liquid; unresolved legacy renders neither', () => {
+  const air = objective('air');
+  const airTarget = contactElement('sample', 'target-air', sourceOf(air), 8);
+  assert.equal(resolveImmersionCouplings([air, airTarget]).size, 0);
+  const airSVG = immersionLayerSVG([air, airTarget]);
+  assert.doesNotMatch(airSVG, /immersion-meniscus/);
+  assert.match(airSVG, /class="objective-na-overlay"[^>]*data-na-anchor="nominal-focus"/);
+
+  const legacy = objective('legacy');
+  const legacyTarget = contactElement('sample', 'target-legacy', sourceOf(legacy), 8);
+  assert.equal(resolveImmersionCouplings([legacy, legacyTarget]).size, 0);
+  assert.equal(immersionLayerSVG([legacy, legacyTarget]), '');
 
   const missingLegacy = objective('water');
   delete missingLegacy.params.immersion;
@@ -196,10 +214,12 @@ test('air, unresolved legacy objectives, and non-air objectives without a target
   assert.equal(immersionLayerSVG([missingLegacy, target]), '');
 
   const water = objective('water');
-  assert.equal(immersionLayerSVG([water]), '');
+  const waterSVG = immersionLayerSVG([water]);
+  assert.doesNotMatch(waterSVG, /immersion-meniscus/);
+  assert.match(waterSVG, /class="objective-na-overlay"[^>]*data-na-anchor="nominal-focus"/);
 });
 
-test('water, oil, and custom bridges render distinct finite world-space tapered polygons', () => {
+test('water, oil, and custom bridges render distinct finite world-space spline menisci', () => {
   const renders = new Map();
   for (const medium of ['water', 'oil', 'custom']) {
     const obj = objective(medium);
@@ -212,17 +232,133 @@ test('water, oil, and custom bridges render distinct finite world-space tapered 
 
     assert.match(svg, new RegExp(`data-immersion-objective-id="${obj.id}"`));
     assert.match(svg, new RegExp(`class="immersion-coupling immersion-${medium}"`));
+    assert.match(svg, /class="immersion-meniscus"/);
+    assert.match(svg, /class="objective-na-overlay"[^>]*data-na-anchor="contact"[^>]*data-schematic="true"/);
+    assert.match(svg, /class="objective-na-acceptance"/);
     assert.doesNotMatch(svg, /NaN|Infinity|undefined/);
-    assert.equal((svg.match(/<polygon\b/g) || []).length, 1);
-    const points = svg.match(/points="([^"]+)"/)?.[1].trim().split(/\s+/) || [];
-    assert.equal(points.length, 4, 'the bridge is a finite tapered quadrilateral');
-    assert.ok(points.every(pair => pair.split(',').every(value => Number.isFinite(Number(value)))));
+    assert.equal((svg.match(/<path\b/g) || []).length, 2);
+    const meniscusPath = svg.match(/class="immersion-meniscus" d="([^"]+)"/)?.[1] || '';
+    assert.match(meniscusPath, /^M .* C .* L .* C .* Z$/, 'the liquid boundary uses two cubic side splines');
+    const coordinates = meniscusPath.match(/-?\d+(?:\.\d+)?/g)?.map(Number) || [];
+    assert.ok(coordinates.length >= 16);
+    assert.ok(coordinates.every(Number.isFinite));
     assert.equal(JSON.stringify([obj, target]), before, 'deriving/rendering a bridge must not mutate scene state');
   }
 
   assert.notEqual(renders.get('water'), renders.get('oil'));
   assert.notEqual(renders.get('oil'), renders.get('custom'));
   assert.notEqual(renders.get('water'), renders.get('custom'));
+});
+
+test('the meniscus attaches to the objective aperture edges and contacted specimen edges', () => {
+  const obj = objective('water');
+  const source = sourceOf(obj);
+  const target = contactElement('sample', 'edge-target', source, 12);
+  target.params.aperture = 50;
+  const svg = immersionLayerSVG([obj, target]);
+  const d = svg.match(/class="immersion-meniscus" d="([^"]+)"/)?.[1] || '';
+
+  // At 10x the drawn front pupil is 40 mm across, hence +/-20 mm from
+  // the objective centre. The rotated 50 mm specimen face contributes its
+  // full +/-25 mm contact footprint.
+  assert.match(d, new RegExp(`M ${source.x.toFixed(2)},${(source.y + 20).toFixed(2)}`));
+  assert.match(d, new RegExp(`${(source.x + 12).toFixed(2)},${(source.y + 25).toFixed(2)} L `));
+  assert.match(d, new RegExp(`L ${(source.x + 12).toFixed(2)},${(source.y - 25).toFixed(2)} C `));
+  assert.match(d, new RegExp(`${source.x.toFixed(2)},${(source.y - 20).toFixed(2)} Z$`));
+});
+
+test('NA acceptance uses theta = asin(NA / n) and changes independently of the liquid meniscus', () => {
+  const low = objective('water');
+  low.params.na = 0.05;
+  const lowTarget = contactElement('sample', 'na-target', sourceOf(low), 12);
+  const high = cloneElement(low);
+  high.params.na = 1.27;
+
+  const lowSVG = immersionLayerSVG([low, lowTarget]);
+  const highSVG = immersionLayerSVG([high, lowTarget]);
+  const halfAngle = svg => Number(svg.match(/data-half-angle-deg="([^"]+)"/)?.[1]);
+  const meniscus = svg => svg.match(/class="immersion-meniscus" d="([^"]+)"/)?.[1];
+  const acceptance = svg => svg.match(/class="objective-na-acceptance"[^>]* d="([^"]+)"/)?.[1];
+
+  assert.ok(Math.abs(halfAngle(lowSVG) - Math.asin(0.05 / 1.333) * 180 / Math.PI) < 0.001);
+  assert.ok(Math.abs(halfAngle(highSVG) - Math.asin(1.27 / 1.333) * 180 / Math.PI) < 0.001);
+  assert.ok(halfAngle(highSVG) > halfAngle(lowSVG));
+  assert.equal(meniscus(highSVG), meniscus(lowSVG), 'NA must not deform the liquid boundary');
+  assert.notEqual(acceptance(highSVG), acceptance(lowSVG), 'NA must visibly change the acceptance sector');
+});
+
+test('at fixed NA the medium index changes the schematic acceptance angle', () => {
+  const water = objective('water');
+  water.params.na = 1;
+  const target = contactElement('sample', 'medium-angle-target', sourceOf(water), 12);
+  const oil = cloneElement(water);
+  oil.params.immersion = 'oil';
+
+  const waterSVG = immersionLayerSVG([water, target]);
+  const oilSVG = immersionLayerSVG([oil, target]);
+  const halfAngle = svg => Number(svg.match(/data-half-angle-deg="([^"]+)"/)?.[1]);
+  assert.ok(Math.abs(halfAngle(waterSVG) - Math.asin(1 / 1.333) * 180 / Math.PI) < 0.001);
+  assert.ok(Math.abs(halfAngle(oilSVG) - Math.asin(1 / 1.518) * 180 / Math.PI) < 0.001);
+  assert.ok(halfAngle(waterSVG) > halfAngle(oilSVG));
+});
+
+test('dry and uncoupled objectives keep NA visibly responsive at nominal working distance', () => {
+  for (const medium of ['air', 'water']) {
+    const low = objective(medium);
+    low.params.na = 0.2;
+    const high = cloneElement(low);
+    high.params.na = medium === 'air' ? 1 : 1.2;
+    const lowSVG = immersionLayerSVG([low]);
+    const highSVG = immersionLayerSVG([high]);
+    const acceptance = svg => svg.match(/class="objective-na-acceptance"[^>]* d="([^"]+)"/)?.[1];
+
+    assert.match(lowSVG, /data-na-anchor="nominal-focus"/);
+    assert.match(highSVG, /data-na-anchor="nominal-focus"/);
+    assert.doesNotMatch(lowSVG, /immersion-meniscus/);
+    assert.notEqual(acceptance(lowSVG), acceptance(highSVG), `${medium} NA must change the visible cone`);
+  }
+});
+
+test('the open cone uses working distance while a connected cone uses the actual contact', () => {
+  const dry = objective('air');
+  dry.params.workingDistance = 6;
+  dry.params.na = 0.7;
+  const source = sourceOf(dry);
+  const drySVG = immersionLayerSVG([dry]);
+  const conePath = svg => svg.match(/class="objective-na-acceptance"[^>]* d="([^"]+)"/)?.[1] || '';
+  assert.match(conePath(drySVG), new RegExp(`^M ${(source.x + 6).toFixed(2)},${source.y.toFixed(2)} `));
+
+  const differentMagnification = cloneElement(dry);
+  differentMagnification.params.magnification = 100;
+  assert.equal(
+    conePath(immersionLayerSVG([differentMagnification])),
+    conePath(drySVG),
+    'magnification/EFL must not move an independently configured nominal focus',
+  );
+
+  const wet = objective('water');
+  wet.params.workingDistance = 20;
+  const wetSource = sourceOf(wet);
+  const target = contactElement('sample', 'contact-anchor-target', wetSource, 12);
+  const wetSVG = immersionLayerSVG([wet, target]);
+  assert.match(wetSVG, /data-na-anchor="contact"/);
+  assert.match(conePath(wetSVG), new RegExp(`^M ${(wetSource.x + 12).toFixed(2)},${wetSource.y.toFixed(2)} `));
+});
+
+test('minimum gaps and maximum custom NA keep both visual paths finite and bounded', () => {
+  const obj = objective('custom');
+  obj.params.immersionIndex = 1.49;
+  obj.params.na = 1.49;
+  const target = contactElement('sample', 'short-gap-target', sourceOf(obj), 0.05);
+  const svg = immersionLayerSVG([obj, target]);
+  const halfAngle = Number(svg.match(/data-half-angle-deg="([^"]+)"/)?.[1]);
+
+  assert.equal(halfAngle, 90);
+  assert.equal((svg.match(/<path\b/g) || []).length, 2);
+  assert.doesNotMatch(svg, /NaN|Infinity|undefined/);
+  for (const d of svg.matchAll(/ d="([^"]+)"/g)) {
+    assert.ok((d[1].match(/-?\d+(?:\.\d+)?/g) || []).map(Number).every(Number.isFinite));
+  }
 });
 
 test('the derived layer exports below rays, changes no trace, and stores no coupling relation', () => {
@@ -270,8 +406,8 @@ test('animated export carries the authored stage coupling through its Z scan', (
 
   const frameA = buildSVG({ animation: { seconds: 0, playback: {} } });
   const frameB = buildSVG({ animation: { seconds: 0.5, playback: {} } });
-  const points = svg => svg.match(/class="immersion-coupling[^>]*points="([^"]+)"/)?.[1];
-  assert.ok(points(frameA));
-  assert.ok(points(frameB));
-  assert.notEqual(points(frameA), points(frameB), 'the liquid geometry follows the same moving stage');
+  const meniscus = svg => svg.match(/class="immersion-meniscus" d="([^"]+)"/)?.[1];
+  assert.ok(meniscus(frameA));
+  assert.ok(meniscus(frameB));
+  assert.notEqual(meniscus(frameA), meniscus(frameB), 'the liquid geometry follows the same moving stage');
 });
