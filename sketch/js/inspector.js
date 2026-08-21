@@ -418,6 +418,13 @@ function paramField(p, sel) {
   if (p.type === 'readout') {
     return field(p.label, `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params))}</output>`);
   }
+  // Editable, but backed by another param instead of its own storage (e.g.
+  // the objective's Working distance, backed by magnification): displayed
+  // value comes from `get`, and a commit writes through `set` rather than
+  // into sel.params[p.key] — see applyInput()'s `data-derived` branch.
+  if (p.type === 'derived') {
+    return numberField(p.label, `data-p="${p.key}" data-derived="1"`, p.get(sel.params), p);
+  }
   return '';
 }
 
@@ -763,6 +770,18 @@ export function applyInput(inp, rebuild = false) {
   if (inp.dataset.neg) val = -Math.abs(val); // − sign lives outside the box
   if (!undoArmed) { pushUndo(); undoArmed = true; }
 
+  // A `derived` field (e.g. the objective's Working distance) has no
+  // storage of its own — commit through its declared setter instead of the
+  // generic sel.params[pkey] assignment below, so it stays impossible for
+  // it to hold a value that disagrees with the param it derives from.
+  if (inp.dataset.derived) {
+    const spec = (registry[sel.type]?.params || []).find(p => p.key === pkey);
+    if (spec?.set) spec.set(sel.params, val);
+    changed();
+    if (rebuild) renderInspector();
+    return;
+  }
+
   // per-end fiber output fields
   if (inp.dataset.fend !== undefined) {
     const o = sel['out' + inp.dataset.fend];
@@ -850,5 +869,5 @@ export function applyInput(inp, rebuild = false) {
   // A readout is derived from the other params, so any committed edit can
   // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
   // peak power or a transform-limited bandwidth from going stale on screen.
-  if (rebuild && pkey && (registry[sel.type]?.params || []).some(p => p.type === 'readout')) renderInspector();
+  if (rebuild && pkey && (registry[sel.type]?.params || []).some(p => p.type === 'readout' || p.type === 'derived')) renderInspector();
 }

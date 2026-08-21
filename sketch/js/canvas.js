@@ -796,7 +796,7 @@ function renderOverlay() {
 }
 
 function directValueLabel(el, tune) {
-  const value = el.params[tune.key];
+  const value = tune.param.type === 'derived' ? tune.param.get(el.params) : el.params[tune.key];
   const rounded = Math.abs(value) >= 100 ? Math.round(value) : Math.round(value * 100) / 100;
   const unitMatch = tune.param.label.match(/\((nm|mm|°|MHz|Hz|fs|dB\/m)\)/);
   return `${tune.short || tune.param.label} ${rounded}${unitMatch ? ` ${unitMatch[1]}` : ''}`;
@@ -908,9 +908,26 @@ function hitTuneHandle(sel, w) {
   return Math.hypot(w.x - p.x, w.y - p.y) < 11 / state.view.z;
 }
 
+// A `derived` param (e.g. the objective's Working distance) has no storage
+// of its own — reading it means recomputing from whatever it derives from,
+// and writing it means going through its own setter instead of clobbering a
+// key that was never there. Direct-manipulation (resize/tune) drags read and
+// write params outside the inspector's normal commit path, so they need
+// this too or a derived target would silently desync from what it derives
+// from the moment you drag it.
+function readParam(el, key) {
+  const spec = (registry[el.type]?.params || []).find(param => param.key === key);
+  return spec?.type === 'derived' ? spec.get(el.params) : el.params[key];
+}
+function writeParam(el, key, value) {
+  const spec = (registry[el.type]?.params || []).find(param => param.key === key);
+  if (spec?.type === 'derived') spec.set(el.params, value);
+  else el.params[key] = value;
+}
+
 function boundedParam(el, key, value) {
   const spec = (registry[el.type]?.params || []).find(param => param.key === key);
-  if (!spec || !Number.isFinite(value)) return el.params[key];
+  if (!spec || !Number.isFinite(value)) return readParam(el, key);
   const negative = spec.negative === true;
   let lo = spec.type === 'optsize' ? (spec.min ?? 1) : (spec.min ?? -Number.MAX_SAFE_INTEGER);
   let hi = spec.type === 'optsize' ? (spec.max ?? 500) : (spec.max ?? Number.MAX_SAFE_INTEGER);
@@ -1363,14 +1380,14 @@ function onDown(e) {
     drag = {
       mode: 'resize', el: sel, direct: direct.resize, corner: resizeHandle,
       hw: size.w / 2 + 6, hh: size.h / 2 + 6,
-      values: Object.fromEntries(keys.map(key => [key, sel.params[key]])), moved: false,
+      values: Object.fromEntries(keys.map(key => [key, readParam(sel, key)])), moved: false,
     };
     svg.setPointerCapture(e.pointerId);
     return;
   }
   if (hitTuneHandle(sel, w)) {
     const tune = getDirectManipulation(sel).tune;
-    drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: sel.params[tune.key], moved: false };
+    drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: readParam(sel, tune.key), moved: false };
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -1480,11 +1497,11 @@ function onMove(e) {
     const nextH = boundedParam(drag.el, hKey, rawH);
     const centerOffset = rotPt(drag.corner.sx * nextW / 2, drag.corner.sy * nextH / 2, drag.angle);
     const centerWorld = { x: drag.anchor.x + centerOffset.x, y: drag.anchor.y + centerOffset.y };
-    if (nextW === drag.el.params[wKey] && nextH === drag.el.params[hKey]
+    if (nextW === readParam(drag.el, wKey) && nextH === readParam(drag.el, hKey)
       && centerWorld.x === drag.el.x && centerWorld.y === drag.el.y) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
-    drag.el.params[wKey] = nextW;
-    drag.el.params[hKey] = nextH;
+    writeParam(drag.el, wKey, nextW);
+    writeParam(drag.el, hKey, nextH);
     drag.el.x = centerWorld.x;
     drag.el.y = centerWorld.y;
     setStatus(`${wKey} ${nextW} · ${hKey} ${nextH}`);
@@ -1498,12 +1515,12 @@ function onMove(e) {
     if (drag.direct.y) assignments.push([drag.direct.y, sy]);
     if (drag.direct.uniform) assignments.push([drag.direct.uniform, Math.max(sx, sy)]);
     const changes = assignments.map(([key, ratio]) => [key, boundedParam(drag.el, key, drag.values[key] * ratio)])
-      .filter(([key, next]) => next !== drag.el.params[key]);
+      .filter(([key, next]) => next !== readParam(drag.el, key));
     if (!changes.length) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
     for (const [key, value] of Object.entries(drag.direct.set || {})) drag.el.params[key] = value;
-    for (const [key, next] of changes) drag.el.params[key] = next;
-    const labels = assignments.map(([key]) => `${key} ${drag.el.params[key]}`).join(' · ');
+    for (const [key, next] of changes) writeParam(drag.el, key, next);
+    const labels = assignments.map(([key]) => `${key} ${readParam(drag.el, key)}`).join(' · ');
     setStatus(labels);
     renderAll();
   } else if (drag.mode === 'tune') {
@@ -1515,9 +1532,9 @@ function onMove(e) {
       || Math.max(0.2, Math.min(4, 200 / rangeSteps));
     const steps = Math.round((drag.clientY - e.clientY) / pixelsPerStep);
     const next = boundedParam(drag.el, drag.tune.key, drag.value + steps * step);
-    if (next === drag.el.params[drag.tune.key]) return;
+    if (next === readParam(drag.el, drag.tune.key)) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
-    drag.el.params[drag.tune.key] = next;
+    writeParam(drag.el, drag.tune.key, next);
     setStatus(directValueLabel(drag.el, drag.tune));
     renderAll();
   } else if (drag.mode === 'editpoint') {

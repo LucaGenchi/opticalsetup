@@ -423,15 +423,23 @@ export const wikiEntries = [
         at the lens plane marked by the housing's flat front glass, but
         <span class="w">f</span> is now <em>derived</em> from magnification exactly the
         way the real-world formula above works in reverse: a fixed 200&nbsp;mm reference
-        tube length divided by the configured magnification. NA does real work too — it
-        sets the drawn and traced pupil diameter via the paraxial entrance-pupil estimate
-        <span class="w">2fNA</span>, so a higher-NA objective at the same magnification
-        visibly draws (and clips rays against) a wider aperture. Toggle "Show focal
-        points" (the <span class="w">ƒ</span> button) or select the objective, and a
-        marker labeled <span class="w">BFP</span> appears exactly <span class="w">f</span>
-        behind the lens plane, on the side the beam arrives from — the real coordinate to
-        position (or image, via a <a href="../telescope/">telescope</a>) a scan mirror
-        onto for correct pupil-matched scanning, not just an illustrative icon.</p>
+        tube length divided by the configured magnification. That same distance is also
+        exposed directly as <strong>working distance</strong> — the more graphically
+        useful way to ask "how far in front of the objective does it focus" — and the two
+        fields stay in sync: editing either one recomputes the other.</p>
+        <p>The drawn barrel and the traced pupil track that same focal length (twice it,
+        as a continuous stand-in for a real pupil calculation), so the blue resize handle
+        and the purple tune knob both work directly on working distance: drag outward for
+        a longer working distance and a visibly bigger objective, or use the inspector
+        fields for exact values. Numerical aperture is deliberately wired to neither — it
+        is an angular acceptance property of the optical design, not a statement about how
+        physically large the barrel is, so changing NA alone never resizes anything.
+        Toggle "Show focal points" (the <span class="w">ƒ</span> button) or select the
+        objective, and a marker labeled <span class="w">BFP</span> appears exactly
+        <span class="w">f</span> behind the lens plane, on the side the beam arrives
+        from — the real coordinate to position (or image, via a
+        <a href="../telescope/">telescope</a>) a scan mirror onto for correct
+        pupil-matched scanning, not just an illustrative icon.</p>
         <p>When this objective sits between a pulsed laser and an illuminated
         photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
         to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
@@ -444,12 +452,14 @@ export const wikiEntries = [
         doesn't model a manufacturer choice or a separate tube-lens element the way the
         standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
         reference length is simply baked into the magnification-to-focal-length formula.
-        The drawn pupil from <span class="w">2fNA</span> is the same simple paraxial
-        estimate as the real-world formula above, not a diffraction-limited or
-        aberration-corrected computation, and there's still no aberration correction,
-        immersion medium, or field-flatness modeling — a single idealized thin lens
-        wearing an objective's housing, with two genuinely precise features: the BFP
-        marker's location and the drawn pupil's size.</p>`,
+        Working distance in this simplified single-surface model is exactly that focal
+        length, front-tip to focus — a real objective's catalog working distance is
+        usually shorter, since a real design's front element doesn't sit at the effective
+        lens plane. The drawn pupil (twice the focal length) is a plain, continuous stand-in
+        for a real pupil calculation, not a diffraction-limited or aberration-corrected
+        one, and there's still no aberration correction, immersion medium, or
+        field-flatness modeling — a single idealized thin lens wearing an objective's
+        housing, with one genuinely precise feature: the BFP marker's location.</p>`,
     },
     related: ['lens', 'telescope'],
     resources: [
