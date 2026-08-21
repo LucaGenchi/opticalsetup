@@ -3041,7 +3041,7 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (type === 'objective' && objectiveMediumKey(params) !== 'air') {
     note = 'Medium and NA set a qualitative angular acceptance guide. The curved immersion bridge is schematic; it does not add refraction, focal shift, wetting, or aberration correction.';
   } else if (type === 'objective') {
-    note = 'Dry objectives are capped at NA 1.00. NA changes the qualitative acceptance guide; catalogue magnification/EFL and traced working distance remain separate.';
+    note = 'Dry objectives are capped at NA 1.00. NA only sets the qualitative acceptance guide and the pupil mark; EFL and working distance stay independent of it.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
