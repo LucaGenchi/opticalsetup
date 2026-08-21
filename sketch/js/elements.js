@@ -15,7 +15,7 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
-import { glassIndex, GLASS_OPTIONS } from './glass.js';
+import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
 import {
   objectiveFocalLength, objectiveNumericalAperture, objectivePupilDiameter,
   magnificationForWorkingDistance,
@@ -57,6 +57,18 @@ function thickLensRadii(params) {
   return { h, R1: clampR(params.r1), R2: clampR(params.r2) };
 }
 
+// The tracer ignores any intersection closer than 0.05 units along a ray, an
+// epsilon that stops a surface re-hitting itself. Two glass bodies in optical
+// contact therefore lose one of their two coincident interfaces, and the ray
+// exits into air instead of crossing into the next glass — a cemented doublet
+// traced that way comes out badly wrong (measured: 275mm against a true
+// 359mm). Holding cemented groups apart by slightly more than that epsilon
+// makes both interfaces real again. The cost is a hair of air where the
+// cement should be: at this separation it shifts a 100mm doublet's focus by
+// about 0.15%, well inside what this qualitative tracer claims anywhere else,
+// and real optical cement is a 10-20um layer of not-quite-glass regardless.
+export const MIN_CEMENT_GAP = 0.06;
+
 // Closed boundary for the glass body, plus the centre thickness actually used:
 // a strongly biconvex lens with too little centre thickness would have its two
 // faces cross at the rim, so the thickness is raised until a real edge remains.
@@ -95,6 +107,29 @@ export function thickLensCardinals(params = {}, wavelength = 587.6) {
 }
 
 const formatFocal = v => (Number.isFinite(v) ? `${Number(v.toPrecision(4))}` : '∞ (afocal)');
+
+// Names the shape the two radii actually describe. Worth showing, because the
+// standard Cartesian convention the lensmaker's equation needs is famously
+// counter-intuitive on the REAR surface: R is positive when the centre of
+// curvature lies further along the ray, so a biconvex lens is R1 > 0 with
+// R2 < 0 — the rear surface bulges outward at NEGATIVE radius. Reporting the
+// resulting shape means nobody has to hold that in their head.
+export function thickLensShapeName(params = {}) {
+  const { R1, R2 } = thickLensGeometry(params);
+  const face = (R, rear) => (R === 0 ? 'plano' : (rear ? R < 0 : R > 0) ? 'convex' : 'concave');
+  const front = face(R1, false), back = face(R2, true);
+  if (front === 'plano' && back === 'plano') return 'Plane slab';
+  if (front === 'plano' || back === 'plano') {
+    const curved = front === 'plano' ? back : front;
+    return front === 'plano' ? `Plano-${curved}` : `${curved[0].toUpperCase()}${curved.slice(1)}-plano`;
+  }
+  // Both faces bulging the same way is a bi- lens; one of each is a meniscus.
+  if (front !== back) {
+    const power = thickLensCardinals(params).f;
+    return `Meniscus (${power > 0 ? 'positive' : 'negative'})`;
+  }
+  return front === 'convex' ? 'Biconvex' : 'Biconcave';
+}
 
 function freeglassPoints(el) {
   const scale = Math.min(10, Math.max(0.1, el.params.scale || 1));
@@ -1594,6 +1629,7 @@ export const registry = {
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
       { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
       { key: 'transmission', label: 'Per-surface transmission', type: 'number', min: 0, max: 1, step: 0.01, def: 0.98 },
+      { key: 'shape', label: 'Shape', type: 'readout', readout: p => thickLensShapeName(p) },
       { key: 'efl', label: 'Focal length (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).f) },
       { key: 'bfd', label: 'Back focal distance (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).bfd) },
     ],
@@ -1910,7 +1946,7 @@ export const registry = {
     },
     surfaces(el) {
       const { left, top, right } = prismGeometry(el);
-      const data = { material: 'bk7', transmission: 0.98 };
+      const data = { material: 'nbk7', transmission: 0.98 };
       return [
         { x1: left.x, y1: left.y, x2: top.x, y2: top.y, kind: 'refract', data: { ...data, topologyKey: 'edge-0' } },
         { x1: top.x, y1: top.y, x2: right.x, y2: right.y, kind: 'refract', data: { ...data, topologyKey: 'edge-1' } },
@@ -1930,7 +1966,7 @@ export const registry = {
     params: [
       { key: 'vertices', label: 'Boundary points', type: 'boundary', def: FREEGLASS_DEFAULT, hidden: true },
       { key: 'scale', label: 'Overall scale', type: 'number', min: 0.1, max: 10, step: 0.05, def: 1 },
-      { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ['bk7', 'BK7-like dispersion']] },
+      { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ...GLASS_OPTIONS] },
       { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.5, show: p => p.material === 'constant' },
       { key: 'transmission', label: 'Per-surface transmission', type: 'number', min: 0, max: 1, step: 0.01, def: 0.98 },
     ],
@@ -1940,7 +1976,7 @@ export const registry = {
     },
     surfaces(el) {
       const points = freeglassPoints(el);
-      const material = el.params.material === 'bk7' ? 'bk7' : undefined;
+      const material = isDispersiveGlass(el.params.material) ? el.params.material : undefined;
       return boundarySegments(points).map((segment, i) => ({
         x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
         data: {
@@ -1965,9 +2001,8 @@ export const registry = {
     },
     containsLocal(el, localPoint) { return pointInBoundary(localPoint, freeglassPoints(el)); },
     refractiveIndex(el, wavelength = 550) {
-      return el.params.material === 'bk7'
-        ? 1.5046 + 4680 / (wavelength * wavelength)
-        : Math.min(2.5, Math.max(1.01, el.params.ior || 1.5));
+      return glassIndex(el.params.material, wavelength)
+        ?? Math.min(2.5, Math.max(1.01, el.params.ior || 1.5));
     },
   },
 

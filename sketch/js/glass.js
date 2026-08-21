@@ -19,12 +19,7 @@ function cauchyFrom(nd, abbe) {
   return { A: nd - B / (LAMBDA_D * LAMBDA_D), B };
 }
 
-// `legacy` pins the exact coefficients a glass shipped with before this
-// catalogue existed, so sketches that already use it keep tracing identically.
-// Its Abbe number (58.0) is a little low for real N-BK7 — prefer `nbk7` for
-// new work, and see the note in the wiki.
 const CATALOGUE = [
-  { id: 'bk7', label: 'BK7-like (legacy)', nd: 1.51815, legacy: { A: 1.5046, B: 4680 } },
   { id: 'nbk7', label: 'N-BK7 crown (nd 1.517 / V 64.2)', nd: 1.5168, abbe: 64.17 },
   { id: 'silica', label: 'Fused silica (nd 1.459 / V 67.8)', nd: 1.4585, abbe: 67.82 },
   { id: 'nsf5', label: 'N-SF5 flint (nd 1.673 / V 32.3)', nd: 1.6727, abbe: 32.25 },
@@ -32,14 +27,16 @@ const CATALOGUE = [
 ];
 
 export const GLASSES = new Map(CATALOGUE.map(g => {
-  const { A, B } = g.legacy || cauchyFrom(g.nd, g.abbe);
-  return [g.id, {
-    ...g, A, B,
-    // report the Abbe number the coefficients actually produce, not the one
-    // that was asked for — they differ for the legacy entry
-    abbe: (A + B / (LAMBDA_D * LAMBDA_D) - 1) / (B * DISPERSION_SPAN),
-  }];
+  const { A, B } = cauchyFrom(g.nd, g.abbe);
+  return [g.id, { ...g, A, B }];
 }));
+
+// The one glass that shipped before this catalogue existed. Its coefficients
+// were a rougher fit (Abbe 58.0 against N-BK7's real 64.2), so it is folded
+// into the accurate entry on load rather than kept as a second BK7 — see
+// migrateLegacyGlass() in state.js.
+export const LEGACY_GLASS_ID = 'bk7';
+export const LEGACY_GLASS_REPLACEMENT = 'nbk7';
 
 export const GLASS_OPTIONS = CATALOGUE.map(g => [g.id, GLASSES.get(g.id).label]);
 

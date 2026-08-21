@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry, thickLensCardinals, thickLensGeometry } from '../sketch/js/elements.js';
 import { traceScene } from '../sketch/js/raytrace.js';
-import { GLASSES, glassAbbe, glassIndex, isDispersiveGlass } from '../sketch/js/glass.js';
+import { GLASSES, glassAbbe, glassIndex, isDispersiveGlass, LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from '../sketch/js/glass.js';
+import { parseSketch } from '../sketch/js/state.js';
+import { MIN_CEMENT_GAP, thickLensShapeName } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 
 const X = 200;
@@ -39,13 +41,65 @@ test('catalogue glasses reproduce their published nd and Abbe number', () => {
   assert.ok(glassAbbe('nsf11') < glassAbbe('nbk7') / 2);
 });
 
-test('the legacy BK7 model is preserved bit-for-bit so existing sketches trace identically', () => {
-  for (const wl of [400, 450, 532, 550, 650, 800]) {
-    assert.equal(glassIndex('bk7', wl), 1.5046 + 4680 / (wl * wl));
-  }
-  assert.equal(isDispersiveGlass('bk7'), true);
+test('the rough legacy BK7 fit is gone, and any sketch naming it loads onto real N-BK7', () => {
+  assert.equal(GLASSES.has(LEGACY_GLASS_ID), false, 'no second, less accurate BK7 remains');
+  assert.equal(isDispersiveGlass(LEGACY_GLASS_ID), false);
   assert.equal(isDispersiveGlass('constant'), false, 'a fixed index must not be sampled for dispersion');
   assert.equal(isDispersiveGlass(undefined), false);
+
+  // A saved freeglass body still naming it must not silently fall through the
+  // select's option check and land on a constant index.
+  const raw = { type: 'freeglass', x: 0, y: 0, params: { material: LEGACY_GLASS_ID, ior: 1.5 } };
+  const [loaded] = parseSketch(
+    JSON.stringify({ app: 'optics2d', version: 1, elements: [raw], beams: [] }), registry).elements;
+  assert.equal(loaded.params.material, LEGACY_GLASS_REPLACEMENT);
+  assert.equal(isDispersiveGlass(loaded.params.material), true);
+});
+
+test('shape names follow the Cartesian sign convention the lensmaker equation needs', () => {
+  // R is positive when the centre of curvature lies further along the ray, so
+  // a biconvex lens is R1 > 0 with R2 < 0 — the rear face bulges out at a
+  // NEGATIVE radius. This readout exists so nobody has to hold that in mind.
+  const shape = (r1, r2) => thickLensShapeName({ r1, r2, thickness: 5, dia: 25.4, glass: 'nbk7' });
+  assert.equal(shape(60, -60), 'Biconvex');
+  assert.equal(shape(-60, 60), 'Biconcave');
+  assert.equal(shape(50, 0), 'Convex-plano');
+  assert.equal(shape(0, -50), 'Plano-convex');
+  assert.equal(shape(0, 50), 'Plano-concave');
+  assert.equal(shape(0, 0), 'Plane slab');
+  assert.match(shape(40, 80), /^Meniscus/, 'same-sign radii are a meniscus, not a bi- lens');
+
+  // and the names agree with the sign of the power the trace produces
+  assert.ok(thickLensCardinals({ r1: 60, r2: -60, thickness: 5, dia: 25.4, glass: 'nbk7' }).f > 0);
+  assert.ok(thickLensCardinals({ r1: -60, r2: 60, thickness: 5, dia: 25.4, glass: 'nbk7' }).f < 0);
+});
+
+test('the cement gap is just wide enough for the tracer to see both interfaces', () => {
+  // rayArcHit/rayLineHit ignore any hit closer than t = 0.05, so two bodies in
+  // true contact lose one of their coincident faces and the ray wrongly exits
+  // into air. MIN_CEMENT_GAP has to clear that epsilon.
+  assert.ok(MIN_CEMENT_GAP > 0.05, 'must exceed the tracer epsilon');
+  assert.ok(MIN_CEMENT_GAP < 0.2, 'but stay optically negligible');
+
+  const n1 = 1.5168, n2 = 1.7847, X = 0;
+  const paraxial = surfs => {
+    let y = 1, ub = 0;
+    surfs.forEach((s, i) => {
+      ub -= y * (s.n2 - s.n1) / s.R;
+      if (i < surfs.length - 1) y += (surfs[i + 1].x - s.x) / s.n2 * ub;
+    });
+    return surfs.at(-1).x + (-y / ub);
+  };
+  const cemented = paraxial([
+    { x: X - 2, R: 40, n1: 1, n2: n1 }, { x: X + 2, R: -137.7, n1, n2 },
+    { x: X + 4.5, R: 600, n1: n2, n2: 1 }]);
+  const gapped = paraxial([
+    { x: X - 2, R: 40, n1: 1, n2: n1 }, { x: X + 2, R: -137.7, n1, n2: 1 },
+    { x: X + 2 + MIN_CEMENT_GAP, R: -137.7, n1: 1, n2 },
+    { x: X + 4.5 + MIN_CEMENT_GAP, R: 600, n1: n2, n2: 1 }]);
+  const errorFraction = Math.abs(gapped - cemented) / cemented;
+  assert.ok(errorFraction < 0.005,
+    `standing in for cement costs ${(errorFraction * 100).toFixed(3)}%, which must stay well under 0.5%`);
 });
 
 test('every catalogue glass has a sane index across the whole traced spectrum', () => {

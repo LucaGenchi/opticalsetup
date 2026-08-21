@@ -3,6 +3,7 @@
 import { distinctPoints, rotPt } from './util.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 import { migrateLegacyObjectiveParams } from './objective.js';
+import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
 
 export const state = {
   elements: [],   // optical elements
@@ -164,6 +165,12 @@ function normalizeElement(raw, definitions, used) {
   let rawParams = record(raw.params) ? raw.params : {};
   if (raw.type === 'objective') {
     rawParams = migrateLegacyObjectiveParams(rawParams);
+  }
+  // The original rough BK7 fit was replaced by the real N-BK7 catalogue
+  // entry. Any sketch still naming it loads onto that instead of failing the
+  // select's option check and silently falling back to a constant index.
+  if (rawParams.material === LEGACY_GLASS_ID) {
+    rawParams = { ...rawParams, material: LEGACY_GLASS_REPLACEMENT };
   }
   if (wasLegacyLaser) {
     rawParams = migrateLegacyLaserParams(rawParams, raw.type);

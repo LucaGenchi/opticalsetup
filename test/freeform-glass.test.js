@@ -141,7 +141,7 @@ test('a freeform wedge refracts finite rays and produces wavelength-dependent di
     const laser = createElement('cwlaser', 0, 10);
     laser.params.wavelength = wavelength;
     const glass = createElement('freeglass', 180, 0);
-    glass.params.material = 'bk7';
+    glass.params.material = 'nbk7';
     glass.params.vertices = [{ x: -35, y: -30 }, { x: 35, y: 0 }, { x: -35, y: 30 }];
     const paths = traceAll([laser, glass]).filter(d => d.type === 'path');
     assert.ok(paths.length >= 1 && paths.every(finitePath));
@@ -214,7 +214,7 @@ test('a broadband source born inside BK7 glass keeps its spectrum when it exits'
   source.params.scMin = 450;
   source.params.scMax = 700;
   const glass = createElement('freeglass', 0, 0);
-  glass.params.material = 'bk7';
+  glass.params.material = 'nbk7';
   glass.params.vertices = [{ x: -100, y: -80 }, { x: 100, y: -80 }, { x: 100, y: 80 }, { x: -100, y: 80 }];
   const detector = createElement('detector', 180, 78);
   detector.params.aperture = 120;
@@ -241,7 +241,7 @@ test('broadband BK7 branches retain wavelength-specific index through TIR and ex
   source.params.scMin = 450;
   source.params.scMax = 700;
   const glass = createElement('freeglass', 0, 0);
-  glass.params.material = 'bk7';
+  glass.params.material = 'nbk7';
   glass.params.vertices = [{ x: -100, y: -10 }, { x: 100, y: -10 }, { x: 100, y: 10 }, { x: -100, y: 10 }];
 
   const paths = traceAll([source, glass]);
