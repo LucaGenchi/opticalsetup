@@ -60,6 +60,15 @@ const demoScenes = {
     mkDemo('lensc', 220, 220, 0, { f: -100, dia: 40 }),
     mkDemo('box', 340, 220, 0, { text: '', w: 2, h: 2, behavior: 'pass', fill: '#c9d4e0' }, { label: 'diverges — virtual image on the source side', showLabel: true, labelPos: 't' }),
   ],
+  thicklens: () => [
+    mkDemo('cwlaser', 60, 220, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 48 }),
+    mkDemo('thicklens', 240, 220, 0, {
+      r1: 60, r2: -60, thickness: 12, dia: 50.8, glass: 'nbk7', transmission: 1,
+    }, { label: 'f/1.2 spherical singlet', showLabel: true, labelPos: 't' }),
+    mkDemo('box', 370, 220, 0, { text: '', w: 4, h: 110, behavior: 'block', fill: '#f2f3f5' }, {
+      label: 'screen beyond the caustic', showLabel: true, labelPos: 'r',
+    }),
+  ],
   telescope: () => [
     mkDemo('cwlaser', 60, 300, 0, { beamMode: 'beam', beamWidth: 10 }),
     mkDemo('telescope', 280, 300, 0, { f1: 50, f2: 150, dia: 50.8 }),

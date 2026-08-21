@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, registry, thickLensCardinals, thickLensGeometry } from '../sketch/js/elements.js';
+import {
+  createElement, getElementMeta, MIN_CEMENT_GAP, registry, thickLensAdjustment,
+  thickLensCardinals, thickLensGeometry, thickLensShapeName,
+} from '../sketch/js/elements.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { GLASSES, glassAbbe, glassIndex, isDispersiveGlass, LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from '../sketch/js/glass.js';
 import { parseSketch } from '../sketch/js/state.js';
-import { MIN_CEMENT_GAP, thickLensShapeName } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 
 const X = 200;
@@ -54,6 +56,11 @@ test('the rough legacy BK7 fit is gone, and any sketch naming it loads onto real
     JSON.stringify({ app: 'optics2d', version: 1, elements: [raw], beams: [] }), registry).elements;
   assert.equal(loaded.params.material, LEGACY_GLASS_REPLACEMENT);
   assert.equal(isDispersiveGlass(loaded.params.material), true);
+
+  const [loadedWithoutRegistry] = parseSketch(
+    JSON.stringify({ app: 'optics2d', version: 1, elements: [raw], beams: [] })).elements;
+  assert.equal(loadedWithoutRegistry.params.material, LEGACY_GLASS_REPLACEMENT,
+    'the default parse path must apply the same migration');
 });
 
 test('shape names follow the Cartesian sign convention the lensmaker equation needs', () => {
@@ -72,6 +79,14 @@ test('shape names follow the Cartesian sign convention the lensmaker equation ne
   // and the names agree with the sign of the power the trace produces
   assert.ok(thickLensCardinals({ r1: 60, r2: -60, thickness: 5, dia: 25.4, glass: 'nbk7' }).f > 0);
   assert.ok(thickLensCardinals({ r1: -60, r2: 60, thickness: 5, dia: 25.4, glass: 'nbk7' }).f < 0);
+});
+
+test('the spherical singlet sits with foundational lenses before lens assemblies', () => {
+  const lensPalette = Object.entries(registry)
+    .filter(([, definition]) => definition.category === 'Lenses')
+    .sort(([, a], [, b]) => a.paletteOrder - b.paletteOrder)
+    .map(([type]) => type);
+  assert.deepEqual(lensPalette, ['lens', 'lensc', 'thicklens', 'telescope', 'objective']);
 });
 
 test('the cement gap is just wide enough for the tracer to see both interfaces', () => {
@@ -250,6 +265,22 @@ test('a lens too thin for its own curvature is thickened until it has a real edg
   const front = g.points.find(p => p.y > 0 && p.x < 0);
   const rear = g.points.filter(p => p.y > 0).at(-1);
   assert.ok(rear.x - front.x > 0.3, 'the rim must keep a positive edge thickness');
+});
+
+test('an impossible requested shape exposes the exact geometry the tracer realizes', () => {
+  const params = { r1: 1, r2: -1, thickness: 0.5, dia: 50.8, glass: 'nbk7' };
+  const adjusted = thickLensAdjustment(params);
+  assert.ok(adjusted, 'the impossible request must be reported as adjusted');
+  assert.ok(Math.abs(adjusted.r1) > params.dia / 2);
+  assert.ok(Math.abs(adjusted.r2) > params.dia / 2);
+  assert.ok(adjusted.thickness > params.thickness);
+
+  const readout = registry.thicklens.params.find(param => param.key === 'realizedGeometry');
+  assert.equal(readout.show(params), true);
+  assert.match(readout.readout(params), /R₁ .* R₂ .* t .* mm/);
+  assert.match(getElementMeta('thicklens', params).note, /trace uses.*Geometry used/i);
+  assert.equal(readout.show(createElement('thicklens').params), false,
+    'ordinary constructible lenses should not show a redundant adjustment row');
 });
 
 test('a flat face is traced as a plane, not a huge-radius arc', () => {

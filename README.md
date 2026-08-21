@@ -33,7 +33,8 @@ figures as SVG or PNG.
   supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
   laser, directional LED, broadband point source, mirrors (flat with reflectivity,
   convex/concave, true parabolic,
-  galvo), lenses, telescopes, objectives, dichroics, filters, beamsplitters,
+  galvo), paraxial lenses, spherical thick singlets, telescopes, objectives,
+  dichroics, filters, beamsplitters,
   polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
   diffusers, wavefront shapers (SLM, DMD, deformable mirror) with composable
   optical functions, modulators (AOM/AOTF/EOM/chopper), mechanical pulse-delay lines,
@@ -69,8 +70,10 @@ figures as SVG or PNG.
   gain/saturation; cameras provide a 1D profile whose bin colors show the qualitative
   wavelength mixture at each position. Scalar readouts use arbitrary relative
   ray-weight units rather than implying a calibrated percentage.
-- **Physics that responds**: thin-lens/paraxial transfer, spectral band arithmetic at
-  filters, Malus's law, grating equation, Cauchy prism dispersion, cavity round trips
+- **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets
+  with exact circular-surface intersections and catalogue-glass dispersion,
+  spectral band arithmetic at filters, Malus's law, grating equation, Cauchy
+  prism dispersion, cavity round trips
   with partial mirrors, image formation with magnification (arrow / letter F / tree
   objects and their computed images).
 - **Examples menu**: pedagogical image-formation setups (telescope, microscope,
@@ -98,7 +101,9 @@ figures as SVG or PNG.
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
 design package. It models ray paths, bounded relative power, spectral bands, Stokes
 polarization, thin-lens elements, refractive boundaries, timed pulse trains, and
-simple detector responses. It does not model coherent carrier phase, interference,
+simple detector responses. Thick singlets use a 2D meridional section with spherical
+or flat faces; they do not model skew rays, aspheres, coatings, or calibrated off-axis
+aberrations. The app does not model coherent carrier phase, interference,
 diffraction-limited propagation, material dispersion beyond the stated simplified
 models, or laboratory-specific calibration. Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
@@ -116,8 +121,10 @@ its internal thin-lens focus from a 200 mm reference tube lens and estimates the
 entrance pupil from NA; this is not a diffraction or immersion-medium model.
 
 Freeform glass is a directly editable boundary of straight segments and exact
-three-point circular arcs with constant-index or qualitative BK7-like dispersion,
-per-surface transmission, source-inside handling, and total internal reflection.
+three-point circular arcs with constant index or selectable catalogue-glass,
+two-term Cauchy dispersion. Those fits reproduce each glass's d-line index and Abbe
+number but are only qualitative outside the visible reference lines. The model also
+supports per-surface transmission, source-inside handling, and total internal reflection.
 Clicking adds a straight anchor; pressing, dragging, and releasing adds a point on
 an arc plus its next anchor. Exact corner hits stop safely because their surface
 normal is ambiguous. Nested or overlapping glass bodies are not surface-merged,

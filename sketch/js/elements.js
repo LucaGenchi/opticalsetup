@@ -92,6 +92,24 @@ export function thickLensGeometry(params = {}) {
   return { points, h, R1, R2, d, xv1, xv2, span: Math.max(...xs) - Math.min(...xs) };
 }
 
+// Some requested combinations cannot describe a closed spherical singlet: a
+// radius smaller than the semi-aperture has no real circular edge, while too
+// little centre thickness makes the two faces cross. The geometry stays safe
+// by realizing the nearest constructible shape; expose that adjustment so the
+// inspector never lets the requested numbers silently disagree with the trace.
+export function thickLensAdjustment(params = {}) {
+  const g = thickLensGeometry(params);
+  const requested = {
+    r1: Number(params.r1) || 0,
+    r2: Number(params.r2) || 0,
+    thickness: Number(params.thickness) || 0.5,
+  };
+  const differs = Math.abs(g.R1 - requested.r1) > 1e-9
+    || Math.abs(g.R2 - requested.r2) > 1e-9
+    || Math.abs(g.d - requested.thickness) > 1e-9;
+  return differs ? { r1: g.R1, r2: g.R2, thickness: g.d } : null;
+}
+
 // Paraxial summary of what the surfaces add up to: effective focal length by
 // the lensmaker's equation with the thickness term, and the back focal
 // distance measured from the rear vertex. Reported to the user rather than
@@ -107,6 +125,11 @@ export function thickLensCardinals(params = {}, wavelength = 587.6) {
 }
 
 const formatFocal = v => (Number.isFinite(v) ? `${Number(v.toPrecision(4))}` : '∞ (afocal)');
+const formatGeometryValue = v => Number(v.toPrecision(4)).toString().replace('-', '−');
+const formatRealizedGeometry = params => {
+  const g = thickLensGeometry(params);
+  return `R₁ ${formatGeometryValue(g.R1)} · R₂ ${formatGeometryValue(g.R2)} · t ${formatGeometryValue(g.d)} mm`;
+};
 
 // Names the shape the two radii actually describe. Worth showing, because the
 // standard Cartesian convention the lensmaker's equation needs is famously
@@ -1620,7 +1643,7 @@ export const registry = {
   // of it for free rather than being painted on. See thickLensCardinals() for
   // the paraxial summary shown in the inspector.
   thicklens: {
-    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 4,
+    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 2,
     aliases: ['real lens', 'spherical lens', 'singlet', 'biconvex', 'plano-convex', 'meniscus', 'aberration'],
     params: [
       { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 60, slider: false },
@@ -1630,8 +1653,12 @@ export const registry = {
       { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
       { key: 'transmission', label: 'Per-surface transmission', type: 'number', min: 0, max: 1, step: 0.01, def: 0.98 },
       { key: 'shape', label: 'Shape', type: 'readout', readout: p => thickLensShapeName(p) },
-      { key: 'efl', label: 'Focal length (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).f) },
-      { key: 'bfd', label: 'Back focal distance (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).bfd) },
+      {
+        key: 'realizedGeometry', label: 'Geometry used', type: 'readout',
+        show: p => Boolean(thickLensAdjustment(p)), readout: p => formatRealizedGeometry(p),
+      },
+      { key: 'efl', label: 'Focal length at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).f) },
+      { key: 'bfd', label: 'Back focal distance at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).bfd) },
     ],
     size_: el => { const g = thickLensGeometry(el.params); return { w: g.span + 6, h: 2 * g.h + 6 }; },
     svg(el) {
@@ -1640,9 +1667,9 @@ export const registry = {
     },
     surfaces(el) {
       const g = thickLensGeometry(el.params);
-      // Only the two optical faces refract. The rim is left non-interacting
-      // rather than absorbing, matching how `freeglass` treats its boundary —
-      // a ray that misses the clear aperture simply isn't collected.
+      // The two spherical faces and their closing rim form one glass boundary.
+      // Axial rays outside that boundary miss the clear aperture; a ray that
+      // actually reaches the physical rim still exits with the correct medium.
       return boundarySegments(g.points).map((segment, i) => ({
         x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
         data: {
@@ -1663,7 +1690,7 @@ export const registry = {
   },
 
   telescope: {
-    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 2, size: { w: 174, h: 62 },
+    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 3, size: { w: 174, h: 62 },
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -1694,7 +1721,7 @@ export const registry = {
     // (sample side) is the narrow tip and glass at local x=+16, which is
     // also where the single thin-lens surface actually bends rays — so the
     // drawing and the physics agree on which end focuses light.
-    label: 'Objective', category: 'Lenses', paletteOrder: 3, size: { w: 36, h: 40 },
+    label: 'Objective', category: 'Lenses', paletteOrder: 4, size: { w: 36, h: 40 },
     snapPt: { x: 16, y: 0 }, // lens plane (sample-facing front tip)
     size_: el => ({ w: 36, h: objectivePupilDiameter(el.params) + 20 }),
     params: [
@@ -3038,14 +3065,15 @@ const ELEMENT_HELP = {
   oap: 'Reflects from segmented parabolic geometry toward the configured focus.',
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
+  thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
   objective: 'Uses objective magnification and NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways — editing either updates the other, and the drawn barrel tracks it. NA sets only the qualitative acceptance, never the drawn size, and can be handed to the 2PP lab when this objective is on the traced sample path.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
   grating: 'Creates selected diffraction orders using the grating equation.',
-  prism: 'Refracts through all three drawn BK7-like boundaries with wavelength-dependent dispersion.',
-  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant-index or BK7-like qualitative dispersion; overlapping glass bodies are not surface-merged.',
+  prism: 'Refracts through all three drawn N-BK7 boundaries with wavelength-dependent dispersion.',
+  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion; overlapping glass bodies are not surface-merged.',
   diffuser: 'Spreads incident light into a configurable angular fan.',
   glassrod: 'Refracts at every glass-air boundary and supports total internal reflection.',
   polarizer: 'Applies a linear polarization axis and Malus-law attenuation.',
@@ -3113,6 +3141,11 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
   } else if (DIAGRAM_ONLY.has(type)) {
     note = 'This element is intentionally visual and never changes traced rays.';
+  } else if (type === 'thicklens') {
+    const adjusted = thickLensAdjustment(params);
+    note = adjusted
+      ? `Requested radii or thickness cannot close at this aperture. The trace uses ${formatRealizedGeometry(params)}; see Geometry used below.`
+      : 'A 2D meridional singlet with spherical or flat faces and visible-band catalogue approximations. Aspheres, skew rays, coatings, and calibrated off-axis aberrations are not modeled.';
   } else if (type === 'freeglass') {
     note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
   } else if (type === 'stage' && params.voxelPreview) {

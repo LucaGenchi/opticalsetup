@@ -991,7 +991,7 @@ function interact(ray, hit) {
     case 'refract': {
       const materialId = s.el?.id || null;
       const inside = materialId !== null && ray.medium === materialId;
-      // BK7-like glass is dispersive: a broadband ray must be sampled across
+      // Catalogue glass is dispersive: a broadband ray must be sampled across
       // its bandwidth so each wavelength refracts by its own n(λ) and the
       // beam actually fans out (e.g. white light through a prism). A fixed
       // user-set index (glass rods) has no dispersion to sample.

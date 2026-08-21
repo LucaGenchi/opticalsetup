@@ -13,6 +13,12 @@ export const examples = [
     "slug": "optical-setup-pulsed-component-panorama"
   },
   {
+    "group": "Lens Physics",
+    "name": "Spherical aberration — ideal lens vs spherical singlet",
+    "path": "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",
+    "slug": "spherical-aberration-ideal-lens-vs-spherical-singlet"
+  },
+  {
     "group": "Optics Bench",
     "name": "Mach–Zehnder interferometer",
     "path": "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",

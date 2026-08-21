@@ -185,7 +185,7 @@ function normalizeElement(raw, definitions, used) {
     }
   } else {
     if (!record(raw.params)) throw new Error(`Element ${raw.type} has invalid parameters`);
-    Object.assign(params, raw.params);
+    Object.assign(params, rawParams);
   }
   // Params added after a sketch format was already in the wild can declare a
   // `migrate` hook. It runs only when the saved element genuinely lacks the
@@ -272,7 +272,12 @@ export function parseSketch(text, definitions = null) {
 export function onChange(fn) { listeners.push(fn); }
 
 export function changed() {
-  try { localStorage.setItem(AUTOSAVE_KEY, serialize()); } catch (_) { /* ignore */ }
+  // Wiki/example/community embeds are deliberately interactive enough to let
+  // readers try parameters, but they must never replace the user's real
+  // workbench autosave when both pages share the same origin.
+  if (!state.demoMode) {
+    try { localStorage.setItem(AUTOSAVE_KEY, serialize()); } catch (_) { /* ignore */ }
+  }
   for (const fn of listeners) fn();
 }
 

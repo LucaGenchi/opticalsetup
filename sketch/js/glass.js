@@ -1,11 +1,10 @@
 // Optical glass catalogue.
 //
 // Each glass is a two-term Cauchy fit, n(λ) = A + B/λ² with λ in nm. That is
-// enough to reproduce a glass's two defining catalogue numbers exactly — its
-// index at the d line (587.6 nm) and its Abbe number V = (nd−1)/(nF−nC) — which
-// between them are what set focal length and axial colour. A full Sellmeier fit
-// would add accuracy in the deep blue and the infrared that this qualitative
-// tracer has no way to make use of.
+// enough to reproduce a glass's two headline catalogue numbers exactly — its
+// index at the d line (587.6 nm) and its Abbe number V = (nd−1)/(nF−nC). This is
+// a compact visible-band approximation, not a substitute for a glass's full
+// Sellmeier curve, absorption band, or temperature-dependent catalogue data.
 //
 // A and B are derived from (nd, V) rather than typed in, so a new glass only
 // needs the two numbers any catalogue prints on its front page:
@@ -33,8 +32,8 @@ export const GLASSES = new Map(CATALOGUE.map(g => {
 
 // The one glass that shipped before this catalogue existed. Its coefficients
 // were a rougher fit (Abbe 58.0 against N-BK7's real 64.2), so it is folded
-// into the accurate entry on load rather than kept as a second BK7 — see
-// migrateLegacyGlass() in state.js.
+// into the accurate entry on load rather than kept as a second BK7 — see the
+// legacy-glass migration in state.js.
 export const LEGACY_GLASS_ID = 'bk7';
 export const LEGACY_GLASS_REPLACEMENT = 'nbk7';
 
