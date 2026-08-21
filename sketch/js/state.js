@@ -169,7 +169,13 @@ function normalizeElement(raw, definitions, used) {
     rawParams = migrateLegacyLaserParams(rawParams, raw.type);
   }
   if (def) {
-    for (const spec of def.params || []) params[spec.key] = normalizeParam(rawParams[spec.key], spec);
+    for (const spec of def.params || []) {
+      // `readout`/`derived` params (e.g. the objective's Working distance)
+      // have no storage of their own — always computed fresh from other
+      // params — so there is nothing to normalize or persist for them.
+      if (spec.type === 'readout' || spec.type === 'derived') continue;
+      params[spec.key] = normalizeParam(rawParams[spec.key], spec);
+    }
   } else {
     if (!record(raw.params)) throw new Error(`Element ${raw.type} has invalid parameters`);
     Object.assign(params, raw.params);
@@ -179,6 +185,7 @@ function normalizeElement(raw, definitions, used) {
   // key, deriving a value from whatever the old format did carry — the
   // plain default would otherwise erase that evidence before anyone reads it.
   for (const spec of def?.params || []) {
+    if (spec.type === 'readout' || spec.type === 'derived') continue;
     if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params);
   }
   const rot = def?.rotatable === false ? 0 : finite(raw.rot) ? ((raw.rot % 360) + 360) % 360 : 0;

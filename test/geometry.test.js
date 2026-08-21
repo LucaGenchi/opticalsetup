@@ -110,26 +110,35 @@ test('the microscope element is gone — it was a grey box hiding an unaimable o
   assert.equal(registry.microscope, undefined);
 });
 
-test('objectives expose magnification and NA while deriving thin-lens geometry internally', () => {
+test('objectives expose magnification, working distance and NA while deriving thin-lens geometry internally', () => {
   const objective = createElement('objective');
-  assert.deepEqual(registry.objective.params.map(param => param.key), ['magnification', 'na', 'transEff']);
+  assert.deepEqual(registry.objective.params.map(param => param.key), ['magnification', 'workingDistance', 'na', 'transEff']);
   assert.doesNotMatch(registry.objective.params.map(param => param.label).join(' '), /focal/i);
   assert.equal(Object.hasOwn(objective.params, 'f'), false);
   assert.equal(Object.hasOwn(objective.params, 'aperture'), false);
+  // Working distance has no storage of its own — it's a `derived` param.
+  assert.equal(Object.hasOwn(objective.params, 'workingDistance'), false);
   assert.equal(objective.params.magnification, 20);
   assert.equal(objective.params.na, 1);
 
   let surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.data.f, 10);
   assert.equal(surface.data.objectiveNA, 1);
+  // The drawn/traced pupil (2x focal length) tracks magnification/working
+  // distance, so it stays a genuinely resizable body on the canvas — but NA
+  // alone must never move it (PR #57's actual complaint: NA is an angular
+  // acceptance property, not a statement about barrel size).
   assert.equal(surface.y2 - surface.y1, 20);
 
-  objective.params.magnification = 40;
   objective.params.na = 1.4;
   surface = registry.objective.surfaces(objective)[0];
-  assert.equal(surface.data.f, 5);
   assert.equal(surface.data.objectiveNA, 1.4);
-  assert.ok(Math.abs(surface.y2 - surface.y1 - 14) < 1e-9);
+  assert.equal(surface.y2 - surface.y1, 20, 'NA alone must not resize the pupil');
+
+  objective.params.magnification = 40;
+  surface = registry.objective.surfaces(objective)[0];
+  assert.equal(surface.data.f, 5);
+  assert.ok(Math.abs(surface.y2 - surface.y1 - 10) < 1e-9, 'magnification does resize the pupil (2x focal length)');
 });
 
 test('detectors report qualitative signal, spectrum, polarization, and spot span', () => {

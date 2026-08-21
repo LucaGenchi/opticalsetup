@@ -14,10 +14,15 @@ test('every component exposes a resize handle backed by a real size parameter', 
       const before = getSize(el);
       const spec = registry[type].params.find(param => param.key === key);
       assert.ok(spec, `${type} resize key ${key} belongs to its registry schema`);
-      const current = el.params[key];
+      // A `derived` param (e.g. the objective's Working distance) has no
+      // storage of its own — read/write it through its declared get/set
+      // instead of the raw params object, same as inspector.js and canvas.js
+      // do for on-canvas dragging.
+      const current = spec.type === 'derived' ? spec.get(el.params) : el.params[key];
       const candidate = Number.isFinite(spec.max) && spec.max !== current
         ? spec.max : Number.isFinite(spec.min) && spec.min !== current ? spec.min : current * 1.5;
-      el.params[key] = candidate;
+      if (spec.type === 'derived') spec.set(el.params, candidate);
+      else el.params[key] = candidate;
       const after = getSize(el);
       if (axis === 'y') assert.notEqual(after.h, before.h, `${type} height follows ${key}`);
       if (axis === 'x') assert.notEqual(after.w, before.w, `${type} width follows ${key}`);

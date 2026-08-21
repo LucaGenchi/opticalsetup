@@ -17,6 +17,7 @@ import {
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import {
   objectiveFocalLength, objectiveNumericalAperture, objectivePupilDiameter,
+  magnificationForWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
 
@@ -1555,6 +1556,19 @@ export const registry = {
     size_: el => ({ w: 36, h: objectivePupilDiameter(el.params) + 20 }),
     params: [
       { key: 'magnification', label: 'Magnification (×)', type: 'number', min: 1, max: 200, step: 0.1, def: 20 },
+      {
+        // The same thin-lens focal length as Magnification (f = 200 mm tube /
+        // M), just in the unit that actually answers "how far in front of the
+        // objective does it focus" — a `derived` param has no storage of its
+        // own: its value is always freshly computed from magnification for
+        // display, and committing an edit here writes back through `set`
+        // instead of storing itself. That's what keeps it from ever going
+        // stale when magnification changes some other way (the on-canvas
+        // tune knob, a demo scene, a loaded sketch).
+        key: 'workingDistance', label: 'Working distance (mm)', type: 'derived', min: 1, max: 200, step: 0.1,
+        get: p => Math.round(objectiveFocalLength(p) * 100) / 100,
+        set: (p, v) => { p.magnification = magnificationForWorkingDistance(v); },
+      },
       { key: 'na', label: 'Numerical aperture (NA)', type: 'number', min: 0.05, max: 1.49, step: 0.01, def: 1 },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
     ],
@@ -2794,7 +2808,11 @@ const DIRECT = {
   lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
-  objective: { resize: { y: 'na' }, tune: { key: 'magnification', short: 'M' } },
+  // Both handles drive working distance directly (dragging outward = a
+  // longer working distance = a visibly bigger barrel — magnification moves
+  // with it, inversely, as the same underlying quantity). NA is deliberately
+  // wired to neither: it must never resize the body (see objective.js).
+  objective: { resize: { y: 'workingDistance' }, tune: { key: 'workingDistance', short: 'WD' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
@@ -2853,7 +2871,7 @@ export function getDirectManipulation(el) {
   if (rawTune && (!rawTune.when || rawTune.when(el.params))) {
     const key = resolveKey(rawTune.key);
     const param = (def.params || []).find(spec => spec.key === key);
-    if (param && (param.type === 'number' || param.type === 'optsize')) tune = { ...rawTune, key, param };
+    if (param && (param.type === 'number' || param.type === 'optsize' || param.type === 'derived')) tune = { ...rawTune, key, param };
   }
   return resize || tune ? { resize, tune } : null;
 }
@@ -2876,7 +2894,7 @@ const ELEMENT_HELP = {
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Uses objective magnification and NA. Magnification derives an internal thin-lens focus from a 200 mm reference tube lens; NA sets the qualitative entrance pupil and can be handed to the 2PP lab when this objective is on the traced sample path.',
+  objective: 'Uses objective magnification and NA. Magnification and working distance are the same internal thin-lens focus (a 200 mm reference tube lens ÷ magnification) shown two ways — editing either updates the other, and the drawn barrel tracks it. NA sets only the qualitative acceptance, never the drawn size, and can be handed to the 2PP lab when this objective is on the traced sample path.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
@@ -3059,6 +3077,9 @@ export function labelSVG(el) {
 export function createElement(type, x = 0, y = 0) {
   const d = registry[type];
   const params = {};
-  for (const p of d.params || []) params[p.key] = Array.isArray(p.def) ? JSON.parse(JSON.stringify(p.def)) : p.def;
+  for (const p of d.params || []) {
+    if (p.type === 'readout' || p.type === 'derived') continue; // computed on demand, never stored
+    params[p.key] = Array.isArray(p.def) ? JSON.parse(JSON.stringify(p.def)) : p.def;
+  }
   return { id: uid(), type, x, y, rot: 0, label: '', showLabel: false, params };
 }
