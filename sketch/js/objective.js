@@ -121,7 +121,7 @@ export function objectiveMaximumNA(params = {}) {
   return OBJECTIVE_MEDIA[key].maxNA;
 }
 
-export const OBJECTIVE_NA_DEFAULT = 0.6;
+export const OBJECTIVE_NA_DEFAULT = 0.65;
 
 export function objectiveNumericalAperture(params = {}, key = 'na') {
   return clamp(
@@ -209,8 +209,12 @@ export function objectiveBackFocalPlaneX(params = {}) {
 // backwards whenever a short working distance pulls the lens plane behind the
 // default rear face. Only the straight rear section lengthens — the tapered
 // nose keeps the shape an objective is recognised by.
-export const OBJECTIVE_DEFAULT_BACK_X = -16;
-export const OBJECTIVE_SHOULDER_X = -2;
+//
+// The nose spans SHOULDER_X..FRONT_X (9 mm) and the straight section
+// DEFAULT_BACK_X..SHOULDER_X (28 mm): a stubby taper on a long body, which is
+// what a real objective looks like from the side.
+export const OBJECTIVE_DEFAULT_BACK_X = -21;
+export const OBJECTIVE_SHOULDER_X = 7;
 export function objectiveBackX(params = {}) {
   return Math.min(OBJECTIVE_DEFAULT_BACK_X, objectiveLensPlaneX(params) - 4);
 }

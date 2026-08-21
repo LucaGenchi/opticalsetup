@@ -128,7 +128,7 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   assert.equal(objective.params.workingDistance, 10);
   assert.equal(objective.params.frontAperture, 20);
   assert.equal(objective.params.immersion, 'air');
-  assert.equal(objective.params.na, 0.6);
+  assert.equal(objective.params.na, 0.65);
   assert.equal(objective.params.showAcceptance, false, 'the NA sector is an opt-in overlay');
 
   let surface = registry.objective.surfaces(objective)[0];
@@ -137,14 +137,14 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   assert.equal(surface.data.f, 10, 'the traced plane has the objective EFL');
   assert.equal(surface.data.effectiveFocalLength, 10);
   assert.equal(surface.data.workingDistance, 10);
-  assert.equal(surface.data.objectiveNA, 0.6);
+  assert.equal(surface.data.objectiveNA, 0.65);
   assert.equal(surface.data.objectiveMediumIndex, 1);
   // at EFL = WD the equivalent plane happens to land on the front tip
   assert.equal(surface.x1, 16);
   // Its clear aperture is the rated back pupil 2*f*NA, which is what makes
   // NA actually set the convergence angle instead of only labelling it.
-  assert.equal(surface.data.pupilRadius, 6, 'pupil radius = 10 mm * 0.6');
-  assert.ok(Math.abs((surface.y2 - surface.y1) - 12) < 0.05, 'the bore matches the rated pupil');
+  assert.equal(surface.data.pupilRadius, 6.5, 'pupil radius = 10 mm * 0.65');
+  assert.ok(Math.abs((surface.y2 - surface.y1) - 13) < 0.05, 'the bore matches the rated pupil');
 
   objective.params.na = 1.4;
   surface = registry.objective.surfaces(objective)[0];

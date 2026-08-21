@@ -117,7 +117,7 @@ test('objective normalization returns an independent copy with valid medium, ind
   assert.deepEqual(normalizeObjectiveParams(null), {
     immersion: 'air',
     immersionIndex: 1.333,
-    na: 0.6,
+    na: 0.65,
     efl: 10,
     workingDistance: 10,
     frontAperture: 20,

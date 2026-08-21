@@ -6,8 +6,11 @@ import { applyInput, initInspector, renderInspector } from '../sketch/js/inspect
 import { detectorReading, objectivePupilFill, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import {
+  OBJECTIVE_DEFAULT_BACK_X,
   OBJECTIVE_FRONT_X,
+  OBJECTIVE_SHOULDER_X,
   objectiveAcceptanceHalfAngleDeg,
+  objectiveMagnification,
   objectiveBackFocalPlaneX,
   objectiveBackX,
   objectiveLensPlaneX,
@@ -212,7 +215,7 @@ test('working-distance edits move focus without changing EFL or NA', () => {
   applyInput({ dataset: { p: 'workingDistance' }, type: 'number', value: '25' }, true);
   assert.equal(objective.params.workingDistance, 25);
   assert.equal(objective.params.efl, 40, 'WD must not rewrite EFL');
-  assert.equal(objective.params.na, 0.6);
+  assert.equal(objective.params.na, 0.65);
   const surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.x1, 1, 'lens plane = 16 + 25 - 40');
   assert.equal(surface.x1 + surface.data.f, 41, 'front boundary 16 mm + 25 mm WD');
@@ -377,4 +380,34 @@ test('a scan pivoted on the BFP marker never vignettes; one pivoted elsewhere do
     throughput(stopWorldX - 120, 4) < straight / 2,
     'a pivot 120 mm short of the BFP walks the beam off the pupil and is cut',
   );
+});
+
+test('the barrel is a stubby taper on a long straight body, and only the body grows', () => {
+  const taper = OBJECTIVE_FRONT_X - OBJECTIVE_SHOULDER_X;
+  const body = OBJECTIVE_SHOULDER_X - OBJECTIVE_DEFAULT_BACK_X;
+  assert.equal(taper, 9, 'the tapered nose is short');
+  assert.equal(body, 28, 'the straight section carries the length');
+
+  const objective = createElement('objective');
+  assert.equal(objectiveBackX(objective.params), OBJECTIVE_DEFAULT_BACK_X);
+
+  // A short working distance pushes the lens plane back; the nose must not
+  // stretch with it, only the straight section.
+  objective.params.efl = 40;
+  objective.params.workingDistance = 2;
+  const grown = objectiveBackX(objective.params);
+  assert.ok(grown < OBJECTIVE_DEFAULT_BACK_X, 'the barrel grew');
+  assert.equal(OBJECTIVE_FRONT_X - OBJECTIVE_SHOULDER_X, taper, 'the nose is fixed geometry');
+  assert.match(registry.objective.svg(objective), new RegExp(`L ${OBJECTIVE_SHOULDER_X},-`), 'and it is drawn at the fixed shoulder');
+  assert.ok(registry.objective.svg(objective).includes(`L ${grown},-`), 'while the body reaches the grown rear face');
+});
+
+test('a fresh objective is a 20x dry NA 0.65 with full transmission', () => {
+  const objective = createElement('objective');
+  assert.equal(objective.params.efl, 10);
+  assert.equal(objectiveMagnification(objective.params), 20);
+  assert.equal(objective.params.immersion, 'air');
+  assert.equal(objective.params.na, 0.65);
+  assert.equal(objective.params.transEff, 100);
+  assert.equal(objective.params.workingDistance, 10, 'WD starts equal to EFL');
 });
