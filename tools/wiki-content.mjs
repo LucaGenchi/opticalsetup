@@ -416,17 +416,38 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>The objective keeps four different catalogue-like dimensions separate:
-        magnification, working distance, front aperture, and rated numerical aperture.
-        Its physical sample-facing front boundary is also its one trace boundary. At that
-        boundary OpticalSetup applies a qualitative <strong>black-box focus map</strong>
-        whose mapping distance is the stored working distance: a collimated input is
-        directed toward the nominal specimen plane that far beyond the front tip.
-        Magnification does not move this focus or change traced ray directions. It only
-        produces the displayed effective-focal-length metadata from a fixed 200&nbsp;mm
-        reference tube length and contributes to the first-order pupil estimate. Editing
-        working distance changes the focus map without rewriting magnification; editing
-        magnification changes the catalogue readout without rewriting working distance.</p>
+        <p>The objective is set by its <strong>effective focal length (EFL)</strong> — the
+        focal length of the whole multi-element assembly treated as a single equivalent
+        lens — together with an independent <strong>working distance</strong>, front
+        aperture, and rated numerical aperture. Magnification is not something you type
+        in: it is <em>reported</em> from the EFL against a 200&nbsp;mm reference tube
+        lens, because magnification is a property of the objective plus whichever tube
+        lens you actually place in the sketch, not of the objective alone.</p>
+        <p>OpticalSetup traces the objective as one equivalent thin lens of focal length
+        EFL, but it does <em>not</em> put that lens at the front tip. The lens plane sits
+        one focal length short of the nominal focus — at the front tip plus
+        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for a typical objective
+        means somewhere inside the barrel. Placing it there is what makes three things
+        true at the same time. Collimated
+        light from the tube-lens side focuses exactly one working distance beyond the
+        physical front tip. The equivalent lens still has the objective's real focal
+        length, so an external 200&nbsp;mm tube lens really does produce the reported
+        magnification. And the plane one EFL behind the lens is a genuine
+        <strong>back focal plane</strong>: light focused there leaves the objective
+        collimated, which is exactly what widefield (Köhler-style) illumination needs and
+        what a laser-scanning relay must image the scan mirror onto. The BFP is drawn as
+        a labelled marker, and it is a traced conjugate rather than an annotation. For a
+        short working distance that lens plane falls inside the barrel, which is where a
+        real objective's principal plane and pupil actually sit; for a long focal length
+        the barrel is drawn longer so it still contains its own optics. A
+        long-working-distance objective with WD&nbsp;&gt;&nbsp;EFL puts the equivalent
+        plane in front of the tip — real long-working-distance objectives are built that
+        way — and it is then drawn dashed and faint, because out there it is an
+        equivalent plane, not a piece of glass.</p>
+        <p>The purple tune control changes EFL and the blue resize handle changes the
+        front aperture. Editing working distance moves the lens plane without touching
+        EFL or the reported magnification; editing EFL moves it the other way and changes
+        the reported magnification without touching working distance.</p>
         <p>The objective owns its medium; there is no separately placeable liquid
         component. Dry/air caps rated NA at 1.00, water at 1.27, oil at 1.49, and a
         custom medium at the lesser of its index <span class="w">n</span> and 1.49.
@@ -448,18 +469,16 @@ export const wikiEntries = [
         a dry objective also shows the guide without a liquid bridge. Older high-NA
         sketches that never recorded a medium remain explicitly unresolved until one is
         chosen.</p>
-        <p>Rated NA now has two visible consequences. The dashed sector shows the
+        <p>Rated NA has two visible consequences. The dashed sector shows the
         configured half-angle at the actual contact or nominal focus, and the tracer
-        qualitatively rejects object-side rays outside that cone. This is angular clipping
-        at the same black-box front boundary, not a high-NA or vector-diffraction model.
-        The separate front-aperture setting controls the objective outline and the blue
-        resize handle; the purple tune control changes working distance. A small pupil
-        mark uses the first-order diameter estimate <span class="w">2fNA</span>, so NA
-        or magnification can change that mark without pretending to resize the housing or
-        alter traced focusing. Toggle "Show focal points" (the <span class="w">ƒ</span>
-        button) or select the objective to see its nominal <span class="w">WD focus</span>.
-        OpticalSetup draws no BFP marker because this black-box model has no represented
-        internal objective plane or tube lens from which to locate one.</p>
+        qualitatively rejects object-side rays outside that cone — angular clipping on the
+        sample side of the equivalent lens, not a high-NA or vector-diffraction model. A
+        small pupil mark uses the first-order diameter estimate <span class="w">2fNA</span>,
+        so NA or EFL can change that mark without pretending to resize the housing.
+        Toggle "Show focal points" (the <span class="w">ƒ</span> button) or select the
+        objective to see both of its marked planes: <span class="w">BFP</span> on the
+        tube-lens side and the nominal <span class="w">WD focus</span> on the sample
+        side.</p>
         <p>When this objective sits between a pulsed laser and an illuminated
         photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
         to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
@@ -474,9 +493,13 @@ export const wikiEntries = [
         reference length is used only for effective-focal-length metadata and the
         first-order pupil estimate; it does not define the trace boundary or focus map.
         Working distance is an independent saved property here, not a value predicted by
-        magnification or immersion medium. The black-box map does not expose an equivalent
-        principal plane or locate a BFP, and it does not model a compound objective's
-        conjugates. The pupil mark and NA clipping remain qualitative and do not model
+        magnification or immersion medium: a real catalogue pairs them through the internal
+        design, and OpticalSetup deliberately lets you keep a visible working distance on a
+        high-power objective so the sketch stays readable. The equivalent lens plane and the
+        back focal plane it defines are first-order stand-ins for a compound objective's
+        principal plane and pupil, not the real internal conjugates: one plane cannot
+        reproduce a real objective's aberration correction, field curvature, or the axial
+        spacing of its actual groups. The pupil mark and NA clipping remain qualitative and do not model
         diffraction, aberration correction, internal stops, or polarization at high
         angle. The drawn meniscus does not solve wetting, contact angle, surface tension,
         volume, or gravity; it adds no refracting boundary and does not model cover glass,

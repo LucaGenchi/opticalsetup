@@ -86,7 +86,7 @@ test('objective normalization returns an independent copy with valid medium, ind
     immersion: 'custom',
     immersionIndex: 1,
     na: 1,
-    magnification: 40,
+    efl: 5,
     workingDistance: 5,
     frontAperture: 10,
   });
@@ -101,6 +101,7 @@ test('objective normalization returns an independent copy with valid medium, ind
     immersion: 'air',
     immersionIndex: 1.333,
     na: 1,
+    efl: 10,
     workingDistance: 10,
     frontAperture: 20,
   });
@@ -108,6 +109,7 @@ test('objective normalization returns an independent copy with valid medium, ind
     immersion: 'legacy',
     immersionIndex: 1.333,
     na: 1.4,
+    efl: 10,
     workingDistance: 10,
     frontAperture: 20,
   });
@@ -115,6 +117,7 @@ test('objective normalization returns an independent copy with valid medium, ind
     immersion: 'air',
     immersionIndex: 1.333,
     na: 1,
+    efl: 10,
     workingDistance: 10,
     frontAperture: 20,
   });
@@ -125,10 +128,10 @@ test('legacy migration marks the missing medium without changing the saved NA', 
   const unresolved = { magnification: 20, na: 1.4, transEff: 90 };
 
   assert.deepEqual(migrateLegacyObjectiveParams(dry), {
-    ...dry, workingDistance: 10, frontAperture: 20, immersion: 'air',
+    ...dry, efl: 10, workingDistance: 10, frontAperture: 20, immersion: 'air',
   });
   assert.deepEqual(migrateLegacyObjectiveParams(unresolved), {
-    ...unresolved, workingDistance: 10, frontAperture: 20, immersion: 'legacy',
+    ...unresolved, efl: 10, workingDistance: 10, frontAperture: 20, immersion: 'legacy',
   });
   assert.equal(Object.hasOwn(dry, 'immersion'), false);
   assert.equal(Object.hasOwn(unresolved, 'immersion'), false);
@@ -143,6 +146,7 @@ test('focal/aperture migration classifies the derived NA and preserves an author
     f: 20,
     aperture: 40,
     magnification: 10,
+    efl: 20,
     na: 1,
     workingDistance: 20,
     frontAperture: 40,
@@ -152,6 +156,7 @@ test('focal/aperture migration classifies the derived NA and preserves an author
     f: 20,
     aperture: 48,
     magnification: 10,
+    efl: 20,
     na: 1.2,
     workingDistance: 20,
     frontAperture: 48,
@@ -161,6 +166,7 @@ test('focal/aperture migration classifies the derived NA and preserves an author
     f: 20,
     aperture: 48,
     magnification: 10,
+    efl: 20,
     na: 1.2,
     workingDistance: 20,
     frontAperture: 48,

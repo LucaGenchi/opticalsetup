@@ -16,7 +16,7 @@ function objective(medium = 'water', y = 0) {
   const element = createElement('objective', 0, y);
   element.id = `objective-${++nextId}`;
   element.params.immersion = medium;
-  element.params.magnification = 10;
+  element.params.efl = 20;
   element.params.workingDistance = 20;
   element.params.frontAperture = 40; // independent 40 mm front opening; coupling reach 30 mm
   return element;
@@ -329,7 +329,7 @@ test('the open cone uses working distance while a connected cone uses the actual
   assert.match(conePath(drySVG), new RegExp(`^M ${(source.x + 6).toFixed(2)},${source.y.toFixed(2)} `));
 
   const differentMagnification = cloneElement(dry);
-  differentMagnification.params.magnification = 100;
+  differentMagnification.params.efl = 2;
   assert.equal(
     conePath(immersionLayerSVG([differentMagnification])),
     conePath(drySVG),

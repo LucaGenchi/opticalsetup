@@ -137,7 +137,7 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
   // give its independent focus map the same WD so the specimen is nominally
   // in focus (catalogue magnification no longer supplies traced WD).
   const objective = createElement('objective', 154, 0);
-  objective.params.magnification = 10;
+  objective.params.efl = 20; // was magnification 10 -> f = 200/10
   objective.params.workingDistance = 20;
   const detector = createElement('detector', 320, 0);
   traceAll([laser, sample, objective, detector]);

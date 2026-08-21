@@ -7,7 +7,9 @@ import {
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
   displayActionUpdate,
 } from './elements.js';
-import { normalizeObjectiveParams, objectiveWorkingDistance } from './objective.js';
+import {
+  OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
+} from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
@@ -693,9 +695,17 @@ function focalPoints(el) {
   const p = el.params;
   switch (el.type) {
     case 'lens': case 'lensc': return [{ x: p.f, y: 0 }, { x: -p.f, y: 0 }];
-    // The single-boundary objective model cannot locate an internal BFP or
-    // principal plane honestly, so only its authored specimen focus is shown.
-    case 'objective': return [{ x: 16 + objectiveWorkingDistance(p), y: 0, label: 'WD focus' }];
+    case 'objective': {
+      // Both are real traced planes now: the specimen focus one working
+      // distance beyond the tip, and the back focal plane one focal length
+      // behind the equivalent lens. Light focused on the BFP leaves the
+      // objective collimated, so it is the plane a scan relay images onto and
+      // the one widefield illumination is focused into.
+      return [
+        { x: objectiveBackFocalPlaneX(p), y: 0, label: 'BFP' },
+        { x: OBJECTIVE_FRONT_X + objectiveWorkingDistance(p), y: 0, label: 'WD focus' },
+      ];
+    }
     case 'cmirror': case 'cmirrorx': case 'oap': return [{ x: -p.f, y: 0 }];
     case 'telescope': {
       const s = Math.max(5, p.f1 + p.f2);

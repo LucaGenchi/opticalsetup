@@ -41,7 +41,7 @@ test('rated pupil follows EFL and NA while the physical front aperture remains i
   assert.equal(objectiveFrontAperture({ magnification: 80, frontAperture: 24, na: 1.4, immersion: 'oil' }), 24);
 });
 
-test('working distance drives the front-boundary focus map while EFL remains catalogue metadata', () => {
+test('the equivalent lens moves so EFL and working distance are both true', () => {
   const objective = createElement('objective');
   let surface = registry.objective.surfaces(objective)[0];
   assert.equal(objectiveFocalLength(objective.params), 10);
@@ -51,17 +51,17 @@ test('working distance drives the front-boundary focus map while EFL remains cat
 
   objective.params.workingDistance = 2;
   surface = registry.objective.surfaces(objective)[0];
-  assert.equal(surface.x1, 16, 'short WD never moves an invisible trace plane into the housing');
-  assert.equal(surface.data.f, 2);
-  assert.equal(surface.x1 + surface.data.f, 18);
+  assert.equal(surface.x1, 8, 'a short working distance moves the equivalent lens into the housing, as in a real objective');
+  assert.equal(surface.data.f, 10, 'the traced lens keeps the real EFL');
+  assert.equal(surface.x1 + surface.data.f, 18, 'and still focuses exactly WD beyond the front tip');
 
-  objective.params.magnification = 40;
+  objective.params.efl = 5;
   surface = registry.objective.surfaces(objective)[0];
   assert.equal(objectiveFocalLength(objective.params), 5);
   assert.equal(surface.data.effectiveFocalLength, 5);
-  assert.equal(surface.data.f, 2, 'catalogue EFL is not disguised as the front-boundary map distance');
-  assert.equal(objectiveWorkingDistance(objective.params), 2, 'magnification must not rewrite WD');
-  assert.equal(surface.x1, 16, 'the black-box surface cannot cross a nearby sample');
+  assert.equal(surface.data.f, 5, 'the traced lens carries the real EFL');
+  assert.equal(objectiveWorkingDistance(objective.params), 2, 'EFL must not rewrite WD');
+  assert.equal(surface.x1, 13, 'lens plane = 16 + WD - EFL = 16 + 2 - 5');
   assert.equal(surface.x1 + surface.data.f, 18, 'the independently authored specimen focus stays put');
 });
 
@@ -179,44 +179,44 @@ test('committing objective coordinates refreshes the derived immersion-bridge hi
   assert.match(panel.innerHTML, /data-objective-coupling-status="open"/);
 });
 
-test('magnification updates EFL but leaves stored working distance unchanged', () => {
+test('editing EFL updates the reported magnification and leaves working distance alone', () => {
   const objective = createElement('objective');
   const panel = inspectorFor(objective);
   assert.equal(objective.params.workingDistance, 10);
-  assert.match(panel.innerHTML, /data-p="effectiveFocalLength">10\.00/);
+  assert.match(panel.innerHTML, /data-p="magnification">20\.0/);
 
-  applyInput({ dataset: { p: 'magnification' }, type: 'number', value: '40' }, true);
-  assert.equal(objective.params.magnification, 40);
-  assert.equal(objective.params.workingDistance, 10);
-  assert.match(panel.innerHTML, /data-p="effectiveFocalLength">5\.00/);
+  applyInput({ dataset: { p: 'efl' }, type: 'number', value: '5' }, true);
+  assert.equal(objective.params.efl, 5);
+  assert.equal(objective.params.workingDistance, 10, 'EFL must not rewrite WD');
+  assert.match(panel.innerHTML, /data-p="magnification">40\.0/, 'the reported magnification follows EFL');
   assert.match(panel.innerHTML, /data-p="workingDistance"[^>]*value="10"/);
 });
 
-test('working-distance edits move focus without changing magnification or NA', () => {
+test('working-distance edits move focus without changing EFL or NA', () => {
   const objective = createElement('objective');
   inspectorFor(objective);
 
   applyInput({ dataset: { p: 'workingDistance' }, type: 'number', value: '25' }, true);
   assert.equal(objective.params.workingDistance, 25);
-  assert.equal(objective.params.magnification, 20);
+  assert.equal(objective.params.efl, 10, 'WD must not rewrite EFL');
   assert.equal(objective.params.na, 1);
   const surface = registry.objective.surfaces(objective)[0];
-  assert.equal(surface.x1, 16, 'even long WD keeps the focus map at the front, before any forward sample');
+  assert.equal(surface.x1, 31, 'lens plane = 16 + 25 - 10');
   assert.equal(surface.x1 + surface.data.f, 41, 'front boundary 16 mm + 25 mm WD');
 });
 
 // ---------------- direct manipulation and persistence ----------------
 
-test('the objective resize handle changes its front aperture while tune changes only WD', () => {
+test('the objective resize handle changes its front aperture while tune changes EFL', () => {
   const objective = createElement('objective');
   const direct = getDirectManipulation(objective);
   assert.equal(direct.resize.y, 'frontAperture');
-  assert.equal(direct.tune.key, 'workingDistance');
+  assert.equal(direct.tune.key, 'efl');
   assert.equal(direct.tune.param.type, 'number');
 
   const before = getSize(objective);
-  objective.params.workingDistance = 40;
-  assert.deepEqual(getSize(objective), before, 'WD moves focus, not the barrel boundary');
+  objective.params.workingDistance = 12;
+  assert.deepEqual(getSize(objective), before, 'a modest WD change moves focus, not the barrel boundary');
   objective.params.frontAperture = 40;
   assert.ok(getSize(objective).h > before.h, 'front aperture is the actual resizable boundary');
 });
@@ -226,14 +226,14 @@ test('legacy objectives receive compatibility WD/aperture values that then persi
   raw.params = { magnification: 25, na: 0.8, transEff: 90 };
   const [loaded] = parseSketch(file([raw]), registry).elements;
 
-  assert.equal(loaded.params.magnification, 25);
+  assert.equal(loaded.params.efl, 8, 'magnification 25 converts to EFL 200/25');
   assert.equal(loaded.params.workingDistance, 8, 'old geometry used WD = 200 / M');
   assert.equal(loaded.params.frontAperture, 16, 'old body used 2 × EFL');
   assert.equal(loaded.params.immersion, 'air');
 
-  loaded.params.magnification = 50;
+  loaded.params.efl = 4;
   assert.equal(objectiveFocalLength(loaded.params), 4);
-  assert.equal(loaded.params.workingDistance, 8, 'after migration WD no longer follows magnification');
+  assert.equal(loaded.params.workingDistance, 8, 'after migration WD no longer follows EFL');
   assert.equal(loaded.params.frontAperture, 16);
 });
 
@@ -244,8 +244,10 @@ test('malformed legacy magnification seeds compatibility geometry from its bound
   huge.params = { magnification: 10000, na: 0.8 };
 
   const [loadedZero, loadedHuge] = parseSketch(file([zero, huge]), registry).elements;
-  assert.equal(loadedZero.params.magnification, 1);
+  // A malformed magnification is bounded first, then converted, so the
+  // objective it becomes is the one the bounded value describes.
+  assert.equal(loadedZero.params.efl, 200, 'magnification 0 -> bounded to 1x -> EFL 200');
   assert.equal(loadedZero.params.workingDistance, 200);
-  assert.equal(loadedHuge.params.magnification, 200);
+  assert.equal(loadedHuge.params.efl, 1, 'magnification 10000 -> bounded to 200x -> EFL 1');
   assert.equal(loadedHuge.params.workingDistance, 1);
 });

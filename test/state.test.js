@@ -104,7 +104,7 @@ test('legacy objective focal lengths migrate to magnification and numerical aper
   const scene = parseSketch(file([objective]), registry);
   const [loadedObjective] = scene.elements;
   assert.deepEqual(loadedObjective.params, {
-    magnification: 10,
+    efl: 20,
     workingDistance: 20,
     immersion: 'air',
     immersionIndex: 1.333,

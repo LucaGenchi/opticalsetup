@@ -110,59 +110,58 @@ test('the microscope element is gone — it was a grey box hiding an unaimable o
   assert.equal(registry.microscope, undefined);
 });
 
-test('objectives expose catalogue and immersion properties while tracing a front-boundary focus map', () => {
+test('objectives expose EFL, WD and immersion, and place the equivalent lens so both stay true', () => {
   const objective = createElement('objective');
   assert.deepEqual(registry.objective.params.map(param => param.key), [
-    'magnification', 'effectiveFocalLength', 'workingDistance', 'immersion', 'immersionIndex',
+    'efl', 'magnification', 'workingDistance', 'immersion', 'immersionIndex',
     'na', 'acceptanceHalfAngle', 'transEff', 'frontAperture',
   ]);
   assert.equal(Object.hasOwn(objective.params, 'f'), false);
   assert.equal(Object.hasOwn(objective.params, 'aperture'), false);
-  assert.equal(Object.hasOwn(objective.params, 'effectiveFocalLength'), false, 'EFL is derived from magnification');
+  assert.equal(Object.hasOwn(objective.params, 'magnification'), false, 'magnification is derived from EFL');
   assert.equal(Object.hasOwn(objective.params, 'acceptanceHalfAngle'), false, 'theta is derived from NA and n');
   assert.equal(Object.hasOwn(objective.params, 'workingDistance'), true, 'WD is an independent saved objective spec');
-  assert.equal(objective.params.magnification, 20);
+  assert.equal(objective.params.efl, 10);
   assert.equal(objective.params.workingDistance, 10);
   assert.equal(objective.params.frontAperture, 20);
   assert.equal(objective.params.immersion, 'air');
-  assert.equal(objective.params.immersionIndex, 1.333);
   assert.equal(objective.params.na, 1);
 
   let surface = registry.objective.surfaces(objective)[0];
-  assert.equal(surface.data.f, 10);
+  // The traced lens carries the REAL focal length, so an external tube lens
+  // produces the reported magnification instead of a decorative label.
+  assert.equal(surface.data.f, 10, 'the traced lens has the objective EFL');
   assert.equal(surface.data.effectiveFocalLength, 10);
   assert.equal(surface.data.workingDistance, 10);
   assert.equal(surface.data.objectiveNA, 1);
   assert.equal(surface.data.objectiveMediumIndex, 1);
+  // at EFL = WD the equivalent lens happens to land on the front tip
   assert.equal(surface.x1, 16);
-  // The physical front opening is independent of rated NA, EFL, and WD.
-  assert.equal(surface.y2 - surface.y1, 20);
+  assert.equal(surface.y2 - surface.y1, 20, 'the physical front opening is independent of NA, EFL and WD');
 
   objective.params.na = 1.4;
   surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.data.objectiveNA, 1, 'a dry objective cannot claim NA above its surrounding index');
-  assert.equal(surface.y2 - surface.y1, 20, 'NA alone must not resize the pupil');
+  assert.equal(surface.y2 - surface.y1, 20, 'NA alone must not resize the front opening');
 
   objective.params.immersion = 'oil';
   surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.data.objectiveNA, 1.4);
-  assert.equal(surface.y2 - surface.y1, 20, 'changing designed medium must not resize the pupil');
+  assert.equal(surface.y2 - surface.y1, 20, 'changing designed medium must not resize the front opening');
 
   objective.params.immersion = 'legacy';
   surface = registry.objective.surfaces(objective)[0];
   assert.equal(Object.hasOwn(surface.data, 'objectiveNA'), false, 'unresolved legacy NA is not downstream physics input');
 
-  objective.params.magnification = 40;
+  // A short-working-distance objective puts its equivalent lens INSIDE the
+  // barrel, which is exactly where a real objective's principal plane sits.
+  objective.params.immersion = 'oil';
+  objective.params.efl = 5;
+  objective.params.workingDistance = 1;
   surface = registry.objective.surfaces(objective)[0];
-  assert.equal(surface.data.effectiveFocalLength, 5);
-  assert.equal(surface.data.f, 10, 'the front-boundary map distance is WD, not catalogue EFL');
-  assert.equal(surface.data.workingDistance, 10, 'magnification does not rewrite WD');
-  assert.equal(surface.x1, 16, 'the trace boundary remains ahead of every compatible front contact');
-  assert.equal(surface.y2 - surface.y1, 20, 'magnification does not resize the physical front boundary');
-
-  objective.params.frontAperture = 30;
-  surface = registry.objective.surfaces(objective)[0];
-  assert.equal(surface.y2 - surface.y1, 30, 'front aperture is the explicit physical-size control');
+  assert.equal(surface.data.f, 5, 'the traced focal length follows EFL');
+  assert.equal(surface.data.workingDistance, 1, 'EFL does not rewrite WD');
+  assert.equal(surface.x1, 12, 'lens plane = front tip + WD - EFL = 16 + 1 - 5');
 });
 
 test('detectors report qualitative signal, spectrum, polarization, and spot span', () => {

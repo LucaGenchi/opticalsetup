@@ -17,8 +17,9 @@ import {
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import {
-  OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, objectiveAcceptanceHalfAngleDeg, objectiveFocalLength,
-  objectiveFrontAperture, objectiveMaximumNA, objectiveMediumIndex, objectiveMediumKey,
+  OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, objectiveAcceptanceHalfAngleDeg, objectiveBackX,
+  objectiveEffectiveFocalLength, objectiveFrontAperture, objectiveLensPlaneX, objectiveMagnification,
+  objectiveMaximumNA, objectiveMediumIndex, objectiveMediumKey,
   objectiveNumericalAperture, objectivePupilDiameter, objectiveWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
@@ -1549,21 +1550,28 @@ export const registry = {
 
   objective: {
     // Back (tube-lens/infinity side, where a telescope or scan relay
-    // delivers collimated light) is the wide barrel at local x=-16; front
-    // (sample side) is the narrow tip and glass at local x=+16. That physical
-    // boundary is also the tracer's black-box focus map: rear collimated rays
-    // leave it toward the independently specified WD focus.
+    // delivers collimated light) is the wide barrel; front (sample side) is
+    // the narrow tip at local x=+16, which is the physical boundary the
+    // working distance is measured from. The single refracting surface is the
+    // equivalent thin lens of focal length EFL, placed at x = 16 + WD - EFL
+    // so that EFL, working distance and a true back focal plane all hold at
+    // once — see objective.js.
     label: 'Objective', category: 'Lenses', paletteOrder: 3, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
     immersionSource: () => ({ x: OBJECTIVE_FRONT_X, y: 0 }),
-    size_: el => ({ w: 36, h: objectiveFrontAperture(el.params) + 20 }),
+    size_: el => ({ w: (OBJECTIVE_FRONT_X - objectiveBackX(el.params)) + 4, h: objectiveFrontAperture(el.params) + 20 }),
+    // the barrel is no longer centred on the element origin once it grows
+    boxAnchor: el => ({ x: (OBJECTIVE_FRONT_X + objectiveBackX(el.params)) / 2, y: 0 }),
     params: [
-      { key: 'magnification', label: 'Catalogue magnification (×)', type: 'number', min: 1, max: 200, step: 0.1, def: 20 },
+      // EFL is the objective's real optical power and the thing the tracer
+      // uses. Magnification is what it produces once the user's own tube lens
+      // images it, so it is reported rather than set.
+      { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 1, max: 200, step: 0.1, def: 10 },
       {
-        key: 'effectiveFocalLength', label: 'Catalogue EFL · 200 mm tube lens (mm)', type: 'readout',
-        readout: p => objectiveFocalLength(p).toFixed(2),
+        key: 'magnification', label: 'Magnification with a 200 mm tube lens (×)', type: 'readout',
+        readout: p => `${objectiveMagnification(p).toFixed(1)}×`,
       },
       { key: 'workingDistance', label: 'Working distance (mm)', type: 'number', min: 0.1, max: 200, step: 0.1, def: 10 },
       {
@@ -1601,23 +1609,42 @@ export const registry = {
     ],
     svg(el) {
       const h = objectiveFrontAperture(el.params) / 2, outer = h + 7;
+      const back = objectiveBackX(el.params);
+      const shoulder = Math.min(-2, back + 14);
       const pupilHalf = Math.min(outer - 1, Math.max(0.8, objectivePupilDiameter(el.params) / 2));
-      return `<path d="M 16,${-h} L -2,${-outer} L -16,${-outer} L -16,${outer} L -2,${outer} L 16,${h} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
-        `<line x1="-2" y1="${-outer}" x2="-2" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
-        `<line x1="-13" y1="${-pupilHalf}" x2="-13" y2="${pupilHalf}" stroke="#2f3e4d" stroke-width="2.2" opacity="0.75"/>` +
-        `<rect x="14.5" y="${-h}" width="3" height="${2 * h}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
+      const lensX = objectiveLensPlaneX(el.params);
+      // The equivalent thin lens is drawn where it actually is, so a short
+      // working distance visibly puts it near the tip and a long focal length
+      // pushes it back through the (grown) barrel. A long-working-distance
+      // objective (WD > EFL) genuinely puts its rear principal plane in FRONT
+      // of the physical tip — real long-WD objectives are built that way — so
+      // draw that case dashed and faint: it is an equivalent plane out in the
+      // open, not a piece of glass.
+      const lensHalf = Math.min(outer - 2, Math.max(1.5, pupilHalf));
+      const virtualPlane = lensX > OBJECTIVE_FRONT_X + 0.01;
+      const lensStyle = virtualPlane
+        ? `fill="${GLASS}" fill-opacity="0.2" stroke="${GLASS_S}" stroke-width="1.2" stroke-opacity="0.65" stroke-dasharray="4 3"`
+        : `fill="${GLASS}" fill-opacity="0.85" stroke="${GLASS_S}" stroke-width="1.2"`;
+      return `<path d="M 16,${-h} L ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer} L 16,${h} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
+        `<line x1="${shoulder}" y1="${-outer}" x2="${shoulder}" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
+        `<ellipse cx="${lensX.toFixed(2)}" cy="0" rx="1.6" ry="${lensHalf.toFixed(2)}" ${lensStyle}/>` +
+        // the front tip is a boundary, not a slab of glass: a working distance
+        // shorter than a drawn thickness would otherwise look like it focused
+        // inside solid glass
+        `<line x1="16" y1="${-h}" x2="16" y2="${h}" stroke="${GLASS_S}" stroke-width="2"/>`;
     },
     surfaces(el) {
       const h = objectiveFrontAperture(el.params) / 2;
+      const lensX = objectiveLensPlaneX(el.params);
       return [{
-        x1: OBJECTIVE_FRONT_X, y1: -h, x2: OBJECTIVE_FRONT_X, y2: h, kind: 'lens',
+        x1: lensX, y1: -h, x2: lensX, y2: h, kind: 'lens',
         data: {
-          // This is a front-boundary focus map, not a claim that WD is the
-          // objective's focal length. The hidden internal principal planes
-          // needed to make catalogue EFL and WD simultaneously operative are
-          // outside this qualitative single-boundary model.
-          f: objectiveWorkingDistance(el.params),
-          effectiveFocalLength: objectiveFocalLength(el.params),
+          // The equivalent thin lens carries the objective's REAL focal
+          // length, positioned so that collimated light still focuses exactly
+          // one working distance beyond the front tip. That is what makes the
+          // back focal plane a true conjugate and the magnification honest.
+          f: objectiveEffectiveFocalLength(el.params),
+          effectiveFocalLength: objectiveEffectiveFocalLength(el.params),
           workingDistance: objectiveWorkingDistance(el.params),
           objectiveMediumIndex: objectiveMediumIndex(el.params),
           // A legacy >1 NA is kept in the editor so old sketches are not
@@ -2805,6 +2832,7 @@ export const registry = {
 // draws or hit-tests a selection box around an element (canvas.js).
 export function boxAnchor(el) {
   const d = registry[el.type];
+  if (typeof d?.boxAnchor === 'function') return d.boxAnchor(el);
   if (d?.anchorX === 'left') return { x: getSize(el).w / 2, y: 0 };
   return { x: 0, y: 0 };
 }
@@ -2871,7 +2899,7 @@ const DIRECT = {
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
   // The blue handle changes the physical front opening. The purple control
   // moves the independently specified specimen focus; neither rewrites M/NA.
-  objective: { resize: { y: 'frontAperture' }, tune: { key: 'workingDistance', short: 'WD' } },
+  objective: { resize: { y: 'frontAperture' }, tune: { key: 'efl', short: 'EFL' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
@@ -2953,7 +2981,7 @@ const ELEMENT_HELP = {
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Uses a front-boundary black-box focus map with independent working distance. Catalogue magnification derives EFL for a 200 mm tube lens; designed medium and rated NA set the object-side acceptance half-angle and schematic cone.',
+  objective: 'Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — and the working distance separately; magnification is reported for a 200 mm tube lens. The equivalent lens is placed inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Designed medium and rated NA set the object-side acceptance half-angle and schematic cone.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
