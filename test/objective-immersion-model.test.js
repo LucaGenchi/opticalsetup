@@ -9,6 +9,7 @@ import {
   objectiveMediumIndex,
   objectiveMediumKey,
   objectiveNumericalAperture,
+  OBJECTIVE_NA_DEFAULT,
 } from '../sketch/js/objective.js';
 
 test('objective media carry the fixed index, cap, and rendering metadata in one catalogue', () => {
@@ -19,7 +20,7 @@ test('objective media carry the fixed index, cap, and rendering metadata in one 
       fill: value.fill,
     }])),
     {
-      air: { index: 1, maxNA: 1, fill: null },
+      air: { index: 1, maxNA: 0.85, fill: null },
       water: { index: 1.333, maxNA: 1.27, fill: '#8fd3ed' },
       oil: { index: 1.518, maxNA: 1.49, fill: '#c9a227' },
       custom: { index: null, maxNA: null, fill: '#9fc8bd' },
@@ -54,7 +55,7 @@ test('medium indices use presets, keep legacy unresolved, and bound a custom val
 });
 
 test('each objective medium supplies the effective numerical-aperture ceiling', () => {
-  assert.equal(objectiveMaximumNA({ immersion: 'air' }), 1);
+  assert.equal(objectiveMaximumNA({ immersion: 'air' }), 0.85, 'the practical dry ceiling, not the physical n=1 limit');
   assert.equal(objectiveMaximumNA({ immersion: 'water' }), 1.27);
   assert.equal(objectiveMaximumNA({ immersion: 'oil' }), 1.49);
   assert.equal(objectiveMaximumNA({ immersion: 'legacy' }), 1.49);
@@ -63,12 +64,12 @@ test('each objective medium supplies the effective numerical-aperture ceiling', 
 });
 
 test('objective NA is clamped against the selected medium and remains finite at malformed boundaries', () => {
-  assert.equal(objectiveNumericalAperture({ immersion: 'air', na: 1.4 }), 1);
+  assert.equal(objectiveNumericalAperture({ immersion: 'air', na: 1.4 }), 0.85);
   assert.equal(objectiveNumericalAperture({ immersion: 'water', na: 1.4 }), 1.27);
   assert.equal(objectiveNumericalAperture({ immersion: 'oil', na: 1.4 }), 1.4);
   assert.equal(objectiveNumericalAperture({ immersion: 'custom', immersionIndex: 1.12, na: 1.4 }), 1.12);
   assert.equal(objectiveNumericalAperture({ immersion: 'oil', na: -10 }), 0.05);
-  assert.equal(objectiveNumericalAperture({ immersion: 'oil', na: Infinity }), 1);
+  assert.equal(objectiveNumericalAperture({ immersion: 'oil', na: Infinity }), OBJECTIVE_NA_DEFAULT);
   assert.equal(objectiveNumericalAperture({ na: 1.4 }), 1.4, 'missing medium preserves old high NA as unresolved');
 });
 
@@ -100,7 +101,7 @@ test('objective normalization returns an independent copy with valid medium, ind
   assert.deepEqual(normalizeObjectiveParams({ immersion: 'bogus', immersionIndex: Infinity, na: 1.4 }), {
     immersion: 'air',
     immersionIndex: 1.333,
-    na: 1,
+    na: 0.85,
     efl: 10,
     workingDistance: 10,
     frontAperture: 20,
@@ -116,7 +117,7 @@ test('objective normalization returns an independent copy with valid medium, ind
   assert.deepEqual(normalizeObjectiveParams(null), {
     immersion: 'air',
     immersionIndex: 1.333,
-    na: 1,
+    na: 0.6,
     efl: 10,
     workingDistance: 10,
     frontAperture: 20,

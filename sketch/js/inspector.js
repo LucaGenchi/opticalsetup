@@ -429,7 +429,7 @@ function paramField(p, sel) {
   // it reads as part of the source's settings, but computed from the other
   // params on every render and never stored or saved.
   if (p.type === 'readout') {
-    return field(p.label, `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params))}</output>`);
+    return field(p.label, `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`);
   }
   // Editable, but backed by another param instead of its own storage:
   // displayed value comes from `get`, and a commit writes through `set`
@@ -450,14 +450,14 @@ function refreshReadouts(sel) {
   const readouts = new Map(specs.filter(spec => spec.type === 'readout').map(spec => [spec.key, spec]));
   panel.querySelectorAll('output.readout[data-p]').forEach(output => {
     const spec = readouts.get(output.dataset.p);
-    if (spec?.readout) output.textContent = String(spec.readout(sel.params));
+    if (spec?.readout) output.textContent = String(spec.readout(sel.params, sel));
   });
 }
 
 function objectiveCouplingHint(sel) {
   const medium = objectiveMediumKey(sel.params);
   if (medium === 'air') {
-    return `<div class="hint" data-objective-coupling-status="dry">Dry / air objective: NA is capped at 1.00. The NA guide shows angular acceptance; no liquid meniscus is drawn.</div>`;
+    return `<div class="hint" data-objective-coupling-status="dry">Dry / air objective: NA is capped at 0.85, the practical ceiling for real dry designs. No liquid meniscus is drawn.</div>`;
   }
   if (medium === 'legacy') {
     return `<div class="signal-warning" role="alert" data-objective-coupling-status="legacy">⚠ Choose the objective's designed front medium. This older high-NA sketch did not record one.</div>`;

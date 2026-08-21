@@ -423,33 +423,52 @@ export const wikiEntries = [
         in: it is <em>reported</em> from the EFL against a 200&nbsp;mm reference tube
         lens, because magnification is a property of the objective plus whichever tube
         lens you actually place in the sketch, not of the objective alone.</p>
-        <p>OpticalSetup traces the objective as one equivalent thin lens of focal length
-        EFL, but it does <em>not</em> put that lens at the front tip. The lens plane sits
-        one focal length short of the nominal focus — at the front tip plus
+        <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
+        length EFL, but it does <em>not</em> put that plane at the front tip. It sits one
+        focal length short of the nominal focus — at the front tip plus
         <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for a typical objective
         means somewhere inside the barrel. Placing it there is what makes three things
-        true at the same time. Collimated
-        light from the tube-lens side focuses exactly one working distance beyond the
-        physical front tip. The equivalent lens still has the objective's real focal
-        length, so an external 200&nbsp;mm tube lens really does produce the reported
-        magnification. And the plane one EFL behind the lens is a genuine
+        true at the same time. Collimated light from the tube-lens side focuses exactly
+        one working distance beyond the physical front tip. The plane still has the
+        objective's real focal length, so an external 200&nbsp;mm tube lens really does
+        produce the reported magnification. And the plane one EFL behind it is a genuine
         <strong>back focal plane</strong>: light focused there leaves the objective
         collimated, which is exactly what widefield (Köhler-style) illumination needs and
         what a laser-scanning relay must image the scan mirror onto. The BFP is drawn as
-        a labelled marker, and it is a traced conjugate rather than an annotation. For a
-        short working distance that lens plane falls inside the barrel, which is where a
-        real objective's principal plane and pupil actually sit; for a long focal length
-        the barrel is drawn longer so it still contains its own optics. A
-        long-working-distance objective with WD&nbsp;&gt;&nbsp;EFL puts the equivalent
-        plane in front of the tip — real long-working-distance objectives are built that
-        way — and it is then drawn dashed and faint, because out there it is an
-        equivalent plane, not a piece of glass.</p>
+        a labelled marker, and it is a traced conjugate rather than an annotation.</p>
+        <p>Working distance is capped at EFL: a real objective focuses at or inside its
+        own focal length, with the glass taking up the difference. That cap also keeps the
+        equivalent plane at or behind the front tip — inside the barrel, which is where a
+        real objective's principal plane and pupil sit. Nothing is drawn there: an
+        objective is an opaque barrel, not a visible singlet. When a short working
+        distance pushes the plane behind the default rear face, only the straight rear
+        section of the barrel lengthens; the tapered nose is fixed geometry.</p>
+        <p><strong>Rated NA is a real aperture, not a label.</strong> The back pupil has
+        diameter <span class="w">2fNA</span> and is the objective's aperture stop, so a
+        beam that fills it converges at the rated angle — raise NA and the cone opens,
+        lower it and the cone closes. That stop sits <em>at the back focal plane</em>,
+        where an infinity objective's entrance pupil belongs, which is what makes relaying
+        a scan mirror onto the BFP marker do real work: a beam pivoting there stays centred
+        in the pupil at every scan angle, while a pivot anywhere else walks across it and
+        is cut. (The single-plane model can push the BFP further back than any real barrel;
+        the stop is then clamped into the housing rather than left blocking light in mid-air
+        behind it.)</p>
+        <p>The metal around that opening blocks. Overfilling the back pupil is normal
+        practice — it is how you actually reach the full rated NA — and the overflow is
+        genuinely lost. The <strong>Back-pupil fill</strong> readout gives the beam
+        diameter arriving, the pupil it has to get through, and a first-order estimate of
+        the fraction that survives: the area ratio for a uniform round beam, so doubling
+        the fill costs about three quarters of the power. A large <span class="w">2fNA</span>
+        makes the housing physically wider rather than silently clipping at the drawn
+        outline, and the dark bars drawn across the barrel's rear face show the pupil
+        diameter the beam has to fit.</p>
         <p>The purple tune control changes EFL and the blue resize handle changes the
         front aperture. Editing working distance moves the lens plane without touching
-        EFL or the reported magnification; editing EFL moves it the other way and changes
-        the reported magnification without touching working distance.</p>
+        EFL or the reported magnification; raising EFL leaves working distance alone,
+        while lowering it past the working distance carries the working distance down
+        with it.</p>
         <p>The objective owns its medium; there is no separately placeable liquid
-        component. Dry/air caps rated NA at 1.00, water at 1.27, oil at 1.49, and a
+        component. Dry/air caps rated NA at 0.85, water at 1.27, oil at 1.49, and a
         custom medium at the lesser of its index <span class="w">n</span> and 1.49.
         The medium's index and the rated NA determine the displayed object-side
         half-angle <span class="w">θ = asin(NA/n)</span>; changing medium may clamp an
@@ -469,16 +488,14 @@ export const wikiEntries = [
         a dry objective also shows the guide without a liquid bridge. Older high-NA
         sketches that never recorded a medium remain explicitly unresolved until one is
         chosen.</p>
-        <p>Rated NA has two visible consequences. The dashed sector shows the
-        configured half-angle at the actual contact or nominal focus, and the tracer
-        qualitatively rejects object-side rays outside that cone — angular clipping on the
-        sample side of the equivalent lens, not a high-NA or vector-diffraction model. A
-        small pupil mark uses the first-order diameter estimate <span class="w">2fNA</span>,
-        so NA or EFL can change that mark without pretending to resize the housing.
-        Toggle "Show focal points" (the <span class="w">ƒ</span> button) or select the
-        objective to see both of its marked planes: <span class="w">BFP</span> on the
-        tube-lens side and the nominal <span class="w">WD focus</span> on the sample
-        side.</p>
+        <p>Alongside the pupil, the tracer also rejects object-side rays steeper than
+        <span class="w">asin(NA/n)</span> — angular clipping on the sample side of the
+        equivalent plane, not a high-NA or vector-diffraction model. "Show acceptance
+        angle" (off by default) draws that rated half-angle as a dashed sector at the
+        actual contact or nominal focus. Toggle "Show focal points" (the
+        <span class="w">ƒ</span> button) or select the objective to see both of its marked
+        planes: <span class="w">BFP</span> on the tube-lens side and the nominal
+        <span class="w">WD focus</span> on the sample side.</p>
         <p>When this objective sits between a pulsed laser and an illuminated
         photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
         to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
@@ -499,9 +516,15 @@ export const wikiEntries = [
         back focal plane it defines are first-order stand-ins for a compound objective's
         principal plane and pupil, not the real internal conjugates: one plane cannot
         reproduce a real objective's aberration correction, field curvature, or the axial
-        spacing of its actual groups. The pupil mark and NA clipping remain qualitative and do not model
+        spacing of its actual groups. The pupil stop and NA clipping remain qualitative and do not model
         diffraction, aberration correction, internal stops, or polarization at high
-        angle. The drawn meniscus does not solve wetting, contact angle, surface tension,
+        angle. The pupil is a paraxial stop in a thin-lens tracer, so a beam filling it
+        converges at <span class="w">atan(NA)</span> rather than the sine-condition
+        <span class="w">asin(NA/n)</span> that the rated half-angle readout quotes; the
+        two agree closely at moderate NA and separate as NA approaches its ceiling. The
+        overfill estimate is a uniform-beam area ratio, not a Gaussian truncation or a
+        vignetting calculation. Dry objectives cap at NA 0.85, the practical ceiling for
+        real dry designs rather than the physical <span class="w">n = 1</span> limit. The drawn meniscus does not solve wetting, contact angle, surface tension,
         volume, or gravity; it adds no refracting boundary and does not model cover glass,
         index mismatch, focal shift, or immersion aberrations.</p>`,
     },

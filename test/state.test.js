@@ -109,6 +109,7 @@ test('legacy objective focal lengths migrate to magnification and numerical aper
     immersion: 'air',
     immersionIndex: 1.333,
     na: 0.6,
+    showAcceptance: false,
     transEff: 90,
     frontAperture: 24,
   });

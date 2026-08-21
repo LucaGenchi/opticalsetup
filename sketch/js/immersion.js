@@ -12,6 +12,7 @@ import {
   objectiveMediumIndex,
   objectiveMediumKey,
   objectiveNumericalAperture,
+  objectiveShowsAcceptance,
   objectiveWorkingDistance,
 } from './objective.js';
 import { esc, rotPt, toWorld } from './util.js';
@@ -374,6 +375,9 @@ function meniscusGeometry(coupling) {
 // angular acceptance visible. It is deliberately local and bounded: this is
 // an NA glyph, not an additional traced beam or a solved objective prescription.
 function acceptanceGeometry(objective, anchor, frame, meniscus = null) {
+  // Off unless the author asks for it: most sketches want a plain barrel, and
+  // the sector was the first thing to make a crowded scene unreadable.
+  if (!objectiveShowsAcceptance(objective?.params || {})) return null;
   const refractiveIndex = objectiveMediumIndex(objective?.params || {});
   const numericalAperture = objectiveNumericalAperture(objective?.params || {});
   if (!(refractiveIndex > 0) || !(numericalAperture >= 0) || !finitePoint(anchor) || !frame) return null;

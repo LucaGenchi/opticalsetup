@@ -19,6 +19,8 @@ function objective(medium = 'water', y = 0) {
   element.params.efl = 20;
   element.params.workingDistance = 20;
   element.params.frontAperture = 40; // independent 40 mm front opening; coupling reach 30 mm
+  // The acceptance sector is an opt-in overlay now; these tests are about it.
+  element.params.showAcceptance = true;
   return element;
 }
 
@@ -328,12 +330,22 @@ test('the open cone uses working distance while a connected cone uses the actual
   const conePath = svg => svg.match(/class="objective-na-acceptance"[^>]* d="([^"]+)"/)?.[1] || '';
   assert.match(conePath(drySVG), new RegExp(`^M ${(source.x + 6).toFixed(2)},${source.y.toFixed(2)} `));
 
-  const differentMagnification = cloneElement(dry);
-  differentMagnification.params.efl = 2;
+  const longerFocal = cloneElement(dry);
+  longerFocal.params.efl = 40;
   assert.equal(
-    conePath(immersionLayerSVG([differentMagnification])),
+    conePath(immersionLayerSVG([longerFocal])),
     conePath(drySVG),
-    'magnification/EFL must not move an independently configured nominal focus',
+    'raising EFL leaves an independently configured working distance alone',
+  );
+
+  // EFL is the one thing that DOES move working distance, and only downward:
+  // an objective cannot focus further away than its own focal length.
+  const shorterFocal = cloneElement(dry);
+  shorterFocal.params.efl = 2;
+  assert.match(
+    conePath(immersionLayerSVG([shorterFocal])),
+    new RegExp(`^M ${(source.x + 2).toFixed(2)},${source.y.toFixed(2)} `),
+    'shortening EFL past the working distance pulls the focus in with it',
   );
 
   const wet = objective('water');

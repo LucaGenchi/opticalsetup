@@ -50,6 +50,34 @@ export function specimenIncidentBeams(elementId) {
   return specimenIncident.get(elementId) || [];
 }
 
+// objective element id -> how wide the beam arriving at its back pupil was.
+// Overfilling the back pupil is deliberate practice — it is how you actually
+// reach the full rated NA — so the interesting number is what it costs.
+let objectivePupilHits = new Map();
+
+function recordObjectivePupil(elementId, radius, pupilRadius) {
+  if (!elementId || !Number.isFinite(radius) || !Number.isFinite(pupilRadius)) return;
+  const seen = objectivePupilHits.get(elementId);
+  if (!seen) objectivePupilHits.set(elementId, { pupilRadius, beamRadius: radius });
+  else seen.beamRadius = Math.max(seen.beamRadius, radius);
+}
+
+export function objectivePupilFill(elementId) {
+  const seen = objectivePupilHits.get(elementId);
+  if (!seen || seen.pupilRadius <= 0) return null;
+  const fill = seen.beamRadius / seen.pupilRadius;
+  // Uniform round beam through a round stop: the surviving fraction is the
+  // area ratio. Qualitative, like every other power number here, but it gets
+  // the shape of the trade right — doubling the fill costs three quarters.
+  const transmitted = fill <= 1 ? 1 : 1 / (fill * fill);
+  return {
+    pupilDiameter: 2 * seen.pupilRadius,
+    beamDiameter: 2 * seen.beamRadius,
+    fill,
+    transmitted,
+  };
+}
+
 function hexChannels(color) {
   const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
   return match ? match.slice(1).map(channel => parseInt(channel, 16)) : [255, 255, 255];
@@ -1694,6 +1722,17 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             na: Number.isFinite(hit.surface.data.objectiveNA) ? hit.surface.data.objectiveNA : null,
           }];
         }
+        // Every segment across the barrel face — the open pupil and the metal
+        // either side of it — reports where it was struck, so the widest hit
+        // is the radius of the beam that actually arrived.
+        const span = hit.surface.data.pupilSpan;
+        if (Array.isArray(span) && Number.isFinite(hit.u)) {
+          recordObjectivePupil(
+            hit.surface.el.id,
+            Math.abs(span[0] + hit.u * (span[1] - span[0])),
+            hit.surface.data.pupilRadius,
+          );
+        }
       }
       // Both specimen holders report where the beam lands, so the plain
       // sample can draw its excitation spot too; only the piezo stage writes
@@ -2000,6 +2039,7 @@ export function traceScene(elements, beams = []) {
   const couplings = [];
   lastPaths = [];
   detectorHits = new Map();
+  objectivePupilHits = new Map();
   gateTransmissionCache = new Map();
   specimenIncident = new Map();
 
@@ -2100,6 +2140,7 @@ export function traceScene(elements, beams = []) {
     } finally {
       specimenProbe = null;
       detectorHits = new Map();
+      objectivePupilHits = new Map();
       gateTransmissionCache = new Map();
     }
   }

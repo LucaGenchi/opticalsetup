@@ -12,6 +12,9 @@ import { C_MM_PER_NS } from '../sketch/js/pulses.js';
 import { pulseTimelineHTML, shouldUseSlider } from '../sketch/js/inspector.js';
 import { state, parseSketch } from '../sketch/js/state.js';
 import { distinctPoints } from '../sketch/js/util.js';
+import {
+  objectiveBackFocalPlaneX, objectiveBackX, objectiveFrontAperture, objectiveStopX,
+} from '../sketch/js/objective.js';
 
 const EXAMPLES_DIR = join(dirname(fileURLToPath(import.meta.url)), '../Examples');
 async function loadExampleFiles() {
@@ -114,7 +117,7 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   const objective = createElement('objective');
   assert.deepEqual(registry.objective.params.map(param => param.key), [
     'efl', 'magnification', 'workingDistance', 'immersion', 'immersionIndex',
-    'na', 'acceptanceHalfAngle', 'transEff', 'frontAperture',
+    'na', 'acceptanceHalfAngle', 'showAcceptance', 'pupilFill', 'transEff', 'frontAperture',
   ]);
   assert.equal(Object.hasOwn(objective.params, 'f'), false);
   assert.equal(Object.hasOwn(objective.params, 'aperture'), false);
@@ -125,29 +128,34 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   assert.equal(objective.params.workingDistance, 10);
   assert.equal(objective.params.frontAperture, 20);
   assert.equal(objective.params.immersion, 'air');
-  assert.equal(objective.params.na, 1);
+  assert.equal(objective.params.na, 0.6);
+  assert.equal(objective.params.showAcceptance, false, 'the NA sector is an opt-in overlay');
 
   let surface = registry.objective.surfaces(objective)[0];
-  // The traced lens carries the REAL focal length, so an external tube lens
+  // The traced plane carries the REAL focal length, so an external tube lens
   // produces the reported magnification instead of a decorative label.
-  assert.equal(surface.data.f, 10, 'the traced lens has the objective EFL');
+  assert.equal(surface.data.f, 10, 'the traced plane has the objective EFL');
   assert.equal(surface.data.effectiveFocalLength, 10);
   assert.equal(surface.data.workingDistance, 10);
-  assert.equal(surface.data.objectiveNA, 1);
+  assert.equal(surface.data.objectiveNA, 0.6);
   assert.equal(surface.data.objectiveMediumIndex, 1);
-  // at EFL = WD the equivalent lens happens to land on the front tip
+  // at EFL = WD the equivalent plane happens to land on the front tip
   assert.equal(surface.x1, 16);
-  assert.equal(surface.y2 - surface.y1, 20, 'the physical front opening is independent of NA, EFL and WD');
+  // Its clear aperture is the rated back pupil 2*f*NA, which is what makes
+  // NA actually set the convergence angle instead of only labelling it.
+  assert.equal(surface.data.pupilRadius, 6, 'pupil radius = 10 mm * 0.6');
+  assert.ok(Math.abs((surface.y2 - surface.y1) - 12) < 0.05, 'the bore matches the rated pupil');
 
   objective.params.na = 1.4;
   surface = registry.objective.surfaces(objective)[0];
-  assert.equal(surface.data.objectiveNA, 1, 'a dry objective cannot claim NA above its surrounding index');
-  assert.equal(surface.y2 - surface.y1, 20, 'NA alone must not resize the front opening');
+  assert.equal(surface.data.objectiveNA, 0.85, 'a dry objective cannot claim more than the practical dry ceiling');
+  assert.equal(surface.data.pupilRadius, 8.5);
 
   objective.params.immersion = 'oil';
   surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.data.objectiveNA, 1.4);
-  assert.equal(surface.y2 - surface.y1, 20, 'changing designed medium must not resize the front opening');
+  assert.equal(surface.data.pupilRadius, 14);
+  assert.equal(objectiveFrontAperture(objective.params), 20, 'the physical front opening stays independent');
 
   objective.params.immersion = 'legacy';
   surface = registry.objective.surfaces(objective)[0];
@@ -160,8 +168,17 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   objective.params.workingDistance = 1;
   surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.data.f, 5, 'the traced focal length follows EFL');
-  assert.equal(surface.data.workingDistance, 1, 'EFL does not rewrite WD');
+  assert.equal(surface.data.workingDistance, 1, 'EFL does not rewrite a shorter WD');
   assert.equal(surface.x1, 12, 'lens plane = front tip + WD - EFL = 16 + 1 - 5');
+
+  // Overfilling the back pupil is deliberate practice, so the metal around it
+  // is a real stop rather than something light sails through — and it sits at
+  // the back focal plane, where an infinity objective's entrance pupil is.
+  const stops = registry.objective.surfaces(objective).filter(s => s.kind === 'absorb');
+  assert.equal(stops.length, 2, 'the metal either side of the pupil blocks');
+  assert.ok(stops.every(s => s.x1 === objectiveStopX(objective.params)));
+  assert.equal(objectiveStopX(objective.params), objectiveBackFocalPlaneX(objective.params));
+  assert.ok(objectiveStopX(objective.params) > objectiveBackX(objective.params), 'and inside the housing');
 });
 
 test('detectors report qualitative signal, spectrum, polarization, and spot span', () => {

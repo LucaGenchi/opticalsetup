@@ -7,18 +7,24 @@
 // and front-medium index determine the object-side acceptance angle.
 //
 // EFL and working distance are BOTH honoured at once by not assuming the
-// equivalent thin lens sits at the front tip. Placing it at
+// equivalent refracting plane sits at the front tip. Placing it at
 //
 //     lens plane = front tip + WD - EFL
 //
-// makes collimated light focus exactly WD beyond the tip while the lens
+// makes collimated light focus exactly WD beyond the tip while the plane
 // itself still has focal length EFL — so an external tube lens produces the
-// real catalogue magnification, and the back focal plane one EFL behind the
-// lens is a genuine conjugate: light focused there leaves the objective
+// real catalogue magnification, and the back focal plane one EFL behind it
+// is a genuine conjugate: light focused there leaves the objective
 // collimated, which is what widefield (Köhler-style) illumination needs and
-// what a scan relay must be imaged onto. For a short-WD objective that lens
-// plane falls inside the barrel, which is where a real objective's principal
-// plane and BFP actually sit.
+// what a scan relay must be imaged onto. Working distance is capped at EFL,
+// so that plane always lands at or behind the tip — inside the barrel, where
+// a real objective's principal plane and pupil actually sit. It is never
+// drawn: an objective is an opaque barrel, not a visible singlet.
+//
+// Rated NA is a real aperture, not an annotation. The back pupil has
+// diameter 2*EFL*NA and is the objective's aperture stop, so a beam that
+// fills it converges at the rated angle and a beam that overfills it loses
+// the overflow to the barrel — which is how NA is set in a real experiment.
 
 export const OBJECTIVE_REFERENCE_TUBE_F_MM = 200;
 export const OBJECTIVE_FRONT_X = 16;
@@ -26,8 +32,9 @@ export const OBJECTIVE_NA_MIN = 0.05;
 export const OBJECTIVE_NA_MAX = 1.49;
 export const OBJECTIVE_MAG_MIN = 1;
 export const OBJECTIVE_MAG_MAX = 200;
-export const OBJECTIVE_WD_MIN = 0.1;
-export const OBJECTIVE_WD_MAX = 200;
+export const OBJECTIVE_WD_MIN = 1;
+// Working distance has no fixed ceiling any more: it is bounded by the
+// objective's own focal length (see objectiveMaximumWorkingDistance).
 export const OBJECTIVE_FRONT_APERTURE_MIN = 1;
 export const OBJECTIVE_FRONT_APERTURE_MAX = 100;
 
@@ -52,7 +59,9 @@ const medium = (label, index, maxNA, fill, extra = {}) => Object.freeze({
 // unresolved so loading an older high-NA objective does not invent water or
 // oil that the saved sketch never specified.
 export const OBJECTIVE_MEDIA = Object.freeze({
-  air: medium('Dry / air', 1, 1, null),
+  // 0.85 is the practical dry ceiling; 1.00 is the physical limit of air
+  // that no real dry objective reaches.
+  air: medium('Dry / air', 1, 0.85, null),
   water: medium('Water', 1.333, 1.27, '#8fd3ed'),
   oil: medium('Oil', 1.518, OBJECTIVE_NA_MAX, '#c9a227'),
   custom: medium('Custom index', null, null, '#9fc8bd'),
@@ -112,16 +121,31 @@ export function objectiveMaximumNA(params = {}) {
   return OBJECTIVE_MEDIA[key].maxNA;
 }
 
+export const OBJECTIVE_NA_DEFAULT = 0.6;
+
 export function objectiveNumericalAperture(params = {}, key = 'na') {
-  return clamp(finite(params[key]) ? params[key] : 1, OBJECTIVE_NA_MIN, objectiveMaximumNA(params));
+  return clamp(
+    finite(params[key]) ? params[key] : OBJECTIVE_NA_DEFAULT,
+    OBJECTIVE_NA_MIN,
+    objectiveMaximumNA(params),
+  );
+}
+
+// A real objective focuses at or inside its own focal length: the nominal
+// specimen plane is one EFL from the principal plane, and the glass takes up
+// the difference. Working distance therefore defaults to EFL and can only be
+// shortened from there, which also keeps the equivalent plane inside the
+// barrel instead of floating out in front of the tip.
+export function objectiveMaximumWorkingDistance(params = {}) {
+  return Math.max(OBJECTIVE_WD_MIN, objectiveEffectiveFocalLength(params));
 }
 
 export function objectiveWorkingDistance(params = {}) {
-  const fallback = objectiveFocalLength(params);
+  const efl = objectiveEffectiveFocalLength(params);
   return clamp(
-    finite(params.workingDistance) ? params.workingDistance : fallback,
+    finite(params.workingDistance) ? params.workingDistance : efl,
     OBJECTIVE_WD_MIN,
-    OBJECTIVE_WD_MAX,
+    objectiveMaximumWorkingDistance(params),
   );
 }
 
@@ -182,11 +206,55 @@ export function objectiveBackFocalPlaneX(params = {}) {
 }
 
 // The housing has to physically contain its own optics, so the barrel grows
-// backwards whenever a long focal length pushes the lens plane behind the
-// default rear face.
+// backwards whenever a short working distance pulls the lens plane behind the
+// default rear face. Only the straight rear section lengthens — the tapered
+// nose keeps the shape an objective is recognised by.
 export const OBJECTIVE_DEFAULT_BACK_X = -16;
+export const OBJECTIVE_SHOULDER_X = -2;
 export function objectiveBackX(params = {}) {
   return Math.min(OBJECTIVE_DEFAULT_BACK_X, objectiveLensPlaneX(params) - 4);
+}
+
+// The rated back pupil, which is the objective's real aperture stop: a beam
+// filling it converges at the rated NA, and anything wider is lost to the
+// barrel. 2*f*NA is the standard first-order (Abbe sine condition) estimate.
+export function objectivePupilRadius(params = {}, tubeF = OBJECTIVE_REFERENCE_TUBE_F_MM) {
+  return objectivePupilDiameter(params, tubeF) / 2;
+}
+
+// Half-height of the barrel's straight rear section. The housing has to be
+// wide enough to hold its own pupil, so a large 2*f*NA makes the objective
+// physically fatter rather than silently clipping at the drawn outline.
+export function objectiveBarrelHalfHeight(params = {}) {
+  return Math.max(objectiveFrontAperture(params) / 2 + 7, objectivePupilRadius(params) + 2);
+}
+
+// ...and at an arbitrary point along it, so a stop placed inside the tapered
+// nose cannot block light that visually passes outside the barrel.
+export function objectiveBarrelHalfHeightAt(params = {}, x = OBJECTIVE_SHOULDER_X) {
+  const outer = objectiveBarrelHalfHeight(params);
+  const tip = objectiveFrontAperture(params) / 2;
+  if (x <= OBJECTIVE_SHOULDER_X) return outer;
+  if (x >= OBJECTIVE_FRONT_X) return tip;
+  const t = (x - OBJECTIVE_SHOULDER_X) / (OBJECTIVE_FRONT_X - OBJECTIVE_SHOULDER_X);
+  return outer + (tip - outer) * t;
+}
+
+// Where the aperture stop physically sits. For an infinity objective the
+// entrance pupil IS the back focal plane, and that is what makes relaying a
+// scan mirror onto the BFP worth doing: a beam pivoting there stays centred
+// in the stop at every scan angle, while a mismatched pivot walks across it
+// and vignettes. The single-plane model can push the BFP further back than
+// any real barrel, so the stop is clamped into the housing rather than left
+// blocking light in mid-air behind it.
+export function objectiveStopX(params = {}) {
+  return Math.max(objectiveBackFocalPlaneX(params), objectiveBackX(params) + 1);
+}
+
+// The purple acceptance sector is an explanatory overlay, off unless asked
+// for, so the default objective draws as a plain barrel.
+export function objectiveShowsAcceptance(params = {}) {
+  return params?.showAcceptance === true;
 }
 
 // Common first-order estimate for an infinity objective's entrance pupil.
