@@ -21,6 +21,7 @@ const PRECACHE_PATHS = [
   "./js/examples-data.js",
   "./js/export.js",
   "./js/gif.js",
+  "./js/glass.js",
   "./js/inspector.js",
   "./js/main.js",
   "./js/objective.js",

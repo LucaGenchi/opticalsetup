@@ -1,0 +1,207 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createElement, registry, thickLensCardinals, thickLensGeometry } from '../sketch/js/elements.js';
+import { traceScene } from '../sketch/js/raytrace.js';
+import { GLASSES, glassAbbe, glassIndex, isDispersiveGlass } from '../sketch/js/glass.js';
+import '../sketch/js/detector-instruments.js';
+
+const X = 200;
+
+// Where a single ray at height `h` crosses the axis after the lens — the
+// measurement every optical bench makes, and the one that can't be faked by
+// the element reporting its own focal length.
+function axisCrossing(params, h, wl = 587.6) {
+  const lens = createElement('thicklens', X, 0);
+  Object.assign(lens.params, { dia: 25.4, glass: 'nbk7', transmission: 1, ...params });
+  const laser = createElement('cwlaser', 0, h);
+  Object.assign(laser.params, { beamMode: 'line', wavelength: wl });
+  const path = traceScene([laser, lens]).drawables
+    .filter(d => d.type === 'path').sort((a, b) => b.pts.length - a.pts.length)[0];
+  if (!path || path.pts.length < 3) return null;
+  const a = path.pts.at(-2), b = path.pts.at(-1);
+  if (Math.abs(b.y - a.y) < 1e-12) return null;
+  return a.x + (b.x - a.x) * (0 - a.y) / (b.y - a.y);
+}
+const tracedBFD = (params, h, wl) => {
+  const cross = axisCrossing(params, h, wl);
+  return cross === null ? null : cross - (X + thickLensGeometry({ dia: 25.4, ...params }).xv2);
+};
+
+// ---------------- glass catalogue ----------------
+
+test('catalogue glasses reproduce their published nd and Abbe number', () => {
+  for (const [id, expected] of [['nbk7', [1.5168, 64.17]], ['nsf11', [1.7847, 25.68]], ['silica', [1.4585, 67.82]]]) {
+    assert.ok(Math.abs(glassIndex(id, 587.6) - expected[0]) < 5e-5, `${id} nd`);
+    assert.ok(Math.abs(glassAbbe(id) - expected[1]) < 0.05, `${id} Abbe number`);
+  }
+  // a flint really is far more dispersive than a crown
+  assert.ok(glassAbbe('nsf11') < glassAbbe('nbk7') / 2);
+});
+
+test('the legacy BK7 model is preserved bit-for-bit so existing sketches trace identically', () => {
+  for (const wl of [400, 450, 532, 550, 650, 800]) {
+    assert.equal(glassIndex('bk7', wl), 1.5046 + 4680 / (wl * wl));
+  }
+  assert.equal(isDispersiveGlass('bk7'), true);
+  assert.equal(isDispersiveGlass('constant'), false, 'a fixed index must not be sampled for dispersion');
+  assert.equal(isDispersiveGlass(undefined), false);
+});
+
+test('every catalogue glass has a sane index across the whole traced spectrum', () => {
+  for (const id of GLASSES.keys()) {
+    for (const wl of [150, 400, 587.6, 1064, 20000]) {
+      const n = glassIndex(id, wl);
+      assert.ok(Number.isFinite(n) && n > 1 && n < 2.5, `${id} at ${wl}nm gave ${n}`);
+    }
+    // normal dispersion: index always falls with wavelength
+    assert.ok(glassIndex(id, 450) > glassIndex(id, 650), `${id} must disperse normally`);
+  }
+});
+
+// ---------------- the trace matches the lensmaker's equation ----------------
+
+test('traced focal length matches the thick lensmaker equation for every shape', () => {
+  const shapes = [
+    ['biconvex', { r1: 60, r2: -60, thickness: 6 }],
+    ['plano-convex', { r1: 50, r2: 0, thickness: 5 }],
+    ['convex-plano', { r1: 0, r2: -50, thickness: 5 }],
+    ['meniscus', { r1: 40, r2: 80, thickness: 4 }],
+    ['biconcave (diverging)', { r1: -60, r2: 60, thickness: 3 }],
+    ['dense flint', { r1: 60, r2: -60, thickness: 6, glass: 'nsf11' }],
+  ];
+  for (const [name, params] of shapes) {
+    const { bfd } = thickLensCardinals({ dia: 25.4, glass: 'nbk7', ...params });
+    const traced = tracedBFD(params, 0.3);
+    assert.ok(traced !== null, `${name} produced no ray`);
+    // a near-axis ray is paraxial, so it must land on the analytic BFD
+    assert.ok(Math.abs(traced - bfd) < 0.05,
+      `${name}: traced ${traced.toFixed(3)} vs theory ${bfd.toFixed(3)}`);
+  }
+});
+
+test('the thickness term is real, not a thin-lens approximation wearing a coat', () => {
+  const thin = thickLensCardinals({ r1: 60, r2: -60, thickness: 0.5, dia: 25.4, glass: 'nbk7' });
+  const fat = thickLensCardinals({ r1: 60, r2: -60, thickness: 20, dia: 25.4, glass: 'nbk7' });
+  assert.ok(fat.f > thin.f, 'a thicker biconvex lens has a longer focal length');
+  // and the trace agrees with that shift, so it is not just a reported number
+  assert.ok(Math.abs(tracedBFD({ r1: 60, r2: -60, thickness: 20 }, 0.3) - fat.bfd) < 0.05);
+});
+
+// ---------------- aberrations emerge from the geometry ----------------
+
+test('spherical aberration appears on its own: marginal rays focus short', () => {
+  const params = { r1: 60, r2: -60, thickness: 6, dia: 50.8 };
+  const paraxial = tracedBFD(params, 0.5);
+  const marginal = tracedBFD(params, 24);
+  assert.ok(marginal < paraxial - 1,
+    `marginal (${marginal.toFixed(2)}) must focus shorter than paraxial (${paraxial.toFixed(2)})`);
+
+  // and it must grow monotonically with ray height, as a real sphere does
+  const heights = [0.5, 5, 10, 15, 20, 24].map(h => tracedBFD(params, h));
+  for (let i = 1; i < heights.length; i++) {
+    assert.ok(heights[i] < heights[i - 1], 'focus must shorten monotonically with ray height');
+  }
+});
+
+test('chromatic aberration appears on its own, and scales with the Abbe number', () => {
+  const shape = { r1: 60, r2: -60, thickness: 6, dia: 50.8 };
+  const colour = glass => {
+    const F = tracedBFD({ ...shape, glass }, 3, 486.1);
+    const C = tracedBFD({ ...shape, glass }, 3, 656.3);
+    return C - F; // positive: blue focuses shorter, as it must for normal dispersion
+  };
+  const crown = colour('nbk7'), flint = colour('nsf11');
+  assert.ok(crown > 0, 'blue must focus shorter than red');
+  assert.ok(flint > 0);
+
+  // a low-Abbe flint disperses far more; compare each against its own f/V
+  for (const glass of ['nbk7', 'nsf11', 'silica']) {
+    const { f } = thickLensCardinals({ ...shape, glass });
+    const predicted = f / glassAbbe(glass);
+    const measured = colour(glass);
+    assert.ok(Math.abs(measured - predicted) / predicted < 0.15,
+      `${glass}: measured ${measured.toFixed(3)} vs f/V ${predicted.toFixed(3)}`);
+  }
+});
+
+test('an air-spaced crown+flint doublet cancels the colour a singlet has', () => {
+  const GAP = 0.3, crownT = 4, flintT = 2.5;
+  const crownX = X;
+  const flintX = X + thickLensGeometry({ r1: 40, r2: -137.7, thickness: crownT, dia: 25.4 }).span / 2 + GAP + flintT / 2;
+  const mk = (x, p) => {
+    const e = createElement('thicklens', x, 0);
+    Object.assign(e.params, { dia: 25.4, transmission: 1, ...p });
+    return e;
+  };
+  const doublet = R4 => [
+    mk(crownX, { r1: 40, r2: -137.7, thickness: crownT, glass: 'nbk7' }),
+    mk(flintX, { r1: -137.7, r2: R4, thickness: flintT, glass: 'nsf11' }),
+  ];
+  const focusOf = (els, wl) => {
+    const laser = createElement('cwlaser', 0, 3);
+    Object.assign(laser.params, { beamMode: 'line', wavelength: wl });
+    const p = traceScene([laser, ...els]).drawables
+      .filter(d => d.type === 'path').sort((a, b) => b.pts.length - a.pts.length)[0];
+    const a = p.pts.at(-2), b = p.pts.at(-1);
+    return a.x + (b.x - a.x) * (0 - a.y) / (b.y - a.y);
+  };
+  const colourOf = els => focusOf(els, 486.1) - focusOf(els, 656.3);
+
+  const singlet = [mk(X, { r1: 61.6, r2: -61.6, thickness: 5, glass: 'nbk7' })];
+  const singletColour = Math.abs(colourOf(singlet));
+  assert.ok(singletColour > 0.5, 'the reference singlet should be visibly chromatic');
+
+  // the colour must actually change sign across the design range — that zero
+  // crossing is what makes an achromat findable by adjusting one radius
+  assert.ok(colourOf(doublet(500)) * colourOf(doublet(1200)) < 0,
+    'axial colour must cross zero as the rear radius is scanned');
+
+  let best = Infinity;
+  for (let R4 = 400; R4 <= 1200; R4 += 25) best = Math.min(best, Math.abs(colourOf(doublet(R4))));
+  assert.ok(best < singletColour / 50,
+    `the corrected doublet (${best.toFixed(4)}mm) should beat the singlet (${singletColour.toFixed(3)}mm) by >50x`);
+});
+
+// ---------------- geometry stays constructible ----------------
+
+test('the boundary survives extreme parameters instead of producing NaN geometry', () => {
+  const extremes = [
+    { r1: 2000, r2: -2000, thickness: 0.5, dia: 50.8 },
+    { r1: 1, r2: -1, thickness: 0.5, dia: 50.8 },        // radii far below the semi-diameter
+    { r1: 0, r2: 0, thickness: 60, dia: 12.7 },          // a flat slab
+    { r1: -2000, r2: 2000, thickness: 60, dia: 50.8 },
+    { r1: 13, r2: -13, thickness: 0.5, dia: 25.4 },      // faces would cross without the guard
+  ];
+  for (const params of extremes) {
+    const full = { glass: 'nbk7', transmission: 0.98, ...params };
+    const g = thickLensGeometry(full);
+    for (const p of g.points) {
+      assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y), `NaN point for ${JSON.stringify(params)}`);
+    }
+    const el = createElement('thicklens', 0, 0);
+    Object.assign(el.params, full);
+    assert.doesNotMatch(registry.thicklens.svg(el), /NaN|Infinity|undefined/);
+    for (const s of registry.thicklens.surfaces(el)) {
+      assert.ok([s.x1, s.y1, s.x2, s.y2].every(Number.isFinite), 'surface coordinates must be finite');
+    }
+  }
+});
+
+test('a lens too thin for its own curvature is thickened until it has a real edge', () => {
+  // R=13 on a 25.4mm lens sags 1.9mm per face; 0.5mm of centre thickness
+  // would put the faces through each other.
+  const g = thickLensGeometry({ r1: 13, r2: -13, thickness: 0.5, dia: 25.4 });
+  assert.ok(g.d > 0.5, 'centre thickness must be raised');
+  const front = g.points.find(p => p.y > 0 && p.x < 0);
+  const rear = g.points.filter(p => p.y > 0).at(-1);
+  assert.ok(rear.x - front.x > 0.3, 'the rim must keep a positive edge thickness');
+});
+
+test('a flat face is traced as a plane, not a huge-radius arc', () => {
+  const el = createElement('thicklens', 0, 0);
+  Object.assign(el.params, { r1: 50, r2: 0, thickness: 5, dia: 25.4, glass: 'nbk7' });
+  const surfaces = registry.thicklens.surfaces(el);
+  const curved = surfaces.filter(s => s.data.arcPoint);
+  assert.equal(curved.length, 1, 'only the curved face should carry an arc');
+});

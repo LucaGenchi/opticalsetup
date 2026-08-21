@@ -15,6 +15,7 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
+import { glassIndex, GLASS_OPTIONS } from './glass.js';
 import {
   objectiveFocalLength, objectiveNumericalAperture, objectivePupilDiameter,
   magnificationForWorkingDistance,
@@ -36,6 +37,64 @@ const GLASS = '#c9e4f5', GLASS_S = '#4a90c4';
 const FREEGLASS_DEFAULT = [
   { x: -36, y: -24 }, { x: 30, y: -24 }, { x: 38, y: 20 }, { x: -26, y: 26 },
 ];
+
+// ---- thick spherical lens -----------------------------------------------
+// A surface of signed radius R with its vertex at xv has its centre of
+// curvature at xv + R, so R > 0 bulges toward −x (front-convex) and R < 0
+// toward +x. R = 0 is the flat case, drawn and traced as a plain line.
+const surfaceSag = (y, xv, R) => (xv + R) - Math.sign(R) * Math.sqrt(Math.max(0, R * R - y * y));
+
+// Radii below the semi-diameter would need a sphere smaller than the lens
+// itself; clamping keeps the boundary constructible rather than producing NaN
+// geometry at parameter extremes (enforced by test/geometry.test.js).
+function thickLensRadii(params) {
+  const h = Math.max(0.5, (params.dia ?? 25.4) / 2);
+  const clampR = R => {
+    const r = Number(R) || 0;
+    if (Math.abs(r) < 1e-6) return 0;                       // flat
+    return Math.sign(r) * Math.max(Math.abs(r), h * 1.02);
+  };
+  return { h, R1: clampR(params.r1), R2: clampR(params.r2) };
+}
+
+// Closed boundary for the glass body, plus the centre thickness actually used:
+// a strongly biconvex lens with too little centre thickness would have its two
+// faces cross at the rim, so the thickness is raised until a real edge remains.
+export function thickLensGeometry(params = {}) {
+  const { h, R1, R2 } = thickLensRadii(params);
+  const MIN_EDGE = 0.4;
+  const sag1 = R1 ? surfaceSag(h, 0, R1) : 0;               // sag measured from the vertex
+  const sag2 = R2 ? surfaceSag(h, 0, R2) : 0;
+  const d = Math.max(Number(params.thickness) || 0.5, MIN_EDGE + sag1 - sag2);
+  const xv1 = -d / 2, xv2 = d / 2;
+  const xEdge1 = R1 ? surfaceSag(h, xv1, R1) : xv1;
+  const xEdge2 = R2 ? surfaceSag(h, xv2, R2) : xv2;
+
+  const points = [{ x: xEdge1, y: h }];
+  if (R1) points.push({ x: xv1, y: 0, arc: true });
+  points.push({ x: xEdge1, y: -h }, { x: xEdge2, y: -h });
+  if (R2) points.push({ x: xv2, y: 0, arc: true });
+  points.push({ x: xEdge2, y: h });
+
+  const xs = points.map(p => p.x);
+  return { points, h, R1, R2, d, xv1, xv2, span: Math.max(...xs) - Math.min(...xs) };
+}
+
+// Paraxial summary of what the surfaces add up to: effective focal length by
+// the lensmaker's equation with the thickness term, and the back focal
+// distance measured from the rear vertex. Reported to the user rather than
+// configured — the trace never consults these.
+export function thickLensCardinals(params = {}, wavelength = 587.6) {
+  const { R1, R2, d } = thickLensGeometry(params);
+  const n = glassIndex(params.glass, wavelength) ?? 1.5;
+  const c1 = R1 ? 1 / R1 : 0, c2 = R2 ? 1 / R2 : 0;
+  const power = (n - 1) * (c1 - c2 + (n - 1) * d * c1 * c2 / n);
+  if (Math.abs(power) < 1e-9) return { f: Infinity, bfd: Infinity, n };
+  const f = 1 / power;
+  return { f, bfd: f * (1 - (n - 1) * d * c1 / n), n };
+}
+
+const formatFocal = v => (Number.isFinite(v) ? `${Number(v.toPrecision(4))}` : '∞ (afocal)');
 
 function freeglassPoints(el) {
   const scale = Math.min(10, Math.max(0.1, el.params.scale || 1));
@@ -1519,6 +1578,54 @@ export const registry = {
     },
   },
 
+  // A real lens instead of a paraxial one: two spherical surfaces with actual
+  // glass between them, refracted by Snell's law at each. Nothing about its
+  // focal length is configured — it emerges from the radii, thickness and
+  // index, which is exactly why spherical and chromatic aberration come out
+  // of it for free rather than being painted on. See thickLensCardinals() for
+  // the paraxial summary shown in the inspector.
+  thicklens: {
+    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 4,
+    aliases: ['real lens', 'spherical lens', 'singlet', 'biconvex', 'plano-convex', 'meniscus', 'aberration'],
+    params: [
+      { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 60, slider: false },
+      { key: 'r2', label: 'Rear radius R₂ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: -60, slider: false },
+      { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
+      { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
+      { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
+      { key: 'transmission', label: 'Per-surface transmission', type: 'number', min: 0, max: 1, step: 0.01, def: 0.98 },
+      { key: 'efl', label: 'Focal length (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).f) },
+      { key: 'bfd', label: 'Back focal distance (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).bfd) },
+    ],
+    size_: el => { const g = thickLensGeometry(el.params); return { w: g.span + 6, h: 2 * g.h + 6 }; },
+    svg(el) {
+      const g = thickLensGeometry(el.params);
+      return `<path d="${boundaryPathData(g.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    },
+    surfaces(el) {
+      const g = thickLensGeometry(el.params);
+      // Only the two optical faces refract. The rim is left non-interacting
+      // rather than absorbing, matching how `freeglass` treats its boundary —
+      // a ray that misses the clear aperture simply isn't collected.
+      return boundarySegments(g.points).map((segment, i) => ({
+        x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
+        data: {
+          material: el.params.glass, transmission: el.params.transmission,
+          topologyKey: `face-${i}`,
+          ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
+        },
+      }));
+    },
+    hitTest(el, localPoint, tolerance = 4) {
+      const points = thickLensGeometry(el.params).points;
+      const sampled = sampleBoundary(points, { maxAngle: Math.PI / 90 });
+      return pointInBoundary(localPoint, points)
+        || sampled.some((a, i) => distToSegment(localPoint, a, sampled[(i + 1) % sampled.length]) <= tolerance);
+    },
+    containsLocal(el, localPoint) { return pointInBoundary(localPoint, thickLensGeometry(el.params).points); },
+    refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
+  },
+
   telescope: {
     label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 2, size: { w: 174, h: 62 },
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
@@ -2807,6 +2914,9 @@ const DIRECT = {
   oap: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
+  // Radii are the physics, so the tune knob drives R1 (and the shape
+  // follows); resize sets the clear aperture, which is genuinely a size.
+  thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
   // Both handles drive working distance directly (dragging outward = a
   // longer working distance = a visibly bigger barrel — magnification moves
