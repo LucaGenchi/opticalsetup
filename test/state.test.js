@@ -104,13 +104,31 @@ test('legacy objective focal lengths migrate to magnification and numerical aper
   const scene = parseSketch(file([objective]), registry);
   const [loadedObjective] = scene.elements;
   assert.deepEqual(loadedObjective.params, {
-    magnification: 10,
+    efl: 20,
+    workingDistance: 20,
+    immersion: 'air',
+    immersionIndex: 1.333,
     na: 0.6,
+    showAcceptance: false,
     transEff: 90,
+    frontAperture: 24,
   });
   assert.equal(registry.objective.surfaces(loadedObjective)[0].data.f, 20);
   assert.equal(Object.hasOwn(loadedObjective.params, 'f'), false);
   assert.equal(Object.hasOwn(loadedObjective.params, 'aperture'), false);
+});
+
+test('objective medium and NA normalize together while unresolved old high-NA scenes remain honest', () => {
+  const water = createElement('objective', 0, 0);
+  water.params = { magnification: 20, immersion: 'water', na: 1.4, transEff: 90 };
+  const oldHighNA = createElement('objective', 50, 0);
+  oldHighNA.params = { magnification: 60, na: 1.4, transEff: 95 };
+
+  const [loadedWater, loadedLegacy] = parseSketch(file([water, oldHighNA]), registry).elements;
+  assert.equal(loadedWater.params.immersion, 'water');
+  assert.equal(loadedWater.params.na, 1.27);
+  assert.equal(loadedLegacy.params.immersion, 'legacy');
+  assert.equal(loadedLegacy.params.na, 1.4);
 });
 
 test('sketches from before the LED/lamp -> Point source merge no longer load', () => {

@@ -115,10 +115,24 @@ shows their positions in the moving 2D sample. It does not calculate focal volum
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
-Standalone objectives are configured by magnification and numerical aperture,
-matching microscope-objective specifications. The qualitative ray tracer derives
-its internal thin-lens focus from a 200 mm reference tube lens and estimates the
-entrance pupil from NA; this is not a diffraction or immersion-medium model.
+Standalone objectives keep their catalogue-like properties distinct. Magnification
+produces an effective-focal-length readout through the 200 mm tube-lens convention and
+contributes to the first-order pupil estimate, but it does not move the traced focus.
+Working distance is the independent distance used by the objective's qualitative
+black-box focus map at its physical front boundary; front aperture controls the drawn
+opening. The designed front medium (dry/air, water, oil, or custom index) sets the
+refractive index, the allowed NA range, and the displayed object-side acceptance
+half-angle. It does not rewrite working distance. Rated NA draws a schematic angular
+guide and qualitatively rejects rays outside that object-side cone. The tracer models
+neither an internal compound prescription nor a back focal plane.
+
+A non-air objective derives an exported immersion bridge to the nearest compatible
+sample, stage-mounted sample, or facing fiber end; a moving stage carries that same
+target while it remains aligned and in range, then disconnects rather than jumping
+elsewhere. Cubic Bézier sides join the objective's front-aperture edges to the contacted
+face to suggest a meniscus. That boundary is deliberately schematic: it does not move
+components, solve wetting or surface tension, refract rays at the liquid boundary, or
+model cover glass, index mismatch, focal shift, or immersion aberrations.
 
 Freeform glass is a directly editable boundary of straight segments and exact
 three-point circular arcs with constant index or selectable catalogue-glass,

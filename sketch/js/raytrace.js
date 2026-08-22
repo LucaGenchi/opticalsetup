@@ -51,6 +51,34 @@ export function specimenIncidentBeams(elementId) {
   return specimenIncident.get(elementId) || [];
 }
 
+// objective element id -> how wide the beam arriving at its back pupil was.
+// Overfilling the back pupil is deliberate practice — it is how you actually
+// reach the full rated NA — so the interesting number is what it costs.
+let objectivePupilHits = new Map();
+
+function recordObjectivePupil(elementId, radius, pupilRadius) {
+  if (!elementId || !Number.isFinite(radius) || !Number.isFinite(pupilRadius)) return;
+  const seen = objectivePupilHits.get(elementId);
+  if (!seen) objectivePupilHits.set(elementId, { pupilRadius, beamRadius: radius });
+  else seen.beamRadius = Math.max(seen.beamRadius, radius);
+}
+
+export function objectivePupilFill(elementId) {
+  const seen = objectivePupilHits.get(elementId);
+  if (!seen || seen.pupilRadius <= 0) return null;
+  const fill = seen.beamRadius / seen.pupilRadius;
+  // Uniform round beam through a round stop: the surviving fraction is the
+  // area ratio. Qualitative, like every other power number here, but it gets
+  // the shape of the trade right — doubling the fill costs three quarters.
+  const transmitted = fill <= 1 ? 1 : 1 / (fill * fill);
+  return {
+    pupilDiameter: 2 * seen.pupilRadius,
+    beamDiameter: 2 * seen.beamRadius,
+    fill,
+    transmitted,
+  };
+}
+
 function hexChannels(color) {
   const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
   return match ? match.slice(1).map(channel => parseInt(channel, 16)) : [255, 255, 255];
@@ -986,7 +1014,22 @@ function interact(ray, hit) {
       // transmission efficiency (AR-coating/absorption loss): a straight
       // power/intensity attenuation, no deviation of the focused direction.
       const T = Math.min(1, Math.max(0, (data.transEff ?? 100) / 100));
-      return [{ d: lensBend(d, hit.p, s, data.f), intensity: ray.intensity * T }];
+      const bent = lensBend(d, hit.p, s, data.f);
+      if (Number.isFinite(data.objectiveNA) && Number.isFinite(data.objectiveMediumIndex)) {
+        // An objective remains an equivalent paraxial plane, but its rated
+        // object-space cone is a real acceptance boundary. From the rear,
+        // validate the outgoing sample-side direction; from the sample,
+        // validate the incoming collection direction. This clips rays
+        // qualitatively without pretending to model the internal groups.
+        const forward = rotPt(1, 0, s.el?.rot || 0);
+        const rearToFront = dot(d, forward) >= 0;
+        const objectDirection = rearToFront ? bent : d;
+        const objectAxis = rearToFront ? forward : mul(forward, -1);
+        const sinAngle = Math.abs(objectDirection.x * objectAxis.y - objectDirection.y * objectAxis.x);
+        const acceptedSin = Math.min(1, Math.max(0, data.objectiveNA / data.objectiveMediumIndex));
+        if (sinAngle > acceptedSin + 1e-9) return [];
+      }
+      return [{ d: bent, intensity: ray.intensity * T }];
     }
     case 'refract': {
       const materialId = s.el?.id || null;
@@ -1672,13 +1715,24 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
-      if (Number.isFinite(hit.surface.data.objectiveNA) && hit.surface.el?.id) {
+      if (hit.surface.el?.type === 'objective' && hit.surface.el?.id) {
         const objectives = Array.isArray(r.objectives) ? r.objectives : [];
         if (!objectives.some(objective => objective.id === hit.surface.el.id)) {
           r.objectives = [...objectives, {
             id: hit.surface.el.id,
-            na: hit.surface.data.objectiveNA,
+            na: Number.isFinite(hit.surface.data.objectiveNA) ? hit.surface.data.objectiveNA : null,
           }];
+        }
+        // Every segment across the barrel face — the open pupil and the metal
+        // either side of it — reports where it was struck, so the widest hit
+        // is the radius of the beam that actually arrived.
+        const span = hit.surface.data.pupilSpan;
+        if (Array.isArray(span) && Number.isFinite(hit.u)) {
+          recordObjectivePupil(
+            hit.surface.el.id,
+            Math.abs(span[0] + hit.u * (span[1] - span[0])),
+            hit.surface.data.pupilRadius,
+          );
         }
       }
       // Both specimen holders report where the beam lands, so the plain
@@ -1724,7 +1778,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             y: hit.p.y,
             wl: signalWl,
             sourceId: r.pulse?.sourceId,
-            objectiveNA: r.objectives?.length === 1 ? r.objectives[0].na : undefined,
+            objectiveNA: r.objectives?.length === 1 && Number.isFinite(r.objectives[0].na)
+              ? r.objectives[0].na
+              : undefined,
           });
         }
       }
@@ -1984,6 +2040,7 @@ export function traceScene(elements, beams = []) {
   const couplings = [];
   lastPaths = [];
   detectorHits = new Map();
+  objectivePupilHits = new Map();
   gateTransmissionCache = new Map();
   specimenIncident = new Map();
 
@@ -2084,6 +2141,7 @@ export function traceScene(elements, beams = []) {
     } finally {
       specimenProbe = null;
       detectorHits = new Map();
+      objectivePupilHits = new Map();
       gateTransmissionCache = new Map();
     }
   }

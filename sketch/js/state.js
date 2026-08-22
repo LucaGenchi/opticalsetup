@@ -2,7 +2,7 @@
 
 import { distinctPoints, rotPt } from './util.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
-import { migrateLegacyObjectiveParams } from './objective.js';
+import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
 import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
 
 export const state = {
@@ -83,7 +83,12 @@ function normalizeChannels(value) {
   }));
 }
 
-function normalizeParam(value, spec) {
+function resolveBound(bound, params, fallback) {
+  const resolved = typeof bound === 'function' ? bound(params) : bound;
+  return finite(resolved) ? resolved : fallback;
+}
+
+function normalizeParam(value, spec, params = {}) {
   if (spec.type === 'signals') return normalizeChannels(value);
   if (spec.type === 'layers') return normalizeLayers(value);
   if (spec.type === 'boundary') return normalizeBoundaryPoints(value, spec.def || []);
@@ -98,17 +103,22 @@ function normalizeParam(value, spec) {
     return typeof value === 'string' ? value.slice(0, 128) : String(spec.def ?? '');
   }
   if (spec.type === 'select') {
-    return spec.options.some(([option]) => option === value) ? value : spec.def;
+    const options = [...(spec.options || []), ...(spec.legacyOptions || [])];
+    return options.some(([option]) => option === value) ? value : spec.def;
   }
   if (spec.type === 'number' || spec.type === 'optsize') {
     let n = finite(value) ? value : spec.def;
     if (!finite(n)) n = 0;
     if (spec.negative) {
-      n = clamp(Math.abs(n), spec.min ?? 0, spec.max ?? Number.MAX_SAFE_INTEGER);
+      n = clamp(
+        Math.abs(n),
+        resolveBound(spec.min, params, 0),
+        resolveBound(spec.max, params, Number.MAX_SAFE_INTEGER),
+      );
       return -n;
     }
-    const lo = spec.type === 'optsize' ? (spec.min ?? 1) : (spec.min ?? -Number.MAX_SAFE_INTEGER);
-    const hi = spec.type === 'optsize' ? (spec.max ?? 500) : (spec.max ?? Number.MAX_SAFE_INTEGER);
+    const lo = resolveBound(spec.min, params, spec.type === 'optsize' ? 1 : -Number.MAX_SAFE_INTEGER);
+    const hi = resolveBound(spec.max, params, spec.type === 'optsize' ? 500 : Number.MAX_SAFE_INTEGER);
     return clamp(n, lo, hi);
   }
   return value ?? spec.def;
@@ -177,11 +187,13 @@ function normalizeElement(raw, definitions, used) {
   }
   if (def) {
     for (const spec of def.params || []) {
-      // `readout`/`derived` params (e.g. the objective's Working distance)
-      // have no storage of their own — always computed fresh from other
-      // params — so there is nothing to normalize or persist for them.
+      // `readout`/`derived` params have no storage of their own — always
+      // computed fresh from other params — so there is nothing to normalize
+      // or persist for them.
       if (spec.type === 'readout' || spec.type === 'derived') continue;
-      params[spec.key] = normalizeParam(rawParams[spec.key], spec);
+      // Earlier normalized params override raw input so dependent bounds can
+      // safely read the medium/index selected just above the objective's NA.
+      params[spec.key] = normalizeParam(rawParams[spec.key], spec, { ...rawParams, ...params });
     }
   } else {
     if (!record(raw.params)) throw new Error(`Element ${raw.type} has invalid parameters`);
@@ -195,6 +207,7 @@ function normalizeElement(raw, definitions, used) {
     if (spec.type === 'readout' || spec.type === 'derived') continue;
     if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params);
   }
+  if (raw.type === 'objective') Object.assign(params, normalizeObjectiveParams(params));
   const rot = def?.rotatable === false ? 0 : finite(raw.rot) ? ((raw.rot % 360) + 360) % 360 : 0;
   let x = raw.x, y = raw.y;
   // Keep editable polygon bounds centered on the element transform. This makes

@@ -25,6 +25,8 @@ reasoning, token-count events, and obvious secret values are excluded.
    (`019f97f9-4e40-78f3-8eaf-ba338b13711d`)
 9. [Exact saved OPTICAL SETUP component panorama](2026-07-20T18-46-02Z-add-exact-saved-optical-setup-component-panorama-491c153a.md)
    (`019f80d9-73b0-7be3-9e88-9d08491c153a`)
+10. [Objective-owned immersion and coherent NA/WD controls](2026-08-21T10-57-49Z-https-github-com-mattpocock-skills-tree-main-skills-engineering-wayfinde-e048d6c2.md)
+   (`01a023f8-47c2-7330-b641-4b1de048d6c2`)
 
 The transcripts are provenance records, not product documentation. Current
 behavior and limitations are documented in the repository's main README and tests.

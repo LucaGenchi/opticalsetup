@@ -14,8 +14,8 @@ test('every component exposes a resize handle backed by a real size parameter', 
       const before = getSize(el);
       const spec = registry[type].params.find(param => param.key === key);
       assert.ok(spec, `${type} resize key ${key} belongs to its registry schema`);
-      // A `derived` param (e.g. the objective's Working distance) has no
-      // storage of its own — read/write it through its declared get/set
+      // A `derived` param has no storage of its own — read/write it through
+      // its declared get/set
       // instead of the raw params object, same as inspector.js and canvas.js
       // do for on-canvas dragging.
       const current = spec.type === 'derived' ? spec.get(el.params) : el.params[key];

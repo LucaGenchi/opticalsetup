@@ -7,7 +7,10 @@ import {
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
   displayActionUpdate,
 } from './elements.js';
-import { objectiveFocalLength } from './objective.js';
+import {
+  OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
+} from './objective.js';
+import { immersionLayerSVG } from './immersion.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
@@ -22,7 +25,7 @@ import {
   MAX_TIME_SCALE, MIN_TIME_SCALE, pulsePeriodNs, pulsesReadAsCW,
 } from './timescale.js';
 
-let svg, viewport, gridLayer, highlightLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
+let svg, viewport, gridLayer, highlightLayer, immersionLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
 let statusEl;
 let pulseTracks = [];
 let writeHits = [];
@@ -66,6 +69,7 @@ export function initCanvas(svgElement, statusElement) {
     <g id="viewport">
       <g id="gridLayer"></g>
       <g id="highlightLayer"></g>
+      <g id="immersionLayer" pointer-events="none"></g>
       <g id="beamLayer"></g>
       <g id="pulseLayer" pointer-events="none"></g>
       <g id="manualLayer"></g>
@@ -76,6 +80,7 @@ export function initCanvas(svgElement, statusElement) {
   viewport = svg.querySelector('#viewport');
   gridLayer = svg.querySelector('#gridLayer');
   highlightLayer = svg.querySelector('#highlightLayer');
+  immersionLayer = svg.querySelector('#immersionLayer');
   beamLayer = svg.querySelector('#beamLayer');
   pulseLayer = svg.querySelector('#pulseLayer');
   manualLayer = svg.querySelector('#manualLayer');
@@ -132,6 +137,7 @@ export function renderAll() {
   viewport.setAttribute('transform', `translate(${v.x} ${v.y}) scale(${v.z})`);
   renderGrid();
   renderHighlights();
+  renderImmersion();
   renderBeams();
   renderManual();
   renderElements();
@@ -249,6 +255,13 @@ function animatedVisualElements() {
   });
 }
 
+function renderImmersion() {
+  if (!immersionLayer) return;
+  immersionLayer.innerHTML = immersionLayerSVG(animatedVisualElements(), state.beams, {
+    baseElements: state.elements,
+  });
+}
+
 function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'chopper' && el.params.modulate)
@@ -284,6 +297,7 @@ function animateMotion(nowMs) {
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
     const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasRetroMotion();
+    if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();
     renderVoxels();
@@ -675,17 +689,22 @@ function renderElements() {
   elementLayer.innerHTML = s;
 }
 
-// focal points of a focusing element, in local coordinates. A point may
-// carry a `label` to override the default italic "f" marker text — used
-// for the objective's back focal plane (BFP), the reference plane a
-// telescope or scan relay must image onto for pupil-matched scanning.
+// Focal points of a focusing element, in local coordinates. A point may
+// carry a `label` to override the default italic "f" marker text.
 function focalPoints(el) {
   const p = el.params;
   switch (el.type) {
     case 'lens': case 'lensc': return [{ x: p.f, y: 0 }, { x: -p.f, y: 0 }];
     case 'objective': {
-      const f = objectiveFocalLength(p);
-      return [{ x: 16 - f, y: 0, label: 'BFP' }, { x: 16 + f, y: 0 }];
+      // Both are real traced planes now: the specimen focus one working
+      // distance beyond the tip, and the back focal plane one focal length
+      // behind the equivalent lens. Light focused on the BFP leaves the
+      // objective collimated, so it is the plane a scan relay images onto and
+      // the one widefield illumination is focused into.
+      return [
+        { x: objectiveBackFocalPlaneX(p), y: 0, label: 'BFP' },
+        { x: OBJECTIVE_FRONT_X + objectiveWorkingDistance(p), y: 0, label: 'WD focus' },
+      ];
     }
     case 'cmirror': case 'cmirrorx': case 'oap': return [{ x: -p.f, y: 0 }];
     case 'telescope': {
@@ -908,8 +927,8 @@ function hitTuneHandle(sel, w) {
   return Math.hypot(w.x - p.x, w.y - p.y) < 11 / state.view.z;
 }
 
-// A `derived` param (e.g. the objective's Working distance) has no storage
-// of its own — reading it means recomputing from whatever it derives from,
+// A `derived` param has no storage of its own — reading it means
+// recomputing from whatever it derives from,
 // and writing it means going through its own setter instead of clobbering a
 // key that was never there. Direct-manipulation (resize/tune) drags read and
 // write params outside the inspector's normal commit path, so they need
@@ -923,14 +942,16 @@ function writeParam(el, key, value) {
   const spec = (registry[el.type]?.params || []).find(param => param.key === key);
   if (spec?.type === 'derived') spec.set(el.params, value);
   else el.params[key] = value;
+  if (el.type === 'objective') Object.assign(el.params, normalizeObjectiveParams(el.params));
 }
 
 function boundedParam(el, key, value) {
   const spec = (registry[el.type]?.params || []).find(param => param.key === key);
   if (!spec || !Number.isFinite(value)) return readParam(el, key);
   const negative = spec.negative === true;
-  let lo = spec.type === 'optsize' ? (spec.min ?? 1) : (spec.min ?? -Number.MAX_SAFE_INTEGER);
-  let hi = spec.type === 'optsize' ? (spec.max ?? 500) : (spec.max ?? Number.MAX_SAFE_INTEGER);
+  const resolve = bound => typeof bound === 'function' ? bound(el.params) : bound;
+  let lo = resolve(spec.min) ?? (spec.type === 'optsize' ? 1 : -Number.MAX_SAFE_INTEGER);
+  let hi = resolve(spec.max) ?? (spec.type === 'optsize' ? 500 : Number.MAX_SAFE_INTEGER);
   if (el.type === 'sclaser' && key === 'scMax') lo = Math.max(lo, el.params.scMin);
   if (el.type === 'sclaser' && key === 'scMin') hi = Math.min(hi, el.params.scMax);
   const step = Number.isFinite(spec.step) && spec.step > 0 ? spec.step : (spec.type === 'optsize' ? 0.5 : 1);
@@ -1526,8 +1547,10 @@ function onMove(e) {
   } else if (drag.mode === 'tune') {
     const spec = drag.tune.param;
     const step = Number.isFinite(spec.step) && spec.step > 0 ? spec.step : 1;
-    const rangeSteps = Number.isFinite(spec.min) && Number.isFinite(spec.max)
-      ? Math.max(1, (spec.max - spec.min) / step) : 100;
+    const min = typeof spec.min === 'function' ? spec.min(drag.el.params) : spec.min;
+    const max = typeof spec.max === 'function' ? spec.max(drag.el.params) : spec.max;
+    const rangeSteps = Number.isFinite(min) && Number.isFinite(max)
+      ? Math.max(1, (max - min) / step) : 100;
     const pixelsPerStep = drag.tune.pixelsPerStep
       || Math.max(0.2, Math.min(4, 200 / rangeSteps));
     const steps = Math.round((drag.clientY - e.clientY) / pixelsPerStep);
