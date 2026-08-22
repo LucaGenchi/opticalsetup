@@ -3,7 +3,7 @@
 A 2D optical-setup sketch builder for scientific illustrations, with live ray tracing.
 
 **➡ Try it in your browser: https://opticalsetup.com/sketch/**
-(mirror: https://lucagenchi.github.io/optics-sketch/sketch/)
+(mirror: https://lucagenchi.github.io/opticalsetup/sketch/)
 
 Search or browse optical elements, select one, and place it on a virtual optical table
 (top view). Set its parameters
