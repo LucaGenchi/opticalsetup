@@ -408,8 +408,8 @@ export const wikiEntries = [
     },
     related: ['lens', 'lensc', 'objective', 'prism', 'freeglass'],
     citations: [
-      { label: 'Thorlabs — N-BK7 plano-convex lenses and the thick-lens equation', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=3281' },
-      { label: 'Thorlabs — Optical Microscopy: spherical aberration', url: 'https://www.thorlabs.com/images/tabimages/MTN015225_B-CN02.pdf' },
+      { label: 'The Physics Hypertextbook — Spherical lenses', url: 'https://physics.info/lenses/' },
+      { label: 'RP Photonics Encyclopedia — Spherical aberrations', url: 'https://www.rp-photonics.com/spherical_aberrations.html' },
       { label: 'SCHOTT — Optical-glass collection datasheets', url: 'https://www.schott.com/en-gb/products/optical-glass/-/media/Project/OnEx/Products/O/optical-glass/Downloads/schott-optical-glass-collection-datasheets-english-may2019.pdf' },
     ],
     resources: [
