@@ -18,12 +18,15 @@ import {
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
 import {
-  OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
+  OBJECTIVE_DEFAULT_PRESET, OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT,
+  OBJECTIVE_PRESETS, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
+  applyObjectivePreset,
   objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
   objectiveBarrelHalfHeightAt, objectiveStopX,
   objectiveEffectiveFocalLength, objectiveFrontAperture, objectiveLensPlaneX, objectiveMagnification,
   objectiveMaximumNA, objectiveMaximumWorkingDistance, objectiveMediumIndex, objectiveMediumKey,
-  objectiveNumericalAperture, objectivePupilDiameter, objectivePupilRadius, objectiveWorkingDistance,
+  objectiveNumericalAperture, objectivePresetKey, objectivePupilDiameter, objectivePupilRadius,
+  objectiveWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
 
@@ -1807,48 +1810,19 @@ export const registry = {
     // the barrel is no longer centred on the element origin once it grows
     boxAnchor: el => ({ x: (OBJECTIVE_FRONT_X + objectiveBackX(el.params)) / 2, y: 0 }),
     params: [
-      // EFL is the objective's real optical power and the thing the tracer
-      // uses. Magnification is what it produces once the user's own tube lens
-      // images it, so it is reported rather than set.
-      { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 1, max: 200, step: 0.1, def: 10 },
+      {
+        key: 'objectivePreset', label: 'Objective starting point', type: 'derived-select',
+        def: OBJECTIVE_DEFAULT_PRESET,
+        options: OBJECTIVE_PRESETS.map(preset => [preset.key, preset.label]),
+        customOption: ['custom', 'Custom parameters'],
+        get: objectivePresetKey,
+        set: (params, key) => Object.assign(params, applyObjectivePreset(params, key)),
+        note: 'Plausible generic specs, not manufacturer prescriptions. Open Advanced parameters for exact catalogue values.',
+      },
       {
         key: 'magnification', label: 'Magnification with a 200 mm tube lens (×)', type: 'readout',
         readout: p => `${objectiveMagnification(p).toFixed(1)}×`,
       },
-      // A real objective focuses at or inside its own focal length, so WD
-      // starts equal to EFL and can only be shortened from there.
-      {
-        key: 'workingDistance', label: 'Working distance (mm)', type: 'number',
-        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.1, def: 10,
-      },
-      {
-        key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
-        options: [
-          ['air', OBJECTIVE_MEDIA.air.label],
-          ['water', OBJECTIVE_MEDIA.water.label],
-          ['oil', OBJECTIVE_MEDIA.oil.label],
-          ['custom', OBJECTIVE_MEDIA.custom.label],
-        ],
-        // Accepted only when loading an older high-NA sketch. The inspector
-        // shows it as a disabled current value, never as a new choice.
-        legacyOptions: [['legacy', OBJECTIVE_MEDIA.legacy.label]],
-      },
-      {
-        key: 'immersionIndex', label: 'Medium index (n)', type: 'number', min: 1, max: 2, step: 0.001, def: 1.333,
-        show: p => p.immersion === 'custom',
-      },
-      {
-        key: 'na', label: 'Rated numerical aperture (NA)', type: 'number', min: 0.05,
-        max: p => objectiveMaximumNA(p), step: 0.01, def: OBJECTIVE_NA_DEFAULT,
-      },
-      {
-        key: 'acceptanceHalfAngle', label: 'Object-side half-angle θ', type: 'readout',
-        readout: p => {
-          const angle = objectiveAcceptanceHalfAngleDeg(p);
-          return Number.isFinite(angle) ? `${angle.toFixed(1)}°` : 'Resolve medium';
-        },
-      },
-      { key: 'showAcceptance', label: 'Show acceptance angle', type: 'checkbox', def: false },
       // What the rated NA costs you in practice: the back pupil is a real
       // stop, so a beam wider than 2*f*NA loses its overflow to the barrel.
       {
@@ -1880,10 +1854,48 @@ export const registry = {
             `${(fill.fill * 100).toFixed(0)}% filled, so the spot is ${(rated / effective).toFixed(1)}× wider`;
         },
       },
+      { key: 'objective-advanced', label: 'Advanced parameters', type: 'section', open: false },
+      // EFL is the objective's real optical power and the thing the tracer
+      // uses. Magnification is what it produces once the user's own tube lens
+      // images it, so it is reported rather than set.
+      { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 1, max: 200, step: 0.1, def: 10, slider: false },
+      // A real objective focuses at or inside its own focal length, so WD
+      // starts equal to EFL and can only be shortened from there.
+      {
+        key: 'workingDistance', label: 'Working distance (mm)', type: 'number',
+        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.01, def: 1.2,
+      },
+      {
+        key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
+        options: [
+          ['air', OBJECTIVE_MEDIA.air.label],
+          ['water', OBJECTIVE_MEDIA.water.label],
+          ['oil', OBJECTIVE_MEDIA.oil.label],
+          ['custom', OBJECTIVE_MEDIA.custom.label],
+        ],
+        // Accepted only when loading an older high-NA sketch. The inspector
+        // shows it as a disabled current value, never as a new choice.
+        legacyOptions: [['legacy', OBJECTIVE_MEDIA.legacy.label]],
+      },
+      {
+        key: 'immersionIndex', label: 'Medium index (n)', type: 'number', min: 1, max: 2, step: 0.001, def: 1.333,
+        show: p => p.immersion === 'custom',
+      },
+      {
+        key: 'na', label: 'Rated numerical aperture (NA)', type: 'number', min: 0.05,
+        max: p => objectiveMaximumNA(p), step: 0.01, def: OBJECTIVE_NA_DEFAULT,
+      },
+      {
+        key: 'acceptanceHalfAngle', label: 'Object-side half-angle θ', type: 'readout',
+        readout: p => {
+          const angle = objectiveAcceptanceHalfAngleDeg(p);
+          return Number.isFinite(angle) ? `${angle.toFixed(1)}°` : 'Resolve medium';
+        },
+      },
+      { key: 'showAcceptance', label: 'Show acceptance angle', type: 'checkbox', def: false },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
       {
-        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.5, def: 20,
-        appearance: true,
+        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.1, def: 8,
       },
     ],
     svg(el) {
@@ -3199,9 +3211,12 @@ const DIRECT = {
   // follows); resize sets the clear aperture, which is genuinely a size.
   thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
-  // The blue handle changes the physical front opening. The purple control
-  // moves the independently specified specimen focus; neither rewrites M/NA.
-  objective: { resize: { y: 'frontAperture' }, tune: { key: 'efl', short: 'EFL' } },
+  // The blue handle changes the physical front opening.
+  // Objective EFL is an exact optical specification, not a safe free-drag
+  // gesture: its former 1–200 mm tuning knob could make the derived barrel
+  // and internal planes jump by hundreds of millimetres. Presets now handle
+  // ordinary changes and Advanced parameters retain exact EFL entry.
+  objective: { resize: { y: 'frontAperture' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
@@ -3284,7 +3299,7 @@ const ELEMENT_HELP = {
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.',
+  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance stays independent but no longer than EFL, and magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
@@ -3488,7 +3503,7 @@ export function createElement(type, x = 0, y = 0) {
   const d = registry[type];
   const params = {};
   for (const p of d.params || []) {
-    if (p.type === 'readout' || p.type === 'derived') continue; // computed on demand, never stored
+    if (p.type === 'readout' || p.type === 'derived' || p.type === 'derived-select' || p.type === 'section') continue;
     params[p.key] = Array.isArray(p.def) ? JSON.parse(JSON.stringify(p.def)) : p.def;
   }
   return { id: uid(), type, x, y, rot: 0, label: '', showLabel: false, params };

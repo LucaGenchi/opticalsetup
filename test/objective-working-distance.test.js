@@ -8,7 +8,9 @@ import { parseSketch, state } from '../sketch/js/state.js';
 import {
   OBJECTIVE_DEFAULT_BACK_X,
   OBJECTIVE_FRONT_X,
+  OBJECTIVE_PRESETS,
   OBJECTIVE_SHOULDER_X,
+  applyObjectivePreset,
   objectiveAcceptanceHalfAngleDeg,
   objectiveMagnification,
   objectiveBackFocalPlaneX,
@@ -19,6 +21,7 @@ import {
   objectiveFrontAperture,
   objectiveMediumIndex,
   objectiveNumericalAperture,
+  objectivePresetKey,
   objectivePupilDiameter,
   objectiveWorkingDistance,
 } from '../sketch/js/objective.js';
@@ -53,9 +56,9 @@ test('the equivalent lens moves so EFL and working distance are both true', () =
   const objective = createElement('objective');
   let surface = registry.objective.surfaces(objective)[0];
   assert.equal(objectiveFocalLength(objective.params), 10);
-  assert.equal(objectiveWorkingDistance(objective.params), 10);
-  assert.equal(surface.x1, 16, 'the trace surface is the physical front boundary');
-  assert.equal(surface.x1 + surface.data.f, 26, 'collimated light focuses at front + WD');
+  assert.equal(objectiveWorkingDistance(objective.params), 1.2);
+  assert.ok(Math.abs(surface.x1 - 7.2) < 1e-9, 'the equivalent plane sits inside the default objective barrel');
+  assert.ok(Math.abs(surface.x1 + surface.data.f - 17.2) < 1e-9, 'collimated light focuses at front + WD');
 
   objective.params.workingDistance = 2;
   surface = registry.objective.surfaces(objective)[0];
@@ -114,7 +117,46 @@ test('changing rated NA changes qualitative angular ray acceptance', () => {
   assert.ok(wide > narrow * 3, 'opening NA must accept visibly more of the same input beam');
 });
 
+test('objective starting points coordinate EFL, WD, medium, NA, and aperture', () => {
+  const starting = createElement('objective').params;
+  for (const preset of OBJECTIVE_PRESETS) {
+    const params = applyObjectivePreset(starting, preset.key);
+    assert.equal(objectivePresetKey(params), preset.key);
+    assert.equal(objectiveMediumIndex(params) !== null, true);
+    assert.ok(objectiveWorkingDistance(params) <= objectiveFocalLength(params));
+    assert.ok(objectiveNumericalAperture(params) > 0);
+    assert.ok(objectiveFrontAperture(params) >= 1);
+  }
+
+  const custom = applyObjectivePreset(starting, '40x-dry');
+  custom.workingDistance = 0.75;
+  assert.equal(objectivePresetKey(custom), 'custom', 'one exact-value edit leaves preset mode honestly');
+});
+
 // ---------------- inspector behavior ----------------
+
+test('the inspector leads with presets and keeps exact objective values collapsed under Advanced', () => {
+  const objective = createElement('objective');
+  const panel = inspectorFor(objective);
+
+  assert.match(panel.innerHTML, /data-p="objectivePreset" data-derived-select="1"/);
+  assert.match(panel.innerHTML, /value="20x-dry" selected/);
+  assert.match(panel.innerHTML, /data-section="objective-advanced" >/,
+    'advanced exact values should start collapsed');
+  assert.doesNotMatch(panel.innerHTML, /purple knob tunes/i);
+
+  applyInput({ dataset: { p: 'objectivePreset', derivedSelect: '1' }, type: 'select-one', value: '100x-oil' }, true);
+  assert.equal(objective.params.efl, 2);
+  assert.equal(objective.params.workingDistance, 0.13);
+  assert.equal(objective.params.immersion, 'oil');
+  assert.equal(objective.params.na, 1.4);
+  assert.equal(objective.params.frontAperture, 6);
+  assert.match(panel.innerHTML, /value="100x-oil" selected/);
+
+  applyInput({ dataset: { p: 'workingDistance' }, type: 'number', value: '0.2' }, true);
+  assert.equal(objectivePresetKey(objective.params), 'custom');
+  assert.match(panel.innerHTML, /value="custom" selected disabled/);
+});
 
 test('the inspector resolves medium-dependent NA bounds, angle, and medium changes without touching WD', () => {
   const objective = createElement('objective');
@@ -174,6 +216,7 @@ test('an unresolved legacy medium is visible for repair but cannot be newly sele
 test('committing objective coordinates refreshes the derived immersion-bridge hint', () => {
   const objective = createElement('objective', 0, 0);
   objective.params.immersion = 'water';
+  objective.params.workingDistance = 10;
   const sample = createElement('sample', 27, 0);
   sample.rot = 90;
   const panel = inspectorFor(objective, [sample]);
@@ -189,6 +232,7 @@ test('committing objective coordinates refreshes the derived immersion-bridge hi
 
 test('editing EFL updates the reported magnification and carries WD down with it', () => {
   const objective = createElement('objective');
+  objective.params.workingDistance = 10;
   const panel = inspectorFor(objective);
   assert.equal(objective.params.workingDistance, 10);
   assert.match(panel.innerHTML, /data-p="magnification">20\.0/);
@@ -215,7 +259,7 @@ test('working-distance edits move focus without changing EFL or NA', () => {
   applyInput({ dataset: { p: 'workingDistance' }, type: 'number', value: '25' }, true);
   assert.equal(objective.params.workingDistance, 25);
   assert.equal(objective.params.efl, 40, 'WD must not rewrite EFL');
-  assert.equal(objective.params.na, 0.65);
+  assert.equal(objective.params.na, 0.4);
   const surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.x1, 1, 'lens plane = 16 + 25 - 40');
   assert.equal(surface.x1 + surface.data.f, 41, 'front boundary 16 mm + 25 mm WD');
@@ -230,17 +274,16 @@ test('working distance is capped at the effective focal length', () => {
   assert.ok(registry.objective.surfaces(objective)[0].x1 <= OBJECTIVE_FRONT_X);
 
   objective.params.workingDistance = 0.05;
-  assert.equal(objectiveWorkingDistance(objective.params), 1, 'and never shorter than 1 mm');
+  assert.equal(objectiveWorkingDistance(objective.params), 0.05, 'and supports real sub-millimetre high-NA clearances');
 });
 
 // ---------------- direct manipulation and persistence ----------------
 
-test('the objective resize handle changes its front aperture while tune changes EFL', () => {
+test('the objective resize handle changes its front aperture without exposing EFL as a drag target', () => {
   const objective = createElement('objective');
   const direct = getDirectManipulation(objective);
   assert.equal(direct.resize.y, 'frontAperture');
-  assert.equal(direct.tune.key, 'efl');
-  assert.equal(direct.tune.param.type, 'number');
+  assert.equal(direct.tune, null, 'the former 1–200 mm canvas knob made destructive jumps too easy');
 
   const before = getSize(objective);
   objective.params.workingDistance = 12;
@@ -402,14 +445,16 @@ test('the barrel is a stubby taper on a long straight body, and only the body gr
   assert.ok(registry.objective.svg(objective).includes(`L ${grown},-`), 'while the body reaches the grown rear face');
 });
 
-test('a fresh objective is a 20x dry NA 0.65 with full transmission', () => {
+test('a fresh objective is the plausible 20x dry starting point with full transmission', () => {
   const objective = createElement('objective');
   assert.equal(objective.params.efl, 10);
   assert.equal(objectiveMagnification(objective.params), 20);
   assert.equal(objective.params.immersion, 'air');
-  assert.equal(objective.params.na, 0.65);
+  assert.equal(objective.params.na, 0.4);
   assert.equal(objective.params.transEff, 100);
-  assert.equal(objective.params.workingDistance, 10, 'WD starts equal to EFL');
+  assert.equal(objective.params.workingDistance, 1.2);
+  assert.equal(objective.params.frontAperture, 8);
+  assert.equal(objectivePresetKey(objective.params), '20x-dry');
 });
 
 test('an underfilled pupil reports the smaller NA the experiment actually runs at', () => {

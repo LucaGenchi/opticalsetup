@@ -32,7 +32,11 @@ export const OBJECTIVE_NA_MIN = 0.05;
 export const OBJECTIVE_NA_MAX = 1.49;
 export const OBJECTIVE_MAG_MIN = 1;
 export const OBJECTIVE_MAG_MAX = 200;
-export const OBJECTIVE_WD_MIN = 1;
+// High-magnification objectives routinely have sub-millimetre clearances.
+// Keep a small positive floor so the nominal focus can never collapse onto
+// (or cross behind) the physical front tip, while still representing common
+// oil-objective working distances such as 0.13 mm.
+export const OBJECTIVE_WD_MIN = 0.05;
 // Working distance has no fixed ceiling any more: it is bounded by the
 // objective's own focal length (see objectiveMaximumWorkingDistance).
 export const OBJECTIVE_FRONT_APERTURE_MIN = 1;
@@ -76,6 +80,61 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 export const OBJECTIVE_EFL_MIN = 1;
 export const OBJECTIVE_EFL_MAX = 200;
+
+const objectivePreset = (key, label, params) => Object.freeze({
+  key,
+  label,
+  params: Object.freeze(params),
+});
+
+// Generic, internally coherent starting points rather than manufacturer
+// prescriptions. They deliberately coordinate all five quantities that make
+// the simple equivalent-objective model change shape or optical behaviour.
+// Exact catalogue values remain available through the Advanced section.
+export const OBJECTIVE_PRESETS = Object.freeze([
+  objectivePreset('4x-dry', '4× dry — NA 0.10 · WD 18.5 mm', {
+    efl: 50, workingDistance: 18.5, immersion: 'air', na: 0.1, frontAperture: 12,
+  }),
+  objectivePreset('10x-dry', '10× dry — NA 0.25 · WD 10.6 mm', {
+    efl: 20, workingDistance: 10.6, immersion: 'air', na: 0.25, frontAperture: 10,
+  }),
+  objectivePreset('20x-dry', '20× dry — NA 0.40 · WD 1.2 mm', {
+    efl: 10, workingDistance: 1.2, immersion: 'air', na: 0.4, frontAperture: 8,
+  }),
+  objectivePreset('40x-dry', '40× dry — NA 0.65 · WD 0.6 mm', {
+    efl: 5, workingDistance: 0.6, immersion: 'air', na: 0.65, frontAperture: 6.5,
+  }),
+  objectivePreset('60x-water', '60× water — NA 1.00 · WD 2.0 mm', {
+    efl: OBJECTIVE_REFERENCE_TUBE_F_MM / 60,
+    workingDistance: 2,
+    immersion: 'water',
+    na: 1,
+    frontAperture: 6,
+  }),
+  objectivePreset('100x-oil', '100× oil — NA 1.40 · WD 0.13 mm', {
+    efl: 2, workingDistance: 0.13, immersion: 'oil', na: 1.4, frontAperture: 6,
+  }),
+]);
+
+export const OBJECTIVE_DEFAULT_PRESET = '20x-dry';
+
+const closeEnough = (a, b) => Math.abs(a - b) <= 1e-6;
+
+export function objectivePresetKey(params = {}) {
+  return OBJECTIVE_PRESETS.find(preset => {
+    const spec = preset.params;
+    return closeEnough(objectiveEffectiveFocalLength(params), spec.efl)
+      && closeEnough(objectiveWorkingDistance(params), spec.workingDistance)
+      && objectiveMediumKey(params) === spec.immersion
+      && closeEnough(objectiveNumericalAperture(params), spec.na)
+      && closeEnough(objectiveFrontAperture(params), spec.frontAperture);
+  })?.key || 'custom';
+}
+
+export function applyObjectivePreset(params = {}, key = OBJECTIVE_DEFAULT_PRESET) {
+  const preset = OBJECTIVE_PRESETS.find(candidate => candidate.key === key);
+  return preset ? normalizeObjectiveParams({ ...params, ...preset.params }) : normalizeObjectiveParams(params);
+}
 
 // The primary optical parameter. Older sketches stored magnification
 // instead, so fall back to the tube-lens convention that produced it.
@@ -121,7 +180,7 @@ export function objectiveMaximumNA(params = {}) {
   return OBJECTIVE_MEDIA[key].maxNA;
 }
 
-export const OBJECTIVE_NA_DEFAULT = 0.65;
+export const OBJECTIVE_NA_DEFAULT = 0.4;
 
 export function objectiveNumericalAperture(params = {}, key = 'na') {
   return clamp(
@@ -133,9 +192,10 @@ export function objectiveNumericalAperture(params = {}, key = 'na') {
 
 // A real objective focuses at or inside its own focal length: the nominal
 // specimen plane is one EFL from the principal plane, and the glass takes up
-// the difference. Working distance therefore defaults to EFL and can only be
-// shortened from there, which also keeps the equivalent plane inside the
-// barrel instead of floating out in front of the tip.
+// the difference. Missing/legacy values fall back to EFL and can only be
+// shortened from there; fresh objectives receive a plausible preset WD in
+// the registry. Either path keeps the equivalent plane inside the barrel
+// instead of floating out in front of the tip.
 export function objectiveMaximumWorkingDistance(params = {}) {
   return Math.max(OBJECTIVE_WD_MIN, objectiveEffectiveFocalLength(params));
 }

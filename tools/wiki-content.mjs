@@ -509,13 +509,18 @@ export const wikiEntries = [
         the label implies — which is why laser-scanning systems deliberately
         <strong>overfill</strong> the back aperture, accepting the power clipped off at the
         rim in exchange for the full aperture and the tightest spot the objective can make.
-        Working distance, meanwhile, is a separate catalogue dimension bounded by the focal
-        length: the specimen plane sits one focal length from the principal plane, and the
-        glass between the front element and the sample takes up the difference, so working
-        distance is always shorter than EFL.</p>`,
+        Working distance, meanwhile, is a separate catalogue dimension set by the complete
+        prescription. It is often shorter than EFL in high-power objectives, but there is
+        no universal <span class="w">WD&nbsp;&le;&nbsp;EFL</span> rule for real compound
+        objectives; specialized long-working-distance designs are the obvious exception.</p>`,
     },
     inOpticalSetup: {
       html: `
+        <p>The normal inspector begins with coordinated generic 4×, 10×, 20×, 40×,
+        60× water, and 100× oil starting points. They are plausible first-order specs, not
+        manufacturer prescriptions; choosing one sets EFL, working distance, medium, NA,
+        and front aperture together. Exact catalogue values remain editable in the collapsed
+        <strong>Advanced parameters</strong> section.</p>
         <p>An objective here is set by three things you would read off a real catalogue —
         <strong>effective focal length (EFL)</strong>, <strong>working distance</strong>,
         and <strong>rated NA</strong> — plus the front aperture that controls how big the
@@ -523,8 +528,9 @@ export const wikiEntries = [
         as one equivalent lens, which is what "focal length" means on an objective; the
         inspector label spells that out. Magnification is not something you type in. It is <em>reported</em> from the EFL against a 200&nbsp;mm reference
         tube lens, because magnification belongs to the objective plus whichever tube lens
-        you actually place in the sketch, not to the objective alone. A fresh objective is
-        EFL 10&nbsp;mm — 20× on a 200&nbsp;mm tube lens — dry, NA 0.65, 100% transmission.</p>
+        you actually place in the sketch, not to the objective alone. A fresh objective uses
+        the 20× dry starting point: EFL 10&nbsp;mm, WD 1.2&nbsp;mm, NA 0.40, and 100%
+        transmission.</p>
 
         <h3>Where the refracting plane sits, and why</h3>
         <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
@@ -548,10 +554,11 @@ export const wikiEntries = [
         <p>The BFP is drawn as a labelled marker next to the WD focus, and it is a traced
         conjugate rather than an annotation — put a source at it and the output really does
         come out collimated.</p>
-        <p>Working distance is capped at EFL, and defaults to it. A real objective focuses
-        at or inside its own focal length, with the glass taking up the difference; the cap
-        also keeps the equivalent plane at or behind the front tip, inside the barrel, which
-        is where a real objective's principal plane and pupil sit. Nothing is drawn there —
+        <p>In this single-plane model, working distance is capped at EFL. The coordinated
+        starting points supply plausible WD values, including sub-millimetre clearances;
+        missing legacy values still fall back to EFL. The model cap keeps the equivalent
+        plane at or behind the front tip instead of allowing a traced surface to float in
+        front of the opaque barrel. Nothing is drawn at the equivalent plane —
         an objective is an opaque barrel, not a visible singlet. When a short working
         distance pushes the plane behind the default rear face, only the straight rear
         section of the barrel lengthens; the tapered nose is fixed geometry.</p>
@@ -612,11 +619,13 @@ export const wikiEntries = [
         no liquid is drawn. Older high-NA sketches that never recorded a medium remain
         explicitly unresolved until one is chosen.</p>
 
-        <h3>Handles and markers</h3>
-        <p>The purple tune control changes EFL and the blue resize handle changes the front
-        aperture. Editing working distance moves the refracting plane without touching EFL or
-        the reported magnification; raising EFL leaves an already-configured working distance
-        alone, while lowering EFL past it carries the working distance down with it. Toggle
+        <h3>Controls and markers</h3>
+        <p>The blue resize handle changes the front aperture. EFL is intentionally an exact
+        Advanced field rather than a free-drag canvas knob: its full 1–200&nbsp;mm expert range
+        can move the internal planes and derived barrel dramatically. Editing working distance
+        moves the refracting plane without touching EFL or the reported magnification; raising
+        EFL leaves an already-configured working distance alone, while lowering EFL past it
+        carries the working distance down with it. Toggle
         "Show focal points" (the <span class="w">ƒ</span> button) or select the objective to
         see both marked planes: <span class="w">BFP</span> on the tube-lens side and the
         nominal <span class="w">WD focus</span> on the sample side.</p>
@@ -633,11 +642,11 @@ export const wikiEntries = [
         standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
         reference length is used only for effective-focal-length metadata and the
         first-order pupil estimate; it does not define the trace boundary or focus map.
-        Working distance is a saved property bounded only by EFL, not a value predicted by
-        magnification, NA, or immersion medium: a real catalogue pairs them through the
-        internal design, and OpticalSetup deliberately lets you keep a visible working
-        distance on a high-power objective so the sketch stays readable — a real 60&times;
-        oil objective works at a few tenths of a millimetre, which would be invisible here. The equivalent lens plane and the
+        Working distance is a saved property bounded by EFL in this model, not a value
+        predicted by magnification, NA, or immersion medium: a real catalogue pairs them
+        through the internal design and can include long-working-distance prescriptions that
+        violate this simplified cap. The supplied high-power starting points do retain
+        plausible sub-millimetre clearances. The equivalent lens plane and the
         back focal plane it defines are first-order stand-ins for a compound objective's
         principal plane and pupil, not the real internal conjugates: one plane cannot
         reproduce a real objective's aberration correction, field curvature, or the axial

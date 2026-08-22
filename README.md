@@ -117,7 +117,11 @@ third axis.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
 the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
-a front aperture, and a rated NA. Magnification is reported from EFL against a 200 mm
+a front aperture, and a rated NA. The normal inspector offers coordinated generic 4×,
+10×, 20×, 40×, 60× water, and 100× oil starting points; exact catalogue values live in
+a collapsed Advanced parameters section. These are plausible first-order specs, not
+manufacturer prescriptions, and EFL is no longer exposed as an unrestricted canvas-drag
+control. Magnification is reported from EFL against a 200 mm
 reference tube lens rather than typed in, because it belongs to the objective plus
 whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
 `front tip + WD − EFL`, always inside the barrel, so collimated light focuses exactly
