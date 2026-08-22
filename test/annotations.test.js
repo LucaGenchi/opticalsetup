@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement, registry, getVisualBounds, boxAnchor, getElementMeta, getDirectManipulation } from '../sketch/js/elements.js';
+import { linkifyText } from '../sketch/js/util.js';
 
 // ---------------- text label: left-anchored, grows rightward ----------------
 
@@ -17,6 +18,46 @@ test('a text label anchors its left edge and grows to the right as text is typed
 
   assert.equal(shortBounds.x0, longBounds.x0, 'the left edge must not move as the text grows');
   assert.ok(longBounds.x1 > shortBounds.x1, 'the box should only expand to the right');
+});
+
+test('text labels turn safe web and DOI addresses into SVG hyperlinks', () => {
+  const label = createElement('textlabel', 0, 0);
+  label.params.text = 'Paper: doi:10.1000/182; data: https://example.org/result?a=1&b=2.';
+  const svg = registry.textlabel.svg(label);
+
+  assert.match(svg, /href="https:\/\/doi\.org\/10\.1000\/182"/);
+  assert.match(svg, /href="https:\/\/example\.org\/result\?a=1&amp;b=2"/);
+  assert.match(svg, /data-text-link="true"/);
+  assert.match(svg, /text-decoration="underline"/);
+  assert.match(svg, /<\/a>\.<\/text>$/);
+});
+
+test('link detection trims prose punctuation, preserves DOI parentheses, and rejects active schemes', () => {
+  assert.deepEqual(linkifyText('See https://example.org/a).'), [
+    { text: 'See ', href: null },
+    { text: 'https://example.org/a', href: 'https://example.org/a' },
+    { text: ').', href: null },
+  ]);
+  assert.deepEqual(linkifyText('10.1002/(SICI)1234-5678(19990101)1:1<1::AID-ABC>3.0.CO;2-P'), [
+    { text: '10.1002/(SICI)1234-5678(19990101)1:1', href: 'https://doi.org/10.1002/(SICI)1234-5678(19990101)1:1' },
+    { text: '<1::AID-ABC>3.0.CO;2-P', href: null },
+  ]);
+  assert.deepEqual(linkifyText('javascript:alert(1)'), [{ text: 'javascript:alert(1)', href: null }]);
+  assert.deepEqual(linkifyText('notwww.example.org x10.1000/182'), [
+    { text: 'notwww.example.org x10.1000/182', href: null },
+  ]);
+});
+
+test('non-link annotation markup remains escaped', () => {
+  const label = createElement('textlabel', 0, 0);
+  label.params.text = '<script>alert("x")</script>';
+  const svg = registry.textlabel.svg(label);
+  assert.doesNotMatch(svg, /<script>/);
+  assert.match(svg, /&lt;script&gt;alert\(&quot;x&quot;\)&lt;\/script&gt;/);
+});
+
+test('text label help announces automatic web and DOI links', () => {
+  assert.match(getElementMeta('textlabel', createElement('textlabel').params).description, /web and DOI addresses become clickable links/i);
 });
 
 test('boxAnchor is the identity offset for every element type except the left-anchored text label', () => {

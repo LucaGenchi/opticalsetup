@@ -354,6 +354,16 @@ test('long labels and probe cards are inside fitted export bounds', () => {
   assert.ok(viewBox[3] > 100, 'probe card height contributes to export bounds');
 });
 
+test('linked text annotations remain hyperlinks in SVG export', () => {
+  const label = createElement('textlabel', 0, 0);
+  label.params.text = 'Paper: 10.1000/182';
+  state.elements = [label];
+  state.beams = [];
+  const svg = buildSVG();
+  assert.match(svg, /<a href="https:\/\/doi\.org\/10\.1000\/182"[^>]*target="_blank"/);
+  assert.match(svg, /<tspan text-decoration="underline">10\.1000\/182<\/tspan>/);
+});
+
 test('SVG and PNG exports reach the browser download trigger', async () => {
   state.elements = [createElement('cwlaser', 0, 0), createElement('diffuser', 100, 0)];
   state.beams = [];
