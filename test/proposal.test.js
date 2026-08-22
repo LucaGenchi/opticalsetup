@@ -5,7 +5,7 @@ import {
   MAX_PROPOSAL_ISSUE_URL_CHARS,
 } from '../sketch/js/proposal.js';
 
-const shareURL = 'https://opticalsetup.com/sketch/#sketch=j.eyJhcHAiOiJvcHRpY3MyZCJ9';
+const shareURL = 'https://opticalsetup.com/v1/sketch/#sketch=j.eyJhcHAiOiJvcHRpY3MyZCJ9';
 
 test('example proposal handoff prefills the dedicated GitHub issue form', () => {
   const issue = new URL(buildExampleProposalIssueURL({
@@ -46,7 +46,7 @@ test('example proposal handoff rejects missing fields and non-share links', () =
   assert.throws(() => buildExampleProposalIssueURL({ name: '', description: 'Useful setup', shareURL }), /name is required/i);
   assert.throws(() => buildExampleProposalIssueURL({ name: 'Setup', description: '', shareURL }), /description is required/i);
   assert.throws(() => buildExampleProposalIssueURL({
-    name: 'Setup', description: 'Useful setup', shareURL: 'https://opticalsetup.com/sketch/',
+    name: 'Setup', description: 'Useful setup', shareURL: 'https://opticalsetup.com/v1/sketch/',
   }), /setup link/i);
 });
 
@@ -63,6 +63,6 @@ test('example proposal handoff fails clearly before GitHub returns an overlong U
   assert.throws(() => buildExampleProposalIssueURL({
     name: 'Large setup',
     description: 'Demonstrates a deliberately large test scene.',
-    shareURL: `https://opticalsetup.com/sketch/#sketch=j.${'a'.repeat(MAX_PROPOSAL_ISSUE_URL_CHARS)}`,
+    shareURL: `https://opticalsetup.com/v1/sketch/#sketch=j.${'a'.repeat(MAX_PROPOSAL_ISSUE_URL_CHARS)}`,
   }), /too large/i);
 });

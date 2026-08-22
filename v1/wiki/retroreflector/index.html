@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retroreflector — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/retroreflector/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Retroreflector — OpticalSetup Encyclopedia">
+<meta property="og:description" content="A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/retroreflector/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="current">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#mirrors">Mirrors</a> / Retroreflector</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-23.7 -23.7 47.4 47.4" aria-hidden="true"><path d="M -12.7,12.7 L 0,0 L -12.7,-12.7" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"/></svg></div>
+        <div>
+          <h1>Retroreflector</h1>
+        </div>
+      </div>
+      <p class="tagline">A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.</p>
+      <a class="place-cta" href="../../sketch/?place=retroreflector">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=retroreflector"
+          title="Interactive Retroreflector — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the retroreflector to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>A single flat mirror sends a ray back at whatever angle the law of reflection
+        dictates — tilt the mirror even slightly and the returned beam walks off target. A
+        <strong>corner retroreflector</strong> solves that by pairing two flat mirrors at
+        exactly a right angle. Each bounce still obeys the ordinary law of reflection, but
+        the composition of two perpendicular reflections has a special property: the
+        outgoing ray is always exactly antiparallel to the incoming one, independent of
+        the angle of incidence, for any ray that enters within the device's aperture.</p>
+        <p>The three-dimensional version of this idea — three mutually perpendicular
+        mirror facets meeting at a corner, called a <em>corner cube</em> — is why bicycle
+        reflectors and road signs throw a car's headlights straight back at the driver
+        regardless of the exact angle the light arrives from, and why the retroreflector
+        arrays left on the Moon by the Apollo missions still return laser pulses fired
+        from Earth decades later with sub-arcsecond alignment tolerance<sup class="cite">[<a href="#ref-1">1</a>,<a href="#ref-2">2</a>]</sup>. The 2D version
+        modeled here — two mirrors at 90°, sometimes called a "roof" or "porro" reflector
+        — is the working element inside a Michelson interferometer arm that needs
+        alignment-insensitive retroreflection, and inside mechanical delay lines: mounting
+        one on a translation stage and sliding it changes the round-trip path length by
+        twice the stage's travel, without ever needing to re-align the returned beam.</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msup><mover accent="true"><mi>d</mi><mo>^</mo></mover><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup><mo>=</mo><mo>−</mo><mover accent="true"><mi>d</mi><mo>^</mo></mover></mrow><annotation encoding="application/x-tex">\hat{d}&#x27; = -\hat{d}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.9579em;"></span><span class="mord"><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.9579em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">d</span></span><span style="top:-3.2634em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.0833em;"><span class="mord">^</span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8019em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.0412em;vertical-align:-0.0833em;"></span><span class="mord">−</span><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.9579em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">d</span></span><span style="top:-3.2634em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.0833em;"><span class="mord">^</span></span></span></span></span></span></span></span></span></span></span></div>
+      <div class="caption">The defining property of a corner retroreflector: the outgoing direction is exactly the negative of the incoming one, for any incidence angle within the aperture — unlike a single flat mirror, whose return direction depends on incidence angle.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">Δ</mi><mi>L</mi><mo>=</mo><mn>2</mn><mtext> </mtext><mi mathvariant="normal">Δ</mi><mi>x</mi></mrow><annotation encoding="application/x-tex">\Delta L = 2\,\Delta x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord">Δ</span><span class="mord mathnormal">L</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal">x</span></span></span></span></span></div>
+      <div class="caption">Translating a retroreflector by Δx along its own axis changes the round-trip optical path by twice that distance — the basis of every retroreflecting mechanical delay line, from tabletop pulse stretchers to gravitational-wave interferometer arms.</div>
+    </div>
+
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>The Retroreflector is built from the same two flat mirror surfaces, each
+        obeying the exact vector law of reflection used by the plain <a
+        href="../mirror/">mirror</a>, joined at a shared apex at exactly 90°. Ray tracing
+        finds the first mirror hit, reflects it, then finds the second mirror hit and
+        reflects again — two ordinary reflections, composed — which is enough for the
+        antiparallel-return property to fall directly out of the vector reflection law
+        rather than being special-cased.</p>
+        <p>Its <strong>delay-line movement</strong> section adds an optional periodic
+        motion: set to <em>Periodic linear</em>, the whole element slides back and forth
+        along its own apex axis, rotation-aware, so it works at any angle you place it on
+        the table. The motion always starts at the position you placed it — the shortest
+        path — and moves only in the direction that adds path length, sweeping up to the
+        configured travel range (50&nbsp;mm by default, up to 200&nbsp;mm) at the
+        configured frequency, then back. Because it's a true retroreflector rather than
+        an abstract path-length tag, this doubles as a physical model of a mechanical
+        retroreflecting delay stage: moving it by Δx really does add 2Δx of round-trip
+        path, computed from the actual traced geometry.</p>
+
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Reflectivity is a single flat percentage applied identically to
+        both mirror surfaces, with the same caveats as the plain mirror: no angle- or
+        polarization-dependence, and no wavelength-dependent coating behavior. The
+        delay-line motion is an idealized triangle wave — no modeled stage inertia, servo
+        settling time, or velocity ripple — and, like the piezo stage's scanning, it
+        drives the traced geometry directly rather than a separate abstract path-length
+        parameter.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/cmirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 7,0 0,12.7" fill="none" stroke="#444" stroke-width="3.5"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg>Concave mirror</a><a href="../../wiki/cmirrorx/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q -7,0 0,12.7" fill="none" stroke="#444" stroke-width="3.5"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg>Convex mirror</a><a href="../../wiki/galvo/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><circle r="4.5" fill="#777" stroke="#444" stroke-width="1.2"/><g transform="rotate(0)"><line x1="0" y1="-10" x2="0" y2="10" stroke="#444" stroke-width="3"/></g><path d="M -9,-13 A 15 15 0 0 1 9,-13" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/><path d="M -9,13 A 15 15 0 0 0 9,13" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/></svg>Galvo mirror</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.nasa.gov/image-article/retroreflectors-from-apollo-mars/" target="_blank" rel="noopener">NASA — Retroreflectors from Apollo &amp; Mars</a></li><li id="ref-2"><a href="https://en.wikipedia.org/wiki/List_of_retroreflectors_on_the_Moon" target="_blank" rel="noopener">Wikipedia — List of retroreflectors on the Moon</a></li>
+      </ol>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/retroreflectors.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Retroreflectors</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

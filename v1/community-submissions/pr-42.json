@@ -1,0 +1,3384 @@
+{
+  "schema": 1,
+  "name": "NIF — one shot from master oscillator to target",
+  "description": "A pulsed master laser is split through a beamsplitter cascade into eleven equal-power ports, each with its own delay line, EOM, and amplifier proxy, timed so all eleven pulses arrive on one target within a fraction of a nanosecond of each other — loosely inspired by the National Ignition Facility's beam architecture.\n\nCaution: this is a schematic illustration, not an accurate model of a real NIF shot — the amplifier stages in particular are simplified passive proxies, not a real gain chain. The real facility (see lasers.llnl.gov, and specifically lasers.llnl.gov/lighting-beam-path) amplifies its laser light more than 10 billion times, splits it into 192 individual beams rather than eleven, converts each beam's wavelength from infrared to ultraviolet in transport, and converges them with pinpoint accuracy on a hohlraum target inside the Target Chamber at up to millions of joules and hundreds of terawatts — culminating in the December 2022 shot that produced more fusion energy (3.15 MJ) than the 2.05 MJ of laser energy that drove it. This setup only illustrates the timing-and-convergence geometry, nothing more.",
+  "reference": "https://lasers.llnl.gov/lighting-beam-path",
+  "author": {
+    "github": "bertona88",
+    "profile": "https://github.com/bertona88"
+  },
+  "source": {
+    "issue": "https://github.com/LucaGenchi/optics-sketch/pull/42",
+    "submittedAt": "2026-08-17T10:38:16.000Z"
+  },
+  "sceneSha256": "4b09e58fbc1af72f6c6c6c0e4d8dbaf89ed21e759d21c171b914722e8bc63850",
+  "scene": {
+    "app": "optics2d",
+    "version": 1,
+    "elements": [
+      {
+        "id": "nif-e001",
+        "type": "textlabel",
+        "x": 2400,
+        "y": -920,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "NATIONAL IGNITION FACILITY · 2D OPTICAL CONSTRUCTION",
+          "fontSize": 24,
+          "fill": "#24313d"
+        }
+      },
+      {
+        "id": "nif-e002",
+        "type": "textlabel",
+        "x": 2400,
+        "y": -884,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "One master laser source → 11 causally connected representative quad ports → one absorbing target surrogate",
+          "fontSize": 12,
+          "fill": "#536473"
+        }
+      },
+      {
+        "id": "nif-e003",
+        "type": "textlabel",
+        "x": 2400,
+        "y": -858,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Zoom and pan to inspect split ratios, fibers, timing trim, passive amplifier proxies, final optics, and target.",
+          "fontSize": 10,
+          "fill": "#6c7a87"
+        }
+      },
+      {
+        "id": "nif-e004",
+        "type": "textlabel",
+        "x": 2400,
+        "y": -832,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Reality scale: NIF has 48 chamber beam ports, four beams per port (192 beamlines). This readable 2D slice displays 11 live representative ports.",
+          "fontSize": 10,
+          "fill": "#7653ad"
+        }
+      },
+      {
+        "id": "nif-e005",
+        "type": "textlabel",
+        "x": 900,
+        "y": 420,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "01  MASTER OSCILLATOR + COMPRESSED INJECTION PROXY",
+          "fontSize": 13,
+          "fill": "#34495a"
+        }
+      },
+      {
+        "id": "nif-e006",
+        "type": "textlabel",
+        "x": 900,
+        "y": 448,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Sequential splits make eleven equal-power displayed seeds. This stands in for NIF’s PAM beam shaping and four-way PABTS distribution.",
+          "fontSize": 9,
+          "fill": "#687786"
+        }
+      },
+      {
+        "id": "nif-e007",
+        "type": "pulsedlaser",
+        "x": 80,
+        "y": 900,
+        "rot": 0,
+        "label": "1ω master oscillator · illustrative 20 ns pulses",
+        "showLabel": true,
+        "labelPos": "b",
+        "params": {
+          "wavelength": 1053,
+          "avgPowerW": 1,
+          "beamMode": "line",
+          "beamWidth": 5,
+          "repRateMHz": 0.001,
+          "pulseWidthFs": 20000000,
+          "transformLimited": false,
+          "pulseShape": "gauss",
+          "pulsePhaseNs": 0,
+          "bandwidth": 0,
+          "pol": 0,
+          "autoColor": true,
+          "color": "#e02020"
+        }
+      },
+      {
+        "id": "nif-e008",
+        "type": "bs",
+        "x": 500,
+        "y": 900,
+        "rot": 0,
+        "label": "equal-power staged split · T = 10/11, 9/10 … 1/2",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "ratio": 0.9090909090909091,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e009",
+        "type": "bs",
+        "x": 595,
+        "y": 900,
+        "rot": 90,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ratio": 0.9,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e010",
+        "type": "bs",
+        "x": 690,
+        "y": 900,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ratio": 0.8888888888888888,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e011",
+        "type": "bs",
+        "x": 785,
+        "y": 900,
+        "rot": 90,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ratio": 0.875,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e012",
+        "type": "bs",
+        "x": 880,
+        "y": 900,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ratio": 0.8571428571428571,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e013",
+        "type": "bs",
+        "x": 975,
+        "y": 900,
+        "rot": 90,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ratio": 0.8333333333333334,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e014",
+        "type": "bs",
+        "x": 1070,
+        "y": 900,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ratio": 0.8,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e015",
+        "type": "bs",
+        "x": 1165,
+        "y": 900,
+        "rot": 90,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ratio": 0.75,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e016",
+        "type": "bs",
+        "x": 1260,
+        "y": 900,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ratio": 0.6666666666666666,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e017",
+        "type": "bs",
+        "x": 1355,
+        "y": 900,
+        "rot": 90,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ratio": 0.5,
+          "size": 40
+        }
+      },
+      {
+        "id": "nif-e018",
+        "type": "lens",
+        "x": 2352.0164389061692,
+        "y": 355.0340560047574,
+        "rot": 32.72727272727275,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e019",
+        "type": "delayline",
+        "x": 2390.7141014164035,
+        "y": 379.90353360771496,
+        "rot": 32.72727272727275,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 6092.64787152959,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e020",
+        "type": "eom",
+        "x": 2434.4592851236252,
+        "y": 408.01685611540603,
+        "rot": 32.72727272727275,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e021",
+        "type": "freeglass",
+        "x": 2497.5533000859637,
+        "y": 448.56491742457587,
+        "rot": 32.72727272727275,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e022",
+        "type": "crystal",
+        "x": 2570.7423574422764,
+        "y": 495.60066854321286,
+        "rot": 32.72727272727275,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e023",
+        "type": "crystal",
+        "x": 2619.535062346485,
+        "y": 526.9578359556375,
+        "rot": 32.72727272727275,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e024",
+        "type": "lens",
+        "x": 2703.660415629603,
+        "y": 581.0219177011973,
+        "rot": 32.72727272727275,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e025",
+        "type": "textlabel",
+        "x": 2766.754430591942,
+        "y": 621.5699790103672,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P02",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e026",
+        "type": "lens",
+        "x": 2781.2616668940987,
+        "y": -16.909051317354624,
+        "rot": 65.45454545454544,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e027",
+        "type": "delayline",
+        "x": 2800.3707574921855,
+        "y": 24.934020468953236,
+        "rot": 65.45454545454544,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 5272.814191573366,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e028",
+        "type": "eom",
+        "x": 2821.9723381682834,
+        "y": 72.23488422738819,
+        "rot": 65.45454545454544,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e029",
+        "type": "freeglass",
+        "x": 2853.128464143425,
+        "y": 140.45728387897714,
+        "rot": 65.45454545454544,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e030",
+        "type": "crystal",
+        "x": 2889.269570274589,
+        "y": 219.59526747482016,
+        "rot": 65.45454545454544,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e031",
+        "type": "crystal",
+        "x": 2913.3636410286986,
+        "y": 272.35392320538233,
+        "rot": 65.45454545454544,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e032",
+        "type": "lens",
+        "x": 2954.905142328887,
+        "y": 363.31712274083407,
+        "rot": 65.45454545454544,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e033",
+        "type": "textlabel",
+        "x": 2986.0612683040285,
+        "y": 431.539522392423,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P03",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e034",
+        "type": "lens",
+        "x": 3343.4533569794717,
+        "y": -97.74001341598012,
+        "rot": 98.18181818181819,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e035",
+        "type": "delayline",
+        "x": 3336.9068744189003,
+        "y": -52.208227089457296,
+        "rot": 98.18181818181819,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 204.52657918023942,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e036",
+        "type": "eom",
+        "x": 3329.5065028286895,
+        "y": -0.737512111648698,
+        "rot": 98.18181818181819,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e037",
+        "type": "freeglass",
+        "x": 3318.8328899581934,
+        "y": 73.49909602942125,
+        "rot": 98.18181818181819,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e038",
+        "type": "crystal",
+        "x": 3306.4514990284174,
+        "y": 159.6135614730623,
+        "rot": 98.18181818181819,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e039",
+        "type": "crystal",
+        "x": 3298.197238408567,
+        "y": 217.02320510215645,
+        "rot": 98.18181818181819,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e040",
+        "type": "lens",
+        "x": 3283.9657545812383,
+        "y": 316.0053492902497,
+        "rot": 98.18181818181819,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e041",
+        "type": "textlabel",
+        "x": 3273.292141710742,
+        "y": 390.2419574313197,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P04",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e042",
+        "type": "lens",
+        "x": 3860.0996198168473,
+        "y": 138.20442905090772,
+        "rot": 130.90909090909088,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e043",
+        "type": "delayline",
+        "x": 3829.976026055364,
+        "y": 172.96890947120357,
+        "rot": 130.90909090909088,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 293.6501570427099,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e044",
+        "type": "eom",
+        "x": 3795.9232678902094,
+        "y": 212.26788733762498,
+        "rot": 130.90909090909088,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e045",
+        "type": "freeglass",
+        "x": 3746.808712844313,
+        "y": 268.9491054141944,
+        "rot": 130.90909090909088,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e046",
+        "type": "crystal",
+        "x": 3689.835828991073,
+        "y": 334.69931838301477,
+        "rot": 130.90909090909088,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e047",
+        "type": "crystal",
+        "x": 3651.853906422247,
+        "y": 378.53279369556185,
+        "rot": 130.90909090909088,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e048",
+        "type": "lens",
+        "x": 3586.367833027718,
+        "y": 454.1077511309876,
+        "rot": 130.90909090909088,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e049",
+        "type": "textlabel",
+        "x": 3537.2532779818216,
+        "y": 510.788969207557,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P05",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e050",
+        "type": "lens",
+        "x": 4167.168917403414,
+        "y": 616.0135827038387,
+        "rot": 163.63636363636363,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e051",
+        "type": "delayline",
+        "x": 4123.032240617146,
+        "y": 628.9732803185445,
+        "rot": 163.63636363636363,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 282.0601330535792,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e052",
+        "type": "eom",
+        "x": 4073.1386059891925,
+        "y": 643.6233732742988,
+        "rot": 163.63636363636363,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e053",
+        "type": "freeglass",
+        "x": 4001.1766329681054,
+        "y": 664.7533150374061,
+        "rot": 163.63636363636363,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e054",
+        "type": "crystal",
+        "x": 3917.700744263644,
+        "y": 689.2640474826105,
+        "rot": 163.63636363636363,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e055",
+        "type": "crystal",
+        "x": 3862.0501517940033,
+        "y": 705.6045357794135,
+        "rot": 163.63636363636363,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e056",
+        "type": "lens",
+        "x": 3766.100854432553,
+        "y": 733.7777914635564,
+        "rot": 163.63636363636363,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e057",
+        "type": "textlabel",
+        "x": 3694.138881411466,
+        "y": 754.9077332266636,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P06",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e058",
+        "type": "lens",
+        "x": 4167.168917403414,
+        "y": 1183.9864172961613,
+        "rot": 196.36363636363637,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e059",
+        "type": "delayline",
+        "x": 4123.032240617146,
+        "y": 1171.0267196814555,
+        "rot": 196.36363636363637,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 231.3452058543753,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e060",
+        "type": "eom",
+        "x": 4073.1386059891925,
+        "y": 1156.376626725701,
+        "rot": 196.36363636363637,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e061",
+        "type": "freeglass",
+        "x": 4001.1766329681054,
+        "y": 1135.246684962594,
+        "rot": 196.36363636363637,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e062",
+        "type": "crystal",
+        "x": 3917.700744263644,
+        "y": 1110.7359525173895,
+        "rot": 196.36363636363637,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e063",
+        "type": "crystal",
+        "x": 3862.0501517940033,
+        "y": 1094.3954642205865,
+        "rot": 196.36363636363637,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e064",
+        "type": "lens",
+        "x": 3766.100854432553,
+        "y": 1066.2222085364435,
+        "rot": 196.36363636363637,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e065",
+        "type": "textlabel",
+        "x": 3694.138881411466,
+        "y": 1045.0922667733364,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P07",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e066",
+        "type": "lens",
+        "x": 3860.0996198168473,
+        "y": 1661.7955709490923,
+        "rot": 229.09090909090912,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e067",
+        "type": "delayline",
+        "x": 3829.976026055364,
+        "y": 1627.0310905287965,
+        "rot": 229.09090909090912,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 107.00438214177484,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e068",
+        "type": "eom",
+        "x": 3795.9232678902094,
+        "y": 1587.7321126623751,
+        "rot": 229.09090909090912,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e069",
+        "type": "freeglass",
+        "x": 3746.808712844313,
+        "y": 1531.0508945858055,
+        "rot": 229.09090909090912,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e070",
+        "type": "crystal",
+        "x": 3689.835828991073,
+        "y": 1465.3006816169852,
+        "rot": 229.09090909090912,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e071",
+        "type": "crystal",
+        "x": 3651.853906422247,
+        "y": 1421.4672063044382,
+        "rot": 229.09090909090912,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e072",
+        "type": "lens",
+        "x": 3586.367833027718,
+        "y": 1345.8922488690123,
+        "rot": 229.09090909090912,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e073",
+        "type": "textlabel",
+        "x": 3537.2532779818216,
+        "y": 1289.2110307924431,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P08",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e074",
+        "type": "lens",
+        "x": 3343.4533569794717,
+        "y": 1897.7400134159802,
+        "rot": 261.81818181818176,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e075",
+        "type": "delayline",
+        "x": 3336.9068744189003,
+        "y": 1852.2082270894573,
+        "rot": 261.81818181818176,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 0,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e076",
+        "type": "eom",
+        "x": 3329.5065028286895,
+        "y": 1800.7375121116488,
+        "rot": 261.81818181818176,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e077",
+        "type": "freeglass",
+        "x": 3318.8328899581934,
+        "y": 1726.5009039705787,
+        "rot": 261.81818181818176,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e078",
+        "type": "crystal",
+        "x": 3306.4514990284174,
+        "y": 1640.3864385269376,
+        "rot": 261.81818181818176,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e079",
+        "type": "crystal",
+        "x": 3298.197238408567,
+        "y": 1582.9767948978435,
+        "rot": 261.81818181818176,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e080",
+        "type": "lens",
+        "x": 3283.9657545812383,
+        "y": 1483.9946507097502,
+        "rot": 261.81818181818176,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e081",
+        "type": "textlabel",
+        "x": 3273.292141710742,
+        "y": 1409.7580425686804,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P09",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e082",
+        "type": "lens",
+        "x": 2781.261666894098,
+        "y": 1816.9090513173546,
+        "rot": 294.5454545454545,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e083",
+        "type": "delayline",
+        "x": 2800.370757492185,
+        "y": 1775.0659795310467,
+        "rot": 294.5454545454545,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 5041.542838642937,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e084",
+        "type": "eom",
+        "x": 2821.9723381682834,
+        "y": 1727.7651157726118,
+        "rot": 294.5454545454545,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e085",
+        "type": "freeglass",
+        "x": 2853.128464143425,
+        "y": 1659.5427161210227,
+        "rot": 294.5454545454545,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e086",
+        "type": "crystal",
+        "x": 2889.2695702745887,
+        "y": 1580.4047325251797,
+        "rot": 294.5454545454545,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e087",
+        "type": "crystal",
+        "x": 2913.363641028698,
+        "y": 1527.6460767946178,
+        "rot": 294.5454545454545,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e088",
+        "type": "lens",
+        "x": 2954.905142328887,
+        "y": 1436.6828772591657,
+        "rot": 294.5454545454545,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e089",
+        "type": "textlabel",
+        "x": 2986.0612683040285,
+        "y": 1368.4604776075769,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P10",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e090",
+        "type": "lens",
+        "x": 2352.0164389061692,
+        "y": 1444.9659439952425,
+        "rot": 327.27272727272725,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e091",
+        "type": "delayline",
+        "x": 2390.7141014164035,
+        "y": 1420.096466392285,
+        "rot": 327.27272727272725,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "delayMm": 5960.201410456471,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e092",
+        "type": "eom",
+        "x": 2434.4592851236252,
+        "y": 1391.983143884594,
+        "rot": 327.27272727272725,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e093",
+        "type": "freeglass",
+        "x": 2497.5533000859637,
+        "y": 1351.435082575424,
+        "rot": 327.27272727272725,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e094",
+        "type": "crystal",
+        "x": 2570.7423574422764,
+        "y": 1304.3993314567872,
+        "rot": 327.27272727272725,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e095",
+        "type": "crystal",
+        "x": 2619.535062346485,
+        "y": 1273.0421640443624,
+        "rot": 327.27272727272725,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e096",
+        "type": "lens",
+        "x": 2703.660415629603,
+        "y": 1218.9780822988027,
+        "rot": 327.27272727272725,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e097",
+        "type": "textlabel",
+        "x": 2766.754430591942,
+        "y": 1178.4300209896328,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P11",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e098",
+        "type": "lens",
+        "x": 2192,
+        "y": 899.9999999999999,
+        "rot": 0,
+        "label": "collimator",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "f": 90,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e099",
+        "type": "delayline",
+        "x": 2238,
+        "y": 899.9999999999999,
+        "rot": 0,
+        "label": "timing trim",
+        "showLabel": true,
+        "labelPos": "b",
+        "params": {
+          "delayMm": 8422.926012314547,
+          "aperture": 42
+        }
+      },
+      {
+        "id": "nif-e100",
+        "type": "eom",
+        "x": 2290,
+        "y": 899.9999999999999,
+        "rot": 0,
+        "label": "EOM / PEPC proxy",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "aperture": 42,
+          "modulate": true,
+          "a": 0,
+          "retardance": 0
+        }
+      },
+      {
+        "id": "nif-e101",
+        "type": "freeglass",
+        "x": 2365,
+        "y": 899.9999999999999,
+        "rot": 0,
+        "label": "Nd:glass slab · passive proxy",
+        "showLabel": true,
+        "labelPos": "b",
+        "params": {
+          "vertices": [
+            {
+              "x": -35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": -16
+            },
+            {
+              "x": 35,
+              "y": 16
+            },
+            {
+              "x": -35,
+              "y": 16
+            }
+          ],
+          "scale": 1,
+          "material": "constant",
+          "ior": 1.5,
+          "transmission": 0.99
+        }
+      },
+      {
+        "id": "nif-e102",
+        "type": "crystal",
+        "x": 2452,
+        "y": 899.9999999999999,
+        "rot": 0,
+        "label": "2ω · 526.5",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "aperture": 46,
+          "convert": "shg",
+          "outWl": 532,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e103",
+        "type": "crystal",
+        "x": 2510,
+        "y": 899.9999999999999,
+        "rot": 0,
+        "label": "3ω · 351",
+        "showLabel": true,
+        "labelPos": "b",
+        "params": {
+          "aperture": 46,
+          "convert": "custom",
+          "outWl": 351,
+          "pumpWl": 532,
+          "signalWl": 800,
+          "efficiency": 1,
+          "transmitPump": false
+        }
+      },
+      {
+        "id": "nif-e104",
+        "type": "lens",
+        "x": 2610,
+        "y": 899.9999999999999,
+        "rot": 0,
+        "label": "final focus",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "f": 590,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "nif-e105",
+        "type": "textlabel",
+        "x": 2685,
+        "y": 899.9999999999999,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "P01",
+          "fontSize": 8,
+          "fill": "#694aa0"
+        }
+      },
+      {
+        "id": "nif-e106",
+        "type": "bs",
+        "x": 2665,
+        "y": 899.9999999999999,
+        "rot": 0,
+        "label": "25% display sample",
+        "showLabel": true,
+        "labelPos": "b",
+        "params": {
+          "ratio": 0.75,
+          "size": 34
+        }
+      },
+      {
+        "id": "nif-e107",
+        "type": "detector",
+        "x": 2665,
+        "y": 749.9999999999999,
+        "rot": 270,
+        "label": "3ω drive PD · live 351 nm",
+        "showLabel": true,
+        "labelPos": "r",
+        "params": {
+          "aperture": 80
+        }
+      },
+      {
+        "id": "nif-e108",
+        "type": "textlabel",
+        "x": 3200,
+        "y": 250,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "02  11 LIVE FINAL-OPTICS PORTS",
+          "fontSize": 13,
+          "fill": "#34495a"
+        }
+      },
+      {
+        "id": "nif-e109",
+        "type": "textlabel",
+        "x": 3200,
+        "y": 276,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Each port is active: fiber seed → collimator → timing trim → EOM/PEPC proxy → passive glass slab → 2ω → 3ω → focus.",
+          "fontSize": 9,
+          "fill": "#687786"
+        }
+      },
+      {
+        "id": "nif-e110",
+        "type": "textlabel",
+        "x": 3200,
+        "y": 298,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "The 11-way radial layout is a readable 2D projection, not NIF’s literal four 3D cone angles. Every P01–P11 path is traced from the same source.",
+          "fontSize": 9,
+          "fill": "#7653ad"
+        }
+      },
+      {
+        "id": "nif-e111",
+        "type": "sample",
+        "x": 3200,
+        "y": 900,
+        "rot": 0,
+        "label": "absorbing target surrogate",
+        "showLabel": true,
+        "labelPos": "b",
+        "params": {
+          "aperture": 110,
+          "mode": "none",
+          "fluorWl": 520,
+          "carsWl": 660,
+          "transmitExc": false,
+          "transmission": 0,
+          "signalEff": 0.1
+        }
+      },
+      {
+        "id": "nif-e112",
+        "type": "textlabel",
+        "x": 3200,
+        "y": 992,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "target element is real absorption; hohlraum x-ray conversion, capsule implosion, fusion, and yield are not modeled",
+          "fontSize": 8.5,
+          "fill": "#8a3e3e"
+        }
+      },
+      {
+        "id": "nif-e113",
+        "type": "textlabel",
+        "x": 3950,
+        "y": 1850,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "03  TARGET DIAGNOSTICS · ANNOTATION ONLY",
+          "fontSize": 11,
+          "fill": "#59636d"
+        }
+      },
+      {
+        "id": "nif-e114",
+        "type": "textlabel",
+        "x": 3950,
+        "y": 1910,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "DANTE: x-ray power history · annotation only (no x-ray transport)",
+          "fontSize": 9,
+          "fill": "#9a6a22"
+        }
+      },
+      {
+        "id": "nif-e115",
+        "type": "textlabel",
+        "x": 3950,
+        "y": 1940,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "nTOF: neutron time of flight · annotation only (no neutron transport)",
+          "fontSize": 9,
+          "fill": "#3a7654"
+        }
+      },
+      {
+        "id": "nif-e116",
+        "type": "textlabel",
+        "x": 3950,
+        "y": 1970,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "VISAR: shock-velocity diagnostic · annotation only (no coherent interference or velocity inference)",
+          "fontSize": 9,
+          "fill": "#7a556f"
+        }
+      },
+      {
+        "id": "nif-e117",
+        "type": "textlabel",
+        "x": 3950,
+        "y": 2750,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "MODEL BOUNDARY",
+          "fontSize": 11,
+          "fill": "#8a3e3e"
+        }
+      },
+      {
+        "id": "nif-e118",
+        "type": "textlabel",
+        "x": 3950,
+        "y": 2776,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Simulated: geometric paths, bounded relative signal, wavelengths, polarization, pulsed timing, fiber delay, detector arrivals.",
+          "fontSize": 8.5,
+          "fill": "#66717e"
+        }
+      },
+      {
+        "id": "nif-e119",
+        "type": "textlabel",
+        "x": 3950,
+        "y": 2787.5,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Constructed from existing optics only: laser, BS, fiber, lens, delay, EOM, freeform glass, crystals, sample, detector.",
+          "fontSize": 8.5,
+          "fill": "#66717e"
+        }
+      },
+      {
+        "id": "nif-e120",
+        "type": "textlabel",
+        "x": 3950,
+        "y": 2799,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Not simulated: gain/saturation, flashlamps, four-pass amplifier switching, damage, diffraction/phase, 3D cones, x rays, implosion, fusion, neutrons.",
+          "fontSize": 8.5,
+          "fill": "#66717e"
+        }
+      }
+    ],
+    "beams": [
+      {
+        "id": "nif-b001",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 500,
+            "y": 730
+          },
+          {
+            "x": 500,
+            "y": 650
+          },
+          {
+            "x": 1720,
+            "y": -420
+          },
+          {
+            "x": 1855.419983379723,
+            "y": -420
+          },
+          {
+            "x": 2005.419983379723,
+            "y": 132.29003921305116
+          },
+          {
+            "x": 2182.0832252742707,
+            "y": 245.82461087872673
+          },
+          {
+            "x": 2274.6211138857007,
+            "y": 305.29510079884244
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b002",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 595,
+            "y": 1070
+          },
+          {
+            "x": 595,
+            "y": 1150
+          },
+          {
+            "x": 1720,
+            "y": -420
+          },
+          {
+            "x": 2460.1106815373214,
+            "y": -420
+          },
+          {
+            "x": 2610.1106815373214,
+            "y": -391.6774334034162
+          },
+          {
+            "x": 2697.3478342677176,
+            "y": -200.65471437896736
+          },
+          {
+            "x": 2743.043485697925,
+            "y": -100.59519488997023
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b003",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 690,
+            "y": 730
+          },
+          {
+            "x": 690,
+            "y": 650
+          },
+          {
+            "x": 1750,
+            "y": -777
+          },
+          {
+            "x": 4780,
+            "y": -777
+          },
+          {
+            "x": 3402.087070348065,
+            "y": -505.5464474709245
+          },
+          {
+            "x": 3372.200954310675,
+            "y": -297.6839446759286
+          },
+          {
+            "x": 3356.546322100614,
+            "y": -188.80358606902587
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b004",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 785,
+            "y": 1070
+          },
+          {
+            "x": 785,
+            "y": 1150
+          },
+          {
+            "x": 1750,
+            "y": -786
+          },
+          {
+            "x": 4780,
+            "y": -786
+          },
+          {
+            "x": 4129.9022422023045,
+            "y": -173.16439558304683
+          },
+          {
+            "x": 3992.3814880737946,
+            "y": -14.456984968652478
+          },
+          {
+            "x": 3920.3468073398135,
+            "y": 68.6754682103159
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b005",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 880,
+            "y": 730
+          },
+          {
+            "x": 880,
+            "y": 650
+          },
+          {
+            "x": 1750,
+            "y": -795
+          },
+          {
+            "x": 4780,
+            "y": -795
+          },
+          {
+            "x": 4562.480022532586,
+            "y": 499.93976928516963
+          },
+          {
+            "x": 4360.986498073542,
+            "y": 559.1036062218699
+          },
+          {
+            "x": 4255.442270975947,
+            "y": 590.0941874744271
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b006",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 975,
+            "y": 1070
+          },
+          {
+            "x": 975,
+            "y": 1150
+          },
+          {
+            "x": 1750,
+            "y": 2604
+          },
+          {
+            "x": 4780,
+            "y": 2604
+          },
+          {
+            "x": 4562.480022532586,
+            "y": 1300.0602307148304
+          },
+          {
+            "x": 4360.986498073542,
+            "y": 1240.89639377813
+          },
+          {
+            "x": 4255.442270975947,
+            "y": 1209.9058125255729
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b007",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 1070,
+            "y": 730
+          },
+          {
+            "x": 1070,
+            "y": 650
+          },
+          {
+            "x": 1750,
+            "y": 2613
+          },
+          {
+            "x": 4780,
+            "y": 2613
+          },
+          {
+            "x": 4129.9022422023045,
+            "y": 1973.1643955830468
+          },
+          {
+            "x": 3992.3814880737946,
+            "y": 1814.4569849686525
+          },
+          {
+            "x": 3920.3468073398135,
+            "y": 1731.324531789684
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b008",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 1165,
+            "y": 1070
+          },
+          {
+            "x": 1165,
+            "y": 1150
+          },
+          {
+            "x": 1750,
+            "y": 2622
+          },
+          {
+            "x": 4780,
+            "y": 2622
+          },
+          {
+            "x": 3402.087070348065,
+            "y": 2305.5464474709242
+          },
+          {
+            "x": 3372.200954310675,
+            "y": 2097.6839446759286
+          },
+          {
+            "x": 3356.546322100614,
+            "y": 1988.8035860690259
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b009",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 1260,
+            "y": 730
+          },
+          {
+            "x": 1260,
+            "y": 650
+          },
+          {
+            "x": 1720,
+            "y": 2220
+          },
+          {
+            "x": 2460.110681537321,
+            "y": 2220
+          },
+          {
+            "x": 2610.110681537321,
+            "y": 2191.677433403416
+          },
+          {
+            "x": 2697.347834267717,
+            "y": 2000.6547143789671
+          },
+          {
+            "x": 2743.0434856979246,
+            "y": 1900.5951948899701
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b010",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 1355,
+            "y": 1070
+          },
+          {
+            "x": 1355,
+            "y": 1150
+          },
+          {
+            "x": 1720,
+            "y": 2220
+          },
+          {
+            "x": 1855.419983379723,
+            "y": 2220
+          },
+          {
+            "x": 2005.419983379723,
+            "y": 1667.7099607869488
+          },
+          {
+            "x": 2182.0832252742707,
+            "y": 1554.1753891212734
+          },
+          {
+            "x": 2274.6211138857007,
+            "y": 1494.7048992011576
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b011",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 1570,
+            "y": 900
+          },
+          {
+            "x": 1650,
+            "y": 900
+          },
+          {
+            "x": 1780,
+            "y": 900
+          },
+          {
+            "x": 1990,
+            "y": 899.9999999999999
+          },
+          {
+            "x": 2100,
+            "y": 899.9999999999999
+          }
+        ],
+        "color": "#b58d2e",
+        "width": 3,
+        "bare": false,
+        "propagate": true,
+        "inputNA": 0.22,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        },
+        "out1": {
+          "mode": "diverge",
+          "na": 0.08,
+          "focal": 20,
+          "dia": 8
+        }
+      },
+      {
+        "id": "nif-b012",
+        "kind": "beam",
+        "pts": [
+          {
+            "x": 3705,
+            "y": 900
+          },
+          {
+            "x": 3703.9187562354946,
+            "y": 933.0285802612223
+          },
+          {
+            "x": 3700.6796549937744,
+            "y": 965.9157270711261
+          },
+          {
+            "x": 3695.2965666036316,
+            "y": 998.5206126181448
+          },
+          {
+            "x": 3687.7925422759795,
+            "y": 1030.703617776773
+          },
+          {
+            "x": 3678.1997153950283,
+            "y": 1062.3269299780966
+          },
+          {
+            "x": 3666.5591639182,
+            "y": 1093.2551333443703
+          },
+          {
+            "x": 3652.9207344740075,
+            "y": 1123.3557885605956
+          },
+          {
+            "x": 3637.3428289111416,
+            "y": 1152.5
+          },
+          {
+            "x": 3619.8921542127855,
+            "y": 1180.562967674899
+          },
+          {
+            "x": 3600.6434368470736,
+            "y": 1207.424521649404
+          },
+          {
+            "x": 3579.6791027768836,
+            "y": 1232.9696366255348
+          },
+          {
+            "x": 3557.0889244992068,
+            "y": 1257.0889244992065
+          },
+          {
+            "x": 3532.969636625535,
+            "y": 1279.6791027768836
+          },
+          {
+            "x": 3507.4245216494037,
+            "y": 1300.6434368470736
+          },
+          {
+            "x": 3480.562967674899,
+            "y": 1319.8921542127853
+          },
+          {
+            "x": 3452.5,
+            "y": 1337.3428289111416
+          },
+          {
+            "x": 3423.3557885605956,
+            "y": 1352.9207344740075
+          },
+          {
+            "x": 3393.2551333443703,
+            "y": 1366.5591639181998
+          },
+          {
+            "x": 3362.326929978097,
+            "y": 1378.1997153950283
+          },
+          {
+            "x": 3330.703617776773,
+            "y": 1387.7925422759795
+          },
+          {
+            "x": 3298.5206126181447,
+            "y": 1395.2965666036314
+          },
+          {
+            "x": 3265.915727071126,
+            "y": 1400.6796549937742
+          },
+          {
+            "x": 3233.0285802612225,
+            "y": 1403.9187562354948
+          },
+          {
+            "x": 3200,
+            "y": 1405
+          },
+          {
+            "x": 3166.9714197387775,
+            "y": 1403.9187562354948
+          },
+          {
+            "x": 3134.084272928874,
+            "y": 1400.6796549937742
+          },
+          {
+            "x": 3101.4793873818553,
+            "y": 1395.2965666036314
+          },
+          {
+            "x": 3069.2963822232273,
+            "y": 1387.7925422759795
+          },
+          {
+            "x": 3037.673070021903,
+            "y": 1378.1997153950283
+          },
+          {
+            "x": 3006.7448666556297,
+            "y": 1366.5591639181998
+          },
+          {
+            "x": 2976.6442114394044,
+            "y": 1352.9207344740075
+          },
+          {
+            "x": 2947.5,
+            "y": 1337.3428289111416
+          },
+          {
+            "x": 2919.437032325101,
+            "y": 1319.8921542127853
+          },
+          {
+            "x": 2892.5754783505963,
+            "y": 1300.6434368470736
+          },
+          {
+            "x": 2867.030363374465,
+            "y": 1279.6791027768836
+          },
+          {
+            "x": 2842.9110755007937,
+            "y": 1257.0889244992065
+          },
+          {
+            "x": 2820.3208972231164,
+            "y": 1232.9696366255348
+          },
+          {
+            "x": 2799.3565631529264,
+            "y": 1207.4245216494041
+          },
+          {
+            "x": 2780.107845787215,
+            "y": 1180.5629676748993
+          },
+          {
+            "x": 2762.6571710888584,
+            "y": 1152.5
+          },
+          {
+            "x": 2747.0792655259925,
+            "y": 1123.3557885605958
+          },
+          {
+            "x": 2733.4408360818,
+            "y": 1093.2551333443703
+          },
+          {
+            "x": 2721.8002846049717,
+            "y": 1062.3269299780966
+          },
+          {
+            "x": 2712.2074577240205,
+            "y": 1030.7036177767732
+          },
+          {
+            "x": 2704.7034333963684,
+            "y": 998.5206126181447
+          },
+          {
+            "x": 2699.3203450062256,
+            "y": 965.9157270711263
+          },
+          {
+            "x": 2696.0812437645054,
+            "y": 933.0285802612223
+          },
+          {
+            "x": 2695,
+            "y": 900.0000000000001
+          },
+          {
+            "x": 2696.0812437645054,
+            "y": 866.9714197387779
+          },
+          {
+            "x": 2699.3203450062256,
+            "y": 834.0842729288738
+          },
+          {
+            "x": 2704.7034333963684,
+            "y": 801.4793873818554
+          },
+          {
+            "x": 2712.2074577240205,
+            "y": 769.296382223227
+          },
+          {
+            "x": 2721.8002846049717,
+            "y": 737.6730700219034
+          },
+          {
+            "x": 2733.4408360818,
+            "y": 706.7448666556297
+          },
+          {
+            "x": 2747.0792655259925,
+            "y": 676.6442114394042
+          },
+          {
+            "x": 2762.6571710888584,
+            "y": 647.5000000000001
+          },
+          {
+            "x": 2780.1078457872145,
+            "y": 619.437032325101
+          },
+          {
+            "x": 2799.3565631529264,
+            "y": 592.5754783505961
+          },
+          {
+            "x": 2820.3208972231164,
+            "y": 567.0303633744652
+          },
+          {
+            "x": 2842.9110755007932,
+            "y": 542.9110755007937
+          },
+          {
+            "x": 2867.030363374465,
+            "y": 520.3208972231165
+          },
+          {
+            "x": 2892.575478350596,
+            "y": 499.35656315292636
+          },
+          {
+            "x": 2919.437032325101,
+            "y": 480.10784578721467
+          },
+          {
+            "x": 2947.5,
+            "y": 462.65717108885855
+          },
+          {
+            "x": 2976.6442114394044,
+            "y": 447.0792655259924
+          },
+          {
+            "x": 3006.7448666556297,
+            "y": 433.4408360818001
+          },
+          {
+            "x": 3037.673070021903,
+            "y": 421.8002846049717
+          },
+          {
+            "x": 3069.2963822232273,
+            "y": 412.2074577240205
+          },
+          {
+            "x": 3101.479387381855,
+            "y": 404.70343339636867
+          },
+          {
+            "x": 3134.084272928874,
+            "y": 399.32034500622575
+          },
+          {
+            "x": 3166.971419738778,
+            "y": 396.08124376450525
+          },
+          {
+            "x": 3200,
+            "y": 395
+          },
+          {
+            "x": 3233.028580261222,
+            "y": 396.0812437645052
+          },
+          {
+            "x": 3265.9157270711257,
+            "y": 399.3203450062257
+          },
+          {
+            "x": 3298.5206126181447,
+            "y": 404.7034333963686
+          },
+          {
+            "x": 3330.7036177767727,
+            "y": 412.20745772402046
+          },
+          {
+            "x": 3362.3269299780964,
+            "y": 421.80028460497164
+          },
+          {
+            "x": 3393.25513334437,
+            "y": 433.44083608180006
+          },
+          {
+            "x": 3423.3557885605956,
+            "y": 447.0792655259923
+          },
+          {
+            "x": 3452.5,
+            "y": 462.6571710888585
+          },
+          {
+            "x": 3480.562967674899,
+            "y": 480.10784578721456
+          },
+          {
+            "x": 3507.4245216494037,
+            "y": 499.35656315292596
+          },
+          {
+            "x": 3532.969636625535,
+            "y": 520.3208972231166
+          },
+          {
+            "x": 3557.0889244992063,
+            "y": 542.9110755007935
+          },
+          {
+            "x": 3579.6791027768836,
+            "y": 567.0303633744653
+          },
+          {
+            "x": 3600.6434368470736,
+            "y": 592.575478350596
+          },
+          {
+            "x": 3619.892154212785,
+            "y": 619.4370323251005
+          },
+          {
+            "x": 3637.3428289111416,
+            "y": 647.4999999999998
+          },
+          {
+            "x": 3652.9207344740075,
+            "y": 676.6442114394042
+          },
+          {
+            "x": 3666.5591639182,
+            "y": 706.7448666556297
+          },
+          {
+            "x": 3678.1997153950283,
+            "y": 737.6730700219033
+          },
+          {
+            "x": 3687.7925422759795,
+            "y": 769.2963822232266
+          },
+          {
+            "x": 3695.296566603631,
+            "y": 801.479387381855
+          },
+          {
+            "x": 3700.6796549937744,
+            "y": 834.0842729288739
+          },
+          {
+            "x": 3703.9187562354946,
+            "y": 866.9714197387779
+          },
+          {
+            "x": 3705,
+            "y": 899.9999999999999
+          }
+        ],
+        "color": "#617384",
+        "width": 4,
+        "dash": true,
+        "arrow": false
+      },
+      {
+        "id": "nif-b013",
+        "kind": "beam",
+        "pts": [
+          {
+            "x": 3672,
+            "y": 900
+          },
+          {
+            "x": 3670.989411768621,
+            "y": 930.8702769966276
+          },
+          {
+            "x": 3667.9619745684386,
+            "y": 961.6083627278643
+          },
+          {
+            "x": 3662.9306523503246,
+            "y": 992.0826319916125
+          },
+          {
+            "x": 3655.9169900084403,
+            "y": 1022.1625892883898
+          },
+          {
+            "x": 3646.95102112169,
+            "y": 1051.7194276230923
+          },
+          {
+            "x": 3636.0711393453275,
+            "y": 1080.6265800763224
+          },
+          {
+            "x": 3623.323934003429,
+            "y": 1108.7602617833686
+          },
+          {
+            "x": 3608.763990586255,
+            "y": 1136
+          },
+          {
+            "x": 3592.453657006801,
+            "y": 1162.2291499852522
+          },
+          {
+            "x": 3574.462776617463,
+            "y": 1187.3353944921162
+          },
+          {
+            "x": 3554.8683891300775,
+            "y": 1211.2112247272325
+          },
+          {
+            "x": 3533.7544007200504,
+            "y": 1233.7544007200504
+          },
+          {
+            "x": 3511.2112247272325,
+            "y": 1254.8683891300773
+          },
+          {
+            "x": 3487.3353944921164,
+            "y": 1274.462776617463
+          },
+          {
+            "x": 3462.229149985252,
+            "y": 1292.4536570068012
+          },
+          {
+            "x": 3436,
+            "y": 1308.763990586255
+          },
+          {
+            "x": 3408.7602617833686,
+            "y": 1323.3239340034288
+          },
+          {
+            "x": 3380.626580076322,
+            "y": 1336.0711393453273
+          },
+          {
+            "x": 3351.719427623092,
+            "y": 1346.9510211216898
+          },
+          {
+            "x": 3322.16258928839,
+            "y": 1355.9169900084403
+          },
+          {
+            "x": 3292.0826319916127,
+            "y": 1362.9306523503246
+          },
+          {
+            "x": 3261.6083627278645,
+            "y": 1367.9619745684386
+          },
+          {
+            "x": 3230.8702769966276,
+            "y": 1370.9894117686208
+          },
+          {
+            "x": 3200,
+            "y": 1372
+          },
+          {
+            "x": 3169.1297230033724,
+            "y": 1370.9894117686208
+          },
+          {
+            "x": 3138.3916372721355,
+            "y": 1367.9619745684386
+          },
+          {
+            "x": 3107.9173680083877,
+            "y": 1362.9306523503246
+          },
+          {
+            "x": 3077.83741071161,
+            "y": 1355.9169900084403
+          },
+          {
+            "x": 3048.280572376908,
+            "y": 1346.9510211216898
+          },
+          {
+            "x": 3019.373419923678,
+            "y": 1336.0711393453273
+          },
+          {
+            "x": 2991.2397382166314,
+            "y": 1323.3239340034288
+          },
+          {
+            "x": 2964,
+            "y": 1308.7639905862552
+          },
+          {
+            "x": 2937.770850014748,
+            "y": 1292.4536570068012
+          },
+          {
+            "x": 2912.6646055078836,
+            "y": 1274.462776617463
+          },
+          {
+            "x": 2888.7887752727675,
+            "y": 1254.8683891300773
+          },
+          {
+            "x": 2866.2455992799496,
+            "y": 1233.7544007200504
+          },
+          {
+            "x": 2845.131610869923,
+            "y": 1211.2112247272325
+          },
+          {
+            "x": 2825.537223382537,
+            "y": 1187.3353944921164
+          },
+          {
+            "x": 2807.546342993199,
+            "y": 1162.2291499852524
+          },
+          {
+            "x": 2791.236009413745,
+            "y": 1136
+          },
+          {
+            "x": 2776.676065996571,
+            "y": 1108.7602617833688
+          },
+          {
+            "x": 2763.9288606546725,
+            "y": 1080.6265800763224
+          },
+          {
+            "x": 2753.04897887831,
+            "y": 1051.7194276230923
+          },
+          {
+            "x": 2744.0830099915597,
+            "y": 1022.1625892883899
+          },
+          {
+            "x": 2737.0693476496754,
+            "y": 992.0826319916125
+          },
+          {
+            "x": 2732.0380254315614,
+            "y": 961.6083627278646
+          },
+          {
+            "x": 2729.010588231379,
+            "y": 930.8702769966276
+          },
+          {
+            "x": 2728,
+            "y": 900.0000000000001
+          },
+          {
+            "x": 2729.010588231379,
+            "y": 869.1297230033725
+          },
+          {
+            "x": 2732.0380254315614,
+            "y": 838.3916372721355
+          },
+          {
+            "x": 2737.0693476496754,
+            "y": 807.9173680083876
+          },
+          {
+            "x": 2744.0830099915597,
+            "y": 777.8374107116102
+          },
+          {
+            "x": 2753.04897887831,
+            "y": 748.2805723769078
+          },
+          {
+            "x": 2763.9288606546725,
+            "y": 719.3734199236777
+          },
+          {
+            "x": 2776.676065996571,
+            "y": 691.2397382166313
+          },
+          {
+            "x": 2791.236009413745,
+            "y": 664.0000000000001
+          },
+          {
+            "x": 2807.546342993199,
+            "y": 637.7708500147478
+          },
+          {
+            "x": 2825.537223382537,
+            "y": 612.6646055078838
+          },
+          {
+            "x": 2845.1316108699225,
+            "y": 588.7887752727675
+          },
+          {
+            "x": 2866.2455992799496,
+            "y": 566.2455992799498
+          },
+          {
+            "x": 2888.7887752727675,
+            "y": 545.1316108699227
+          },
+          {
+            "x": 2912.6646055078836,
+            "y": 525.5372233825371
+          },
+          {
+            "x": 2937.770850014748,
+            "y": 507.54634299319866
+          },
+          {
+            "x": 2964,
+            "y": 491.236009413745
+          },
+          {
+            "x": 2991.2397382166314,
+            "y": 476.67606599657114
+          },
+          {
+            "x": 3019.373419923678,
+            "y": 463.92886065467263
+          },
+          {
+            "x": 3048.2805723769075,
+            "y": 453.04897887831015
+          },
+          {
+            "x": 3077.83741071161,
+            "y": 444.0830099915598
+          },
+          {
+            "x": 3107.9173680083873,
+            "y": 437.0693476496753
+          },
+          {
+            "x": 3138.3916372721355,
+            "y": 432.0380254315615
+          },
+          {
+            "x": 3169.1297230033724,
+            "y": 429.01058823137913
+          },
+          {
+            "x": 3200,
+            "y": 428
+          },
+          {
+            "x": 3230.870276996627,
+            "y": 429.01058823137913
+          },
+          {
+            "x": 3261.608362727864,
+            "y": 432.03802543156144
+          },
+          {
+            "x": 3292.0826319916127,
+            "y": 437.06934764967525
+          },
+          {
+            "x": 3322.1625892883894,
+            "y": 444.0830099915597
+          },
+          {
+            "x": 3351.719427623092,
+            "y": 453.0489788783101
+          },
+          {
+            "x": 3380.626580076322,
+            "y": 463.9288606546726
+          },
+          {
+            "x": 3408.7602617833686,
+            "y": 476.676065996571
+          },
+          {
+            "x": 3436,
+            "y": 491.23600941374497
+          },
+          {
+            "x": 3462.229149985252,
+            "y": 507.54634299319855
+          },
+          {
+            "x": 3487.335394492116,
+            "y": 525.5372233825367
+          },
+          {
+            "x": 3511.2112247272325,
+            "y": 545.1316108699227
+          },
+          {
+            "x": 3533.7544007200504,
+            "y": 566.2455992799495
+          },
+          {
+            "x": 3554.8683891300775,
+            "y": 588.7887752727676
+          },
+          {
+            "x": 3574.462776617463,
+            "y": 612.6646055078837
+          },
+          {
+            "x": 3592.453657006801,
+            "y": 637.7708500147473
+          },
+          {
+            "x": 3608.7639905862547,
+            "y": 663.9999999999998
+          },
+          {
+            "x": 3623.323934003429,
+            "y": 691.2397382166314
+          },
+          {
+            "x": 3636.0711393453275,
+            "y": 719.3734199236777
+          },
+          {
+            "x": 3646.95102112169,
+            "y": 748.2805723769076
+          },
+          {
+            "x": 3655.9169900084403,
+            "y": 777.8374107116098
+          },
+          {
+            "x": 3662.9306523503246,
+            "y": 807.9173680083873
+          },
+          {
+            "x": 3667.9619745684386,
+            "y": 838.3916372721357
+          },
+          {
+            "x": 3670.989411768621,
+            "y": 869.1297230033726
+          },
+          {
+            "x": 3672,
+            "y": 899.9999999999999
+          }
+        ],
+        "color": "#aab5bf",
+        "width": 1.4,
+        "dash": true,
+        "arrow": false
+      }
+    ]
+  }
+}

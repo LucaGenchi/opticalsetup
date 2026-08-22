@@ -1,0 +1,273 @@
+{
+  "schema": 1,
+  "name": "LaserPecker 4 dual-laser optical path",
+  "description": "Functional educational reconstruction of the LaserPecker 4 beam chain. It shows the selectable 10 W 450 nm blue diode and 2 W 1064 nm pulsed IR sources feeding an inferred shared-path combiner, two qualitative galvo axes, a 150 mm field lens, and the 160 x 120 mm engraving work plane. Both wavelengths are traced together only for comparison; the real LP4 selects one source per job. The combiner, orthogonal scanner flattening, and thin-lens/F-theta approximation are explicitly labeled because public documentation does not disclose the exact internal optical layout. It does not model power, ablation, thermal effects, scanner calibration, or laser safety.",
+  "reference": "LP4 Buying Guide: https://support.laserpecker.net/hc/en-us/articles/7501661632911-LP4-Buying-Guide; focusing: https://support.laserpecker.net/hc/en-us/articles/7601300545807-LP4-Laser-Focusing-Instructions; work area: https://support.laserpecker.net/hc/en-us/articles/9408074022287-LP4-Effective-Working-Area; FCC internal photos: https://fccid.io/2A68F-L4/Internal-Photos/Internal-Photos-6535715",
+  "author": {
+    "github": "bertona88",
+    "profile": "https://github.com/bertona88"
+  },
+  "source": {
+    "issue": "https://github.com/LucaGenchi/optics-sketch/issues/25",
+    "submittedAt": "2026-07-26T15:08:35.000Z"
+  },
+  "sceneSha256": "2c09959ae22d4a8bf2cd9482a66a97cac75a0e3576d949d4c7f572d055370916",
+  "scene": {
+    "app": "optics2d",
+    "version": 1,
+    "elements": [
+      {
+        "id": "lp4-frame",
+        "type": "figureframe",
+        "x": 470,
+        "y": 310,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "w": 900,
+          "h": 560,
+          "background": "white"
+        }
+      },
+      {
+        "id": "lp4-title",
+        "type": "textlabel",
+        "x": 470,
+        "y": 56,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "LASERPECKER 4 - DUAL-LASER OPTICAL PATH",
+          "fontSize": 22,
+          "fill": "#1e293b"
+        }
+      },
+      {
+        "id": "lp4-subtitle",
+        "type": "textlabel",
+        "x": 470,
+        "y": 84,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Evidence-backed functional reconstruction - one source is selected per job",
+          "fontSize": 11,
+          "fill": "#64748b"
+        }
+      },
+      {
+        "id": "blue-450",
+        "type": "cwlaser",
+        "x": 120,
+        "y": 220,
+        "rot": 0,
+        "label": "10 W - 450 nm blue diode (CW)",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "wavelength": 450,
+          "beamMode": "beam",
+          "beamWidth": 10,
+          "pol": 0,
+          "autoColor": true,
+          "color": "#e02020"
+        }
+      },
+      {
+        "id": "ir-1064",
+        "type": "pulsedlaser",
+        "x": 350,
+        "y": 430,
+        "rot": 270,
+        "label": "2 W - 1064 nm pulsed IR - 5 ns",
+        "showLabel": true,
+        "labelPos": "r",
+        "params": {
+          "wavelength": 1064,
+          "beamMode": "beam",
+          "beamWidth": 4,
+          "bandwidth": 0,
+          "pol": 0,
+          "repRateMHz": 1,
+          "pulseWidthFs": 5000000,
+          "pulsePhaseNs": 0,
+          "autoColor": true,
+          "color": "#e02020",
+          "transformLimited": false
+        }
+      },
+      {
+        "id": "shared-path-combiner",
+        "type": "dichroic",
+        "x": 350,
+        "y": 220,
+        "rot": 45,
+        "label": "Shared-path combiner (inferred)",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "dtype": "shortpass",
+          "cutoff": 700,
+          "center": 550,
+          "band": 50,
+          "length": 42
+        }
+      },
+      {
+        "id": "galvo-x",
+        "type": "galvo",
+        "x": 500,
+        "y": 220,
+        "rot": 315,
+        "label": "X galvo (qualitative)",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "length": 30,
+          "commandAngle": 0,
+          "scanMode": "static",
+          "scanAmplitude": 0,
+          "scanFrequencyHz": 1,
+          "scanPhaseDeg": 0
+        }
+      },
+      {
+        "id": "galvo-y",
+        "type": "galvo",
+        "x": 500,
+        "y": 350,
+        "rot": 315,
+        "label": "Y galvo (flattened into 2D)",
+        "showLabel": true,
+        "labelPos": "l",
+        "params": {
+          "length": 30,
+          "commandAngle": 0,
+          "scanMode": "static",
+          "scanAmplitude": 0,
+          "scanFrequencyHz": 1,
+          "scanPhaseDeg": 0
+        }
+      },
+      {
+        "id": "field-lens",
+        "type": "lens",
+        "x": 650,
+        "y": 350,
+        "rot": 0,
+        "label": "Field lens - f = 150 mm",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "f": 150,
+          "dia": 120
+        }
+      },
+      {
+        "id": "work-plane",
+        "type": "stage",
+        "x": 800,
+        "y": 350,
+        "rot": 90,
+        "label": "Engraving work plane",
+        "showLabel": true,
+        "labelPos": "b",
+        "params": {
+          "pzMode": "static",
+          "pzTravelXY": 12,
+          "pzFreqXY": 0.15,
+          "pzTravelZ": 8,
+          "pzFreqZ": 0.1,
+          "pzZSteps": 5,
+          "containsSample": true,
+          "aperture": 120,
+          "sampleKind": "generic",
+          "showMaterialLabel": true,
+          "showSignalSpot": false,
+          "voxelPreview": false,
+          "voxelSize": 0.6,
+          "mode": "none",
+          "fluorWl": 520,
+          "carsWl": 660,
+          "transmitExc": false,
+          "transmission": 0,
+          "signalEff": 0
+        }
+      },
+      {
+        "id": "work-area-note",
+        "type": "textlabel",
+        "x": 800,
+        "y": 455,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Optimal engraving area: 160 x 120 mm",
+          "fontSize": 10,
+          "fill": "#475569"
+        }
+      },
+      {
+        "id": "blue-spot-note",
+        "type": "textlabel",
+        "x": 205,
+        "y": 515,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "450 nm nominal spot: 0.05 x 0.05 mm",
+          "fontSize": 10,
+          "fill": "#2563eb"
+        }
+      },
+      {
+        "id": "ir-spot-note",
+        "type": "textlabel",
+        "x": 590,
+        "y": 515,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "1064 nm nominal spot: 0.01 x 0.01 mm",
+          "fontSize": 10,
+          "fill": "#b91c1c"
+        }
+      },
+      {
+        "id": "simultaneous-note",
+        "type": "textlabel",
+        "x": 470,
+        "y": 548,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Both traces are shown for comparison. The real LP4 does not operate both engraving lasers simultaneously.",
+          "fontSize": 10,
+          "fill": "#334155"
+        }
+      },
+      {
+        "id": "model-note",
+        "type": "textlabel",
+        "x": 470,
+        "y": 570,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Thin-lens and in-plane galvo model only - not an F-theta calibration, teardown map, or laser-safety design.",
+          "fontSize": 9,
+          "fill": "#7c2d12"
+        }
+      }
+    ],
+    "beams": []
+  }
+}

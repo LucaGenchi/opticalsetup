@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "name": "Bright field microscope",
+  "description": "Base building block for microscopy. Features a Kholer illumination and an objective + tube lens detection",
+  "reference": null,
+  "author": {
+    "github": "BMarthy",
+    "profile": "https://github.com/BMarthy"
+  },
+  "source": {
+    "issue": "https://github.com/LucaGenchi/optics-sketch/issues/29",
+    "submittedAt": "2026-07-28T07:52:10.000Z"
+  },
+  "sceneSha256": "f592351300f375f59512d513cf8889e28baa5cbb0adbc595025a6b5798ba3689",
+  "scene": {
+    "app": "optics2d",
+    "version": 1,
+    "elements": [
+      {
+        "id": "egrpu7l6",
+        "type": "lens",
+        "x": 175,
+        "y": -10,
+        "rot": 90,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 30,
+          "dia": 101,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "ez1zsser",
+        "type": "mirror",
+        "x": 175,
+        "y": 383,
+        "rot": 315,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "length": 92.5,
+          "refl": 100,
+          "showTransmitted": false
+        }
+      },
+      {
+        "id": "ewzkc8fq",
+        "type": "slit",
+        "x": 175,
+        "y": 200,
+        "rot": 90,
+        "label": "aperture stop",
+        "showLabel": true,
+        "labelPos": "l",
+        "params": {
+          "gap": 33,
+          "length": 106
+        }
+      },
+      {
+        "id": "em4fmk0c",
+        "type": "lens",
+        "x": 175,
+        "y": 215,
+        "rot": 90,
+        "label": "Condenseur",
+        "showLabel": true,
+        "labelPos": "l",
+        "params": {
+          "f": 15,
+          "dia": 74,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "eejte4n0",
+        "type": "lens",
+        "x": 325,
+        "y": 383,
+        "rot": 0,
+        "label": "Tube lens",
+        "showLabel": true,
+        "params": {
+          "f": 100,
+          "dia": 103,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "ewk2yb95",
+        "type": "sample",
+        "x": 175,
+        "y": 230,
+        "rot": 180,
+        "label": "sample",
+        "showLabel": true,
+        "labelPos": "r",
+        "params": {
+          "aperture": 56,
+          "mode": "none",
+          "fluorWl": 520,
+          "carsWl": 660,
+          "transmitExc": true,
+          "transmission": 0.8,
+          "signalEff": 0.1
+        }
+      },
+      {
+        "id": "epohaq5g",
+        "type": "slit",
+        "x": 175,
+        "y": 19,
+        "rot": 90,
+        "label": "Field stop",
+        "showLabel": true,
+        "labelPos": "l",
+        "params": {
+          "gap": 33,
+          "length": 132.5
+        }
+      },
+      {
+        "id": "exyf10an",
+        "type": "lens",
+        "x": 175,
+        "y": 110,
+        "rot": 90,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 90,
+          "dia": 77,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "e5z07sp7",
+        "type": "objective",
+        "x": 175,
+        "y": 256,
+        "rot": 270,
+        "label": "Objective",
+        "showLabel": true,
+        "labelPos": "r",
+        "params": {
+          "f": 10,
+          "aperture": 20,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "efpipbp2",
+        "type": "cwlaser",
+        "x": 175,
+        "y": -127,
+        "rot": 90,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "wavelength": 532,
+          "avgPowerW": 0.01,
+          "beamMode": "beam",
+          "beamWidth": 14,
+          "pol": 0,
+          "autoColor": true,
+          "color": "#e02020"
+        }
+      },
+      {
+        "id": "est41q39",
+        "type": "display",
+        "x": 525,
+        "y": 275,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "sensorId": "eh1r66rl",
+          "displayScale": 1,
+          "screenOn": true,
+          "displayView": "main"
+        }
+      },
+      {
+        "id": "eh1r66rl",
+        "type": "camera",
+        "x": 447,
+        "y": 380,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ch": 68,
+          "pixels": 24,
+          "rows": 12
+        }
+      }
+    ],
+    "beams": []
+  }
+}

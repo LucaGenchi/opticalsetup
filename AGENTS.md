@@ -38,6 +38,9 @@ diagram-only components.
 - `sketch/js/export.js` — SVG/PNG generation and fitted bounds.
 - `sketch/js/examples.js` — built-in optical layouts.
 - `sketch/js/share.js` — self-contained share links (`#sketch=` fragment).
+- `sketch/js/release.js` — current application release used by durable links.
+- `docs/release-policy.md` — normative release cadence, states, and activation.
+- `tools/freeze-release.mjs` — append-only renderer and content snapshots.
 - `test/` — dependency-free Node regression tests (import from `../sketch/js/`).
 - `serve.mjs` — local static server on port 5182, serving both the landing
   page and `sketch/` from the repo root.
@@ -80,6 +83,24 @@ the toolbar, palette, canvas, and inspector do not overflow.
   communicates optical energy, and controls should explain their current mode.
 - Do not add advanced physics merely to make a component look functional. A
   clear capability note is preferable to misleading behavior.
+
+## Release discipline
+
+- Read `docs/release-policy.md` before changing release files, deployment
+  workflows, share-link routing, or any frozen `vN/` tree.
+- Do not bump `APP_RELEASE` for ordinary feature merges. The weekly release
+  workflow bumps it once, and only when the public product digest changed.
+- Treat every top-level `vN/` directory as immutable and append-only. Never fix,
+  regenerate, reformat, or delete a published release; repair forward in
+  `sketch/` and create the next integer release.
+- The scheduled workflow may prepare a PR but must never auto-merge it. Human
+  review of user-visible behavior and physics limitations is the release gate.
+- Urgent hotfixes use the workflow's manual trigger and still consume the next
+  integer release. Do not invent patch suffixes or rewrite the current version.
+- Keep state claims exact: ordinary `main` changes are merged, a release-PR merge
+  is released, a successful Pages run is deployed, and public readback is live.
+- GitHub Pages must use the release-only Actions workflow, not branch-root
+  publishing, before rapid merges to `main` can be considered non-deploying.
 
 ## Git and delivery
 

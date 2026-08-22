@@ -1,0 +1,92 @@
+name: Prepare weekly release
+
+on:
+  schedule:
+    - cron: '17 9 * * 1'
+      timezone: Europe/Rome
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: prepare-weekly-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out main with full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Inspect release status
+        id: status
+        run: node tools/release-status.mjs --github >> "$GITHUB_OUTPUT"
+
+      - name: Reject a modified frozen release
+        if: steps.status.outputs.content_valid != 'true'
+        run: |
+          echo "${{ steps.status.outputs.current_release }} no longer matches its immutable manifest."
+          exit 1
+
+      - name: Find an existing release pull request
+        if: steps.status.outputs.release_needed == 'true'
+        id: existing
+        env:
+          BRANCH_NAME: automated-release/${{ steps.status.outputs.next_release }}
+        run: |
+          pr_url="$(gh pr list --state open --head "$BRANCH_NAME" --json url --jq '.[0].url // ""')"
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+
+      - name: Report a no-op week
+        if: steps.status.outputs.release_needed != 'true'
+        run: echo "No public product changes since ${{ steps.status.outputs.current_release }}; no version or pull request created."
+
+      - name: Report an already prepared release
+        if: steps.status.outputs.release_needed == 'true' && steps.existing.outputs.pr_url != ''
+        run: echo "Release pull request already open at ${{ steps.existing.outputs.pr_url }}"
+
+      - name: Bump and freeze the next release
+        if: steps.status.outputs.release_needed == 'true' && steps.existing.outputs.pr_url == ''
+        env:
+          EXPECTED_RELEASE: ${{ steps.status.outputs.next_release }}
+        run: |
+          next_release="$(node tools/bump-release.mjs)"
+          test "$next_release" = "$EXPECTED_RELEASE"
+          node tools/freeze-release.mjs "$next_release"
+
+      - name: Verify the release candidate
+        if: steps.status.outputs.release_needed == 'true' && steps.existing.outputs.pr_url == ''
+        env:
+          NEXT_RELEASE: ${{ steps.status.outputs.next_release }}
+        run: |
+          npm test
+          node tools/release-status.mjs --verify
+          for file in sketch/js/*.js "$NEXT_RELEASE"/sketch/js/*.js serve.mjs tools/*.mjs; do node --check "$file"; done
+          git diff --check
+
+      - name: Open the human-reviewed release pull request
+        if: steps.status.outputs.release_needed == 'true' && steps.existing.outputs.pr_url == ''
+        env:
+          BRANCH_NAME: automated-release/${{ steps.status.outputs.next_release }}
+          NEXT_RELEASE: ${{ steps.status.outputs.next_release }}
+          CURRENT_RELEASE: ${{ steps.status.outputs.current_release }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH_NAME"
+          git add sketch/js/release.js "$NEXT_RELEASE"
+          git diff --cached --check
+          git commit -m "Prepare OpticalSetup $NEXT_RELEASE"
+          git push --set-upstream origin "$BRANCH_NAME"
+          gh pr create --base main --head "$BRANCH_NAME" \
+            --title "Release OpticalSetup $NEXT_RELEASE" \
+            --body "Weekly release candidate from $CURRENT_RELEASE to $NEXT_RELEASE. It freezes the current public product surface without modifying any prior release. Automated checks: full Node suite, release/source integrity, JavaScript syntax, and diff sanity. This PR is intentionally not auto-merged: review user-visible behavior and physics limitations before merging. Merging this PR is the release authorization and triggers the release-only Pages deployment workflow."

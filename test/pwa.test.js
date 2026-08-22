@@ -112,3 +112,10 @@ test('offline cache covers every workbench module and bundled example', async ()
     assert.ok(details.isFile(), `${path} is not a file`);
   }
 });
+
+test('PWA cache cleanup is isolated to the current app release path', async () => {
+  const source = await readFile(resolve(SKETCH, 'service-worker.js'), 'utf8');
+  assert.match(source, /const CACHE_SCOPE = new URL\('\.\/'/);
+  assert.match(source, /key\.startsWith\(CACHE_PREFIX\)/);
+  assert.doesNotMatch(source, /key\.startsWith\('opticalsetup-pwa-'\)/);
+});

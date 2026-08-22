@@ -1,0 +1,104 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "e0mtnij9",
+   "type": "textlabel",
+   "x": 400,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Michelson interferometer — one beam, two arms, recombined at the same beamsplitter",
+    "fontSize": 14,
+    "fill": "#333"
+   }
+  },
+  {
+   "id": "eun826tk",
+   "type": "cwlaser",
+   "x": 100,
+   "y": 300,
+   "rot": 0,
+   "label": "laser",
+   "showLabel": true,
+   "params": {
+    "wavelength": 633,
+    "beamMode": "line",
+    "beamWidth": 6,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#e02020"
+   }
+  },
+  {
+   "id": "e4l3yjlh",
+   "type": "bs",
+   "x": 350,
+   "y": 300,
+   "rot": 0,
+   "label": "50/50 beamsplitter",
+   "showLabel": true,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "e5m9hfer",
+   "type": "mirror",
+   "x": 600,
+   "y": 300,
+   "rot": 0,
+   "label": "M1 (movable ⟷)",
+   "showLabel": true,
+   "params": {
+    "length": 25.4,
+    "refl": 100
+   }
+  },
+  {
+   "id": "e2kapbw1",
+   "type": "mirror",
+   "x": 350,
+   "y": 120,
+   "rot": 90,
+   "label": "M2",
+   "showLabel": true,
+   "params": {
+    "length": 25.4,
+    "refl": 100
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "exqbe65y",
+   "type": "detector",
+   "x": 350,
+   "y": 500,
+   "rot": 90,
+   "label": "recombined power detector",
+   "showLabel": true,
+   "params": {
+    "aperture": 26
+   }
+  },
+  {
+   "id": "exhj86fs",
+   "type": "textlabel",
+   "x": 620,
+   "y": 460,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "paths recombine here; phase and fringes are outside this tracer",
+    "fontSize": 10,
+    "fill": "#555555"
+   }
+  }
+ ],
+ "beams": []
+}

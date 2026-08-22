@@ -1,0 +1,40 @@
+/* Builds on wiki.css tokens/layout — link that stylesheet directly before this
+   one (see pageHTML/hubHTML in tools/build-community.mjs) rather than @import
+   here, which would add a second serial network round-trip and let this
+   page's iframe embed run zoomFit() before .embed-wrap has its real height. */
+
+.community-byline { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+.community-byline a { color: var(--muted); }
+.community-byline a:hover { color: var(--accent); }
+
+.community-reference {
+  margin-top: 22px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.community-reference .lbl { display: block; font-weight: 650; color: var(--ink); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+
+.community-empty { color: var(--muted); font-size: 15px; padding: 30px 0 60px; max-width: 60ch; }
+
+.community-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.community-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 18px 18px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--panel);
+}
+.community-card:hover { border-color: var(--accent); text-decoration: none; }
+.community-card .name { font-weight: 650; color: var(--text); font-size: 15.5px; }
+.community-card .by { color: var(--muted); font-size: 12.5px; }
+.community-card .snippet { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+.propose-banner {
+  margin-top: 18px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 18px 22px; border-radius: 12px;
+  border: 1px solid var(--sim-border); background: var(--sim-tint);
+}
+.propose-banner p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 46ch; }
