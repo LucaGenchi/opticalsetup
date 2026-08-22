@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "Angularly scanned Mach–Zehnder inverse-scattering microscope",
-  "description": "Reconstructs the acquisition geometry in Figure 2a of Kim et al.'s bioRxiv v1: a 635 nm fiber-delivered CW source is collimated at L1; BS1 separates a scanned sample arm and reference arm; a dual-axis galvo and matched 200 mm L2/L3 relays drive matched 16× water-dipping objectives (NA 0.8, WD 3.0 mm) around the sample; and BS2 recombines the sample and off-axis reference at a CMOS camera. The scene instantiates the paper's long-working-distance objective variant used for thick organoids and zebrafish. The Methods also document a matched 60× oil, NA 1.42 high-resolution alternative. OpticalSetup traces qualitative ray paths and the galvo sweep, but it does not simulate coherent phase, interferograms, multiple scattering, digital defocus, or MSBP reconstruction.",
+  "description": "Reconstructs the acquisition geometry in Figure 2a of Kim et al.'s bioRxiv v1: a 635 nm fiber-delivered CW source is collimated at L1; BS1 separates a scanned sample arm and reference arm; a dual-axis galvo changes the sample illumination from on-axis at its centered command to off-axis across its angular sweep; matched 200 mm L2/L3 relays drive matched 16× water-dipping objectives (NA 0.8, WD 3.0 mm) around the sample; and BS2 sends the sample beam and a reference beam with a small diagrammatic tilt onto the same CMOS sensor. That fixed camera-side crossing angle represents the carrier used for off-axis digital holography and is distinct from the galvo-controlled illumination angle; its drawn magnitude is illustrative because the paper does not report a value. The scene instantiates the paper's long-working-distance objective variant used for thick organoids and zebrafish. The Methods also document a matched 60× oil, NA 1.42 high-resolution alternative. OpticalSetup traces qualitative ray paths and the galvo sweep, but it does not simulate coherent phase, interferograms, multiple scattering, digital defocus, or MSBP reconstruction.",
   "reference": "Kim J. et al., “Inverse-scattering in biological samples via beam-propagation,” bioRxiv v1, posted August 22, 2025. https://www.biorxiv.org/content/10.1101/2025.08.17.670744v1.full.pdf",
   "author": {
     "github": "bertona88",
@@ -11,7 +11,7 @@
     "issue": "https://github.com/LucaGenchi/optics-sketch/issues/62",
     "submittedAt": "2026-08-22T09:42:11.000Z"
   },
-  "sceneSha256": "02d892b599f124308091648e81a37a38ae0fefbe728ee3ff9c4e13da7875fb54",
+  "sceneSha256": "03e9e407399218af47b761657e94c3e1142ee1fe123ad76ee601cb4a1b0f6f17",
   "scene": {
     "app": "optics2d",
     "version": 1,
@@ -81,9 +81,37 @@
         "label": "",
         "showLabel": false,
         "params": {
-          "text": "REFERENCE ARM — recombined off-axis at BS2 for digital holography",
+          "text": "REFERENCE ARM — enters BS2 at a small angle to the sample beam → off-axis camera carrier",
           "fontSize": 13,
           "fill": "#8f2d2d"
+        }
+      },
+      {
+        "id": "e-illumination-mode-note",
+        "type": "textlabel",
+        "x": 315,
+        "y": 326,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "GM centered: on-axis illumination · ±3° mechanical sweep: off-axis illumination",
+          "fontSize": 10,
+          "fill": "#6d4aa2"
+        }
+      },
+      {
+        "id": "e-camera-angle-note",
+        "type": "textlabel",
+        "x": 1000,
+        "y": 205,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "sample + fixed tilted reference overlap at sensor",
+          "fontSize": 10,
+          "fill": "#6d4aa2"
         }
       },
       {
@@ -310,10 +338,10 @@
       {
         "id": "e-ref-mirror",
         "type": "mirror",
-        "x": 1110,
+        "x": 1095,
         "y": 500,
-        "rot": 45,
-        "label": "M1",
+        "rot": 47,
+        "label": "M1 · reference tilt",
         "showLabel": true,
         "labelPos": "b",
         "params": {
@@ -330,7 +358,7 @@
         "rot": 0,
         "label": "BS2 · off-axis recombination",
         "showLabel": true,
-        "labelPos": "t",
+        "labelPos": "b",
         "params": {
           "ratio": 0.5,
           "size": 25.4
@@ -339,16 +367,28 @@
       {
         "id": "e-camera",
         "type": "camera",
-        "x": 1170,
-        "y": 280,
-        "rot": 0,
-        "label": "CMOS camera · IUA20000KMA",
+        "x": 1110,
+        "y": 150,
+        "rot": 270,
+        "label": "CMOS · IUA20000KMA",
         "showLabel": true,
-        "labelPos": "b",
+        "labelPos": "r",
         "params": {
           "ch": 80,
           "pixels": 32,
           "rows": 12
+        }
+      },
+      {
+        "id": "e-unused-port-dump",
+        "type": "beamdump",
+        "x": 1225,
+        "y": 280,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "aperture": 40
         }
       }
     ],
