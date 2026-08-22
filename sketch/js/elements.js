@@ -17,6 +17,9 @@ import {
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
+import { MIN_CEMENT_GAP } from './lensgroup.js';
+
+export { MIN_CEMENT_GAP };
 import {
   OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
   objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
@@ -61,18 +64,6 @@ function thickLensRadii(params) {
   };
   return { h, R1: clampR(params.r1), R2: clampR(params.r2) };
 }
-
-// The tracer ignores any intersection closer than 0.05 units along a ray, an
-// epsilon that stops a surface re-hitting itself. Two glass bodies in optical
-// contact therefore lose one of their two coincident interfaces, and the ray
-// exits into air instead of crossing into the next glass — a cemented doublet
-// traced that way comes out badly wrong (measured: 275mm against a true
-// 359mm). Holding cemented groups apart by slightly more than that epsilon
-// makes both interfaces real again. The cost is a hair of air where the
-// cement should be: at this separation it shifts a 100mm doublet's focus by
-// about 0.15%, well inside what this qualitative tracer claims anywhere else,
-// and real optical cement is a 10-20um layer of not-quite-glass regardless.
-export const MIN_CEMENT_GAP = 0.06;
 
 // Glass bodies expose per-surface transmission as a percentage, like every
 // other optic's Transmission efficiency; the tracer works in fractions.
@@ -171,6 +162,7 @@ export function thickLensShapeName(params = {}) {
 // coincident interfaces loses one of them and the ray wrongly exits into air.
 // A hand-built cemented doublet therefore comes out silently wrong rather than
 // visibly broken, which is the worst way for a model to fail — so say so.
+// The gap itself is defined in lensgroup.js, the module that has to insert it.
 export const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
 
 function glassBodyWorldPoints(el) {
