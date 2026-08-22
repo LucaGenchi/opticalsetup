@@ -337,13 +337,13 @@ export const wikiEntries = [
     realWorld: {
       html: `
         <p>A real singlet has finite centre thickness and two separately refracting
-        surfaces. Its paraxial power therefore depends on both signed radii, the glass
-        index, and the separation between the faces${cite(1)}. Effective focal length is
+        surfaces${cite(1)}. Its paraxial power therefore depends on both signed radii, the
+        glass index, and the separation between the faces${cite(2)}. Effective focal length is
         measured between principal planes; back focal distance is the rear-vertex-to-focus
         distance for collimated light, so the two numbers are not generally equal.</p>
         <p>At a large aperture, a spherical surface does not send every ray height to one
         axial point: marginal rays focus closer to a positive lens than paraxial rays,
-        producing longitudinal spherical aberration and its visible caustic${cite(2)}.
+        producing longitudinal spherical aberration and its visible caustic${cite(3)}.
         Optical-glass index also varies with wavelength, so an uncorrected singlet has
         longitudinal chromatic aberration.</p>`,
       formulas: [
@@ -376,7 +376,7 @@ export const wikiEntries = [
         <span class="w">R = 0</span> makes that face plane. The Shape readout names the
         resulting profile so the sign convention can be checked directly.</p>
         <p>The selectable N-BK7, fused-silica, N-SF5, and N-SF11 models use each glass's
-        published d-line index and Abbe number${cite(3)}. If a requested radius is too
+        published d-line index and Abbe number${cite(4)}. If a requested radius is too
         small for the clear aperture, or the centre thickness would make the faces cross,
         the inspector shows the exact constructible geometry the tracer uses instead of
         hiding the adjustment.</p>
@@ -409,6 +409,7 @@ export const wikiEntries = [
     related: ['lens', 'lensc', 'objective', 'prism', 'freeglass'],
     citations: [
       { label: 'The Physics Hypertextbook — Spherical lenses', url: 'https://physics.info/lenses/' },
+      { label: 'Thorlabs — N-BK7 plano-convex lenses: the lensmaker equation for a thick lens', url: 'https://www.thorlabs.com/n-bk7-plano-convex-lenses-uncoated?tabName=Tutorial' },
       { label: 'RP Photonics Encyclopedia — Spherical aberrations', url: 'https://www.rp-photonics.com/spherical_aberrations.html' },
       { label: 'SCHOTT — Optical-glass collection datasheets', url: 'https://www.schott.com/en-gb/products/optical-glass/-/media/Project/OnEx/Products/O/optical-glass/Downloads/schott-optical-glass-collection-datasheets-english-may2019.pdf' },
     ],
@@ -519,9 +520,8 @@ export const wikiEntries = [
         <strong>effective focal length (EFL)</strong>, <strong>working distance</strong>,
         and <strong>rated NA</strong> — plus the front aperture that controls how big the
         nose is drawn. EFL is the focal length of the whole multi-element assembly treated
-        as one equivalent lens; it took the author a while to work out that "focal length"
-        on an objective means this, so the label says so. Magnification is not something
-        you type in. It is <em>reported</em> from the EFL against a 200&nbsp;mm reference
+        as one equivalent lens, which is what "focal length" means on an objective; the
+        inspector label spells that out. Magnification is not something you type in. It is <em>reported</em> from the EFL against a 200&nbsp;mm reference
         tube lens, because magnification belongs to the objective plus whichever tube lens
         you actually place in the sketch, not to the objective alone. A fresh objective is
         EFL 10&nbsp;mm — 20× on a 200&nbsp;mm tube lens — dry, NA 0.65, 100% transmission.</p>
