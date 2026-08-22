@@ -26,35 +26,30 @@ test('Detectors contains the eight requested instruments in order', () => {
   assert.equal(registry.display.label, 'Detector screen');
 });
 
-test('camera screen shows a 2D intensity map and beam diameter', () => {
+test('camera screen shows one continuous 1D intensity profile and beam diameter', () => {
   const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'beam';
   laser.params.beamWidth = 12;
   const camera = createElement('camera', 300, 0);
   camera.params.pixels = 16;
-  camera.params.rows = 10;
 
   const svg = screenFor(camera, [laser, camera]);
-  assert.match(svg, /data-detector-readout="camera"/);
-  assert.match(svg, /2D INTENSITY/);
-  assert.match(svg, /data-camera-pixel=/);
+  assert.match(svg, /INTENSITY PROFILE/);
+  assert.equal((svg.match(/data-camera-profile-curve/g) || []).length, 1);
+  assert.equal((svg.match(/data-camera-profile-fill/g) || []).length, 1);
+  assert.doesNotMatch(svg, /2D INTENSITY|data-camera-pixel=|data-profile-bin=/);
   assert.match(svg, /BEAM Ø/);
 });
 
-test('camera shows an object image when the paraxial image falls on its sensor', () => {
-  const object = createElement('objarrow', 0, 0);
-  object.params.height = 10;
-  object.params.shape = 'F';
-  object.params.showImage = true;
-  const lens = createElement('lens', 100, 0);
-  lens.params.f = 50;
-  lens.params.dia = 50;
-  const camera = createElement('camera', 222, 0); // active face at x=200 mm
-  camera.params.ch = 40;
+test('camera registry owns one 1D sensor schema and passes its interference setting to the surface', () => {
+  const camera = createElement('camera', 300, 0);
+  assert.equal(registry.camera.params.some(param => param.key === 'rows'), false);
+  assert.equal(camera.params.pixels, 24);
+  assert.equal(camera.params.interference, true);
+  assert.equal(registry.camera.surfaces(camera)[0].data.interference, true);
 
-  const svg = screenFor(camera, [object, lens, camera]);
-  assert.match(svg, /data-camera-object-image="true"/);
-  assert.match(svg, /OBJECT IMAGE/);
+  camera.params.interference = false;
+  assert.equal(registry.camera.surfaces(camera)[0].data.interference, false);
 });
 
 test('photodetector screen is an intensity readout', () => {

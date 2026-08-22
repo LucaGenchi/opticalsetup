@@ -1,14 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
-  createElement, displayActionUpdate, displayCableSVG, displayDensity, getElementMeta, getSize, registry, resolveDisplaySensor,
+  cameraProfileSVG, cameraReadingState, createElement, displayActionUpdate, displayCableSVG, displayDensity, getElementMeta, getSize, registry,
+  resolveDisplaySensor,
 } from '../sketch/js/elements.js';
 import { buildSVG } from '../sketch/js/export.js';
+import { initInspector, renderInspector } from '../sketch/js/inspector.js';
 import { detectorReading, traceAll } from '../sketch/js/raytrace.js';
-import { state } from '../sketch/js/state.js';
+import { parseSketch, state } from '../sketch/js/state.js';
 
 const invalidNumber = /(?:NaN|undefined|Infinity)/;
+
+function inspectorHTMLFor(sensor, elements) {
+  const panel = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  state.elements = elements;
+  state.beams = [];
+  state.selection = { kind: 'element', id: sensor.id };
+  state.demoMode = false;
+  initInspector(panel);
+  renderInspector();
+  return panel.innerHTML;
+}
+
+function machZehnderScene() {
+  const fixture = new URL('../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json', import.meta.url);
+  return parseSketch(readFileSync(fixture, 'utf8'), registry);
+}
 
 test('sensor display resolves only a linked detector and draws a finite data cable', () => {
   const detector = createElement('detector', 300, 0);
@@ -69,7 +88,9 @@ test('sensor display renders a linked camera profile and reports connection stat
   const linked = registry.display.svg(display, [laser, camera, display]);
   assert.equal(getElementMeta('display', display.params).tier, 'simulated');
   assert.match(linked, /CAMERA/);
-  assert.match(linked, /data-profile-bin=/);
+  assert.match(linked, /data-camera-profile-curve/);
+  assert.match(linked, /data-camera-profile-fill/);
+  assert.doesNotMatch(linked, /data-profile-bin=|data-camera-pixel=/);
 
   display.params.sensorId = 'removed-sensor';
   assert.match(registry.display.svg(display, [display]), /LINK LOST/);
@@ -142,7 +163,7 @@ test('display buttons cycle power, view, and available sensor inputs without ins
   assert.match(registry.display.svg(display, elements), /STANDBY/);
 });
 
-test('camera profile colors follow the wavelength mixture in each occupied sensor bin', () => {
+test('camera reading retains wavelength composition while the display renders one continuous trace', () => {
   const green = createElement('cwlaser', 0, -20);
   green.params.wavelength = 532;
   const red = createElement('cwlaser', 0, 20);
@@ -162,8 +183,107 @@ test('camera profile colors follow the wavelength mixture in each occupied senso
   assert.equal(new Set(colors).size, 2, 'green and red hits should not collapse to one overall camera color');
 
   const svg = registry.display.svg(display, elements);
-  assert.equal((svg.match(/data-profile-bin=/g) || []).length, occupied.length);
+  assert.equal((svg.match(/data-camera-profile-curve/g) || []).length, 1);
+  assert.equal((svg.match(/data-camera-profile-fill/g) || []).length, 1);
+  assert.doesNotMatch(svg, /data-profile-bin=|data-camera-pixel=/);
   assert.doesNotMatch(svg, /% rel\./);
+});
+
+test('a coherently cancelled camera is an empty measurement on its display and in the inspector', () => {
+  const scene = machZehnderScene();
+  traceAll(scene.elements);
+  const camera = scene.elements.find(element => element.type === 'camera' && detectorReading(element.id)?.dark);
+  assert.ok(camera, 'the authored interferometer should expose one dark output camera');
+  const reading = detectorReading(camera.id);
+  assert.equal(cameraReadingState(reading).kind, 'cancellation');
+
+  const display = scene.elements.find(element => element.type === 'display' && element.params.sensorId === camera.id);
+  assert.ok(display);
+  display.params.displayScale = 0.6;
+  for (const view of ['main', 'detail']) {
+    display.params.displayView = view;
+    const svg = registry.display.svg(display, scene.elements);
+    assert.match(svg, /COHERENT CANCELLATION/);
+    assert.doesNotMatch(svg, /BEAM Ø|POINT HIT|No detected field|λ0 nm/);
+  }
+
+  display.params.displayView = 'spectrum';
+  const spectrum = registry.display.svg(display, scene.elements);
+  assert.match(spectrum, /data-spectrum-points="0"/);
+  assert.match(spectrum, /COHERENT CANCELLATION/);
+  assert.doesNotMatch(spectrum, /data-spectrum-sample=/);
+
+  const inspector = inspectorHTMLFor(camera, scene.elements);
+  assert.match(inspector, /Coherent cancellation/);
+  assert.match(inspector, /Exact coherent cancellation leaves an empty sensor profile/);
+  assert.doesNotMatch(inspector, /Receiving light|<dt>Spectrum<|<dt>Polarization<|<dt>Spot span</);
+});
+
+test('phase-unavailable and partial camera states are concise while ordinary deposition stays quiet', () => {
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'beam';
+  laser.params.beamWidth = 6;
+  const lens = createElement('lens', 180, 0);
+  lens.params.f = 300;
+  const camera = createElement('camera', 300, 0);
+  const display = createElement('display', 420, 80);
+  display.params.sensorId = camera.id;
+  const elements = [laser, lens, camera, display];
+  traceAll(elements);
+
+  const unavailable = cameraReadingState(detectorReading(camera.id));
+  assert.equal(unavailable.kind, 'phase-unavailable');
+  assert.equal(unavailable.displayStatus, 'PHASE UNAVAILABLE');
+  assert.equal(unavailable.reason, 'Carrier phase is not modeled through lens.');
+  assert.match(registry.display.svg(display, elements), /PHASE UNAVAILABLE/);
+  display.params.displayScale = 0.3;
+  display.params.displayView = 'detail';
+  assert.match(registry.display.svg(display, elements), /PHASE UNAVAILABLE/,
+    'the compact display must retain the phase state in every view');
+  const unavailableInspector = inspectorHTMLFor(camera, elements);
+  assert.match(unavailableInspector, /Deposited · phase unavailable/);
+  assert.match(unavailableInspector, /Carrier phase is not modeled through lens\./);
+  assert.doesNotMatch(unavailableInspector, /excludedHits|fallbackReason/);
+
+  const partial = cameraReadingState({
+    profileMode: 'coherent',
+    coherentPaths: 2,
+    interference: {
+      applied: true,
+      partial: true,
+      pathCount: 2,
+      phaseIssues: ['carrier phase is not modeled through lens'],
+      fallbackReason: null,
+    },
+  });
+  assert.equal(partial.kind, 'partial');
+  assert.equal(partial.displayStatus, 'PHASE UNAVAILABLE');
+  assert.equal(partial.badge, 'PARTIAL');
+  assert.match(partial.label, /^Partial/);
+
+  traceAll([laser, camera, display]);
+  const ordinary = cameraReadingState(detectorReading(camera.id));
+  assert.equal(ordinary.kind, 'deposited');
+  assert.equal(ordinary.label, '');
+  const ordinaryDisplay = registry.display.svg(display, [laser, camera, display]);
+  const ordinaryInspector = inspectorHTMLFor(camera, [laser, camera, display]);
+  assert.doesNotMatch(ordinaryDisplay + ordinaryInspector, /PHASE UNAVAILABLE|PARTIAL/);
+});
+
+test('camera profile renderer preserves sampled extrema without bar artifacts or non-finite SVG', () => {
+  const svg = cameraProfileSVG({
+    profile: [0, 1, Number.NaN, 1, 0],
+    profileMode: 'coherent',
+    color: '#22c55e',
+  }, { x: 0, width: 100, baseline: 30, height: 24 });
+
+  assert.match(svg, /data-camera-profile="coherent"/);
+  assert.equal((svg.match(/data-camera-profile-curve/g) || []).length, 1);
+  assert.equal((svg.match(/data-camera-profile-fill/g) || []).length, 1);
+  assert.doesNotMatch(svg, /<rect|data-profile-bin=/);
+  assert.doesNotMatch(svg, invalidNumber);
+  assert.match(svg, /M 0\.00,30\.00 L 0\.00,30\.00 L 10\.00,30\.00 L 30\.00,6\.00 L 50\.00,30\.00/,
+    'piecewise-linear path must pass through the measured dark and bright pixels');
 });
 
 test('a long sensor name never shares a text baseline with the readout mode label', () => {

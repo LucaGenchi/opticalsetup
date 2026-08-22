@@ -98,24 +98,28 @@
         
       <p>This example places one laser and two beamsplitters at the corners of
       the classic Mach–Zehnder diamond, with a mirror folding each of the two
-      separate arms, recombining at the second beamsplitter onto a detector.
+      separate arms, recombining at the second beamsplitter onto two cameras.
       Both arms are genuinely separate ray paths through the scene — move a
       mirror on one arm and only that arm's traced path changes, exactly as
-      it would on a real bench.</p>
-        <div class="limitations"><span class="lbl">What you won't see</span><p>As with the Michelson example, the missing piece is
-      coherent interference: OpticalSetup traces ray geometry and intensity,
-      not phase, so the two arms recombine without producing the
-      fringe-contrast or intensity-vs-phase-difference signal that is the
-      entire point of a real Mach–Zehnder interferometer. Placing something
-      "in one arm" here changes the traced beam (blocking it, attenuating it,
-      shifting its color), but it won't show up as an interference fringe at
-      the output the way it would on an optical bench.</p></div>
+      it would on a real bench. The two linked screens show complementary
+      camera outputs: equal arms make one port bright and the other dark.
+      Entering half a wavelength in the ΔL arm (0.000266&nbsp;mm at
+      532&nbsp;nm) swaps them.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The camera combines only phase-valid routes from this
+      sized monochromatic CW laser. Optical path, 100%-reflective flat-mirror phase,
+      and a unitary non-polarizing beamsplitter phase are represented, and
+      each cross term is integrated over the finite 1D pixels. This is not a
+      general wave-optics solver: diffraction, coherence length, vibration,
+      surface figure, and 2D sensor response are absent. Putting an optic
+      whose carrier phase is not modeled in either arm makes the camera fall
+      back to conservative deposited intensity instead of inventing a
+      fringe.</p></div>
       </div>
 
       
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
-        <a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a>
+        <a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a>
       </div>
 
       

@@ -42,6 +42,39 @@ test('a partial flat mirror keeps the transmitted beam undrawn by default, but a
     'toggling the display on must not change the physical reading');
 });
 
+test('sub-visibility partial-mirror leaks still reach a detector directly behind the coating', () => {
+  for (const reflectivity of [98.1, 99, 99.9]) {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'line';
+    const mirror = createElement('mirror', 150, 0);
+    mirror.rot = 45;
+    mirror.params.refl = reflectivity;
+    const detector = createElement('detector', 300, 0);
+
+    traceAll([laser, mirror, detector]);
+    const reading = detectorReading(detector.id);
+    assert.ok(reading, `${100 - reflectivity}% leak should not be dropped by the drawing cutoff`);
+    assert.ok(Math.abs(reading.signal - (1 - reflectivity / 100)) < 1e-9);
+  }
+});
+
+test('a weak mirror leak remains measurable through a downstream passive optic', () => {
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'line';
+  const mirror = createElement('mirror', 150, 0);
+  mirror.rot = 45;
+  mirror.params.refl = 99;
+  const filter = createElement('filter', 225, 0);
+  filter.params.ftype = 'nd';
+  filter.params.trans = 1;
+  const detector = createElement('detector', 300, 0);
+
+  traceAll([laser, mirror, filter, detector]);
+  const reading = detectorReading(detector.id);
+  assert.ok(reading);
+  assert.ok(Math.abs(reading.signal - 0.01) < 1e-9);
+});
+
 test('curved mirrors (convex/concave) now split reflectivity too, always tracing the leak for detector physics', () => {
   const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
@@ -58,6 +91,22 @@ test('curved mirrors (convex/concave) now split reflectivity too, always tracing
   const hiddenDrawables = paths([laser, cmirror, behindDetector]);
   assert.ok(!hiddenDrawables.some(p => p.pts.some(pt => pt.x > 150 + 1e-6)),
     'the leak should stay undrawn by default for curved mirrors too');
+});
+
+test('curved-mirror reflectivity remains continuous through the old 99.5% cutoff', () => {
+  for (const type of ['cmirror', 'cmirrorx']) for (const reflectivity of [99.5, 99.9]) {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'line';
+    const mirror = createElement(type, 150, 0);
+    mirror.rot = 45;
+    mirror.params.refl = reflectivity;
+    const detector = createElement('detector', 300, 0);
+
+    traceAll([laser, mirror, detector]);
+    const reading = detectorReading(detector.id);
+    assert.ok(reading, `${type} at ${reflectivity}% must retain its transmitted leak`);
+    assert.ok(Math.abs(reading.signal - (1 - reflectivity / 100)) < 1e-9);
+  }
 });
 
 test('a fully reflective mirror is unaffected: no leak traced or drawn', () => {

@@ -380,12 +380,14 @@ function displaySensorName(sensor) {
 }
 
 function displaySpectrum(rd) {
+  if (!Number.isFinite(rd?.wavelength) || !Number.isFinite(rd?.bandMin) || !Number.isFinite(rd?.bandMax)) return '—';
   return rd.bandMax - rd.bandMin > 2
     ? `${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)} nm`
     : `${Math.round(rd.wavelength)} nm`;
 }
 
 function shortSpectrum(rd) {
+  if (!Number.isFinite(rd?.wavelength) || !Number.isFinite(rd?.bandMin) || !Number.isFinite(rd?.bandMax)) return '—';
   return rd.bandMax - rd.bandMin > 2
     ? `λ${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)}`
     : `λ${Math.round(rd.wavelength)} nm`;
@@ -412,28 +414,114 @@ function shortPolarization(polarization = '') {
 function displayViewName(view, rd) {
   if (view === 'spectrum') return 'λ SAMPLES';
   if (view === 'detail') return 'DETAIL';
-  return rd?.readoutKind === 'camera' ? '1D PROFILE' : rd?.readoutKind === 'pmt' ? 'PMT OUTPUT' : 'REL SIGNAL';
+  if (rd?.readoutKind === 'camera') return 'INTENSITY PROFILE';
+  return rd?.readoutKind === 'pmt' ? 'PMT OUTPUT' : 'REL SIGNAL';
 }
 
-function displayProfile(rd, { x = -35, width = 70, baseline = 5, height = 15 } = {}) {
-  if (!Array.isArray(rd.profile) || !rd.profile.length) return '';
+function cameraCoherentPathCount(reading) {
+  const direct = Number(reading?.coherentPaths);
+  if (Number.isInteger(direct) && direct > 0) return direct;
+  const nested = Number(reading?.interference?.pathCount);
+  return Number.isInteger(nested) && nested > 0 ? nested : 0;
+}
+
+function cameraPhaseReason(reading) {
+  const interference = reading?.interference;
+  if (!interference || interference.reason === 'disabled') return '';
+  const phaseIssue = Array.isArray(interference.phaseIssues)
+    ? interference.phaseIssues.find(issue => typeof issue === 'string' && issue.trim())
+    : '';
+  const raw = typeof interference.fallbackReason === 'string' && interference.fallbackReason.trim()
+    ? interference.fallbackReason.trim()
+    : String(phaseIssue || '').trim();
+  if (!raw) return '';
+  return raw.charAt(0).toUpperCase() + raw.slice(1).replace(/[.]+$/, '') + '.';
+}
+
+// Keep the camera's semantic state in one place so the linked display and
+// inspector cannot disagree. A plain deposited one-path profile is the normal
+// state and intentionally has no badge. Warnings only appear when the tracer
+// explicitly reports missing phase information or a partial coherent result.
+export function cameraReadingState(reading) {
+  const paths = cameraCoherentPathCount(reading);
+  const phaseReason = cameraPhaseReason(reading);
+  const applied = reading?.interference?.applied === true || reading?.profileMode === 'coherent';
+  const partial = reading?.interference?.partial === true;
+  if (reading?.dark === true) return {
+    kind: 'cancellation', paths, warning: false, reason: '',
+    label: 'Coherent cancellation', badge: 'CANCELLED', displayStatus: 'COHERENT CANCELLATION',
+  };
+  if (phaseReason) {
+    const isPartial = applied && partial;
+    return {
+      kind: isPartial ? 'partial' : 'phase-unavailable', paths, warning: true, reason: phaseReason,
+      label: isPartial ? 'Partial · phase unavailable' : 'Deposited · phase unavailable',
+      badge: isPartial ? 'PARTIAL' : 'PHASE',
+      // The linked screen pairs this with the PHASE/PARTIAL badge. Keeping the
+      // footer itself short prevents it colliding with the numeric signal.
+      displayStatus: 'PHASE UNAVAILABLE',
+    };
+  }
+  if (applied && partial) return {
+    kind: 'partial', paths, warning: true, reason: '',
+    label: 'Partial coherent result', badge: 'PARTIAL', displayStatus: 'PARTIAL COHERENCE',
+  };
+  if (applied) return {
+    kind: 'coherent', paths, warning: false, reason: '',
+    label: `Coherent${paths ? ` · ${paths} paths` : ''}`,
+    badge: `COH${paths ? ` · ${paths}` : ''}`, displayStatus: '',
+  };
+  return { kind: 'deposited', paths: 0, warning: false, reason: '', label: '', badge: '', displayStatus: '' };
+}
+
+// A camera profile is pixel-integrated data, not a row of isolated ray-hit
+// markers. Draw one bounded, piecewise-linear trace through the pixel centres
+// and fill down to the baseline. Linear interpolation is deliberate here:
+// spline smoothing can overshoot between dark and bright interference pixels
+// and invent extrema the sensor never measured.
+export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height = 15 } = {}) {
+  if (!Array.isArray(rd?.profile) || !rd.profile.length) return '';
   const values = rd.profile.map(value => Number.isFinite(value) ? Math.max(0, value) : 0);
-  const max = Math.max(...values, 1e-9);
-  const binWidth = width / values.length;
-  return values.map((value, i) => {
-    if (value <= 1e-12) return '';
-    const barHeight = Math.max(0.7, height * value / max);
-    const color = rd.profileColors?.[i] || rd.color || '#d8e7ee';
-    return `<rect data-profile-bin="${i}" x="${(x + i * binWidth).toFixed(2)}" y="${(baseline - barHeight).toFixed(2)}" ` +
-      `width="${Math.max(0.35, binWidth - 0.45).toFixed(2)}" height="${barHeight.toFixed(2)}" rx="0.35" fill="${color}"/>`;
-  }).join('');
+  const maximum = Math.max(...values, 1e-9);
+  const safeX = Number.isFinite(x) ? x : -35;
+  const safeWidth = Number.isFinite(width) && width > 0 ? width : 70;
+  const safeBaseline = Number.isFinite(baseline) ? baseline : 5;
+  const safeHeight = Number.isFinite(height) && height > 0 ? height : 15;
+  const binWidth = safeWidth / values.length;
+  const points = values.map((value, index) => ({
+    x: safeX + (index + 0.5) * binWidth,
+    y: safeBaseline - safeHeight * value / maximum,
+  }));
+  const curve = [
+    { x: safeX, y: points[0].y },
+    ...points,
+    { x: safeX + safeWidth, y: points[points.length - 1].y },
+  ];
+  const curvePoints = curve.map(point => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' L ');
+  const curvePath = `M ${curvePoints}`;
+  const fillPath = `M ${safeX.toFixed(2)},${safeBaseline.toFixed(2)} L ${curvePoints} ` +
+    `L ${(safeX + safeWidth).toFixed(2)},${safeBaseline.toFixed(2)} Z`;
+  const color = /^#[0-9a-f]{6}$/i.test(rd.color || '') ? rd.color : '#d8e7ee';
+  const mode = rd.profileMode === 'coherent' ? 'coherent' : 'intensity';
+  return `<g data-camera-profile="${mode}" data-camera-profile-pixels="${values.length}">` +
+    `<path data-camera-profile-fill d="${fillPath}" fill="${color}" opacity="0.22"/>` +
+    `<path data-camera-profile-curve d="${curvePath}" fill="none" stroke="${color}" stroke-width="1.35" stroke-linejoin="round"/>` +
+    `<line x1="${safeX.toFixed(2)}" y1="${safeBaseline.toFixed(2)}" x2="${(safeX + safeWidth).toFixed(2)}" y2="${safeBaseline.toFixed(2)}" stroke="#294453" stroke-width="0.8"/>` +
+    `</g>`;
 }
 
 function displaySpectrumPlot(rd, { baseline = 5, height = 15 } = {}) {
-  const samples = Array.isArray(rd.spectrum) && rd.spectrum.length
+  const candidates = Array.isArray(rd.spectrum) && rd.spectrum.length
     ? rd.spectrum : [{ wavelength: rd.wavelength, power: rd.signal, color: rd.color }];
-  const lo = Number.isFinite(rd.bandMin) ? rd.bandMin : rd.wavelength;
-  const hi = Number.isFinite(rd.bandMax) ? rd.bandMax : rd.wavelength;
+  // Coherent cancellation can leave numerically tiny residuals. Those are not
+  // detected wavelength samples and must not grow a minimum-height spectrum
+  // stem merely because SVG needs something visible to draw.
+  const samples = rd.dark ? [] : candidates.filter(sample =>
+    Number.isFinite(sample?.wavelength) && Number.isFinite(sample?.power) && sample.power > 1e-12);
+  const axis = `<line data-spectrum-baseline x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
+  if (!samples.length) return `<g data-spectrum-points="0">${axis}</g>`;
+  const lo = Number.isFinite(rd.bandMin) ? rd.bandMin : Math.min(...samples.map(sample => sample.wavelength));
+  const hi = Number.isFinite(rd.bandMax) ? rd.bandMax : Math.max(...samples.map(sample => sample.wavelength));
   const span = Math.max(1, hi - lo);
   const max = Math.max(...samples.map(sample => sample.power || 0), 1e-9);
   const marks = samples.map((sample, index) => {
@@ -442,7 +530,7 @@ function displaySpectrumPlot(rd, { baseline = 5, height = 15 } = {}) {
     return `<line data-spectrum-sample="${index}" x1="${x.toFixed(2)}" y1="${baseline}" x2="${x.toFixed(2)}" y2="${y.toFixed(2)}" ` +
       `stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="${samples.length > 12 ? 1.4 : 2.2}" stroke-linecap="round"/>`;
   }).join('');
-  return `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>${marks}`;
+  return axis + marks;
 }
 
 // Two lines rather than sharing one row: a long sensor name (e.g.
@@ -458,9 +546,15 @@ function displayHeader(sensorName, mode, pulse) {
 }
 
 function displayDetail(rd) {
+  const cameraState = cameraReadingState(rd);
+  const cameraProfileLabel = cameraState.kind === 'cancellation' ? 'CANCELLATION'
+    : cameraState.kind === 'phase-unavailable' ? 'PHASE UNAVAILABLE'
+      : cameraState.kind === 'partial' ? (cameraState.reason ? 'PHASE UNAVAILABLE' : 'PARTIAL')
+        : cameraState.kind === 'coherent' ? (cameraState.paths ? `${cameraState.paths} COHERENT PATHS` : 'COHERENT')
+          : 'INTENSITY';
   const entries = rd.readoutKind === 'camera'
     ? [['SIGNAL', `Σw ${compactNumber(rd.signal)}`], ['CENTROID', rd.centroid == null ? '—' : `${rd.centroid.toFixed(2)} mm`],
-      ['BINS', String(rd.profile?.length || 0)], ['λ SPAN', displaySpectrum(rd)]]
+      ['PIXELS', String(rd.profile?.length || 0)], ['PROFILE', cameraProfileLabel]]
     : rd.readoutKind === 'pmt'
       ? [['INPUT', `Σw ${compactNumber(rd.signal)}`], ['OUTPUT', `${compactNumber(rd.outputSignal)} a.u.`],
         ['STATE', rd.saturated ? 'SATURATED' : 'LINEAR'], ['λ SPAN', displaySpectrum(rd)]]
@@ -476,20 +570,37 @@ function displayDetail(rd) {
 
 function compactDisplayReading(sensorName, rd, view) {
   const header = `<text x="-35" y="-17" font-size="6" font-weight="760" letter-spacing="0.4" fill="#8fa9b8">${esc(sensorName.toUpperCase().slice(0, 11))}</text>`;
+  const cameraState = rd.readoutKind === 'camera' ? cameraReadingState(rd) : null;
+  const cameraBadge = cameraState?.badge
+    ? `<text x="35" y="-17" text-anchor="end" font-size="${cameraState.warning ? 3.5 : 4.1}" font-weight="760" letter-spacing="0.25" fill="${cameraState.warning ? '#fbbf24' : cameraState.kind === 'cancellation' ? '#94a3b8' : '#6ee7b7'}">${esc(cameraState.badge)}</text>`
+    : '';
+  if (cameraState?.kind === 'cancellation') {
+    return header + cameraBadge + cameraProfileSVG(rd, { x: -35, width: 70, baseline: 6, height: 13 }) +
+      `<text x="0" y="15" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.2" fill="#94a3b8">COHERENT CANCELLATION</text>`;
+  }
   if (view === 'spectrum') {
     const spectral = rd.bandMax - rd.bandMin > 2
       ? `${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)}`
       : `${Math.round(rd.wavelength)}`;
-    return header + `<text x="0" y="6" text-anchor="middle" font-size="${spectral.length > 6 ? 11 : 15}" font-weight="780" fill="${rd.color}">${spectral}</text>` +
-      `<text x="0" y="13" text-anchor="middle" font-size="5" font-weight="700" fill="#7792a2">nm · DETECTED λ</text>`;
+    const stateLine = cameraState?.warning
+      ? `<text x="0" y="14" text-anchor="middle" font-size="4.1" font-weight="760" letter-spacing="0.15" fill="#fbbf24">${esc(cameraState.displayStatus)}</text>`
+      : `<text x="0" y="13" text-anchor="middle" font-size="5" font-weight="700" fill="#7792a2">nm · DETECTED λ</text>`;
+    return header + cameraBadge + `<text x="0" y="5" text-anchor="middle" font-size="${spectral.length > 6 ? 10 : 13}" font-weight="780" fill="${rd.color}">${spectral}</text>` + stateLine;
   }
   if (view === 'detail') {
-    return header + `<text x="0" y="4" text-anchor="middle" font-size="8" font-weight="750" fill="#d9e8ee">${esc(shortPolarization(rd.polarization))}</text>` +
+    if (cameraState?.warning) {
+      return header + cameraBadge + `<text x="0" y="4" text-anchor="middle" font-size="4.2" font-weight="760" letter-spacing="0.12" fill="#fbbf24">${esc(cameraState.displayStatus)}</text>` +
+        `<text x="0" y="14" text-anchor="middle" font-size="5" fill="#7892a1">Σw ${compactNumber(rd.signal)}</text>`;
+    }
+    return header + cameraBadge + `<text x="0" y="4" text-anchor="middle" font-size="8" font-weight="750" fill="#d9e8ee">${esc(shortPolarization(rd.polarization))}</text>` +
       `<text x="0" y="13" text-anchor="middle" font-size="5" fill="#7792a2">${esc(shortSpectrum(rd))}</text>`;
   }
   if (rd.readoutKind === 'camera' && rd.profile) {
-    return header + displayProfile(rd, { x: -35, width: 70, baseline: 12, height: 20 }) +
-      `<line x1="-35" y1="12.5" x2="35" y2="12.5" stroke="#294453" stroke-width="0.8"/>`;
+    if (cameraState.warning) {
+      return header + cameraBadge + cameraProfileSVG(rd, { x: -35, width: 70, baseline: 7, height: 14 }) +
+        `<text x="0" y="15" text-anchor="middle" font-size="4.1" font-weight="760" letter-spacing="0.1" fill="#fbbf24">${esc(cameraState.displayStatus)}</text>`;
+    }
+    return header + cameraBadge + cameraProfileSVG(rd, { x: -35, width: 70, baseline: 12, height: 20 });
   }
   const value = rd.readoutKind === 'pmt' ? rd.outputSignal : rd.signal;
   const unit = rd.readoutKind === 'pmt' ? 'a.u.' : 'Σw';
@@ -499,22 +610,33 @@ function compactDisplayReading(sensorName, rd, view) {
 }
 
 function standardDisplayReading(sensorName, rd, view, density) {
-  const header = displayHeader(sensorName, displayViewName(view, rd), rd.pulse);
+  const cameraState = rd.readoutKind === 'camera' ? cameraReadingState(rd) : null;
+  const cameraBadge = cameraState?.badge
+    ? `<text x="35" y="-23.5" text-anchor="end" font-size="${cameraState.warning ? 3.35 : 3.7}" font-weight="760" letter-spacing="0.2" fill="${cameraState.warning ? '#fbbf24' : cameraState.kind === 'cancellation' ? '#94a3b8' : '#6ee7b7'}">${esc(cameraState.badge)}</text>`
+    : '';
+  const header = displayHeader(sensorName, displayViewName(view, rd), rd.pulse) + cameraBadge;
+  if (view === 'detail' && cameraState?.kind === 'cancellation') {
+    return header + `<text x="0" y="-1" text-anchor="middle" font-size="6" font-weight="760" letter-spacing="0.25" fill="#94a3b8">COHERENT CANCELLATION</text>` +
+      `<text x="0" y="10" text-anchor="middle" font-size="5" fill="#718695">Σw ${compactNumber(rd.signal)} · ${rd.profile?.length || 0} PIXELS</text>`;
+  }
   if (view === 'detail') return header + displayDetail(rd);
   if (view === 'spectrum') {
+    const footer = cameraState?.displayStatus || shortSpectrum(rd);
+    const footerColor = cameraState?.warning ? '#fbbf24' : cameraState?.kind === 'cancellation' ? '#94a3b8' : '#8fa7b5';
     return header + displaySpectrumPlot(rd, { baseline: density === 'expanded' ? 4 : 6, height: 16 }) +
-      `<text x="-35" y="14" font-size="5.2" fill="#8fa7b5">${esc(shortSpectrum(rd))}</text>` +
+      `<text x="-35" y="14" font-size="${cameraState?.kind === 'cancellation' ? 4 : cameraState?.displayStatus ? 4.4 : 5.2}" font-weight="${cameraState?.displayStatus ? 760 : 400}" fill="${footerColor}">${esc(footer)}</text>` +
       `<text x="35" y="14" text-anchor="end" font-size="5.2" font-weight="700" fill="#d9e8ee">Σw ${compactNumber(rd.signal)}</text>`;
   }
   if (rd.readoutKind === 'camera' && rd.profile) {
     const expanded = density === 'expanded';
     const baseline = expanded ? 1 : 5;
-    return header + displayProfile(rd, { x: -35, width: 70, baseline, height: expanded ? 14 : 16 }) +
-      `<line x1="-35" y1="${baseline + 0.5}" x2="35" y2="${baseline + 0.5}" stroke="#294453" stroke-width="0.8"/>` +
+    const spot = cameraState.displayStatus || (rd.samples > 1 ? `BEAM Ø ${rd.spotSpan.toFixed(1)} mm` : 'POINT HIT');
+    const spotColor = cameraState.warning ? '#fbbf24' : cameraState.kind === 'cancellation' ? '#94a3b8' : '#8fa7b5';
+    return header + cameraProfileSVG(rd, { x: -35, width: 70, baseline, height: expanded ? 14 : 16 }) +
       (expanded
         ? `<text x="-35" y="7" font-size="4" fill="#557181">−½</text><text x="0" y="7" text-anchor="middle" font-size="4" fill="#557181">0</text><text x="35" y="7" text-anchor="end" font-size="4" fill="#557181">+½ sensor</text>`
         : '') +
-      `<text x="-35" y="14" font-size="5.2" fill="#8fa7b5">${esc(shortSpectrum(rd))}</text>` +
+      `<text x="-35" y="14" font-size="${cameraState.kind === 'cancellation' ? 4 : cameraState.displayStatus ? 4.4 : 5.2}" font-weight="${cameraState.displayStatus ? 760 : 400}" fill="${spotColor}">${esc(spot)}</text>` +
       `<text x="35" y="14" text-anchor="end" font-size="5.2" font-weight="700" fill="#d9e8ee">Σw ${compactNumber(rd.signal)}</text>`;
   }
   const value = rd.readoutKind === 'pmt' ? rd.outputSignal : rd.signal;
@@ -1288,8 +1410,9 @@ const P = {
 
 // Shared by every mirror in the Mirrors category: a reflectivity percentage
 // and, once it's set below 100%, an opt-in toggle for actually drawing the
-// leaked transmitted beam (default off — the leak is still fully traced for
-// correct detector/power-budget readings either way, see raytrace.js's
+// leaked transmitted beam (default off — the leak is still retained within
+// the tracer's bounded weak-power budget for correct detector/power-budget
+// readings either way, see raytrace.js's
 // `hidden` ray flag; this only controls whether it's rendered).
 function reflectivityParams() {
   return [
@@ -1367,10 +1490,16 @@ function laserSource(el) {
   if (p.beamMode === 'beam') {
     // sample rays across the beam width; adjacent samples with an identical
     // interaction history are filled as an envelope strip, so a lenslet
-    // array splits the beam into visibly separate focusing beamlets
+    // array splits the beam into visibly separate focusing beamlets.  The
+    // first and last samples lie on the authored beam edges; `sampleGrid`
+    // lets finite-pixel detectors apply the corresponding trapezoidal
+    // quadrature without changing the tracer's long-standing ray weights.
     const K = 25, w = p.beamWidth;
     const out = [];
-    for (let i = 0; i < K; i++) out.push({ x: 52, y: -w / 2 + w * i / (K - 1), dx: 1, dy: 0, sample: i });
+    for (let i = 0; i < K; i++) out.push({
+      x: 52, y: -w / 2 + w * i / (K - 1), dx: 1, dy: 0,
+      sample: i, sampleGrid: 'edges',
+    });
     return out;
   }
   return [{ x: 52, y: 0, dx: 1, dy: 0 }];
@@ -2391,7 +2520,8 @@ export const registry = {
     size_: el => ({ w: 44, h: (el.params.ch || 30) + 4 }),
     params: [
       { key: 'ch', label: 'Sensor height (mm)', type: 'number', min: 20, max: 150, step: 2, def: 30 },
-      { key: 'pixels', label: '1D pixels', type: 'number', min: 8, max: 64, step: 1, def: 16 },
+      { key: 'pixels', label: 'Sensor pixels (1D)', type: 'number', min: 8, max: 64, step: 1, def: 24 },
+      { key: 'interference', label: 'Coherent interference', type: 'checkbox', def: true },
     ],
     svg(el) {
       const h = el.params.ch || 30;
@@ -2399,7 +2529,10 @@ export const registry = {
         `<rect x="-24" y="${-(h - 16) / 2}" width="5" height="${h - 16}" fill="#333" stroke="#2b333d"/>` +
         signalLamp(el, 13, -h / 2 + 7);
     },
-    surfaces: el => detectorSurfaces(44, el.params.ch || 30, 'Camera sensor', { pixels: el.params.pixels }),
+    surfaces: el => detectorSurfaces(44, el.params.ch || 30, 'Camera sensor', {
+      pixels: el.params.pixels,
+      interference: el.params.interference !== false,
+    }),
   },
 
   eye: {
@@ -2534,7 +2667,7 @@ export const registry = {
   delayline: {
     label: 'Mechanical delay line', category: 'Pulse Timing', size: { w: 40, h: 32 },
     params: [
-      { key: 'delayMm', label: 'Extra optical path (mm)', type: 'number', min: 0, max: 100000, step: 1, def: 100 },
+      { key: 'delayMm', label: 'Extra optical path (mm)', type: 'number', min: 0, max: 100000, step: 0.0001, def: 100 },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
     ],
     size_: el => ({ w: 40, h: (el.params.aperture || 24) + 8 }),
@@ -3306,7 +3439,7 @@ const ELEMENT_HELP = {
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Applies configurable qualitative gain and saturation to detected optical signal.',
-  camera: 'Bins incident rays into a configurable one-dimensional sensor profile.',
+  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',

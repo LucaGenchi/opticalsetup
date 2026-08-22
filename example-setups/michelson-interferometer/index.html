@@ -101,14 +101,14 @@
       detector. Every reflection and split follows the same exact vector
       geometry used throughout OpticalSetup — moving either mirror changes
       the traced ray paths precisely, the way moving a real mirror would.</p>
-        <div class="limitations"><span class="lbl">What you won't see</span><p>What you won't see is the actual interferometric signal.
-      OpticalSetup's ray tracer has no coherent phase or wavelength-scale path
-      tracking — see the app's stated simulation scope — so the two
-      recombined beams simply overlap geometrically rather than showing the
-      fringes, visibility, or intensity-vs-path-difference curve that make a
-      real Michelson interferometer useful as a measurement instrument. This
-      setup teaches the beam geometry a Michelson interferometer relies on,
-      not its interferometric readout.</p></div>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>This particular scene keeps a line source and a scalar
+      photodetector, so it remains a geometry lesson rather than an
+      interferometric readout. OpticalSetup's bounded coherent model is
+      camera-only and needs a sized monochromatic CW beam to reconstruct one
+      field per route. Switching those two components can expose supported
+      flat-mirror/beamsplitter path interference, but the app still does not
+      model diffraction, surface figure, vibration, coherence length, or a
+      laboratory detector response.</p></div>
       </div>
 
       

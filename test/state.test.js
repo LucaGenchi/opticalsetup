@@ -166,6 +166,21 @@ test('sensor display links survive save loading while malformed ids are bounded'
   assert.equal(scene.elements[1].params.sensorId, '');
 });
 
+test('legacy camera rows are discarded and coherent interference defaults on', () => {
+  const camera = createElement('camera', 100, 0);
+  delete camera.params.interference;
+  camera.params.rows = 24;
+
+  let scene = parseSketch(file([camera]), registry);
+  assert.equal(scene.elements[0].params.interference, true);
+  assert.equal(Object.hasOwn(scene.elements[0].params, 'rows'), false);
+  assert.equal(scene.elements[0].params.pixels, 24);
+
+  camera.params.interference = false;
+  scene = parseSketch(file([camera]), registry);
+  assert.equal(scene.elements[0].params.interference, false);
+});
+
 test('pre-checkbox sample mode strings fall back to current schema defaults', () => {
   // No migration is kept at this stage: 'trans'/'block' aren't valid `mode`
   // options anymore, so they're treated like any other invalid enum value.

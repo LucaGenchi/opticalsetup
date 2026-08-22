@@ -67,9 +67,13 @@ figures as SVG or PNG.
   display can be linked to any of them and mirrors the live output directly on the
   canvas. Its information density adapts to its drawn size, while power, sensor-input,
   and view controls live on the instrument itself. PMTs include qualitative
-  gain/saturation; cameras provide a 1D profile whose bin colors show the qualitative
-  wavelength mixture at each position. Scalar readouts use arbitrary relative
-  ray-weight units rather than implying a calibrated percentage.
+  gain/saturation; cameras conservatively integrate continuous traced ray tubes into
+  finite 1D sensor pixels, so sensor binning does not invent bright/dark stripes or
+  change the power of a fixed traced field. Spatial apertures still use the tracer's
+  bounded source-ray quadrature. For a sized monochromatic CW laser,
+  a camera can also combine phase-valid same-source routes and resolve their
+  pixel-averaged interference. Scalar readouts use arbitrary relative ray-weight
+  units rather than implying a calibrated percentage.
 - **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets
   with exact circular-surface intersections and catalogue-glass dispersion,
   spectral band arithmetic at filters, Malus's law, grating equation, Cauchy
@@ -103,12 +107,23 @@ design package. It models ray paths, bounded relative power, spectral bands, Sto
 polarization, thin-lens elements, refractive boundaries, timed pulse trains, and
 simple detector responses. Thick singlets use a 2D meridional section with spherical
 or flat faces; they do not model skew rays, aspheres, coatings, or calibrated off-axis
-aberrations. The app does not model coherent carrier phase, interference,
+aberrations. The app does not model general coherent wave propagation,
 diffraction-limited propagation, material dispersion beyond the stated simplified
-models, or laboratory-specific calibration. Paraxial image markers do not account
-for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
-and PNG exports remain static and deterministic; GIF exports capture that illustrative
-playback rather than claiming a calibrated high-speed recording.
+models, or laboratory-specific calibration. Its bounded interference model applies
+only at camera sensors: it reconstructs one field per routed branch of a sized,
+monochromatic CW laser, carries optical path and the unitary phase of ideal
+non-polarizing beamsplitters and 100%-reflective flat mirrors through mechanical delay lines,
+and integrates every cross term over
+the finite pixel aperture. Up to eight overlapping branches per source and wavelength
+are combined; a larger or trace-budget-limited field set falls back conservatively.
+Independent sources add as intensities. A route through
+an optic whose carrier phase is not represented (including lenses, curved mirrors,
+partial-mirror coatings, gratings, diffusers, fibers, active mirrors/modulators,
+generated emission, and programmable shapers) falls back to the conservative deposited-intensity profile rather than
+inventing a phase. Paraxial image markers do not account for downstream clipping.
+Animated pulse packets are qualitative playback aids. SVG and PNG exports remain
+static and deterministic; GIF exports capture that illustrative playback rather
+than claiming a calibrated high-speed recording.
 
 The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
 shows their positions in the moving 2D sample. It does not calculate focal volume,

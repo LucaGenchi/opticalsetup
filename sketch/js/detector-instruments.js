@@ -1,7 +1,7 @@
 // Detector catalogue redesign and detector-aware screen panels.
 
 import {
-  OBJ_SHAPES, createElement, displayDensity, displayRenderScale, getElementMeta, registry, resolveDisplaySensor,
+  createElement, displayDensity, displayRenderScale, getElementMeta, registry, resolveDisplaySensor,
   resolvedDisplayView,
 } from './elements.js';
 import { detectorReading } from './raytrace.js';
@@ -16,7 +16,7 @@ export const DETECTOR_TYPES = [
 ];
 
 const DESCRIPTIONS = {
-  camera: 'Spatially resolves beam intensity, beam diameter, a qualitative 2D intensity map, and an object image formed on the sensor.',
+  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   detector: 'Measures the relative intensity incident on its active surface.',
   pmt: 'Measures intensity with qualitative gain and saturation for weak fluorescence, microscopy, and point-source signals.',
   powermeter: 'Reports incoming optical power when source power is configured, otherwise relative detected power.',
@@ -26,8 +26,6 @@ const DESCRIPTIONS = {
   generaldetector: 'Reports intensity, power, beam size, wavefront, polarization and Stokes parameters, wavelength and bandwidth, plus pulse repetition rate and duration.',
   display: 'Connects to one detector and shows only the properties that detector measures. The cable carries data and never affects rays.',
 };
-
-const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
 
 function compactNumber(value) {
   if (!Number.isFinite(value)) return '—';
@@ -83,13 +81,8 @@ function instrumentDefinition({ label, code, readoutKind, paletteOrder, width, a
 
 Object.assign(registry.camera, {
   paletteOrder: 1, sensorFaceX: -22, description: DESCRIPTIONS.camera,
-  aliases: ['beam camera', 'beam profiler', 'image sensor', '2d intensity map', 'beam diameter', 'object image'],
+  aliases: ['beam camera', 'beam profiler', 'image sensor', 'interferogram', 'interference camera', 'beam diameter'],
 });
-registry.camera.params = [
-  { key: 'ch', label: 'Sensor height (mm)', type: 'number', min: 20, max: 150, step: 2, def: 30 },
-  { key: 'pixels', label: 'Horizontal samples', type: 'number', min: 8, max: 64, step: 1, def: 24 },
-  { key: 'rows', label: '2D display rows', type: 'number', min: 6, max: 24, step: 1, def: 12 },
-];
 Object.assign(registry.detector, {
   paletteOrder: 2, sensorFaceX: -19, description: DESCRIPTIONS.detector,
   aliases: ['photodiode', 'intensity detector', 'light intensity'],
@@ -418,49 +411,6 @@ function peakLabels(peaks, xAt, baseline) {
   }).join('') + `</g>`;
 }
 
-function profile(reading) {
-  const values = reading.profile || [], maximum = Math.max(...values, 1e-9), width = values.length ? 70 / values.length : 0;
-  return values.map((value, index) => {
-    if (!(value > 0)) return '';
-    const height = Math.max(0.6, 20 * value / maximum);
-    return `<rect data-profile-bin="${index}" x="${(-35 + index * width).toFixed(2)}" y="${(11 - height).toFixed(2)}" width="${Math.max(0.3, width - 0.4).toFixed(2)}" height="${height.toFixed(2)}" rx="0.3" fill="${reading.profileColors?.[index] || reading.color}"/>`;
-  }).join('') + `<line x1="-35" y1="11.5" x2="35" y2="11.5" stroke="#294453" stroke-width="0.8"/>`;
-}
-
-function objectGlyph(image) {
-  if (!image) return '';
-  const shape = OBJ_SHAPES[image.shape] || OBJ_SHAPES.arrow, cx = -8, cy = 1;
-  const height = clamp(Math.abs(image.localTipY - image.localBaseY) * 0.9, 7, 20), sign = image.magnification < 0 ? -1 : 1;
-  const point = value => ({ x: cx + value[0] * height, y: cy + value[1] * height * sign });
-  let svg = `<g data-camera-object-image="true"><title>Object image falls on camera</title>`;
-  for (const line of shape.lines || []) svg += `<polyline points="${line.map(item => { const p = point(item); return `${p.x.toFixed(2)},${p.y.toFixed(2)}`; }).join(' ')}" fill="none" stroke="${image.color}" stroke-width="1.25"/>`;
-  for (const polygon of shape.polys || []) svg += `<polygon points="${polygon.map(item => { const p = point(item); return `${p.x.toFixed(2)},${p.y.toFixed(2)}`; }).join(' ')}" fill="${image.color}"/>`;
-  return svg + `</g><text x="-34" y="14" font-size="3.3" font-weight="760" fill="#e2f1f5">OBJECT IMAGE</text>`;
-}
-
-function cameraMap(reading, sensor, elements) {
-  const values = reading.profile || [], columns = Math.min(24, values.length), rows = clamp(Math.round(sensor.params.rows || 12), 6, 16);
-  if (!columns) return '';
-  const grouped = Array.from({ length: columns }, (_, column) => {
-    const start = Math.floor(column * values.length / columns), end = Math.max(start + 1, Math.floor((column + 1) * values.length / columns));
-    const slice = values.slice(start, end), value = slice.reduce((sum, sample) => sum + sample, 0);
-    return { value, index: start, color: reading.profileColors?.[start] || reading.color };
-  });
-  const maximum = Math.max(...grouped.map(item => item.value), 1e-9), x0 = -35, y0 = -11, width = 54, height = 24;
-  let pixels = '';
-  for (let column = 0; column < columns; column++) {
-    const level = grouped[column].value / maximum, sigma = 1.4 + level * rows * 0.19;
-    for (let row = 0; row < rows; row++) {
-      const dy = row - (rows - 1) / 2, intensity = level * Math.exp(-(dy * dy) / (2 * sigma * sigma));
-      if (intensity < 0.035) continue;
-      pixels += `<rect data-camera-pixel="${column}:${row}" x="${(x0 + column * width / columns).toFixed(2)}" y="${(y0 + row * height / rows).toFixed(2)}" width="${Math.max(0.35, width / columns - 0.25).toFixed(2)}" height="${Math.max(0.35, height / rows - 0.25).toFixed(2)}" fill="${grouped[column].color}" opacity="${clamp(0.15 + 0.85 * intensity, 0, 1).toFixed(2)}"/>`;
-    }
-  }
-  return `<rect x="${x0}" y="${y0}" width="${width}" height="${height}" rx="1.5" fill="#031119" stroke="#294453"/>${pixels}${objectGlyph(objectImageAtCamera(sensor, elements))}` +
-    `<text x="22" y="-6" font-size="4" fill="#6d8796">BEAM Ø</text><text x="40" y="1" text-anchor="end" font-size="6" fill="#d9e8ee">${reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(1)} mm` : 'POINT'}</text>` +
-    `<text x="40" y="7" text-anchor="end" font-size="4" fill="#6d8796">INTENSITY</text><text x="40" y="14" text-anchor="end" font-size="6" fill="#d9e8ee">Σw ${compactNumber(reading.signal)}</text>`;
-}
-
 function polarizationGlyph(reading) {
   const text = String(reading.polarization), match = /(?:Linear|Elliptical)\s+(-?[\d.]+)°/.exec(text), rotation = match ? -Number(match[1]) : 0;
   if (/^Linear/.test(text)) return `<g transform="translate(-24 1) rotate(${rotation})" stroke="#e2f1f5" stroke-width="1.5"><line x1="-9" y1="0" x2="9" y2="0"/><path d="M 9,0 L 5,-2.5 M 9,0 L 5,2.5 M -9,0 L -5,-2.5 M -9,0 L -5,2.5"/></g>`;
@@ -480,16 +430,8 @@ function formatPower(watts, signal) {
 function pulseRate(pulse) { return !pulse ? 'CW' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.repRateMHz)} MHz`; }
 function pulseDuration(pulse) { return !pulse ? '—' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.pulseWidthFs)} fs`; }
 
-function panel(sensor, reading, elements, view) {
+function panel(sensor, reading, view) {
   const name = sensor.label || registry[sensor.type].label;
-  if (sensor.type === 'camera') {
-    if (view === 'detail') return header(name, 'SPATIAL METRICS', reading.pulse) + metrics([
-      ['INTENSITY', `Σw ${compactNumber(reading.signal)}`], ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'],
-      ['CENTROID', Number.isFinite(reading.centroid) ? `${reading.centroid.toFixed(2)} mm` : '—'], ['MAP', `${reading.profile?.length || 0}×${sensor.params.rows || 12}`],
-    ]);
-    if (view === 'spectrum') return header(name, 'LINE PROFILE', reading.pulse) + profile(reading);
-    return header(name, '2D INTENSITY', reading.pulse) + cameraMap(reading, sensor, elements);
-  }
   if (sensor.type === 'detector') {
     // A pulsed arrival has real temporal structure, so the screen becomes an
     // oscilloscope rather than a single averaged number. CW light keeps the
@@ -552,11 +494,15 @@ registry.display.svg = function detectorAwareDisplaySVG(display, elements = []) 
   if (display.params.screenOn === false) return base;
   const sensor = resolveDisplaySensor(display, elements);
   if (!sensor || !DETECTOR_TYPES.includes(sensor.type)) return base;
+  // The camera's canonical renderer in elements.js now owns its complete
+  // 1D profile UI. Appending this enhanced overlay used to draw a second,
+  // fabricated 2D pixel map over it and left both readouts in the SVG.
+  if (sensor.type === 'camera') return base;
   const reading = enhancedReading(sensor, elements);
   if (!reading) return base;
   const scale = displayRenderScale(display.params.displayScale);
   const view = resolvedDisplayView(display, sensor);
-  const content = panel(sensor, reading, elements, view);
+  const content = panel(sensor, reading, view);
   return base + `<g transform="scale(${scale})" data-detector-readout="${esc(sensor.type)}" data-display-density="${displayDensity(scale)}" pointer-events="none"><rect x="-42.2" y="-28.2" width="84.4" height="45.4" rx="2.5" fill="#061822"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${content}</g></g>`;
 };
 

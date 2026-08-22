@@ -51,14 +51,14 @@ export const exampleEntries = [
       detector. Every reflection and split follows the same exact vector
       geometry used throughout OpticalSetup — moving either mirror changes
       the traced ray paths precisely, the way moving a real mirror would.</p>`,
-    limitations: `<p>What you won't see is the actual interferometric signal.
-      OpticalSetup's ray tracer has no coherent phase or wavelength-scale path
-      tracking — see the app's stated simulation scope — so the two
-      recombined beams simply overlap geometrically rather than showing the
-      fringes, visibility, or intensity-vs-path-difference curve that make a
-      real Michelson interferometer useful as a measurement instrument. This
-      setup teaches the beam geometry a Michelson interferometer relies on,
-      not its interferometric readout.</p>`,
+    limitations: `<p>This particular scene keeps a line source and a scalar
+      photodetector, so it remains a geometry lesson rather than an
+      interferometric readout. OpticalSetup's bounded coherent model is
+      camera-only and needs a sized monochromatic CW beam to reconstruct one
+      field per route. Switching those two components can expose supported
+      flat-mirror/beamsplitter path interference, but the app still does not
+      model diffraction, surface figure, vibration, coherence length, or a
+      laboratory detector response.</p>`,
     citations: [
       { label: 'Michelson & Morley, "On the Relative Motion of the Earth and the Luminiferous Ether," American Journal of Science (1887)', url: 'https://en.wikipedia.org/wiki/Michelson%E2%80%93Morley_experiment' },
       { label: 'LIGO Scientific Collaboration — how LIGO works', url: 'https://www.ligo.caltech.edu/page/what-is-ligo' },
@@ -96,24 +96,28 @@ export const exampleEntries = [
     inOpticalSetupHtml: `
       <p>This example places one laser and two beamsplitters at the corners of
       the classic Mach–Zehnder diamond, with a mirror folding each of the two
-      separate arms, recombining at the second beamsplitter onto a detector.
+      separate arms, recombining at the second beamsplitter onto two cameras.
       Both arms are genuinely separate ray paths through the scene — move a
       mirror on one arm and only that arm's traced path changes, exactly as
-      it would on a real bench.</p>`,
-    limitations: `<p>As with the Michelson example, the missing piece is
-      coherent interference: OpticalSetup traces ray geometry and intensity,
-      not phase, so the two arms recombine without producing the
-      fringe-contrast or intensity-vs-phase-difference signal that is the
-      entire point of a real Mach–Zehnder interferometer. Placing something
-      "in one arm" here changes the traced beam (blocking it, attenuating it,
-      shifting its color), but it won't show up as an interference fringe at
-      the output the way it would on an optical bench.</p>`,
+      it would on a real bench. The two linked screens show complementary
+      camera outputs: equal arms make one port bright and the other dark.
+      Entering half a wavelength in the ΔL arm (0.000266&nbsp;mm at
+      532&nbsp;nm) swaps them.</p>`,
+    limitations: `<p>The camera combines only phase-valid routes from this
+      sized monochromatic CW laser. Optical path, 100%-reflective flat-mirror phase,
+      and a unitary non-polarizing beamsplitter phase are represented, and
+      each cross term is integrated over the finite 1D pixels. This is not a
+      general wave-optics solver: diffraction, coherence length, vibration,
+      surface figure, and 2D sensor response are absent. Putting an optic
+      whose carrier phase is not modeled in either arm makes the camera fall
+      back to conservative deposited intensity instead of inventing a
+      fringe.</p>`,
     citations: [
       { label: 'Wikipedia — Mach–Zehnder interferometer (history and applications)', url: 'https://en.wikipedia.org/wiki/Mach%E2%80%93Zehnder_interferometer' },
       { label: 'RP Photonics Encyclopedia — Interferometers (Mach–Zehnder section)', url: 'https://www.rp-photonics.com/interferometers.html' },
     ],
     resources: [],
-    related: ['bs', 'mirror', 'detector'],
+    related: ['bs', 'mirror', 'camera', 'delayline'],
   },
   {
     match: 'OPTICAL SETUP — pulsed component panorama',

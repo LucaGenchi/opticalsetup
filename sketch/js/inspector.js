@@ -2,7 +2,7 @@
 
 import { state, changed, pushUndo, findSelected } from './state.js';
 import {
-  registry, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
+  registry, cameraProfileSVG, cameraReadingState, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
@@ -183,6 +183,12 @@ function sensorName(el) {
   return String(name).trim() || 'Sensor';
 }
 
+function cameraAxisHalfSpan(source) {
+  const height = Number(source?.params?.ch);
+  const half = (Number.isFinite(height) && height > 0 ? height : 30) / 2;
+  return Number.isInteger(half) ? String(half) : half.toFixed(1);
+}
+
 function measurementHTML(el) {
   const viaDisplay = el.type === 'display';
   const source = viaDisplay ? resolveDisplaySensor(el, state.elements) : el;
@@ -204,9 +210,11 @@ function measurementHTML(el) {
   }
   const signal = rd.signal >= 1000 ? '>999 a.u.'
     : `${rd.signal >= 100 ? Math.round(rd.signal) : rd.signal >= 10 ? rd.signal.toFixed(1) : rd.signal.toFixed(2)} a.u.`;
-  const spectral = rd.bandMax - rd.bandMin > 2
-    ? `${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)} nm`
-    : `${Math.round(rd.wavelength)} nm`;
+  const spectral = Number.isFinite(rd.wavelength) && Number.isFinite(rd.bandMin) && Number.isFinite(rd.bandMax)
+    ? (rd.bandMax - rd.bandMin > 2
+      ? `${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)} nm`
+      : `${Math.round(rd.wavelength)} nm`)
+    : '—';
   const spot = rd.samples > 1 ? `${rd.spotSpan.toFixed(1)} mm` : 'Point hit';
   const pulseTrain = rd.pulse?.mixed
     ? `${rd.pulse.sources} source trains · mixed settings`
@@ -217,38 +225,64 @@ function measurementHTML(el) {
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
   const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color);
+  const isCamera = readoutKind === 'camera';
+  const cameraState = isCamera ? cameraReadingState(rd) : null;
+  const cancelled = cameraState?.kind === 'cancellation';
   const detectorRows = readoutKind === 'pmt' ? `
       <dt>Amplified output</dt><dd>${rd.outputSignal.toFixed(2)} a.u.</dd>
       <dt>PMT state</dt><dd>${rd.saturated ? 'Saturated' : 'Linear range'}</dd>`
     : readoutKind === 'camera' ? `
-      <dt>Centroid</dt><dd>${rd.centroid === null ? '—' : `${rd.centroid.toFixed(2)} mm`}</dd>
-      <dt>Sensor bins</dt><dd>${rd.profile?.length || 0}</dd>` : '';
+      ${cancelled ? '' : `<dt>Centroid</dt><dd>${rd.centroid === null ? '—' : `${rd.centroid.toFixed(2)} mm`}</dd>`}
+      <dt>Sensor pixels</dt><dd>${rd.profile?.length || 0}</dd>` : '';
   let cameraProfile = '';
-  if (rd.profile) {
-    const max = Math.max(...rd.profile, 1e-9);
-    const bw = 240 / rd.profile.length;
-    const bars = rd.profile.map((value, i) => {
-      if (!Number.isFinite(value) || value <= 1e-12) return '';
-      const height = 28 * value / max;
-      const fill = rd.profileColors?.[i] || rd.color;
-      return `<rect x="${(i * bw + 0.5).toFixed(2)}" y="${(32 - height).toFixed(2)}" width="${Math.max(0.5, bw - 1).toFixed(2)}" height="${height.toFixed(2)}" rx="0.7" fill="${fill}"/>`;
-    }).join('');
-    cameraProfile = `<div class="camera-profile"><svg viewBox="0 0 240 36" preserveAspectRatio="none" aria-label="One-dimensional sensor profile"><g>${bars}</g><line x1="0" y1="32" x2="240" y2="32" stroke="#b8c6d8"/></svg><span>1D sensor profile · color shows qualitative wavelength mix per bin</span></div>`;
+  if (isCamera && rd.profile) {
+    const halfSpan = cameraAxisHalfSpan(source);
+    const stateClass = cameraState.warning ? ' warning' : cancelled ? ' cancelled' : '';
+    const stateLabel = cameraState.label
+      ? `<strong class="camera-profile-mode${stateClass}">${esc(cameraState.label)}</strong>`
+      : '';
+    const stateNote = cameraState.reason
+      ? `<div class="camera-profile-note">${esc(cameraState.reason)}</div>`
+      : '';
+    const ariaState = cancelled ? ' with coherent cancellation'
+      : cameraState.warning ? `; ${cameraState.label.toLowerCase()}`
+        : cameraState.kind === 'coherent' ? ' with coherent interference' : '';
+    cameraProfile = `<div class="camera-profile">
+      <div class="camera-profile-head"><span>Intensity profile</span>${stateLabel}</div>
+      <svg viewBox="0 0 240 38" preserveAspectRatio="none" role="img" aria-label="Camera intensity profile${esc(ariaState)}">${cameraProfileSVG(rd, { x: 0, width: 240, baseline: 34, height: 28 })}</svg>
+      <div class="camera-profile-axis"><span>−${halfSpan} mm</span><span>0</span><span>+${halfSpan} mm</span></div>
+      ${stateNote}
+    </div>`;
   }
-  return `<div class="measurement-card" data-measurements>
-    <div class="measurement-status"><span class="signal-light" style="background:${rd.color}"></span>${viaDisplay ? `Displaying ${esc(sensorName(source))}` : 'Receiving light'}</div>
-    <dl class="measurement-grid">
-      <dt>Relative ray weight</dt><dd>${signal}</dd>
+  const sampleRow = isCamera ? '' : `<dt>Ray samples</dt><dd>${rd.samples}</dd>`;
+  const cameraOpticalRows = cancelled ? '' : `
       <dt>Spectrum</dt><dd>${spectral}</dd>
       <dt>Polarization</dt><dd>${esc(rd.polarization)}</dd>
-      <dt>Spot span</dt><dd>${spot}</dd>
-      <dt>Ray samples</dt><dd>${rd.samples}</dd>
+      <dt>Spot span</dt><dd>${spot}</dd>`;
+  const measurementFoot = cancelled
+    ? 'Exact coherent cancellation leaves an empty sensor profile.'
+    : isCamera ? 'Profile height is normalized to the brightest sensor pixel.'
+    : 'Relative ray weight from the qualitative tracer—not calibrated optical power.';
+  const statusText = cancelled ? 'Coherent cancellation'
+    : cameraState?.kind === 'phase-unavailable' ? 'Deposited intensity'
+      : cameraState?.kind === 'partial' ? 'Partial coherent intensity'
+        : viaDisplay ? `Displaying ${esc(sensorName(source))}` : 'Receiving light';
+  const statusColor = cancelled ? '#94a3b8' : cameraState?.warning ? '#f59e0b' : rd.color;
+  return `<div class="measurement-card" data-measurements>
+    <div class="measurement-status"><span class="signal-light" style="background:${statusColor}"></span>${statusText}</div>
+    <dl class="measurement-grid">
+      <dt>${isCamera ? 'Relative intensity' : 'Relative ray weight'}</dt><dd>${signal}</dd>
+      ${isCamera ? cameraOpticalRows : `
+      <dt>Spectrum</dt><dd>${spectral}</dd>
+      <dt>Polarization</dt><dd>${esc(rd.polarization)}</dd>
+      <dt>Spot span</dt><dd>${spot}</dd>`}
+      ${sampleRow}
       ${detectorRows}
       ${pulseRows}
     </dl>
     ${cameraProfile}
     ${pulseTimeline}
-    <div class="measurement-foot">Relative ray weight from the qualitative tracer—not calibrated optical power.</div>
+    <div class="measurement-foot">${measurementFoot}</div>
   </div>`;
 }
 
