@@ -33,7 +33,8 @@ figures as SVG or PNG.
   supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
   laser, directional LED, broadband point source, mirrors (flat with reflectivity,
   convex/concave, true parabolic,
-  galvo), lenses, telescopes, objectives, dichroics, filters, beamsplitters,
+  galvo), paraxial lenses, spherical thick singlets, telescopes, objectives,
+  dichroics, filters, beamsplitters,
   polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
   diffusers, wavefront shapers (SLM, DMD, deformable mirror) with composable
   optical functions, modulators (AOM/AOTF/EOM/chopper), mechanical pulse-delay lines,
@@ -69,8 +70,10 @@ figures as SVG or PNG.
   gain/saturation; cameras provide a 1D profile whose bin colors show the qualitative
   wavelength mixture at each position. Scalar readouts use arbitrary relative
   ray-weight units rather than implying a calibrated percentage.
-- **Physics that responds**: thin-lens/paraxial transfer, spectral band arithmetic at
-  filters, Malus's law, grating equation, Cauchy prism dispersion, cavity round trips
+- **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets
+  with exact circular-surface intersections and catalogue-glass dispersion,
+  spectral band arithmetic at filters, Malus's law, grating equation, Cauchy
+  prism dispersion, cavity round trips
   with partial mirrors, image formation with magnification (arrow / letter F / tree
   objects and their computed images).
 - **Examples menu**: pedagogical image-formation setups (telescope, microscope,
@@ -98,7 +101,9 @@ figures as SVG or PNG.
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
 design package. It models ray paths, bounded relative power, spectral bands, Stokes
 polarization, thin-lens elements, refractive boundaries, timed pulse trains, and
-simple detector responses. It does not model coherent carrier phase, interference,
+simple detector responses. Thick singlets use a 2D meridional section with spherical
+or flat faces; they do not model skew rays, aspheres, coatings, or calibrated off-axis
+aberrations. The app does not model coherent carrier phase, interference,
 diffraction-limited propagation, material dispersion beyond the stated simplified
 models, or laboratory-specific calibration. Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
@@ -110,16 +115,27 @@ shows their positions in the moving 2D sample. It does not calculate focal volum
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
-Standalone objectives keep their catalogue-like properties distinct. Magnification
-produces an effective-focal-length readout through the 200 mm tube-lens convention and
-contributes to the first-order pupil estimate, but it does not move the traced focus.
-Working distance is the independent distance used by the objective's qualitative
-black-box focus map at its physical front boundary; front aperture controls the drawn
-opening. The designed front medium (dry/air, water, oil, or custom index) sets the
-refractive index, the allowed NA range, and the displayed object-side acceptance
-half-angle. It does not rewrite working distance. Rated NA draws a schematic angular
-guide and qualitatively rejects rays outside that object-side cone. The tracer models
-neither an internal compound prescription nor a back focal plane.
+Standalone objectives are set by effective focal length (EFL) — the focal length of
+the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
+a front aperture, and a rated NA. Magnification is reported from EFL against a 200 mm
+reference tube lens rather than typed in, because it belongs to the objective plus
+whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
+`front tip + WD − EFL`, always inside the barrel, so collimated light focuses exactly
+one working distance past the tip, an external tube lens produces the reported
+magnification, and the back focal plane one EFL behind the plane is a real traced
+conjugate that light focused on leaves collimated. Nothing is drawn at that plane; an
+objective is an opaque barrel. Rated NA is the back pupil (2·f·NA) and is the aperture
+stop, placed at the back focal plane where an infinity objective's entrance pupil
+belongs: a beam that fills it converges at the rated angle, a beam that overfills it
+loses the overflow to the barrel, and the inspector reports both the pupil fill and the
+smaller effective NA an underfilled pupil actually delivers. The designed front medium
+(dry/air capped at NA 0.85, water 1.27, oil 1.49, or a custom index) sets the index and
+the NA ceiling, and gives the object-side acceptance half-angle `asin(NA/n)`; it never
+rewrites working distance. The pupil is a paraxial stop in a thin-lens tracer, so a beam
+filling it converges at `atan(NA)` rather than the sine-condition `asin(NA/n)` the rated
+half-angle quotes — close at moderate NA, separating near the ceiling — and the single
+plane is a first-order stand-in for a compound prescription, not the real internal
+conjugates.
 
 A non-air objective derives an exported immersion bridge to the nearest compatible
 sample, stage-mounted sample, or facing fiber end; a moving stage carries that same
@@ -130,8 +146,14 @@ components, solve wetting or surface tension, refract rays at the liquid boundar
 model cover glass, index mismatch, focal shift, or immersion aberrations.
 
 Freeform glass is a directly editable boundary of straight segments and exact
-three-point circular arcs with constant-index or qualitative BK7-like dispersion,
-per-surface transmission, source-inside handling, and total internal reflection.
+three-point circular arcs with constant index or selectable catalogue-glass,
+two-term Cauchy dispersion. Those fits reproduce each glass's d-line index and Abbe
+number but are only qualitative outside the visible reference lines. The model also
+supports per-surface transmission (a percentage, like every other optic's transmission
+efficiency), source-inside handling, and total internal reflection. Two glass bodies
+must not be placed in contact: the tracer cannot resolve interfaces closer than
+0.05 mm and silently skips one of them, so leave at least 0.06 mm between them — the
+inspector warns when anything is closer.
 Clicking adds a straight anchor; pressing, dragging, and releasing adds a point on
 an arc plus its next anchor. Exact corner hits stop safely because their surface
 normal is ambiguous. Nested or overlapping glass bodies are not surface-merged,

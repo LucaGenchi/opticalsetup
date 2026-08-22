@@ -1,11 +1,30 @@
 import assert from 'node:assert/strict';
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { examples as bundledExamples } from '../sketch/js/examples-data.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SKETCH = resolve(ROOT, 'sketch');
+const EXAMPLES = resolve(ROOT, 'Examples');
+
+async function examplePaths(dir = EXAMPLES) {
+  const paths = [];
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const fullPath = resolve(dir, entry.name);
+    if (entry.isDirectory()) {
+      paths.push(...await examplePaths(fullPath));
+    } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.json')) {
+      const encodedPath = relative(EXAMPLES, fullPath)
+        .split(sep)
+        .map(segment => encodeURIComponent(segment))
+        .join('/');
+      paths.push(`../Examples/${encodedPath}`);
+    }
+  }
+  return paths;
+}
 
 async function pngDimensions(path) {
   const bytes = await readFile(path);
@@ -75,16 +94,15 @@ test('offline cache covers every workbench module and bundled example', async ()
     assert.ok(precache.has(module), `offline cache is missing ${module}`);
   }
 
-  // Standalone examples live directly under Examples/; categorized ones sit
-  // one level deeper, under Examples/<Category>/ — both must be precached.
-  const standaloneExamples = (await readdir(resolve(ROOT, 'Examples'), { withFileTypes: true }))
-    .filter(entry => entry.isFile() && entry.name.endsWith('.json'))
-    .map(entry => `../Examples/${encodeURIComponent(entry.name)}`);
-  const examples = (await readdir(resolve(ROOT, 'Examples/Optics Bench')))
-    .filter(name => name.endsWith('.json'))
-    .map(name => `../Examples/Optics%20Bench/${encodeURIComponent(name)}`);
-  for (const example of [...standaloneExamples, ...examples]) {
-    assert.ok(precache.has(example), `offline cache is missing ${example}`);
+  const diskExamples = (await examplePaths()).sort();
+  const manifestExamples = bundledExamples.map(example => example.path).sort();
+  assert.deepEqual(
+    manifestExamples,
+    diskExamples,
+    'generated example manifest must match every JSON file on disk',
+  );
+  for (const examplePath of diskExamples) {
+    assert.ok(precache.has(examplePath), `offline cache is missing ${examplePath}`);
   }
 
   for (const path of precache) {

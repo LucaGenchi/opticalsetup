@@ -285,7 +285,7 @@ export const wikiEntries = [
         aberration, finite lens thickness, and any behavior for rays far from the axis or
         at large angles.</p>`,
     },
-    related: ['lensc', 'telescope', 'objective', 'cmirror'],
+    related: ['lensc', 'thicklens', 'telescope', 'objective', 'cmirror'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Lenses', url: 'https://www.rp-photonics.com/lenses.html' },
     ],
@@ -324,9 +324,96 @@ export const wikiEntries = [
       limitations: `<p>Same caveats as the convex lens: exact paraxial optics with no
         spherical or chromatic aberration, and no modeled lens thickness.</p>`,
     },
-    related: ['lens', 'telescope', 'objective'],
+    related: ['lens', 'thicklens', 'telescope', 'objective'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Lenses', url: 'https://www.rp-photonics.com/lenses.html' },
+    ],
+  },
+
+  {
+    type: 'thicklens',
+    title: 'Thick spherical lens',
+    category: 'Lenses',
+    realWorld: {
+      html: `
+        <p>A real singlet has finite centre thickness and two separately refracting
+        surfaces. Its paraxial power therefore depends on both signed radii, the glass
+        index, and the separation between the faces${cite(1)}. Effective focal length is
+        measured between principal planes; back focal distance is the rear-vertex-to-focus
+        distance for collimated light, so the two numbers are not generally equal.</p>
+        <p>At a large aperture, a spherical surface does not send every ray height to one
+        axial point: marginal rays focus closer to a positive lens than paraxial rays,
+        producing longitudinal spherical aberration and its visible caustic${cite(2)}.
+        Optical-glass index also varies with wavelength, so an uncorrected singlet has
+        longitudinal chromatic aberration.</p>`,
+      formulas: [
+        {
+          tex: '\\Phi=(n-1)\\left(\\frac{1}{R_1}-\\frac{1}{R_2}+\\frac{(n-1)d}{nR_1R_2}\\right),\\qquad f=\\frac{1}{\\Phi}',
+          caption: 'Thick lensmaker equation in air.',
+        },
+        {
+          tex: '\\mathrm{BFD}=f\\left(1-\\frac{(n-1)d}{nR_1}\\right)',
+          caption: 'Back focal distance from the rear vertex for collimated input along the element\'s local +x direction.',
+        },
+        {
+          tex: 'V_d=\\frac{n_d-1}{n_F-n_C}',
+          caption: 'Abbe number: lower values mean stronger dispersion between the visible F and C reference lines.',
+        },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>OpticalSetup intersects each ray with the two drawn plane or exact circular-arc
+        faces, applies vector Snell refraction at each boundary, tracks the ray while it
+        is inside the glass, and supports total internal reflection. Focal length and
+        back focal distance are derived paraxial summaries of that geometry at the
+        587.6&nbsp;nm d line; the tracer never aims rays at either reported point.
+        Spherical and chromatic aberration therefore emerge from the traced surfaces and
+        wavelength-dependent index rather than being drawn as an effect.</p>
+        <p>In the default left-to-right orientation, positive radius means the centre of
+        curvature lies toward local +x. A biconvex singlet is therefore
+        <span class="w">R₁ &gt; 0</span> and <span class="w">R₂ &lt; 0</span>;
+        <span class="w">R = 0</span> makes that face plane. The Shape readout names the
+        resulting profile so the sign convention can be checked directly.</p>
+        <p>The selectable N-BK7, fused-silica, N-SF5, and N-SF11 models use each glass's
+        published d-line index and Abbe number${cite(3)}. If a requested radius is too
+        small for the clear aperture, or the centre thickness would make the faces cross,
+        the inspector shows the exact constructible geometry the tracer uses instead of
+        hiding the adjustment.</p>
+        <p><strong>Two glass bodies must not touch.</strong> The tracer ignores any
+        intersection closer than 0.05&nbsp;mm along a ray, so a pair of coincident
+        interfaces loses one of them and the ray wrongly exits into air. Building a
+        cemented doublet by pushing two singlets together therefore gives an answer that
+        is not obviously broken, just wrong — measured on a crown+flint pair, the focus
+        lands 4&nbsp;mm short with one interface silently skipped. Leave at least
+        0.06&nbsp;mm between them and both interfaces come back; the inspector warns when
+        anything is closer. That gap costs about 0.1% of the back focal distance, and a
+        real cemented group is a 10–20&nbsp;µm layer of not-quite-glass anyway. Nested or
+        fully overlapping bodies are a separate unsupported case — boundaries are never
+        merged.</p>`,
+      formulas: [
+        {
+          tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}',
+          caption: 'Two-term Cauchy approximation used for the catalogue glasses; A and B reproduce each glass\'s nd and Abbe number.',
+        },
+      ],
+      limitations: `<p>This is a 2D meridional geometric trace with spherical or plane
+        faces only. It does not model skew rays, diffraction, aspheres, full 3D off-axis
+        aberrations, Fresnel/coating behavior, stress birefringence, manufacturing
+        tolerances, or a full Sellmeier dispersion curve. The two-term glass fits are
+        anchored to visible reference lines and become qualitative in the deep UV and
+        infrared; absorption bands are not modeled. Per-surface transmission is a flat
+        configured percentage applied at each face, not a Fresnel or coating calculation. Treat axial spherical and visible chromatic behavior as
+        meaningful within this model and off-axis behavior as qualitative.</p>`,
+    },
+    related: ['lens', 'lensc', 'objective', 'prism', 'freeglass'],
+    citations: [
+      { label: 'The Physics Hypertextbook — Spherical lenses', url: 'https://physics.info/lenses/' },
+      { label: 'RP Photonics Encyclopedia — Spherical aberrations', url: 'https://www.rp-photonics.com/spherical_aberrations.html' },
+      { label: 'SCHOTT — Optical-glass collection datasheets', url: 'https://www.schott.com/en-gb/products/optical-glass/-/media/Project/OnEx/Products/O/optical-glass/Downloads/schott-optical-glass-collection-datasheets-english-may2019.pdf' },
+    ],
+    resources: [
+      { label: 'SCHOTT — Optical-glass technical properties', url: 'https://www.schott.com/en-gb/products/optical-glass/technical-details' },
     ],
   },
 
@@ -363,7 +450,7 @@ export const wikiEntries = [
         field-of-view limits, eye relief, or exit-pupil modeling — just the afocal
         geometry and magnification.</p>`,
     },
-    related: ['lens', 'lensc', 'objective'],
+    related: ['lens', 'lensc', 'thicklens', 'objective'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Beam Expanders', url: 'https://www.rp-photonics.com/beam_expanders.html' },
     ],
@@ -566,7 +653,7 @@ export const wikiEntries = [
         volume, or gravity; it adds no refracting boundary and does not model cover glass,
         index mismatch, focal shift, or immersion aberrations.</p>`,
     },
-    related: ['lens', 'telescope'],
+    related: ['lens', 'thicklens', 'telescope'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Microscope Objectives', url: 'https://www.rp-photonics.com/microscope_objectives.html' },
       { label: 'RP Photonics Encyclopedia — Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
@@ -599,17 +686,17 @@ export const wikiEntries = [
         reflection instead of exiting, exactly as a real prism does. For dispersion,
         broadband and supercontinuum beams are sampled at several discrete wavelengths
         across their band, and each sample refracts with its own wavelength-dependent
-        index, so the beam visibly fans into a spectrum.</p>`,
+        index, so the beam visibly fans into a spectrum. The prism is fixed to the N-BK7
+        catalogue model used elsewhere in the workbench.</p>`,
       formulas: [
-        { tex: 'n(\\lambda) = 1.5046 + \\frac{4680}{\\lambda^{2}} \\quad (\\lambda \\text{ in nm})', caption: 'The dispersion curve used for the built-in "BK7-like" glass — a compact two-term approximation, not the real 3-term BK7 Sellmeier equation.' },
+        { tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}', caption: 'The two-term Cauchy approximation used for N-BK7, fitted from its published d-line index and Abbe number.' },
       ],
-      limitations: `<p>The dispersion formula above is a deliberately simplified stand-in
-        for real BK7 glass, tuned to give the right qualitative shape (more bending at
-        blue wavelengths, less at red) rather than matching a real glass catalog to
-        several decimal places. Only one glass "family" is modeled; there's no coating,
-        absorption, or surface-quality loss beyond the configured per-face transmission.</p>`,
+      limitations: `<p>The N-BK7 fit reproduces its d-line index and visible Abbe
+        dispersion, but it is not the manufacturer's full Sellmeier curve and becomes
+        qualitative in the deep UV and infrared. Absorption bands, coatings, and surface
+        quality are not modeled; the fixed per-face transmission is the only loss.</p>`,
     },
-    related: ['grating', 'glassrod', 'freeglass', 'dichroic'],
+    related: ['grating', 'glassrod', 'freeglass', 'thicklens', 'dichroic'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Prisms', url: 'https://www.rp-photonics.com/prisms.html' },
     ],
@@ -671,7 +758,7 @@ export const wikiEntries = [
         only in how fine that mesh is.</p>`,
       formulas: [
         { tex: 'n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2', caption: "Snell's law, applied independently at every straight or curved boundary segment — the only physics a freeform refracting surface needs." },
-        { tex: 'n(\\lambda) = 1.5046 + \\frac{4680}{\\lambda^{2}} \\quad (\\lambda \\text{ in nm})', caption: 'The same simplified "BK7-like" dispersion curve used by the Prism, available here as an optional material model.' },
+        { tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}', caption: 'The optional catalogue glasses use the same two-term Cauchy approximation as the thick spherical lens.' },
       ],
     },
     inOpticalSetup: {
@@ -682,19 +769,18 @@ export const wikiEntries = [
         custom cross-section (a light pipe's tapered profile, a freeform prism, a
         corrective wedge) refracts and totally-internally-reflects exactly like the
         fixed-geometry <a href="../prism/">Prism</a>, just without being locked to a
-        triangle. Two material models are available: a constant refractive index, or the
-        same simplified "BK7-like" dispersion curve the Prism uses, so a supercontinuum
-        beam through a custom freeform shape still visibly disperses into a spectrum.</p>`,
+        triangle. Choose a constant refractive index or one of four catalogue models:
+        N-BK7, fused silica, N-SF5, and N-SF11. A broadband beam through a catalogue-glass
+        boundary is sampled by wavelength and visibly disperses into a spectrum.</p>`,
       formulas: [],
-      limitations: `<p>Same caveats as the Prism: the BK7-like dispersion curve is a
-        deliberately simplified two-term stand-in for a real glass catalog entry, only one
-        glass "family" is modeled, and per-surface transmission is a flat configurable
-        number rather than a computed coating or absorption loss. Circular-arc segments
-        are true 2D arcs, but the whole element is still a 2D cross-section — there's no
-        third dimension, so it represents a freeform profile, not a true freeform 3D
-        surface.</p>`,
+      limitations: `<p>The catalogue options reproduce d-line index and visible Abbe
+        dispersion with compact two-term fits, not full Sellmeier curves or absorption
+        bands; per-surface transmission is a flat configured number rather than a computed
+        coating or bulk loss. Circular-arc segments are true 2D arcs, but the whole element
+        is still a 2D cross-section — it represents a freeform profile, not a true freeform
+        3D surface. Nested or overlapping glass bodies are not surface-merged.</p>`,
     },
-    related: ['prism', 'glassrod', 'lens'],
+    related: ['prism', 'glassrod', 'lens', 'thicklens'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Prisms', url: 'https://www.rp-photonics.com/prisms.html' },
     ],
@@ -795,7 +881,7 @@ export const wikiEntries = [
       formulas: [],
       limitations: `<p>The refractive index is a single flat number with no wavelength
         dependence — unlike the <a href="../freeglass/">Freeform glass</a> element's
-        optional BK7-like dispersion curve, every color slows down by exactly the same
+        optional catalogue-based Cauchy dispersion, every color slows down by exactly the same
         amount here, so a broadband or supercontinuum pulse crossing the rod doesn't
         spread out in time the way real material dispersion would stretch it. There's no
         cylindrical or lensing geometry either: despite the name, this is a rectangular

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { registry, createElement } from '../sketch/js/elements.js';
 import {
-  state, parseSketch, deserialize, replaceScene, pushUndo, undo, redo, canUndo, canRedo,
+  state, changed, parseSketch, deserialize, replaceScene, pushUndo, undo, redo, canUndo, canRedo,
 } from '../sketch/js/state.js';
 
 const file = (elements = [], beams = []) => JSON.stringify({ app: 'optics2d', version: 1, elements, beams });
@@ -208,4 +208,23 @@ test('scene replacement remains undoable when requested by the caller', () => {
   assert.equal(canRedo(), true);
   redo();
   assert.equal(state.elements[0].type, 'lens');
+});
+
+test('interactive demo edits never replace the workbench autosave', () => {
+  const previousStorage = globalThis.localStorage;
+  const writes = [];
+  globalThis.localStorage = { setItem: (...args) => writes.push(args) };
+  try {
+    state.demoMode = true;
+    changed();
+    assert.equal(writes.length, 0);
+
+    state.demoMode = false;
+    changed();
+    assert.equal(writes.length, 1, 'normal workbench edits still autosave');
+  } finally {
+    state.demoMode = false;
+    if (previousStorage === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = previousStorage;
+  }
 });

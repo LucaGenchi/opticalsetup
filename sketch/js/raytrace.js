@@ -23,6 +23,7 @@ import {
   legacyPolarization, polarizationDescription,
 } from './polarization.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
+import { glassIndex, isDispersiveGlass } from './glass.js';
 import {
   gaussianSpectrum, flatSpectrum, spectrumSamples, applyTransmission, resolveSourceSpectrum,
 } from './spectrum.js';
@@ -1033,13 +1034,13 @@ function interact(ray, hit) {
     case 'refract': {
       const materialId = s.el?.id || null;
       const inside = materialId !== null && ray.medium === materialId;
-      // BK7-like glass is dispersive: a broadband ray must be sampled across
+      // Catalogue glass is dispersive: a broadband ray must be sampled across
       // its bandwidth so each wavelength refracts by its own n(λ) and the
       // beam actually fans out (e.g. white light through a prism). A fixed
       // user-set index (glass rods) has no dispersion to sample.
-      const dispersive = data.material === 'bk7' && ray.bw > 0;
+      const dispersive = isDispersiveGlass(data.material) && ray.bw > 0;
       const transmitAt = (wl, intensity = ray.intensity, tag, bandwidth = ray.bw) => {
-        const dispersiveIor = data.material === 'bk7' ? 1.5046 + 4680 / (wl * wl) : data.ior;
+        const dispersiveIor = isDispersiveGlass(data.material) ? glassIndex(data.material, wl) : data.ior;
         const materialIor = Math.min(2.5, Math.max(1.01, dispersiveIor || 1.52));
         // A broadband source born inside the body initially carries one
         // center-wavelength IOR. Once sampled at the exit, each wavelength

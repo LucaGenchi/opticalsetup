@@ -141,7 +141,7 @@ test('a freeform wedge refracts finite rays and produces wavelength-dependent di
     const laser = createElement('cwlaser', 0, 10);
     laser.params.wavelength = wavelength;
     const glass = createElement('freeglass', 180, 0);
-    glass.params.material = 'bk7';
+    glass.params.material = 'nbk7';
     glass.params.vertices = [{ x: -35, y: -30 }, { x: 35, y: 0 }, { x: -35, y: 30 }];
     const paths = traceAll([laser, glass]).filter(d => d.type === 'path');
     assert.ok(paths.length >= 1 && paths.every(finitePath));
@@ -149,7 +149,7 @@ test('a freeform wedge refracts finite rays and produces wavelength-dependent di
     return (b.y - a.y) / (b.x - a.x);
   };
   const blue = finalSlope(450), red = finalSlope(650);
-  assert.ok(Math.abs(blue - red) > 0.001, 'BK7-like index changes the exit angle across wavelength');
+  assert.ok(Math.abs(blue - red) > 0.001, 'N-BK7 index changes the exit angle across wavelength');
 });
 
 test('a circular-arc glass face uses exact circle intersections and radial refraction normals', () => {
@@ -205,7 +205,7 @@ test('a source born inside freeform glass undergoes TIR and exits without non-fi
   assert.ok(paths.some(path => path.pts.at(-1).x > 100), 'the ray eventually exits the end face');
 });
 
-test('a broadband source born inside BK7 glass keeps its spectrum when it exits', () => {
+test('a broadband source born inside N-BK7 glass keeps its spectrum when it exits', () => {
   const sourceAngle = 20 * Math.PI / 180;
   const source = createElement('sclaser', -52 * Math.cos(sourceAngle), -52 * Math.sin(sourceAngle));
   source.rot = 20;
@@ -214,7 +214,7 @@ test('a broadband source born inside BK7 glass keeps its spectrum when it exits'
   source.params.scMin = 450;
   source.params.scMax = 700;
   const glass = createElement('freeglass', 0, 0);
-  glass.params.material = 'bk7';
+  glass.params.material = 'nbk7';
   glass.params.vertices = [{ x: -100, y: -80 }, { x: 100, y: -80 }, { x: 100, y: 80 }, { x: -100, y: 80 }];
   const detector = createElement('detector', 180, 78);
   detector.params.aperture = 120;
@@ -232,7 +232,7 @@ test('a broadband source born inside BK7 glass keeps its spectrum when it exits'
   assert.ok(new Set(exitAngles).size >= 5, 'wavelength-specific glass indices create angular dispersion at the exit');
 });
 
-test('broadband BK7 branches retain wavelength-specific index through TIR and exit', () => {
+test('broadband N-BK7 branches retain wavelength-specific index through TIR and exit', () => {
   const sourceAngle = 20 * Math.PI / 180;
   const source = createElement('sclaser', -52 * Math.cos(sourceAngle), -52 * Math.sin(sourceAngle));
   source.rot = 20;
@@ -241,7 +241,7 @@ test('broadband BK7 branches retain wavelength-specific index through TIR and ex
   source.params.scMin = 450;
   source.params.scMax = 700;
   const glass = createElement('freeglass', 0, 0);
-  glass.params.material = 'bk7';
+  glass.params.material = 'nbk7';
   glass.params.vertices = [{ x: -100, y: -10 }, { x: 100, y: -10 }, { x: 100, y: 10 }, { x: -100, y: 10 }];
 
   const paths = traceAll([source, glass]);

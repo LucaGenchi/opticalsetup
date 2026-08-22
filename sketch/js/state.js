@@ -3,6 +3,11 @@
 import { distinctPoints, rotPt } from './util.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
+import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
+
+// Elements whose boundary refracts and therefore carries per-surface
+// transmission of its own.
+const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
 
 export const state = {
   elements: [],   // optical elements
@@ -175,6 +180,19 @@ function normalizeElement(raw, definitions, used) {
   if (raw.type === 'objective') {
     rawParams = migrateLegacyObjectiveParams(rawParams);
   }
+  // The original rough BK7 fit was replaced by the real N-BK7 catalogue
+  // entry. Any sketch still naming it loads onto that instead of failing the
+  // select's option check and silently falling back to a constant index.
+  if (rawParams.material === LEGACY_GLASS_ID) {
+    rawParams = { ...rawParams, material: LEGACY_GLASS_REPLACEMENT };
+  }
+  // Glass bodies used to carry per-surface transmission as a 0-1 fraction
+  // while every other optic used a percentage. They now agree; the presence
+  // of the retired key is what identifies a sketch saved before that.
+  if (GLASS_BODY_TYPES.has(raw.type) && rawParams.transEff === undefined
+      && Number.isFinite(Number(rawParams.transmission))) {
+    rawParams = { ...rawParams, transEff: Number(rawParams.transmission) * 100 };
+  }
   if (wasLegacyLaser) {
     rawParams = migrateLegacyLaserParams(rawParams, raw.type);
   }
@@ -190,7 +208,7 @@ function normalizeElement(raw, definitions, used) {
     }
   } else {
     if (!record(raw.params)) throw new Error(`Element ${raw.type} has invalid parameters`);
-    Object.assign(params, raw.params);
+    Object.assign(params, rawParams);
   }
   // Params added after a sketch format was already in the wild can declare a
   // `migrate` hook. It runs only when the saved element genuinely lacks the
@@ -278,7 +296,12 @@ export function parseSketch(text, definitions = null) {
 export function onChange(fn) { listeners.push(fn); }
 
 export function changed() {
-  try { localStorage.setItem(AUTOSAVE_KEY, serialize()); } catch (_) { /* ignore */ }
+  // Wiki/example/community embeds are deliberately interactive enough to let
+  // readers try parameters, but they must never replace the user's real
+  // workbench autosave when both pages share the same origin.
+  if (!state.demoMode) {
+    try { localStorage.setItem(AUTOSAVE_KEY, serialize()); } catch (_) { /* ignore */ }
+  }
   for (const fn of listeners) fn();
 }
 

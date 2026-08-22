@@ -16,6 +16,7 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
+import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
 import {
   OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
   objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
@@ -41,6 +42,189 @@ const GLASS = '#c9e4f5', GLASS_S = '#4a90c4';
 const FREEGLASS_DEFAULT = [
   { x: -36, y: -24 }, { x: 30, y: -24 }, { x: 38, y: 20 }, { x: -26, y: 26 },
 ];
+
+// ---- thick spherical lens -----------------------------------------------
+// A surface of signed radius R with its vertex at xv has its centre of
+// curvature at xv + R, so R > 0 bulges toward −x (front-convex) and R < 0
+// toward +x. R = 0 is the flat case, drawn and traced as a plain line.
+const surfaceSag = (y, xv, R) => (xv + R) - Math.sign(R) * Math.sqrt(Math.max(0, R * R - y * y));
+
+// Radii below the semi-diameter would need a sphere smaller than the lens
+// itself; clamping keeps the boundary constructible rather than producing NaN
+// geometry at parameter extremes (enforced by test/geometry.test.js).
+function thickLensRadii(params) {
+  const h = Math.max(0.5, (params.dia ?? 25.4) / 2);
+  const clampR = R => {
+    const r = Number(R) || 0;
+    if (Math.abs(r) < 1e-6) return 0;                       // flat
+    return Math.sign(r) * Math.max(Math.abs(r), h * 1.02);
+  };
+  return { h, R1: clampR(params.r1), R2: clampR(params.r2) };
+}
+
+// The tracer ignores any intersection closer than 0.05 units along a ray, an
+// epsilon that stops a surface re-hitting itself. Two glass bodies in optical
+// contact therefore lose one of their two coincident interfaces, and the ray
+// exits into air instead of crossing into the next glass — a cemented doublet
+// traced that way comes out badly wrong (measured: 275mm against a true
+// 359mm). Holding cemented groups apart by slightly more than that epsilon
+// makes both interfaces real again. The cost is a hair of air where the
+// cement should be: at this separation it shifts a 100mm doublet's focus by
+// about 0.15%, well inside what this qualitative tracer claims anywhere else,
+// and real optical cement is a 10-20um layer of not-quite-glass regardless.
+export const MIN_CEMENT_GAP = 0.06;
+
+// Glass bodies expose per-surface transmission as a percentage, like every
+// other optic's Transmission efficiency; the tracer works in fractions.
+export function surfaceTransmission(params = {}) {
+  const pct = Number.isFinite(Number(params.transEff)) ? Number(params.transEff) : 98;
+  return Math.min(1, Math.max(0, pct / 100));
+}
+
+// Closed boundary for the glass body, plus the centre thickness actually used:
+// a strongly biconvex lens with too little centre thickness would have its two
+// faces cross at the rim, so the thickness is raised until a real edge remains.
+export function thickLensGeometry(params = {}) {
+  const { h, R1, R2 } = thickLensRadii(params);
+  const MIN_EDGE = 0.4;
+  const sag1 = R1 ? surfaceSag(h, 0, R1) : 0;               // sag measured from the vertex
+  const sag2 = R2 ? surfaceSag(h, 0, R2) : 0;
+  const d = Math.max(Number(params.thickness) || 0.5, MIN_EDGE + sag1 - sag2);
+  const xv1 = -d / 2, xv2 = d / 2;
+  const xEdge1 = R1 ? surfaceSag(h, xv1, R1) : xv1;
+  const xEdge2 = R2 ? surfaceSag(h, xv2, R2) : xv2;
+
+  const points = [{ x: xEdge1, y: h }];
+  if (R1) points.push({ x: xv1, y: 0, arc: true });
+  points.push({ x: xEdge1, y: -h }, { x: xEdge2, y: -h });
+  if (R2) points.push({ x: xv2, y: 0, arc: true });
+  points.push({ x: xEdge2, y: h });
+
+  const xs = points.map(p => p.x);
+  return { points, h, R1, R2, d, xv1, xv2, span: Math.max(...xs) - Math.min(...xs) };
+}
+
+// Some requested combinations cannot describe a closed spherical singlet: a
+// radius smaller than the semi-aperture has no real circular edge, while too
+// little centre thickness makes the two faces cross. The geometry stays safe
+// by realizing the nearest constructible shape; expose that adjustment so the
+// inspector never lets the requested numbers silently disagree with the trace.
+export function thickLensAdjustment(params = {}) {
+  const g = thickLensGeometry(params);
+  const requested = {
+    r1: Number(params.r1) || 0,
+    r2: Number(params.r2) || 0,
+    thickness: Number(params.thickness) || 0.5,
+  };
+  const differs = Math.abs(g.R1 - requested.r1) > 1e-9
+    || Math.abs(g.R2 - requested.r2) > 1e-9
+    || Math.abs(g.d - requested.thickness) > 1e-9;
+  return differs ? { r1: g.R1, r2: g.R2, thickness: g.d } : null;
+}
+
+// Paraxial summary of what the surfaces add up to: effective focal length by
+// the lensmaker's equation with the thickness term, and the back focal
+// distance measured from the rear vertex. Reported to the user rather than
+// configured — the trace never consults these.
+export function thickLensCardinals(params = {}, wavelength = 587.6) {
+  const { R1, R2, d } = thickLensGeometry(params);
+  const n = glassIndex(params.glass, wavelength) ?? 1.5;
+  const c1 = R1 ? 1 / R1 : 0, c2 = R2 ? 1 / R2 : 0;
+  const power = (n - 1) * (c1 - c2 + (n - 1) * d * c1 * c2 / n);
+  if (Math.abs(power) < 1e-9) return { f: Infinity, bfd: Infinity, n };
+  const f = 1 / power;
+  return { f, bfd: f * (1 - (n - 1) * d * c1 / n), n };
+}
+
+const formatFocal = v => (Number.isFinite(v) ? `${Number(v.toPrecision(4))}` : '∞ (afocal)');
+const formatGeometryValue = v => Number(v.toPrecision(4)).toString().replace('-', '−');
+const formatRealizedGeometry = params => {
+  const g = thickLensGeometry(params);
+  return `R₁ ${formatGeometryValue(g.R1)} · R₂ ${formatGeometryValue(g.R2)} · t ${formatGeometryValue(g.d)} mm`;
+};
+
+// Names the shape the two radii actually describe. Worth showing, because the
+// standard Cartesian convention the lensmaker's equation needs is famously
+// counter-intuitive on the REAR surface: R is positive when the centre of
+// curvature lies further along the ray, so a biconvex lens is R1 > 0 with
+// R2 < 0 — the rear surface bulges outward at NEGATIVE radius. Reporting the
+// resulting shape means nobody has to hold that in their head.
+export function thickLensShapeName(params = {}) {
+  const { R1, R2 } = thickLensGeometry(params);
+  const face = (R, rear) => (R === 0 ? 'plano' : (rear ? R < 0 : R > 0) ? 'convex' : 'concave');
+  const front = face(R1, false), back = face(R2, true);
+  if (front === 'plano' && back === 'plano') return 'Plane slab';
+  if (front === 'plano' || back === 'plano') {
+    const curved = front === 'plano' ? back : front;
+    return front === 'plano' ? `Plano-${curved}` : `${curved[0].toUpperCase()}${curved.slice(1)}-plano`;
+  }
+  // Both faces bulging the same way is a bi- lens; one of each is a meniscus.
+  if (front !== back) {
+    const power = thickLensCardinals(params).f;
+    return `Meniscus (${power > 0 ? 'positive' : 'negative'})`;
+  }
+  return front === 'convex' ? 'Biconvex' : 'Biconcave';
+}
+
+// Two glass bodies in true optical contact do not trace correctly: the tracer
+// ignores any intersection closer than 0.05 units along a ray, so a pair of
+// coincident interfaces loses one of them and the ray wrongly exits into air.
+// A hand-built cemented doublet therefore comes out silently wrong rather than
+// visibly broken, which is the worst way for a model to fail — so say so.
+export const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
+
+function glassBodyWorldPoints(el) {
+  const local = el?.type === 'thicklens' ? thickLensGeometry(el.params).points
+    : el?.type === 'freeglass' ? freeglassPoints(el)
+      : null;
+  if (!local) return null;
+  return sampleBoundary(local, { maxAngle: Math.PI / 24 }).map(pt => toWorld(el, pt.x, pt.y));
+}
+
+const pointsBounds = pts => ({
+  x0: Math.min(...pts.map(p => p.x)), x1: Math.max(...pts.map(p => p.x)),
+  y0: Math.min(...pts.map(p => p.y)), y1: Math.max(...pts.map(p => p.y)),
+});
+
+// Closest approach between two sampled boundaries. Bounding boxes alone would
+// cry wolf on a cemented pair whose rims interlock while their surfaces are
+// millimetres apart, so measure the boundaries themselves — but use the boxes
+// first to skip anything obviously far away.
+function boundaryGap(a, b) {
+  const ba = pointsBounds(a), bb = pointsBounds(b);
+  const coarse = Math.max(Math.max(ba.x0 - bb.x1, bb.x0 - ba.x1), Math.max(ba.y0 - bb.y1, bb.y0 - ba.y1));
+  if (coarse >= MIN_CEMENT_GAP) return coarse;   // cheap reject
+  let best = Infinity;
+  const scan = (pts, poly) => {
+    for (const pt of pts) {
+      for (let i = 0; i < poly.length; i++) {
+        best = Math.min(best, distToSegment(pt, poly[i], poly[(i + 1) % poly.length]));
+        if (best === 0) return;
+      }
+    }
+  };
+  scan(a, b);
+  if (best > 0) scan(b, a);
+  return best;
+}
+
+// The nearest other glass body sitting closer than the tracer can resolve.
+// Nested or fully overlapping bodies are a different (also unsupported) case
+// and are left to the existing "not surface-merged" note: their boundaries are
+// nowhere near each other, so nothing here fires.
+const CEMENT_WARN_BELOW = MIN_CEMENT_GAP * 0.99;   // so the recommended gap itself is clean
+export function touchingGlassBody(el, elements = []) {
+  const mine = glassBodyWorldPoints(el);
+  if (!mine || !mine.length) return null;
+  for (const other of elements) {
+    if (!other || other === el || other.id === el.id || !GLASS_BODY_TYPES.has(other.type)) continue;
+    const pts = glassBodyWorldPoints(other);
+    if (!pts || !pts.length) continue;
+    const gap = boundaryGap(mine, pts);
+    if (gap < CEMENT_WARN_BELOW) return { id: other.id, type: other.type, gap: Math.max(0, gap) };
+  }
+  return null;
+}
 
 function freeglassPoints(el) {
   const scale = Math.min(10, Math.max(0.1, el.params.scale || 1));
@@ -1524,8 +1708,61 @@ export const registry = {
     },
   },
 
+  // A real lens instead of a paraxial one: two spherical surfaces with actual
+  // glass between them, refracted by Snell's law at each. Nothing about its
+  // focal length is configured — it emerges from the radii, thickness and
+  // index, which is exactly why spherical and chromatic aberration come out
+  // of it for free rather than being painted on. See thickLensCardinals() for
+  // the paraxial summary shown in the inspector.
+  thicklens: {
+    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 2,
+    aliases: ['real lens', 'spherical lens', 'singlet', 'biconvex', 'plano-convex', 'meniscus', 'aberration'],
+    params: [
+      { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 60, slider: false },
+      { key: 'r2', label: 'Rear radius R₂ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: -60, slider: false },
+      { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
+      { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
+      { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      { key: 'shape', label: 'Shape', type: 'readout', readout: p => thickLensShapeName(p) },
+      {
+        key: 'realizedGeometry', label: 'Geometry used', type: 'readout',
+        show: p => Boolean(thickLensAdjustment(p)), readout: p => formatRealizedGeometry(p),
+      },
+      { key: 'efl', label: 'Focal length at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).f) },
+      { key: 'bfd', label: 'Back focal distance at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).bfd) },
+    ],
+    size_: el => { const g = thickLensGeometry(el.params); return { w: g.span + 6, h: 2 * g.h + 6 }; },
+    svg(el) {
+      const g = thickLensGeometry(el.params);
+      return `<path d="${boundaryPathData(g.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    },
+    surfaces(el) {
+      const g = thickLensGeometry(el.params);
+      // The two spherical faces and their closing rim form one glass boundary.
+      // Axial rays outside that boundary miss the clear aperture; a ray that
+      // actually reaches the physical rim still exits with the correct medium.
+      return boundarySegments(g.points).map((segment, i) => ({
+        x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
+        data: {
+          material: el.params.glass, transmission: surfaceTransmission(el.params),
+          topologyKey: `face-${i}`,
+          ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
+        },
+      }));
+    },
+    hitTest(el, localPoint, tolerance = 4) {
+      const points = thickLensGeometry(el.params).points;
+      const sampled = sampleBoundary(points, { maxAngle: Math.PI / 90 });
+      return pointInBoundary(localPoint, points)
+        || sampled.some((a, i) => distToSegment(localPoint, a, sampled[(i + 1) % sampled.length]) <= tolerance);
+    },
+    containsLocal(el, localPoint) { return pointInBoundary(localPoint, thickLensGeometry(el.params).points); },
+    refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
+  },
+
   telescope: {
-    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 2, size: { w: 174, h: 62 },
+    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 3, size: { w: 174, h: 62 },
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -1558,7 +1795,7 @@ export const registry = {
     // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
     // because WD is capped at EFL. It is never drawn — an objective is an
     // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses', paletteOrder: 3, size: { w: 36, h: 40 },
+    label: 'Objective', category: 'Lenses', paletteOrder: 4, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
@@ -1935,7 +2172,7 @@ export const registry = {
     },
     surfaces(el) {
       const { left, top, right } = prismGeometry(el);
-      const data = { material: 'bk7', transmission: 0.98 };
+      const data = { material: 'nbk7', transmission: 0.98 };
       return [
         { x1: left.x, y1: left.y, x2: top.x, y2: top.y, kind: 'refract', data: { ...data, topologyKey: 'edge-0' } },
         { x1: top.x, y1: top.y, x2: right.x, y2: right.y, kind: 'refract', data: { ...data, topologyKey: 'edge-1' } },
@@ -1955,9 +2192,9 @@ export const registry = {
     params: [
       { key: 'vertices', label: 'Boundary points', type: 'boundary', def: FREEGLASS_DEFAULT, hidden: true },
       { key: 'scale', label: 'Overall scale', type: 'number', min: 0.1, max: 10, step: 0.05, def: 1 },
-      { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ['bk7', 'BK7-like dispersion']] },
+      { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ...GLASS_OPTIONS] },
       { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.5, show: p => p.material === 'constant' },
-      { key: 'transmission', label: 'Per-surface transmission', type: 'number', min: 0, max: 1, step: 0.01, def: 0.98 },
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
     ],
     svg(el) {
       const path = boundaryPathData(freeglassPoints(el));
@@ -1965,11 +2202,11 @@ export const registry = {
     },
     surfaces(el) {
       const points = freeglassPoints(el);
-      const material = el.params.material === 'bk7' ? 'bk7' : undefined;
+      const material = isDispersiveGlass(el.params.material) ? el.params.material : undefined;
       return boundarySegments(points).map((segment, i) => ({
         x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
         data: {
-          material, ior: el.params.ior, transmission: el.params.transmission,
+          material, ior: el.params.ior, transmission: surfaceTransmission(el.params),
           topologyKey: `edge-${i}`,
           ...(segment.kind === 'arc'
             ? { arcPoint: { x: segment.through.x, y: segment.through.y } }
@@ -1990,9 +2227,8 @@ export const registry = {
     },
     containsLocal(el, localPoint) { return pointInBoundary(localPoint, freeglassPoints(el)); },
     refractiveIndex(el, wavelength = 550) {
-      return el.params.material === 'bk7'
-        ? 1.5046 + 4680 / (wavelength * wavelength)
-        : Math.min(2.5, Math.max(1.01, el.params.ior || 1.5));
+      return glassIndex(el.params.material, wavelength)
+        ?? Math.min(2.5, Math.max(1.01, el.params.ior || 1.5));
     },
   },
 
@@ -2959,6 +3195,9 @@ const DIRECT = {
   oap: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
+  // Radii are the physics, so the tune knob drives R1 (and the shape
+  // follows); resize sets the clear aperture, which is genuinely a size.
+  thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
   // The blue handle changes the physical front opening. The purple control
   // moves the independently specified specimen focus; neither rewrites M/NA.
@@ -3043,14 +3282,15 @@ const ELEMENT_HELP = {
   oap: 'Reflects from segmented parabolic geometry toward the configured focus.',
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
+  thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
   objective: 'Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
   grating: 'Creates selected diffraction orders using the grating equation.',
-  prism: 'Refracts through all three drawn BK7-like boundaries with wavelength-dependent dispersion.',
-  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant-index or BK7-like qualitative dispersion; overlapping glass bodies are not surface-merged.',
+  prism: 'Refracts through all three drawn N-BK7 boundaries with wavelength-dependent dispersion.',
+  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion; overlapping glass bodies are not surface-merged.',
   diffuser: 'Spreads incident light into a configurable angular fan.',
   glassrod: 'Refracts at every glass-air boundary and supports total internal reflection.',
   polarizer: 'Applies a linear polarization axis and Malus-law attenuation.',
@@ -3125,8 +3365,21 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
   } else if (DIAGRAM_ONLY.has(type)) {
     note = 'This element is intentionally visual and never changes traced rays.';
-  } else if (type === 'freeglass') {
-    note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
+  } else if (type === 'thicklens' || type === 'freeglass') {
+    const cemented = context.element && Array.isArray(context.elements)
+      ? touchingGlassBody(context.element, context.elements)
+      : null;
+    const adjusted = type === 'thicklens' ? thickLensAdjustment(params) : null;
+    if (cemented) {
+      tier = 'configurable';
+      note = `This body is touching another glass body. The tracer cannot resolve two interfaces that close together, so one of them is skipped and the rays are wrong — not obviously wrong, just wrong. Leave at least ${MIN_CEMENT_GAP} mm between them; a real cemented group is a 10-20 µm layer of not-quite-glass anyway.`;
+    } else if (adjusted) {
+      note = `Requested radii or thickness cannot close at this aperture. The trace uses ${formatRealizedGeometry(params)}; see Geometry used below.`;
+    } else if (type === 'thicklens') {
+      note = 'A 2D meridional singlet with spherical or flat faces and visible-band catalogue approximations. Aspheres, skew rays, coatings, and calibrated off-axis aberrations are not modeled.';
+    } else {
+      note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
+    }
   } else if (type === 'stage' && params.voxelPreview) {
     note = 'Pulsed arrivals leave canvas-only 2PP voxel markers in the mounted sample; marker size/opacity qualitatively broadens with Z (depth) offset from focus. This is a 2D scan preview, not a threshold, dose, curing, or true 3D fabrication simulation.';
   } else if (type === 'stage' && params.pzMode && params.pzMode !== 'static') {
