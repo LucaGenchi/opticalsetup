@@ -1,0 +1,412 @@
+{
+ "schema": 1,
+ "name": "Angularly scanned Mach–Zehnder inverse-scattering microscope",
+ "description": "Reconstructs the acquisition geometry in Figure 2a of Kim et al.'s bioRxiv v1: a 635 nm fiber-delivered CW source is collimated at L1; BS1 separates a scanned sample arm and reference arm; a dual-axis galvo changes the sample illumination from on-axis at its centered command to off-axis across its angular sweep; matched 200 mm L2/L3 relays drive matched 16× water-dipping objectives (NA 0.8, WD 3.0 mm) around the sample; and BS2 sends the sample beam and a reference beam with a small diagrammatic tilt onto the same CMOS sensor. That fixed camera-side crossing angle represents the carrier used for off-axis digital holography and is distinct from the galvo-controlled illumination angle; its drawn magnitude is illustrative because the paper does not report a value. The scene instantiates the paper's long-working-distance objective variant used for thick organoids and zebrafish. The Methods also document a matched 60× oil, NA 1.42 high-resolution alternative. OpticalSetup traces qualitative ray paths and the galvo sweep, but it does not simulate coherent phase, interferograms, multiple scattering, digital defocus, or MSBP reconstruction.",
+ "reference": "https://www.biorxiv.org/content/10.1101/2025.08.17.670744v1",
+ "author": {
+  "github": "bertona88",
+  "profile": "https://github.com/bertona88"
+ },
+ "source": {
+  "issue": "https://github.com/LucaGenchi/optics-sketch/issues/62",
+  "submittedAt": "2026-08-22T09:42:11.000Z"
+ },
+ "sceneSha256": "dfda4ac7fffcb8467d98faa965034aba8dea0c11e70966e7636940a2ef6cb7b2",
+ "scene": {
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+   {
+    "id": "e-frame",
+    "type": "figureframe",
+    "x": 650,
+    "y": 360,
+    "rot": 0,
+    "label": "",
+    "showLabel": false,
+    "params": {
+     "w": 1270,
+     "h": 620,
+     "background": "white"
+    }
+   },
+   {
+    "id": "e-title",
+    "type": "textlabel",
+    "x": 55,
+    "y": 82,
+    "rot": 0,
+    "label": "",
+    "showLabel": false,
+    "params": {
+     "text": "Inverse-scattering microscopy — angularly scanned Mach–Zehnder interferometer",
+     "fontSize": 18,
+     "fill": "#276aa2"
+    }
+   },
+   {
+    "id": "e-citation",
+    "type": "textlabel",
+    "x": 55,
+    "y": 110,
+    "rot": 0,
+    "label": "",
+    "showLabel": false,
+    "params": {
+     "text": "Kim et al., bioRxiv 2025.08.17.670744v1 — Figure 2a / Methods",
+     "fontSize": 12,
+     "fill": "#4f7b9e"
+    }
+   },
+   {
+    "id": "e-sample-arm-label",
+    "type": "textlabel",
+    "x": 350,
+    "y": 205,
+    "rot": 0,
+    "label": "",
+    "showLabel": false,
+    "params": {
+     "text": "SAMPLE ARM — angular illumination scan + matched 4f relays",
+     "fontSize": 13,
+     "fill": "#8f2d2d"
+    }
+   },
+   {
+    "id": "e-reference-arm-label",
+    "type": "textlabel",
+    "x": 430,
+    "y": 557,
+    "rot": 0,
+    "label": "",
+    "showLabel": false,
+    "params": {
+     "text": "REFERENCE ARM — recombined off-axis at BS2 for digital holography",
+     "fontSize": 13,
+     "fill": "#8f2d2d"
+    }
+   },
+   {
+    "id": "e-limit-note",
+    "type": "textlabel",
+    "x": 55,
+    "y": 638,
+    "rot": 0,
+    "label": "",
+    "showLabel": false,
+    "params": {
+     "text": "Diagram + qualitative rays: coherent phase, camera interferograms, scattering, and MSBP reconstruction are not simulated.",
+     "fontSize": 11,
+     "fill": "#6b7280"
+    }
+   },
+   {
+    "id": "e-laser",
+    "type": "cwlaser",
+    "x": 74,
+    "y": 220,
+    "rot": 0,
+    "label": "635 nm laser",
+    "showLabel": true,
+    "labelPos": "t",
+    "params": {
+     "wavelength": 635,
+     "avgPowerW": 0.1,
+     "beamMode": "line",
+     "beamWidth": 3,
+     "pol": 0,
+     "autoColor": true,
+     "color": "#e02020",
+     "temporalMode": "cw"
+    }
+   },
+   {
+    "id": "e-l1",
+    "type": "lens",
+    "x": 180,
+    "y": 420,
+    "rot": 90,
+    "label": "L1 · fiber collimator",
+    "showLabel": true,
+    "labelPos": "l",
+    "params": {
+     "f": 40,
+     "dia": 25.4,
+     "transEff": 100
+    }
+   },
+   {
+    "id": "e-fold-in",
+    "type": "mirror",
+    "x": 180,
+    "y": 500,
+    "rot": 135,
+    "label": "M0",
+    "showLabel": true,
+    "labelPos": "b",
+    "params": {
+     "length": 25.4,
+     "refl": 100,
+     "showTransmitted": false
+    }
+   },
+   {
+    "id": "e-bs1",
+    "type": "bs",
+    "x": 300,
+    "y": 500,
+    "rot": 0,
+    "label": "BS1 · 50:50 split",
+    "showLabel": true,
+    "labelPos": "b",
+    "params": {
+     "ratio": 0.5,
+     "size": 25.4
+    }
+   },
+   {
+    "id": "e-galvo",
+    "type": "galvo",
+    "x": 300,
+    "y": 280,
+    "rot": 45,
+    "label": "GM · dual-axis scan (2D proxy)",
+    "showLabel": true,
+    "labelPos": "l",
+    "params": {
+     "length": 20,
+     "commandAngle": 0,
+     "scanMode": "triangle",
+     "scanAmplitude": 1,
+     "scanFrequencyHz": 100,
+     "scanPhaseDeg": 0,
+     "refl": 100,
+     "showTransmitted": false
+    }
+   },
+   {
+    "id": "e-l2",
+    "type": "lens",
+    "x": 500,
+    "y": 280,
+    "rot": 0,
+    "label": "L2 · ACT508-200-A",
+    "showLabel": true,
+    "labelPos": "t",
+    "params": {
+     "f": 200,
+     "dia": 50.8,
+     "transEff": 100
+    }
+   },
+   {
+    "id": "e-condenser-objective",
+    "type": "objective",
+    "x": 699,
+    "y": 280,
+    "rot": 0,
+    "label": "OBJ-C",
+    "showLabel": false,
+    "labelPos": "t",
+    "params": {
+     "efl": 12.5,
+     "workingDistance": 10,
+     "immersion": "water",
+     "immersionIndex": 1.333,
+     "na": 0.8,
+     "showAcceptance": false,
+     "transEff": 100,
+     "frontAperture": 20
+    }
+   },
+   {
+    "id": "e-sample",
+    "type": "sample",
+    "x": 725,
+    "y": 280,
+    "rot": 90,
+    "label": "Sample",
+    "showLabel": false,
+    "labelPos": "b",
+    "params": {
+     "aperture": 50,
+     "specimenType": "absorbing",
+     "channels": [],
+     "showSignalSpot": true,
+     "thickness": 6,
+     "voxelPreview": false,
+     "voxelSize": 0.6,
+     "transmitExc": true,
+     "transmission": 0.8,
+     "mode": "none",
+     "fluorWl": 520,
+     "carsWl": 660,
+     "signalEff": 0.1
+    }
+   },
+   {
+    "id": "e-imaging-objective",
+    "type": "objective",
+    "x": 751,
+    "y": 280,
+    "rot": 180,
+    "label": "OBJ-I",
+    "showLabel": false,
+    "labelPos": "b",
+    "params": {
+     "efl": 12.5,
+     "workingDistance": 10,
+     "immersion": "water",
+     "immersionIndex": 1.333,
+     "na": 0.8,
+     "showAcceptance": false,
+     "transEff": 100,
+     "frontAperture": 20
+    }
+   },
+   {
+    "id": "e-objective-group-label",
+    "type": "textlabel",
+    "x": 618,
+    "y": 242,
+    "rot": 0,
+    "label": "",
+    "showLabel": false,
+    "params": {
+     "text": "condenser OBJ   |   SAMPLE   |   imaging OBJ",
+     "fontSize": 10,
+     "fill": "#4f7b9e"
+    }
+   },
+   {
+    "id": "e-objective-note",
+    "type": "textlabel",
+    "x": 595,
+    "y": 352,
+    "rot": 0,
+    "label": "",
+    "showLabel": false,
+    "params": {
+     "text": "Matched Nikon N16XLWD-PF objectives · 16× water · NA 0.8 · WD 3.0 mm",
+     "fontSize": 11,
+     "fill": "#4f7b9e"
+    }
+   },
+   {
+    "id": "e-l3",
+    "type": "lens",
+    "x": 950,
+    "y": 280,
+    "rot": 0,
+    "label": "L3 · ACT508-200-A",
+    "showLabel": true,
+    "labelPos": "t",
+    "params": {
+     "f": 200,
+     "dia": 50.8,
+     "transEff": 100
+    }
+   },
+   {
+    "id": "e-ref-mirror",
+    "type": "mirror",
+    "x": 1074,
+    "y": 500,
+    "rot": 45,
+    "label": "M1",
+    "showLabel": true,
+    "labelPos": "b",
+    "params": {
+     "length": 25.4,
+     "refl": 100,
+     "showTransmitted": false
+    }
+   },
+   {
+    "id": "e-bs2",
+    "type": "bs",
+    "x": 1074,
+    "y": 280,
+    "rot": 0,
+    "label": "BS2 · off-axis recombination",
+    "showLabel": true,
+    "labelPos": "r",
+    "params": {
+     "ratio": 0.5,
+     "size": 25.4
+    }
+   },
+   {
+    "id": "e-camera",
+    "type": "camera",
+    "x": 1075,
+    "y": 208,
+    "rot": 270,
+    "label": "CMOS camera · IUA20000KMA",
+    "showLabel": true,
+    "labelPos": "t",
+    "params": {
+     "ch": 80,
+     "pixels": 32,
+     "rows": 12
+    }
+   },
+   {
+    "id": "e119ya1a",
+    "type": "blocker",
+    "x": 1083,
+    "y": 280,
+    "rot": 0,
+    "label": "",
+    "showLabel": false,
+    "params": {
+     "w": 4,
+     "h": 18
+    }
+   }
+  ],
+  "beams": [
+   {
+    "id": "b-single-mode-fiber",
+    "kind": "fiber",
+    "pts": [
+     {
+      "x": 128,
+      "y": 220
+     },
+     {
+      "x": 160,
+      "y": 220
+     },
+     {
+      "x": 180,
+      "y": 250
+     },
+     {
+      "x": 180,
+      "y": 380
+     }
+    ],
+    "color": "#e8a800",
+    "width": 4,
+    "bare": false,
+    "propagate": true,
+    "inputNA": 0.22,
+    "groupIndex": 1.468,
+    "lossDbPerM": 0.2,
+    "out0": {
+     "mode": "diverge",
+     "na": 0.12,
+     "focal": 20,
+     "dia": 6
+    },
+    "out1": {
+     "mode": "diverge",
+     "na": 0.12,
+     "focal": 20,
+     "dia": 6
+    }
+   }
+  ]
+ }
+}
