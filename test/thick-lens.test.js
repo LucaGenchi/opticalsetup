@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  createElement, getElementMeta, MIN_CEMENT_GAP, registry, thickLensAdjustment,
-  thickLensCardinals, thickLensGeometry, thickLensShapeName,
+  createElement, getElementMeta, MIN_CEMENT_GAP, registry, surfaceTransmission,
+  thickLensAdjustment, thickLensCardinals, thickLensGeometry, thickLensShapeName,
+  touchingGlassBody,
 } from '../sketch/js/elements.js';
-import { traceScene } from '../sketch/js/raytrace.js';
+import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { GLASSES, glassAbbe, glassIndex, isDispersiveGlass, LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from '../sketch/js/glass.js';
 import { parseSketch } from '../sketch/js/state.js';
 import '../sketch/js/detector-instruments.js';
@@ -289,4 +290,125 @@ test('a flat face is traced as a plane, not a huge-radius arc', () => {
   const surfaces = registry.thicklens.surfaces(el);
   const curved = surfaces.filter(s => s.data.arcPoint);
   assert.equal(curved.length, 1, 'only the curved face should carry an arc');
+});
+
+
+// ---------------- per-surface transmission is a percentage ----------------
+
+test('glass bodies express per-surface transmission the same way every other optic does', () => {
+  for (const type of ['thicklens', 'freeglass']) {
+    const spec = registry[type].params.find(p => p.key === 'transEff');
+    assert.ok(spec, `${type} must carry transEff, not a bespoke 0-1 transmission`);
+    assert.deepEqual([spec.min, spec.max, spec.def], [0, 100, 98], `${type} bounds`);
+    assert.equal(registry[type].params.some(p => p.key === 'transmission'), false,
+      `${type} must not keep the retired fractional key`);
+  }
+  // the tracer still works in fractions
+  assert.equal(surfaceTransmission({ transEff: 100 }), 1);
+  assert.equal(surfaceTransmission({ transEff: 0 }), 0);
+  assert.ok(Math.abs(surfaceTransmission({ transEff: 98 }) - 0.98) < 1e-12);
+  assert.ok(Math.abs(surfaceTransmission({}) - 0.98) < 1e-12, 'defaults to the schema default');
+  assert.equal(surfaceTransmission({ transEff: 900 }), 1, 'and stays bounded');
+});
+
+test('a sketch saved with the old 0-1 transmission loads at the same physical value', () => {
+  const file = els => JSON.stringify({ app: 'optics2d', version: 1, elements: els, beams: [] });
+  for (const type of ['thicklens', 'freeglass']) {
+    for (const stored of [0, 0.5, 0.98, 1]) {
+      const fresh = createElement(type, 0, 0);
+      const params = { ...fresh.params, transmission: stored };
+      delete params.transEff;
+      const [loaded] = parseSketch(file([{ id: `x-${type}-${stored}`, type, x: 0, y: 0, params }]), registry).elements;
+      assert.equal(loaded.params.transEff, stored * 100, `${type} ${stored} -> percent`);
+      assert.ok(Math.abs(surfaceTransmission(loaded.params) - stored) < 1e-12,
+        `${type} ${stored} must reach the tracer unchanged`);
+    }
+    // a current sketch keeps its percentage rather than being multiplied again
+    const now = createElement(type, 0, 0);
+    now.params.transEff = 73;
+    const [again] = parseSketch(file([now]), registry).elements;
+    assert.equal(again.params.transEff, 73);
+  }
+});
+
+test('per-surface transmission attenuates each face, so a singlet costs it twice', () => {
+  const readings = [100, 50].map(pct => {
+    const lens = createElement('thicklens', 300, 0);
+    Object.assign(lens.params, { r1: 2000, r2: -2000, thickness: 4, dia: 50.8, glass: 'nbk7', transEff: pct });
+    const laser = createElement('cwlaser', 60, 0);
+    laser.params.beamMode = 'beam';
+    laser.params.beamWidth = 6;
+    const detector = createElement('detector', 520, 0);
+    detector.params.aperture = 40;
+    traceAll([laser, lens, detector], []);
+    return detectorReading(detector.id)?.signal ?? 0;
+  });
+  assert.ok(Math.abs(readings[1] / readings[0] - 0.25) < 1e-9, 'two faces at 50% leave a quarter');
+});
+
+// ---------------- glass bodies must not touch ----------------
+
+function cementedPair(gap) {
+  const front = createElement('thicklens', 300, 0);
+  Object.assign(front.params, { r1: 40, r2: -137.7, thickness: 4, dia: 25.4, glass: 'nbk7' });
+  const rear = createElement('thicklens', 0, 0);
+  Object.assign(rear.params, { r1: -137.7, r2: 600, thickness: 2.5, dia: 25.4, glass: 'nsf11' });
+  rear.x = 300 + thickLensGeometry(front.params).xv2 + gap - thickLensGeometry(rear.params).xv1;
+  return [front, rear];
+}
+
+test('two glass bodies closer than the tracer can resolve are called out', () => {
+  // Below the gap the trace is silently wrong, so the inspector has to say so
+  // rather than leaving a plausible-looking focus to be believed.
+  for (const gap of [0, 0.02, 0.05]) {
+    const pair = cementedPair(gap);
+    const found = touchingGlassBody(pair[0], pair);
+    assert.ok(found, `a ${gap} mm gap must be reported`);
+    // the boundary is sampled into chords, so the measured gap is close rather
+    // than exact — this is a "are these touching" check, not metrology
+    assert.ok(Math.abs(found.gap - gap) < 1e-3, `and measured: got ${found.gap}`);
+    const meta = getElementMeta('thicklens', pair[0].params, { element: pair[0], elements: pair });
+    assert.equal(meta.tier, 'configurable');
+    assert.match(meta.note, /touching another glass body/);
+  }
+  // ...and the recommended gap itself must be clean, or the advice contradicts
+  // the warning that gives it
+  for (const gap of [MIN_CEMENT_GAP, 0.5, 20]) {
+    const pair = cementedPair(gap);
+    assert.equal(touchingGlassBody(pair[0], pair), null, `${gap} mm must not warn`);
+    const meta = getElementMeta('thicklens', pair[0].params, { element: pair[0], elements: pair });
+    assert.doesNotMatch(meta.note, /touching another glass body/);
+  }
+});
+
+test('the touching check only ever fires on another glass body', () => {
+  const [lens] = cementedPair(0);
+  assert.equal(touchingGlassBody(lens, [lens]), null, 'a lone body has nothing to touch');
+  assert.equal(touchingGlassBody(lens, [lens, createElement('mirror', 300, 0)]), null,
+    'a mirror in the same place is not a glass boundary');
+  assert.equal(touchingGlassBody(lens, [lens, createElement('thicklens', 300, 60)]), null,
+    'a body offset well off-axis is not touching');
+
+  // a freeglass edge laid against the lens counts, at the same threshold
+  const near = createElement('freeglass', 304.02, 0);
+  near.params.vertices = [{ x: -2, y: -20 }, { x: 40, y: -20 }, { x: 40, y: 20 }, { x: -2, y: 20 }];
+  const found = touchingGlassBody(lens, [lens, near]);
+  assert.ok(found && found.type === 'freeglass');
+  const far = createElement('freeglass', 304.5, 0);
+  far.params.vertices = near.params.vertices;
+  assert.equal(touchingGlassBody(lens, [lens, far]), null);
+});
+
+test('the warning marks exactly the gaps where the trace really does go wrong', () => {
+  // The claim the note makes has to stay true: below the gap an interface is
+  // skipped, above it both are seen.
+  const interactions = gap => {
+    const pair = cementedPair(gap);
+    const laser = createElement('cwlaser', 60, 1);
+    laser.params.beamMode = 'line';
+    const paths = traceScene([laser, ...pair], []).drawables.filter(d => d.type === 'path');
+    return Math.max(0, ...paths.map(p => p.pts.length - 1));
+  };
+  assert.equal(interactions(0.02), 4, 'one interface is lost when they touch');
+  assert.equal(interactions(MIN_CEMENT_GAP), 5, 'and comes back at the recommended gap');
 });

@@ -5,6 +5,10 @@ import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from 
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
 import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
 
+// Elements whose boundary refracts and therefore carries per-surface
+// transmission of its own.
+const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
+
 export const state = {
   elements: [],   // optical elements
   beams: [],      // manual beams: {id, kind:'beam', pts:[{x,y}], color, width, dash, arrow}
@@ -181,6 +185,13 @@ function normalizeElement(raw, definitions, used) {
   // select's option check and silently falling back to a constant index.
   if (rawParams.material === LEGACY_GLASS_ID) {
     rawParams = { ...rawParams, material: LEGACY_GLASS_REPLACEMENT };
+  }
+  // Glass bodies used to carry per-surface transmission as a 0-1 fraction
+  // while every other optic used a percentage. They now agree; the presence
+  // of the retired key is what identifies a sketch saved before that.
+  if (GLASS_BODY_TYPES.has(raw.type) && rawParams.transEff === undefined
+      && Number.isFinite(Number(rawParams.transmission))) {
+    rawParams = { ...rawParams, transEff: Number(rawParams.transmission) * 100 };
   }
   if (wasLegacyLaser) {
     rawParams = migrateLegacyLaserParams(rawParams, raw.type);

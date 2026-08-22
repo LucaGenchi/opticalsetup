@@ -74,6 +74,13 @@ function thickLensRadii(params) {
 // and real optical cement is a 10-20um layer of not-quite-glass regardless.
 export const MIN_CEMENT_GAP = 0.06;
 
+// Glass bodies expose per-surface transmission as a percentage, like every
+// other optic's Transmission efficiency; the tracer works in fractions.
+export function surfaceTransmission(params = {}) {
+  const pct = Number.isFinite(Number(params.transEff)) ? Number(params.transEff) : 98;
+  return Math.min(1, Math.max(0, pct / 100));
+}
+
 // Closed boundary for the glass body, plus the centre thickness actually used:
 // a strongly biconvex lens with too little centre thickness would have its two
 // faces cross at the rim, so the thickness is raised until a real edge remains.
@@ -157,6 +164,66 @@ export function thickLensShapeName(params = {}) {
     return `Meniscus (${power > 0 ? 'positive' : 'negative'})`;
   }
   return front === 'convex' ? 'Biconvex' : 'Biconcave';
+}
+
+// Two glass bodies in true optical contact do not trace correctly: the tracer
+// ignores any intersection closer than 0.05 units along a ray, so a pair of
+// coincident interfaces loses one of them and the ray wrongly exits into air.
+// A hand-built cemented doublet therefore comes out silently wrong rather than
+// visibly broken, which is the worst way for a model to fail — so say so.
+export const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
+
+function glassBodyWorldPoints(el) {
+  const local = el?.type === 'thicklens' ? thickLensGeometry(el.params).points
+    : el?.type === 'freeglass' ? freeglassPoints(el)
+      : null;
+  if (!local) return null;
+  return sampleBoundary(local, { maxAngle: Math.PI / 24 }).map(pt => toWorld(el, pt.x, pt.y));
+}
+
+const pointsBounds = pts => ({
+  x0: Math.min(...pts.map(p => p.x)), x1: Math.max(...pts.map(p => p.x)),
+  y0: Math.min(...pts.map(p => p.y)), y1: Math.max(...pts.map(p => p.y)),
+});
+
+// Closest approach between two sampled boundaries. Bounding boxes alone would
+// cry wolf on a cemented pair whose rims interlock while their surfaces are
+// millimetres apart, so measure the boundaries themselves — but use the boxes
+// first to skip anything obviously far away.
+function boundaryGap(a, b) {
+  const ba = pointsBounds(a), bb = pointsBounds(b);
+  const coarse = Math.max(Math.max(ba.x0 - bb.x1, bb.x0 - ba.x1), Math.max(ba.y0 - bb.y1, bb.y0 - ba.y1));
+  if (coarse >= MIN_CEMENT_GAP) return coarse;   // cheap reject
+  let best = Infinity;
+  const scan = (pts, poly) => {
+    for (const pt of pts) {
+      for (let i = 0; i < poly.length; i++) {
+        best = Math.min(best, distToSegment(pt, poly[i], poly[(i + 1) % poly.length]));
+        if (best === 0) return;
+      }
+    }
+  };
+  scan(a, b);
+  if (best > 0) scan(b, a);
+  return best;
+}
+
+// The nearest other glass body sitting closer than the tracer can resolve.
+// Nested or fully overlapping bodies are a different (also unsupported) case
+// and are left to the existing "not surface-merged" note: their boundaries are
+// nowhere near each other, so nothing here fires.
+const CEMENT_WARN_BELOW = MIN_CEMENT_GAP * 0.99;   // so the recommended gap itself is clean
+export function touchingGlassBody(el, elements = []) {
+  const mine = glassBodyWorldPoints(el);
+  if (!mine || !mine.length) return null;
+  for (const other of elements) {
+    if (!other || other === el || other.id === el.id || !GLASS_BODY_TYPES.has(other.type)) continue;
+    const pts = glassBodyWorldPoints(other);
+    if (!pts || !pts.length) continue;
+    const gap = boundaryGap(mine, pts);
+    if (gap < CEMENT_WARN_BELOW) return { id: other.id, type: other.type, gap: Math.max(0, gap) };
+  }
+  return null;
 }
 
 function freeglassPoints(el) {
@@ -1656,7 +1723,7 @@ export const registry = {
       { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
       { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
-      { key: 'transmission', label: 'Per-surface transmission', type: 'number', min: 0, max: 1, step: 0.01, def: 0.98 },
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
       { key: 'shape', label: 'Shape', type: 'readout', readout: p => thickLensShapeName(p) },
       {
         key: 'realizedGeometry', label: 'Geometry used', type: 'readout',
@@ -1678,7 +1745,7 @@ export const registry = {
       return boundarySegments(g.points).map((segment, i) => ({
         x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
         data: {
-          material: el.params.glass, transmission: el.params.transmission,
+          material: el.params.glass, transmission: surfaceTransmission(el.params),
           topologyKey: `face-${i}`,
           ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
         },
@@ -2127,7 +2194,7 @@ export const registry = {
       { key: 'scale', label: 'Overall scale', type: 'number', min: 0.1, max: 10, step: 0.05, def: 1 },
       { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ...GLASS_OPTIONS] },
       { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.5, show: p => p.material === 'constant' },
-      { key: 'transmission', label: 'Per-surface transmission', type: 'number', min: 0, max: 1, step: 0.01, def: 0.98 },
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
     ],
     svg(el) {
       const path = boundaryPathData(freeglassPoints(el));
@@ -2139,7 +2206,7 @@ export const registry = {
       return boundarySegments(points).map((segment, i) => ({
         x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
         data: {
-          material, ior: el.params.ior, transmission: el.params.transmission,
+          material, ior: el.params.ior, transmission: surfaceTransmission(el.params),
           topologyKey: `edge-${i}`,
           ...(segment.kind === 'arc'
             ? { arcPoint: { x: segment.through.x, y: segment.through.y } }
@@ -3298,13 +3365,21 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
   } else if (DIAGRAM_ONLY.has(type)) {
     note = 'This element is intentionally visual and never changes traced rays.';
-  } else if (type === 'thicklens') {
-    const adjusted = thickLensAdjustment(params);
-    note = adjusted
-      ? `Requested radii or thickness cannot close at this aperture. The trace uses ${formatRealizedGeometry(params)}; see Geometry used below.`
-      : 'A 2D meridional singlet with spherical or flat faces and visible-band catalogue approximations. Aspheres, skew rays, coatings, and calibrated off-axis aberrations are not modeled.';
-  } else if (type === 'freeglass') {
-    note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
+  } else if (type === 'thicklens' || type === 'freeglass') {
+    const cemented = context.element && Array.isArray(context.elements)
+      ? touchingGlassBody(context.element, context.elements)
+      : null;
+    const adjusted = type === 'thicklens' ? thickLensAdjustment(params) : null;
+    if (cemented) {
+      tier = 'configurable';
+      note = `This body is touching another glass body. The tracer cannot resolve two interfaces that close together, so one of them is skipped and the rays are wrong — not obviously wrong, just wrong. Leave at least ${MIN_CEMENT_GAP} mm between them; a real cemented group is a 10-20 µm layer of not-quite-glass anyway.`;
+    } else if (adjusted) {
+      note = `Requested radii or thickness cannot close at this aperture. The trace uses ${formatRealizedGeometry(params)}; see Geometry used below.`;
+    } else if (type === 'thicklens') {
+      note = 'A 2D meridional singlet with spherical or flat faces and visible-band catalogue approximations. Aspheres, skew rays, coatings, and calibrated off-axis aberrations are not modeled.';
+    } else {
+      note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
+    }
   } else if (type === 'stage' && params.voxelPreview) {
     note = 'Pulsed arrivals leave canvas-only 2PP voxel markers in the mounted sample; marker size/opacity qualitatively broadens with Z (depth) offset from focus. This is a 2D scan preview, not a threshold, dose, curing, or true 3D fabrication simulation.';
   } else if (type === 'stage' && params.pzMode && params.pzMode !== 'static') {

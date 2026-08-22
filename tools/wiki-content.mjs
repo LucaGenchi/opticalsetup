@@ -379,7 +379,18 @@ export const wikiEntries = [
         published d-line index and Abbe number${cite(3)}. If a requested radius is too
         small for the clear aperture, or the centre thickness would make the faces cross,
         the inspector shows the exact constructible geometry the tracer uses instead of
-        hiding the adjustment.</p>`,
+        hiding the adjustment.</p>
+        <p><strong>Two glass bodies must not touch.</strong> The tracer ignores any
+        intersection closer than 0.05&nbsp;mm along a ray, so a pair of coincident
+        interfaces loses one of them and the ray wrongly exits into air. Building a
+        cemented doublet by pushing two singlets together therefore gives an answer that
+        is not obviously broken, just wrong — measured on a crown+flint pair, the focus
+        lands 4&nbsp;mm short with one interface silently skipped. Leave at least
+        0.06&nbsp;mm between them and both interfaces come back; the inspector warns when
+        anything is closer. That gap costs about 0.1% of the back focal distance, and a
+        real cemented group is a 10–20&nbsp;µm layer of not-quite-glass anyway. Nested or
+        fully overlapping bodies are a separate unsupported case — boundaries are never
+        merged.</p>`,
       formulas: [
         {
           tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}',
@@ -392,7 +403,7 @@ export const wikiEntries = [
         tolerances, or a full Sellmeier dispersion curve. The two-term glass fits are
         anchored to visible reference lines and become qualitative in the deep UV and
         infrared; absorption bands are not modeled. Per-surface transmission is a flat
-        configured factor. Treat axial spherical and visible chromatic behavior as
+        configured percentage applied at each face, not a Fresnel or coating calculation. Treat axial spherical and visible chromatic behavior as
         meaningful within this model and off-axis behavior as qualitative.</p>`,
     },
     related: ['lens', 'lensc', 'objective', 'prism', 'freeglass'],
