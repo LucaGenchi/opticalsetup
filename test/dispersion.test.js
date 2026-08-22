@@ -8,6 +8,7 @@ import {
   gaussianPulseDurationAfterGDD, glassAbbe, glassGVD, glassIndex,
 } from '../sketch/js/glass.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
+import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
 import { parseSketch } from '../sketch/js/state.js';
 
 const sketchFile = elements => JSON.stringify({ app: 'optics2d', version: 1, elements, beams: [] });
@@ -135,4 +136,39 @@ test('objective GDD uses the documented 30 mm N-BK7 equivalent', () => {
 
   const pulse = detectorReading(detector.id)?.pulse;
   assert.ok(pulse.gddFs2 > 1300 && pulse.gddFs2 < 1380);
+});
+
+test('a pulse compressor applies signed GDD and visibly restores a broadened pulse', () => {
+  const laser = pulsedLaser(800, 10);
+  const stretcher = createElement('pulsecompressor', 140, 0);
+  Object.assign(stretcher.params, { gddFs2: 1000, transEff: 80 });
+  const compressor = createElement('pulsecompressor', 220, 0);
+  compressor.params.gddFs2 = -1000;
+  const detector = createElement('detector', 320, 0);
+
+  const scene = traceScene([laser, stretcher, compressor, detector]);
+  const pulse = detectorReading(detector.id)?.pulse;
+  assert.ok(pulse);
+  assert.ok(Math.abs(pulse.gddFs2) < 1e-9);
+  assert.ok(Math.abs(pulse.stretchedPulseWidthFs - 10) < 1e-9);
+  assert.ok(Math.abs(detectorReading(detector.id).signal - 0.8) < 1e-9);
+
+  const track = scene.pulseTracks.find(candidate => candidate.pts.length >= 4);
+  assert.ok(track?.gddTrace, 'the visual pulse track carries local GDD');
+  const middleOpl = (track.opls[1] + track.opls[2]) / 2;
+  const finalOpl = (track.opls[2] + track.opls[3]) / 2;
+  assert.ok(pulseEnvelopeAtOpticalPath(track, middleOpl).pulseWidthFs > 250);
+  assert.ok(Math.abs(pulseEnvelopeAtOpticalPath(track, finalOpl).pulseWidthFs - 10) < 1e-9);
+});
+
+test('pulse-compressor GDD is clamped at the saved-scene boundary', () => {
+  const raw = createElement('pulsecompressor', 140, 0);
+  raw.params.gddFs2 = 9e9;
+  const [compressor] = parseSketch(sketchFile([raw]), registry).elements;
+  assert.equal(compressor.params.gddFs2, 1000000);
+
+  const laser = pulsedLaser(800, 10);
+  const detector = createElement('detector', 300, 0);
+  traceScene([laser, compressor, detector]);
+  assert.equal(detectorReading(detector.id).pulse.gddFs2, 1000000);
 });

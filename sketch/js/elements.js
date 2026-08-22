@@ -2594,6 +2594,40 @@ export const registry = {
     },
   },
 
+  pulsecompressor: {
+    label: 'Pulse compressor', category: 'Pulse Timing', size: { w: 52, h: 32 },
+    aliases: ['phase compressor', 'chirp compressor', 'gdd compressor', 'gdd compensator', 'chirped mirrors', 'grating compressor'],
+    size_: el => ({ w: 52, h: (el.params.aperture || 24) + 8 }),
+    params: [
+      {
+        key: 'gddFs2', label: 'Applied GDD (fs²)', type: 'number',
+        min: -1000000, max: 1000000, step: 100, def: -2000,
+      },
+      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
+      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+    ],
+    svg(el) {
+      const h = (el.params.aperture || 24) / 2;
+      const flipped = isFlipped(el) ? 'transform="rotate(180)"' : '';
+      const sign = Number(el.params.gddFs2) < 0 ? '−' : '+';
+      return `<rect x="-24" y="${-h - 3}" width="48" height="${2 * h + 6}" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/>` +
+        `<g ${flipped} fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round">` +
+        `<path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/>` +
+        `<path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g>` +
+        `<text x="0" y="0" ${flipped} text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">${sign}GDD</text>`;
+    },
+    surfaces(el) {
+      const h = (el.params.aperture || 24) / 2;
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'gdd',
+        data: {
+          gddFs2: el.params.gddFs2,
+          efficiency: Math.min(1, Math.max(0.01, (el.params.transEff || 100) / 100)),
+        },
+      }];
+    },
+  },
+
   // Voltage-controlled retarder (Pockels effect): "Static retardance" acts as
   // a plain waveplate at the configured crystal axis. "Switching" square-wave
   // toggles the retardance between two states at a set frequency — paired
@@ -3273,6 +3307,7 @@ const DIRECT = {
   aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
   aotf: { resize: { y: 'aperture' }, tune: { key: 'center', short: 'λ select' } },
   delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL' } },
+  pulsecompressor: { resize: { y: 'aperture' }, tune: { key: 'gddFs2', short: 'GDD' } },
   eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
   crystal: { resize: { y: 'aperture' }, tune: { key: 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
@@ -3358,6 +3393,7 @@ const ELEMENT_HELP = {
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
   aotf: 'Selects a configurable spectral band, then deflects and attenuates the selected acousto-optic order.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
+  pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',

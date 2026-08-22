@@ -211,7 +211,10 @@ function measurementHTML(el) {
   const pulseTrain = rd.pulse?.mixed
     ? `${rd.pulse.sources} source trains · mixed settings`
     : rd.pulse ? `${rd.pulse.sources > 1 ? `${rd.pulse.sources} sources · ` : ''}${rd.pulse.repRateMHz.toLocaleString()} MHz · ${rd.pulse.pulseWidthFs.toLocaleString()} fs` : '';
-  const formatGdd = value => `${Math.abs(value) < 10 ? value.toFixed(1) : Math.round(value).toLocaleString()} fs²`;
+  const formatGdd = value => {
+    const display = Math.abs(value) < 0.05 ? 0 : value;
+    return `${Math.abs(display) < 10 ? display.toFixed(1) : Math.round(display).toLocaleString()} fs²`;
+  };
   const gddRange = rd.pulse?.gddRangeFs2;
   const variedGdd = Array.isArray(gddRange) && gddRange.length === 2
     && Math.abs(gddRange[1] - gddRange[0]) > 0.5;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v14';
+const CACHE_NAME = 'opticalsetup-pwa-v15';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -46,7 +46,8 @@ const PRECACHE_PATHS = [
   "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json",
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",
   "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
-  "../Examples/Optics%20Bench/Michelson%20interferometer.json"
+  "../Examples/Optics%20Bench/Michelson%20interferometer.json",
+  "../Examples/Ultrashort%20Pulses/Pulse%20stretcher%20and%20compressor.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;

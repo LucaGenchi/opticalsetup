@@ -1,0 +1,134 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "pulse-compression-title",
+   "type": "textlabel",
+   "x": 38,
+   "y": 52,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Pulse stretching and second-order compression",
+    "fontSize": 20,
+    "fill": "#222a38"
+   }
+  },
+  {
+   "id": "pulse-compression-subtitle",
+   "type": "textlabel",
+   "x": 38,
+   "y": 82,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "The moving envelope grows with local GDD, then contracts when the compressor cancels it.",
+    "fontSize": 12,
+    "fill": "#596579"
+   }
+  },
+  {
+   "id": "pulse-compression-source",
+   "type": "pulsedlaser",
+   "x": 76,
+   "y": 220,
+   "rot": 0,
+   "label": "50 fs transform-limited",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "wavelength": 800,
+    "avgPowerW": 0.1,
+    "beamMode": "line",
+    "beamWidth": 3,
+    "repRateMHz": 80,
+    "pulsePhaseNs": 0,
+    "pulseWidthFs": 50,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "bandwidth": 5,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "showPulse": true,
+    "temporalMode": "pulsed"
+   }
+  },
+  {
+   "id": "pulse-compression-rod",
+   "type": "glassrod",
+   "x": 225,
+   "y": 220,
+   "rot": 0,
+   "label": "50 mm fused silica · +1808 fs²",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "rodlen": 50,
+    "dia": 12.7,
+    "material": "silica",
+    "ior": 1.52
+   }
+  },
+  {
+   "id": "pulse-compression-stretched-label",
+   "type": "textlabel",
+   "x": 292,
+   "y": 176,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "about 112 fs",
+    "fontSize": 13,
+    "fill": "#70479c"
+   }
+  },
+  {
+   "id": "pulse-compression-compensator",
+   "type": "pulsecompressor",
+   "x": 455,
+   "y": 220,
+   "rot": 0,
+   "label": "−1808 fs² compensation",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "gddFs2": -1808.1,
+    "aperture": 24,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "pulse-compression-restored-label",
+   "type": "textlabel",
+   "x": 505,
+   "y": 176,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "back to about 50 fs",
+    "fontSize": 13,
+    "fill": "#297258"
+   }
+  },
+  {
+   "id": "pulse-compression-detector",
+   "type": "detector",
+   "x": 680,
+   "y": 220,
+   "rot": 0,
+   "label": "net GDD ≈ 0 fs²",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "aperture": 34
+   }
+  }
+ ],
+ "beams": []
+}

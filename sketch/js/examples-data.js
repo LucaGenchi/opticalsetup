@@ -29,5 +29,11 @@ export const examples = [
     "name": "Michelson interferometer",
     "path": "../Examples/Optics%20Bench/Michelson%20interferometer.json",
     "slug": "michelson-interferometer"
+  },
+  {
+    "group": "Ultrashort Pulses",
+    "name": "Pulse stretcher and compressor",
+    "path": "../Examples/Ultrashort%20Pulses/Pulse%20stretcher%20and%20compressor.json",
+    "slug": "pulse-stretcher-and-compressor"
   }
 ];

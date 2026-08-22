@@ -38,6 +38,7 @@ figures as SVG or PNG.
   polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
   diffusers, wavefront shapers (SLM, DMD, deformable mirror) with composable
   optical functions, modulators (AOM/AOTF/EOM/chopper), mechanical pulse-delay lines,
+  a signed-GDD pulse compressor,
   nonlinear crystals (SHG, THG,
   supercontinuum, OPO), fibers with per-end output specs, detectors, a focusing
   human eye, freeform glass/prisms with straight or circular-arc sides, and free
@@ -49,7 +50,10 @@ figures as SVG or PNG.
 - **Pulsed timing**: pulsed lasers animate wavelength-colored packets along the
   traced path. Physical mode uses optical-path delay and the configured repetition
   rate; schematic mode keeps packets visible at workbench scale while detector
-  delays remain physical. Mechanical delay lines add folded optical path, while AOMs
+  delays remain physical. For transform-limited Gaussian pulses, each packet's
+  envelope length follows the GDD accumulated at its current position, so glass
+  visibly stretches it and an opposite-GDD pulse compressor shortens it again.
+  Mechanical delay lines add folded optical path, while AOMs
   support square gating or graded sinusoidal intensity modulation. Playback can be
   paused, reset, and time-scaled. A chopper gates pulse trains in time and draws
   CW light as a chunked on/off pattern matching its duty cycle (in Hz, matching a
@@ -101,11 +105,13 @@ figures as SVG or PNG.
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
 design package. It models ray paths, bounded relative power, spectral bands, Stokes
 polarization, thin-lens elements, refractive boundaries, timed pulse trains,
-second-order material GDD, and simple detector responses. Thick singlets use a 2D meridional section with spherical
+second-order material and compensator GDD, and simple detector responses. Thick singlets use a 2D meridional section with spherical
 or flat faces; they do not model skew rays, aspheres, coatings, or calibrated off-axis
 aberrations. The app does not model coherent carrier phase, interference,
-diffraction-limited propagation, higher-order pulse dispersion, input chirp beyond its
-configured state, or laboratory-specific calibration. Paraxial image markers do not account
+diffraction-limited propagation, higher-order pulse dispersion, arbitrary spectral phase,
+input chirp beyond its configured state, or laboratory-specific calibration. The pulse
+compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
+Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
 and PNG exports remain static and deterministic; GIF exports capture that illustrative
 playback rather than claiming a calibrated high-speed recording.

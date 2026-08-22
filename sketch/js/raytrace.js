@@ -1013,6 +1013,19 @@ function interact(ray, hit) {
   switch (k) {
     case 'absorb': return [];
     case 'detector': return [];
+    case 'gdd': {
+      // A zero-thickness proxy for the net second-order spectral phase of a
+      // grating/prism/chirped-mirror compressor. It does not bend the ray or
+      // model a carrier phase; it only adds signed GDD to the running total.
+      const applied = Number.isFinite(Number(data.gddFs2))
+        ? Math.min(1000000, Math.max(-1000000, Number(data.gddFs2))) : 0;
+      const efficiency = Math.min(1, Math.max(0.01, Number(data.efficiency) || 1));
+      return [{
+        d,
+        intensity: ray.intensity * efficiency,
+        gdd: (Number.isFinite(ray.gdd) ? ray.gdd : 0) + applied,
+      }];
+    }
     case 'attenuate': {
       // A specimen with no signals yet still reports what illuminates it, so
       // the inspector can offer live emission defaults the moment one is
@@ -1707,8 +1720,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
     const gdd = Number.isFinite(r.gddStart) ? r.gddStart
       : Number.isFinite(r.gdd) ? r.gdd : 0;
+    const visualizesDispersion = r.pulse?.transformLimited === true
+      && (r.pulse?.pulseShape || 'gauss') === 'gauss';
     return {
       ...r, opl, gdd, pts: [{ x: r.x, y: r.y }], opls: [opl],
+      // Sparse local-GDD events exist only for pulses whose duration the app
+      // can honestly derive. `linear` marks propagation through real glass;
+      // a lens or compressor is an instantaneous step at one optical path.
+      gddTrace: visualizesDispersion ? [{ opl, gdd, linear: false }] : null,
       segmentIntensities: [], segmentHistories: [], segmentEvents: [],
       sig: '', depth: 0, last: null,
     };
@@ -1718,8 +1737,17 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
     const ng = Math.min(3, Math.max(1, r.ior || 1));
     r.opl += length * ng;
     if (r.mediumMaterial) {
+      const oplStart = r.opl - length * ng;
+      const gddStart = r.gdd;
       const materialGVD = glassGVD(r.mediumMaterial, r.wl);
       if (Number.isFinite(materialGVD)) r.gdd += length * materialGVD;
+      if (r.gddTrace && r.gdd !== gddStart) {
+        const last = r.gddTrace.at(-1);
+        if (!last || last.opl !== oplStart || last.gdd !== gddStart) {
+          r.gddTrace.push({ opl: oplStart, gdd: gddStart, linear: false });
+        }
+        r.gddTrace.push({ opl: r.opl, gdd: r.gdd, linear: true });
+      }
     }
     r.segmentIntensities.push(r.intensity);
     r.segmentHistories.push(r.sig);
@@ -1894,12 +1922,18 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         if ('medium' in c0) r.medium = c0.medium;
         if ('mediumMaterial' in c0) r.mediumMaterial = c0.mediumMaterial;
         if ('ior' in c0) r.ior = c0.ior;
-        if ('gdd' in c0) r.gdd = c0.gdd;
+        if ('gdd' in c0) {
+          if (r.gddTrace && c0.gdd !== r.gdd) {
+            r.gddTrace.push({ opl: r.opl, gdd: c0.gdd, linear: false });
+          }
+          r.gdd = c0.gdd;
+        }
         r.last = hit.surface; r.depth++;
         continue;
       }
       for (const c of children) {
         const ox = c.origin ? c.origin.x : hit.p.x, oy = c.origin ? c.origin.y : hit.p.y;
+        const childGdd = 'gdd' in c ? c.gdd : r.gdd;
         stack.push({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
           wl: c.wl !== undefined ? c.wl : r.wl,
@@ -1921,7 +1955,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           medium: 'medium' in c ? c.medium : r.medium,
           mediumMaterial: 'mediumMaterial' in c ? c.mediumMaterial : r.mediumMaterial,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
-          gdd: 'gdd' in c ? c.gdd : r.gdd,
+          gdd: childGdd,
+          gddTrace: r.gddTrace ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
           intensity: c.intensity !== undefined ? c.intensity : r.intensity,
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
@@ -2083,6 +2118,7 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
     pulseTracks.push({
       pts: r.pts.map(p => ({ x: p.x, y: p.y })),
       opls: [...r.opls],
+      ...(r.gddTrace ? { gddTrace: r.gddTrace.map(event => ({ ...event })) } : {}),
       pulse: { ...r.pulse },
       bw: r.bw || 0,
       color: r.color || fixedColor || wavelengthToColor(r.wl),

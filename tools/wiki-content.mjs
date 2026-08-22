@@ -141,7 +141,9 @@ export const wikiEntries = [
         fs². Catalogue-glass bodies add their traced distance through the selected
         Sellmeier material; zero-thickness lenses and objectives add the clearly marked
         estimates described on their own pages. For a transform-limited Gaussian input,
-        the detector also reports the corresponding broadened duration. GDD remains the
+        the detector also reports the corresponding broadened duration, and the travelling
+        packet length follows that duration locally: it grows through glass and contracts
+        when a Pulse Compressor cancels the accumulated GDD. GDD remains the
         primary number because it is additive and meaningful even when a 150&nbsp;fs pulse
         changes too little to notice.</p>`,
       formulas: [
@@ -153,10 +155,60 @@ export const wikiEntries = [
         pre-existing chirp, third- and higher-order dispersion, self-phase modulation, and
         material absorption are not inferred. Divergence and M² are not modeled.</p>`,
     },
-    related: ['cwlaser', 'sclaser', 'objective', 'stage'],
+    related: ['cwlaser', 'sclaser', 'pulsecompressor', 'objective', 'stage'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Mode Locking', url: 'https://www.rp-photonics.com/mode_locking.html' },
       { label: 'RP Photonics Encyclopedia — Time–Bandwidth Product', url: 'https://www.rp-photonics.com/time_bandwidth_product.html' },
+    ],
+  },
+
+  {
+    type: 'pulsecompressor',
+    title: 'Pulse Compressor',
+    category: 'Pulse Timing',
+    realWorld: {
+      html: `
+        <p>An ultrashort pulse is shortest when its frequency components arrive with the
+        spectral phase required by its transform limit. Material dispersion makes those
+        components acquire different delays, producing chirp and a longer temporal
+        envelope. A pulse compressor introduces the opposite spectral-phase curvature so
+        the accumulated group-delay dispersion (GDD) approaches zero and the pulse becomes
+        shorter again.</p>
+        <p>Real compressors commonly use diffraction-grating pairs, prism pairs, chirped
+        mirrors, or combinations of them. Their geometry determines not only second-order
+        GDD but also third- and higher-order dispersion, throughput, spatial chirp, and
+        alignment sensitivity. The useful setting therefore compensates the measured
+        upstream dispersion rather than having a universally correct negative value.</p>`,
+      formulas: [
+        { tex: '\\mathrm{GDD}_{out}=\\mathrm{GDD}_{in}+\\mathrm{GDD}_{comp}', caption: 'Second-order compensation is additive; shortest duration occurs near zero net GDD for a transform-limited Gaussian input.' },
+        { tex: '\\tau_{out}=\\tau_{0}\\sqrt{1+\\left(4\\ln 2\\,\\mathrm{GDD}_{out}/\\tau_{0}^{2}\\right)^2}', caption: 'Gaussian pulse duration under the second-order-only model used by OpticalSetup.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Pulse Compressor is a straight-through, zero-thickness GDD element. Set
+        <em>Applied GDD</em> positive or negative; the value is added to every pulsed ray
+        crossing its clear aperture, while transmission efficiency applies the configured
+        loss. A negative setting compresses only when it cancels positive GDD already on
+        the path — placed before any glass, the same negative magnitude broadens a
+        transform-limited pulse instead.</p>
+        <p>For a transform-limited Gaussian source, the travelling packet overlay reads the
+        local accumulated GDD along each traced segment. Its envelope grows continuously
+        through catalogue glass and changes at the compressor, so the same pulse can be
+        watched stretching and then returning toward its input length. The true duration,
+        GDD, and stretch factor remain available numerically at a downstream detector.</p>`,
+      formulas: [],
+      limitations: `<p>This is a lumped second-order phase proxy, not a physical compressor
+        prescription. It does not trace the compressor's internal grating, prism, or
+        chirped-mirror geometry; it does not model carrier phase, third-order dispersion,
+        spatial chirp, pulse-front tilt, nonlinear phase, or an independently authored
+        input chirp. On-screen packet length is a qualitative glyph with an 8× display cap;
+        detector numbers retain the unclamped second-order result.</p>`,
+    },
+    related: ['pulsedlaser', 'glassrod', 'prism', 'detector'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Pulse Compression', url: 'https://www.rp-photonics.com/pulse_compression.html' },
+      { label: 'RP Photonics Encyclopedia — Group Delay Dispersion', url: 'https://www.rp-photonics.com/group_delay_dispersion.html' },
     ],
   },
 

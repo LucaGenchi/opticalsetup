@@ -1,6 +1,8 @@
 // Pure helpers for pulse timing and canvas-only packet visualization.
 // Optical path lengths are expressed in millimetres and time in nanoseconds.
 
+import { gaussianPulseDurationAfterGDD } from './glass.js';
+
 export const C_MM_PER_NS = 299.792458;
 
 const positiveMod = (value, modulus) => ((value % modulus) + modulus) % modulus;
@@ -190,8 +192,9 @@ function finiteTrack(track) {
     && track.opls.every(Number.isFinite);
 }
 
-// Interpolate a world-space point at an absolute optical path length.
-export function pointAtOpticalPath(track, target) {
+// Interpolate a world-space point and retain the segment coordinate for any
+// local quantities (currently GDD) that evolve along the same traced segment.
+function trackSampleAtOpticalPath(track, target) {
   if (!finiteTrack(track) || !Number.isFinite(target)) return null;
   const opls = track.opls;
   if (target < opls[0] - 1e-9 || target > opls.at(-1) + 1e-9) return null;
@@ -206,9 +209,63 @@ export function pointAtOpticalPath(track, target) {
       x: p.x + dx * t,
       y: p.y + dy * t,
       angle: Math.atan2(dy, dx) * 180 / Math.PI,
+      segmentIndex: i,
+      segmentT: t,
     };
   }
   return null;
+}
+
+// Interpolate a world-space point at an absolute optical path length.
+export function pointAtOpticalPath(track, target) {
+  const sample = trackSampleAtOpticalPath(track, target);
+  return sample ? { x: sample.x, y: sample.y, angle: sample.angle } : null;
+}
+
+// The local temporal envelope represented at one position on a traced path.
+// Only a transform-limited Gaussian has enough authored information for the
+// second-order GDD formula to determine a duration. Other pulse shapes keep
+// their configured width rather than receiving an invented chirp model.
+function pulseEnvelopeAtSample(track, sample, target) {
+  if (!sample || !track.pulse) return null;
+  const inputPulseWidthFs = Math.min(1e9, Math.max(1, track.pulse.pulseWidthFs || 100));
+  let gddFs2 = 0;
+  let previous = null;
+  for (const event of (Array.isArray(track.gddTrace) ? track.gddTrace : [])) {
+    if (!Number.isFinite(event?.opl) || !Number.isFinite(event?.gdd)) continue;
+    if (target < event.opl - 1e-9) {
+      if (previous && event.linear === true && event.opl > previous.opl) {
+        const t = Math.min(1, Math.max(0, (target - previous.opl) / (event.opl - previous.opl)));
+        gddFs2 = previous.gdd + (event.gdd - previous.gdd) * t;
+      } else if (previous) {
+        gddFs2 = previous.gdd;
+      }
+      previous = null;
+      break;
+    }
+    previous = event;
+    gddFs2 = event.gdd;
+  }
+  const canDerive = track.pulse.transformLimited === true
+    && (track.pulse.pulseShape || 'gauss') === 'gauss';
+  const derived = canDerive
+    ? gaussianPulseDurationAfterGDD(inputPulseWidthFs, gddFs2) : null;
+  const pulseWidthFs = Number.isFinite(derived) ? derived : inputPulseWidthFs;
+  const stretchFactor = pulseWidthFs / inputPulseWidthFs;
+  return {
+    gddFs2,
+    inputPulseWidthFs,
+    pulseWidthFs,
+    stretchFactor,
+    // Direct proportionality stays visually readable until packets would
+    // dominate a whole bench. The real duration and factor remain un-clamped
+    // on the marker for readback and detector reporting.
+    visualStretch: Math.min(8, Math.max(1, stretchFactor)),
+  };
+}
+
+export function pulseEnvelopeAtOpticalPath(track, target) {
+  return pulseEnvelopeAtSample(track, trackSampleAtOpticalPath(track, target), target);
 }
 
 // Packet centres visible on one traced path at the requested simulation time.
@@ -240,12 +297,10 @@ export function pulseMarkers(track, timeNs, {
 } = {}) {
   if (!finiteTrack(track) || !track.pulse || !Number.isFinite(timeNs)) return [];
   const repRateMHz = Math.min(1e6, Math.max(0.001, track.pulse.repRateMHz || 80));
-  const pulseWidthFs = Math.min(1e9, Math.max(1, track.pulse.pulseWidthFs || 100));
   const periodNs = 1000 / repRateMHz;
   const physical = mode === 'physical';
   const spacing = packetSpacing(periodNs, physical, schematicSpacingMm);
   const speed = physical ? C_MM_PER_NS : spacing / periodNs;
-  const width = physical ? C_MM_PER_NS * pulseWidthFs * 1e-6 : Math.max(2, schematicWidthMm);
   const phaseNs = Number.isFinite(track.pulse.phaseNs) ? track.pulse.phaseNs : 0;
   const phase = positiveMod((timeNs - phaseNs) * speed, spacing);
   const lo = track.opls[0], hi = track.opls.at(-1);
@@ -262,12 +317,19 @@ export function pulseMarkers(track, timeNs, {
     const activeGates = (track.pulse.gates || []).filter(gate => opl >= gate.opl);
     const transmission = pulseTransmissionAt({ ...track.pulse, gates: activeGates }, emissionTimeNs);
     if (transmission <= 0) continue;
-    const point = pointAtOpticalPath(track, opl);
-    if (point) markers.push({
-      ...point, opl, widthMm: width,
-      physicalWidthMm: C_MM_PER_NS * pulseWidthFs * 1e-6,
-      transmission,
-    });
+    const point = trackSampleAtOpticalPath(track, opl);
+    const envelope = pulseEnvelopeAtSample(track, point, opl);
+    if (point && envelope) {
+      const physicalWidthMm = C_MM_PER_NS * envelope.pulseWidthFs * 1e-6;
+      const widthMm = physical
+        ? physicalWidthMm
+        : Math.max(2, schematicWidthMm * envelope.visualStretch);
+      markers.push({
+        x: point.x, y: point.y, angle: point.angle,
+        opl, widthMm, physicalWidthMm, transmission,
+        ...envelope,
+      });
+    }
   }
   return markers;
 }

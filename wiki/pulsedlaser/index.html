@@ -108,6 +108,12 @@
             <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
           </ul>
         </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
     </nav>
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#sources">Sources</a> / Pulsed Laser</div>
@@ -183,7 +189,9 @@
         fs². Catalogue-glass bodies add their traced distance through the selected
         Sellmeier material; zero-thickness lenses and objectives add the clearly marked
         estimates described on their own pages. For a transform-limited Gaussian input,
-        the detector also reports the corresponding broadened duration. GDD remains the
+        the detector also reports the corresponding broadened duration, and the travelling
+        packet length follows that duration locally: it grows through glass and contracts
+        when a Pulse Compressor cancels the accumulated GDD. GDD remains the
         primary number because it is additive and meaningful even when a 150&nbsp;fs pulse
         changes too little to notice.</p>
         <div class="formula">
@@ -209,7 +217,7 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
       
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
-        <a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a><a href="../../wiki/sclaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#24233a" stroke="#171629" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.1" fill="#fff">SC LASER</text><g stroke="#c4b5fd" stroke-width="1.1"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="1" height="9" fill="#7c3aed"/><rect x="46.85" y="-4.5" width="1" height="9" fill="#2563eb"/><rect x="47.7" y="-4.5" width="1" height="9" fill="#10b981"/><rect x="48.55" y="-4.5" width="1" height="9" fill="#eab308"/><rect x="49.4" y="-4.5" width="1" height="9" fill="#f97316"/><rect x="50.25" y="-4.5" width="1" height="9" fill="#ef4444"/></svg>Supercontinuum laser</a><a href="../../wiki/objective/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-10 L 7,-17 L -21,-17 L -21,17 L 7,17 L 16,10 Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/><line x1="7" y1="-17" x2="7" y2="17" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-17" width="2.4" height="10.50" fill="#2f3e4d"/><rect x="-21" y="6.50" width="2.4" height="10.50" fill="#2f3e4d"/><line x1="16" y1="-10" x2="16" y2="10" stroke="#4a90c4" stroke-width="2"/></svg>Objective</a><a href="../../wiki/stage/"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -37,-8 L -37,6 L -15,6" fill="none" stroke="#4d565f" stroke-width="4"/><path d="M 37,-8 L 37,6 L 15,6" fill="none" stroke="#4d565f" stroke-width="4"/><rect x="-25" y="-3.00" width="50" height="6" fill="#c9e4f5" fill-opacity="0.75" stroke="#4a90c4" stroke-width="1.2"/></svg>Sample on piezo stage</a>
+        <a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a><a href="../../wiki/sclaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#24233a" stroke="#171629" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.1" fill="#fff">SC LASER</text><g stroke="#c4b5fd" stroke-width="1.1"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="1" height="9" fill="#7c3aed"/><rect x="46.85" y="-4.5" width="1" height="9" fill="#2563eb"/><rect x="47.7" y="-4.5" width="1" height="9" fill="#10b981"/><rect x="48.55" y="-4.5" width="1" height="9" fill="#eab308"/><rect x="49.4" y="-4.5" width="1" height="9" fill="#f97316"/><rect x="50.25" y="-4.5" width="1" height="9" fill="#ef4444"/></svg>Supercontinuum laser</a><a href="../../wiki/pulsecompressor/"><svg viewBox="-32 -32 64 64" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/><g  fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round"><path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/><path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">−GDD</text></svg>Pulse compressor</a><a href="../../wiki/objective/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-10 L 7,-17 L -21,-17 L -21,17 L 7,17 L 16,10 Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/><line x1="7" y1="-17" x2="7" y2="17" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-17" width="2.4" height="10.50" fill="#2f3e4d"/><rect x="-21" y="6.50" width="2.4" height="10.50" fill="#2f3e4d"/><line x1="16" y1="-10" x2="16" y2="10" stroke="#4a90c4" stroke-width="2"/></svg>Objective</a><a href="../../wiki/stage/"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -37,-8 L -37,6 L -15,6" fill="none" stroke="#4d565f" stroke-width="4"/><path d="M 37,-8 L 37,6 L 15,6" fill="none" stroke="#4d565f" stroke-width="4"/><rect x="-25" y="-3.00" width="50" height="6" fill="#c9e4f5" fill-opacity="0.75" stroke="#4a90c4" stroke-width="1.2"/></svg>Sample on piezo stage</a>
       </div>
 
       

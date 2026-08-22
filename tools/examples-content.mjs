@@ -116,6 +116,38 @@ export const exampleEntries = [
     related: ['bs', 'mirror', 'detector'],
   },
   {
+    match: 'Pulse stretcher and compressor',
+    title: 'Pulse stretcher and compressor',
+    tagline: 'Watch a 50 fs Gaussian pulse broaden through fused silica, then contract when a signed-GDD compressor cancels the glass dispersion.',
+    html: `
+      <p>A transform-limited ultrashort pulse contains a broad range of frequencies whose
+      phases line up to form one short temporal envelope. Fused silica has positive GVD
+      around 800&nbsp;nm, so those frequencies acquire different group delays as the pulse
+      propagates. The accumulated GDD chirps and lengthens the pulse even though its
+      geometric ray continues along the same straight path.</p>
+      <p>A compressor supplies the opposite spectral-phase curvature. When its negative
+      GDD matches the positive GDD of the glass, the net second-order dispersion returns
+      to zero and an ideal Gaussian pulse returns to its transform-limited duration.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>The example sends a 50&nbsp;fs, 800&nbsp;nm Gaussian pulse through 50&nbsp;mm of
+      fused silica, which contributes about +1808&nbsp;fs² and broadens the second-order
+      duration to about 112&nbsp;fs. The following Pulse Compressor applies −1808&nbsp;fs²,
+      returning net GDD and the detector duration to approximately zero and 50&nbsp;fs.
+      During playback, the moving packet grows inside and after the rod, then visibly
+      contracts after the compressor.</p>`,
+    limitations: `<p>The compressor is an adjustable lumped-GDD proxy. A real grating,
+      prism, or chirped-mirror compressor also has higher-order dispersion, loss, alignment
+      sensitivity, and potentially spatial chirp. The packet drawing is a qualitative
+      duration glyph capped at 8× its source length; use the detector for the unclamped
+      numerical duration and GDD.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Pulse Compression', url: 'https://www.rp-photonics.com/pulse_compression.html' },
+    ],
+    related: ['pulsedlaser', 'glassrod', 'pulsecompressor', 'detector'],
+  },
+  {
     match: 'OPTICAL SETUP — pulsed component panorama',
     title: 'OPTICAL SETUP — pulsed component panorama',
     tagline: "OpticalSetup's own flagship demo: the words \"OPTICAL SETUP\" traced entirely in live pulsed light, exercising nearly every category in the component library.",
