@@ -4,6 +4,11 @@
 // static site). The publishing workflow regenerates this file after approval.
 export const community = [
   {
+    "slug": "two-photon-lensless-endoscope-with-a-double-clad-tapered-mcf",
+    "name": "Two-photon lensless endoscope with a double-clad tapered MCF",
+    "path": "../community-submissions/issue-45.json"
+  },
+  {
     "slug": "nif-one-shot-from-master-oscillator-to-target",
     "name": "NIF — one shot from master oscillator to target",
     "path": "../community-submissions/pr-42.json"
