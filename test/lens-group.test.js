@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { thickLensCardinals } from '../sketch/js/elements.js';
+import { createElement, registry, thickLensCardinals } from '../sketch/js/elements.js';
+import { traceScene } from '../sketch/js/raytrace.js';
 import { glassIndex } from '../sketch/js/glass.js';
 import {
   AIR, DEFAULT_TABLE, LENS_GROUP_PRESETS, MAX_SURFACE_ROWS, MIN_CEMENT_GAP,
   normalizeSurfaceRow, normalizeSurfaceTable, presetRows, realizedSurfaces,
-  surfaceTableAxialColour, surfaceTableCardinals, surfaceTableSummary, surfaceTableToBodies,
+  surfaceRowsOf, surfaceTableAxialColour, surfaceTableCardinals, surfaceTableSummary,
+  surfaceTableToBodies,
 } from '../sketch/js/lensgroup.js';
 
 // An independent paraxial trace, deliberately re-derived rather than reusing
@@ -152,4 +154,88 @@ test('extreme tables produce closed geometry rather than NaN', () => {
     }
   }
   assert.ok(combos > 700, `swept ${combos} combinations`);
+});
+
+test('a group too thin for its own aperture is thickened, and the readouts follow', () => {
+  // The subtle one: widening the clear aperture forces a body to grow until
+  // its faces stop crossing at the rim, which MOVES every surface behind it.
+  // If the cardinals kept reading the prescription instead of the realized
+  // geometry, the reported focal length would quietly stop being the traced
+  // one — which is exactly what happened the first time.
+  const rows = presetRows('doublet');
+  const narrow = realizedSurfaces(rows, { diameter: 25.4 });
+  const wide = realizedSurfaces(rows, { diameter: 50.8 });
+  assert.ok(wide.surfaces.at(-1).x > narrow.surfaces.at(-1).x + 1,
+    'a 50.8 mm aperture needs materially more glass than a 25.4 mm one');
+  assert.notEqual(
+    surfaceTableCardinals(rows, 587.6, { diameter: 50.8 }).bfd,
+    surfaceTableCardinals(rows, 587.6, { diameter: 25.4 }).bfd,
+    'and the reported back focal distance has to notice',
+  );
+  // the cement gap survives the thickening
+  const gaps = [];
+  for (let i = 1; i < wide.surfaces.length; i++) {
+    if (wide.surfaces[i - 1].cementBack) gaps.push(wide.surfaces[i].x - wide.surfaces[i - 1].x);
+  }
+  assert.equal(gaps.length, 1);
+  assert.ok(Math.abs(gaps[0] - MIN_CEMENT_GAP) < 1e-9, 'thickening must not eat the cement gap');
+});
+
+test('the traced focus matches the reported back focal distance', () => {
+  // The readouts are only worth showing if the tracer agrees with them.
+  for (const id of ['singlet', 'doublet', 'airspaced']) {
+    const element = createElement('lensgroup', 300, 0);
+    element.params.preset = id;
+    const rows = surfaceRowsOf(element.params);
+    const geometry = surfaceTableToBodies(rows, { diameter: element.params.dia });
+    const predicted = 300 + geometry.vertices.at(-1)
+      + surfaceTableCardinals(rows, 587.6, { diameter: element.params.dia }).bfd;
+
+    const laser = createElement('cwlaser', 60, 0.2);
+    laser.params.beamMode = 'line';
+    laser.params.wavelength = 587.6;   // the d line the readouts quote
+    const paths = traceScene([laser, element], []).drawables.filter(d => d.type === 'path' && d.pts.length >= 2);
+    const ray = paths.reduce((a, b) => (b.pts.length > a.pts.length ? b : a));
+    const a = ray.pts.at(-2), b = ray.pts.at(-1);
+    const crossing = a.x - a.y / ((b.y - a.y) / (b.x - a.x));
+    assert.ok(Math.abs(crossing - predicted) < 0.01, `${id}: traced ${crossing} vs reported ${predicted}`);
+  }
+});
+
+test('an achromat corrects its own colour, because the geometry does it', () => {
+  // Nothing tells the doublet to be achromatic; it comes out of tracing two
+  // glasses with different dispersion through the shape that cancels them.
+  const focusAt = (id, wavelength) => {
+    const element = createElement('lensgroup', 300, 0);
+    element.params.preset = id;
+    const laser = createElement('cwlaser', 60, 0.2);
+    laser.params.beamMode = 'line';
+    laser.params.wavelength = wavelength;
+    const paths = traceScene([laser, element], []).drawables.filter(d => d.type === 'path' && d.pts.length >= 2);
+    const ray = paths.reduce((a, b) => (b.pts.length > a.pts.length ? b : a));
+    const a = ray.pts.at(-2), b = ray.pts.at(-1);
+    return a.x - a.y / ((b.y - a.y) / (b.x - a.x));
+  };
+  const colour = id => focusAt(id, 486.1) - focusAt(id, 656.3);
+  const singlet = colour('singlet'), doublet = colour('doublet');
+  assert.ok(Math.abs(singlet) > 1, 'the singlet really is uncorrected');
+  assert.ok(Math.abs(doublet) < Math.abs(singlet) / 1000, `doublet ${doublet} vs singlet ${singlet}`);
+  // and the traced colour is the one the inspector reports
+  for (const id of ['singlet', 'airspaced', 'doublet']) {
+    const predicted = surfaceTableAxialColour(presetRows(id), { diameter: 25.4 });
+    assert.ok(Math.abs(colour(id) - predicted) < 0.01, `${id}: traced ${colour(id)} vs reported ${predicted}`);
+  }
+});
+
+test('every body of a group gets its own topology key', () => {
+  // The tracer tells interactions apart by element id plus topology key, so
+  // two bodies of one element would collide on `face-0` and one of them would
+  // be treated as a repeat of the other.
+  const element = createElement('lensgroup', 0, 0);
+  element.params.preset = 'doublet';
+  const keys = registry.lensgroup.surfaces(element).map(s => s.data.topologyKey);
+  assert.equal(keys.length, 8, 'two bodies, four faces each');
+  assert.equal(new Set(keys).size, keys.length, 'and every key is distinct');
+  const glasses = new Set(registry.lensgroup.surfaces(element).map(s => s.data.material));
+  assert.deepEqual([...glasses].sort(), ['nbk7', 'nsf11'], 'each body carries its own glass');
 });

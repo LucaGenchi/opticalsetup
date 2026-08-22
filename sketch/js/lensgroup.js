@@ -45,6 +45,9 @@ export const ROW_THICKNESS_MAX = 200;
 // Positive radius curves toward +x, matching the singlet's convention.
 const sagAt = (y, R) => (R ? R - Math.sign(R) * Math.sqrt(Math.max(0, R * R - y * y)) : 0);
 
+// Least glass left at the rim before the two faces of a body would cross.
+const MIN_EDGE_THICKNESS = 0.4;
+
 export function normalizeSurfaceRow(raw = {}) {
   const r = finite(Number(raw.r)) ? Number(raw.r) : 0;
   const thickness = finite(Number(raw.thickness)) ? Number(raw.thickness) : 4;
@@ -78,55 +81,59 @@ export function normalizeSurfaceTable(value, fallback = DEFAULT_TABLE) {
 // of a coincident pair, sending the ray out into air instead of on into the
 // next glass. Expanding it here means the drawn bodies, the traced surfaces
 // and the reported cardinals all describe the same object, gap included.
-export function realizedSurfaces(rows) {
+export function realizedSurfaces(rows, { diameter = 25.4 } = {}) {
   const table = normalizeSurfaceTable(rows);
+  const h = Math.max(0.5, diameter / 2);
+  // A radius smaller than the semi-aperture has no real circular edge.
+  const clampR = R => (R === 0 ? 0 : Math.sign(R) * Math.max(Math.abs(R), h * 1.02));
   const out = [];
   let x = 0;
   for (let i = 0; i < table.length; i++) {
     const last = i === table.length - 1;
     const glassAfter = last ? AIR : table[i].glass;
-    out.push({ x, r: table[i].r, glassAfter, row: i });
+    out.push({ x, r: clampR(table[i].r), glassAfter, row: i });
     if (last) break;
     x += table[i].thickness;
     // glass continuing across the next surface means it is cemented
     const cemented = table[i].glass !== AIR
       && i + 1 < table.length - 1 && table[i + 1].glass !== AIR;
     if (cemented) {
-      out.push({ x, r: table[i + 1].r, glassAfter: AIR, row: i + 1, cementBack: true });
+      out.push({ x, r: clampR(table[i + 1].r), glassAfter: AIR, row: i + 1, cementBack: true });
       x += MIN_CEMENT_GAP;
     }
   }
-  return { table, surfaces: out };
+
+  // A body whose two faces would cross at the rim has to be thickened until a
+  // real edge remains — and everything downstream of it moves with it, or the
+  // next air gap silently absorbs the correction. Doing this HERE rather than
+  // when the outlines are built is what keeps the reported focal length equal
+  // to the traced one: both read the same vertex positions.
+  for (let i = 0; i < out.length - 1; i++) {
+    if (out[i].glassAfter === AIR) continue;
+    const edge1 = out[i].x + sagAt(h, out[i].r);
+    const edge2 = out[i + 1].x + sagAt(h, out[i + 1].r);
+    const short = MIN_EDGE_THICKNESS - (edge2 - edge1);
+    if (short > 0) for (let k = i + 1; k < out.length; k++) out[k].x += short;
+  }
+  return { table, surfaces: out, h };
 }
 
 // Closed boundaries, one per glass body, in element-local coordinates centred
 // on the group. A body runs from a surface that enters glass to the next
 // surface, so cemented neighbours end up as two bodies a cement gap apart.
 export function surfaceTableToBodies(rows, { diameter = 25.4 } = {}) {
-  const { table, surfaces } = realizedSurfaces(rows);
-  const h = Math.max(0.5, diameter / 2);
+  const { table, surfaces, h } = realizedSurfaces(rows, { diameter });
   const bodies = [];
-  const MIN_EDGE = 0.4;
-  // A radius smaller than the semi-aperture has no real circular edge.
-  const clampR = R => (R === 0 ? 0 : Math.sign(R) * Math.max(Math.abs(R), h * 1.02));
 
   for (let i = 0; i < surfaces.length - 1; i++) {
     if (surfaces[i].glassAfter === AIR) continue;
-    const R1 = clampR(surfaces[i].r), R2 = clampR(surfaces[i + 1].r);
-    const xv1 = surfaces[i].x;
-    // Faces that would cross at the rim are pushed apart until a real edge
-    // remains, exactly as the singlet does.
-    let xv2 = surfaces[i + 1].x;
-    if (xv2 + sagAt(h, R2) - (xv1 + sagAt(h, R1)) < MIN_EDGE) {
-      xv2 = xv1 + sagAt(h, R1) - sagAt(h, R2) + MIN_EDGE;
-    }
-
+    const R1 = surfaces[i].r, R2 = surfaces[i + 1].r;
+    const xv1 = surfaces[i].x, xv2 = surfaces[i + 1].x;
     const points = [{ x: xv1 + sagAt(h, R1), y: h }];
     if (R1) points.push({ x: xv1, y: 0, arc: true });
     points.push({ x: xv1 + sagAt(h, R1), y: -h }, { x: xv2 + sagAt(h, R2), y: -h });
     if (R2) points.push({ x: xv2, y: 0, arc: true });
     points.push({ x: xv2 + sagAt(h, R2), y: h });
-
     bodies.push({
       points, glass: surfaces[i].glassAfter, h, R1, R2, xv1, xv2,
       // the cement flag lives on the BACK of the previous body, which is the
@@ -158,8 +165,8 @@ export function surfaceTableToBodies(rows, { diameter = 25.4 } = {}) {
 // the reported focal length is the one the tracer will actually produce rather
 // than the one the prescription would give in an ideal world. Reported only —
 // the tracer never consults it, the same rule the singlet follows.
-export function surfaceTableCardinals(rows, wavelength = 587.6) {
-  const { surfaces } = realizedSurfaces(rows);
+export function surfaceTableCardinals(rows, wavelength = 587.6, { diameter = 25.4 } = {}) {
+  const { surfaces } = realizedSurfaces(rows, { diameter });
   let y = 1, omega = 0, n = 1;
   for (let i = 0; i < surfaces.length; i++) {
     const nNext = surfaces[i].glassAfter === AIR
@@ -176,9 +183,9 @@ export function surfaceTableCardinals(rows, wavelength = 587.6) {
 
 // Longitudinal colour across the visible F and C lines — the number an
 // achromat exists to null, so it is worth reporting next to the focal length.
-export function surfaceTableAxialColour(rows) {
-  const F = surfaceTableCardinals(rows, 486.1).bfd;
-  const C = surfaceTableCardinals(rows, 656.3).bfd;
+export function surfaceTableAxialColour(rows, { diameter = 25.4 } = {}) {
+  const F = surfaceTableCardinals(rows, 486.1, { diameter }).bfd;
+  const C = surfaceTableCardinals(rows, 656.3, { diameter }).bfd;
   return Number.isFinite(F) && Number.isFinite(C) ? F - C : Number.NaN;
 }
 
@@ -243,3 +250,18 @@ export const LENS_GROUP_PRESETS = [
 
 export const presetRows = id => (LENS_GROUP_PRESETS.find(pr => pr.id === id)?.rows ?? DEFAULT_TABLE)
   .map(row => ({ ...row }));
+
+// The rows an element is actually built from. A preset is authoritative while
+// one is selected, so choosing "Cemented achromat" always gives that
+// prescription rather than whatever was edited last; the row editor switches
+// `preset` to 'custom' and hands control to the stored table.
+export const PRESET_OPTIONS = [
+  ...LENS_GROUP_PRESETS.map(p => [p.id, p.label]),
+  ['custom', 'Custom surface table'],
+];
+
+export function surfaceRowsOf(params = {}) {
+  return params.preset && params.preset !== 'custom'
+    ? presetRows(params.preset)
+    : normalizeSurfaceTable(params.rows);
+}
