@@ -4,6 +4,11 @@
 // static site). The publishing workflow regenerates this file after approval.
 export const community = [
   {
+    "slug": "angularly-scanned-mach-zehnder-inverse-scattering-microscope",
+    "name": "Angularly scanned Mach–Zehnder inverse-scattering microscope",
+    "path": "../community-submissions/issue-62.json"
+  },
+  {
     "slug": "two-photon-lensless-endoscope-with-a-double-clad-tapered-mcf",
     "name": "Two-photon lensless endoscope with a double-clad tapered MCF",
     "path": "../community-submissions/issue-45.json"
