@@ -18,7 +18,7 @@ import {
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
 import {
-  MIN_CEMENT_GAP, MAX_SURFACE_ROWS, PRESET_OPTIONS, surfaceRowsOf, surfaceTableAxialColour,
+  MIN_CEMENT_GAP, MAX_SURFACE_ROWS, PRESET_OPTIONS, normalizeSurfaceTable, surfaceRowsOf, surfaceTableAxialColour,
   surfaceTableCardinals, surfaceTableSummary, surfaceTableToBodies,
 } from './lensgroup.js';
 
@@ -1768,14 +1768,29 @@ export const registry = {
     params: [
       { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
       // Edited by the row editor; a preset overrides it while one is selected.
-      { key: 'rows', label: 'Surface table', type: 'surfacetable', def: null, hidden: true },
+      { key: 'rows', label: 'Surface table', type: 'surfacetable', def: null },
+      // Canvas-only derived control: the purple knob edits the final radius
+      // without storing a second source of truth. Its setter materializes an
+      // active preset into a custom table on the first drag, exactly like the
+      // row editor does on its first edit.
+      {
+        key: 'lastRadius', label: 'Last surface radius (mm)', type: 'derived', hidden: true,
+        min: -2000, max: 2000, step: 1,
+        get: p => surfaceRowsOf(p).at(-1)?.r ?? 0,
+        set: (p, value) => {
+          const rows = surfaceRowsOf(p).map(row => ({ ...row }));
+          rows.at(-1).r = value;
+          p.rows = normalizeSurfaceTable(rows);
+          p.preset = 'custom';
+        },
+      },
       { key: 'dia', label: 'Clear aperture', type: 'optsize', def: 25.4 },
       { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
       {
         key: 'assembly', label: 'Assembly', type: 'readout',
         readout: p => {
           const s = surfaceTableSummary(surfaceRowsOf(p));
-          return `${s.name} · ${s.surfaces} surfaces`;
+          return `${s.name} · ${s.surfaces} surfaces${s.stops ? ` · ${s.stops} stop${s.stops === 1 ? '' : 's'}` : ''}`;
         },
       },
       {
@@ -1805,8 +1820,15 @@ export const registry = {
       const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
       // One path per body, so a cemented pair reads as two glasses in contact
       // rather than one lump, and the cement line stays visible.
-      return g.bodies.map(body =>
+      const bodies = g.bodies.map(body =>
         `<path d="${boundaryPathData(body.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`).join('');
+      const stops = g.stops.map(stop => {
+        const edge = Math.min(stop.h, stop.aperture / 2);
+        return `<g stroke="#3c4652" stroke-width="2.4" stroke-linecap="square">` +
+          `<line x1="${stop.x}" y1="${-stop.h}" x2="${stop.x}" y2="${-edge}"/>` +
+          `<line x1="${stop.x}" y1="${edge}" x2="${stop.x}" y2="${stop.h}"/></g>`;
+      }).join('');
+      return bodies + stops;
     },
     surfaces(el) {
       const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
@@ -1815,7 +1837,7 @@ export const registry = {
       // to be unique per body AND per face: the tracer uses it to tell one
       // interaction from another, and two bodies of one element would
       // otherwise collide on `face-0`.
-      return g.bodies.flatMap((body, b) => boundarySegments(body.points).map((segment, i) => ({
+      const refracting = g.bodies.flatMap((body, b) => boundarySegments(body.points).map((segment, i) => ({
         x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
         data: {
           material: body.glass, transmission,
@@ -1823,6 +1845,18 @@ export const registry = {
           ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
         },
       })));
+      const stops = g.stops.flatMap(stop => {
+        // Same 0.02 mm edge allowance as the objective pupil: a ray exactly
+        // on the configured clear diameter belongs to the opening, not the
+        // metal around it.
+        const edge = Math.min(stop.h, stop.aperture / 2 + 0.02);
+        if (stop.h <= edge + 0.01) return [];
+        return [
+          { x1: stop.x, y1: edge, x2: stop.x, y2: stop.h, kind: 'absorb', data: { topologyKey: `stop-${stop.row}-upper` } },
+          { x1: stop.x, y1: -edge, x2: stop.x, y2: -stop.h, kind: 'absorb', data: { topologyKey: `stop-${stop.row}-lower` } },
+        ];
+      });
+      return [...refracting, ...stops];
     },
     hitTest(el, localPoint, tolerance = 4) {
       const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
@@ -1830,6 +1864,10 @@ export const registry = {
         const sampled = sampleBoundary(body.points, { maxAngle: Math.PI / 90 });
         return pointInBoundary(localPoint, body.points)
           || sampled.some((a, i) => distToSegment(localPoint, a, sampled[(i + 1) % sampled.length]) <= tolerance);
+      }) || g.stops.some(stop => {
+        const edge = Math.min(stop.h, stop.aperture / 2);
+        return distToSegment(localPoint, { x: stop.x, y: -stop.h }, { x: stop.x, y: -edge }) <= tolerance
+          || distToSegment(localPoint, { x: stop.x, y: edge }, { x: stop.x, y: stop.h }) <= tolerance;
       });
     },
     containsLocal(el, localPoint) {
@@ -3284,7 +3322,7 @@ const DIRECT = {
   // Radii are the physics, so the tune knob drives R1 (and the shape
   // follows); resize sets the clear aperture, which is genuinely a size.
   thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
-  lensgroup: { resize: { y: 'dia' }, tune: { key: 'transEff', short: 'T' } },
+  lensgroup: { resize: { y: 'dia' }, tune: { key: 'lastRadius', short: 'R last' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
   // The blue handle changes the physical front opening. The purple control
   // moves the independently specified specimen focus; neither rewrites M/NA.

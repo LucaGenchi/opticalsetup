@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, registry, thickLensCardinals } from '../sketch/js/elements.js';
+import { createElement, getDirectManipulation, registry, thickLensCardinals } from '../sketch/js/elements.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { glassIndex } from '../sketch/js/glass.js';
 import {
   AIR, DEFAULT_TABLE, LENS_GROUP_PRESETS, MAX_SURFACE_ROWS, MIN_CEMENT_GAP,
-  normalizeSurfaceRow, normalizeSurfaceTable, presetRows, realizedSurfaces,
+  normalizeSurfaceRow, normalizeSurfaceTable, nullSurfaceTableAxialColour, presetRows, realizedSurfaces,
   surfaceRowsOf, surfaceTableAxialColour, surfaceTableCardinals, surfaceTableSummary,
   surfaceTableToBodies,
 } from '../sketch/js/lensgroup.js';
@@ -111,6 +111,10 @@ test('surface tables are bounded and always close into air', () => {
   assert.equal(normalizeSurfaceRow({ thickness: -5 }).thickness, 0.2, 'thickness cannot invert');
   assert.equal(normalizeSurfaceRow({ glass: 'unobtainium' }).glass, AIR, 'an unknown glass is air');
   assert.equal(normalizeSurfaceRow({}).glass, AIR);
+  assert.equal(normalizeSurfaceRow({ glass: AIR, stop: true, stopDiameter: 0.1 }).stopDiameter, 0.5,
+    'a stop keeps a finite nonzero opening');
+  assert.equal(normalizeSurfaceRow({ glass: 'nbk7', stop: true }).stop, false,
+    'an aperture stop cannot silently live inside glass');
 
   assert.deepEqual(normalizeSurfaceTable(null), DEFAULT_TABLE.map(normalizeSurfaceRow));
   assert.deepEqual(normalizeSurfaceTable([{ r: 5 }]), DEFAULT_TABLE.map(normalizeSurfaceRow),
@@ -118,6 +122,67 @@ test('surface tables are bounded and always close into air', () => {
   assert.equal(normalizeSurfaceTable(Array(40).fill({ r: 10, glass: 'nbk7' })).length, MAX_SURFACE_ROWS);
   assert.equal(normalizeSurfaceTable([{ r: 10, glass: 'nbk7' }, { r: -10, glass: 'nbk7' }]).at(-1).glass, AIR,
     'the last surface always exits into air, or the final body has no back');
+});
+
+test('an aperture-stop row clips the annulus without changing refracting power', () => {
+  const rows = presetRows('doublet');
+  rows.at(-1).stop = true;
+  rows.at(-1).stopDiameter = 12;
+  const group = createElement('lensgroup', 200, 0);
+  Object.assign(group.params, { preset: 'custom', rows, dia: 25.4 });
+  const stopSurfaces = registry.lensgroup.surfaces(group).filter(surface => surface.kind === 'absorb');
+  assert.equal(stopSurfaces.length, 2, 'the stop is two absorbing segments around one clear opening');
+  const { stops, vertices } = surfaceTableToBodies(rows, { diameter: group.params.dia });
+  assert.equal(stops.length, 1);
+  assert.ok(stops[0].x - vertices.at(-1) >= MIN_CEMENT_GAP - 1e-12,
+    'the stop is beyond the tracer self-hit epsilon instead of coincident with the refracting face');
+  assert.deepEqual(
+    surfaceTableCardinals(rows, 587.6, { diameter: group.params.dia }),
+    surfaceTableCardinals(presetRows('doublet'), 587.6, { diameter: group.params.dia }),
+    'a stop clips rays but adds no refracting power',
+  );
+
+  const laser = createElement('cwlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 24, wavelength: 587.6 });
+  const downstream = traceScene([laser, group], []).drawables
+    .filter(drawable => drawable.type === 'path')
+    .some(drawable => drawable.pts.some(point => point.x > 205));
+  assert.equal(downstream, false, 'the 24 mm beam edge is blocked by the 12 mm stop');
+
+  rows.at(-1).stopDiameter = 25.4;
+  group.params.rows = rows;
+  assert.equal(registry.lensgroup.surfaces(group).filter(surface => surface.kind === 'absorb').length, 0,
+    'a stop as wide as the clear aperture has no absorbing annulus');
+});
+
+test('one radius can be bisected to a real same-power axial-colour null', () => {
+  const rows = presetRows('doublet');
+  rows.at(-1).r = -160;
+  const before = Math.abs(surfaceTableAxialColour(rows));
+  const result = nullSurfaceTableAxialColour(rows, rows.length - 1, { diameter: 25.4 });
+  assert.equal(result.converged, true);
+  assert.ok(Math.abs(result.residual) < 1e-7, `residual ${result.residual}`);
+  assert.ok(Math.abs(result.residual) < before / 1000);
+  const f = surfaceTableCardinals(result.rows).f;
+  assert.ok(f > 0 && f < 500, `the optimizer kept finite positive power: ${f}`);
+  const repeated = nullSurfaceTableAxialColour(result.rows, result.rows.length - 1);
+  assert.equal(repeated.converged, true);
+  assert.equal(repeated.improved, false, 'repeating the action on an existing null is a no-op');
+
+  const singlet = nullSurfaceTableAxialColour(presetRows('singlet'), 1);
+  assert.equal(singlet.converged, false,
+    'collapsing a one-glass singlet toward zero power is not mislabeled as an achromat');
+});
+
+test('the lens-group tune knob edits the last radius and materializes a preset', () => {
+  const element = createElement('lensgroup', 0, 0);
+  element.params.preset = 'doublet';
+  const direct = getDirectManipulation(element);
+  assert.equal(direct.tune.key, 'lastRadius');
+  assert.equal(direct.tune.param.get(element.params), presetRows('doublet').at(-1).r);
+  direct.tune.param.set(element.params, -150);
+  assert.equal(element.params.preset, 'custom');
+  assert.equal(surfaceRowsOf(element.params).at(-1).r, -150);
 });
 
 test('the summary names the assembly it was handed', () => {

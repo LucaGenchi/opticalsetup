@@ -40,6 +40,8 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 export const ROW_RADIUS_MAX = 2000;
 export const ROW_THICKNESS_MIN = 0.2;
 export const ROW_THICKNESS_MAX = 200;
+export const ROW_STOP_DIAMETER_MIN = 0.5;
+export const ROW_STOP_DIAMETER_MAX = 500;
 
 // Sag of a spherical surface at semi-height y, measured from its vertex.
 // Positive radius curves toward +x, matching the singlet's convention.
@@ -54,10 +56,17 @@ export function normalizeSurfaceRow(raw = {}) {
   const glass = typeof raw.glass === 'string' && (raw.glass === AIR || glassIndex(raw.glass) !== null)
     ? raw.glass
     : AIR;
+  const stopDiameter = finite(Number(raw.stopDiameter)) ? Number(raw.stopDiameter) : 12;
   return {
     r: Math.abs(r) < 1e-6 ? 0 : clamp(r, -ROW_RADIUS_MAX, ROW_RADIUS_MAX),
     thickness: clamp(thickness, ROW_THICKNESS_MIN, ROW_THICKNESS_MAX),
     glass,
+    // A stop lives in air immediately after this surface. Silently carrying
+    // one into glass when a material is changed would describe an absorbing
+    // plate embedded in the lens, not an aperture stop, so normalization
+    // clears it unless the row exits into air.
+    stop: raw.stop === true && glass === AIR,
+    stopDiameter: clamp(stopDiameter, ROW_STOP_DIAMETER_MIN, ROW_STOP_DIAMETER_MAX),
   };
 }
 
@@ -115,14 +124,26 @@ export function realizedSurfaces(rows, { diameter = 25.4 } = {}) {
     const short = MIN_EDGE_THICKNESS - (edge2 - edge1);
     if (short > 0) for (let k = i + 1; k < out.length; k++) out[k].x += short;
   }
-  return { table, surfaces: out, h };
+
+  // Stops sit a tracer-safe distance into the air after their authored
+  // surface. Putting an absorbing segment exactly on a refracting face would
+  // make one of the coincident interactions disappear behind the tracer's
+  // 0.05 mm self-hit epsilon, the same failure the cement gap avoids.
+  const stops = table.flatMap((row, i) => {
+    if (!row.stop) return [];
+    const surface = out.find(candidate => candidate.row === i && candidate.cementBack !== true);
+    if (!surface) return [];
+    const aperture = Math.min(2 * h, Math.max(ROW_STOP_DIAMETER_MIN, row.stopDiameter));
+    return [{ row: i, x: surface.x + MIN_CEMENT_GAP, aperture, h }];
+  });
+  return { table, surfaces: out, stops, h };
 }
 
 // Closed boundaries, one per glass body, in element-local coordinates centred
 // on the group. A body runs from a surface that enters glass to the next
 // surface, so cemented neighbours end up as two bodies a cement gap apart.
 export function surfaceTableToBodies(rows, { diameter = 25.4 } = {}) {
-  const { table, surfaces, h } = realizedSurfaces(rows, { diameter });
+  const { table, surfaces, stops, h } = realizedSurfaces(rows, { diameter });
   const bodies = [];
 
   for (let i = 0; i < surfaces.length - 1; i++) {
@@ -151,8 +172,9 @@ export function surfaceTableToBodies(rows, { diameter = 25.4 } = {}) {
     body.xv1 += shift;
     body.xv2 += shift;
   }
+  const shiftedStops = stops.map(stop => ({ ...stop, x: stop.x + shift }));
   return {
-    bodies, table, h, shift,
+    bodies, stops: shiftedStops, table, h, shift,
     span: all.length ? Math.max(...all) - Math.min(...all) : 0,
     vertices: surfaces.map(sf => sf.x + shift),
   };
@@ -198,7 +220,109 @@ export function surfaceTableSummary(rows) {
     : elements === 2 ? (cementedPairs ? 'Cemented doublet' : 'Air-spaced doublet')
       : elements === 3 ? (cementedPairs ? 'Triplet (cemented)' : 'Triplet (air-spaced)')
         : `${elements}-element group`;
-  return { name, elements, cementedPairs, surfaces: table.length };
+  return { name, elements, cementedPairs, surfaces: table.length, stops: table.filter(row => row.stop).length };
+}
+
+// Adjust one authored radius until the F- and C-line back focal distances
+// coincide. The scan exists only to find a real sign-changing bracket;
+// convergence itself is a deterministic bisection. Both radius signs are
+// searched because a custom prescription may null on either side of flat,
+// and every candidate goes through the same aperture-aware realized geometry
+// used by drawing, tracing and inspector readouts.
+export function nullSurfaceTableAxialColour(rows, rowIndex, { diameter = 25.4, iterations = 40 } = {}) {
+  const table = normalizeSurfaceTable(rows);
+  const index = Math.trunc(Number(rowIndex));
+  if (index < 0 || index >= table.length) {
+    return { rows: table, radius: Number.NaN, residual: Number.NaN, converged: false, improved: false };
+  }
+
+  const originalRadius = table[index].r;
+  const baselineFocal = surfaceTableCardinals(table, 587.6, { diameter }).f;
+  const evaluate = radius => {
+    const candidate = table.map(row => ({ ...row }));
+    candidate[index].r = radius;
+    const focal = surfaceTableCardinals(candidate, 587.6, { diameter }).f;
+    // A one-glass singlet can make F and C coincide only by collapsing toward
+    // zero optical power. That is not an achromat, so reject roots that flip
+    // the lens or move its focal length outside a generous 5x power window.
+    if (!Number.isFinite(focal)) return Number.NaN;
+    if (Number.isFinite(baselineFocal) && baselineFocal !== 0) {
+      if (Math.sign(focal) !== Math.sign(baselineFocal)) return Number.NaN;
+      const ratio = Math.abs(focal / baselineFocal);
+      if (ratio < 0.2 || ratio > 5) return Number.NaN;
+    }
+    return surfaceTableAxialColour(candidate, { diameter });
+  };
+  const baselineValue = evaluate(originalRadius);
+  const baseline = Math.abs(baselineValue);
+  if (Number.isFinite(baselineValue) && baseline < 1e-7) {
+    return {
+      rows: table, radius: originalRadius, residual: baselineValue,
+      converged: true, improved: false,
+    };
+  }
+  const semiApertureRadius = Math.max(ROW_STOP_DIAMETER_MIN, Math.abs(Number(diameter) || 25.4) / 2 * 1.02);
+  const samplesPerSign = 160;
+  const radii = [];
+  for (let i = 0; i <= samplesPerSign; i++) {
+    const t = i / samplesPerSign;
+    const magnitude = semiApertureRadius + (ROW_RADIUS_MAX - semiApertureRadius) * t;
+    radii.push(-magnitude);
+  }
+  radii.push(0);
+  for (let i = 0; i <= samplesPerSign; i++) {
+    const t = i / samplesPerSign;
+    radii.push(semiApertureRadius + (ROW_RADIUS_MAX - semiApertureRadius) * t);
+  }
+  radii.push(originalRadius);
+  radii.sort((a, b) => a - b);
+
+  let best = { radius: originalRadius, value: evaluate(originalRadius) };
+  const consider = (radius, value) => {
+    if (!Number.isFinite(value)) return;
+    const betterResidual = !Number.isFinite(best.value) || Math.abs(value) < Math.abs(best.value) - 1e-14;
+    const sameResidual = Number.isFinite(best.value) && Math.abs(Math.abs(value) - Math.abs(best.value)) <= 1e-14;
+    if (betterResidual || (sameResidual && Math.abs(radius - originalRadius) < Math.abs(best.radius - originalRadius))) {
+      best = { radius, value };
+    }
+  };
+
+  let previous = null;
+  for (const radius of radii) {
+    const value = evaluate(radius);
+    consider(radius, value);
+    if (previous && Number.isFinite(previous.value) && Number.isFinite(value)
+      && Math.sign(previous.value) !== Math.sign(value)) {
+      let lo = previous.radius, hi = radius;
+      let flo = previous.value, fhi = value;
+      for (let i = 0; i < iterations; i++) {
+        const mid = (lo + hi) / 2;
+        const fmid = evaluate(mid);
+        consider(mid, fmid);
+        if (!Number.isFinite(fmid)) break;
+        if (Math.abs(fmid) < 1e-12) break;
+        if (Math.sign(flo) === Math.sign(fmid)) {
+          lo = mid; flo = fmid;
+        } else {
+          hi = mid; fhi = fmid;
+        }
+      }
+      consider(hi, fhi);
+    }
+    previous = { radius, value };
+  }
+
+  const residual = best.value;
+  const improved = Number.isFinite(residual) && (!Number.isFinite(baseline) || Math.abs(residual) < baseline - 1e-12);
+  const resultRows = table.map(row => ({ ...row }));
+  if (improved) resultRows[index].r = best.radius;
+  return {
+    rows: normalizeSurfaceTable(resultRows),
+    radius: improved ? best.radius : originalRadius,
+    residual: improved ? residual : evaluate(originalRadius),
+    converged: improved && Math.abs(residual) < 1e-7,
+    improved,
+  };
 }
 
 // ---------------- presets ----------------

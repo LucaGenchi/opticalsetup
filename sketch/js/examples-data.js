@@ -14,6 +14,12 @@ export const examples = [
   },
   {
     "group": "Lens Physics",
+    "name": "Singlet vs achromat — axial colour",
+    "path": "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
+    "slug": "singlet-vs-achromat-axial-colour"
+  },
+  {
+    "group": "Lens Physics",
     "name": "Spherical aberration — ideal lens vs spherical singlet",
     "path": "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",
     "slug": "spherical-aberration-ideal-lens-vs-spherical-singlet"

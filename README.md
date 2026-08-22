@@ -33,7 +33,8 @@ figures as SVG or PNG.
   supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
   laser, directional LED, broadband point source, mirrors (flat with reflectivity,
   convex/concave, true parabolic,
-  galvo), paraxial lenses, spherical thick singlets, telescopes, objectives,
+  galvo), paraxial lenses, spherical thick singlets, editable surface-table lens
+  groups (including traced crown–flint achromats), telescopes, objectives,
   dichroics, filters, beamsplitters,
   polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
   diffusers, wavefront shapers (SLM, DMD, deformable mirror) with composable
@@ -71,6 +72,7 @@ figures as SVG or PNG.
   wavelength mixture at each position. Scalar readouts use arbitrary relative
   ray-weight units rather than implying a calibrated percentage.
 - **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets
+  and multi-element surface tables with aperture stops and emergent axial colour,
   with exact circular-surface intersections and catalogue-glass dispersion,
   spectral band arithmetic at filters, Malus's law, grating equation, Cauchy
   prism dispersion, cavity round trips
@@ -101,9 +103,12 @@ figures as SVG or PNG.
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
 design package. It models ray paths, bounded relative power, spectral bands, Stokes
 polarization, thin-lens elements, refractive boundaries, timed pulse trains, and
-simple detector responses. Thick singlets use a 2D meridional section with spherical
-or flat faces; they do not model skew rays, aspheres, coatings, or calibrated off-axis
-aberrations. The app does not model coherent carrier phase, interference,
+simple detector responses. Thick singlets and lens groups use a 2D meridional section
+with spherical or flat faces; lens-group readouts follow the same aperture-aware
+realized prescription as the trace, including the tracer-safe 0.06 mm air gap used at
+nominally cemented interfaces. They do not model skew rays, aspheres, coatings, cement
+index, or calibrated off-axis aberrations. The app does not model coherent carrier
+phase, interference,
 diffraction-limited propagation, material dispersion beyond the stated simplified
 models, or laboratory-specific calibration. Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
