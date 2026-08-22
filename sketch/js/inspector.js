@@ -211,9 +211,29 @@ function measurementHTML(el) {
   const pulseTrain = rd.pulse?.mixed
     ? `${rd.pulse.sources} source trains · mixed settings`
     : rd.pulse ? `${rd.pulse.sources > 1 ? `${rd.pulse.sources} sources · ` : ''}${rd.pulse.repRateMHz.toLocaleString()} MHz · ${rd.pulse.pulseWidthFs.toLocaleString()} fs` : '';
+  const formatGdd = value => `${Math.abs(value) < 10 ? value.toFixed(1) : Math.round(value).toLocaleString()} fs²`;
+  const gddRange = rd.pulse?.gddRangeFs2;
+  const variedGdd = Array.isArray(gddRange) && gddRange.length === 2
+    && Math.abs(gddRange[1] - gddRange[0]) > 0.5;
+  const gddText = rd.pulse
+    ? (variedGdd ? `${formatGdd(gddRange[0])} to ${formatGdd(gddRange[1])}` : formatGdd(rd.pulse.gddFs2 || 0))
+    : '';
+  let stretchText = '';
+  if (rd.pulse && !rd.pulse.mixed) {
+    if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
+      const factor = rd.pulse.stretchedPulseWidthFs / rd.pulse.pulseWidthFs;
+      stretchText = factor <= 1.01
+        ? 'Negligible at this pulse duration'
+        : `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}×)`;
+    } else {
+      stretchText = 'Needs a transform-limited Gaussian input';
+    }
+  }
   const pulseRows = rd.pulse ? `
       <dt>Pulse train</dt><dd>${pulseTrain}</dd>
       ${rd.pulse.mixed ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
+      <dt>Accumulated GDD</dt><dd>${gddText}</dd>
+      ${stretchText ? `<dt>Stretched duration</dt><dd>${stretchText}</dd>` : ''}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
   const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color);
@@ -551,13 +571,18 @@ export function renderInspector() {
           sectionFields += `<div class="hint">Aim a compatible ordinary pulsed Laser at this resin sample (500–1064 nm, up to 1 W source power, 10–100 MHz, 50–400 fs) to open the dedicated lithography lab with its settings.</div>`;
         } else {
           const multiple = candidates.length > 1;
-          sectionFields += candidates.map(({ laser, numericalAperture }, index) => {
+          sectionFields += candidates.map(({ laser, numericalAperture, gddFs2, stretchedPulseWidthFs }, index) => {
             const configuredName = String(laser.label || '').trim();
             const name = configuredName || (multiple ? `Laser ${index + 1}` : 'this laser');
             const url = buildTwoPhotonHandoffUrl(laser, undefined, { numericalAperture });
-            return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>`;
+            const gdd = `${Math.abs(gddFs2) < 10 ? gddFs2.toFixed(1) : Math.round(gddFs2).toLocaleString()} fs² GDD`;
+            const duration = Number.isFinite(stretchedPulseWidthFs)
+              ? `${stretchedPulseWidthFs.toFixed(stretchedPulseWidthFs < 100 ? 1 : 0)} fs at the sample`
+              : 'broadening needs a transform-limited Gaussian input';
+            return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>` +
+              `<div class="hint">Traced centre-wavelength path: ${esc(gdd)} · ${esc(duration)}. The handoff keeps the configured source duration; confirm and apply this qualitative broadening in the lab.</div>`;
           }).join('');
-          sectionFields += `<div class="hint">Transfers wavelength, configured source power, repetition rate, pulse duration, and the traced objective NA when one compatible objective is unambiguous. Confirm specimen-plane power and pulse broadening in the destination lab; bandwidth, polarization, scan, and material settings keep that lab's defaults.</div>`;
+          sectionFields += `<div class="hint">Transfers wavelength, configured source power, repetition rate, configured pulse duration, and the traced objective NA when one compatible objective is unambiguous. Bandwidth, polarization, scan, material, and GDD settings keep that lab's defaults.</div>`;
         }
         sectionFields += `</div>`;
       };
@@ -929,7 +954,7 @@ export function applyInput(inp, rebuild = false) {
   // layer already is; otherwise the panel can describe the previous target.
   if (rebuild && sel.type === 'objective' && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion'].includes(pkey)) { renderInspector(); return; }
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion', 'material'].includes(pkey)) { renderInspector(); return; }
   // A readout is derived from the other params, so any committed edit can
   // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
   // peak power or a transform-limited bandwidth from going stale on screen.

@@ -135,13 +135,23 @@ export const wikiEntries = [
         derived readout, never entered.</p>
         <p><em>Show pulse dynamics</em> is a drawing choice only — switching it off leaves
         the beam rendered as a steady CW line while every bit of the pulse physics above
-        keeps running.</p>`,
-      formulas: [],
+        keeps running.</p>
+        <h3>Dispersion and pulse stretching</h3>
+        <p>Every pulsed detector reports accumulated group-delay dispersion (GDD) in
+        fs². Catalogue-glass bodies add their traced distance through the selected
+        Sellmeier material; zero-thickness lenses and objectives add the clearly marked
+        estimates described on their own pages. For a transform-limited Gaussian input,
+        the detector also reports the corresponding broadened duration. GDD remains the
+        primary number because it is additive and meaningful even when a 150&nbsp;fs pulse
+        changes too little to notice.</p>`,
+      formulas: [
+        { tex: '\\tau_{out}=\\tau_{in}\\sqrt{1+\\left(4\\ln 2\\,\\mathrm{GDD}/\\tau_{in}^{2}\\right)^2}', caption: 'Second-order broadening of a transform-limited Gaussian pulse.' },
+      ],
       limitations: `<p>There is no modeled gain medium, cavity, or mode-locking mechanism —
-        repetition rate, duration, and shape are configured directly. Dispersion does not
-        broaden a pulse as it propagates: the duration a source is given is the duration it
-        keeps, so a chirped pulse must be described by turning transform-limited off rather
-        than by sending a short pulse through glass. Divergence and M² are not modeled.</p>`,
+        repetition rate, duration, and shape are configured directly. The duration estimate
+        uses second-order GDD only and is shown only for a transform-limited Gaussian input;
+        pre-existing chirp, third- and higher-order dispersion, self-phase modulation, and
+        material absorption are not inferred. Divergence and M² are not modeled.</p>`,
     },
     related: ['cwlaser', 'sclaser', 'objective', 'stage'],
     resources: [
@@ -282,8 +292,11 @@ export const wikiEntries = [
         back focal point, and an object arrow really does form an inverted, magnified, or
         demagnified image at the position the lens equation predicts. What's missing is
         everything paraxial theory leaves out by construction — spherical and chromatic
-        aberration, finite lens thickness, and any behavior for rays far from the axis or
-        at large angles.</p>`,
+        aberration, finite lens geometry, and any behavior for rays far from the axis or
+        at large angles. For pulse reporting only, the lens silently assumes N-BK7 and a
+        centre thickness from spherical sag plus 2.5&nbsp;mm edge thickness. That
+        diameter-aware estimate is typically within about 10% for ordinary plano-convex
+        catalogue singlets; it does not change the traced ray geometry.</p>`,
     },
     related: ['lensc', 'thicklens', 'telescope', 'objective', 'cmirror'],
     resources: [
@@ -321,8 +334,10 @@ export const wikiEntries = [
         is the only thing that determines converging versus diverging behavior anywhere
         in OpticalSetup.</p>`,
       formulas: [],
-      limitations: `<p>Same caveats as the convex lens: exact paraxial optics with no
-        spherical or chromatic aberration, and no modeled lens thickness.</p>`,
+      limitations: `<p>Same caveats as the convex lens: exact paraxial geometry with no
+        spherical or chromatic aberration. GDD alone uses the same diameter-aware N-BK7
+        sag estimate (roughly a 10% class estimate); the assumed thickness never becomes
+        traced geometry.</p>`,
     },
     related: ['lens', 'thicklens', 'telescope', 'objective'],
     resources: [
@@ -393,16 +408,17 @@ export const wikiEntries = [
         merged.</p>`,
       formulas: [
         {
-          tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}',
-          caption: 'Two-term Cauchy approximation used for the catalogue glasses; A and B reproduce each glass\'s nd and Abbe number.',
+          tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}',
+          caption: 'Three-term Sellmeier curve used for catalogue-glass index and dispersion.',
         },
       ],
       limitations: `<p>This is a 2D meridional geometric trace with spherical or plane
         faces only. It does not model skew rays, diffraction, aspheres, full 3D off-axis
         aberrations, Fresnel/coating behavior, stress birefringence, manufacturing
-        tolerances, or a full Sellmeier dispersion curve. The two-term glass fits are
-        anchored to visible reference lines and become qualitative in the deep UV and
-        infrared; absorption bands are not modeled. Per-surface transmission is a flat
+        tolerances, temperature dependence, or absorption bands. GDD uses the analytic
+        second derivative of the selected Sellmeier curve and the actual traced distance
+        in glass; the material contribution is generally within a few percent where the
+        catalogue curve is valid. Per-surface transmission is a flat
         configured percentage applied at each face, not a Fresnel or coating calculation. Treat axial spherical and visible chromatic behavior as
         meaningful within this model and off-axis behavior as qualitative.</p>`,
     },
@@ -449,7 +465,9 @@ export const wikiEntries = [
       formulas: [],
       limitations: `<p>Same paraxial-only physics as a single lens, with no eyepiece
         field-of-view limits, eye relief, or exit-pupil modeling — just the afocal
-        geometry and magnification.</p>`,
+        geometry and magnification. Each of the two zero-thickness surfaces contributes
+        the same silent, diameter-aware N-BK7 sag estimate used by a standalone thin lens,
+        typically a roughly 10% class estimate for pulse GDD.</p>`,
     },
     related: ['lens', 'lensc', 'thicklens', 'objective'],
     resources: [
@@ -624,7 +642,11 @@ export const wikiEntries = [
         photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
         to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
         power, repetition rate, and pulse duration — see the inspector on a resin
-        sample's stage.</p>`,
+        sample's stage.</p>
+        <p>For pulse reporting, the equivalent plane silently contributes 30&nbsp;mm of
+        N-BK7. This is a class-typical GDD estimate, not a prescription: real objectives
+        can be roughly half to twice that value, and the estimate does not scale with NA,
+        magnification, immersion medium, or barrel geometry.</p>`,
       formulas: [],
       limitations: `<p>The 200&nbsp;mm reference tube length is a real, common convention
         (Nikon and Leica both design infinity objectives against 200&nbsp;mm) but not a
@@ -651,7 +673,10 @@ export const wikiEntries = [
         vignetting calculation. Dry objectives cap at NA 0.85, the practical ceiling for
         real dry designs rather than the physical <span class="w">n = 1</span> limit. The drawn meniscus does not solve wetting, contact angle, surface tension,
         volume, or gravity; it adds no refracting boundary and does not model cover glass,
-        index mismatch, focal shift, or immersion aberrations.</p>`,
+        index mismatch, focal shift, or immersion aberrations. The fixed 30&nbsp;mm
+        N-BK7 GDD equivalent can be wrong by about a factor of two for a particular
+        objective; detector readouts report the combined path total, while this page
+        identifies which part of that total is only assumed.</p>`,
     },
     related: ['lens', 'thicklens', 'telescope'],
     resources: [
@@ -686,15 +711,16 @@ export const wikiEntries = [
         reflection instead of exiting, exactly as a real prism does. For dispersion,
         broadband and supercontinuum beams are sampled at several discrete wavelengths
         across their band, and each sample refracts with its own wavelength-dependent
-        index, so the beam visibly fans into a spectrum. The prism is fixed to the N-BK7
-        catalogue model used elsewhere in the workbench.</p>`,
+        index, so the beam visibly fans into a spectrum. N-BK7, fused silica, N-SF5, and
+        N-SF11 are selectable; existing sketches still default to N-BK7. Pulsed rays add
+        GDD from their actual traced distance inside the selected glass.</p>`,
       formulas: [
-        { tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}', caption: 'The two-term Cauchy approximation used for N-BK7, fitted from its published d-line index and Abbe number.' },
+        { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The selected glass\'s published three-term Sellmeier curve.' },
       ],
-      limitations: `<p>The N-BK7 fit reproduces its d-line index and visible Abbe
-        dispersion, but it is not the manufacturer's full Sellmeier curve and becomes
-        qualitative in the deep UV and infrared. Absorption bands, coatings, and surface
-        quality are not modeled; the fixed per-face transmission is the only loss.</p>`,
+      limitations: `<p>The Sellmeier curves make refractive index and GDD accurate to a
+        few percent over their valid transparent ranges, but absorption bands,
+        temperature, coatings, and surface quality are not modeled; the fixed per-face
+        transmission is the only loss.</p>`,
     },
     related: ['grating', 'glassrod', 'freeglass', 'thicklens', 'dichroic'],
     resources: [
@@ -758,7 +784,7 @@ export const wikiEntries = [
         only in how fine that mesh is.</p>`,
       formulas: [
         { tex: 'n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2', caption: "Snell's law, applied independently at every straight or curved boundary segment — the only physics a freeform refracting surface needs." },
-        { tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}', caption: 'The optional catalogue glasses use the same two-term Cauchy approximation as the thick spherical lens.' },
+        { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The optional catalogue glasses use the same Sellmeier curves as the thick spherical lens.' },
       ],
     },
     inOpticalSetup: {
@@ -773,9 +799,10 @@ export const wikiEntries = [
         N-BK7, fused silica, N-SF5, and N-SF11. A broadband beam through a catalogue-glass
         boundary is sampled by wavelength and visibly disperses into a spectrum.</p>`,
       formulas: [],
-      limitations: `<p>The catalogue options reproduce d-line index and visible Abbe
-        dispersion with compact two-term fits, not full Sellmeier curves or absorption
-        bands; per-surface transmission is a flat configured number rather than a computed
+      limitations: `<p>The catalogue options use published Sellmeier curves, so GDD
+        follows the actual traced distance and is generally within a few percent where
+        those curves are valid. Absorption bands and temperature are not modeled;
+        per-surface transmission is a flat configured number rather than a computed
         coating or bulk loss. Circular-arc segments are true 2D arcs, but the whole element
         is still a 2D cross-section — it represents a freeform profile, not a true freeform
         3D surface. Nested or overlapping glass bodies are not surface-merged.</p>`,
@@ -877,13 +904,15 @@ export const wikiEntries = [
         same-time packet on a vacuum path by exactly the extra delay the formula above
         predicts for the configured index. The rod's fill is deliberately translucent so
         that lag is something you can actually watch happen, rather than a number hidden
-        behind an opaque block.</p>`,
+        behind an opaque block. Choose the legacy constant index or one of the four
+        catalogue Sellmeier glasses. A catalogue material also accumulates GDD from the
+        actual distance each ray travels inside the rod.</p>`,
       formulas: [],
-      limitations: `<p>The refractive index is a single flat number with no wavelength
-        dependence — unlike the <a href="../freeglass/">Freeform glass</a> element's
-        optional catalogue-based Cauchy dispersion, every color slows down by exactly the same
-        amount here, so a broadband or supercontinuum pulse crossing the rod doesn't
-        spread out in time the way real material dispersion would stretch it. There's no
+      limitations: `<p>The default remains a single constant index so every existing
+        saved rod keeps its authored behavior; that mode has no material GDD. Selecting a
+        catalogue glass enables Sellmeier refraction and path-length GDD, generally within
+        a few percent where the curve is valid, but still omits absorption, temperature,
+        coatings, and higher-order pulse effects. There's no
         cylindrical or lensing geometry either: despite the name, this is a rectangular
         slab cross-section with flat ends, not a focusing rod lens.</p>`,
     },

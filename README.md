@@ -72,8 +72,8 @@ figures as SVG or PNG.
   ray-weight units rather than implying a calibrated percentage.
 - **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets
   with exact circular-surface intersections and catalogue-glass dispersion,
-  spectral band arithmetic at filters, Malus's law, grating equation, Cauchy
-  prism dispersion, cavity round trips
+  spectral band arithmetic at filters, Malus's law, grating equation,
+  Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
   with partial mirrors, image formation with magnification (arrow / letter F / tree
   objects and their computed images).
 - **Examples menu**: pedagogical image-formation setups (telescope, microscope,
@@ -100,12 +100,12 @@ figures as SVG or PNG.
 
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
 design package. It models ray paths, bounded relative power, spectral bands, Stokes
-polarization, thin-lens elements, refractive boundaries, timed pulse trains, and
-simple detector responses. Thick singlets use a 2D meridional section with spherical
+polarization, thin-lens elements, refractive boundaries, timed pulse trains,
+second-order material GDD, and simple detector responses. Thick singlets use a 2D meridional section with spherical
 or flat faces; they do not model skew rays, aspheres, coatings, or calibrated off-axis
 aberrations. The app does not model coherent carrier phase, interference,
-diffraction-limited propagation, material dispersion beyond the stated simplified
-models, or laboratory-specific calibration. Paraxial image markers do not account
+diffraction-limited propagation, higher-order pulse dispersion, input chirp beyond its
+configured state, or laboratory-specific calibration. Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
 and PNG exports remain static and deterministic; GIF exports capture that illustrative
 playback rather than claiming a calibrated high-speed recording.
@@ -146,9 +146,9 @@ components, solve wetting or surface tension, refract rays at the liquid boundar
 model cover glass, index mismatch, focal shift, or immersion aberrations.
 
 Freeform glass is a directly editable boundary of straight segments and exact
-three-point circular arcs with constant index or selectable catalogue-glass,
-two-term Cauchy dispersion. Those fits reproduce each glass's d-line index and Abbe
-number but are only qualitative outside the visible reference lines. The model also
+three-point circular arcs with constant index or selectable catalogue-glass
+Sellmeier dispersion. Catalogue glass accumulates GDD from the actual traced distance;
+the curves do not add absorption, temperature, or coating behavior. The model also
 supports per-surface transmission (a percentage, like every other optic's transmission
 efficiency), source-inside handling, and total internal reflection. Two glass bodies
 must not be placed in contact: the tracer cannot resolve interfaces closer than
