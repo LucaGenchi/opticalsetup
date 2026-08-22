@@ -1,0 +1,572 @@
+{
+  "schema": 1,
+  "name": "Two-photon lensless endoscope with a double-clad tapered MCF",
+  "description": "Reconstructs the experimental layout in Figure 2 of Genchi et al.: a 920 nm, 180 fs, 80 MHz source drives a reflective SLM whose phase-only gratings and lenslet arrays form core-matched beamlets. A qualitative telescope train couples them through the paper's Nikon NA 0.75 objective into the tapered multi-core fiber; proximal spectral separation routes returned fluorescence to a PMT, while the paper's 20×, NA 0.45 distal calibration telescope images the fiber end on a CMOS camera. The fiber is a single schematic path annotated with the reported excitation NA 0.22 and collection NA 0.48. OpticalSetup does not simulate coherent wavefront shaping, transmission-matrix calibration, Fermat-spiral cores, taper or polymer-cladding physics, multimode fluorescence collection, two-photon excitation, diffraction/PSF, Strehl ratio, memory effect, or calibrated power. Unreported telescope dimensions and the drawn distal forward-detection branch are illustrative.",
+  "reference": "https://doi.org/10.1364/OL.550709",
+  "author": {
+    "github": "LucaGenchi",
+    "profile": "https://github.com/LucaGenchi"
+  },
+  "source": {
+    "issue": "https://github.com/LucaGenchi/optics-sketch/issues/45",
+    "submittedAt": "2026-08-18T15:04:52.000Z"
+  },
+  "sceneSha256": "4c64e55d20708a41d6e61296081361717b98e5602f87f5fc6648b2b6ca480582",
+  "scene": {
+    "app": "optics2d",
+    "version": 1,
+    "elements": [
+      {
+        "id": "ejwmt7kk",
+        "type": "pulsedlaser",
+        "x": -27,
+        "y": 25,
+        "rot": 0,
+        "label": "920 nm · 180 fs · 80 MHz",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "wavelength": 920,
+          "avgPowerW": 0.06,
+          "beamMode": "beam",
+          "beamWidth": 10,
+          "repRateMHz": 80,
+          "pulsePhaseNs": 0,
+          "pulseWidthFs": 180,
+          "transformLimited": false,
+          "pulseShape": "gauss",
+          "bandwidth": 0,
+          "pol": 0,
+          "autoColor": true,
+          "color": "#e02020",
+          "showPulse": true,
+          "temporalMode": "pulsed"
+        }
+      },
+      {
+        "id": "e7a79epl",
+        "type": "mirror",
+        "x": 95,
+        "y": 25,
+        "rot": 160,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "length": 25.4,
+          "refl": 100,
+          "showTransmitted": false
+        }
+      },
+      {
+        "id": "e24g2jsy",
+        "type": "slm",
+        "x": 42.542766412926824,
+        "y": 64.07818128993102,
+        "rot": 158,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "transmissive": false,
+          "length": 18,
+          "zeroOrder": true,
+          "zeroFrac": 0.2,
+          "layers": [
+            {
+              "type": "lensarray",
+              "n": 8,
+              "f": 100,
+              "lines": 600,
+              "orders": "1",
+              "angle": 5,
+              "div": 8
+            },
+            {
+              "type": "steer",
+              "n": 3,
+              "f": 50,
+              "lines": 600,
+              "orders": "1",
+              "angle": 4,
+              "div": 8
+            }
+          ]
+        }
+      },
+      {
+        "id": "e5pzbx29",
+        "type": "lens",
+        "x": 265,
+        "y": 60,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 100,
+          "dia": 50.8,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "em9z1cz9",
+        "type": "sample",
+        "x": 77,
+        "y": 250,
+        "rot": 0,
+        "label": "Fluorescent sample",
+        "showLabel": false,
+        "params": {
+          "aperture": 50,
+          "specimenType": "linear",
+          "channels": [],
+          "showSignalSpot": true,
+          "thickness": 6,
+          "voxelPreview": false,
+          "voxelSize": 0.6,
+          "transmitExc": true,
+          "transmission": 0.8,
+          "mode": "fluor",
+          "fluorWl": 520,
+          "carsWl": 660,
+          "signalEff": 0.1
+        }
+      },
+      {
+        "id": "esiu0jpx",
+        "type": "slit",
+        "x": 365,
+        "y": 59,
+        "rot": 0,
+        "label": "0th order block",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "gap": 7,
+          "length": 50.8
+        }
+      },
+      {
+        "id": "e5fazxar",
+        "type": "lens",
+        "x": 465,
+        "y": 60,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 100,
+          "dia": 25.4,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "eedouter",
+        "type": "mirror",
+        "x": 496,
+        "y": 58,
+        "rot": 135,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "length": 25.4,
+          "refl": 100,
+          "showTransmitted": false
+        }
+      },
+      {
+        "id": "ekmrxorj",
+        "type": "mirror",
+        "x": 496,
+        "y": 125,
+        "rot": 225,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "length": 25.4,
+          "refl": 100,
+          "showTransmitted": false
+        }
+      },
+      {
+        "id": "epl1k0ju",
+        "type": "lens",
+        "x": 300,
+        "y": 126,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 200,
+          "dia": 25.4,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "ewb2qebb",
+        "type": "objective",
+        "x": 106,
+        "y": 126,
+        "rot": 180,
+        "label": "Nikon objective · NA 0.75",
+        "showLabel": true,
+        "labelPos": "b",
+        "params": {
+          "efl": 10,
+          "workingDistance": 10,
+          "immersion": "air",
+          "immersionIndex": 1.333,
+          "na": 0.75,
+          "showAcceptance": false,
+          "transEff": 100,
+          "frontAperture": 20
+        }
+      },
+      {
+        "id": "e9dwzpvs",
+        "type": "dichroic",
+        "x": 200,
+        "y": 125,
+        "rot": 315,
+        "label": "LP900",
+        "showLabel": true,
+        "labelPos": "t",
+        "params": {
+          "dtype": "longpass",
+          "cutoff": 900,
+          "center": 550,
+          "band": 50,
+          "length": 25.4
+        }
+      },
+      {
+        "id": "ea0hm50i",
+        "type": "pmt",
+        "x": 200,
+        "y": 170,
+        "rot": 90,
+        "label": "Epi-detection",
+        "showLabel": false,
+        "params": {
+          "aperture": 26,
+          "gain": 10,
+          "saturation": 100
+        }
+      },
+      {
+        "id": "evryj9to",
+        "type": "textlabel",
+        "x": 20,
+        "y": 185,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Double-clad tapered MCF",
+          "fontSize": 14,
+          "fill": "#333333"
+        }
+      },
+      {
+        "id": "eb2kxurv",
+        "type": "objective",
+        "x": 108,
+        "y": 250,
+        "rot": 180,
+        "label": "20× calibration telescope · NA 0.45",
+        "showLabel": false,
+        "params": {
+          "efl": 10,
+          "workingDistance": 10,
+          "immersion": "air",
+          "immersionIndex": 1.333,
+          "na": 0.45,
+          "showAcceptance": false,
+          "transEff": 100,
+          "frontAperture": 20
+        }
+      },
+      {
+        "id": "eqgxjxhf",
+        "type": "lens",
+        "x": 295,
+        "y": 250,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "f": 200,
+          "dia": 25.4,
+          "transEff": 100
+        }
+      },
+      {
+        "id": "emeqkcmq",
+        "type": "dichroic",
+        "x": 200,
+        "y": 250,
+        "rot": 315,
+        "label": "LP900",
+        "showLabel": false,
+        "labelPos": "t",
+        "params": {
+          "dtype": "longpass",
+          "cutoff": 900,
+          "center": 550,
+          "band": 50,
+          "length": 25.4
+        }
+      },
+      {
+        "id": "ezubuxpt",
+        "type": "pmt",
+        "x": 200,
+        "y": 300,
+        "rot": 90,
+        "label": "Forward detection",
+        "showLabel": false,
+        "labelPos": "b",
+        "params": {
+          "aperture": 26,
+          "gain": 10,
+          "saturation": 100
+        }
+      },
+      {
+        "id": "es9yqvi2",
+        "type": "textlabel",
+        "x": 20,
+        "y": 200,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "excitation NA 0.22 · collection NA 0.48",
+          "fontSize": 12,
+          "fill": "#333333"
+        }
+      },
+      {
+        "id": "eo4f3avh",
+        "type": "camera",
+        "x": 517,
+        "y": 250,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "ch": 30,
+          "pixels": 24,
+          "rows": 12
+        }
+      },
+      {
+        "id": "e866tyn2",
+        "type": "textlabel",
+        "x": 300,
+        "y": 285,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Calibration channel · 20×, NA 0.45 · CMOS",
+          "fontSize": 10,
+          "fill": "#ff0000"
+        }
+      },
+      {
+        "id": "ezyswexp",
+        "type": "textlabel",
+        "x": 330,
+        "y": 175,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Epi-detection channel",
+          "fontSize": 14,
+          "fill": "#00c800"
+        }
+      },
+      {
+        "id": "e2ddzdiz",
+        "type": "textlabel",
+        "x": 260,
+        "y": 310,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "used for measuring the transmission matrix",
+          "fontSize": 10,
+          "fill": "#ff0000"
+        }
+      },
+      {
+        "id": "e4jju73w",
+        "type": "textlabel",
+        "x": 260,
+        "y": 328,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "of the multi-core fiber and focus at the distal end.",
+          "fontSize": 10,
+          "fill": "#ff0000"
+        }
+      },
+      {
+        "id": "e08b10s3",
+        "type": "textlabel",
+        "x": 150,
+        "y": -75,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Two-photon lensless endoscope with a double-clad tapered MCF",
+          "fontSize": 16,
+          "fill": "#333333"
+        }
+      },
+      {
+        "id": "e82sn6ed",
+        "type": "textlabel",
+        "x": 225,
+        "y": -50,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "Optics Letters Vol. 50, Issue 8, pp. 2626-2629 (2025)",
+          "fontSize": 14,
+          "fill": "#333333"
+        }
+      },
+      {
+        "id": "emjkymkv",
+        "type": "textlabel",
+        "x": 225,
+        "y": -25,
+        "rot": 0,
+        "label": "",
+        "showLabel": false,
+        "params": {
+          "text": "https://doi.org/10.1364/OL.550709",
+          "fontSize": 14,
+          "fill": "#333333"
+        }
+      }
+    ],
+    "beams": [
+      {
+        "id": "bo6hmk1u",
+        "kind": "fiber",
+        "pts": [
+          {
+            "x": 80,
+            "y": 126
+          },
+          {
+            "x": -25,
+            "y": 125
+          },
+          {
+            "x": -75,
+            "y": 200
+          },
+          {
+            "x": -25,
+            "y": 275
+          },
+          {
+            "x": 25,
+            "y": 250
+          },
+          {
+            "x": 65,
+            "y": 250
+          }
+        ],
+        "color": "#4e5050",
+        "width": 4,
+        "bare": true,
+        "propagate": true,
+        "inputNA": 0.48,
+        "groupIndex": 1.468,
+        "lossDbPerM": 0.2,
+        "out0": {
+          "mode": "diverge",
+          "na": 0.48,
+          "focal": 20,
+          "dia": 6
+        },
+        "out1": {
+          "mode": "focus",
+          "na": 0.22,
+          "focal": 10,
+          "dia": 3.5
+        }
+      },
+      {
+        "id": "bbcpa3x5",
+        "kind": "beam",
+        "pts": [
+          {
+            "x": 150,
+            "y": 225
+          },
+          {
+            "x": 150,
+            "y": 350
+          },
+          {
+            "x": 555,
+            "y": 350
+          },
+          {
+            "x": 555,
+            "y": 225
+          },
+          {
+            "x": 150,
+            "y": 225
+          }
+        ],
+        "color": "#ff0000",
+        "width": 2,
+        "dash": true,
+        "arrow": false
+      },
+      {
+        "id": "ber3wn6w",
+        "kind": "beam",
+        "pts": [
+          {
+            "x": 150,
+            "y": 90
+          },
+          {
+            "x": 150.41441471267166,
+            "y": 216.92697119975085
+          },
+          {
+            "x": 250,
+            "y": 215
+          },
+          {
+            "x": 250,
+            "y": 90
+          },
+          {
+            "x": 150,
+            "y": 90
+          }
+        ],
+        "color": "#00c800",
+        "width": 2,
+        "dash": true,
+        "arrow": false
+      }
+    ]
+  }
+}

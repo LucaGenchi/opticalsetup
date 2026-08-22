@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two-photon lensless endoscope with a double-clad tapered MCF — Community | OpticalSetup</title>
+<meta name="description" content="Reconstructs the experimental layout in Figure 2 of Genchi et al.: a 920 nm, 180 fs, 80 MHz source drives a reflective SLM whose phase-only gratings and lenslet arrays form core-matched beamlets. A qualitative telescope train couples them through the paper's Nikon NA 0.75 objective into the tapered multi-core fiber; proximal spectral separation routes returned fluorescence to a PMT, while the paper's 20×, NA 0.45 distal calibration telescope images the fiber end on a CMOS camera. The fiber is a single schematic path annotated with the reported excitation NA 0.22 and collection NA 0.48. OpticalSetup does not simulate coherent wavefront shaping, transmission-matrix calibration, Fermat-spiral cores, taper or polymer-cladding physics, multimode fluorescence collection, two-photon excitation, diffraction/PSF, Strehl ratio, memory effect, or calibrated power. Unreported telescope dimensions and the drawn distal forward-detection branch are illustrative.">
+<link rel="canonical" href="https://opticalsetup.com/community/two-photon-lensless-endoscope-with-a-double-clad-tapered-mcf/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Two-photon lensless endoscope with a double-clad tapered MCF — OpticalSetup Community">
+<meta property="og:description" content="Reconstructs the experimental layout in Figure 2 of Genchi et al.: a 920 nm, 180 fs, 80 MHz source drives a reflective SLM whose phase-only gratings and lenslet arrays form core-matched beamlets. A qualitative telescope train couples them through the paper's Nikon NA 0.75 objective into the tapered multi-core fiber; proximal spectral separation routes returned fluorescence to a PMT, while the paper's 20×, NA 0.45 distal calibration telescope images the fiber end on a CMOS camera. The fiber is a single schematic path annotated with the reported excitation NA 0.22 and collection NA 0.48. OpticalSetup does not simulate coherent wavefront shaping, transmission-matrix calibration, Fermat-spiral cores, taper or polymer-cladding physics, multimode fluorescence collection, two-photon excitation, diffraction/PSF, Strehl ratio, memory effect, or calibrated power. Unreported telescope dimensions and the drawn distal forward-detection branch are illustrative.">
+<meta property="og:url" content="https://opticalsetup.com/community/two-photon-lensless-endoscope-with-a-double-clad-tapered-mcf/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../community/assets/community.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../community/">Community</a> / Two-photon lensless endoscope with a double-clad tapered MCF</div>
+      <h1>Two-photon lensless endoscope with a double-clad tapered MCF</h1>
+      <p class="community-byline">By <a href="https://github.com/LucaGenchi" target="_blank" rel="noopener">@LucaGenchi</a> · August 18, 2026 · <a href="https://github.com/LucaGenchi/optics-sketch/issues/45" target="_blank" rel="noopener">source discussion</a></p>
+
+      <p class="tagline" style="margin-top: 18px; white-space: pre-wrap;">Reconstructs the experimental layout in Figure 2 of Genchi et al.: a 920 nm, 180 fs, 80 MHz source drives a reflective SLM whose phase-only gratings and lenslet arrays form core-matched beamlets. A qualitative telescope train couples them through the paper's Nikon NA 0.75 objective into the tapered multi-core fiber; proximal spectral separation routes returned fluorescence to a PMT, while the paper's 20×, NA 0.45 distal calibration telescope images the fiber end on a CMOS camera. The fiber is a single schematic path annotated with the reported excitation NA 0.22 and collection NA 0.48. OpticalSetup does not simulate coherent wavefront shaping, transmission-matrix calibration, Fermat-spiral cores, taper or polymer-cladding physics, multimode fluorescence collection, two-photon excitation, diffraction/PSF, Strehl ratio, memory effect, or calibrated power. Unreported telescope dimensions and the drawn distal forward-detection branch are illustrative.</p>
+      <div class="community-reference"><span class="lbl">Reference</span><a href="https://doi.org/10.1364/OL.550709" target="_blank" rel="noopener">https://doi.org/10.1364/OL.550709</a></div>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?community=two-photon-lensless-endoscope-with-a-double-clad-tapered-mcf"
+          title="Two-photon lensless endoscope with a double-clad tapered MCF — click any component to see its live specs"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click any component to see its live specs — this embedded canvas can't be moved, deleted, or added to.</p>
+      <a class="place-cta" href="../../sketch/?community=two-photon-lensless-endoscope-with-a-double-clad-tapered-mcf">Open in the full canvas →</a>
+    </main>
+  </div>
+  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/optics-sketch/issues" target="_blank" rel="noopener">GitHub issues</a> — they show how people actually use OpticalSetup, and haven't been vetted for pedagogical accuracy the way <a href="../../sketch/">Examples</a> have.</footer>
+</body>
+</html>
