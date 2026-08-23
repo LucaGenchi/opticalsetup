@@ -485,7 +485,13 @@ function renderPulseLayer() {
     }
     for (const marker of pulseMarkers(track, pulsePlayback.timeNs, { mode: pulsePlayback.mode })) {
       const physicalMin = 9 / z;
-      const width = pulsePlayback.mode === 'physical' ? Math.max(marker.widthMm, physicalMin) : marker.widthMm;
+      // Femtosecond packets are far below a screen pixel even in physical
+      // mode. The minimum glyph is therefore already schematic; scale that
+      // floor by the real duration ratio so GDD remains visible without
+      // misreporting the true c·tau length stored on the marker.
+      const width = pulsePlayback.mode === 'physical'
+        ? Math.max(marker.widthMm, physicalMin * (marker.visualStretch || 1))
+        : marker.widthMm;
       const rx = Math.max(2 / z, width / 2);
       const ry = Math.max(2.2 / z, Math.min(5 / z, 2.5 / z + 1.4 * Math.sqrt(Math.max(0, track.intensity || 0)) / z));
       const transmission = marker.transmission ?? 1;
@@ -493,7 +499,7 @@ function renderPulseLayer() {
         (0.45 + 0.45 * (track.intensity || 0)) * transmission));
       const highlightOpacity = Math.max(0.04, 0.82 * Math.sqrt(transmission));
       const packetFill = track.bw >= 200 ? 'url(#pulseSpectrum)' : track.color;
-      s += `<g transform="translate(${marker.x.toFixed(2)} ${marker.y.toFixed(2)}) rotate(${marker.angle.toFixed(2)})">` +
+      s += `<g class="pulse-marker" data-duration-fs="${marker.pulseWidthFs.toFixed(3)}" data-gdd-fs2="${marker.gddFs2.toFixed(3)}" transform="translate(${marker.x.toFixed(2)} ${marker.y.toFixed(2)}) rotate(${marker.angle.toFixed(2)})">` +
         `<ellipse rx="${(rx * 1.65).toFixed(2)}" ry="${(ry * 1.8).toFixed(2)}" fill="${packetFill}" opacity="${(opacity * 0.18).toFixed(2)}"/>` +
         `<ellipse rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="${packetFill}" opacity="${opacity.toFixed(2)}"/>` +
         `<ellipse rx="${Math.max(1 / z, rx * 0.32).toFixed(2)}" ry="${Math.max(0.8 / z, ry * 0.45).toFixed(2)}" fill="#fff" opacity="${highlightOpacity.toFixed(2)}"/>` +
