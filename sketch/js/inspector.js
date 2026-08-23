@@ -503,12 +503,26 @@ function paramField(p, sel) {
   }
   if (p.type === 'derived-select') {
     const selected = p.get(sel.params);
+    const opt = ([ov, ol, disabled]) =>
+      `<option value="${esc(ov)}" ${ov === selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`;
     const options = [...(p.options || [])];
-    if (p.customOption) options.push([...p.customOption, true]);
+    // "Custom" leads: it is the state the element falls into the moment any
+    // exact value is edited, so it reads as a starting point rather than a
+    // failure to match one of the catalogue entries.
+    let body = p.customOption ? opt([...p.customOption, true]) : '';
+    if (p.groups?.length) {
+      for (const group of p.groups) {
+        const inGroup = options.filter(([, , , g]) => g === group);
+        if (!inGroup.length) continue;
+        body += `<optgroup label="${esc(group)}">${inGroup.map(opt).join('')}</optgroup>`;
+      }
+      body += options.filter(([, , , g]) => !p.groups.includes(g)).map(opt).join('');
+    } else {
+      body += options.map(opt).join('');
+    }
     return `<label class="field preset-field"><span>${esc(p.label)}</span>`
-      + `<select data-p="${p.key}" data-derived-select="1">`
-      + options.map(([ov, ol, disabled]) => `<option value="${esc(ov)}" ${ov === selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`).join('')
-      + `</select>${p.note ? `<small>${esc(p.note)}</small>` : ''}</label>`;
+      + `<select data-p="${p.key}" data-derived-select="1">${body}</select>`
+      + `${p.note ? `<small>${esc(p.note)}</small>` : ''}</label>`;
   }
   if (p.type === 'sensor') {
     const sensors = state.elements.filter(candidate => candidate.id !== sel.id && registry[candidate.type]?.readoutKind);

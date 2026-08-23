@@ -10,6 +10,7 @@ import {
   OBJECTIVE_FRONT_X,
   OBJECTIVE_PRESETS,
   OBJECTIVE_SHOULDER_X,
+  OBJECTIVE_WD_MAX,
   applyObjectivePreset,
   objectiveAcceptanceHalfAngleDeg,
   objectiveMagnification,
@@ -56,9 +57,9 @@ test('the equivalent lens moves so EFL and working distance are both true', () =
   const objective = createElement('objective');
   let surface = registry.objective.surfaces(objective)[0];
   assert.equal(objectiveFocalLength(objective.params), 10);
-  assert.equal(objectiveWorkingDistance(objective.params), 1.2);
-  assert.ok(Math.abs(surface.x1 - 7.2) < 1e-9, 'the equivalent plane sits inside the default objective barrel');
-  assert.ok(Math.abs(surface.x1 + surface.data.f - 17.2) < 1e-9, 'collimated light focuses at front + WD');
+  assert.equal(objectiveWorkingDistance(objective.params), 1.7);
+  assert.ok(Math.abs(surface.x1 - 7.7) < 1e-9, 'the equivalent plane sits inside the default objective barrel');
+  assert.ok(Math.abs(surface.x1 + surface.data.f - 17.7) < 1e-9, 'collimated light focuses at front + WD');
 
   objective.params.workingDistance = 2;
   surface = registry.objective.surfaces(objective)[0];
@@ -123,12 +124,14 @@ test('objective starting points coordinate EFL, WD, medium, NA, and aperture', (
     const params = applyObjectivePreset(starting, preset.key);
     assert.equal(objectivePresetKey(params), preset.key);
     assert.equal(objectiveMediumIndex(params) !== null, true);
-    assert.ok(objectiveWorkingDistance(params) <= objectiveFocalLength(params));
+    // Long-working-distance designs genuinely focus beyond their own EFL, so
+    // the only bound is the catalogue ceiling.
+    assert.ok(objectiveWorkingDistance(params) <= OBJECTIVE_WD_MAX);
     assert.ok(objectiveNumericalAperture(params) > 0);
     assert.ok(objectiveFrontAperture(params) >= 1);
   }
 
-  const custom = applyObjectivePreset(starting, '40x-dry');
+  const custom = applyObjectivePreset(starting, 'dry-40x-065');
   custom.workingDistance = 0.75;
   assert.equal(objectivePresetKey(custom), 'custom', 'one exact-value edit leaves preset mode honestly');
 });
@@ -140,18 +143,26 @@ test('the inspector leads with presets and keeps exact objective values collapse
   const panel = inspectorFor(objective);
 
   assert.match(panel.innerHTML, /data-p="objectivePreset" data-derived-select="1"/);
-  assert.match(panel.innerHTML, /value="20x-dry" selected/);
+  assert.match(panel.innerHTML, /value="dry-20x-065" selected/);
+  assert.match(panel.innerHTML, /<optgroup label="Long working distance">/,
+    'presets are grouped by immersion class');
   assert.match(panel.innerHTML, /data-section="objective-advanced" >/,
     'advanced exact values should start collapsed');
   assert.doesNotMatch(panel.innerHTML, /purple knob tunes/i);
 
-  applyInput({ dataset: { p: 'objectivePreset', derivedSelect: '1' }, type: 'select-one', value: '100x-oil' }, true);
+  applyInput({ dataset: { p: 'objectivePreset', derivedSelect: '1' }, type: 'select-one', value: 'oil-100x-140' }, true);
   assert.equal(objective.params.efl, 2);
   assert.equal(objective.params.workingDistance, 0.13);
   assert.equal(objective.params.immersion, 'oil');
   assert.equal(objective.params.na, 1.4);
   assert.equal(objective.params.frontAperture, 6);
-  assert.match(panel.innerHTML, /value="100x-oil" selected/);
+  assert.match(panel.innerHTML, /value="oil-100x-140" selected/);
+
+  // A long-working-distance entry is the case the old WD <= EFL cap made
+  // impossible: 12 mm of clearance on a 2 mm focal length.
+  applyInput({ dataset: { p: 'objectivePreset', derivedSelect: '1' }, type: 'select-one', value: 'lwd-100x-050' }, true);
+  assert.equal(objective.params.efl, 2);
+  assert.equal(objective.params.workingDistance, 12);
 
   applyInput({ dataset: { p: 'workingDistance' }, type: 'number', value: '0.2' }, true);
   assert.equal(objectivePresetKey(objective.params), 'custom');
@@ -230,7 +241,7 @@ test('committing objective coordinates refreshes the derived immersion-bridge hi
   assert.match(panel.innerHTML, /data-objective-coupling-status="open"/);
 });
 
-test('editing EFL updates the reported magnification and carries WD down with it', () => {
+test('editing EFL updates the reported magnification and leaves WD alone', () => {
   const objective = createElement('objective');
   objective.params.workingDistance = 10;
   const panel = inspectorFor(objective);
@@ -242,13 +253,14 @@ test('editing EFL updates the reported magnification and carries WD down with it
   assert.equal(objective.params.workingDistance, 10, 'a longer EFL must not rewrite WD');
   assert.match(panel.innerHTML, /data-p="magnification">5\.0/, 'the reported magnification follows EFL');
 
-  // Shortening it past WD does move WD: an objective cannot focus further
-  // away than its own focal length.
+  // Shortening EFL below WD is now legitimate: a long-working-distance design
+  // puts its equivalent principal plane ahead of the front glass, which is
+  // exactly how a 100x Plan Apo NIR focuses 12 mm out on a 2 mm EFL.
   applyInput({ dataset: { p: 'efl' }, type: 'number', value: '5' }, true);
   assert.equal(objective.params.efl, 5);
-  assert.equal(objective.params.workingDistance, 5, 'WD follows EFL down to stay physical');
+  assert.equal(objective.params.workingDistance, 10, 'a shorter EFL must not rewrite WD either');
   assert.match(panel.innerHTML, /data-p="magnification">40\.0/);
-  assert.match(panel.innerHTML, /data-p="workingDistance"[^>]*value="5"/);
+  assert.match(panel.innerHTML, /data-p="workingDistance"[^>]*value="10"/);
 });
 
 test('working-distance edits move focus without changing EFL or NA', () => {
@@ -259,20 +271,33 @@ test('working-distance edits move focus without changing EFL or NA', () => {
   applyInput({ dataset: { p: 'workingDistance' }, type: 'number', value: '25' }, true);
   assert.equal(objective.params.workingDistance, 25);
   assert.equal(objective.params.efl, 40, 'WD must not rewrite EFL');
-  assert.equal(objective.params.na, 0.4);
+  assert.equal(objective.params.na, 0.65);
   const surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.x1, 1, 'lens plane = 16 + 25 - 40');
   assert.equal(surface.x1 + surface.data.f, 41, 'front boundary 16 mm + 25 mm WD');
 });
 
-test('working distance is capped at the effective focal length', () => {
+test('working distance is bounded by the catalogue ceiling, not by EFL', () => {
   const objective = createElement('objective');
   objective.params.efl = 8;
-  objective.params.workingDistance = 40;
-  assert.equal(objectiveWorkingDistance(objective.params), 8, 'WD can equal EFL but never exceed it');
-  // Which is what keeps the equivalent plane inside the barrel.
-  assert.ok(registry.objective.surfaces(objective)[0].x1 <= OBJECTIVE_FRONT_X);
+  objective.params.workingDistance = 20;
+  assert.equal(objectiveWorkingDistance(objective.params), 20,
+    'a long-working-distance design focuses well beyond its own focal length');
+  // The equivalent principal plane then sits AHEAD of the front glass, which
+  // is exactly the trick a real LWD objective uses to buy that clearance.
+  assert.ok(registry.objective.surfaces(objective)[0].x1 > OBJECTIVE_FRONT_X);
 
+  objective.params.workingDistance = 500;
+  assert.equal(objectiveWorkingDistance(objective.params), OBJECTIVE_WD_MAX, 'but the catalogue ceiling still holds');
+
+  // A legacy objective recorded WD equal to a long EFL; the ceiling must not
+  // pull it in and silently move the focus in an existing sketch.
+  const legacy = createElement('objective');
+  legacy.params.efl = 60;
+  legacy.params.workingDistance = 60;
+  assert.equal(objectiveWorkingDistance(legacy.params), 60, 'existing long-EFL sketches keep their focus');
+
+  objective.params.efl = 8;
   objective.params.workingDistance = 0.05;
   assert.equal(objectiveWorkingDistance(objective.params), 0.05, 'and supports real sub-millimetre high-NA clearances');
 });
@@ -317,10 +342,10 @@ test('malformed legacy magnification seeds compatibility geometry from its bound
   const [loadedZero, loadedHuge] = parseSketch(file([zero, huge]), registry).elements;
   // A malformed magnification is bounded first, then converted, so the
   // objective it becomes is the one the bounded value describes.
-  assert.equal(loadedZero.params.efl, 200, 'magnification 0 -> bounded to 1x -> EFL 200');
-  assert.equal(loadedZero.params.workingDistance, 200);
-  assert.equal(loadedHuge.params.efl, 1, 'magnification 10000 -> bounded to 200x -> EFL 1');
-  assert.equal(loadedHuge.params.workingDistance, 1);
+  assert.equal(loadedZero.params.efl, 60, 'magnification 0 -> bounded to 1x -> EFL 200, then to the 60 mm objective ceiling');
+  assert.equal(loadedZero.params.workingDistance, 60);
+  assert.equal(loadedHuge.params.efl, 2, 'magnification 10000 -> bounded to 200x -> EFL 1, then to the 2 mm floor');
+  assert.equal(loadedHuge.params.workingDistance, 2);
 });
 
 
@@ -450,11 +475,11 @@ test('a fresh objective is the plausible 20x dry starting point with full transm
   assert.equal(objective.params.efl, 10);
   assert.equal(objectiveMagnification(objective.params), 20);
   assert.equal(objective.params.immersion, 'air');
-  assert.equal(objective.params.na, 0.4);
+  assert.equal(objective.params.na, 0.65);
   assert.equal(objective.params.transEff, 100);
-  assert.equal(objective.params.workingDistance, 1.2);
-  assert.equal(objective.params.frontAperture, 8);
-  assert.equal(objectivePresetKey(objective.params), '20x-dry');
+  assert.equal(objective.params.workingDistance, 1.7);
+  assert.equal(objective.params.frontAperture, 10);
+  assert.equal(objectivePresetKey(objective.params), 'dry-20x-065');
 });
 
 test('an underfilled pupil reports the smaller NA the experiment actually runs at', () => {

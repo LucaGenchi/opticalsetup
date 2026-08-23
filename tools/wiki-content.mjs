@@ -677,11 +677,15 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>The normal inspector begins with coordinated generic 4×, 10×, 20×, 40×,
-        60× water, and 100× oil starting points. They are plausible first-order specs, not
-        manufacturer prescriptions; choosing one sets EFL, working distance, medium, NA,
-        and front aperture together. Exact catalogue values remain editable in the collapsed
-        <strong>Advanced parameters</strong> section.</p>
+        <p>The inspector begins with a starting point grouped by immersion class —
+        <strong>Dry</strong>, <strong>Water</strong>, <strong>Oil</strong>, and
+        <strong>Long working distance</strong> — each offering the magnification and NA
+        pairs people actually buy. They are plausible catalogue-shaped specs, not one
+        manufacturer's prescriptions; choosing one sets EFL, working distance, medium, NA,
+        and front aperture together. The labels carry NA and WD precisely because the two
+        trade off: at a fixed magnification, every step up in NA costs clearance. Exact
+        values remain editable in the collapsed <strong>Advanced parameters</strong>
+        section, and any edit there drops the selector to Custom.</p>
         <p>An objective here is set by three things you would read off a real catalogue —
         <strong>effective focal length (EFL)</strong>, <strong>working distance</strong>,
         and <strong>rated NA</strong> — plus the front aperture that controls how big the
@@ -715,11 +719,15 @@ export const wikiEntries = [
         <p>The BFP is drawn as a labelled marker next to the WD focus, and it is a traced
         conjugate rather than an annotation — put a source at it and the output really does
         come out collimated.</p>
-        <p>In this single-plane model, working distance is capped at EFL. The coordinated
-        starting points supply plausible WD values, including sub-millimetre clearances;
-        missing legacy values still fall back to EFL. The model cap keeps the equivalent
-        plane at or behind the front tip instead of allowing a traced surface to float in
-        front of the opaque barrel. Nothing is drawn at the equivalent plane —
+        <p>Working distance is <em>not</em> capped at EFL. Real long-working-distance
+        objectives focus well beyond their own focal length — a 100× Plan Apo NIR reaches
+        about 12&nbsp;mm on a 2&nbsp;mm EFL — by putting the equivalent principal plane
+        <em>ahead</em> of the front glass, and the model reproduces that: when WD exceeds
+        EFL the equivalent plane sits in front of the tip, exactly where the real one is.
+        The only bound is a catalogue ceiling of 40&nbsp;mm, or the objective's own EFL if
+        that is longer, so older sketches that recorded WD equal to a long EFL keep their
+        focus exactly where it was. Missing legacy values still fall back to EFL.
+        Nothing is drawn at the equivalent plane —
         an objective is an opaque barrel, not a visible singlet. When a short working
         distance pushes the plane behind the default rear face, only the straight rear
         section of the barrel lengthens; the tapered nose is fixed geometry.</p>
@@ -782,8 +790,10 @@ export const wikiEntries = [
 
         <h3>Controls and markers</h3>
         <p>The blue resize handle changes the front aperture. EFL is intentionally an exact
-        Advanced field rather than a free-drag canvas knob: its full 1–200&nbsp;mm expert range
-        can move the internal planes and derived barrel dramatically. Editing working distance
+        Advanced field rather than a free-drag canvas knob, and is bounded to
+        2–60&nbsp;mm: 2&nbsp;mm is a 100× objective, 60&nbsp;mm a 3.3×, and past that an
+        "objective" is simply a lens whose derived barrel and internal planes stop being
+        drawable at any usable zoom. Editing working distance
         moves the refracting plane without touching EFL or the reported magnification; raising
         EFL leaves an already-configured working distance alone, while lowering EFL past it
         carries the working distance down with it. Toggle

@@ -25,7 +25,8 @@ import {
 export { MIN_CEMENT_GAP, MAX_SURFACE_ROWS };
 import {
   OBJECTIVE_DEFAULT_PRESET, OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT,
-  OBJECTIVE_PRESETS, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
+  OBJECTIVE_PRESETS, OBJECTIVE_PRESET_GROUPS, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
+  OBJECTIVE_WD_MAX,
   applyObjectivePreset,
   objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
   objectiveBarrelHalfHeightAt, objectiveStopX,
@@ -1973,11 +1974,12 @@ export const registry = {
       {
         key: 'objectivePreset', label: 'Objective starting point', type: 'derived-select',
         def: OBJECTIVE_DEFAULT_PRESET,
-        options: OBJECTIVE_PRESETS.map(preset => [preset.key, preset.label]),
+        options: OBJECTIVE_PRESETS.map(preset => [preset.key, preset.label, false, preset.group]),
+        groups: OBJECTIVE_PRESET_GROUPS,
         customOption: ['custom', 'Custom parameters'],
         get: objectivePresetKey,
         set: (params, key) => Object.assign(params, applyObjectivePreset(params, key)),
-        note: 'Plausible generic specs, not manufacturer prescriptions. Open Advanced parameters for exact catalogue values.',
+        note: 'Plausible catalogue-shaped specs, not one manufacturer\u2019s prescriptions. Raising NA at a fixed magnification costs working distance, exactly as it does on real hardware. Open Advanced parameters for exact values.',
       },
       {
         key: 'magnification', label: 'Magnification with a 200 mm tube lens (×)', type: 'readout',
@@ -2018,12 +2020,12 @@ export const registry = {
       // EFL is the objective's real optical power and the thing the tracer
       // uses. Magnification is what it produces once the user's own tube lens
       // images it, so it is reported rather than set.
-      { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 1, max: 200, step: 0.1, def: 10, slider: false },
+      { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 2, max: 60, step: 0.1, def: 10, slider: false },
       // A real objective focuses at or inside its own focal length, so WD
       // starts equal to EFL and can only be shortened from there.
       {
         key: 'workingDistance', label: 'Working distance (mm)', type: 'number',
-        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.01, def: 1.2,
+        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.01, def: 1.7,
       },
       {
         key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
@@ -2055,7 +2057,7 @@ export const registry = {
       { key: 'showAcceptance', label: 'Show acceptance angle', type: 'checkbox', def: false },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
       {
-        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.1, def: 8,
+        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.1, def: 10,
       },
     ],
     svg(el) {
@@ -2067,17 +2069,20 @@ export const registry = {
       // so a long objective still reads as an objective.
       const shoulder = OBJECTIVE_SHOULDER_X;
       const pupilHalf = Math.min(outer - 1, Math.max(0.8, objectivePupilRadius(el.params)));
-      return `<path d="M 16,${-h} L ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer} L 16,${h} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
+      const barrel = `M 16,${-h} L ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer} L 16,${h}`;
+      // The body is filled with no outline, then every edge EXCEPT the front
+      // face is stroked. A stroked front face is 1.5 screen px wide whatever
+      // the zoom — about 1.5 mm at 100% — so it swallows the working distance
+      // of any real high-NA objective. Leaving that one edge unstroked is what
+      // makes a 0.8 mm clearance readable instead of buried in the contour.
+      return `<path d="${barrel} Z" fill="#8d98a5" stroke="none"/>` +
+        `<path d="${barrel}" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/>` +
         `<line x1="${shoulder}" y1="${-outer}" x2="${shoulder}" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
         // No lens is drawn: an objective is an opaque barrel. What IS visible
         // at the back is the iris the rated NA leaves open — the dark bars
         // are the metal a beam overfilling the pupil is lost to.
         `<rect x="${back}" y="${-outer}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>` +
-        `<rect x="${back}" y="${pupilHalf.toFixed(2)}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>` +
-        // the front tip is a boundary, not a slab of glass: a working distance
-        // shorter than a drawn thickness would otherwise look like it focused
-        // inside solid glass
-        `<line x1="16" y1="${-h}" x2="16" y2="${h}" stroke="${GLASS_S}" stroke-width="2"/>`;
+        `<rect x="${back}" y="${pupilHalf.toFixed(2)}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>`;
     },
     surfaces(el) {
       const lensX = objectiveLensPlaneX(el.params);
@@ -2959,7 +2964,7 @@ export const registry = {
     svg(el) {
       const p = el.params;
       const h = (p.aperture || 34) / 2, t = sampleThickness(p);
-      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
+      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="none"/>` +
         signalSpotSVG(el);
     },
     // Both visible specimen faces are explicit immersion contacts. They are
@@ -3010,7 +3015,7 @@ export const registry = {
       const t = sampleThickness(p);
       return `<path d="M ${-outer},-8 L ${-outer},6 L ${-windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<path d="M ${outer},-8 L ${outer},6 L ${windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
+        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="none"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
@@ -3533,7 +3538,7 @@ const ELEMENT_HELP = {
   lensgroup: 'Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
-  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance stays independent but no longer than EFL, and magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
+  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',

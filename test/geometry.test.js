@@ -130,10 +130,10 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   assert.equal(Object.hasOwn(objective.params, 'acceptanceHalfAngle'), false, 'theta is derived from NA and n');
   assert.equal(Object.hasOwn(objective.params, 'workingDistance'), true, 'WD is an independent saved objective spec');
   assert.equal(objective.params.efl, 10);
-  assert.equal(objective.params.workingDistance, 1.2);
-  assert.equal(objective.params.frontAperture, 8);
+  assert.equal(objective.params.workingDistance, 1.7);
+  assert.equal(objective.params.frontAperture, 10);
   assert.equal(objective.params.immersion, 'air');
-  assert.equal(objective.params.na, 0.4);
+  assert.equal(objective.params.na, 0.65);
   assert.equal(objective.params.showAcceptance, false, 'the NA sector is an opt-in overlay');
 
   let surface = registry.objective.surfaces(objective)[0];
@@ -141,14 +141,14 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   // produces the reported magnification instead of a decorative label.
   assert.equal(surface.data.f, 10, 'the traced plane has the objective EFL');
   assert.equal(surface.data.effectiveFocalLength, 10);
-  assert.equal(surface.data.workingDistance, 1.2);
-  assert.equal(surface.data.objectiveNA, 0.4);
+  assert.equal(surface.data.workingDistance, 1.7);
+  assert.equal(surface.data.objectiveNA, 0.65);
   assert.equal(surface.data.objectiveMediumIndex, 1);
-  assert.ok(Math.abs(surface.x1 - 7.2) < 1e-9, 'the plausible 20× preset places its equivalent plane inside the barrel');
+  assert.ok(Math.abs(surface.x1 - 7.7) < 1e-9, 'the plausible 20× preset places its equivalent plane inside the barrel');
   // Its clear aperture is the rated back pupil 2*f*NA, which is what makes
   // NA actually set the convergence angle instead of only labelling it.
-  assert.equal(surface.data.pupilRadius, 4, 'pupil radius = 10 mm * 0.40');
-  assert.ok(Math.abs((surface.y2 - surface.y1) - 8) < 0.05, 'the bore matches the rated pupil');
+  assert.equal(surface.data.pupilRadius, 6.5, 'pupil radius = 10 mm * 0.65');
+  assert.ok(Math.abs((surface.y2 - surface.y1) - 13) < 0.05, 'the bore matches the rated pupil');
 
   objective.params.na = 1.4;
   surface = registry.objective.surfaces(objective)[0];
@@ -159,7 +159,7 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.data.objectiveNA, 1.4);
   assert.equal(surface.data.pupilRadius, 14);
-  assert.equal(objectiveFrontAperture(objective.params), 8, 'the physical front opening stays independent');
+  assert.equal(objectiveFrontAperture(objective.params), 10, 'the physical front opening stays independent');
 
   objective.params.immersion = 'legacy';
   surface = registry.objective.surfaces(objective)[0];
