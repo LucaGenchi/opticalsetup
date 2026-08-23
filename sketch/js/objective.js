@@ -155,7 +155,7 @@ export const OBJECTIVE_PRESETS = Object.freeze([
     { efl: 2, workingDistance: 12, immersion: 'air', na: 0.5, frontAperture: 8 }),
 ]);
 
-export const OBJECTIVE_DEFAULT_PRESET = 'dry-20x-065';
+export const OBJECTIVE_DEFAULT_PRESET = 'dry-20x-040';
 
 const closeEnough = (a, b) => Math.abs(a - b) <= 1e-6;
 
@@ -353,7 +353,14 @@ export function objectiveBarrelHalfHeightAt(params = {}, x = OBJECTIVE_SHOULDER_
 // any real barrel, so the stop is clamped into the housing rather than left
 // blocking light in mid-air behind it.
 export function objectiveStopX(params = {}) {
-  return Math.max(objectiveBackFocalPlaneX(params), objectiveBackX(params) + 1);
+  // Clamped at BOTH ends, into the straight rear section. A long-working-
+  // distance objective puts its back focal plane ahead of the front tip, and a
+  // stop out there is not just cosmetically odd: the barrel silhouette narrows
+  // to the nose, so the blocking annulus derived from it stops covering the
+  // full bore and a wide beam leaks straight past the optic unrefracted. A
+  // real entrance pupil is inside the housing, so keep it there.
+  const seated = Math.max(objectiveBackFocalPlaneX(params), objectiveBackX(params) + 1);
+  return Math.min(seated, OBJECTIVE_SHOULDER_X);
 }
 
 // The purple acceptance sector is an explanatory overlay, off unless asked

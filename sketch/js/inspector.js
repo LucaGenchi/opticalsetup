@@ -65,7 +65,12 @@ function numberField(labelText, attrs, value, param = {}) {
   const min = Number(param.min), max = Number(param.max), step = Number(param.step);
   const negative = Boolean(param.negative);
   const displayValue = negative ? Math.abs(value) : value;
-  const limits = `min="${min}" max="${max}" step="${step}"`;
+  // htmlMin lets a field keep a model floor that is NOT on the step ladder:
+  // the browser bases stepping on the min attribute, so a 0.15 mm floor with a
+  // 0.5 mm step would walk 0.15, 0.65, 1.15. Basing the ladder at 0 gives
+  // 0.15 -> 0.5 -> 1 -> 1.5, and the model floor still clamps on commit.
+  const htmlMin = param.htmlMin ?? min;
+  const limits = `min="${htmlMin}" max="${max}" step="${step}"`;
   const negAttr = negative ? ' data-neg="1"' : '';
   if (!shouldUseSlider(param)) {
     return field(labelText, `${negative ? '<span class="negsign">−</span>' : ''}<input type="number" ${attrs}${negAttr} ${limits} value="${displayValue}">`);
@@ -85,7 +90,7 @@ function numberField(labelText, attrs, value, param = {}) {
 
 function resolvedParam(param, params) {
   const resolve = value => typeof value === 'function' ? value(params) : value;
-  return { ...param, min: resolve(param.min), max: resolve(param.max) };
+  return { ...param, min: resolve(param.min), max: resolve(param.max), htmlMin: resolve(param.htmlMin) };
 }
 
 // Standard-optic size control: the common ½″/1″/2″ picks plus a custom box.

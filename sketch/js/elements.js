@@ -1097,7 +1097,7 @@ function sampleModeParams() {
       return type === 'linear' || type === 'nonlinear';
     } },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
-    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 1, max: 20, step: 0.5, def: 6, appearance: true },
+    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
     { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
@@ -1209,7 +1209,7 @@ function stageSampleColor(params) {
 // How thick the specimen glass is DRAWN. The tracer crosses it as a thin
 // sheet whatever this says, so it is presentation only — it never changes
 // where a ray meets the specimen or what it does there.
-export const sampleThickness = p => Math.min(20, Math.max(1, p?.thickness ?? 6));
+export const sampleThickness = p => Math.min(20, Math.max(0.15, p?.thickness ?? 6));
 
 function signalSpotSVG(el) {
   const hit = el._signalHitLocal;
@@ -2025,7 +2025,7 @@ export const registry = {
       // starts equal to EFL and can only be shortened from there.
       {
         key: 'workingDistance', label: 'Working distance (mm)', type: 'number',
-        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.01, def: 1.7,
+        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.01, def: 5,
       },
       {
         key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
@@ -2045,7 +2045,7 @@ export const registry = {
       },
       {
         key: 'na', label: 'Rated numerical aperture (NA)', type: 'number', min: 0.05,
-        max: p => objectiveMaximumNA(p), step: 0.01, def: OBJECTIVE_NA_DEFAULT,
+        max: p => objectiveMaximumNA(p), step: 0.01, def: 0.4,
       },
       {
         key: 'acceptanceHalfAngle', label: 'Object-side half-angle θ', type: 'readout',
@@ -2057,7 +2057,7 @@ export const registry = {
       { key: 'showAcceptance', label: 'Show acceptance angle', type: 'checkbox', def: false },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
       {
-        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.1, def: 10,
+        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.1, def: 11,
       },
     ],
     svg(el) {
@@ -2070,13 +2070,13 @@ export const registry = {
       const shoulder = OBJECTIVE_SHOULDER_X;
       const pupilHalf = Math.min(outer - 1, Math.max(0.8, objectivePupilRadius(el.params)));
       const barrel = `M 16,${-h} L ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer} L 16,${h}`;
-      // The body is filled with no outline, then every edge EXCEPT the front
-      // face is stroked. A stroked front face is 1.5 screen px wide whatever
-      // the zoom — about 1.5 mm at 100% — so it swallows the working distance
-      // of any real high-NA objective. Leaving that one edge unstroked is what
-      // makes a 0.8 mm clearance readable instead of buried in the contour.
+      // The body is filled with no outline, and only the straight rear section
+      // is stroked. Strokes are screen-space: at 100% zoom a 1.5 px contour is
+      // 1.5 mm of world, so an outlined nose swallows the working distance of
+      // any real high-NA objective. Leaving the front face AND both tapers
+      // unstroked is what makes a sub-millimetre clearance readable.
       return `<path d="${barrel} Z" fill="#8d98a5" stroke="none"/>` +
-        `<path d="${barrel}" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/>` +
+        `<path d="M ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer}" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/>` +
         `<line x1="${shoulder}" y1="${-outer}" x2="${shoulder}" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
         // No lens is drawn: an objective is an opaque barrel. What IS visible
         // at the back is the iris the rated NA leaves open — the dark bars
@@ -2093,7 +2093,11 @@ export const registry = {
       // follows the barrel at that point so it cannot swallow light that
       // visually passes outside the housing.
       const stopX = objectiveStopX(el.params);
-      const stopOuter = objectiveBarrelHalfHeightAt(el.params, stopX);
+      // The stop is seated in the straight rear section, so its blocking
+      // annulus spans the full barrel radius. Anything inside the housing is
+      // either refracted through the pupil or absorbed by the metal; only
+      // light that genuinely passes outside the barrel goes by untouched.
+      const stopOuter = Math.max(objectiveBarrelHalfHeightAt(el.params, stopX), outer);
       // The stop starts a hair outside the rated pupil, and the clear bore
       // matches it. A beam sized to exactly fill the pupil lands its edge rays
       // right on the boundary, and without this margin the stop — which the

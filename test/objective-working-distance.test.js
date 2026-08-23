@@ -57,9 +57,9 @@ test('the equivalent lens moves so EFL and working distance are both true', () =
   const objective = createElement('objective');
   let surface = registry.objective.surfaces(objective)[0];
   assert.equal(objectiveFocalLength(objective.params), 10);
-  assert.equal(objectiveWorkingDistance(objective.params), 1.7);
-  assert.ok(Math.abs(surface.x1 - 7.7) < 1e-9, 'the equivalent plane sits inside the default objective barrel');
-  assert.ok(Math.abs(surface.x1 + surface.data.f - 17.7) < 1e-9, 'collimated light focuses at front + WD');
+  assert.equal(objectiveWorkingDistance(objective.params), 5);
+  assert.ok(Math.abs(surface.x1 - 11) < 1e-9, 'the equivalent plane sits inside the default objective barrel');
+  assert.ok(Math.abs(surface.x1 + surface.data.f - 21) < 1e-9, 'collimated light focuses at front + WD');
 
   objective.params.workingDistance = 2;
   surface = registry.objective.surfaces(objective)[0];
@@ -143,7 +143,7 @@ test('the inspector leads with presets and keeps exact objective values collapse
   const panel = inspectorFor(objective);
 
   assert.match(panel.innerHTML, /data-p="objectivePreset" data-derived-select="1"/);
-  assert.match(panel.innerHTML, /value="dry-20x-065" selected/);
+  assert.match(panel.innerHTML, /value="dry-20x-040" selected/);
   assert.match(panel.innerHTML, /<optgroup label="Long working distance">/,
     'presets are grouped by immersion class');
   assert.match(panel.innerHTML, /data-section="objective-advanced" >/,
@@ -271,7 +271,7 @@ test('working-distance edits move focus without changing EFL or NA', () => {
   applyInput({ dataset: { p: 'workingDistance' }, type: 'number', value: '25' }, true);
   assert.equal(objective.params.workingDistance, 25);
   assert.equal(objective.params.efl, 40, 'WD must not rewrite EFL');
-  assert.equal(objective.params.na, 0.65);
+  assert.equal(objective.params.na, 0.4);
   const surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.x1, 1, 'lens plane = 16 + 25 - 40');
   assert.equal(surface.x1 + surface.data.f, 41, 'front boundary 16 mm + 25 mm WD');
@@ -475,11 +475,11 @@ test('a fresh objective is the plausible 20x dry starting point with full transm
   assert.equal(objective.params.efl, 10);
   assert.equal(objectiveMagnification(objective.params), 20);
   assert.equal(objective.params.immersion, 'air');
-  assert.equal(objective.params.na, 0.65);
+  assert.equal(objective.params.na, 0.4);
   assert.equal(objective.params.transEff, 100);
-  assert.equal(objective.params.workingDistance, 1.7);
-  assert.equal(objective.params.frontAperture, 10);
-  assert.equal(objectivePresetKey(objective.params), 'dry-20x-065');
+  assert.equal(objective.params.workingDistance, 5);
+  assert.equal(objective.params.frontAperture, 11);
+  assert.equal(objectivePresetKey(objective.params), 'dry-20x-040');
 });
 
 test('an underfilled pupil reports the smaller NA the experiment actually runs at', () => {
