@@ -320,7 +320,7 @@ function orderedTargetEdges(coupling, side) {
     : { positive: segment.b, negative: segment.a };
 }
 
-// The bridge attaches to the objective's drawn front aperture and the full
+// The bridge attaches to the objective's drawn nose or clear opening and the full
 // contacted specimen/fiber face. Its exposed sides bow toward the optical
 // axis, giving the drop a legible meniscus profile without claiming a solved
 // capillary surface.
@@ -368,7 +368,7 @@ function meniscusGeometry(coupling) {
   };
 }
 
-// The original Objective keeps its compact sector at the specimen contact.
+// The infinity-corrected objective keeps its compact sector at the specimen contact.
 function acceptanceGeometryV1(objective, anchor, frame, meniscus = null) {
   const params = objective?.params || {};
   if (!objectiveV1.objectiveShowsAcceptance(params)) return null;
@@ -406,7 +406,7 @@ function acceptanceGeometryV1(objective, anchor, frame, meniscus = null) {
   };
 }
 
-// Objective V2's optional guide is the actual accepted cone: two marginal lines from the
+// The ideal focusing objective's optional guide is the actual accepted cone: two marginal lines from the
 // fixed ideal plane to its nominal focus. It deliberately ignores a displaced
 // immersion contact; moving a sample cannot move the objective's focal plane.
 function acceptanceGeometryV2(objective, frame) {
@@ -477,7 +477,7 @@ export function immersionLayerSVG(elements = [], beams = [], { baseElements = el
         `<line class="objective-na-marginal" x1="${fmt(acceptance.negative.x)}" y1="${fmt(acceptance.negative.y)}" ` +
         `x2="${fmt(acceptance.focus.x)}" y2="${fmt(acceptance.focus.y)}" stroke="#51409a" ` +
         `stroke-opacity="0.95" stroke-width="0.9" stroke-dasharray="2 1.5"/>` +
-        `<title>Effective NA ${acceptance.numericalAperture.toFixed(3)}; marginal rays meet at the nominal focus</title></g>`;
+        `<title>Aperture-limited NA ${acceptance.numericalAperture.toFixed(3)}; marginal rays meet at the nominal focus</title></g>`;
     } else {
       const anchor = coupling
         ? coupling.contact

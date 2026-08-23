@@ -53,8 +53,9 @@ export function specimenIncidentBeams(elementId) {
   return specimenIncident.get(elementId) || [];
 }
 
-// Legacy Objective reports how broadly the incoming beam fills its modeled
-// back pupil. Objective V2 has no back-pupil model and therefore never writes
+// The infinity-corrected objective reports how broadly the incoming beam fills
+// its modeled back pupil. The ideal focusing objective has no back-pupil model
+// and therefore never writes
 // these fields.
 let objectivePupilHits = new Map();
 
@@ -1851,7 +1852,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             na: Number.isFinite(hit.surface.data.objectiveNA) ? hit.surface.data.objectiveNA : null,
           }];
         }
-        // Only the legacy Objective surfaces declare a modeled pupil span.
+        // Only the infinity-corrected objective surfaces declare a modeled pupil span.
         const span = hit.surface.data.pupilSpan;
         if (Array.isArray(span) && Number.isFinite(hit.u)) {
           recordObjectivePupil(

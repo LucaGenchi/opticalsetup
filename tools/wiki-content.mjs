@@ -620,7 +620,7 @@ export const wikiEntries = [
 
   {
     type: 'objective',
-    title: 'Objective',
+    title: 'Infinity-corrected objective',
     category: 'Lenses',
     realWorld: {
       html: `
@@ -682,14 +682,15 @@ export const wikiEntries = [
         <strong>Long working distance</strong> — each offering the magnification and NA
         pairs people actually buy. They are plausible catalogue-shaped specs, not one
         manufacturer's prescriptions; choosing one sets EFL, working distance, medium, NA,
-        and front aperture together. The labels carry NA and WD precisely because the two
+        and drawn nose opening together. The labels carry NA and WD precisely because the two
         trade off: at a fixed magnification, every step up in NA costs clearance. Exact
         values remain editable in the collapsed <strong>Advanced parameters</strong>
         section, and any edit there drops the selector to Custom.</p>
         <p>An objective here is set by three things you would read off a real catalogue —
         <strong>effective focal length (EFL)</strong>, <strong>working distance</strong>,
-        and <strong>rated NA</strong> — plus the front aperture that controls how big the
-        nose is drawn. EFL is the focal length of the whole multi-element assembly treated
+        and <strong>rated NA</strong> — plus the drawn nose opening that controls how big the
+        housing and schematic immersion bridge appear without changing the traced pupil.
+        EFL is the focal length of the whole multi-element assembly treated
         as one equivalent lens, which is what "focal length" means on an objective; the
         inspector label spells that out. Magnification is not something you type in. It is <em>reported</em> from the EFL against a 200&nbsp;mm reference
         tube lens, because magnification belongs to the objective plus whichever tube lens
@@ -781,7 +782,7 @@ export const wikiEntries = [
         from the authored geometry, so a scanning stage carries the same relationship while
         it remains aligned and in range, then disconnects instead of making the objective
         jump between nearby samples.</p>
-        <p>The bridge spans the objective's complete front aperture and the contacted
+        <p>The bridge spans the objective's complete drawn nose opening and the contacted
         specimen or fiber face. Two cubic Bézier curves bow inward between those edges to
         make a legible meniscus in the canvas and in SVG, PNG, and GIF output. This is an
         authored schematic, not a capillary-surface calculation. If no contact is available,
@@ -789,7 +790,8 @@ export const wikiEntries = [
         explicitly unresolved until one is chosen.</p>
 
         <h3>Controls and markers</h3>
-        <p>The blue resize handle changes the front aperture. EFL is intentionally an exact
+        <p>The blue resize handle changes the drawn nose opening, not the modeled back pupil.
+        EFL is intentionally an exact
         Advanced field rather than a free-drag canvas knob, and is bounded to
         2–60&nbsp;mm: 2&nbsp;mm is a 100× objective, 60&nbsp;mm a 3.3×, and past that an
         "objective" is simply a lens whose derived barrel and internal planes stop being
@@ -817,11 +819,12 @@ export const wikiEntries = [
         standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
         reference length is used only for effective-focal-length metadata and the
         first-order pupil estimate; it does not define the trace boundary or focus map.
-        Working distance is a saved property bounded by EFL in this model, not a value
-        predicted by magnification, NA, or immersion medium: a real catalogue pairs them
-        through the internal design and can include long-working-distance prescriptions that
-        violate this simplified cap. The supplied high-power starting points do retain
-        plausible sub-millimetre clearances. The equivalent lens plane and the
+        Working distance is a saved property independent of EFL, magnification, NA, and
+        immersion medium. Real catalogues pair those values through the internal design;
+        long-working-distance prescriptions can place the equivalent principal plane
+        virtually ahead of the front glass, which this first-order model permits. The
+        supplied high-power starting points retain plausible sub-millimetre clearances.
+        The equivalent lens plane and the
         back focal plane it defines are first-order stand-ins for a compound objective's
         principal plane and pupil, not the real internal conjugates: one plane cannot
         reproduce a real objective's aberration correction, field curvature, or the axial
@@ -850,7 +853,7 @@ export const wikiEntries = [
 
   {
     type: 'objectivev2',
-    title: 'Objective V2',
+    title: 'Ideal focusing objective',
     category: 'Lenses',
     realWorld: {
       html: `
@@ -900,15 +903,17 @@ export const wikiEntries = [
         the label implies — which is why laser-scanning systems deliberately
         <strong>overfill</strong> the back aperture, accepting the power clipped off at the
         rim in exchange for the full aperture and the tightest spot the objective can make.
-        Working distance, meanwhile, is a separate catalogue dimension bounded by the focal
-        length: the specimen plane sits one focal length from the principal plane, and the
-        glass between the front element and the sample takes up the difference, so working
-        distance is always shorter than EFL.</p>`,
+        Working distance, meanwhile, is a separate catalogue dimension rather than a value
+        predicted by magnification or NA. Long-working-distance designs can place an
+        equivalent principal plane virtually ahead of the front glass, so working distance
+        can exceed EFL.</p>`,
     },
     inOpticalSetup: {
       html: `
-        <p><strong>Objective V2</strong> is the simpler alternative users can choose alongside the original Objective. It deliberately uses a simpler objective than a real compound
-        prescription: one ideal, bidirectional plane fixed at the physical front tip. The
+        <p>The <strong>Ideal focusing objective</strong> is the simpler alternative users
+        can choose alongside the Infinity-corrected objective. It deliberately uses a
+        simpler model than a real compound prescription: one ideal, bidirectional plane
+        fixed at the physical front tip. The
         editable <strong>focus distance</strong> is also that plane's focal distance.
         Collimated light entering from the rear therefore meets exactly at the marked
         sample-side focus, and a point source placed at that focus leaves the rear side
@@ -926,7 +931,7 @@ export const wikiEntries = [
         <h3>One cone from NA, medium, aperture, and focus</h3>
         <p>The selected medium and rated NA request an object-side half-angle. The clear
         aperture can limit that request, so the tracer computes one accepted radius and one
-        effective NA. The lens span, angular rejection, inspector readout, exported guide,
+        aperture-limited NA. The lens span, angular rejection, inspector readout, exported guide,
         and Two-Photon Lab handoff all use those same values.</p>
         <p><strong>Show NA guide</strong> draws exactly two dashed marginal lines from the
         accepted opening at the fixed front plane to the nominal focus. It is geometry, not
@@ -946,7 +951,7 @@ export const wikiEntries = [
         from the authored geometry, so a scanning stage carries the same relationship while
         it remains aligned and in range, then disconnects instead of making the objective
         jump between nearby samples.</p>
-        <p>The bridge spans the objective's complete front aperture and the contacted
+        <p>The bridge spans the objective's complete clear aperture and the contacted
         specimen or fiber face. Two cubic Bézier curves bow inward between those edges to
         make a legible meniscus in the canvas and in SVG, PNG, and GIF output. This is an
         authored schematic, not a capillary-surface calculation. If no contact is available,
@@ -958,7 +963,7 @@ export const wikiEntries = [
         focal points" (the <span class="w">ƒ</span> button) or select the objective to see
         the symmetric rear and sample-side focus markers.</p>
         <p>When this objective sits between a pulsed laser and an illuminated
-        photocurable-resin sample, the <em>effective</em> traced NA can be handed off to the
+        photocurable-resin sample, the aperture-limited traced NA can be handed off to the
         dedicated Two-Photon Lithography Lab alongside the laser settings.</p>
         <p>For pulse reporting, the ideal plane silently contributes 30&nbsp;mm of
         N-BK7. This is a class-typical GDD estimate, not a prescription: real objectives
@@ -967,7 +972,7 @@ export const wikiEntries = [
       formulas: [
         { tex: '\\theta_r = \\arcsin(\\mathrm{NA}_r/n)', caption: 'The medium-qualified half-angle requested by the rated NA.' },
         { tex: 'r_{\\text{accepted}} = \\min(D_{\\text{clear}}/2,\\; \\mathrm{WD}\\tan\\theta_r)', caption: 'The one opening radius used by the drawing and trace.' },
-        { tex: '\\mathrm{NA}_{\\text{eff}} = n\\sin(\\arctan(r_{\\text{accepted}}/\\mathrm{WD}))', caption: 'The NA actually available after clear-aperture limiting.' },
+        { tex: '\\mathrm{NA}_{\\text{aperture}} = n\\sin(\\arctan(r_{\\text{accepted}}/\\mathrm{WD}))', caption: 'The maximum NA available after clear-aperture limiting.' },
       ],
       limitations: `<p>This is a coherent first-order teaching model, not a prescription
         for a compound infinity objective. It does not model manufacturer tube lengths,

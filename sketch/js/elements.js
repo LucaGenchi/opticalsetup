@@ -1978,10 +1978,11 @@ export const registry = {
     // collimated light) is the wide barrel and carries the back pupil; front
     // (sample side) is the narrow tip at local x=+16, the physical boundary
     // the working distance is measured from. The equivalent refracting plane
-    // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
-    // because WD is capped at EFL. It is never drawn — an objective is an
-    // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses', paletteOrder: 5, size: { w: 36, h: 40 },
+    // of focal length EFL sits at x = 16 + WD - EFL. Long-working-distance
+    // presets may put that equivalent plane virtually ahead of the tip. It is
+    // never drawn — an objective is an opaque barrel, not a visible singlet.
+    // See objective.js.
+    label: 'Infinity-corrected objective', category: 'Lenses', paletteOrder: 5, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
@@ -1992,9 +1993,10 @@ export const registry = {
     }),
     // the barrel is no longer centred on the element origin once it grows
     boxAnchor: el => ({ x: (OBJECTIVE_FRONT_X + objectiveBackX(el.params)) / 2, y: 0 }),
+    directHint: 'blue handles resize the drawn nose opening · the traced stop remains the back pupil',
     params: [
       {
-        key: 'objectivePreset', label: 'Objective starting point', type: 'derived-select',
+        key: 'objectivePreset', label: 'Catalogue starting point', type: 'derived-select',
         def: OBJECTIVE_DEFAULT_PRESET,
         options: OBJECTIVE_PRESETS.map(preset => [preset.key, preset.label, false, preset.group]),
         groups: OBJECTIVE_PRESET_GROUPS,
@@ -2043,8 +2045,8 @@ export const registry = {
       // uses. Magnification is what it produces once the user's own tube lens
       // images it, so it is reported rather than set.
       { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 2, max: 60, step: 0.1, def: 10, slider: false },
-      // A real objective focuses at or inside its own focal length, so WD
-      // starts equal to EFL and can only be shortened from there.
+      // Working distance is an independent catalogue property. A virtual
+      // principal plane lets long-working-distance designs exceed their EFL.
       {
         key: 'workingDistance', label: 'Working distance (mm)', type: 'number',
         min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.01, def: 5,
@@ -2079,7 +2081,8 @@ export const registry = {
       { key: 'showAcceptance', label: 'Show acceptance angle', type: 'checkbox', def: false },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
       {
-        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.1, def: 11,
+        key: 'frontAperture', label: 'Drawn nose opening (mm)', type: 'number', min: 1, max: 100, step: 0.1, def: 11,
+        note: 'Changes the visible nose and immersion-bridge width only. The traced optical stop is the modeled back pupil.',
       },
     ],
     svg(el) {
@@ -2171,7 +2174,7 @@ export const registry = {
     // One ideal, bidirectional plane lives at the fixed physical nose. Its
     // focal distance is the working distance. Only the housing height follows
     // the clear opening; the axial footprint and optical plane stay fixed.
-    label: 'Objective V2', category: 'Lenses', paletteOrder: 6, size: { w: 41, h: 40 },
+    label: 'Ideal focusing objective', category: 'Lenses', paletteOrder: 6, size: { w: 41, h: 40 },
     size_: el => ({ w: 41, h: 2 * objectiveV2BarrelHalfHeight(el.params) + 6 }),
     snapPt: { x: OBJECTIVE_V2_FRONT_X, y: 0 },
     immersionSource: () => ({ x: OBJECTIVE_V2_FRONT_X, y: 0 }),
@@ -2209,7 +2212,7 @@ export const registry = {
         max: p => objectiveV2MaximumNA(p), step: 0.01, def: OBJECTIVE_V2_NA_DEFAULT,
       },
       {
-        key: 'effectiveNA', label: 'Effective NA', type: 'readout',
+        key: 'effectiveNA', label: 'Aperture-limited NA', type: 'readout',
         readout: p => {
           const effective = objectiveV2EffectiveNumericalAperture(p);
           if (!Number.isFinite(effective)) return 'Resolve medium';
@@ -2220,7 +2223,7 @@ export const registry = {
         },
       },
       {
-        key: 'acceptanceHalfAngle', label: 'Effective object-side half-angle θ', type: 'readout',
+        key: 'acceptanceHalfAngle', label: 'Accepted object-side half-angle θ', type: 'readout',
         readout: p => {
           const angle = objectiveV2AcceptanceHalfAngleDeg(p);
           return Number.isFinite(angle) ? `${angle.toFixed(1)}°` : 'Resolve medium';
@@ -3680,8 +3683,8 @@ const ELEMENT_HELP = {
   lensgroup: 'Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
-  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
-  objectivev2: 'A compact objective model with a fixed front plane. Focus distance sets the focal point from the objective tip; resizing changes the physical clear aperture and barrel height without moving that plane. Effective NA is limited by both the rated NA and the chosen clear aperture. Rays continue beyond focus as diverging rays rather than stopping there. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent.',
+  objective: 'Choose a plausible infinity-corrected objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs may put the equivalent plane virtually ahead of the nose. Magnification is reported for a 200 mm tube lens. The back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. The drawn nose opening changes the housing and immersion-bridge width, not the traced pupil. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
+  objectivev2: 'An ideal focusing model with one fixed front plane. Focus distance sets the focal point from the objective tip; resizing changes the physical clear aperture and barrel height without moving that plane. Aperture-limited NA is capped by both the rated NA and the chosen clear aperture. Rays continue beyond focus as diverging rays rather than stopping there. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
@@ -3742,7 +3745,7 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (type === 'objectivev2' && objectiveV2MediumKey(params) !== 'air') {
     note = 'Medium and NA set a qualitative angular acceptance guide. The curved immersion bridge is schematic; it does not add refraction, focal shift, wetting, or aberration correction.';
   } else if (type === 'objectivev2') {
-    note = 'The physical front aperture can limit the rated NA. Resize the opening or edit it directly; the inspector reports the resulting effective NA.';
+    note = 'The physical front aperture can limit the rated NA. Resize the opening or edit it directly; the inspector reports the resulting aperture-limited NA.';
   } else if (type === 'objective' && objectiveMediumKey(params) === 'legacy') {
     tier = 'configurable';
     note = 'This older high-NA sketch did not record a front medium. Choose air, water, oil, or a custom index before treating its rated NA as configured.';

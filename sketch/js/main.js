@@ -81,13 +81,13 @@ const demoScenes = {
     mkDemo('sample', 329, 300, 90, {}, { label: '20× · NA 1.20 · oil', showLabel: true, labelPos: 't' }),
   ],
   objectivev2: () => [
-    // V2 uses one fixed front plane and a directly resizable clear aperture.
+    // The ideal focusing objective uses one fixed front plane and a directly resizable clear aperture.
     mkDemo('cwlaser', 60, 300, 0, { beamMode: 'beam', beamWidth: 18 }),
     mkDemo('objectivev2', 300, 300, 0, {
       efl: 7, workingDistance: 7, frontAperture: 20,
       immersion: 'oil', na: 1.2, showAcceptance: true,
     }),
-    mkDemo('sample', 326, 300, 90, {}, { label: 'V2 · focus 7 mm · effective NA 1.20', showLabel: true, labelPos: 't' }),
+    mkDemo('sample', 326, 300, 90, {}, { label: 'Ideal · focus 7 mm · aperture NA 1.20', showLabel: true, labelPos: 't' }),
   ],
   bs: () => [
     mkDemo('cwlaser', 60, 200, 0),

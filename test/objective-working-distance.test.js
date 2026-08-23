@@ -42,7 +42,7 @@ function inspectorFor(objective, extras = []) {
 
 // ---------------- independent catalogue properties ----------------
 
-test('rated pupil follows EFL and NA while the physical front aperture remains independent', () => {
+test('rated pupil follows EFL and NA while the drawn nose opening remains independent', () => {
   assert.equal(objectivePupilDiameter({ magnification: 20, immersion: 'air', na: 0.2 }), 4);
   assert.equal(objectivePupilDiameter({ magnification: 20, immersion: 'air', na: 0.5 }), 10);
   assert.equal(objectivePupilDiameter({ magnification: 20, immersion: 'air', na: 0.85 }), 17);
@@ -304,7 +304,7 @@ test('working distance is bounded by the catalogue ceiling, not by EFL', () => {
 
 // ---------------- direct manipulation and persistence ----------------
 
-test('the objective resize handle changes its front aperture without exposing EFL as a drag target', () => {
+test('the objective resize handle changes its drawn nose opening without exposing EFL as a drag target', () => {
   const objective = createElement('objective');
   const direct = getDirectManipulation(objective);
   assert.equal(direct.resize.y, 'frontAperture');
@@ -314,7 +314,7 @@ test('the objective resize handle changes its front aperture without exposing EF
   objective.params.workingDistance = 12;
   assert.deepEqual(getSize(objective), before, 'a modest WD change moves focus, not the barrel boundary');
   objective.params.frontAperture = 40;
-  assert.ok(getSize(objective).h > before.h, 'front aperture is the actual resizable boundary');
+  assert.ok(getSize(objective).h > before.h, 'drawn nose opening is the actual resizable boundary');
 });
 
 test('legacy objectives receive compatibility WD/aperture values that then persist independently', () => {

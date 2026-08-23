@@ -71,11 +71,17 @@ function farPointSourceRays(source, objective) {
   });
 }
 
-test('Objective and Objective V2 are separate user-selectable elements', () => {
-  assert.equal(registry.objective.label, 'Objective');
-  assert.equal(registry.objectivev2.label, 'Objective V2');
+test('infinity-corrected and ideal focusing objectives are separate user-selectable elements', () => {
+  assert.equal(registry.objective.label, 'Infinity-corrected objective');
+  assert.equal(registry.objectivev2.label, 'Ideal focusing objective');
   assert.equal(registry.objective.category, 'Lenses');
   assert.equal(registry.objectivev2.category, 'Lenses');
+
+  const noseOpening = registry.objective.params.find(param => param.key === 'frontAperture');
+  const apertureLimitedNA = registry.objectivev2.params.find(param => param.key === 'effectiveNA');
+  assert.equal(noseOpening.label, 'Drawn nose opening (mm)');
+  assert.match(noseOpening.note, /traced optical stop is the modeled back pupil/);
+  assert.equal(apertureLimitedNA.label, 'Aperture-limited NA');
 
   const original = createElement('objective', 0, 0);
   const v2 = createElement('objectivev2', 80, 0);
@@ -86,10 +92,10 @@ test('Objective and Objective V2 are separate user-selectable elements', () => {
 
   const originalLens = registry.objective.surfaces(original).find(surface => surface.kind === 'lens');
   const v2Lens = registry.objectivev2.surfaces(v2).find(surface => surface.kind === 'lens');
-  assert.ok(originalLens.x1 < OBJECTIVE_FRONT_X, 'Objective retains its internal equivalent plane');
-  assert.equal(v2Lens.x1, OBJECTIVE_FRONT_X, 'Objective V2 uses the fixed front plane');
+  assert.ok(originalLens.x1 < OBJECTIVE_FRONT_X, 'the infinity-corrected objective retains its internal equivalent plane');
+  assert.equal(v2Lens.x1, OBJECTIVE_FRONT_X, 'the ideal focusing objective uses the fixed front plane');
   assert.equal(getDirectManipulation(original).tune, null,
-    'the preset-based Objective keeps EFL out of unrestricted canvas dragging');
+    'the preset-based infinity-corrected objective keeps EFL out of unrestricted canvas dragging');
   assert.equal(getDirectManipulation(v2).tune.key, 'workingDistance');
 
   const roundTrip = parseSketch(file([original, v2]), registry).elements;

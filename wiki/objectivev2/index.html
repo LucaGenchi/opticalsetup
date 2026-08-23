@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Objective V2 — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="A compact objective model with a fixed front plane. Focus distance sets the focal point from the objective tip; resizing changes the physical clear aperture and barrel height without moving that plane. Effective NA is limited by both the rated NA and the chosen clear aperture. Rays continue beyond focus as diverging rays rather than stopping there. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<title>Ideal focusing objective — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="An ideal focusing model with one fixed front plane. Focus distance sets the focal point from the objective tip; resizing changes the physical clear aperture and barrel height without moving that plane. Aperture-limited NA is capped by both the rated NA and the chosen clear aperture. Rays continue beyond focus as diverging rays rather than stopping there. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/objectivev2/">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Objective V2 — OpticalSetup Encyclopedia">
-<meta property="og:description" content="A compact objective model with a fixed front plane. Focus distance sets the focal point from the objective tip; resizing changes the physical clear aperture and barrel height without moving that plane. Effective NA is limited by both the rated NA and the chosen clear aperture. Rays continue beyond focus as diverging rays rather than stopping there. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent.">
+<meta property="og:title" content="Ideal focusing objective — OpticalSetup Encyclopedia">
+<meta property="og:description" content="An ideal focusing model with one fixed front plane. Focus distance sets the focal point from the objective tip; resizing changes the physical clear aperture and barrel height without moving that plane. Aperture-limited NA is capped by both the rated NA and the chosen clear aperture. Rays continue beyond focus as diverging rays rather than stopping there. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/objectivev2/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -75,7 +75,7 @@
         <div class="cat">
           <div class="cat-name">Lenses</div>
           <ul>
-            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li><li><a href="../../wiki/objectivev2/" class="current">Objective V2</a></li>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Infinity-corrected objective</a></li><li><a href="../../wiki/objectivev2/" class="current">Ideal focusing objective</a></li>
           </ul>
         </div>
         <div class="cat">
@@ -116,22 +116,22 @@
         </div>
     </nav>
     <main class="wiki-article">
-      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#lenses">Lenses</a> / Objective V2</div>
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#lenses">Lenses</a> / Ideal focusing objective</div>
       <div class="article-head">
         <div class="article-icon"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-12 L 7,-17 L -21,-17 L -21,17 L 7,17 L 16,12 Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/><line x1="7" y1="-17" x2="7" y2="17" stroke="#4d565f" stroke-width="1"/><line x1="16" y1="-12" x2="16" y2="-10" stroke="#2f3e4d" stroke-width="2.4"/><line x1="16" y1="10" x2="16" y2="12" stroke="#2f3e4d" stroke-width="2.4"/><line x1="16" y1="-10" x2="16" y2="10" stroke="#4a90c4" stroke-width="2"/></svg></div>
         <div>
-          <h1>Objective V2</h1>
+          <h1>Ideal focusing objective</h1>
         </div>
       </div>
-      <p class="tagline">A compact objective model with a fixed front plane. Focus distance sets the focal point from the objective tip; resizing changes the physical clear aperture and barrel height without moving that plane. Effective NA is limited by both the rated NA and the chosen clear aperture. Rays continue beyond focus as diverging rays rather than stopping there. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent.</p>
+      <p class="tagline">An ideal focusing model with one fixed front plane. Focus distance sets the focal point from the objective tip; resizing changes the physical clear aperture and barrel height without moving that plane. Aperture-limited NA is capped by both the rated NA and the chosen clear aperture. Rays continue beyond focus as diverging rays rather than stopping there. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent.</p>
       <a class="place-cta" href="../../sketch/?place=objectivev2">Open in the canvas →</a>
 
       <div class="embed-wrap">
         <iframe class="embed-frame" src="../../sketch/?demo=objectivev2"
-          title="Interactive Objective V2 — click it to see its live specs and try its parameters"
+          title="Interactive Ideal focusing objective — click it to see its live specs and try its parameters"
           loading="lazy"></iframe>
       </div>
-      <p class="embed-caption">Click the objective v2 to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+      <p class="embed-caption">Click the ideal focusing objective to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
       
@@ -190,16 +190,18 @@
         the label implies — which is why laser-scanning systems deliberately
         <strong>overfill</strong> the back aperture, accepting the power clipped off at the
         rim in exchange for the full aperture and the tightest spot the objective can make.
-        Working distance, meanwhile, is a separate catalogue dimension bounded by the focal
-        length: the specimen plane sits one focal length from the principal plane, and the
-        glass between the front element and the sample takes up the difference, so working
-        distance is always shorter than EFL.</p>
+        Working distance, meanwhile, is a separate catalogue dimension rather than a value
+        predicted by magnification or NA. Long-working-distance designs can place an
+        equivalent principal plane virtually ahead of the front glass, so working distance
+        can exceed EFL.</p>
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
         
-        <p><strong>Objective V2</strong> is the simpler alternative users can choose alongside the original Objective. It deliberately uses a simpler objective than a real compound
-        prescription: one ideal, bidirectional plane fixed at the physical front tip. The
+        <p>The <strong>Ideal focusing objective</strong> is the simpler alternative users
+        can choose alongside the Infinity-corrected objective. It deliberately uses a
+        simpler model than a real compound prescription: one ideal, bidirectional plane
+        fixed at the physical front tip. The
         editable <strong>focus distance</strong> is also that plane's focal distance.
         Collimated light entering from the rear therefore meets exactly at the marked
         sample-side focus, and a point source placed at that focus leaves the rear side
@@ -217,7 +219,7 @@
         <h3>One cone from NA, medium, aperture, and focus</h3>
         <p>The selected medium and rated NA request an object-side half-angle. The clear
         aperture can limit that request, so the tracer computes one accepted radius and one
-        effective NA. The lens span, angular rejection, inspector readout, exported guide,
+        aperture-limited NA. The lens span, angular rejection, inspector readout, exported guide,
         and Two-Photon Lab handoff all use those same values.</p>
         <p><strong>Show NA guide</strong> draws exactly two dashed marginal lines from the
         accepted opening at the fixed front plane to the nominal focus. It is geometry, not
@@ -237,7 +239,7 @@
         from the authored geometry, so a scanning stage carries the same relationship while
         it remains aligned and in range, then disconnects instead of making the objective
         jump between nearby samples.</p>
-        <p>The bridge spans the objective's complete front aperture and the contacted
+        <p>The bridge spans the objective's complete clear aperture and the contacted
         specimen or fiber face. Two cubic Bézier curves bow inward between those edges to
         make a legible meniscus in the canvas and in SVG, PNG, and GIF output. This is an
         authored schematic, not a capillary-surface calculation. If no contact is available,
@@ -249,7 +251,7 @@
         focal points" (the <span class="w">ƒ</span> button) or select the objective to see
         the symmetric rear and sample-side focus markers.</p>
         <p>When this objective sits between a pulsed laser and an illuminated
-        photocurable-resin sample, the <em>effective</em> traced NA can be handed off to the
+        photocurable-resin sample, the aperture-limited traced NA can be handed off to the
         dedicated Two-Photon Lithography Lab alongside the laser settings.</p>
         <p>For pulse reporting, the ideal plane silently contributes 30&nbsp;mm of
         N-BK7. This is a class-typical GDD estimate, not a prescription: real objectives
@@ -262,8 +264,8 @@
       <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>r</mi><mtext>accepted</mtext></msub><mo>=</mo><mi>min</mi><mo>⁡</mo><mo stretchy="false">(</mo><msub><mi>D</mi><mtext>clear</mtext></msub><mi mathvariant="normal">/</mi><mn>2</mn><mo separator="true">,</mo><mtext>  </mtext><mrow><mi mathvariant="normal">W</mi><mi mathvariant="normal">D</mi></mrow><mi>tan</mi><mo>⁡</mo><msub><mi>θ</mi><mi>r</mi></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">r_{\text{accepted}} = \min(D_{\text{clear}}/2,\; \mathrm{WD}\tan\theta_r)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">accepted</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop">min</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">D</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">clear</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">/2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">WD</span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">tan</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">r</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span></span></div>
       <div class="caption">The one opening radius used by the drawing and trace.</div>
     </div><div class="formula">
-      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mtext>eff</mtext></msub><mo>=</mo><mi>n</mi><mi>sin</mi><mo>⁡</mo><mo stretchy="false">(</mo><mi>arctan</mi><mo>⁡</mo><mo stretchy="false">(</mo><msub><mi>r</mi><mtext>accepted</mtext></msub><mi mathvariant="normal">/</mi><mrow><mi mathvariant="normal">W</mi><mi mathvariant="normal">D</mi></mrow><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\mathrm{NA}_{\text{eff}} = n\sin(\arctan(r_{\text{accepted}}/\mathrm{WD}))</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord"><span class="mord mathrm">NA</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">eff</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mord mathnormal">n</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">sin</span><span class="mopen">(</span><span class="mop">arctan</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">accepted</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord">/</span><span class="mord"><span class="mord mathrm">WD</span></span><span class="mclose">))</span></span></span></span></span></div>
-      <div class="caption">The NA actually available after clear-aperture limiting.</div>
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mtext>aperture</mtext></msub><mo>=</mo><mi>n</mi><mi>sin</mi><mo>⁡</mo><mo stretchy="false">(</mo><mi>arctan</mi><mo>⁡</mo><mo stretchy="false">(</mo><msub><mi>r</mi><mtext>accepted</mtext></msub><mi mathvariant="normal">/</mi><mrow><mi mathvariant="normal">W</mi><mi mathvariant="normal">D</mi></mrow><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\mathrm{NA}_{\text{aperture}} = n\sin(\arctan(r_{\text{accepted}}/\mathrm{WD}))</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.9694em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord"><span class="mord mathrm">NA</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">aperture</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mord mathnormal">n</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">sin</span><span class="mopen">(</span><span class="mop">arctan</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">accepted</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord">/</span><span class="mord"><span class="mord mathrm">WD</span></span><span class="mclose">))</span></span></span></span></span></div>
+      <div class="caption">The maximum NA available after clear-aperture limiting.</div>
     </div>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is a coherent first-order teaching model, not a prescription
         for a compound infinity objective. It does not model manufacturer tube lengths,
@@ -279,7 +281,7 @@
       
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
-        <a href="../../wiki/objective/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-5.5 L 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5 L 16,5.5 Z" fill="#8d98a5" stroke="none"/><path d="M 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/><line x1="7" y1="-12.5" x2="7" y2="12.5" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-12.5" width="2.4" height="8.50" fill="#2f3e4d"/><rect x="-21" y="4.00" width="2.4" height="8.50" fill="#2f3e4d"/></svg>Objective</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Convex lens</a><a href="../../wiki/thicklens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -1.64 12.7 A 60 60 0 0 1 -1.64 -12.7 L 1.64 -12.7 A 60 60 0 0 1 1.64 12.7 L -1.64 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Thick lens (spherical)</a><a href="../../wiki/telescope/"><svg viewBox="-94 -94 188 188" aria-hidden="true"><line x1="-75" y1="0" x2="75" y2="0" stroke="#b6bdc6" stroke-width="1" stroke-dasharray="4 4"/><path d="M -75,-12.7 Q -66,0 -75,12.7 Q -84,0 -75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><path d="M 75,-12.7 Q 84,0 75,12.7 Q 66,0 75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Telescope (lens pair)</a>
+        <a href="../../wiki/objective/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-5.5 L 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5 L 16,5.5 Z" fill="#8d98a5" stroke="none"/><path d="M 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/><line x1="7" y1="-12.5" x2="7" y2="12.5" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-12.5" width="2.4" height="8.50" fill="#2f3e4d"/><rect x="-21" y="4.00" width="2.4" height="8.50" fill="#2f3e4d"/></svg>Infinity-corrected objective</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Convex lens</a><a href="../../wiki/thicklens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -1.64 12.7 A 60 60 0 0 1 -1.64 -12.7 L 1.64 -12.7 A 60 60 0 0 1 1.64 12.7 L -1.64 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Thick lens (spherical)</a><a href="../../wiki/telescope/"><svg viewBox="-94 -94 188 188" aria-hidden="true"><line x1="-75" y1="0" x2="75" y2="0" stroke="#b6bdc6" stroke-width="1" stroke-dasharray="4 4"/><path d="M -75,-12.7 Q -66,0 -75,12.7 Q -84,0 -75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><path d="M 75,-12.7 Q 84,0 75,12.7 Q 66,0 75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Telescope (lens pair)</a>
       </div>
 
       

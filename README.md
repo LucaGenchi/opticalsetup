@@ -126,17 +126,18 @@ shows their positions in the moving 2D sample. It does not calculate focal volum
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
-Standalone objectives are set by effective focal length (EFL) — the focal length of
-the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
-a front aperture, and a rated NA. The normal inspector offers coordinated generic 4×,
-10×, 20×, 40×, 60× water, and 100× oil starting points; exact catalogue values live in
-a collapsed Advanced parameters section. These are plausible first-order specs, not
-manufacturer prescriptions, and EFL is no longer exposed as an unrestricted canvas-drag
-control. Magnification is reported from EFL against a 200 mm
+The palette's **Infinity-corrected objective** is set by effective focal length (EFL) —
+the focal length of the whole assembly as one equivalent lens — plus an independent
+working distance, a drawn nose opening, and a rated NA. Its 23 coordinated starting
+points are grouped by dry, water, oil, and long-working-distance designs; exact catalogue
+values live in a collapsed Advanced parameters section. These are plausible first-order
+specs, not manufacturer prescriptions, and EFL is not exposed as an unrestricted
+canvas-drag control. Magnification is reported from EFL against a 200 mm
 reference tube lens rather than typed in, because it belongs to the objective plus
 whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
-`front tip + WD − EFL`, always inside the barrel, so collimated light focuses exactly
-one working distance past the tip, an external tube lens produces the reported
+`front tip + WD − EFL`; a long-working-distance design may therefore put that plane
+virtually ahead of the visible tip. Collimated light still focuses exactly one working
+distance past the tip, an external tube lens produces the reported
 magnification, and the back focal plane one EFL behind the plane is a real traced
 conjugate that light focused on leaves collimated. Nothing is drawn at that plane; an
 objective is an opaque barrel. Rated NA is the back pupil (2·f·NA) and is the aperture
@@ -150,29 +151,33 @@ rewrites working distance. The pupil is a paraxial stop in a thin-lens tracer, s
 filling it converges at `atan(NA)` rather than the sine-condition `asin(NA/n)` the rated
 half-angle quotes — close at moderate NA, separating near the ceiling — and the single
 plane is a first-order stand-in for a compound prescription, not the real internal
-conjugates. This model remains the palette's existing **Objective** choice.
+conjugates. The drawn nose opening changes the visible housing and immersion-bridge width,
+not that traced pupil.
 
-**Objective V2** is the simpler fixed-plane alternative. One ideal bidirectional plane
-stays at the physical front tip, and its focus distance is also its focal distance. The
-blue vertical handles resize the real clear aperture while the housing height follows
-with fixed shell padding; focus, rated NA, and medium do not resize or move the plane.
-Free-space illumination continues through focus and diverges again, drawn as faint dashed
-outer edges after the waist in beam mode. Rated NA and medium request an object-side cone
-with half-angle `asin(NA/n)`, but a smaller clear opening lowers the effective NA. V2 uses
-one accepted radius, `min(clear aperture / 2, focus distance · tan(angle))`, for its trace,
-angular clipping, optional two-line guide, and downstream handoff.
+The **Ideal focusing objective** is the simpler fixed-plane alternative. One ideal
+bidirectional plane stays at the physical front tip, and its focus distance is also its
+focal distance. The blue vertical handles resize the real clear aperture while the
+housing height follows with fixed shell padding; focus, rated NA, and medium do not resize
+or move the plane. Free-space illumination continues through focus and diverges again,
+drawn as faint dashed outer edges after the waist in beam mode. Rated NA and medium request
+an object-side cone with half-angle `asin(NA/n)`, but a smaller clear opening lowers the
+aperture-limited NA. The model uses one accepted radius,
+`min(clear aperture / 2, focus distance · tan(angle))`, for its trace, angular clipping,
+optional two-line guide, and downstream handoff.
 
-Both are first-order teaching models rather than compound prescriptions. Neither models
-internal lens groups, corrected aberrations, diffraction, cover glass, or manufacturer
-prescriptions; V2 deliberately has no separate pupil or BFP plane.
+Both are first-order teaching models rather than compound prescriptions. Neither model
+includes internal lens groups, corrected aberrations, diffraction, cover glass, or
+manufacturer prescriptions; the ideal focusing model deliberately has no separate pupil
+or BFP plane.
 
-A non-air Objective or Objective V2 derives an exported immersion bridge to the nearest compatible
-sample, stage-mounted sample, or facing fiber end; a moving stage carries that same
-target while it remains aligned and in range, then disconnects rather than jumping
-elsewhere. Cubic Bézier sides join the objective's front-aperture edges to the contacted
-face to suggest a meniscus. That boundary is deliberately schematic: it does not move
-components, solve wetting or surface tension, refract rays at the liquid boundary, or
-model cover glass, index mismatch, focal shift, or immersion aberrations.
+A non-air infinity-corrected or ideal focusing objective derives an exported immersion
+bridge to the nearest compatible sample, stage-mounted sample, or facing fiber end; a
+moving stage carries that same target while it remains aligned and in range, then
+disconnects rather than jumping elsewhere. Cubic Bézier sides join the objective's drawn
+nose-opening edges to the contacted face to suggest a meniscus. That boundary is
+deliberately schematic: it does not move components, solve wetting or surface tension,
+refract rays at the liquid boundary, or model cover glass, index mismatch, focal shift,
+or immersion aberrations.
 
 Freeform glass is a directly editable boundary of straight segments and exact
 three-point circular arcs with constant index or selectable catalogue-glass

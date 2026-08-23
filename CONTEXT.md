@@ -9,19 +9,19 @@ The material immediately in front of a microscope objective for which that objec
 _Avoid_: Immersion object, fluid element
 
 **Objective effective focal length**:
-The original Objective model's catalogue focal-length specification. It combines with the reference tube lens to determine magnification and places the equivalent internal optical plane independently of working distance.
+The Infinity-corrected objective's catalogue focal-length specification. It combines with the reference tube lens to determine magnification and places an equivalent optical plane independently of working distance; long-working-distance designs may place that plane virtually ahead of the nose.
 _Avoid_: Working distance
 
 **Working distance**:
-The axial distance from an objective's front boundary to its nominal in-focus specimen plane. In Objective it remains distinct from EFL; in Objective V2 it is also the ideal plane's focal distance.
+The axial distance from an objective's front boundary to its nominal in-focus specimen plane. In the Infinity-corrected objective it remains distinct from EFL; in the Ideal focusing objective it is also the ideal plane's focal distance.
 _Avoid_: Objective model selection
 
-**Objective V2 clear aperture**:
-The directly resizable physical opening at Objective V2's fixed front plane. It can limit the accepted cone and effective NA, while the housing height follows it with fixed shell padding.
-_Avoid_: Original Objective back pupil
+**Ideal focusing objective clear aperture**:
+The directly resizable physical opening at the Ideal focusing objective's fixed front plane. It can limit the accepted cone and aperture-limited NA, while the housing height follows it with fixed shell padding.
+_Avoid_: Infinity-corrected objective back pupil
 
 **Rated numerical aperture**:
-The objective's medium-qualified light-gathering specification. In Objective it sets the modeled back pupil; in Objective V2 it requests an object-space cone that the clear aperture may limit.
+The objective's medium-qualified light-gathering specification. In the Infinity-corrected objective it sets the modeled back pupil; in the Ideal focusing objective it requests an object-space cone that the clear aperture may limit.
 _Avoid_: Aperture diameter
 
 **Immersion bridge**:
