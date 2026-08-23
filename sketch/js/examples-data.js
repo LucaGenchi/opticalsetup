@@ -38,12 +38,6 @@ export const examples = [
   },
   {
     "group": "Ultrashort Pulses",
-    "name": "Pulse stretcher and compressor",
-    "path": "../Examples/Ultrashort%20Pulses/Pulse%20stretcher%20and%20compressor.json",
-    "slug": "pulse-stretcher-and-compressor"
-  },
-  {
-    "group": "Ultrashort Pulses",
     "name": "Ultrashort pulse chirping",
     "path": "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
     "slug": "ultrashort-pulse-chirping"
