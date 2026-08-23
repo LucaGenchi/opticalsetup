@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Telescope (lens pair) — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Applies two thin lenses separated by their focal lengths. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/telescope/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Telescope (lens pair) — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Applies two thin lenses separated by their focal lengths.">
+<meta property="og:description" content="Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/telescope/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -108,6 +108,12 @@
             <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
           </ul>
         </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
     </nav>
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#lenses">Lenses</a> / Telescope (lens pair)</div>
@@ -117,7 +123,7 @@
           <h1>Telescope (lens pair)</h1>
         </div>
       </div>
-      <p class="tagline">Applies two thin lenses separated by their focal lengths.</p>
+      <p class="tagline">Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.</p>
       <a class="place-cta" href="../../sketch/?place=telescope">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -157,7 +163,9 @@
         
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Same paraxial-only physics as a single lens, with no eyepiece
         field-of-view limits, eye relief, or exit-pupil modeling — just the afocal
-        geometry and magnification.</p></div>
+        geometry and magnification. Each of the two zero-thickness surfaces contributes
+        the same silent, diameter-aware N-BK7 sag estimate used by a standalone thin lens,
+        typically a roughly 10% class estimate for pulse GDD.</p></div>
       </div>
 
       

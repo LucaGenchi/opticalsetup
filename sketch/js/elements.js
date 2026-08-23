@@ -1243,6 +1243,22 @@ function lensShape(cx, h, f) {
   return `<path d="${d}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.5"/>`;
 }
 
+// Silent centre-thickness estimate for a zero-thickness paraxial singlet.
+// It reuses the same lensmaker geometry as the real thick-lens model:
+// R = |f|(n-1), then adds a typical 2.5 mm edge thickness to the spherical
+// sag. Diameter therefore matters, unlike a focal-length bucket. If an
+// authored focal length would require R smaller than the clear semi-diameter,
+// clamp to the limiting hemisphere rather than produce a non-finite result.
+export function estimatedThinLensThicknessMm(params, wavelengthNm = 587.6) {
+  const diameter = Math.min(500, Math.max(0.1, Number(params?.dia) || 25.4));
+  const halfDiameter = diameter / 2;
+  const index = glassIndex('nbk7', wavelengthNm) ?? 1.5168;
+  const rawRadius = Math.abs(Number(params?.f) || 0) * Math.max(0.01, index - 1);
+  const radius = Math.max(halfDiameter, rawRadius);
+  const sag = radius - Math.sqrt(Math.max(0, radius * radius - halfDiameter * halfDiameter));
+  return Math.max(1.5, sag + 2.5);
+}
+
 function prismGeometry(el) {
   const height = Math.max(5, el.params.psize || 25.4);
   const apex = Math.min(80, Math.max(10, el.params.apex || 60)) * Math.PI / 180;
@@ -1699,7 +1715,13 @@ export const registry = {
     svg(el) { return lensShape(0, el.params.dia / 2, el.params.f); },
     surfaces(el) {
       const h = el.params.dia / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'lens', data: { f: el.params.f, transEff: el.params.transEff } }];
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'lens',
+        data: {
+          f: el.params.f, transEff: el.params.transEff,
+          gddMaterial: 'nbk7', gddThicknessMm: estimatedThinLensThicknessMm(el.params),
+        },
+      }];
     },
   },
 
@@ -1905,8 +1927,22 @@ export const registry = {
       // matched AR coatings, consistent with how `dia` is already shared.
       const p = el.params, s = Math.max(5, p.f1 + p.f2), h = (p.dia || 25.4) / 2;
       return [
-        { x1: -s / 2, y1: -h, x2: -s / 2, y2: h, kind: 'lens', data: { f: p.f1, transEff: p.transEff } },
-        { x1: s / 2, y1: -h, x2: s / 2, y2: h, kind: 'lens', data: { f: p.f2, transEff: p.transEff } },
+        {
+          x1: -s / 2, y1: -h, x2: -s / 2, y2: h, kind: 'lens',
+          data: {
+            f: p.f1, transEff: p.transEff,
+            gddMaterial: 'nbk7',
+            gddThicknessMm: estimatedThinLensThicknessMm({ f: p.f1, dia: p.dia }),
+          },
+        },
+        {
+          x1: s / 2, y1: -h, x2: s / 2, y2: h, kind: 'lens',
+          data: {
+            f: p.f2, transEff: p.transEff,
+            gddMaterial: 'nbk7',
+            gddThicknessMm: estimatedThinLensThicknessMm({ f: p.f2, dia: p.dia }),
+          },
+        },
       ];
     },
   },
@@ -2071,6 +2107,10 @@ export const registry = {
         data: {
           ...shared, f: shared.effectiveFocalLength, transEff: el.params.transEff,
           pupilRadius: pupil, pupilSpan: [-edge, edge],
+          // Class-typical equivalent glass path. Real objectives vary by
+          // roughly a factor of two; this is a reported estimate only and
+          // never changes the equivalent-lens geometry.
+          gddMaterial: 'nbk7', gddThicknessMm: 30,
         },
       },
       // The metal around the pupil. Overfilling it is normal practice — you do
@@ -2289,6 +2329,7 @@ export const registry = {
     params: [
       { key: 'apex', label: 'Apex angle (°)', type: 'number', min: 10, max: 80, step: 5, def: 60 },
       { key: 'psize', label: 'Size', type: 'optsize', def: 25.4 },
+      { key: 'material', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
     ],
     svg(el) {
       const g = prismGeometry(el);
@@ -2296,7 +2337,7 @@ export const registry = {
     },
     surfaces(el) {
       const { left, top, right } = prismGeometry(el);
-      const data = { material: 'nbk7', transmission: 0.98 };
+      const data = { material: el.params.material, transmission: 0.98 };
       return [
         { x1: left.x, y1: left.y, x2: top.x, y2: top.y, kind: 'refract', data: { ...data, topologyKey: 'edge-0' } },
         { x1: top.x, y1: top.y, x2: right.x, y2: right.y, kind: 'refract', data: { ...data, topologyKey: 'edge-1' } },
@@ -2677,6 +2718,40 @@ export const registry = {
     },
   },
 
+  pulsecompressor: {
+    label: 'Pulse compressor', category: 'Pulse Timing', size: { w: 52, h: 32 },
+    aliases: ['phase compressor', 'chirp compressor', 'gdd compressor', 'gdd compensator', 'chirped mirrors', 'grating compressor'],
+    size_: el => ({ w: 52, h: (el.params.aperture || 24) + 8 }),
+    params: [
+      {
+        key: 'gddFs2', label: 'Applied GDD (fs²)', type: 'number',
+        min: -1000000, max: 1000000, step: 100, def: -2000,
+      },
+      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
+      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+    ],
+    svg(el) {
+      const h = (el.params.aperture || 24) / 2;
+      const flipped = isFlipped(el) ? 'transform="rotate(180)"' : '';
+      const sign = Number(el.params.gddFs2) < 0 ? '−' : '+';
+      return `<rect x="-24" y="${-h - 3}" width="48" height="${2 * h + 6}" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/>` +
+        `<g ${flipped} fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round">` +
+        `<path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/>` +
+        `<path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g>` +
+        `<text x="0" y="0" ${flipped} text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">${sign}GDD</text>`;
+    },
+    surfaces(el) {
+      const h = (el.params.aperture || 24) / 2;
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'gdd',
+        data: {
+          gddFs2: el.params.gddFs2,
+          efficiency: Math.min(1, Math.max(0.01, (el.params.transEff || 100) / 100)),
+        },
+      }];
+    },
+  },
+
   // Voltage-controlled retarder (Pockels effect): "Static retardance" acts as
   // a plain waveplate at the configured crystal axis. "Switching" square-wave
   // toggles the retardance between two states at a set frequency — paired
@@ -2811,7 +2886,8 @@ export const registry = {
     params: [
       { key: 'rodlen', label: 'Length (mm)', type: 'number', min: 20, max: 300, step: 5, def: 60 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 12.7 },
-      { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.52 },
+      { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ...GLASS_OPTIONS] },
+      { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.52, show: p => p.material === 'constant' },
     ],
     size_: el => ({ w: el.params.rodlen + 4, h: (el.params.dia || 10) + 4 }),
     svg(el) {
@@ -2820,7 +2896,11 @@ export const registry = {
     },
     surfaces(el) {
       const x = el.params.rodlen / 2, y = (el.params.dia || 10) / 2;
-      const data = { ior: el.params.ior || 1.52, transmission: 0.96 };
+      const data = {
+        material: isDispersiveGlass(el.params.material) ? el.params.material : undefined,
+        ior: el.params.ior || 1.52,
+        transmission: 0.96,
+      };
       // All four faces are dielectric boundaries. The tracer tracks whether a
       // ray is inside this rod, so it refracts on entry/exit and reflects when
       // total internal reflection occurs at a side wall.
@@ -3352,10 +3432,11 @@ const DIRECT = {
   aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
   aotf: { resize: { y: 'aperture' }, tune: { key: 'center', short: 'λ select' } },
   delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL' } },
+  pulsecompressor: { resize: { y: 'aperture' }, tune: { key: 'gddFs2', short: 'GDD' } },
   eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
   crystal: { resize: { y: 'aperture' }, tune: { key: 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
-  glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n' } },
+  glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
@@ -3405,20 +3486,20 @@ const ELEMENT_HELP = {
   cmirrorx: 'Diverges reflected rays with a paraxial focal-length model.',
   cmirror: 'Focuses reflected rays with a paraxial focal-length model.',
   oap: 'Reflects from segmented parabolic geometry toward the configured focus.',
-  lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
-  lensc: 'Diverges rays with a negative thin-lens focal length.',
-  lensgroup: 'Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to.',
-  thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.',
-  telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.',
+  lens: 'Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
+  lensc: 'Diverges rays with a negative thin-lens focal length. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
+  lensgroup: 'Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.',
+  thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
+  telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
+  objective: 'Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
   grating: 'Creates selected diffraction orders using the grating equation.',
-  prism: 'Refracts through all three drawn N-BK7 boundaries with wavelength-dependent dispersion.',
-  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion; overlapping glass bodies are not surface-merged.',
+  prism: 'Refracts through all three drawn boundaries with selectable catalogue-glass dispersion and traced path-length GDD.',
+  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion and traced GDD; overlapping glass bodies are not surface-merged.',
   diffuser: 'Spreads incident light into a configurable angular fan.',
-  glassrod: 'Refracts at every glass-air boundary and supports total internal reflection.',
+  glassrod: 'Refracts at every glass-air boundary and supports total internal reflection. Catalogue materials add traced path-length GDD; constant index keeps legacy behavior.',
   polarizer: 'Applies a linear polarization axis and Malus-law attenuation.',
   hwp: 'Rotates linear polarization around the configured fast axis.',
   qwp: 'Applies quarter-wave retardance, producing linear, elliptical, or circular polarization from the input state.',
@@ -3438,6 +3519,7 @@ const ELEMENT_HELP = {
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
   aotf: 'Selects a configurable spectral band, then deflects and attenuates the selected acousto-optic order.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
+  pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',

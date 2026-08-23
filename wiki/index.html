@@ -106,22 +106,22 @@
           <div class="hub-grid">
             <a class="hub-card" href="../wiki/lens/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Convex lens</span><span class="desc">Bends rays with a thin-lens, paraxial focal-length model.</span></span>
+                <span class="info"><span class="name">Convex lens</span><span class="desc">Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.</span></span>
               </a><a class="hub-card" href="../wiki/lensc/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -6,-12.7 L 6,-12.7 Q 0,0 6,12.7 L -6,12.7 Q 0,0 -6,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Concave lens</span><span class="desc">Diverges rays with a negative thin-lens focal length.</span></span>
+                <span class="info"><span class="name">Concave lens</span><span class="desc">Diverges rays with a negative thin-lens focal length. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.</span></span>
               </a><a class="hub-card" href="../wiki/thicklens/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -1.64 12.7 A 60 60 0 0 1 -1.64 -12.7 L 1.64 -12.7 A 60 60 0 0 1 1.64 12.7 L -1.64 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
-                <span class="info"><span class="name">Thick spherical lens</span><span class="desc">Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.</span></span>
+                <span class="info"><span class="name">Thick spherical lens</span><span class="desc">Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.</span></span>
               </a><a class="hub-card" href="../wiki/lensgroup/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -3.44 12.7 A 60.65 60.65 0 0 1 -3.44 -12.7 L -0.12 -12.7 A 61.02 61.02 0 0 1 -0.12 12.7 L -3.44 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/><path d="M -0.06 12.7 A 61.02 61.02 0 0 0 -0.06 -12.7 L 4.17 -12.7 A 131.55 131.55 0 0 1 4.17 12.7 L -0.06 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
-                <span class="info"><span class="name">Lens group (surface table)</span><span class="desc">Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to.</span></span>
+                <span class="info"><span class="name">Lens group (surface table)</span><span class="desc">Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.</span></span>
               </a><a class="hub-card" href="../wiki/telescope/">
                 <span class="ic"><svg viewBox="-94 -94 188 188" aria-hidden="true"><line x1="-75" y1="0" x2="75" y2="0" stroke="#b6bdc6" stroke-width="1" stroke-dasharray="4 4"/><path d="M -75,-12.7 Q -66,0 -75,12.7 Q -84,0 -75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><path d="M 75,-12.7 Q 84,0 75,12.7 Q 66,0 75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Telescope (lens pair)</span><span class="desc">Applies two thin lenses separated by their focal lengths.</span></span>
+                <span class="info"><span class="name">Telescope (lens pair)</span><span class="desc">Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.</span></span>
               </a><a class="hub-card" href="../wiki/objective/">
                 <span class="ic"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-10 L 7,-17 L -21,-17 L -21,17 L 7,17 L 16,10 Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/><line x1="7" y1="-17" x2="7" y2="17" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-17" width="2.4" height="10.50" fill="#2f3e4d"/><rect x="-21" y="6.50" width="2.4" height="10.50" fill="#2f3e4d"/><line x1="16" y1="-10" x2="16" y2="10" stroke="#4a90c4" stroke-width="2"/></svg></span>
-                <span class="info"><span class="name">Objective</span><span class="desc">Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.</span></span>
+                <span class="info"><span class="name">Objective</span><span class="desc">Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.</span></span>
               </a>
           </div>
         </div>
@@ -151,19 +151,19 @@
           <div class="hub-grid">
             <a class="hub-card" href="../wiki/prism/">
                 <span class="ic"><svg viewBox="-23.664696837416493 -23.664696837416493 47.329393674832986 47.329393674832986" aria-hidden="true"><path d="M 0,-12.7 L -14.664696837416493,12.7 L 14.664696837416493,12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Prism</span><span class="desc">Refracts through all three drawn N-BK7 boundaries with wavelength-dependent dispersion.</span></span>
+                <span class="info"><span class="name">Prism</span><span class="desc">Refracts through all three drawn boundaries with selectable catalogue-glass dispersion and traced path-length GDD.</span></span>
               </a><a class="hub-card" href="../wiki/grating/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg></span>
                 <span class="info"><span class="name">Diffraction grating</span><span class="desc">Creates selected diffraction orders using the grating equation.</span></span>
               </a><a class="hub-card" href="../wiki/freeglass/">
                 <span class="ic"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -36 -24 L 30 -24 L 38 20 L -26 26 L -36 -24 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
-                <span class="info"><span class="name">Freeform glass</span><span class="desc">Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion; overlapping glass bodies are not surface-merged.</span></span>
+                <span class="info"><span class="name">Freeform glass</span><span class="desc">Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion and traced GDD; overlapping glass bodies are not surface-merged.</span></span>
               </a><a class="hub-card" href="../wiki/diffuser/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-3" y="-12.7" width="6" height="25.4" fill="#eceef1" stroke="#6b7280" stroke-width="1.3"/><path d="M -3,-12.7 L -3.4,-11.2 L -3.4,-8.2 L -3.4,-5.199999999999999 L -3.4,-2.1999999999999993 L -3.4,0.8000000000000007 L -3.4,3.8000000000000007 L -3.4,6.800000000000001 L -3.4,9.8 L -3.4,12.8 L -3,12.7" fill="none" stroke="#6b7280" stroke-width="1"/></svg></span>
                 <span class="info"><span class="name">Diffuser</span><span class="desc">Spreads incident light into a configurable angular fan.</span></span>
               </a><a class="hub-card" href="../wiki/glassrod/">
                 <span class="ic"><svg viewBox="-38 -38 76 76" aria-hidden="true"><rect x="-30" y="-6.35" width="60" height="12.7" rx="4" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Glass rod</span><span class="desc">Refracts at every glass-air boundary and supports total internal reflection.</span></span>
+                <span class="info"><span class="name">Glass rod</span><span class="desc">Refracts at every glass-air boundary and supports total internal reflection. Catalogue materials add traced path-length GDD; constant index keeps legacy behavior.</span></span>
               </a>
           </div>
         </div>
@@ -191,6 +191,15 @@
             <a class="hub-card" href="../wiki/aom/">
                 <span class="ic"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-13" width="40" height="26" rx="3" fill="#c9b458" stroke="#8a7a2e" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3616">AOM</text></svg></span>
                 <span class="info"><span class="name">Acousto-optic modulator (AOM)</span><span class="desc">Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.</span></span>
+              </a>
+          </div>
+        </div>
+        <div class="hub-group" id="pulse-timing">
+          <h2>Pulse Timing</h2>
+          <div class="hub-grid">
+            <a class="hub-card" href="../wiki/pulsecompressor/">
+                <span class="ic"><svg viewBox="-32 -32 64 64" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/><g  fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round"><path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/><path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">−GDD</text></svg></span>
+                <span class="info"><span class="name">Pulse Compressor</span><span class="desc">Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.</span></span>
               </a>
           </div>
         </div>

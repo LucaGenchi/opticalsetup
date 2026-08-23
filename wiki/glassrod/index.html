@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Glass rod — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Refracts at every glass-air boundary and supports total internal reflection. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Refracts at every glass-air boundary and supports total internal reflection. Catalogue materials add traced path-length GDD; constant index keeps legacy behavior. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/glassrod/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Glass rod — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Refracts at every glass-air boundary and supports total internal reflection.">
+<meta property="og:description" content="Refracts at every glass-air boundary and supports total internal reflection. Catalogue materials add traced path-length GDD; constant index keeps legacy behavior.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/glassrod/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -108,6 +108,12 @@
             <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
           </ul>
         </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
     </nav>
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#dispersive-elements">Dispersive elements</a> / Glass rod</div>
@@ -117,7 +123,7 @@
           <h1>Glass rod</h1>
         </div>
       </div>
-      <p class="tagline">Refracts at every glass-air boundary and supports total internal reflection.</p>
+      <p class="tagline">Refracts at every glass-air boundary and supports total internal reflection. Catalogue materials add traced path-length GDD; constant index keeps legacy behavior.</p>
       <a class="place-cta" href="../../sketch/?place=glassrod">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -167,13 +173,15 @@
         same-time packet on a vacuum path by exactly the extra delay the formula above
         predicts for the configured index. The rod's fill is deliberately translucent so
         that lag is something you can actually watch happen, rather than a number hidden
-        behind an opaque block.</p>
+        behind an opaque block. Choose the legacy constant index or one of the four
+        catalogue Sellmeier glasses. A catalogue material also accumulates GDD from the
+        actual distance each ray travels inside the rod.</p>
         
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The refractive index is a single flat number with no wavelength
-        dependence — unlike the <a href="../freeglass/">Freeform glass</a> element's
-        optional catalogue-based Cauchy dispersion, every color slows down by exactly the same
-        amount here, so a broadband or supercontinuum pulse crossing the rod doesn't
-        spread out in time the way real material dispersion would stretch it. There's no
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The default remains a single constant index so every existing
+        saved rod keeps its authored behavior; that mode has no material GDD. Selecting a
+        catalogue glass enables Sellmeier refraction and path-length GDD, generally within
+        a few percent where the curve is valid, but still omits absorption, temperature,
+        coatings, and higher-order pulse effects. There's no
         cylindrical or lensing geometry either: despite the name, this is a rectangular
         slab cross-section with flat ends, not a focusing rod lens.</p></div>
       </div>

@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { C_MM_PER_NS, pointAtOpticalPath, pulseGateTransmission, pulseMarkers, pulseTransmissionAt } from '../sketch/js/pulses.js';
+import {
+  C_MM_PER_NS, pointAtOpticalPath, pulseEnvelopeAtOpticalPath,
+  pulseGateTransmission, pulseMarkers, pulseTransmissionAt,
+} from '../sketch/js/pulses.js';
 
 const track = {
   pts: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }],
@@ -23,6 +26,33 @@ test('physical pulse markers use c times period and wrap deterministically', () 
   const shifted = pulseMarkers(longTrack, 0.5, { mode: 'physical' });
   assert.ok(Math.abs(shifted[0].opl - C_MM_PER_NS * 0.5) < 1e-9);
   assert.ok(shifted.every(m => Number.isFinite(m.x) && Number.isFinite(m.y) && Number.isFinite(m.widthMm)));
+});
+
+test('local GDD stretches and then recompresses the visible Gaussian envelope', () => {
+  const dispersiveTrack = {
+    pts: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }, { x: 300, y: 0 }],
+    opls: [0, 100, 200, 300],
+    // No dispersion before the first optic; +1000 fs² between the two
+    // compensators; zero again after an equal negative correction.
+    gddTrace: [
+      { opl: 0, gdd: 0, linear: false },
+      { opl: 100, gdd: 1000, linear: false },
+      { opl: 200, gdd: 0, linear: false },
+    ],
+    pulse: {
+      repRateMHz: 1000, pulseWidthFs: 10, phaseNs: 0,
+      pulseShape: 'gauss', transformLimited: true,
+    },
+  };
+  const input = pulseEnvelopeAtOpticalPath(dispersiveTrack, 50);
+  const stretched = pulseEnvelopeAtOpticalPath(dispersiveTrack, 150);
+  const compressed = pulseEnvelopeAtOpticalPath(dispersiveTrack, 250);
+  assert.equal(input.pulseWidthFs, 10);
+  assert.ok(stretched.pulseWidthFs > 250);
+  assert.ok(stretched.stretchFactor > 25);
+  assert.equal(stretched.visualStretch, 8, 'extreme display length is bounded');
+  assert.equal(compressed.pulseWidthFs, 10);
+  assert.equal(compressed.visualStretch, 1);
 });
 
 test('schematic markers remain visible and bounded for extreme pulse settings', () => {

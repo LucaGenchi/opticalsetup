@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Convex lens — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Bends rays with a thin-lens, paraxial focal-length model. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/lens/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Convex lens — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Bends rays with a thin-lens, paraxial focal-length model.">
+<meta property="og:description" content="Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/lens/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -108,6 +108,12 @@
             <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
           </ul>
         </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
     </nav>
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#lenses">Lenses</a> / Convex lens</div>
@@ -117,7 +123,7 @@
           <h1>Convex lens</h1>
         </div>
       </div>
-      <p class="tagline">Bends rays with a thin-lens, paraxial focal-length model.</p>
+      <p class="tagline">Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.</p>
       <a class="place-cta" href="../../sketch/?place=lens">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -161,8 +167,11 @@
         back focal point, and an object arrow really does form an inverted, magnified, or
         demagnified image at the position the lens equation predicts. What's missing is
         everything paraxial theory leaves out by construction — spherical and chromatic
-        aberration, finite lens thickness, and any behavior for rays far from the axis or
-        at large angles.</p></div>
+        aberration, finite lens geometry, and any behavior for rays far from the axis or
+        at large angles. For pulse reporting only, the lens silently assumes N-BK7 and a
+        centre thickness from spherical sag plus 2.5&nbsp;mm edge thickness. That
+        diameter-aware estimate is typically within about 10% for ordinary plano-convex
+        catalogue singlets; it does not change the traced ray geometry.</p></div>
       </div>
 
       

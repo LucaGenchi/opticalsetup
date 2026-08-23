@@ -49,9 +49,21 @@ export function twoPhotonHandoffCandidates(elements = [], signalHits = [], stage
     const hits = signalHits.filter(hit => hit?.stageId === stageId && hit.sourceId === laser.id);
     const allHaveNA = hits.length > 0 && hits.every(hit => finite(hit.objectiveNA));
     const nas = new Set(hits.filter(hit => finite(hit.objectiveNA)).map(hit => hit.objectiveNA));
+    // A dispersed band carries one estimate per sampled wavelength. Report
+    // the pulse's centre-wavelength path instead of averaging unlike colours.
+    const nearestDistance = Math.min(...hits.map(hit => finite(hit.wavelengthNm)
+      ? Math.abs(hit.wavelengthNm - laser.params.wavelength) : Number.POSITIVE_INFINITY));
+    const centerHits = hits.filter(hit => finite(hit.wavelengthNm)
+      && Math.abs(Math.abs(hit.wavelengthNm - laser.params.wavelength) - nearestDistance) < 1e-7);
+    const stretched = centerHits.map(hit => hit.stretchedPulseWidthFs).filter(finite);
+    const gdds = centerHits.map(hit => hit.gddFs2).filter(finite);
     return {
       laser,
       numericalAperture: allHaveNA && nas.size === 1 ? [...nas][0] : null,
+      stretchedPulseWidthFs: stretched.length
+        ? stretched.reduce((sum, value) => sum + value, 0) / stretched.length
+        : null,
+      gddFs2: gdds.length ? gdds.reduce((sum, value) => sum + value, 0) / gdds.length : 0,
     };
   });
 }

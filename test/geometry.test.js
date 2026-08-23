@@ -221,6 +221,7 @@ test('pulsed lasers produce optical-path tracks and physical detector arrival ti
   assert.ok(scene.pulseTracks.length > 0);
   assert.deepEqual(scene.pulseTracks[0].pulse, {
     sourceId: laser.id, repRateMHz: 80, pulseWidthFs: 120, phaseNs: 0,
+    centerWavelengthNm: 532, pulseShape: 'gauss', transformLimited: true,
   });
   const reading = detectorReading(detector.id);
   assert.ok(reading.pulse);
