@@ -119,7 +119,9 @@ Standalone objectives use one ideal, bidirectional optical plane fixed at the ph
 front tip. The focus distance from that tip is also the plane's focal distance: rear
 collimated light focuses exactly there, and light from a point at that focus exits the
 rear side collimated. The outer body and selection bounds never move or resize when an
-optical setting changes.
+optical setting changes. The visible illumination fan ends at the nominal focus instead
+of continuing as a misleading point-source-like cone; its downstream trace remains
+active invisibly for sample and detector calculations.
 
 Rated NA and the selected front medium request an object-side cone with half-angle
 `asin(NA/n)`. The clear opening may be smaller than that request. OpticalSetup therefore

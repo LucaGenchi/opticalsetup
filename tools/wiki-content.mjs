@@ -522,7 +522,9 @@ export const wikiEntries = [
         Collimated light entering from the rear therefore meets exactly at the marked
         sample-side focus, and a point source placed at that focus leaves the rear side
         collimated. There is no hidden moving principal plane and no independent EFL or
-        magnification control.</p>
+        magnification control. The visible illumination ends at the nominal focus rather
+        than continuing as a point-source-like fan; OpticalSetup still traces that
+        continuation invisibly for downstream samples and detectors.</p>
         <p>The objective's outer body, selection bounds, and front plane are fixed. The
         <strong>clear aperture</strong> changes only the opening inside the nose. This keeps
         an optical adjustment from stretching the component or making the visible tip and

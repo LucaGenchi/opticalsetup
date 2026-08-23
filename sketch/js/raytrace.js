@@ -1003,6 +1003,20 @@ function interact(ray, hit) {
       }
       return [{ d: bent, intensity: ray.intensity * T }];
     }
+    case 'objectivefocus': {
+      // A focused illumination fan continuing past its waist is physically a
+      // valid paraxial trace, but visually reads as a point source emitted by
+      // the objective. Split the path just beyond the nominal focus and keep
+      // tracing the continuation invisibly so detector/sample physics remain
+      // unchanged. Rays approaching the objective from the specimen side have
+      // not crossed this objective yet and pass normally.
+      const objectiveId = data.objectiveId;
+      const crossedObjective = Array.isArray(ray.objectives)
+        && ray.objectives.some(objective => objective.id === objectiveId);
+      const forward = rotPt(1, 0, s.el?.rot || 0);
+      if (!crossedObjective || dot(d, forward) <= 0) return [{ d }];
+      return [{ d, tag: 'objective-focus', hidden: true }];
+    }
     case 'refract': {
       const materialId = s.el?.id || null;
       const inside = materialId !== null && ray.medium === materialId;
@@ -1687,7 +1701,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
-      if (hit.surface.el?.type === 'objective' && hit.surface.el?.id) {
+      if (hit.surface.el?.type === 'objective' && hit.surface.el?.id
+        && hit.surface.kind !== 'objectivefocus') {
         const objectives = Array.isArray(r.objectives) ? r.objectives : [];
         if (!objectives.some(objective => objective.id === hit.surface.el.id)) {
           r.objectives = [...objectives, {

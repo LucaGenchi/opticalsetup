@@ -3,7 +3,7 @@
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
 //         surfaces(el)->[{x1,y1,x2,y2,kind,data}], source(el)->[rays],
 //         immersionSource(el)->{x,y}, immersionContact(el)->segment|segments }
-// Surface kinds handled by the tracer: mirror, lens, cmirror, refract,
+// Surface kinds handled by the tracer: mirror, lens, objectivefocus, cmirror, refract,
 // dichroic, filter, split, grating, absorb, transmit (data may change
 // wavelength / deflect).
 
@@ -1861,6 +1861,12 @@ export const registry = {
     },
     surfaces(el) {
       const lensX = objectiveLensPlaneX(el.params);
+      // Stop drawing immediately after the nominal focus, where a continued
+      // paraxial ray fan otherwise looks like a new point source. The tracer
+      // continues that branch invisibly for samples and detectors; see
+      // `objectivefocus` in raytrace.js. A small forward offset lets a sample
+      // surface placed exactly at focus receive the visible excitation first.
+      const focusCutX = OBJECTIVE_FRONT_X + objectiveWorkingDistance(el.params) + 0.02;
       const accepted = Math.min(OBJECTIVE_NOSE_HALF_HEIGHT, objectiveAcceptedRadius(el.params));
       const edge = accepted;
       const effectiveNA = objectiveEffectiveNumericalAperture(el.params);
@@ -1878,6 +1884,10 @@ export const registry = {
           ...shared, f: shared.effectiveFocalLength, transEff: el.params.transEff,
           acceptedRadius: accepted,
         },
+      },
+      {
+        x1: focusCutX, y1: -1000, x2: focusCutX, y2: 1000, kind: 'objectivefocus',
+        data: { objectiveId: el.id },
       },
       ...(OBJECTIVE_NOSE_HALF_HEIGHT > edge + 0.01 ? [
         { x1: lensX, y1: edge, x2: lensX, y2: OBJECTIVE_NOSE_HALF_HEIGHT, kind: 'absorb', data: shared },
@@ -3210,7 +3220,7 @@ const ELEMENT_HELP = {
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the clear aperture can reduce the effective NA. The same accepted cone drives tracing and the optional guide.',
+  objective: 'One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the clear aperture can reduce the effective NA. The same accepted cone drives tracing and the optional guide. Illumination is drawn only to focus so its continuation cannot look like a new point source, while downstream physics still traces invisibly.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',

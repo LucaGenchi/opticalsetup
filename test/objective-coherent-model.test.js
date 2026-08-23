@@ -10,7 +10,7 @@ import {
   objectiveNumericalAperture,
   objectiveWorkingDistance,
 } from '../sketch/js/objective.js';
-import { traceScene } from '../sketch/js/raytrace.js';
+import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 
 const EPSILON = 1e-6;
@@ -90,7 +90,7 @@ test('objective housing and hit bounds stay fixed while optical settings and cle
   }
 });
 
-test('the fixed front plane focuses collimated light and collimates light from its focus', () => {
+test('the fixed plane focuses without drawing a post-focus source fan and remains reciprocal', () => {
   const objective = createElement('objective', 200, 0);
   Object.assign(objective.params, {
     workingDistance: 12,
@@ -108,17 +108,20 @@ test('the fixed front plane focuses collimated light and collimates light from i
   const laser = createElement('cwlaser', 20, 0);
   laser.params.beamMode = 'beam';
   laser.params.beamWidth = 4;
-  const focusedEdges = traceScene([laser, objective], []).drawables.filter(drawable => {
+  const detector = createElement('detector', focusX + 120, 0);
+  const focusedEdges = traceScene([laser, objective, detector], []).drawables.filter(drawable => {
     if (drawable.pts?.length !== 2) return false;
     const [start, end] = drawable.pts;
-    return Math.abs(start.x - frontX) < EPSILON && end.x > frontX + 1000;
+    return Math.abs(start.x - frontX) < EPSILON
+      && end.x >= focusX && end.x <= focusX + 0.03;
   });
-  assert.ok(focusedEdges.length >= 2, 'both collimated beam edges leave the objective');
+  assert.ok(focusedEdges.length >= 2, 'both collimated beam edges end visibly at focus');
   for (const edge of focusedEdges) {
     const [start, end] = edge.pts;
     const t = -start.y / (end.y - start.y);
     near(start.x + t * (end.x - start.x), focusX, 1e-6, 'each edge crosses the axis at the nominal focus');
   }
+  assert.ok(detectorReading(detector.id)?.signal > 0, 'the invisible continuation still reaches downstream physics');
 
   const point = createElement('pointsource', focusX, 0);
   point.rot = 180;
