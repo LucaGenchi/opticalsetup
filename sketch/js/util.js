@@ -113,6 +113,16 @@ function trimLinkPunctuation(token) {
   return [token.slice(0, end), token.slice(end)];
 }
 
+// The bare "10.1234/suffix" DOI form collides with ordinary measurements people
+// write on a figure — "grating 10.1000/mm", "count rate 10.1234/s". Real DOI
+// suffixes are long and carry a digit or a dot; unit strings are short and are
+// pure letters, so requiring both keeps real citations and drops the units.
+// Explicitly marked DOIs (doi: or doi.org/) skip this and stay permissive.
+function isPlausibleBareDoi(label) {
+  const suffix = label.slice(label.indexOf('/') + 1);
+  return suffix.length >= 3 && /[\d.]/.test(suffix);
+}
+
 function linkHref(label) {
   if (/^https?:\/\//i.test(label)) return label;
   if (/^www\./i.test(label) || /^doi\.org\//i.test(label)) return `https://${label}`;
@@ -128,6 +138,7 @@ export function linkifyText(value) {
     const start = match.index;
     if (start > 0 && /[A-Za-z0-9_@]/.test(text[start - 1])) continue;
     const [label, trailing] = trimLinkPunctuation(match[0]);
+    if (/^10\./.test(label) && !isPlausibleBareDoi(label)) continue;
     if (start > cursor) segments.push({ text: text.slice(cursor, start), href: null });
     if (label) segments.push({ text: label, href: linkHref(label) });
     if (trailing) segments.push({ text: trailing, href: null });
