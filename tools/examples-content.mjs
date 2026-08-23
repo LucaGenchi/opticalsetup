@@ -21,6 +21,95 @@ function cite(...nums) {
 
 export const exampleEntries = [
   {
+    match: 'Spherical aberration — ideal lens vs spherical singlet',
+    title: 'Why a real lens has no focal point',
+    tagline: 'One collimated bundle through an ideal lens and through a real N-BK7 singlet of the same focal length — a point against a 30 mm smear.',
+    html: `
+      <p>The lensmaker's equation gives a lens one focal length, and the thin-lens
+      construction sends every ray through one point. Both are approximations that hold
+      only near the axis. A real lens is bounded by spheres, and a sphere is the wrong
+      shape: it bends a ray that strikes it far from the axis <em>too strongly</em>, so
+      the rim of the lens focuses closer than the centre does.</p>
+      <p>That is spherical aberration, and unlike chromatic aberration it does not go away
+      with a single colour — it is there in monochromatic light, for a perfectly made lens,
+      as a consequence of the shape alone. There is no plane anywhere along the axis where
+      the light comes to a point. The best you get is the <em>circle of least confusion</em>,
+      the plane where the blur is smallest.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Both rows start identically: a monochromatic point source at the front focus of a
+      collimator, which turns it into a 90&nbsp;mm bundle of parallel rays. Only the lens
+      under test differs, and both have the same focal length, so any difference is the
+      shape of the glass and nothing else.</p>
+      <p>The top row uses the idealised <code>lens</code> element. Every ray crosses the
+      axis at exactly the same place, and the screen at that plane catches a point.</p>
+      <p>The bottom row uses a real N-BK7 <code>thicklens</code> with the same power. The
+      rays now cross the axis at five distinct places spread over 31&nbsp;mm: the rim
+      focuses 31&nbsp;mm short of the paraxial focus, and the classic caustic opens up
+      between the two. At the paraxial plane where the screen sits, that same light is
+      spread over about 30&nbsp;mm. Even at its tightest, 24&nbsp;mm before the screen, the
+      spot is still about 7&nbsp;mm across.</p>
+      <p>Select the singlet and shrink its aperture — the blur collapses far faster than
+      the aperture does, because the transverse blur grows as the cube of the ray height.
+      That is the whole reason stopping a lens down sharpens the image, and why a fast lens
+      is so much harder to build than a slow one. Bending the lens by making the two radii
+      unequal at constant power also helps, and splitting the power over more surfaces
+      helps most of all — which is what the lens-group element is for.</p>`,
+    limitations: `<p>This singlet is deliberately fast — about f/1.3 — so the caustic is
+      obvious at a glance; a normal f/8 lens would show a blur too small to see at this
+      scale. The tracer samples ten rays, so the caustic is drawn as a handful of distinct
+      crossings rather than the continuous surface it really is, and the drawing carries no
+      information about how the energy is distributed within the blur: in a real spot most
+      of the light piles up near the circle of least confusion rather than spreading evenly.
+      Only spherical aberration is on show here — the bundle is on-axis, so coma,
+      astigmatism, and field curvature never appear, and the single wavelength hides
+      chromatic aberration entirely. Diffraction is not modelled at all, so the ideal lens
+      focuses to a mathematical point rather than to an Airy disc.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spherical Aberration', url: 'https://www.rp-photonics.com/spherical_aberrations.html' },
+      { label: 'Thorlabs — Plano-Convex Lens Tutorial', url: 'https://www.thorlabs.com/n-bk7-plano-convex-lenses-uncoated?tabName=Tutorial' },
+    ],
+    related: ['lens', 'thicklens', 'lensgroup', 'pointsource'],
+  },
+  {
+    match: 'Singlet vs achromat — axial colour',
+    title: 'Singlet vs achromat — axial colour',
+    tagline: 'Two 100 mm prescriptions under the same visible supercontinuum: the crown singlet separates colour while the crown–flint doublet brings it back together.',
+    html: `
+      <p>A single positive lens cannot focus every visible wavelength at the same
+      axial position because optical-glass index changes with wavelength. Blue light
+      generally sees more power than red light and therefore focuses closer to the
+      lens. An achromatic doublet combines a low-dispersion crown element with a
+      higher-dispersion flint element of opposing power, cancelling most of that
+      first-order colour without cancelling the useful net focus.</p>
+      <p>This side-by-side scene holds the comparison unusually clean: both lanes use
+      the same 486.1–656.3&nbsp;nm source band, 24&nbsp;mm beam, clear aperture, and
+      approximately 100&nbsp;mm effective focal length. Only the prescription changes.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>The upper N-BK7 singlet produces about −1.53&nbsp;mm of F-to-C longitudinal
+      colour. The lower N-BK7 + N-SF11 cemented achromat produces about
+      −0.0003&nbsp;mm in the same model — roughly five thousand times less. That
+      correction is not a display effect or an “achromat” flag: every sampled
+      wavelength refracts through the drawn spherical faces with its own glass index,
+      and the focus separation emerges from those interactions.</p>
+      <p>Select either Lens group to inspect the actual surface rows. Editing any row
+      makes a custom copy of the preset; the per-row action can then vary one radius to
+      null the F-to-C readout while preserving a finite focal length of the same sign.</p>`,
+    limitations: `<p>The comparison is a 2D meridional geometric trace. It shows
+      longitudinal colour and spherical caustics, not diffraction-limited spot size,
+      lateral colour, quantitative off-axis aberrations, coatings, manufacturing
+      tolerances, or a full visible image. The near-zero F/C result does not mean every
+      intermediate wavelength shares exactly one focus, and the catalogue glasses use
+      visible-band Cauchy fits rather than full Sellmeier data.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Achromatic Optics', url: 'https://www.rp-photonics.com/achromatic_optics.html' },
+    ],
+    related: ['lensgroup', 'thicklens', 'sclaser'],
+  },
+  {
     match: 'Michelson interferometer',
     title: 'Michelson interferometer',
     tagline: 'One beamsplitter, two mirror arms, one recombined output — the interferometer behind the Michelson–Morley experiment and, scaled up four kilometers, LIGO.',
@@ -114,6 +203,53 @@ export const exampleEntries = [
     ],
     resources: [],
     related: ['bs', 'mirror', 'detector'],
+  },
+  {
+    match: 'Ultrashort pulse chirping',
+    title: 'Ultrashort pulse chirping',
+    tagline: 'The same 150 fs pulse measured three ways — bare, chirped by 100 mm of dense flint, and recompressed — each on its own autocorrelator.',
+    html: `
+      <p>A transform-limited pulse is the shortest envelope its spectrum allows: every
+      frequency component arrives in phase. Glass takes that away. Because the refractive
+      index varies with wavelength, the blue components travel slower than the red ones,
+      so the pulse leaves the glass <em>chirped</em> — its colours strung out in time —
+      and therefore longer, even though nothing about its spectrum has changed and its ray
+      still runs dead straight.</p>
+      <p>The quantity that governs this is the group delay dispersion, the second
+      derivative of spectral phase. It accumulates along the path, adds up over every piece
+      of glass, and can be undone by anything supplying the opposite sign.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Three identical 150&nbsp;fs, 532&nbsp;nm Gaussian sources, each measured by its
+      own autocorrelator wired to a detector screen.</p>
+      <p>The first arm has nothing in the beam and reads 150&nbsp;fs — the reference. The
+      second passes through 100&nbsp;mm of N-SF11, a dense flint whose GVD at 532&nbsp;nm
+      is about 387&nbsp;fs²/mm: roughly +38&nbsp;680&nbsp;fs² in total, stretching the pulse
+      to about 731&nbsp;fs, nearly five times longer. The third adds a compressor set to
+      −38&nbsp;680&nbsp;fs², which cancels the glass exactly and returns the measurement to
+      150&nbsp;fs.</p>
+      <p>Each screen shows what an autocorrelator actually produces: delay on the horizontal
+      axis rather than laboratory time, the self-convolution of the pulse envelope, the
+      half-maximum chord that constitutes the measurement, and the duration inferred by
+      dividing out the shape factor (√2 for a Gaussian). Change the assumed shape on any
+      autocorrelator and it will tell you how far wrong that assumption puts the answer.</p>
+      <p>Wavelength matters as much as path length here: the same rod at 800&nbsp;nm
+      contributes only about 18&nbsp;750&nbsp;fs², because N-SF11's GVD falls steeply toward
+      the infrared. Retune the sources and watch all three traces change together.</p>`,
+    limitations: `<p>Only second-order dispersion is modelled. Real glass also has
+      third-order and higher terms that reshape a pulse asymmetrically rather than simply
+      widening it, and a real compressor is a grating, prism, or chirped-mirror assembly
+      with its own higher-order dispersion, loss, and alignment sensitivity rather than a
+      single signed number. The pulse is assumed to enter transform-limited; an input chirp
+      would add to or subtract from the glass instead of simply being stretched by it. The
+      autocorrelation curve is drawn from the inferred duration, not from a simulated
+      scanning measurement, and absorption in the glass is not modelled at all.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Group Delay Dispersion', url: 'https://www.rp-photonics.com/group_delay_dispersion.html' },
+      { label: 'RP Photonics Encyclopedia — Optical Autocorrelators', url: 'https://www.rp-photonics.com/autocorrelators.html' },
+    ],
+    related: ['pulsedlaser', 'glassrod', 'pulsecompressor', 'autocorrelator'],
   },
   {
     match: 'OPTICAL SETUP — pulsed component panorama',

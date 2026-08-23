@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Objective — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the resizable clear aperture can reduce the effective NA. The housing height follows that opening without moving the optical plane. Light continues physically through focus; beam mode shows only faint dashed post-focus edges so it reads as the same beam after its waist, not a new filled source. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the resizable clear aperture can reduce the effective NA. The housing height follows that opening without moving the optical plane. Light continues physically through focus; beam mode shows only faint dashed post-focus edges so it reads as the same beam after its waist, not a new filled source. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/objective/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Objective — OpticalSetup Encyclopedia">
-<meta property="og:description" content="One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the resizable clear aperture can reduce the effective NA. The housing height follows that opening without moving the optical plane. Light continues physically through focus; beam mode shows only faint dashed post-focus edges so it reads as the same beam after its waist, not a new filled source.">
+<meta property="og:description" content="One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the resizable clear aperture can reduce the effective NA. The housing height follows that opening without moving the optical plane. Light continues physically through focus; beam mode shows only faint dashed post-focus edges so it reads as the same beam after its waist, not a new filled source. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/objective/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -75,7 +75,7 @@
         <div class="cat">
           <div class="cat-name">Lenses</div>
           <ul>
-            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="current">Objective</a></li>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="current">Objective</a></li>
           </ul>
         </div>
         <div class="cat">
@@ -108,6 +108,12 @@
             <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
           </ul>
         </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
     </nav>
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#lenses">Lenses</a> / Objective</div>
@@ -117,7 +123,7 @@
           <h1>Objective</h1>
         </div>
       </div>
-      <p class="tagline">One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the resizable clear aperture can reduce the effective NA. The housing height follows that opening without moving the optical plane. Light continues physically through focus; beam mode shows only faint dashed post-focus edges so it reads as the same beam after its waist, not a new filled source.</p>
+      <p class="tagline">One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the resizable clear aperture can reduce the effective NA. The housing height follows that opening without moving the optical plane. Light continues physically through focus; beam mode shows only faint dashed post-focus edges so it reads as the same beam after its waist, not a new filled source. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.</p>
       <a class="place-cta" href="../../sketch/?place=objective">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -245,6 +251,10 @@
         <p>When this objective sits between a pulsed laser and an illuminated
         photocurable-resin sample, the <em>effective</em> traced NA can be handed off to the
         dedicated Two-Photon Lithography Lab alongside the laser settings.</p>
+        <p>For pulse reporting, the ideal plane silently contributes 30&nbsp;mm of
+        N-BK7. This is a class-typical GDD estimate, not a prescription: real objectives
+        can be roughly half to twice that value, and the estimate does not scale with NA,
+        focus distance, immersion medium, or barrel geometry.</p>
         <div class="formula">
       <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>θ</mi><mi>r</mi></msub><mo>=</mo><mi>arcsin</mi><mo>⁡</mo><mo stretchy="false">(</mo><msub><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mi>r</mi></msub><mi mathvariant="normal">/</mi><mi>n</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\theta_r = \arcsin(\mathrm{NA}_r/n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">r</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop">arcsin</span><span class="mopen">(</span><span class="mord"><span class="mord"><span class="mord mathrm">NA</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">r</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">/</span><span class="mord mathnormal">n</span><span class="mclose">)</span></span></span></span></span></div>
       <div class="caption">The medium-qualified half-angle requested by the rated NA.</div>
@@ -260,7 +270,10 @@
         magnification, internal pupils or groups, diffraction, aberrations, cover glass,
         polarization at high angle, or field curvature. The drawn immersion bridge does not
         solve wetting, contact angle, surface tension, volume, gravity, refraction at the
-        liquid boundary, index-mismatch focal shift, or immersion aberrations.</p></div>
+        liquid boundary, index-mismatch focal shift, or immersion aberrations. The fixed
+        30&nbsp;mm N-BK7 GDD equivalent can be wrong by about a factor of two for a
+        particular objective; detector readouts report the combined path total, while this
+        page identifies which part of that total is only assumed.</p></div>
       </div>
 
       

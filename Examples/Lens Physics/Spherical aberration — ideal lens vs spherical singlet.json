@@ -1,170 +1,360 @@
 {
- "app": "optics2d",
- "version": 1,
- "elements": [
-  {
-   "id": "compare-title",
-   "type": "textlabel",
-   "x": 42,
-   "y": 64,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "Ideal focus vs spherical-aberration caustic",
-    "fontSize": 18,
-    "fill": "#333333"
-   }
-  },
-  {
-   "id": "ideal-heading",
-   "type": "textlabel",
-   "x": 42,
-   "y": 142,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "IDEAL PARAXIAL LENS — every sampled ray height shares one focus",
-    "fontSize": 12,
-    "fill": "#333333"
-   }
-  },
-  {
-   "id": "ideal-source",
-   "type": "cwlaser",
-   "x": 100,
-   "y": 225,
-   "rot": 0,
-   "label": "48 mm collimated beam",
-   "showLabel": true,
-   "params": {
-    "wavelength": 532,
-    "avgPowerW": 0.1,
-    "beamMode": "beam",
-    "beamWidth": 48,
-    "pol": 0,
-    "autoColor": true,
-    "color": "#e02020",
-    "temporalMode": "cw"
-   },
-   "labelPos": "t"
-  },
-  {
-   "id": "ideal-lens",
-   "type": "lens",
-   "x": 330,
-   "y": 225,
-   "rot": 0,
-   "label": "ideal thin lens · f 60 mm",
-   "showLabel": true,
-   "params": {
-    "f": 60,
-    "dia": 50.8,
-    "transEff": 100
-   },
-   "labelPos": "b"
-  },
-  {
-   "id": "ideal-screen",
-   "type": "box",
-   "x": 470,
-   "y": 225,
-   "rot": 0,
-   "label": "screen",
-   "showLabel": true,
-   "params": {
-    "text": "",
-    "w": 4,
-    "h": 110,
-    "behavior": "block",
-    "fill": "#dbe3ec"
-   },
-   "labelPos": "r"
-  },
-  {
-   "id": "real-heading",
-   "type": "textlabel",
-   "x": 42,
-   "y": 355,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "SPHERICAL SINGLET — marginal rays focus first and sweep out a caustic",
-    "fontSize": 12,
-    "fill": "#333333"
-   }
-  },
-  {
-   "id": "real-source",
-   "type": "cwlaser",
-   "x": 100,
-   "y": 438,
-   "rot": 0,
-   "label": "same 48 mm beam",
-   "showLabel": true,
-   "params": {
-    "wavelength": 532,
-    "avgPowerW": 0.1,
-    "beamMode": "beam",
-    "beamWidth": 48,
-    "pol": 0,
-    "autoColor": true,
-    "color": "#e02020",
-    "temporalMode": "cw"
-   },
-   "labelPos": "t"
-  },
-  {
-   "id": "real-lens",
-   "type": "thicklens",
-   "x": 330,
-   "y": 438,
-   "rot": 0,
-   "label": "N-BK7 · Ø50.8 mm · R₁ +60 / R₂ −60",
-   "showLabel": true,
-   "params": {
-    "r1": 60,
-    "r2": -60,
-    "thickness": 12,
-    "dia": 50.8,
-    "glass": "nbk7",
-    "transmission": 1
-   },
-   "labelPos": "b"
-  },
-  {
-   "id": "real-screen",
-   "type": "box",
-   "x": 470,
-   "y": 438,
-   "rot": 0,
-   "label": "screen",
-   "showLabel": true,
-   "params": {
-    "text": "",
-    "w": 4,
-    "h": 110,
-    "behavior": "block",
-    "fill": "#dbe3ec"
-   },
-   "labelPos": "r"
-  },
-  {
-   "id": "compare-hint",
-   "type": "textlabel",
-   "x": 42,
-   "y": 562,
-   "rot": 0,
-   "label": "",
-   "showLabel": false,
-   "params": {
-    "text": "Select the spherical singlet and change its radii, thickness, aperture, or glass.",
-    "fontSize": 11,
-    "fill": "#333333"
-   }
-  }
- ],
- "beams": []
+  "app": "optics2d",
+  "version": 1,
+  "beams": [],
+  "elements": [
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 42,
+      "y": 60,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Why a real lens has no focal point",
+        "fontSize": 18,
+        "fill": "#111111"
+      }
+    },
+    {
+      "id": "sub",
+      "type": "textlabel",
+      "x": 42,
+      "y": 90,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "One collimated 90 mm bundle, two lenses of the same focal length.",
+        "fontSize": 12,
+        "fill": "#666666"
+      }
+    },
+    {
+      "id": "h1",
+      "type": "textlabel",
+      "x": 42,
+      "y": 170,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "IDEAL THIN LENS",
+        "fontSize": 13,
+        "fill": "#1361fa"
+      }
+    },
+    {
+      "id": "h1b",
+      "type": "textlabel",
+      "x": 42,
+      "y": 190,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "every ray height shares one focus",
+        "fontSize": 11,
+        "fill": "#1361fa"
+      }
+    },
+    {
+      "id": "s1",
+      "type": "pointsource",
+      "x": 120,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "wavelength": 532,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "spread": 38,
+        "nrays": 10,
+        "autoColor": true,
+        "displayScale": 1
+      }
+    },
+    {
+      "id": "c1",
+      "type": "lens",
+      "x": 250,
+      "y": 290,
+      "rot": 0,
+      "label": "collimator",
+      "showLabel": true,
+      "params": {
+        "f": 130,
+        "dia": 110,
+        "transEff": 100
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "l1",
+      "type": "lens",
+      "x": 430,
+      "y": 290,
+      "rot": 0,
+      "label": "ideal thin lens",
+      "showLabel": true,
+      "params": {
+        "f": 123,
+        "dia": 101.6,
+        "transEff": 100
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "scr1",
+      "type": "box",
+      "x": 553,
+      "y": 290,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 4,
+        "h": 150,
+        "behavior": "block",
+        "fill": "#dbe3ec"
+      }
+    },
+    {
+      "id": "n1",
+      "type": "textlabel",
+      "x": 572,
+      "y": 204,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "one point",
+        "fontSize": 11,
+        "fill": "#1361fa"
+      }
+    },
+    {
+      "id": "h2",
+      "type": "textlabel",
+      "x": 42,
+      "y": 530,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SPHERICAL SINGLET",
+        "fontSize": 13,
+        "fill": "#c2410c"
+      }
+    },
+    {
+      "id": "h2b",
+      "type": "textlabel",
+      "x": 42,
+      "y": 550,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "the rim focuses 31 mm short of the centre",
+        "fontSize": 11,
+        "fill": "#c2410c"
+      }
+    },
+    {
+      "id": "s2",
+      "type": "pointsource",
+      "x": 120,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "wavelength": 532,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "spread": 38,
+        "nrays": 10,
+        "autoColor": true,
+        "displayScale": 1
+      }
+    },
+    {
+      "id": "c2",
+      "type": "lens",
+      "x": 250,
+      "y": 650,
+      "rot": 0,
+      "label": "collimator",
+      "showLabel": true,
+      "params": {
+        "f": 130,
+        "dia": 110,
+        "transEff": 100
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "l2",
+      "type": "thicklens",
+      "x": 430,
+      "y": 650,
+      "rot": 0,
+      "label": "N-BK7 singlet",
+      "showLabel": true,
+      "params": {
+        "r1": 120,
+        "r2": -120,
+        "thickness": 20,
+        "dia": 101.6,
+        "glass": "nbk7",
+        "transEff": 100
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "scr2",
+      "type": "box",
+      "x": 553,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 4,
+        "h": 150,
+        "behavior": "block",
+        "fill": "#dbe3ec"
+      }
+    },
+    {
+      "id": "n2",
+      "type": "textlabel",
+      "x": 572,
+      "y": 564,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "a 30 mm smear",
+        "fontSize": 11,
+        "fill": "#c2410c"
+      }
+    },
+    {
+      "id": "n3",
+      "type": "textlabel",
+      "x": 500,
+      "y": 746,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "rim rays cross here",
+        "fontSize": 10,
+        "fill": "#c2410c"
+      }
+    },
+    {
+      "id": "f1",
+      "type": "textlabel",
+      "x": 42,
+      "y": 810,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Both screens sit at the paraxial focal plane. The ideal lens sends every",
+        "fontSize": 11,
+        "fill": "#666666"
+      }
+    },
+    {
+      "id": "f2",
+      "type": "textlabel",
+      "x": 42,
+      "y": 832,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "ray through one point; the singlet spreads the same light over 30 mm.",
+        "fontSize": 11,
+        "fill": "#666666"
+      }
+    },
+    {
+      "id": "f3",
+      "type": "textlabel",
+      "x": 42,
+      "y": 854,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Even at its tightest — the circle of least confusion, 24 mm before the",
+        "fontSize": 11,
+        "fill": "#666666"
+      }
+    },
+    {
+      "id": "f4",
+      "type": "textlabel",
+      "x": 42,
+      "y": 876,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "screen — the singlet's spot is still 7 mm across.",
+        "fontSize": 11,
+        "fill": "#666666"
+      }
+    },
+    {
+      "id": "f5",
+      "type": "textlabel",
+      "x": 42,
+      "y": 906,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "This singlet is deliberately fast (f/1.3) so the effect is visible at a glance.",
+        "fontSize": 11,
+        "fill": "#999999"
+      }
+    },
+    {
+      "id": "f6",
+      "type": "textlabel",
+      "x": 42,
+      "y": 928,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Shrink its aperture and the blur collapses fast — which is why real",
+        "fontSize": 11,
+        "fill": "#999999"
+      }
+    },
+    {
+      "id": "f7",
+      "type": "textlabel",
+      "x": 42,
+      "y": 950,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "instruments stop lenses down, or split the power over more surfaces.",
+        "fontSize": 11,
+        "fill": "#999999"
+      }
+    }
+  ]
 }

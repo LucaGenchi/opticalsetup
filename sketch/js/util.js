@@ -92,6 +92,62 @@ export function download(filename, data, mime) {
 
 export const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+// Split authored annotation text into inert text and safe web links. Explicit
+// http(s) URLs are accepted alongside the common DOI forms people paste from
+// papers. Keeping this parser independent of the DOM makes the exact same
+// result available to the live SVG canvas and downloaded SVG files.
+const LINK_TOKEN = /https?:\/\/[^\s<>"']+|(?:www\.)[^\s<>"']+|doi:\s*10\.\d{4,9}\/[^\s<>"']+|(?:doi\.org\/)?10\.\d{4,9}\/[^\s<>"']+/gi;
+
+function trimLinkPunctuation(token) {
+  let end = token.length;
+  while (end && /[.,;:!?]/.test(token[end - 1])) end--;
+  for (const [open, close] of [['(', ')'], ['[', ']'], ['{', '}']]) {
+    while (token[end - 1] === close) {
+      const body = token.slice(0, end);
+      const opens = body.split(open).length - 1;
+      const closes = body.split(close).length - 1;
+      if (closes <= opens) break;
+      end--;
+    }
+  }
+  return [token.slice(0, end), token.slice(end)];
+}
+
+// The bare "10.1234/suffix" DOI form collides with ordinary measurements people
+// write on a figure — "grating 10.1000/mm", "count rate 10.1234/s". Real DOI
+// suffixes are long and carry a digit or a dot; unit strings are short and are
+// pure letters, so requiring both keeps real citations and drops the units.
+// Explicitly marked DOIs (doi: or doi.org/) skip this and stay permissive.
+function isPlausibleBareDoi(label) {
+  const suffix = label.slice(label.indexOf('/') + 1);
+  return suffix.length >= 3 && /[\d.]/.test(suffix);
+}
+
+function linkHref(label) {
+  if (/^https?:\/\//i.test(label)) return label;
+  if (/^www\./i.test(label) || /^doi\.org\//i.test(label)) return `https://${label}`;
+  const doi = label.replace(/^doi:\s*/i, '');
+  return `https://doi.org/${doi}`;
+}
+
+export function linkifyText(value) {
+  const text = String(value ?? '');
+  const segments = [];
+  let cursor = 0;
+  for (const match of text.matchAll(LINK_TOKEN)) {
+    const start = match.index;
+    if (start > 0 && /[A-Za-z0-9_@]/.test(text[start - 1])) continue;
+    const [label, trailing] = trimLinkPunctuation(match[0]);
+    if (/^10\./.test(label) && !isPlausibleBareDoi(label)) continue;
+    if (start > cursor) segments.push({ text: text.slice(cursor, start), href: null });
+    if (label) segments.push({ text: label, href: linkHref(label) });
+    if (trailing) segments.push({ text: trailing, href: null });
+    cursor = start + match[0].length;
+  }
+  if (cursor < text.length || !segments.length) segments.push({ text: text.slice(cursor), href: null });
+  return segments;
+}
+
 export const ptsAttr = pts => pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
 
 export function arrowHeadSVG(pts, color, w) {

@@ -87,14 +87,16 @@ function pulseLayerSVG(tracks, timeNs, playback) {
   for (const track of tracks) {
     if (pulsesReadAsCW(pulsePeriodNs(track.pulse?.repRateMHz), playback?.speedNsPerSecond)) continue;
     for (const marker of pulseMarkers(track, timeNs, { mode: playback?.mode })) {
-      const width = playback?.mode === 'physical' ? Math.max(marker.widthMm, 9) : marker.widthMm;
+      const width = playback?.mode === 'physical'
+        ? Math.max(marker.widthMm, 9 * (marker.visualStretch || 1))
+        : marker.widthMm;
       const rx = Math.max(2, width / 2);
       const ry = Math.max(2.2, Math.min(5, 2.5 + 1.4 * Math.sqrt(Math.max(0, track.intensity || 0))));
       const transmission = marker.transmission ?? 1;
       const opacity = Math.max(0.03, Math.min(0.95, (0.45 + 0.45 * (track.intensity || 0)) * transmission));
       const highlightOpacity = Math.max(0.04, 0.82 * Math.sqrt(transmission));
       const fill = track.bw >= 200 ? 'url(#pulseSpectrum)' : track.color;
-      body += `<g transform="translate(${marker.x.toFixed(2)} ${marker.y.toFixed(2)}) rotate(${marker.angle.toFixed(2)})">` +
+      body += `<g class="pulse-marker" data-duration-fs="${marker.pulseWidthFs.toFixed(3)}" data-gdd-fs2="${marker.gddFs2.toFixed(3)}" transform="translate(${marker.x.toFixed(2)} ${marker.y.toFixed(2)}) rotate(${marker.angle.toFixed(2)})">` +
         `<ellipse rx="${(rx * 1.65).toFixed(2)}" ry="${(ry * 1.8).toFixed(2)}" fill="${fill}" opacity="${(opacity * 0.18).toFixed(2)}"/>` +
         `<ellipse rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="${fill}" opacity="${opacity.toFixed(2)}"/>` +
         `<ellipse rx="${Math.max(1, rx * 0.32).toFixed(2)}" ry="${Math.max(0.8, ry * 0.45).toFixed(2)}" fill="#fff" opacity="${highlightOpacity.toFixed(2)}"/>` +
