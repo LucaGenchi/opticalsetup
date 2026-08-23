@@ -65,6 +65,25 @@ function recordObjectivePupil(elementId, radius, pupilRadius) {
   else seen.beamRadius = Math.max(seen.beamRadius, radius);
 }
 
+// pulse-compressor element id -> the GDD the beam arrives carrying, and what
+// leaves. A compressor whose setting is small next to what a scene already
+// accumulated looks inert; showing both numbers is what makes it obvious that
+// -2000 fs² against 38680 fs² is doing exactly 5% of the job.
+let compressorGdd = new Map();
+
+function recordCompressor(elementId, incoming, outgoing) {
+  if (!elementId || !Number.isFinite(incoming)) return;
+  const seen = compressorGdd.get(elementId);
+  // several rays cross it; the widest-magnitude arrival is the representative
+  if (!seen || Math.abs(incoming) > Math.abs(seen.incoming)) {
+    compressorGdd.set(elementId, { incoming, outgoing });
+  }
+}
+
+export function compressorGddReading(elementId) {
+  return compressorGdd.get(elementId) || null;
+}
+
 export function objectivePupilFill(elementId) {
   const seen = objectivePupilHits.get(elementId);
   if (!seen || seen.pupilRadius <= 0) return null;
@@ -390,6 +409,10 @@ export function detectorReading(elementId) {
       repRateMHz: mixed ? null : first.repRateMHz,
       pulseWidthFs: mixed ? null : first.pulseWidthFs,
       phaseNs: mixed ? null : first.phaseNs,
+      // The autocorrelator needs the real shape to show what assuming the
+      // wrong one would cost, and whether a duration is derivable at all.
+      pulseShape: mixed ? null : (first.pulseShape || 'gauss'),
+      transformLimited: mixed ? null : first.transformLimited === true,
       trains,
       gddFs2,
       gddRangeFs2: [Math.min(...gddValues), Math.max(...gddValues)],
@@ -1020,10 +1043,12 @@ function interact(ray, hit) {
       const applied = Number.isFinite(Number(data.gddFs2))
         ? Math.min(1000000, Math.max(-1000000, Number(data.gddFs2))) : 0;
       const efficiency = Math.min(1, Math.max(0.01, Number(data.efficiency) || 1));
+      const incoming = Number.isFinite(ray.gdd) ? ray.gdd : 0;
+      recordCompressor(s.el?.id, incoming, incoming + applied);
       return [{
         d,
         intensity: ray.intensity * efficiency,
-        gdd: (Number.isFinite(ray.gdd) ? ray.gdd : 0) + applied,
+        gdd: incoming + applied,
       }];
     }
     case 'attenuate': {
@@ -2140,6 +2165,7 @@ export function traceScene(elements, beams = []) {
   lastPaths = [];
   detectorHits = new Map();
   objectivePupilHits = new Map();
+  compressorGdd = new Map();
   gateTransmissionCache = new Map();
   specimenIncident = new Map();
 
@@ -2247,6 +2273,7 @@ export function traceScene(elements, beams = []) {
       specimenProbe = null;
       detectorHits = new Map();
       objectivePupilHits = new Map();
+      compressorGdd = new Map();
       gateTransmissionCache = new Map();
     }
   }

@@ -10,6 +10,7 @@ import {
 } from './elements.js';
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
+import { autocorrelationReading } from './glass.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import {
@@ -188,6 +189,33 @@ function sensorName(el) {
   return String(name).trim() || 'Sensor';
 }
 
+// An autocorrelator never measures a duration directly: it measures the width
+// of the intensity autocorrelation and you divide out a shape-dependent
+// factor. Reporting the trace, the assumption, and the inferred number
+// separately keeps that honest — and lets a wrong assumption show up as the
+// error it would really be in a lab.
+function autocorrelatorRows(rd, source) {
+  if (!rd.pulse) return `
+      <dt>Autocorrelation</dt><dd>Continuous wave — no pulse to measure</dd>`;
+  if (rd.pulse.mixed) return `
+      <dt>Autocorrelation</dt><dd>Mixed pulse trains — one trace cannot separate them</dd>`;
+  const assumed = source?.params?.assumedShape || 'gauss';
+  const actual = rd.pulse.pulseShape || 'gauss';
+  const derived = Number.isFinite(rd.pulse.stretchedPulseWidthFs)
+    ? rd.pulse.stretchedPulseWidthFs : null;
+  const reading = autocorrelationReading(derived ?? rd.pulse.pulseWidthFs, assumed, actual);
+  if (!reading) return `
+      <dt>Autocorrelation</dt><dd>—</dd>`;
+  const fs = v => `${v < 100 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs`;
+  const shapeName = k => (k === 'sech2' ? 'sech²' : 'Gaussian');
+  const error = reading.inferredPulseWidthFs / reading.truePulseWidthFs;
+  return `
+      <dt>Autocorrelation FWHM</dt><dd>${fs(reading.traceFwhmFs)}</dd>
+      <dt>Inferred duration</dt><dd>${fs(reading.inferredPulseWidthFs)} · assuming ${shapeName(assumed)} (÷${reading.assumedFactor.toFixed(3)})</dd>
+      ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}
+      ${derived === null ? `<dt>Note</dt><dd>Shows the configured duration: a chirped or non-Gaussian input has no derivable stretch</dd>` : ''}`;
+}
+
 function measurementHTML(el) {
   const viaDisplay = el.type === 'display';
   const source = viaDisplay ? resolveDisplaySensor(el, state.elements) : el;
@@ -250,7 +278,8 @@ function measurementHTML(el) {
       <dt>PMT state</dt><dd>${rd.saturated ? 'Saturated' : 'Linear range'}</dd>`
     : readoutKind === 'camera' ? `
       <dt>Centroid</dt><dd>${rd.centroid === null ? '—' : `${rd.centroid.toFixed(2)} mm`}</dd>
-      <dt>Sensor bins</dt><dd>${rd.profile?.length || 0}</dd>` : '';
+      <dt>Sensor bins</dt><dd>${rd.profile?.length || 0}</dd>`
+    : readoutKind === 'autocorrelator' ? autocorrelatorRows(rd, source) : '';
   let cameraProfile = '';
   if (rd.profile) {
     const max = Math.max(...rd.profile, 1e-9);

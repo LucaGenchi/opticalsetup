@@ -6,10 +6,11 @@ import {
 } from '../sketch/js/elements.js';
 import {
   gaussianPulseDurationAfterGDD, glassAbbe, glassGVD, glassIndex,
-  glassWavelengthRange, isWavelengthInGlassRange,
+  glassWavelengthRange, isWavelengthInGlassRange, autocorrelationReading,
 } from '../sketch/js/glass.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import '../sketch/js/detector-instruments.js';
+import { registry as reg } from '../sketch/js/elements.js';
 import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
 import { parseSketch } from '../sketch/js/state.js';
 
@@ -234,4 +235,58 @@ test('a UV pulse through a flint reports a bounded duration, not a millisecond',
   assert.ok(pulse.gddFs2 < 1e6, `GDD ${pulse.gddFs2} fs² is not a physical glass rod`);
   assert.ok(pulse.stretchedPulseWidthFs < 1e5,
     `${pulse.stretchedPulseWidthFs} fs out of a 60 mm rod is absurd`);
+});
+
+// ---------------- autocorrelator ----------------
+
+test('the autocorrelation trace is wider than the pulse by the shape factor', () => {
+  const gauss = autocorrelationReading(150, 'gauss', 'gauss');
+  assert.ok(Math.abs(gauss.traceFwhmFs - 150 * Math.SQRT2) < 1e-9, 'Gaussian trace is √2 wider');
+  assert.ok(Math.abs(gauss.inferredPulseWidthFs - 150) < 1e-9, 'and divides back out exactly');
+  assert.equal(gauss.shapeMismatch, false);
+
+  const sech = autocorrelationReading(150, 'sech2', 'sech2');
+  assert.ok(Math.abs(sech.traceFwhmFs - 150 * 1.543) < 1e-9);
+  assert.ok(Math.abs(sech.inferredPulseWidthFs - 150) < 1e-9);
+
+  assert.equal(autocorrelationReading(0), null, 'no pulse, no trace');
+  assert.equal(autocorrelationReading(-5), null);
+});
+
+test('assuming the wrong pulse shape misreports the duration, by the factor ratio', () => {
+  // The classic lab mistake the instrument invites: a sech² pulse read on a
+  // Gaussian setting comes out long by 1.543/1.414 = 9%.
+  const wrong = autocorrelationReading(150, 'gauss', 'sech2');
+  assert.equal(wrong.shapeMismatch, true);
+  assert.equal(wrong.truePulseWidthFs, 150);
+  const ratio = wrong.inferredPulseWidthFs / wrong.truePulseWidthFs;
+  assert.ok(Math.abs(ratio - 1.543 / Math.SQRT2) < 1e-9, `read ${ratio}x the real duration`);
+  assert.ok(ratio > 1.08 && ratio < 1.10, `about 9% long, got ${((ratio - 1) * 100).toFixed(1)}%`);
+});
+
+test('an autocorrelator measures the STRETCHED duration a scene actually delivers', () => {
+  // The point of the instrument here: it should read what arrives after the
+  // glass, not what the source was configured with.
+  const laser = createElement('pulsedlaser', 60, 0);
+  Object.assign(laser.params, {
+    wavelength: 532, beamMode: 'line', pulseWidthFs: 150,
+    transformLimited: true, pulseShape: 'gauss', bandwidth: 0,
+  });
+  const rod = createElement('glassrod', 300, 0);
+  Object.assign(rod.params, { material: 'nsf11', rodlen: 100, dia: 20 });
+  const meter = createElement('autocorrelator', 520, 0);
+  meter.params.aperture = 40;
+  traceAll([laser, rod, meter], []);
+
+  const reading = detectorReading(meter.id);
+  assert.equal(registry.autocorrelator.readoutKind, 'autocorrelator');
+  assert.ok(reading?.pulse, 'the autocorrelator sees the train');
+  const arriving = reading.pulse.stretchedPulseWidthFs;
+  assert.ok(arriving > 700 && arriving < 760, `100 mm of N-SF11 at 532 nm stretches to ~731 fs, got ${arriving}`);
+
+  const trace = autocorrelationReading(arriving, 'gauss', reading.pulse.pulseShape);
+  assert.ok(Math.abs(trace.inferredPulseWidthFs - arriving) < 1e-6,
+    'a matched assumption recovers the delivered duration, not the source setting');
+  assert.ok(trace.inferredPulseWidthFs > 4 * laser.params.pulseWidthFs,
+    'and that is far longer than what the laser was set to');
 });

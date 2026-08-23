@@ -257,10 +257,16 @@ function pulseEnvelopeAtSample(track, sample, target) {
     inputPulseWidthFs,
     pulseWidthFs,
     stretchFactor,
-    // Direct proportionality stays visually readable until packets would
-    // dominate a whole bench. The real duration and factor remain un-clamped
-    // on the marker for readback and detector reporting.
-    visualStretch: Math.min(8, Math.max(1, stretchFactor)),
+    // The schematic packet is a symbol, not a scale drawing: 12 mm already
+    // stands in for 150 fs, which is physically 0.045 mm. Scaling that symbol
+    // in direct proportion made a real case (100 mm of N-SF11 at 532 nm,
+    // a true 4.9x stretch) draw a 59 mm packet — more than half the length of
+    // the rod producing it — and the old 8x ceiling allowed a packet as long
+    // as the whole component. A square-root mapping keeps the ordering and
+    // stays clearly visible while the extremes stop swamping the bench.
+    // The real duration and factor remain un-clamped on the marker for
+    // readback and detector reporting.
+    visualStretch: Math.min(3, Math.sqrt(Math.max(1, stretchFactor))),
   };
 }
 

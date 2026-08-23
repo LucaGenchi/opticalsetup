@@ -159,3 +159,27 @@ export function gaussianPulseDurationAfterGDD(pulseWidthFs, gddFs2) {
   const output = input * Math.sqrt(1 + chirp * chirp);
   return Number.isFinite(output) ? output : null;
 }
+
+// Intensity-autocorrelation deconvolution factors: the measured trace is
+// wider than the pulse by a shape-dependent constant, and dividing by the
+// wrong one is the classic way to misreport a duration.
+export const AUTOCORRELATION_FACTORS = { gauss: Math.SQRT2, sech2: 1.543 };
+
+// What an autocorrelator actually sees, and what it would report. `assumed`
+// is the shape the instrument is set to; `actual` is the shape the pulse
+// really has, so a mismatch can be shown rather than silently absorbed.
+export function autocorrelationReading(pulseWidthFs, assumed = 'gauss', actual = 'gauss') {
+  const width = Number(pulseWidthFs);
+  if (!(width > 0)) return null;
+  const actualFactor = AUTOCORRELATION_FACTORS[actual] ?? Math.SQRT2;
+  const assumedFactor = AUTOCORRELATION_FACTORS[assumed] ?? Math.SQRT2;
+  const traceFwhmFs = width * actualFactor;
+  return {
+    traceFwhmFs,
+    inferredPulseWidthFs: traceFwhmFs / assumedFactor,
+    truePulseWidthFs: width,
+    assumedFactor,
+    actualFactor,
+    shapeMismatch: assumed !== actual,
+  };
+}

@@ -9,7 +9,7 @@
 
 import { distToSegment, esc, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
-import { detectorReading, objectivePupilFill, probeAt } from './raytrace.js';
+import { compressorGddReading, detectorReading, objectivePupilFill, probeAt } from './raytrace.js';
 import { fwhmToSigma, spectrumSamples, transformLimitedBandwidthNm } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -2729,6 +2729,30 @@ export const registry = {
       },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+      // A compressor set far below what the scene already accumulated looks
+      // like it is doing nothing. Showing what arrives — and what is left —
+      // is what turns "it seems inert" into "it is cancelling 5% of it".
+      {
+        key: 'gddBalance', label: 'GDD in → out', type: 'readout',
+        readout: (p, el) => {
+          const reading = el ? compressorGddReading(el.id) : null;
+          if (!reading) return 'No pulse through it yet';
+          const fmt = v => `${Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs²`;
+          const share = reading.incoming !== 0
+            ? Math.abs((reading.incoming - reading.outgoing) / reading.incoming) * 100 : 0;
+          return `${fmt(reading.incoming)} → ${fmt(reading.outgoing)}` +
+            (reading.incoming !== 0 ? ` · cancels ${share.toFixed(0)}%` : '');
+        },
+      },
+      {
+        key: 'gddToNull', label: 'Setting that would null it', type: 'readout',
+        readout: (p, el) => {
+          const reading = el ? compressorGddReading(el.id) : null;
+          if (!reading) return '—';
+          const need = -(reading.incoming - (Number(p.gddFs2) || 0));
+          return `${Math.round(need).toLocaleString()} fs²`;
+        },
+      },
     ],
     svg(el) {
       const h = (el.params.aperture || 24) / 2;

@@ -12,7 +12,7 @@ import { esc, smoothPath, wavelengthToColor } from './util.js';
 
 export const DETECTOR_TYPES = [
   'camera', 'detector', 'pmt', 'powermeter', 'wavefrontdetector',
-  'polarimeter', 'spectrometer', 'generaldetector',
+  'polarimeter', 'spectrometer', 'generaldetector', 'autocorrelator',
 ];
 
 const DESCRIPTIONS = {
@@ -24,6 +24,7 @@ const DESCRIPTIONS = {
   polarimeter: 'Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.',
   spectrometer: 'Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.',
   generaldetector: 'Reports intensity, power, beam size, wavefront, polarization and Stokes parameters, wavelength and bandwidth, plus pulse repetition rate and duration.',
+  autocorrelator: 'Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one.',
   display: 'Connects to one detector and shows only the properties that detector measures. The cable carries data and never affects rays.',
 };
 
@@ -136,6 +137,19 @@ registry.spectrometer.params.push(
 registry.generaldetector = instrumentDefinition({
   label: 'General detector', code: 'ALL', readoutKind: 'general', paletteOrder: 8, width: 54, accent: '#67e8f9',
   aliases: ['universal detector', 'all properties', 'pulse detector', 'repetition rate', 'pulse duration'],
+});
+registry.autocorrelator = instrumentDefinition({
+  label: 'Autocorrelator', code: 'AC', readoutKind: 'autocorrelator', paletteOrder: 9, width: 56, accent: '#fca5a5',
+  aliases: ['pulse duration', 'pulse width', 'intensity autocorrelation', 'fwhm', 'chirp', 'pulse measurement'],
+});
+// A real autocorrelator cannot report a duration on its own: it measures the
+// autocorrelation trace and you divide out a factor that depends on the pulse
+// shape you assume. Making that assumption an explicit control is the point —
+// choose the wrong shape and the number is wrong by the ratio of the factors,
+// which is exactly the mistake the instrument invites in a real lab.
+registry.autocorrelator.params.push({
+  key: 'assumedShape', label: 'Assumed pulse shape', type: 'select', def: 'gauss',
+  options: [['gauss', 'Gaussian (÷1.414)'], ['sech2', 'Sech² (÷1.543)']],
 });
 registry.display.label = 'Detector screen';
 registry.display.paletteOrder = 20;

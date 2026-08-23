@@ -50,9 +50,22 @@ test('local GDD stretches and then recompresses the visible Gaussian envelope', 
   assert.equal(input.pulseWidthFs, 10);
   assert.ok(stretched.pulseWidthFs > 250);
   assert.ok(stretched.stretchFactor > 25);
-  assert.equal(stretched.visualStretch, 8, 'extreme display length is bounded');
   assert.equal(compressed.pulseWidthFs, 10);
   assert.equal(compressed.visualStretch, 1);
+
+  // The drawn packet is a symbol, so its length is a square root of the real
+  // stretch and hard-capped: a genuine 4.9x case (100 mm of N-SF11 at 532 nm)
+  // used to draw a packet longer than half the rod producing it.
+  assert.equal(stretched.visualStretch, 3, 'extreme display length is bounded');
+  assert.ok(stretched.visualStretch < Math.sqrt(stretched.stretchFactor) + 1e-9,
+    'display growth must stay sublinear in the real stretch');
+  const midway = pulseEnvelopeAtOpticalPath({
+    ...dispersiveTrack,
+    gddTrace: [{ opl: 0, gdd: 0, linear: false }, { opl: 100, gdd: 175, linear: false }],
+  }, 150);
+  assert.ok(midway.stretchFactor > 4.5 && midway.stretchFactor < 5.5, `factor ${midway.stretchFactor}`);
+  assert.ok(midway.visualStretch > 2.1 && midway.visualStretch < 2.4,
+    `a ~5x stretch should draw about 2.2x longer, got ${midway.visualStretch}`);
 });
 
 test('schematic markers remain visible and bounded for extreme pulse settings', () => {
