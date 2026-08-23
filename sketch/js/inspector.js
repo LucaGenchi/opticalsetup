@@ -18,6 +18,11 @@ import {
 import { immersionCouplingStatus } from './immersion.js';
 import { esc } from './util.js';
 import { WIKI_TYPES } from './wiki-types.js';
+import { GLASS_OPTIONS } from './glass.js';
+import {
+  AIR, MAX_SURFACE_ROWS, ROW_RADIUS_MAX, ROW_THICKNESS_MAX, ROW_THICKNESS_MIN,
+  ROW_STOP_DIAMETER_MIN, normalizeSurfaceTable, nullSurfaceTableAxialColour, surfaceRowsOf,
+} from './lensgroup.js';
 
 let panel;
 let undoArmed = false; // push one undo snapshot per editing session
@@ -288,6 +293,42 @@ function layersHTML(layers) {
   return h;
 }
 
+function surfaceTableHTML(sel) {
+  const rows = normalizeSurfaceTable(surfaceRowsOf(sel.params));
+  const presetActive = sel.params.preset && sel.params.preset !== 'custom';
+  let h = `<div class="surface-table-head"><div><strong>Surface prescription</strong>` +
+    `<span>${rows.length} / ${MAX_SURFACE_ROWS} rows</span></div>` +
+    `<p>R is positive when its centre of curvature lies toward local +x. Thickness is the axial distance to the next surface.</p>` +
+    (presetActive ? `<p class="surface-preset-note">This preset is authoritative. The first row edit makes a custom copy.</p>` : '') +
+    `</div><div class="surface-table" role="group" aria-label="Lens surface prescription">`;
+
+  rows.forEach((row, i) => {
+    const last = i === rows.length - 1;
+    const canRemove = rows.length > 2;
+    h += `<div class="surface-row" data-surface-row="${i}">` +
+      `<div class="surface-row-head"><strong>Surface ${i + 1}</strong><div class="surface-row-actions">` +
+      `<button type="button" data-smove="${i}" data-sdir="-1" ${i === 0 ? 'disabled' : ''} title="Move surface up" aria-label="Move surface ${i + 1} up">↑</button>` +
+      `<button type="button" data-smove="${i}" data-sdir="1" ${last ? 'disabled' : ''} title="Move surface down" aria-label="Move surface ${i + 1} down">↓</button>` +
+      `<button type="button" class="layerdel" data-sdel="${i}" ${canRemove ? '' : 'disabled'} title="Remove this surface" aria-label="Remove surface ${i + 1}">✕</button>` +
+      `</div></div><div class="surface-fields">` +
+      field('Radius R (mm)', `<input type="number" data-si="${i}" data-sk="r" min="${-ROW_RADIUS_MAX}" max="${ROW_RADIUS_MAX}" step="0.1" value="${row.r}">`) +
+      field('To next (mm)', `<input type="number" data-si="${i}" data-sk="thickness" min="${ROW_THICKNESS_MIN}" max="${ROW_THICKNESS_MAX}" step="0.1" value="${row.thickness}" ${last ? 'disabled aria-disabled="true"' : ''}>`) +
+      field('Medium after', `<select data-si="${i}" data-sk="glass" ${last ? 'disabled aria-disabled="true"' : ''}>` +
+        [[AIR, 'Air'], ...GLASS_OPTIONS].map(([value, label]) => `<option value="${value}" ${row.glass === value ? 'selected' : ''}>${esc(label)}</option>`).join('') +
+        `</select>`) +
+      `</div>` +
+      `<label class="surface-stop-toggle"><span><input type="checkbox" data-si="${i}" data-sk="stop" ${row.stop ? 'checked' : ''} ${row.glass !== AIR ? 'disabled' : ''}> Aperture stop after this surface</span>` +
+      (row.glass !== AIR ? `<small>Stops belong in an air space.</small>` : '') + `</label>` +
+      (row.stop ? field('Stop clear Ø (mm)', `<input type="number" data-si="${i}" data-sk="stopDiameter" min="${ROW_STOP_DIAMETER_MIN}" max="${Math.max(ROW_STOP_DIAMETER_MIN, Number(sel.params.dia) || 25.4)}" step="0.5" value="${row.stopDiameter}">`) : '') +
+      `<button type="button" class="surface-null" data-snull="${i}" title="Vary this radius while preserving a finite same-sign focal length">Null F–C colour with R${i + 1}</button>` +
+      `</div>`;
+  });
+  h += `</div>`;
+  if (rows.length < MAX_SURFACE_ROWS) h += `<button type="button" id="surfaceAdd" class="layeradd">＋ Add surface</button>`;
+  h += `<div class="hint">The final row always exits into air; its thickness is unused. An aperture stop blocks outside its clear diameter but does not add refracting power.</div>`;
+  return h;
+}
+
 // Specimen signal channels — the same stacked-overlay editor idea as the
 // wavefront shapers' layers, but each row is one emission the specimen adds.
 // The wavelengths actually reaching a specimen right now, read back from
@@ -424,6 +465,7 @@ function paramField(p, sel) {
       + (sensors.length ? '' : `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`);
   }
   if (p.type === 'layers') return layersHTML(Array.isArray(v) ? v : []);
+  if (p.type === 'surfacetable') return surfaceTableHTML(sel);
   if (p.type === 'signals') return signalsHTML(sel);
   // A derived quantity, shown in the same box shape as an editable field so
   // it reads as part of the source's settings, but computed from the other
@@ -710,6 +752,75 @@ export function renderInspector() {
       renderInspector();
     });
   });
+  // lens-group surface-table structure changes. A preset is copied only at
+  // the moment a row is actually changed, so selecting and inspecting a
+  // preset never mutates saved state.
+  const addSurface = panel.querySelector('#surfaceAdd');
+  if (addSurface) addSurface.addEventListener('click', () => {
+    const s = findSelected();
+    if (!s || s.type !== 'lensgroup') return;
+    const rows = normalizeSurfaceTable(surfaceRowsOf(s.params));
+    if (rows.length >= MAX_SURFACE_ROWS) return;
+    pushUndo();
+    rows.splice(rows.length - 1, 0, {
+      r: 0, thickness: 4, glass: 'nbk7', stop: false, stopDiameter: 12,
+    });
+    s.params.rows = normalizeSurfaceTable(rows);
+    s.params.preset = 'custom';
+    changed();
+    renderInspector();
+  });
+  panel.querySelectorAll('[data-sdel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = findSelected();
+      if (!s || s.type !== 'lensgroup') return;
+      const rows = normalizeSurfaceTable(surfaceRowsOf(s.params));
+      if (rows.length <= 2) return;
+      pushUndo();
+      rows.splice(+btn.dataset.sdel, 1);
+      s.params.rows = normalizeSurfaceTable(rows);
+      s.params.preset = 'custom';
+      changed();
+      renderInspector();
+    });
+  });
+  panel.querySelectorAll('[data-smove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = findSelected();
+      if (!s || s.type !== 'lensgroup') return;
+      const rows = normalizeSurfaceTable(surfaceRowsOf(s.params));
+      const from = +btn.dataset.smove, to = from + Number(btn.dataset.sdir);
+      if (from < 0 || from >= rows.length || to < 0 || to >= rows.length) return;
+      pushUndo();
+      [rows[from], rows[to]] = [rows[to], rows[from]];
+      s.params.rows = normalizeSurfaceTable(rows);
+      s.params.preset = 'custom';
+      changed();
+      renderInspector();
+    });
+  });
+  panel.querySelectorAll('[data-snull]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = findSelected();
+      if (!s || s.type !== 'lensgroup') return;
+      const result = nullSurfaceTableAxialColour(surfaceRowsOf(s.params), +btn.dataset.snull, {
+        diameter: s.params.dia,
+      });
+      const message = result.converged && result.improved
+        ? `Axial colour nulled to ${Number(result.residual.toPrecision(3))} mm at R = ${Number(result.radius.toFixed(4))} mm.`
+        : result.converged
+          ? `Axial colour is already nulled (${Number(result.residual.toPrecision(3))} mm).`
+          : 'No finite same-power axial-colour null was found with this radius.';
+      if (result.converged && result.improved) {
+        pushUndo();
+        s.params.rows = result.rows;
+        s.params.preset = 'custom';
+        changed();
+        renderInspector();
+      }
+      document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message } }));
+    });
+  });
   // specimen signal-channel add/remove
   const addSignal = panel.querySelector('#signalAdd');
   if (addSignal) addSignal.addEventListener('click', () => {
@@ -903,6 +1014,23 @@ export function applyInput(inp, rebuild = false) {
     return;
   }
 
+  // Lens-group surface fields. Read from surfaceRowsOf() first so the first
+  // edit of an authoritative preset copies exactly what is visible, then
+  // switch to custom before storing the edited table.
+  if (inp.dataset.si !== undefined) {
+    if (sel.type !== 'lensgroup') return;
+    const rows = normalizeSurfaceTable(surfaceRowsOf(sel.params));
+    const row = rows[+inp.dataset.si];
+    if (!row) return;
+    row[inp.dataset.sk] = val;
+    sel.params.rows = normalizeSurfaceTable(rows);
+    sel.params.preset = 'custom';
+    changed();
+    refreshReadouts(sel);
+    if (rebuild) renderInspector();
+    return;
+  }
+
   if (key) sel[key] = key === 'rot' ? ((val % 360) + 360) % 360 : val;
   else if (pkey) {
     sel.params[pkey] = val;
@@ -929,7 +1057,7 @@ export function applyInput(inp, rebuild = false) {
   // layer already is; otherwise the panel can describe the previous target.
   if (rebuild && sel.type === 'objective' && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion'].includes(pkey)) { renderInspector(); return; }
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion', 'preset'].includes(pkey)) { renderInspector(); return; }
   // A readout is derived from the other params, so any committed edit can
   // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
   // peak power or a transform-limited bandwidth from going stale on screen.

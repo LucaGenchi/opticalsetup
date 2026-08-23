@@ -749,6 +749,37 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .layeradd:hover { color: var(--accent); border-color: var(--accent); }
 .layer .field input[type="number"], .layer .field input[type="text"] { flex: 0 0 84px; width: 84px; }
 
+/* Lens prescription editor: deliberately a compact vertical instrument
+   table rather than a horizontally scrolling spreadsheet. */
+.surface-table-head { margin: 3px 0 9px; }
+.surface-table-head > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.surface-table-head strong { font-size: 11px; }
+.surface-table-head span { color: var(--muted); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.surface-table-head p { margin: 5px 0 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.surface-table-head .surface-preset-note { color: var(--accent-text); }
+.surface-row {
+  margin-bottom: 8px; padding: 9px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+}
+.surface-row-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.surface-row-head > strong { font-size: 10px; letter-spacing: .2px; }
+.surface-row-actions { display: flex; gap: 4px; }
+.surface-row-actions button { min-width: 25px; min-height: 25px; padding: 2px 5px; color: var(--muted); }
+.surface-row-actions button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.surface-row-actions .layerdel:hover:not(:disabled) { color: var(--danger); border-color: var(--danger-border); background: var(--danger-bg); }
+.surface-row-actions button:disabled { opacity: .35; cursor: default; }
+.surface-fields .field { margin-bottom: 7px; }
+.surface-fields .field > span:first-child { font-size: 10.5px; }
+.surface-fields .field input[type="number"], .surface-fields .field select,
+.surface-row > .field input[type="number"] { flex: 0 0 106px; width: 106px; min-width: 0; }
+.surface-fields input:disabled, .surface-fields select:disabled { opacity: .55; cursor: not-allowed; }
+.surface-stop-toggle { display: block; margin: 8px 0; color: var(--muted); font-size: 10.5px; line-height: 1.35; }
+.surface-stop-toggle > span { display: flex; align-items: center; gap: 6px; }
+.surface-stop-toggle input { margin: 0; accent-color: var(--accent); }
+.surface-stop-toggle small { display: block; margin: 3px 0 0 20px; color: var(--muted); font-size: 9px; }
+.surface-null { width: 100%; min-height: 28px; margin: 1px 0 2px; color: var(--accent-text); font-size: 10px; }
+.surface-null:hover { border-color: var(--accent); background: var(--accent-panel); }
+
 .negsign { color: var(--text); font-weight: 700; margin-right: 3px; }
 .field input[data-neg] { flex: 0 0 88px; width: 88px; }
 

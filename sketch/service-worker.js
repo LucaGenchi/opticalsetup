@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v14';
+const CACHE_NAME = 'opticalsetup-pwa-v16';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -24,6 +24,7 @@ const PRECACHE_PATHS = [
   "./js/glass.js",
   "./js/inspector.js",
   "./js/immersion.js",
+  "./js/lensgroup.js",
   "./js/main.js",
   "./js/objective.js",
   "./js/polarization.js",
@@ -44,6 +45,7 @@ const PRECACHE_PATHS = [
   "./js/viewport.js",
   "./js/wiki-types.js",
   "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json",
+  "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",
   "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
   "../Examples/Optics%20Bench/Michelson%20interferometer.json"

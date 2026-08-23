@@ -21,6 +21,43 @@ function cite(...nums) {
 
 export const exampleEntries = [
   {
+    match: 'Singlet vs achromat — axial colour',
+    title: 'Singlet vs achromat — axial colour',
+    tagline: 'Two 100 mm prescriptions under the same visible supercontinuum: the crown singlet separates colour while the crown–flint doublet brings it back together.',
+    html: `
+      <p>A single positive lens cannot focus every visible wavelength at the same
+      axial position because optical-glass index changes with wavelength. Blue light
+      generally sees more power than red light and therefore focuses closer to the
+      lens. An achromatic doublet combines a low-dispersion crown element with a
+      higher-dispersion flint element of opposing power, cancelling most of that
+      first-order colour without cancelling the useful net focus.</p>
+      <p>This side-by-side scene holds the comparison unusually clean: both lanes use
+      the same 486.1–656.3&nbsp;nm source band, 24&nbsp;mm beam, clear aperture, and
+      approximately 100&nbsp;mm effective focal length. Only the prescription changes.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>The upper N-BK7 singlet produces about −1.53&nbsp;mm of F-to-C longitudinal
+      colour. The lower N-BK7 + N-SF11 cemented achromat produces about
+      −0.0003&nbsp;mm in the same model — roughly five thousand times less. That
+      correction is not a display effect or an “achromat” flag: every sampled
+      wavelength refracts through the drawn spherical faces with its own glass index,
+      and the focus separation emerges from those interactions.</p>
+      <p>Select either Lens group to inspect the actual surface rows. Editing any row
+      makes a custom copy of the preset; the per-row action can then vary one radius to
+      null the F-to-C readout while preserving a finite focal length of the same sign.</p>`,
+    limitations: `<p>The comparison is a 2D meridional geometric trace. It shows
+      longitudinal colour and spherical caustics, not diffraction-limited spot size,
+      lateral colour, quantitative off-axis aberrations, coatings, manufacturing
+      tolerances, or a full visible image. The near-zero F/C result does not mean every
+      intermediate wavelength shares exactly one focus, and the catalogue glasses use
+      visible-band Cauchy fits rather than full Sellmeier data.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Achromatic Optics', url: 'https://www.rp-photonics.com/achromatic_optics.html' },
+    ],
+    related: ['lensgroup', 'thicklens', 'sclaser'],
+  },
+  {
     match: 'Michelson interferometer',
     title: 'Michelson interferometer',
     tagline: 'One beamsplitter, two mirror arms, one recombined output — the interferometer behind the Michelson–Morley experiment and, scaled up four kilometers, LIGO.',

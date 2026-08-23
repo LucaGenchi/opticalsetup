@@ -419,6 +419,97 @@ export const wikiEntries = [
   },
 
   {
+    type: 'lensgroup',
+    title: 'Lens group (surface table)',
+    category: 'Lenses',
+    realWorld: {
+      html: `
+        <p>A compound lens is specified as an ordered <strong>surface table</strong>.
+        Each row names one refracting surface by its signed radius, gives the axial
+        distance to the next surface, and names the optical medium after it. The
+        convention is compact because the same rows describe both shape and topology:
+        consecutive glass media form neighbouring elements in a cemented group, while
+        an air medium followed by another glass creates a real air space.</p>
+        <p>Achromatic doublets exploit that topology by pairing crown and flint glasses
+        whose dispersion and powers oppose one another. Their net focal power remains
+        useful while the first-order F- and C-line focal shift approaches zero. Published
+        optical-glass catalogues therefore specify both the d-line index and the Abbe
+        number used to compare dispersion${cite(1)}.</p>`,
+      formulas: [
+        {
+          tex: '\\omega^+=\\omega^- - y\\frac{n_2-n_1}{R},\\qquad y^+=y^-+t\\frac{\\omega}{n}',
+          caption: 'Paraxial refraction and transfer in reduced angle ω = nu, applied in surface-table order.',
+        },
+        {
+          tex: '\\frac{\\Phi_1}{V_1}+\\frac{\\Phi_2}{V_2}\\approx 0',
+          caption: 'First-order achromat condition: crown and flint chromatic powers cancel while their ordinary powers add.',
+        },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Each editable row is <strong>radius R · thickness to next · medium
+        after</strong>. Radius uses exactly the thick-singlet convention: for the
+        default left-to-right direction, positive R puts the centre of curvature toward
+        local +x, negative R puts it toward −x, and zero is a plane. The last row always
+        exits into air and has no following thickness.</p>
+        <p>The table is turned into one closed boundary per glass body. Every ray meets
+        the drawn plane or exact circular-arc faces and refracts with the selected
+        glass's wavelength-dependent index. The focal length and back focal distance
+        readouts are a separate paraxial surface-by-surface summary; the tracer never
+        aims rays at them. Longitudinal colour is reported as the difference between the
+        F- and C-line back focal distances, so the supplied singlet and achromat presets
+        can be compared at the same nominal 100&nbsp;mm focal length.</p>
+        <p>Cemented and air-spaced groups are not separate element types. Consecutive
+        glass rows make a cemented interface; an air row makes an authored air gap. A
+        cemented interface is realized as two equal-radius faces separated by
+        0.06&nbsp;mm of air. That tiny gap is deliberate: the tracer ignores a new hit
+        within 0.05&nbsp;mm of the previous one, so coincident glass boundaries would
+        silently lose an interaction and send the ray into the wrong medium. The gap,
+        the outlines, the exact trace, and every cardinal readout all use the same
+        realized prescription.</p>
+        <p>The clear aperture can also change that prescription. If widening it would
+        make two spherical faces cross at the rim, OpticalSetup thickens that body until
+        at least 0.4&nbsp;mm of edge remains and moves every downstream surface with it.
+        The readouts follow the adjusted geometry rather than continuing to quote the
+        impossible typed shape.</p>
+        <p>An air row can carry an aperture stop. Its two absorbing segments block light
+        outside the configured clear diameter without adding power; stopping down a
+        fast group therefore reduces its visible spherical caustic by rejecting the
+        marginal rays. “Null F–C colour” varies the chosen row's radius by deterministic
+        bisection, but accepts a solution only when it keeps a finite focal length with
+        the original sign and comparable power. Any first row edit — including the
+        purple on-canvas last-radius control — copies an active preset into a custom
+        table instead of pretending a preset was edited when it was still authoritative.</p>`,
+      formulas: [
+        {
+          tex: '\\Delta z_{FC}=\\mathrm{BFD}(486.1\\,\\mathrm{nm})-\\mathrm{BFD}(656.3\\,\\mathrm{nm})',
+          caption: 'The axial-colour readout and the quantity the row action nulls.',
+        },
+      ],
+      limitations: `<p>This is a 2D meridional geometric model with spherical or plane
+        faces. On-axis spherical and visible longitudinal chromatic behavior emerge from
+        the geometry and are meaningful within that scope; off-axis behavior is
+        qualitative. The model does not include skew rays, aspheres, diffraction,
+        quantitative coma or astigmatism, field curvature, coatings, Fresnel reflection,
+        cement index, manufacturing tolerances, or a full optical-design merit function.
+        The 0.06&nbsp;mm cement gap is a tracer workaround rather than a physical cement
+        model. Catalogue glasses use two-term visible-band Cauchy fits anchored to nd and
+        Abbe number${cite(1)}, not full Sellmeier curves; deep-UV, infrared, and temporal
+        dispersion claims are outside this element's scope. Per-surface transmission is
+        a configured percentage, not coating physics.</p>`,
+    },
+    related: ['thicklens', 'lens', 'objective', 'prism', 'freeglass'],
+    citations: [
+      { label: 'SCHOTT — Optical-glass collection datasheets', url: 'https://www.schott.com/en-gb/products/optical-glass/-/media/Project/OnEx/Products/O/optical-glass/Downloads/schott-optical-glass-collection-datasheets-english-may2019.pdf' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Achromatic Optics', url: 'https://www.rp-photonics.com/achromatic_optics.html' },
+      { label: 'The Physics Hypertextbook — Spherical lenses', url: 'https://physics.info/lenses/' },
+    ],
+  },
+
+  {
     type: 'telescope',
     title: 'Telescope (lens pair)',
     category: 'Lenses',

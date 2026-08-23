@@ -18,6 +18,12 @@ import {
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
 import {
+  MIN_CEMENT_GAP, MAX_SURFACE_ROWS, PRESET_OPTIONS, normalizeSurfaceTable, surfaceRowsOf, surfaceTableAxialColour,
+  surfaceTableCardinals, surfaceTableSummary, surfaceTableToBodies,
+} from './lensgroup.js';
+
+export { MIN_CEMENT_GAP, MAX_SURFACE_ROWS };
+import {
   OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
   objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
   objectiveBarrelHalfHeightAt, objectiveStopX,
@@ -61,18 +67,6 @@ function thickLensRadii(params) {
   };
   return { h, R1: clampR(params.r1), R2: clampR(params.r2) };
 }
-
-// The tracer ignores any intersection closer than 0.05 units along a ray, an
-// epsilon that stops a surface re-hitting itself. Two glass bodies in optical
-// contact therefore lose one of their two coincident interfaces, and the ray
-// exits into air instead of crossing into the next glass — a cemented doublet
-// traced that way comes out badly wrong (measured: 275mm against a true
-// 359mm). Holding cemented groups apart by slightly more than that epsilon
-// makes both interfaces real again. The cost is a hair of air where the
-// cement should be: at this separation it shifts a 100mm doublet's focus by
-// about 0.15%, well inside what this qualitative tracer claims anywhere else,
-// and real optical cement is a 10-20um layer of not-quite-glass regardless.
-export const MIN_CEMENT_GAP = 0.06;
 
 // Glass bodies expose per-surface transmission as a percentage, like every
 // other optic's Transmission efficiency; the tracer works in fractions.
@@ -171,6 +165,7 @@ export function thickLensShapeName(params = {}) {
 // coincident interfaces loses one of them and the ray wrongly exits into air.
 // A hand-built cemented doublet therefore comes out silently wrong rather than
 // visibly broken, which is the worst way for a model to fail — so say so.
+// The gap itself is defined in lensgroup.js, the module that has to insert it.
 export const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
 
 function glassBodyWorldPoints(el) {
@@ -1761,8 +1756,137 @@ export const registry = {
     refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
   },
 
+  // The singlet generalised: a surface table describing any number of glass
+  // bodies in a row, which is how real prescriptions are written. Cemented
+  // and air-spaced groups are the same data — glass continuing across an
+  // interface means cemented — so one element covers a plain singlet, an
+  // achromatic doublet and anything else the table can express. Nothing about
+  // the focal length is configured; see lensgroup.js.
+  lensgroup: {
+    label: 'Lens group (surface table)', category: 'Lenses', paletteOrder: 3,
+    aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table'],
+    params: [
+      { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
+      // Edited by the row editor; a preset overrides it while one is selected.
+      { key: 'rows', label: 'Surface table', type: 'surfacetable', def: null },
+      // Canvas-only derived control: the purple knob edits the final radius
+      // without storing a second source of truth. Its setter materializes an
+      // active preset into a custom table on the first drag, exactly like the
+      // row editor does on its first edit.
+      {
+        key: 'lastRadius', label: 'Last surface radius (mm)', type: 'derived', hidden: true,
+        min: -2000, max: 2000, step: 1,
+        get: p => surfaceRowsOf(p).at(-1)?.r ?? 0,
+        set: (p, value) => {
+          const rows = surfaceRowsOf(p).map(row => ({ ...row }));
+          rows.at(-1).r = value;
+          p.rows = normalizeSurfaceTable(rows);
+          p.preset = 'custom';
+        },
+      },
+      { key: 'dia', label: 'Clear aperture', type: 'optsize', def: 25.4 },
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      {
+        key: 'assembly', label: 'Assembly', type: 'readout',
+        readout: p => {
+          const s = surfaceTableSummary(surfaceRowsOf(p));
+          return `${s.name} · ${s.surfaces} surfaces${s.stops ? ` · ${s.stops} stop${s.stops === 1 ? '' : 's'}` : ''}`;
+        },
+      },
+      {
+        key: 'efl', label: 'Focal length at 587.6 nm (mm)', type: 'readout',
+        readout: p => formatFocal(surfaceTableCardinals(surfaceRowsOf(p), 587.6, { diameter: p.dia }).f),
+      },
+      {
+        key: 'bfd', label: 'Back focal distance at 587.6 nm (mm)', type: 'readout',
+        readout: p => formatFocal(surfaceTableCardinals(surfaceRowsOf(p), 587.6, { diameter: p.dia }).bfd),
+      },
+      {
+        key: 'colour', label: 'Axial colour, F to C (mm)', type: 'readout',
+        readout: p => {
+          const c = surfaceTableAxialColour(surfaceRowsOf(p), { diameter: p.dia });
+          const f = surfaceTableCardinals(surfaceRowsOf(p), 587.6, { diameter: p.dia }).f;
+          if (!Number.isFinite(c)) return '—';
+          const ppm = Number.isFinite(f) && f !== 0 ? Math.abs(c / f) * 1e6 : NaN;
+          return `${Number(c.toPrecision(3))}${Number.isFinite(ppm) ? ` · ${ppm < 1000 ? `${ppm.toFixed(0)} ppm` : `${(ppm / 1e4).toFixed(2)}%`} of f` : ''}`;
+        },
+      },
+    ],
+    size_(el) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      return { w: g.span + 6, h: 2 * g.h + 6 };
+    },
+    svg(el) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      // One path per body, so a cemented pair reads as two glasses in contact
+      // rather than one lump, and the cement line stays visible.
+      const bodies = g.bodies.map(body =>
+        `<path d="${boundaryPathData(body.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`).join('');
+      const stops = g.stops.map(stop => {
+        const edge = Math.min(stop.h, stop.aperture / 2);
+        return `<g stroke="#3c4652" stroke-width="2.4" stroke-linecap="square">` +
+          `<line x1="${stop.x}" y1="${-stop.h}" x2="${stop.x}" y2="${-edge}"/>` +
+          `<line x1="${stop.x}" y1="${edge}" x2="${stop.x}" y2="${stop.h}"/></g>`;
+      }).join('');
+      return bodies + stops;
+    },
+    surfaces(el) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      const transmission = surfaceTransmission(el.params);
+      // Every body contributes its own closed boundary. The topology key has
+      // to be unique per body AND per face: the tracer uses it to tell one
+      // interaction from another, and two bodies of one element would
+      // otherwise collide on `face-0`.
+      const refracting = g.bodies.flatMap((body, b) => boundarySegments(body.points).map((segment, i) => ({
+        x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
+        data: {
+          material: body.glass, transmission,
+          topologyKey: `body-${b}-face-${i}`,
+          ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
+        },
+      })));
+      const stops = g.stops.flatMap(stop => {
+        // Same 0.02 mm edge allowance as the objective pupil: a ray exactly
+        // on the configured clear diameter belongs to the opening, not the
+        // metal around it.
+        const edge = Math.min(stop.h, stop.aperture / 2 + 0.02);
+        if (stop.h <= edge + 0.01) return [];
+        return [
+          { x1: stop.x, y1: edge, x2: stop.x, y2: stop.h, kind: 'absorb', data: { topologyKey: `stop-${stop.row}-upper` } },
+          { x1: stop.x, y1: -edge, x2: stop.x, y2: -stop.h, kind: 'absorb', data: { topologyKey: `stop-${stop.row}-lower` } },
+        ];
+      });
+      return [...refracting, ...stops];
+    },
+    hitTest(el, localPoint, tolerance = 4) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      return g.bodies.some(body => {
+        const sampled = sampleBoundary(body.points, { maxAngle: Math.PI / 90 });
+        return pointInBoundary(localPoint, body.points)
+          || sampled.some((a, i) => distToSegment(localPoint, a, sampled[(i + 1) % sampled.length]) <= tolerance);
+      }) || g.stops.some(stop => {
+        const edge = Math.min(stop.h, stop.aperture / 2);
+        return distToSegment(localPoint, { x: stop.x, y: -stop.h }, { x: stop.x, y: -edge }) <= tolerance
+          || distToSegment(localPoint, { x: stop.x, y: edge }, { x: stop.x, y: stop.h }) <= tolerance;
+      });
+    },
+    containsLocal(el, localPoint) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      return g.bodies.some(body => pointInBoundary(localPoint, body.points));
+    },
+    // A source born inside the group takes the index of whichever body holds
+    // it, not the first one in the table.
+    refractiveIndex(el, wavelength = 550, localPoint = null) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      const body = localPoint
+        ? g.bodies.find(b => pointInBoundary(localPoint, b.points)) || g.bodies[0]
+        : g.bodies[0];
+      return body ? (glassIndex(body.glass, wavelength) ?? 1.5) : 1.5;
+    },
+  },
+
   telescope: {
-    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 3, size: { w: 174, h: 62 },
+    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 4, size: { w: 174, h: 62 },
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -1795,7 +1919,7 @@ export const registry = {
     // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
     // because WD is capped at EFL. It is never drawn — an objective is an
     // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses', paletteOrder: 4, size: { w: 36, h: 40 },
+    label: 'Objective', category: 'Lenses', paletteOrder: 5, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
@@ -3198,6 +3322,7 @@ const DIRECT = {
   // Radii are the physics, so the tune knob drives R1 (and the shape
   // follows); resize sets the clear aperture, which is genuinely a size.
   thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
+  lensgroup: { resize: { y: 'dia' }, tune: { key: 'lastRadius', short: 'R last' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
   // The blue handle changes the physical front opening. The purple control
   // moves the independently specified specimen focus; neither rewrites M/NA.
@@ -3282,6 +3407,7 @@ const ELEMENT_HELP = {
   oap: 'Reflects from segmented parabolic geometry toward the configured focus.',
   lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
   lensc: 'Diverges rays with a negative thin-lens focal length.',
+  lensgroup: 'Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
   objective: 'Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.',
