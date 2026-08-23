@@ -126,12 +126,31 @@ shows their positions in the moving 2D sample. It does not calculate focal volum
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
-The Lenses palette offers two separately selectable objective models. **Objective** keeps
-the established infinity-objective approximation: independent effective focal length
-(EFL) and working distance place an equivalent internal lens at
-`front tip + WD − EFL`; its rated back pupil is `2·f·NA`, and pupil fill determines the
-effective NA in use. This preserves existing scenes, the BFP conjugate, tube-lens
-magnification readout, and overfill behavior.
+Standalone objectives are set by effective focal length (EFL) — the focal length of
+the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
+a front aperture, and a rated NA. The normal inspector offers coordinated generic 4×,
+10×, 20×, 40×, 60× water, and 100× oil starting points; exact catalogue values live in
+a collapsed Advanced parameters section. These are plausible first-order specs, not
+manufacturer prescriptions, and EFL is no longer exposed as an unrestricted canvas-drag
+control. Magnification is reported from EFL against a 200 mm
+reference tube lens rather than typed in, because it belongs to the objective plus
+whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
+`front tip + WD − EFL`, always inside the barrel, so collimated light focuses exactly
+one working distance past the tip, an external tube lens produces the reported
+magnification, and the back focal plane one EFL behind the plane is a real traced
+conjugate that light focused on leaves collimated. Nothing is drawn at that plane; an
+objective is an opaque barrel. Rated NA is the back pupil (2·f·NA) and is the aperture
+stop, placed at the back focal plane where an infinity objective's entrance pupil
+belongs: a beam that fills it converges at the rated angle, a beam that overfills it
+loses the overflow to the barrel, and the inspector reports both the pupil fill and the
+smaller effective NA an underfilled pupil actually delivers. The designed front medium
+(dry/air capped at NA 0.85, water 1.27, oil 1.49, or a custom index) sets the index and
+the NA ceiling, and gives the object-side acceptance half-angle `asin(NA/n)`; it never
+rewrites working distance. The pupil is a paraxial stop in a thin-lens tracer, so a beam
+filling it converges at `atan(NA)` rather than the sine-condition `asin(NA/n)` the rated
+half-angle quotes — close at moderate NA, separating near the ceiling — and the single
+plane is a first-order stand-in for a compound prescription, not the real internal
+conjugates. This model remains the palette's existing **Objective** choice.
 
 **Objective V2** is the simpler fixed-plane alternative. One ideal bidirectional plane
 stays at the physical front tip, and its focus distance is also its focal distance. The

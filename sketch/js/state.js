@@ -209,7 +209,7 @@ function normalizeElement(raw, definitions, used) {
       // `readout`/`derived` params have no storage of their own — always
       // computed fresh from other params — so there is nothing to normalize
       // or persist for them.
-      if (spec.type === 'readout' || spec.type === 'derived') continue;
+      if (spec.type === 'readout' || spec.type === 'derived' || spec.type === 'derived-select' || spec.type === 'section') continue;
       // Earlier normalized params override raw input so dependent bounds can
       // safely read the medium/index selected just above the objective's NA.
       params[spec.key] = normalizeParam(rawParams[spec.key], spec, { ...rawParams, ...params });
@@ -223,7 +223,7 @@ function normalizeElement(raw, definitions, used) {
   // key, deriving a value from whatever the old format did carry — the
   // plain default would otherwise erase that evidence before anyone reads it.
   for (const spec of def?.params || []) {
-    if (spec.type === 'readout' || spec.type === 'derived') continue;
+    if (spec.type === 'readout' || spec.type === 'derived' || spec.type === 'derived-select' || spec.type === 'section') continue;
     if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params);
   }
   if (raw.type === 'objective') Object.assign(params, normalizeObjectiveParams(params));

@@ -88,7 +88,8 @@ test('Objective and Objective V2 are separate user-selectable elements', () => {
   const v2Lens = registry.objectivev2.surfaces(v2).find(surface => surface.kind === 'lens');
   assert.ok(originalLens.x1 < OBJECTIVE_FRONT_X, 'Objective retains its internal equivalent plane');
   assert.equal(v2Lens.x1, OBJECTIVE_FRONT_X, 'Objective V2 uses the fixed front plane');
-  assert.equal(getDirectManipulation(original).tune.key, 'efl');
+  assert.equal(getDirectManipulation(original).tune, null,
+    'the preset-based Objective keeps EFL out of unrestricted canvas dragging');
   assert.equal(getDirectManipulation(v2).tune.key, 'workingDistance');
 
   const roundTrip = parseSketch(file([original, v2]), registry).elements;

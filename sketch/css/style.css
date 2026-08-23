@@ -659,6 +659,10 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .quick-steps li { margin-bottom: 6px; padding-left: 3px; }
 .field { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-bottom: 9px; }
 .field > span:first-child { flex: 1; color: var(--muted); font-size: 11.5px; line-height: 1.25; }
+.preset-field { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.preset-field > span:first-child { color: var(--text); font-size: 11px; font-weight: 700; }
+.field.preset-field select { width: 100%; min-height: 34px; }
+.preset-field small { color: var(--muted); font-size: 9.5px; line-height: 1.4; }
 .field input[type="number"], .field input[type="text"], .field select {
   flex: 0 0 112px;
   width: 112px;
