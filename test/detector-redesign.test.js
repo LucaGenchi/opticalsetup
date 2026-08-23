@@ -15,7 +15,7 @@ function screenFor(sensor, elements, view = 'main') {
   return registry.display.svg(display, scene);
 }
 
-test('Detectors contains the eight requested instruments in order', () => {
+test('Detectors contains the requested instruments in order', () => {
   const listed = Object.entries(registry)
     .filter(([, definition]) => definition.category === 'Detectors' && definition.readoutKind)
     .sort((a, b) => (a[1].paletteOrder ?? 100) - (b[1].paletteOrder ?? 100))
