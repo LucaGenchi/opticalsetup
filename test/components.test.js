@@ -139,6 +139,8 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
   const objective = createElement('objective', 154, 0);
   objective.params.efl = 20; // was magnification 10 -> f = 200/10
   objective.params.workingDistance = 20;
+  objective.params.na = 0.65;
+  objective.params.frontAperture = 20;
   const detector = createElement('detector', 320, 0);
   traceAll([laser, sample, objective, detector]);
   const reading = detectorReading(detector.id);

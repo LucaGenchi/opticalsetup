@@ -65,7 +65,12 @@ function numberField(labelText, attrs, value, param = {}) {
   const min = Number(param.min), max = Number(param.max), step = Number(param.step);
   const negative = Boolean(param.negative);
   const displayValue = negative ? Math.abs(value) : value;
-  const limits = `min="${min}" max="${max}" step="${step}"`;
+  // htmlMin lets a field keep a model floor that is NOT on the step ladder:
+  // the browser bases stepping on the min attribute, so a 0.15 mm floor with a
+  // 0.5 mm step would walk 0.15, 0.65, 1.15. Basing the ladder at 0 gives
+  // 0.15 -> 0.5 -> 1 -> 1.5, and the model floor still clamps on commit.
+  const htmlMin = param.htmlMin ?? min;
+  const limits = `min="${htmlMin}" max="${max}" step="${step}"`;
   const negAttr = negative ? ' data-neg="1"' : '';
   if (!shouldUseSlider(param)) {
     return field(labelText, `${negative ? '<span class="negsign">−</span>' : ''}<input type="number" ${attrs}${negAttr} ${limits} value="${displayValue}">`);
@@ -85,7 +90,7 @@ function numberField(labelText, attrs, value, param = {}) {
 
 function resolvedParam(param, params) {
   const resolve = value => typeof value === 'function' ? value(params) : value;
-  return { ...param, min: resolve(param.min), max: resolve(param.max) };
+  return { ...param, min: resolve(param.min), max: resolve(param.max), htmlMin: resolve(param.htmlMin) };
 }
 
 // Standard-optic size control: the common ½″/1″/2″ picks plus a custom box.
@@ -501,6 +506,29 @@ function paramField(p, sel) {
       + options.map(([ov, ol, disabled]) => `<option value="${ov}" ${ov === v ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`).join('')
       + `</select>`);
   }
+  if (p.type === 'derived-select') {
+    const selected = p.get(sel.params);
+    const opt = ([ov, ol, disabled]) =>
+      `<option value="${esc(ov)}" ${ov === selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`;
+    const options = [...(p.options || [])];
+    // "Custom" leads: it is the state the element falls into the moment any
+    // exact value is edited, so it reads as a starting point rather than a
+    // failure to match one of the catalogue entries.
+    let body = p.customOption ? opt([...p.customOption, true]) : '';
+    if (p.groups?.length) {
+      for (const group of p.groups) {
+        const inGroup = options.filter(([, , , g]) => g === group);
+        if (!inGroup.length) continue;
+        body += `<optgroup label="${esc(group)}">${inGroup.map(opt).join('')}</optgroup>`;
+      }
+      body += options.filter(([, , , g]) => !p.groups.includes(g)).map(opt).join('');
+    } else {
+      body += options.map(opt).join('');
+    }
+    return `<label class="field preset-field"><span>${esc(p.label)}</span>`
+      + `<select data-p="${p.key}" data-derived-select="1">${body}</select>`
+      + `${p.note ? `<small>${esc(p.note)}</small>` : ''}</label>`;
+  }
   if (p.type === 'sensor') {
     const sensors = state.elements.filter(candidate => candidate.id !== sel.id && registry[candidate.type]?.readoutKind);
     const hasCurrent = sensors.some(candidate => candidate.id === v);
@@ -545,6 +573,20 @@ function refreshReadouts(sel) {
   panel.querySelectorAll('output.readout[data-p]').forEach(output => {
     const spec = readouts.get(output.dataset.p);
     if (spec?.readout) output.textContent = String(spec.readout(sel.params, sel));
+  });
+}
+
+// A preset selector is a view over several stored params. Exact-value edits
+// can leave a preset on any input event, so keep that selector honest in
+// place instead of rebuilding the inspector and stealing focus mid-entry.
+function refreshDerivedSelects(sel) {
+  if (!panel?.querySelectorAll) return;
+  const specs = new Map((registry[sel.type]?.params || [])
+    .filter(spec => spec.type === 'derived-select')
+    .map(spec => [spec.key, spec]));
+  panel.querySelectorAll('select[data-derived-select][data-p]').forEach(select => {
+    const spec = specs.get(select.dataset.p);
+    if (spec?.get) select.value = spec.get(sel.params);
   });
 }
 
@@ -625,6 +667,8 @@ export function renderInspector() {
       let sectionTitle = def.paramsTitle || 'Optical behavior';
       let sectionFields = '';
       let sectionCount = 0;
+      let sectionOpen = true;
+      let objectiveHintInserted = false;
       let voxelHintInserted = false;
       const insertVoxelHint = () => {
         if (voxelHintInserted) return;
@@ -663,6 +707,7 @@ export function renderInspector() {
       const flushSection = () => {
         if (!sectionFields) return;
         h += inspectorSection(sectionKey, sectionTitle, sectionFields, {
+          open: sectionOpen,
           meta: `${sectionCount} ${sectionCount === 1 ? 'setting' : 'settings'}`,
         });
       };
@@ -673,15 +718,20 @@ export function renderInspector() {
         if (p.appearance) continue;
         if (p.show && !p.show(sel.params)) continue;
         if (p.type === 'section') {
+          if (sel.type === 'objective' && !objectiveHintInserted) {
+            sectionFields += objectiveCouplingHint(sel);
+            objectiveHintInserted = true;
+          }
           flushSection();
           sectionKey = p.key; sectionTitle = p.label; sectionFields = ''; sectionCount = 0;
+          sectionOpen = p.open !== false;
           continue;
         }
         sectionCount++;
         if (p.type === 'heading') { sectionFields += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
         sectionFields += paramField(p, sel);
       }
-      if (sel.type === 'objective') sectionFields += objectiveCouplingHint(sel);
+      if (sel.type === 'objective' && !objectiveHintInserted) sectionFields += objectiveCouplingHint(sel);
       insertVoxelHint();
       flushSection();
     }
@@ -1004,6 +1054,16 @@ export function applyInput(inp, rebuild = false) {
     if (spec?.set) spec.set(sel.params, val);
     changed();
     refreshReadouts(sel);
+    refreshDerivedSelects(sel);
+    if (rebuild) renderInspector();
+    return;
+  }
+
+  if (inp.dataset.derivedSelect) {
+    const spec = (registry[sel.type]?.params || []).find(p => p.key === pkey);
+    if (spec?.set) spec.set(sel.params, val);
+    changed();
+    refreshReadouts(sel);
     if (rebuild) renderInspector();
     return;
   }
@@ -1095,7 +1155,10 @@ export function applyInput(inp, rebuild = false) {
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }
   changed();
-  if (pkey) refreshReadouts(sel);
+  if (pkey) {
+    refreshReadouts(sel);
+    refreshDerivedSelects(sel);
+  }
   // While a pulsed laser is transform-limited its bandwidth is derived from
   // the pulse duration, so the field is hidden and nothing needs syncing.
   // Switching TL off reveals it — seed it from the width the pulse actually
