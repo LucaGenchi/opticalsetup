@@ -5,10 +5,11 @@ import { gzipSync } from 'node:zlib';
 import { parseSketch } from '../../../sketch/js/state.js';
 import { registry } from '../../../sketch/js/elements.js';
 import '../../../sketch/js/detector-instruments.js';
+import { APP_RELEASE } from '../../../sketch/js/release.js';
 
 const MAX_SCENE_BYTES = 1_000_000;
 const MAX_SHARE_HASH_CHARS = 200_000;
-const BASE_URL = 'https://opticalsetup.com/sketch/';
+const BASE_URL = `https://opticalsetup.com/${APP_RELEASE}/sketch/`;
 
 function fail(message) {
   console.error(`Error: ${message}`);

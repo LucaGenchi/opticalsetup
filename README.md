@@ -86,8 +86,10 @@ figures as SVG or PNG.
   export as SVG/PNG, while pulse and mechanical playback can be captured as a looping
   GIF with a chosen acquisition time, frame rate, and size. An optional resizable
   Figure frame sets the exact export crop and never appears in the exported artwork.
-- **Self-contained share links and QR codes**: the Share action compresses the
-  current sketch into the URL fragment and copies the link. When the complete URL fits
+- **Self-contained, versioned share links and QR codes**: the Share action compresses the
+  current sketch into the URL fragment and copies a link whose `/v1/` pathname selects
+  the immutable renderer that created it. The scene's internal `version` remains a
+  separate saved-data contract. When the complete URL fits
   in one QR code it also generates a downloadable QR; larger setups keep the link and
   offer a `.json` download instead. Opening a link restores the setup without an account
   or server-side scene storage.
@@ -202,6 +204,27 @@ editing any of the three content files, or adding/removing an `Examples/`
 or `community-submissions/` entry, rebuild the relevant generator(s) and
 finish with `node tools/build-sitemap.mjs`, which assembles the combined
 `sitemap.xml` from all three sources.
+
+## Versioned releases
+
+The editable current application lives at `/sketch/`, while every share link
+targets a frozen application release such as `/v1/sketch/#sketch=…`. The
+pathname release and the `version` field inside scene JSON are intentionally
+different contracts: the former fixes the renderer and bundled site assets;
+the latter versions the saved scene schema.
+
+Released top-level directories are append-only. The weekly release workflow runs
+Monday at 09:17 Europe/Rome and opens a human-reviewed release PR only when the
+public product changed. It does not create empty weekly versions and never merges
+or deploys by itself. An urgent hotfix uses the same workflow manually and still
+gets the next integer version.
+
+Each snapshot records both immutable-content and source-alignment hashes. The
+release-only Pages workflow refuses to deploy a stale or modified release. Do not
+edit a frozen release after publication; fix forward in `sketch/` and create the
+next release instead. The full cadence, state vocabulary, hotfix path, and one-time
+GitHub Pages activation are in
+[`docs/release-policy.md`](docs/release-policy.md).
 
 ## Run locally
 

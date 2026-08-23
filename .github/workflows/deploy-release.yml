@@ -1,0 +1,51 @@
+name: Deploy approved release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v*/release.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages-release
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out the approved release commit
+        uses: actions/checkout@v6
+
+      - name: Verify tests and exact release alignment
+        run: |
+          npm test
+          node tools/release-status.mjs --verify
+          for file in sketch/js/*.js serve.mjs tools/*.mjs; do node --check "$file"; done
+          git diff --check
+
+      - name: Stage only public static files
+        run: node tools/stage-pages.mjs "$RUNNER_TEMP/opticalsetup-pages"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/opticalsetup-pages
+
+      - name: Deploy the approved artifact
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photodetector — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Measures qualitative ray signal, spectrum, polarization, and spot span. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/detector/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Photodetector — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Measures qualitative ray signal, spectrum, polarization, and spot span.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/detector/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="current">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#detectors">Detectors</a> / Photodetector</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></div>
+        <div>
+          <h1>Photodetector</h1>
+        </div>
+      </div>
+      <p class="tagline">Measures qualitative ray signal, spectrum, polarization, and spot span.</p>
+      <a class="place-cta" href="../../sketch/?place=detector">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=detector"
+          title="Interactive Photodetector — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the photodetector to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>A real photodetector converts incident optical power to an electrical
+        photocurrent with some responsivity <span class="w">R</span> (amps per watt),
+        set by the detector's quantum efficiency <span class="w">η</span> — the fraction
+        of incident photons that produce a collected charge carrier:</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>R</mi><mo>=</mo><mfrac><mrow><mi>η</mi><mi>e</mi></mrow><mrow><mi>h</mi><mi>ν</mi></mrow></mfrac><mspace width="1em"/><mo stretchy="false">[</mo><mtext>A/W</mtext><mo stretchy="false">]</mo></mrow><annotation encoding="application/x-tex">R = \frac{\eta e}{h\nu} \quad [\text{A/W}]</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0077em;">R</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.7936em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">h</span><span class="mord mathnormal" style="margin-right:0.0637em;">ν</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">η</span><span class="mord mathnormal">e</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:1em;"></span><span class="mopen">[</span><span class="mord text"><span class="mord">A/W</span></span><span class="mclose">]</span></span></span></span></span></div>
+      <div class="caption">Responsivity of an ideal photodetector at optical frequency ν.</div>
+    </div>
+
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>The detector reports a <em>qualitative</em> relative signal — the sum of every
+        ray's intensity reaching its front face — plus the spectrum, polarization state,
+        and spot extent of whatever light arrives, all read directly off the traced rays.
+        This is genuinely useful for seeing <em>whether</em> light reaches a detector,
+        roughly how strong it is relative to other configurations, and what its spectral
+        or polarization content is.</p>
+
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The reported signal is not calibrated to any real unit — there is
+        no watts-in, amps-out responsivity curve, no dark current, no saturation physics
+        beyond what's explicitly modeled on the PMT variant. Treat the number as relative,
+        not absolute.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/pmt/"><svg viewBox="-33 -33 66 66" aria-hidden="true"><rect x="-25" y="-13" width="50" height="26" rx="13" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><rect x="-27" y="-9" width="4" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><text x="2" y="0"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text><circle cx="16" cy="-7" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photomultiplier (PMT)</a><a href="../../wiki/camera/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Camera</a><a href="../../wiki/eye/"><svg viewBox="-24 -24 48 48" aria-hidden="true"><g transform="scale(1)"><circle r="15" fill="#fff" stroke="#4d565f" stroke-width="1.5"/><path d="M -14.2,-7 Q -21,0 -14.2,7" fill="rgba(160,200,240,0.45)" stroke="#4a7fa8" stroke-width="1.2"/><path d="M -14.5,-9 L -10.5,-5.5" stroke="#7a5230" stroke-width="2.4" stroke-linecap="round"/><path d="M -14.5,9 L -10.5,5.5" stroke="#7a5230" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="-8.5" cy="0" rx="3" ry="6.5" fill="#cfe4f5" stroke="#4a7fa8" stroke-width="1"/><path d="M 7,-13 A 15 15 0 0 1 7,13" fill="none" stroke="#c86a6a" stroke-width="2.5"/></g></svg>Human eye</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/photodetectors.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Photodetectors</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

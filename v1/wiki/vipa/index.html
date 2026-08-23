@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIPA (Virtually Imaged Phased Array) — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="A tilted plate with a high-reflectivity entrance face (except a small entrance window) and a partially transmitting output face. Produces a fan of spatially offset leakage beams from repeated internal bounces — the geometric walk-off a real VIPA disperser relies on. Specified by center wavelength, spectral resolution and free spectral range, the same as the Etalon. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/vipa/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="VIPA (Virtually Imaged Phased Array) — OpticalSetup Encyclopedia">
+<meta property="og:description" content="A tilted plate with a high-reflectivity entrance face (except a small entrance window) and a partially transmitting output face. Produces a fan of spatially offset leakage beams from repeated internal bounces — the geometric walk-off a real VIPA disperser relies on. Specified by center wavelength, spectral resolution and free spectral range, the same as the Etalon.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/vipa/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="current">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#filters-splitters">Filters &amp; Splitters</a> / VIPA (Virtually Imaged Phased Array)</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-27.457370879546925 -27.457370879546925 54.91474175909385 54.91474175909385" aria-hidden="true"><path d="M -2.63,-17.36 L -0.19,17.56 L 2.63,17.36 L 0.19,-17.56 Z" fill="#c9e4f5" fill-opacity="0.62" stroke="#4a90c4" stroke-width="1.1"/><line x1="-2.63" y1="-17.36" x2="-1.52" y2="-1.40" stroke="#353b44" stroke-width="2.8"/><line x1="-1.31" y1="1.60" x2="-0.19" y2="17.56" stroke="#353b44" stroke-width="2.8"/><line x1="0.19" y1="-17.56" x2="2.63" y2="17.36" stroke="#5d5575" stroke-width="2.1" stroke-dasharray="3 1.5"/><line x1="-10.39" y1="0.73" x2="-2.81" y2="0.20" stroke="#7c3aed" stroke-width="1.5"/><path d="M -2.81,0.20 l -3,-2 l 0,4 Z" fill="#7c3aed"/></svg></div>
+        <div>
+          <h1>VIPA (Virtually Imaged Phased Array)</h1>
+        </div>
+      </div>
+      <p class="tagline">A tilted plate with a high-reflectivity entrance face (except a small entrance window) and a partially transmitting output face. Produces a fan of spatially offset leakage beams from repeated internal bounces — the geometric walk-off a real VIPA disperser relies on. Specified by center wavelength, spectral resolution and free spectral range, the same as the Etalon.</p>
+      <a class="place-cta" href="../../sketch/?place=vipa">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=vipa"
+          title="Interactive VIPA (Virtually Imaged Phased Array) — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the vipa (virtually imaged phased array) to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>A VIPA is, at heart, the same tilted Fabry–Pérot cavity as an etalon — two
+        closely spaced reflective coatings — but illuminated and read out completely
+        differently. Light enters through a small uncoated window in an otherwise
+        near-perfectly reflective front face, focused to a line inside the cavity. Because
+        the plate is tilted relative to that incoming beam, each internal bounce off the
+        partially transmitting back face leaks light out at a slightly different lateral
+        position instead of retracing the same path — producing a fan of many spatially
+        offset, mutually coherent beams that interfere in the far field exactly like light
+        emerging from a real phased array of point sources, except every one of those
+        virtual sources is actually a single physical cavity imaged multiple times<sup class="cite">[<a href="#ref-1">1</a>]</sup>.
+        That's the "virtually imaged" half of the name.</p>
+        <p>The result is angular dispersion 10–20× higher than an ordinary diffraction
+        grating in a device a few millimeters thick, at the cost of a much smaller free
+        spectral range — which is why VIPAs are typically paired with a grating in a
+        cross-dispersed configuration (the grating separates orders that would otherwise
+        overlap) in high-resolution spectrometers, optical coherence tomography systems,
+        and dense wavelength-division-multiplexing demultiplexers.</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">Δ</mi><msub><mi>λ</mi><mtext>res</mtext></msub><mo>=</mo><mfrac><mtext>FSR</mtext><mi mathvariant="script">F</mi></mfrac><mo separator="true">,</mo><mspace width="2em"/><mi mathvariant="script">F</mi><mo>=</mo><mfrac><mrow><mi>π</mi><msqrt><msub><mi>R</mi><mtext>out</mtext></msub></msqrt></mrow><mrow><mn>1</mn><mo>−</mo><msub><mi>R</mi><mtext>out</mtext></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">\Delta\lambda_{\text{res}} = \frac{\text{FSR}}{\mathcal{F}}, \qquad \mathcal{F} = \frac{\pi\sqrt{R_{\text{out}}}}{1-R_{\text{out}}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord">Δ</span><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">res</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathcal" style="margin-right:0.0993em;">F</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord">FSR</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathcal" style="margin-right:0.0993em;">F</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.3647em;vertical-align:-0.836em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.5287em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0077em;">R</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:-0.0077em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">out</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8517em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0077em;">R</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:-0.0077em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">out</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-2.8117em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.08em" viewBox="0 0 400000 1080" preserveAspectRatio="xMinYMin slice"><path d="M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1883em;"><span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Spectral resolution and finesse — set by the output face's reflectivity, exactly as in an ordinary etalon; only the readout geometry differs.</div>
+    </div>
+
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>Because the walk-off between successive leaked beams is a purely geometric
+        consequence of the tilt — each bounce genuinely exits at a different point along
+        the plate — OpticalSetup traces it directly as repeated ordinary mirror
+        reflections rather than borrowing the Etalon's closed-form Airy transmission: an
+        entrance window in the front coating lets rays in, and each subsequent bounce off
+        the partially reflective rear face spawns both a continuing internal ray and a
+        leaked output ray, exactly reproducing the fan of offset beams a real VIPA
+        produces. Only the output face's reflectivity needs the Fabry–Pérot mathematics,
+        and it's derived the same way the Etalon derives its mirror reflectivity: you
+        specify center wavelength, resolution (FWHM), and free spectral range, and
+        <code>resolveVipaPhysical()</code> solves for the plate spacing and coating
+        reflectivity that would actually produce them — sharing its solver with the Etalon
+        element, since spectrally the two are the same cavity.</p>
+
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The fan of leaked beams is genuine ray-traced geometry, but each
+        individual leaked ray still carries only the ordinary (incoherent) intensity
+        propagated by the rest of the tracer — the far-field interference between those
+        beams that a real VIPA relies on to build its angular dispersion pattern isn't
+        computed; what you see is the correct geometric walk-off, not a simulated
+        diffraction pattern. There's also no modeled anti-reflection coating on the
+        entrance window, no cylindrical input-lens focusing, and no cross-dispersing
+        grating stage — this element models the VIPA plate alone.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/etalon/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><rect x="-3" y="-17.5" width="6" height="35" fill="#eaf4fb" fill-opacity="0.75" stroke="#4a90c4" stroke-width="1.2"/><line x1="-3" y1="-17.5" x2="-3" y2="17.5" stroke="#2f6690" stroke-width="1.6"/><line x1="3" y1="-17.5" x2="3" y2="17.5" stroke="#2f6690" stroke-width="1.6"/></svg>Etalon (Fabry–Pérot)</a><a href="../../wiki/grating/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg>Diffraction grating</a><a href="../../wiki/dichroic/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-3" y="-12.7" width="6" height="25.4" fill="#dfeef7" stroke="#5d7f96" stroke-width="1.5"/><line x1="-3" y1="-12.7" x2="-3" y2="12.7" stroke="#b04ad0" stroke-width="2"/></svg>Dichroic mirror</a>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://opg.optica.org/ol/abstract.cfm?uri=ol-21-5-366" target="_blank" rel="noopener">M. Shirasaki, "Large angular dispersion by a virtually imaged phased array and its application to a wavelength demultiplexer," Opt. Lett. 21, 366 (1996)</a></li>
+      </ol>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://en.wikipedia.org/wiki/Virtually_imaged_phased_array" target="_blank" rel="noopener">Wikipedia — Virtually imaged phased array</a></li><li><a href="https://www.rp-photonics.com/etalons.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Etalons</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

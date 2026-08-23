@@ -112,7 +112,7 @@ Use the current codec in `sketch/js/share.js`.
 The URL base is:
 
 ```text
-https://opticalsetup.com/sketch/
+https://opticalsetup.com/v1/sketch/
 ```
 
 The fragment is:
@@ -137,13 +137,13 @@ Do not use the historical LZ-string scheme unless the current repository explici
 Return a complete clickable URL beginning with:
 
 ```text
-https://opticalsetup.com/sketch/#sketch=
+https://opticalsetup.com/v1/sketch/#sketch=
 ```
 
 Do not return a placeholder, truncated payload, or JSON-only answer when the user requested a working scene link. Keep the accompanying explanation brief and mention substitutions or unsupported physics that materially affect the scene.
 
 ## Compatibility
 
-The current scene version is `1`. Always re-read `state.js`, `elements.js`, `detector-instruments.js`, and `share.js` when generating against a newer repository revision.
+The current application release is `v1`, while the current scene format version is `1`. The application release in the pathname selects an immutable renderer; the scene version inside the payload selects the saved-data contract. Always re-read `release.js`, `state.js`, `elements.js`, `detector-instruments.js`, and `share.js` when generating against a newer repository revision.
 
 The repository code and examples override this document if they disagree.

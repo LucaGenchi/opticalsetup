@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpticalSetup — 2D optical setup builder with live ray tracing</title>
+<meta name="description" content="Sketch 2D optical setups and see the ray paths trace live. Free, no signup, runs entirely in your browser. Export publication-ready SVG/PNG figures or share a self-contained link.">
+<link rel="canonical" href="https://opticalsetup.com/">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="OpticalSetup — 2D optical setup builder with live ray tracing">
+<meta property="og:description" content="Sketch 2D optical setups and see the ray paths trace live. Free, no signup, runs entirely in your browser.">
+<meta property="og:url" content="https://opticalsetup.com/">
+<meta property="og:site_name" content="OpticalSetup">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<meta property="og:image:width" content="1254">
+<meta property="og:image:height" content="1254">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="OpticalSetup — 2D optical setup builder with live ray tracing">
+<meta name="twitter:description" content="Sketch 2D optical setups and see the ray paths trace live. Free, no signup, runs entirely in your browser.">
+<meta name="twitter:image" content="https://opticalsetup.com/assets/og-image.jpg">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/landing.css">
+
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./">
+      <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+        <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+          <line x1="22" y1="45" x2="29" y2="45"/>
+          <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+          <line x1="18" y1="49" x2="18" y2="56"/>
+          <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+          <line x1="14" y1="45" x2="7" y2="45"/>
+          <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+          <line x1="18" y1="41" x2="18" y2="34"/>
+          <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+        </g>
+        <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+        <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+        <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+          <line x1="77" y1="45" x2="108" y2="22"/>
+          <line x1="77" y1="45" x2="108" y2="34"/>
+          <line x1="77" y1="45" x2="108" y2="45"/>
+          <line x1="77" y1="45" x2="108" y2="56"/>
+          <line x1="77" y1="45" x2="108" y2="68"/>
+        </g>
+        <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+        <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+          <line x1="108" y1="22" x2="115" y2="22"/>
+          <line x1="108" y1="34" x2="115" y2="34"/>
+          <line x1="108" y1="45" x2="115" y2="45"/>
+          <line x1="108" y1="56" x2="115" y2="56"/>
+          <line x1="108" y1="68" x2="115" y2="68"/>
+        </g>
+      </svg>
+      <span class="brand-ink">Optical</span><span class="brand-accent">Setup</span>
+    </a>
+    <div class="header-actions">
+      <a class="header-link" href="./wiki/">Wiki</a>
+      <a class="header-link" href="./example-setups/">Examples</a>
+      <a class="header-link" href="./community/">Community</a>
+      <a class="btn btn-primary header-cta" href="./sketch/">Open the canvas</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Sketch optical setups. Watch the rays trace live.</h1>
+      <p class="hero-sub">
+        A free, browser-based 2D workbench for lasers, lenses, mirrors, and everything
+        between the source and the detector. Place components on a virtual optical
+        table and the beam paths update in real time — no install, no account, no
+        server storing your work.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary btn-lg" href="./sketch/">Open the canvas →</a>
+      </div>
+    </section>
+
+    <section class="features" aria-label="Highlights">
+      <div class="feature">
+        <h2>Live ray tracing</h2>
+        <p>Every optical element in your scene is physically simulated — move a
+          component and the light path recalculates instantly, exactly as it
+          would on an optical bench.</p>
+      </div>
+      <div class="feature">
+        <h2>A real element library</h2>
+        <p>OpticalSetup covers most of the hardware you'd find on an actual
+          optics bench — sources, optics, and detectors alike — and the library
+          keeps growing as new elements are added.</p>
+      </div>
+      <div class="feature">
+        <h2>Direct manipulation</h2>
+        <p>Select a component to get resize handles, a rotation handle, and a
+          tuning knob for its key parameter — right on the canvas, no dialog
+          required.</p>
+      </div>
+      <div class="feature">
+        <h2>Paper-ready export</h2>
+        <p>Export a clean crop of your setup as SVG or PNG, ready to drop
+          straight into a manuscript or slide deck. Frame exactly what you want
+          with an optional Figure frame — it defines the export bounds without
+          ever showing up in the artwork.</p>
+      </div>
+      <div class="feature">
+        <h2>Share a link, not a file</h2>
+        <p>The Share action compresses your sketch into the URL itself and
+          generates a QR code. Opening the link rebuilds the exact setup — no
+          account, no server-side scene storage.</p>
+      </div>
+      <div class="feature">
+        <h2>Honest about what's simulated</h2>
+        <p>OpticalSetup shows you how light behaves geometrically, not exact
+          numerical predictions — it's built for building intuition, not for
+          specifying real hardware tolerances. Read the wiki related to each
+          optical element for additional information.</p>
+      </div>
+    </section>
+
+    <section class="how">
+      <h2>How it works</h2>
+      <ol class="how-steps">
+        <li><strong>Choose a source</strong> from the component library — a laser,
+          LED, or broadband point source.</li>
+        <li><strong>Place optics in the beam</strong>: lenses, mirrors, filters,
+          splitters, anything the light should pass through.</li>
+        <li><strong>Add a detector</strong> and select it to read the signal,
+          spectrum, or polarization the tracer computed.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>OpticalSetup is a qualitative ray-tracing sketch tool, not a calibrated
+      optical design package.
+      <a href="https://github.com/LucaGenchi/optics-sketch">Source on GitHub</a>.</p>
+    <p>Do you have feedback? You can contact us:
+      <a href="https://www.linkedin.com/in/lucagenchi/" target="_blank" rel="noopener">Luca Genchi, PhD</a>
+      and
+      <a href="https://www.linkedin.com/in/andrea-bertoncini-5085517a/" target="_blank" rel="noopener">Andrea Bertoncini, PhD</a>.</p>
+  </footer>
+</body>
+</html>

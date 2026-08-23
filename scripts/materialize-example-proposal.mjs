@@ -18,10 +18,10 @@ import { traceAll } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 
 const REPOSITORY = 'LucaGenchi/optics-sketch';
-const ALLOWED_SHARE_LOCATIONS = new Set([
-  'opticalsetup.com/sketch/',
-  'www.opticalsetup.com/sketch/',
-  'lucagenchi.github.io/optics-sketch/sketch/',
+const ALLOWED_SHARE_PATHS = new Map([
+  ['opticalsetup.com', /^\/(?:v[1-9]\d*\/)?sketch\/$/],
+  ['www.opticalsetup.com', /^\/(?:v[1-9]\d*\/)?sketch\/$/],
+  ['lucagenchi.github.io', /^\/optics-sketch\/(?:v[1-9]\d*\/)?sketch\/$/],
 ]);
 const MAX_SCENE_BYTES = 250_000;
 const MAX_ELEMENTS = 200;
@@ -90,8 +90,8 @@ function decodeBase64URL(value) {
 export function sceneFromShareURL(value) {
   let url;
   try { url = new URL(value); } catch (_) { throw new Error('Share link is not a valid URL'); }
-  const location = `${url.hostname.toLowerCase()}${url.pathname}`;
-  if (url.protocol !== 'https:' || !ALLOWED_SHARE_LOCATIONS.has(location)) {
+  const allowedPath = ALLOWED_SHARE_PATHS.get(url.hostname.toLowerCase());
+  if (url.protocol !== 'https:' || !allowedPath?.test(url.pathname)) {
     throw new Error('Share link must use an official OpticalSetup address');
   }
   if (!url.hash.startsWith('#sketch=')) throw new Error('Share link does not contain a setup');

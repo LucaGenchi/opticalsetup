@@ -1,0 +1,170 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "compare-title",
+   "type": "textlabel",
+   "x": 42,
+   "y": 64,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Ideal focus vs spherical-aberration caustic",
+    "fontSize": 18,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ideal-heading",
+   "type": "textlabel",
+   "x": 42,
+   "y": 142,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "IDEAL PARAXIAL LENS — every sampled ray height shares one focus",
+    "fontSize": 12,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ideal-source",
+   "type": "cwlaser",
+   "x": 100,
+   "y": 225,
+   "rot": 0,
+   "label": "48 mm collimated beam",
+   "showLabel": true,
+   "params": {
+    "wavelength": 532,
+    "avgPowerW": 0.1,
+    "beamMode": "beam",
+    "beamWidth": 48,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "ideal-lens",
+   "type": "lens",
+   "x": 330,
+   "y": 225,
+   "rot": 0,
+   "label": "ideal thin lens · f 60 mm",
+   "showLabel": true,
+   "params": {
+    "f": 60,
+    "dia": 50.8,
+    "transEff": 100
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "ideal-screen",
+   "type": "box",
+   "x": 470,
+   "y": 225,
+   "rot": 0,
+   "label": "screen",
+   "showLabel": true,
+   "params": {
+    "text": "",
+    "w": 4,
+    "h": 110,
+    "behavior": "block",
+    "fill": "#dbe3ec"
+   },
+   "labelPos": "r"
+  },
+  {
+   "id": "real-heading",
+   "type": "textlabel",
+   "x": 42,
+   "y": 355,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "SPHERICAL SINGLET — marginal rays focus first and sweep out a caustic",
+    "fontSize": 12,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "real-source",
+   "type": "cwlaser",
+   "x": 100,
+   "y": 438,
+   "rot": 0,
+   "label": "same 48 mm beam",
+   "showLabel": true,
+   "params": {
+    "wavelength": 532,
+    "avgPowerW": 0.1,
+    "beamMode": "beam",
+    "beamWidth": 48,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "temporalMode": "cw"
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "real-lens",
+   "type": "thicklens",
+   "x": 330,
+   "y": 438,
+   "rot": 0,
+   "label": "N-BK7 · Ø50.8 mm · R₁ +60 / R₂ −60",
+   "showLabel": true,
+   "params": {
+    "r1": 60,
+    "r2": -60,
+    "thickness": 12,
+    "dia": 50.8,
+    "glass": "nbk7",
+    "transmission": 1
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "real-screen",
+   "type": "box",
+   "x": 470,
+   "y": 438,
+   "rot": 0,
+   "label": "screen",
+   "showLabel": true,
+   "params": {
+    "text": "",
+    "w": 4,
+    "h": 110,
+    "behavior": "block",
+    "fill": "#dbe3ec"
+   },
+   "labelPos": "r"
+  },
+  {
+   "id": "compare-hint",
+   "type": "textlabel",
+   "x": 42,
+   "y": 562,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Select the spherical singlet and change its radii, thickness, aperture, or glass.",
+    "fontSize": 11,
+    "fill": "#333333"
+   }
+  }
+ ],
+ "beams": []
+}

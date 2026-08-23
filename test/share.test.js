@@ -21,10 +21,22 @@ test('uncompressed share payloads round-trip Unicode scene JSON', async () => {
   assert.deepEqual(JSON.parse(await decodeSharePayload(payload)), JSON.parse(source));
 });
 
-test('share URLs round-trip a scene without changing the host path', async () => {
-  const url = await buildShareURL(scene, 'https://example.org/optics/?lang=en#old');
-  assert.match(url, /^https:\/\/example\.org\/optics\/\?lang=en#sketch=/);
+test('share URLs target the frozen renderer for the current release', async () => {
+  const url = await buildShareURL(scene, 'https://example.org/sketch/?lang=en#old');
+  assert.match(url, /^https:\/\/example\.org\/v1\/sketch\/\?lang=en#sketch=/);
   assert.deepEqual(JSON.parse(await sharedSceneFromURL(url)), JSON.parse(scene));
+});
+
+test('versioned share URLs preserve release paths and deployment prefixes', async () => {
+  const frozen = await buildShareURL(scene, 'https://opticalsetup.com/v1/sketch/#old', { compression: false });
+  assert.equal(new URL(frozen).pathname, '/v1/sketch/');
+
+  const mirror = await buildShareURL(
+    scene,
+    'https://lucagenchi.github.io/optics-sketch/sketch/#old',
+    { compression: false },
+  );
+  assert.equal(new URL(mirror).pathname, '/optics-sketch/v1/sketch/');
 });
 
 test('compressed share payloads round-trip when stream compression is available', async (t) => {

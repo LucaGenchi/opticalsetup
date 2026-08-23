@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f4f7fb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="OpticalSetup">
+<meta name="color-scheme" content="light dark">
+<title>OpticalSetup — 2D optical setup builder</title>
+<meta name="description" content="Build and share a live optical setup: place lasers, lenses, and mirrors on a virtual table and watch the ray paths trace instantly.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="OpticalSetup — 2D optical setup builder">
+<meta property="og:description" content="Build and share a live optical setup: place lasers, lenses, and mirrors on a virtual table and watch the ray paths trace instantly.">
+<meta property="og:site_name" content="OpticalSetup">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="OpticalSetup — 2D optical setup builder">
+<meta name="twitter:description" content="Build and share a live optical setup: place lasers, lenses, and mirrors on a virtual table and watch the ray paths trace instantly.">
+<meta name="twitter:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>
+  (() => {
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem('opticalsetup-theme'); } catch (_) { /* storage may be unavailable */ }
+    const systemTheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
+      ? savedTheme
+      : systemTheme;
+  })();
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="toolbar" role="toolbar" aria-label="Sketch tools">
+    <div class="brandblock">
+      <a class="brand" href="../">
+        <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+          <g stroke="#1361fa" stroke-width="6" stroke-linecap="round">
+            <line x1="22" y1="45" x2="29" y2="45"/>
+            <line x1="18" y1="49" x2="18" y2="56"/>
+            <line x1="14" y1="45" x2="7" y2="45"/>
+            <line x1="18" y1="41" x2="18" y2="34"/>
+          </g>
+          <line x1="29" y1="45" x2="77" y2="45" stroke="#1361fa" stroke-width="6" stroke-linecap="round"/>
+          <polygon points="64,12 42,68 86,68" fill="none" stroke="#0a1a33" stroke-width="7" stroke-linejoin="round"/>
+          <g stroke="#1361fa" stroke-width="4" stroke-linecap="round">
+            <line x1="77" y1="45" x2="112" y2="28"/>
+            <line x1="77" y1="45" x2="112" y2="45"/>
+            <line x1="77" y1="45" x2="112" y2="62"/>
+          </g>
+        </svg>
+        <span class="brand-word"><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></span>
+      </a>
+      <span class="model-badge">Qualitative ray tracing · <span id="releaseVersion">v1</span></span>
+    </div>
+    <div class="toolgroup examples-group">
+      <select id="exampleSel" aria-label="Load a pre-made example setup" title="Load a pre-made example setup">
+        <option value="">Examples…</option>
+      </select>
+      <select id="communitySel" aria-label="Load a setup shared by the community" title="Load a setup shared by the community">
+        <option value="">From the community…</option>
+      </select>
+    </div>
+    <div class="toolgroup file-group" aria-label="File actions">
+      <button type="button" id="btnNew" title="New sketch">New</button>
+      <button type="button" id="btnOpen" title="Open .json sketch">Open</button>
+      <button type="button" id="btnSave" title="Save sketch as .json">Save</button>
+      <button type="button" id="btnShare" title="Copy a self-contained link to this sketch">Share</button>
+      <button type="button" id="btnPropose" title="Propose this setup for the Community section">Propose</button>
+    </div>
+    <div class="toolgroup history-group" aria-label="History">
+      <button type="button" id="btnUndo" title="Undo (⌘Z)" aria-label="Undo">↩︎</button>
+      <button type="button" id="btnRedo" title="Redo (⇧⌘Z)" aria-label="Redo">↪︎</button>
+    </div>
+    <span class="spacer"></span>
+    <div class="toolgroup theme-group" aria-label="Appearance">
+      <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M15.7 12.7A6.5 6.5 0 0 1 7.3 4.3a6.5 6.5 0 1 0 8.4 8.4Z"/>
+        </svg>
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="10" cy="10" r="3.2"/>
+          <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"/>
+        </svg>
+      </button>
+    </div>
+    <div class="toolgroup export-group" aria-label="Export actions">
+      <button type="button" id="btnSVG" class="primary" title="Export vector SVG">Export SVG</button>
+      <button type="button" id="btnPNG" title="Export PNG (3×)">PNG</button>
+      <button type="button" id="btnGIF" title="Export the animated setup as a looping GIF">GIF</button>
+    </div>
+    <div class="mobile-toolbar-actions">
+      <button type="button" id="btnMobileMenu" class="mobile-icon-button" aria-label="Open sketch menu" aria-haspopup="dialog">•••</button>
+    </div>
+    <input type="file" id="fileInput" accept=".json,application/json" hidden>
+  </header>
+  <dialog id="shareDialog" class="share-dialog" aria-labelledby="shareTitle">
+    <div class="share-dialog-head">
+      <div><span class="eyebrow">Self-contained setup</span><h2 id="shareTitle">Share this sketch</h2></div>
+      <button type="button" id="shareClose" class="icon-button" aria-label="Close share dialog">×</button>
+    </div>
+    <div id="shareQR" class="share-qr"></div>
+    <p id="shareQRNote" class="share-qr-note">Scan to open this exact optical setup.</p>
+    <label class="share-url-label" for="shareURL">Complete setup URL</label>
+    <textarea id="shareURL" class="share-url" rows="3" readonly></textarea>
+    <div class="share-actions">
+      <button type="button" id="shareCopy" class="primary">Copy link</button>
+      <button type="button" id="shareDownloadQR">Download QR SVG</button>
+      <button type="button" id="shareDownloadSetup">Download setup</button>
+    </div>
+  </dialog>
+  <dialog id="gifDialog" class="export-dialog" aria-labelledby="gifTitle">
+    <form id="gifForm">
+      <div class="export-dialog-head">
+        <div><span class="eyebrow">Animated export</span><h2 id="gifTitle">Export looping GIF</h2></div>
+        <button type="button" id="gifClose" class="icon-button" aria-label="Close GIF export dialog">×</button>
+      </div>
+      <p class="export-intro">Captures the current pulse and mechanical animation. Use a duration matching the shared cycle for a seamless loop.</p>
+      <div class="export-fields">
+        <label class="export-field" for="gifDuration"><span>Acquisition time</span><input id="gifDuration" type="number" min="0.25" max="12" step="0.25" value="4"><small>seconds · maximum 12</small></label>
+        <label class="export-field" for="gifFPS"><span>Frame rate</span><select id="gifFPS"><option value="12">12 fps</option><option value="20" selected>20 fps</option><option value="30">30 fps</option></select><small>maximum 240 frames</small></label>
+        <label class="export-field" for="gifSize"><span>Longest edge</span><select id="gifSize"><option value="640">640 px</option><option value="960" selected>960 px</option><option value="1200">1200 px</option></select><small>GIF uses a 256-colour palette</small></label>
+      </div>
+      <p id="gifStatus" class="export-status" aria-live="polite">Figure frame sets the crop; otherwise the whole animation is fitted.</p>
+      <div class="export-actions">
+        <button type="button" id="gifCancel">Cancel</button>
+        <button type="submit" id="gifSubmit" class="primary">Export GIF</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="proposalDialog" class="proposal-dialog" aria-labelledby="proposalTitle">
+    <form id="proposalForm">
+      <div class="proposal-dialog-head">
+        <div><span class="eyebrow">Community section</span><h2 id="proposalTitle">Propose this setup</h2></div>
+        <button type="button" id="proposalClose" class="icon-button" aria-label="Close proposal dialog">×</button>
+      </div>
+      <p class="proposal-intro">Share the setup for possible inclusion in OpticalSetup's Community section. GitHub will ask you to sign in and confirm the public proposal.</p>
+      <label class="proposal-field" for="proposalName">
+        <span>Setup name</span>
+        <input id="proposalName" name="proposalName" type="text" maxlength="100" autocomplete="off" required placeholder="e.g. Balanced Mach–Zehnder interferometer">
+      </label>
+      <label class="proposal-field" for="proposalDescription">
+        <span>What does it demonstrate?</span>
+        <textarea id="proposalDescription" name="proposalDescription" rows="4" maxlength="2000" required placeholder="Describe the optical idea, intended learning outcome, and any setup-dependent limitations."></textarea>
+      </label>
+      <label class="proposal-field" for="proposalReference">
+        <span>Reference (optional)</span>
+        <input id="proposalReference" name="proposalReference" type="text" maxlength="500" autocomplete="off" placeholder="Paper, textbook, or link this setup is based on">
+      </label>
+      <label class="proposal-consent" for="proposalConsent">
+        <input id="proposalConsent" name="proposalConsent" type="checkbox" required>
+        <span>I understand that the setup, labels, and description will be posted publicly on GitHub for review.</span>
+      </label>
+      <p id="proposalError" class="proposal-error" role="alert" hidden></p>
+      <div class="proposal-actions">
+        <button type="button" id="proposalCancel">Cancel</button>
+        <button type="submit" id="proposalSubmit" class="primary">Continue on GitHub <span aria-hidden="true">↗</span></button>
+      </div>
+      <p class="proposal-footnote">Submitting creates a draft pull request after automated format, ray-tracing, and SVG checks. A maintainer still decides whether to publish it to the Community section.</p>
+    </form>
+  </dialog>
+  <dialog id="mobileMenu" class="mobile-menu" aria-labelledby="mobileMenuTitle">
+    <div class="mobile-menu-head">
+      <h2 id="mobileMenuTitle">Sketch</h2>
+      <button type="button" id="mobileMenuClose" class="icon-button" aria-label="Close sketch menu">×</button>
+    </div>
+    <label class="mobile-menu-label" for="mobileExampleSel">Examples</label>
+    <select id="mobileExampleSel" aria-label="Load a pre-made example setup"><option value="">Choose an example…</option></select>
+    <label class="mobile-menu-label" for="mobileCommunitySel">From the community</label>
+    <select id="mobileCommunitySel" aria-label="Load a setup shared by the community"><option value="">Choose a setup…</option></select>
+    <div class="mobile-menu-actions">
+      <button type="button" data-mobile-action="new">New sketch</button>
+      <button type="button" data-mobile-action="open">Open .json</button>
+      <button type="button" data-mobile-action="save">Save .json</button>
+      <button type="button" data-mobile-action="share">Share link</button>
+      <button type="button" id="btnMobilePropose" data-mobile-action="propose">Propose setup</button>
+      <button type="button" data-mobile-action="svg">Export SVG</button>
+      <button type="button" data-mobile-action="png">Export PNG</button>
+      <button type="button" data-mobile-action="gif">Export GIF</button>
+    </div>
+  </dialog>
+  <div id="mobileBackdrop" hidden></div>
+  <main>
+    <aside id="palette" aria-label="Element palette">
+      <button type="button" id="closePalette" class="sheet-close" aria-label="Close component library">×</button>
+      <div id="paletteContent"></div>
+    </aside>
+    <div id="canvasWrap">
+      <!-- biome-ignore lint/a11y/noNoninteractiveTabindex: this SVG is the app's interactive pointer and keyboard workspace -->
+      <svg id="canvas" role="application" aria-label="Optical setup canvas" tabindex="0"></svg>
+      <div id="toolMode" role="status" aria-live="polite"></div>
+      <div id="mobileToolActions" class="mobile-tool-actions" aria-live="polite">
+        <span id="mobileToolLabel"></span>
+        <button type="button" id="btnMobileToolCancel">Cancel</button>
+        <button type="button" id="btnMobileToolDone" hidden>Done</button>
+      </div>
+      <div id="viewControls" class="canvas-controls" aria-label="Canvas view controls">
+        <button type="button" id="btnGrid" class="active" aria-pressed="true" title="Toggle table hole grid">Grid</button>
+        <button type="button" id="btnSnap" class="active" aria-pressed="true" title="Toggle snapping">Snap</button>
+        <button type="button" id="btnFocal" class="active" aria-pressed="true" title="Show focal points of lenses and curved mirrors">ƒ</button>
+        <span class="control-divider"></span>
+        <button type="button" id="btnZoomOut" title="Zoom out" aria-label="Zoom out">−</button>
+        <button type="button" id="btnZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
+        <button type="button" id="btnZoomFit" title="Fit sketch in view">Fit</button>
+        <span id="zoomReadout" class="zoom-readout" aria-live="polite" title="Zoom 100% — grid spacing is 25 mm">100% · 25 mm grid</span>
+      </div>
+      <div id="pulseControls" class="pulse-controls is-idle" role="toolbar" aria-label="Pulse playback controls">
+        <button type="button" id="btnPulsePlay" title="Play pulse animation" aria-label="Play pulse animation">▶</button>
+        <button type="button" id="btnPulseReset" title="Reset pulse clock" aria-label="Reset pulse clock">↺</button>
+        <select id="pulseDisplay" aria-label="Pulse display scale" aria-describedby="pulseScaleNote" title="Detector timing is physical in both modes; physical packet widths may be enlarged for visibility">
+          <option value="schematic">Schematic packets</option>
+          <option value="physical">Physical spacing</option>
+        </select>
+        <select id="pulseSpeed" aria-label="Simulation time speed">
+          <option value="1">1 ns/s</option>
+          <option value="10" selected>10 ns/s</option>
+          <option value="100">100 ns/s</option>
+          <option value="1000">1 µs/s</option>
+          <option value="10000">10 µs/s</option>
+          <option value="100000">100 µs/s</option>
+          <option value="1000000">1 ms/s</option>
+          <option value="mechanics">Mechanics</option>
+        </select>
+        <span id="pulseScaleNote" class="pulse-scale-note">packets schematic · timing physical</span>
+      </div>
+      <div id="timeScaleToast" class="time-scale-toast" role="status" aria-live="polite" hidden></div>
+      <div id="pulseModePopup" class="pulse-mode-popup" role="status" aria-live="polite" hidden></div>
+      <div id="status"></div>
+      <div id="scaleBar" class="scale-bar" aria-hidden="true">
+        <span id="scaleBarLabel" class="scale-bar-label">50 mm</span>
+        <div id="scaleBarLine" class="scale-bar-line"></div>
+      </div>
+      <div id="contextMenu" class="context-menu" role="menu" aria-label="Object actions" hidden>
+        <button type="button" role="menuitem" data-action="duplicate"><span>Duplicate</span><kbd>⌘D</kbd></button>
+        <button type="button" role="menuitem" data-action="rotate"><span>Rotate 45°</span><kbd>R</kbd></button>
+        <button type="button" role="menuitem" data-action="delete" class="context-danger"><span>Delete</span><kbd>⌫</kbd></button>
+      </div>
+      <button type="button" id="btnTrash" class="mobile-trash" aria-label="Delete selected element" hidden><span aria-hidden="true">🗑</span> Delete</button>
+      <button type="button" id="btnProperties" class="mobile-properties" aria-label="Show selected element properties" hidden>Properties</button>
+      <button type="button" id="btnAdd" class="mobile-add" aria-label="Add an optical element"><span aria-hidden="true">+</span> Add</button>
+    </div>
+    <aside id="inspector" aria-label="Properties">
+      <button type="button" id="closeInspector" class="sheet-close" aria-label="Close properties">×</button>
+      <div id="inspectorContent"></div>
+    </aside>
+  </main>
+  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/pwa.js"></script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glass rod — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Refracts at every glass-air boundary and supports total internal reflection. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/glassrod/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Glass rod — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Refracts at every glass-air boundary and supports total internal reflection.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/glassrod/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="current">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#dispersive-elements">Dispersive elements</a> / Glass rod</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-38 -38 76 76" aria-hidden="true"><rect x="-30" y="-6.35" width="60" height="12.7" rx="4" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5"/></svg></div>
+        <div>
+          <h1>Glass rod</h1>
+        </div>
+      </div>
+      <p class="tagline">Refracts at every glass-air boundary and supports total internal reflection.</p>
+      <a class="place-cta" href="../../sketch/?place=glassrod">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=glassrod"
+          title="Interactive Glass rod — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the glass rod to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>The geometry OpticalSetup draws for a glass rod is a plane-parallel slab: two
+        flat, parallel long faces and two flat ends — the classic "glass block" of an
+        introductory optics course. At normal incidence, light passes straight through
+        with no net angular deviation but a real velocity change: phase velocity inside
+        the medium drops to <span class="w">c/n</span>, so light takes longer to cross the
+        same physical distance than it would in vacuum or air — the basis of every optical
+        delay produced by inserting glass into a beam path, from picosecond fiber-stretcher
+        spools to the fraction-of-a-picosecond thickness of a camera sensor's cover
+        glass.</p>
+        <p>At any nonzero angle of incidence, Snell's law bends the ray at entry and bends
+        it back by the same amount at exit — the two parallel faces cancel the angular
+        deviation exactly — but the beam still emerges shifted sideways from where it would
+        have gone straight through, a lateral displacement that grows with thickness,
+        incidence angle, and index. It's the same "apparent depth" effect that makes a
+        straw look bent in a glass of water, just viewed from the side instead of from
+        above.</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">Δ</mi><mi>t</mi><mo>=</mo><mfrac><mrow><mi>n</mi><mi>L</mi></mrow><mi>c</mi></mfrac><mo>−</mo><mfrac><mi>L</mi><mi>c</mi></mfrac><mo>=</mo><mfrac><mrow><mo stretchy="false">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo><mi>L</mi></mrow><mi>c</mi></mfrac></mrow><annotation encoding="application/x-tex">\Delta t = \frac{nL}{c} - \frac{L}{c} = \frac{(n-1)L}{c}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord">Δ</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">c</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">n</span><span class="mord mathnormal">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">c</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.113em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">c</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span><span class="mclose">)</span><span class="mord mathnormal">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Extra transit time a slab of thickness L and refractive index n adds compared to the same distance in vacuum — equivalently, an extra optical path length of (n − 1)L.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>d</mi><mo>=</mo><mi>t</mi><mtext> </mtext><mi>sec</mi><mo>⁡</mo><mi>r</mi><mtext> </mtext><mi>sin</mi><mo>⁡</mo><mo stretchy="false">(</mo><mi>i</mi><mo>−</mo><mi>r</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">d = t\,\sec r\,\sin(i-r)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">d</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">sec</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">r</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">sin</span><span class="mopen">(</span><span class="mord mathnormal">i</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">r</span><span class="mclose">)</span></span></span></span></span></div>
+      <div class="caption">Lateral displacement of a beam through a plane-parallel slab of thickness t, for incidence angle i and refraction angle r (related by Snell's law) — zero at normal incidence, growing with angle, thickness, and index.</div>
+    </div>
+
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>The rod is four independent flat refracting boundaries — two long faces and two
+        ends — each obeying the exact vector form of Snell's law and total internal
+        reflection used by every dielectric surface in the app, so tilting the rod at an
+        angle reproduces the real lateral-displacement geometry above, not an idealized
+        straight pass-through. Inside the medium, the tracer accumulates optical path
+        length as geometric distance × refractive index; on the shared pulse-timing
+        overlay this means a packet visibly slows down while crossing the rod, lagging a
+        same-time packet on a vacuum path by exactly the extra delay the formula above
+        predicts for the configured index. The rod's fill is deliberately translucent so
+        that lag is something you can actually watch happen, rather than a number hidden
+        behind an opaque block.</p>
+
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The refractive index is a single flat number with no wavelength
+        dependence — unlike the <a href="../freeglass/">Freeform glass</a> element's
+        optional catalogue-based Cauchy dispersion, every color slows down by exactly the same
+        amount here, so a broadband or supercontinuum pulse crossing the rod doesn't
+        spread out in time the way real material dispersion would stretch it. There's no
+        cylindrical or lensing geometry either: despite the name, this is a rectangular
+        slab cross-section with flat ends, not a focusing rod lens.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/freeglass/"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -36 -24 L 30 -24 L 38 20 L -26 26 L -36 -24 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Freeform glass</a><a href="../../wiki/prism/"><svg viewBox="-23.664696837416493 -23.664696837416493 47.329393674832986 47.329393674832986" aria-hidden="true"><path d="M 0,-12.7 L -14.664696837416493,12.7 L 14.664696837416493,12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Prism</a><a href="../../wiki/delayline/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-15" width="36" height="30" rx="3" fill="#d8d1ec" stroke="#69588f" stroke-width="1.4"/><g  fill="none" stroke="#514171" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M -15,0 H -6 L 4,-7 H 11 L 4,0 L 11,7 H 4 L -6,0"/><path d="M -1,-10 V 10" stroke-dasharray="2 2" opacity="0.65"/></g><text x="0" y="13"  text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="700" fill="#44365f">ΔL</text></svg>Mechanical delay line</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/group_velocity.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Group Velocity</a></li><li><a href="https://www.rp-photonics.com/group_index.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Group Index</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

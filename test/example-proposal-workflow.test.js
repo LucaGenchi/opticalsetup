@@ -24,10 +24,10 @@ const scene = {
   beams: [],
 };
 
-function shareURL(value = scene, host = 'opticalsetup.com', encoding = 'g') {
+function shareURL(value = scene, host = 'opticalsetup.com', encoding = 'g', path = '/v1/sketch/') {
   const json = JSON.stringify(value);
   const bytes = encoding === 'g' ? gzipSync(json) : Buffer.from(json);
-  return `https://${host}/sketch/#sketch=${encoding}.${bytes.toString('base64url')}`;
+  return `https://${host}${path}#sketch=${encoding}.${bytes.toString('base64url')}`;
 }
 
 function issueBody({
@@ -135,6 +135,13 @@ test('proposal materialization requires acknowledgement and official share links
     createdAt: '2026-07-22T10:30:00Z',
   }), /acknowledgement/i);
   assert.throws(() => sceneFromShareURL(shareURL(scene, 'example.com')), /official/i);
+  assert.doesNotThrow(() => sceneFromShareURL(shareURL(scene, 'opticalsetup.com', 'g', '/sketch/')));
+  assert.doesNotThrow(() => sceneFromShareURL(shareURL(
+    scene,
+    'lucagenchi.github.io',
+    'g',
+    '/optics-sketch/v1/sketch/',
+  )));
 });
 
 test('proposal materialization rejects duplicate IDs and unsupported encodings', () => {

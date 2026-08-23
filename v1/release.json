@@ -1,0 +1,21 @@
+{
+  "app": "opticalsetup",
+  "release": "v1",
+  "frozen": true,
+  "applicationPath": "/v1/sketch/",
+  "sceneFormatVersions": [
+    1
+  ],
+  "bundledDirectories": [
+    "sketch",
+    "Examples",
+    "community-submissions",
+    "wiki",
+    "example-setups",
+    "community",
+    "assets",
+    "css"
+  ],
+  "contentSha256": "68171acd213b6d27bd60fd6980654f726b6d31422e47c78850d261334e270bee",
+  "sourceSha256": "7c7330060d5f562a04106cce1f2611c2cd10b0f94327332c162fd24e601bc6a2"
+}

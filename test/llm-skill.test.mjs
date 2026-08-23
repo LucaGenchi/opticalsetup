@@ -19,7 +19,7 @@ test('published OpticalSetup skill builds a valid self-contained scene link', ()
   assert.equal(result.status, 0, result.stderr);
   const url = new URL(result.stdout.trim());
   assert.equal(url.origin, 'https://opticalsetup.com');
-  assert.equal(url.pathname, '/sketch/');
+  assert.equal(url.pathname, '/v1/sketch/');
   assert.match(url.hash, /^#sketch=[gj]\.[A-Za-z0-9_-]+$/);
 
   const payload = url.hash.slice('#sketch='.length);

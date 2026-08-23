@@ -1,0 +1,32 @@
+{
+  "name": "OpticalSetup — 2D Optical Workbench",
+  "short_name": "OpticalSetup",
+  "description": "Build, ray-trace, save, and share 2D optical setups.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#f4f7fb",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

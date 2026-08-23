@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diffraction grating — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Creates selected diffraction orders using the grating equation. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/grating/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Diffraction grating — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Creates selected diffraction orders using the grating equation.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/grating/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="current">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#dispersive-elements">Dispersive elements</a> / Diffraction grating</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg></div>
+        <div>
+          <h1>Diffraction grating</h1>
+        </div>
+      </div>
+      <p class="tagline">Creates selected diffraction orders using the grating equation.</p>
+      <a class="place-cta" href="../../sketch/?place=grating">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=grating"
+          title="Interactive Diffraction grating — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the diffraction grating to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>A diffraction grating is a surface ruled with closely, evenly spaced lines
+        (period <span class="w">d</span>). Light diffracting from it interferes
+        constructively only at angles satisfying the grating equation:</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>d</mi><mtext> </mtext><mo stretchy="false">(</mo><mi>sin</mi><mo>⁡</mo><msub><mi>θ</mi><mi>i</mi></msub><mo>+</mo><mi>sin</mi><mo>⁡</mo><msub><mi>θ</mi><mi>m</mi></msub><mo stretchy="false">)</mo><mo>=</mo><mi>m</mi><mi>λ</mi></mrow><annotation encoding="application/x-tex">d\,(\sin\theta_i + \sin\theta_m) = m\lambda</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">d</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mopen">(</span><span class="mop">sin</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop">sin</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">m</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">mλ</span></span></span></span></span></div>
+      <div class="caption">The grating equation: incidence angle θᵢ, diffraction angle θₘ, integer order m, line spacing d.</div>
+    </div>
+      <p>Because the equation depends on <span class="w">λ</span>, each nonzero
+        order spreads white light into a spectrum — the same effect a prism produces
+        through dispersion, but from interference rather than refractive-index variation.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>This is one of the few components where OpticalSetup implements the textbook
+        formula directly and exactly, solving the grating equation per sampled wavelength
+        for every configured diffraction order, in either reflective or transmissive
+        mode. Orders where the equation has no real solution (<span class="w">|sinθₘ| &gt;
+        1</span>) are simply dropped, matching a real grating's behavior of only lighting
+        up the orders that geometrically exist.</p>
+
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Diffraction efficiency is split evenly across the configured
+        orders rather than computed from the groove profile (a real blazed grating
+        concentrates most of the light into one order by design) — order existence and
+        angle are exact, relative brightness between orders is not.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/prism/"><svg viewBox="-23.664696837416493 -23.664696837416493 47.329393674832986 47.329393674832986" aria-hidden="true"><path d="M 0,-12.7 L -14.664696837416493,12.7 L 14.664696837416493,12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Prism</a><a href="../../wiki/dmd/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/><line x1="-11" y1="-14" x2="-7" y2="-18" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-8" x2="-7" y2="-12" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-2" x2="-7" y2="-6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="4" x2="-7" y2="0" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="10" x2="-7" y2="6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="16" x2="-7" y2="12" stroke="#cfd6dd" stroke-width="1.6"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">DMD</text></svg>DMD</a><a href="../../wiki/slm/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/><line x1="-11" y1="-18" x2="-7" y2="-18" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-13" x2="-7" y2="-13" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-8" x2="-7" y2="-8" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-3" x2="-7" y2="-3" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="2" x2="-7" y2="2" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="7" x2="-7" y2="7" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="12" x2="-7" y2="12" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="17" x2="-7" y2="17" stroke="#4ac0b0" stroke-width="2.5"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">SLM</text></svg>SLM</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/diffraction_gratings.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Diffraction Gratings</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

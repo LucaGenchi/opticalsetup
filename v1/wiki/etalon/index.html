@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Etalon (Fabry–Pérot) — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Two closely spaced, matched partially reflective coatings. Multi-beam interference gives narrow, periodic high-transmission peaks (the free spectral range) rather than a flat partial reflection — light off-resonance reflects, light at a resonance transmits at up to the coating-limited peak. Rotating the element shifts the resonance wavelength, like tilting a real etalon. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/etalon/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Etalon (Fabry–Pérot) — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Two closely spaced, matched partially reflective coatings. Multi-beam interference gives narrow, periodic high-transmission peaks (the free spectral range) rather than a flat partial reflection — light off-resonance reflects, light at a resonance transmits at up to the coating-limited peak. Rotating the element shifts the resonance wavelength, like tilting a real etalon.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/etalon/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="current">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#filters-splitters">Filters &amp; Splitters</a> / Etalon (Fabry–Pérot)</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><rect x="-3" y="-17.5" width="6" height="35" fill="#eaf4fb" fill-opacity="0.75" stroke="#4a90c4" stroke-width="1.2"/><line x1="-3" y1="-17.5" x2="-3" y2="17.5" stroke="#2f6690" stroke-width="1.6"/><line x1="3" y1="-17.5" x2="3" y2="17.5" stroke="#2f6690" stroke-width="1.6"/></svg></div>
+        <div>
+          <h1>Etalon (Fabry–Pérot)</h1>
+        </div>
+      </div>
+      <p class="tagline">Two closely spaced, matched partially reflective coatings. Multi-beam interference gives narrow, periodic high-transmission peaks (the free spectral range) rather than a flat partial reflection — light off-resonance reflects, light at a resonance transmits at up to the coating-limited peak. Rotating the element shifts the resonance wavelength, like tilting a real etalon.</p>
+      <a class="place-cta" href="../../sketch/?place=etalon">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=etalon"
+          title="Interactive Etalon (Fabry–Pérot) — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the etalon (fabry–pérot) to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>A Fabry–Pérot etalon is just two closely spaced, parallel, partially
+        reflective surfaces — but unlike a single partial mirror, light inside that gap
+        bounces back and forth indefinitely, and every one of those internal reflections
+        leaks a little light out and interferes with all the others. Sum that infinite
+        series of multiply-reflected beams and, at most wavelengths, the interference is
+        destructive enough that the etalon simply reflects, behaving like an ordinary
+        partial mirror. But at a resonance — where the round-trip phase is a multiple of
+        2π — every reflected component cancels almost perfectly, and transmission surges
+        to a coating-limited peak that can approach 100% even through two mirrors that are
+        individually 99% reflective. That counterintuitive buildup, not a simple partial
+        transmission, is the entire operating principle.</p>
+        <p>Resonances repeat periodically in wavelength at the free spectral range (FSR),
+        and how sharp each resonance is — how far you can detune before transmission
+        collapses back toward zero — is set by the finesse, which climbs steeply as the
+        mirror reflectivity approaches 1.</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>T</mi><mo stretchy="false">(</mo><mi>δ</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><msub><mi>T</mi><mi>max</mi><mo>⁡</mo></msub><mrow><mn>1</mn><mo>+</mo><msub><mi>F</mi><mi>c</mi></msub><msup><mrow><mi>sin</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mo stretchy="false">(</mo><mi>δ</mi><mi mathvariant="normal">/</mi><mn>2</mn><mo stretchy="false">)</mo></mrow></mfrac><mo separator="true">,</mo><mspace width="2em"/><msub><mi>F</mi><mi>c</mi></msub><mo>=</mo><mfrac><mrow><mn>4</mn><mi>R</mi></mrow><mrow><mo stretchy="false">(</mo><mn>1</mn><mo>−</mo><mi>R</mi><msup><mo stretchy="false">)</mo><mn>2</mn></msup></mrow></mfrac></mrow><annotation encoding="application/x-tex">T(\delta) = \frac{T_{\max}}{1 + F_c \sin^2(\delta/2)}, \qquad F_c = \frac{4R}{(1-R)^{2}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.0379em;">δ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.3722em;vertical-align:-1.0119em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.2381em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">F</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">c</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mop">sin</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8719em;"><span style="top:-3.1208em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.0379em;">δ</span><span class="mord">/2</span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mop mtight"><span class="mtight">m</span><span class="mtight">a</span><span class="mtight">x</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.0119em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">F</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">c</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2963em;vertical-align:-0.936em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mopen">(</span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord mathnormal" style="margin-right:0.0077em;">R</span><span class="mclose"><span class="mclose">)</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.7401em;"><span style="top:-2.989em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">4</span><span class="mord mathnormal" style="margin-right:0.0077em;">R</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.936em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">The Airy function — Fabry–Pérot transmission versus round-trip phase δ, for two matched mirrors of reflectivity R.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mtext>FSR</mtext><mo>=</mo><mfrac><msup><mi>λ</mi><mn>2</mn></msup><mrow><mn>2</mn><mi>n</mi><mi>d</mi><mi>cos</mi><mo>⁡</mo><mi>θ</mi></mrow></mfrac><mo separator="true">,</mo><mspace width="2em"/><mi mathvariant="script">F</mi><mo>=</mo><mfrac><mrow><mi>π</mi><msqrt><mi>R</mi></msqrt></mrow><mrow><mn>1</mn><mo>−</mo><mi>R</mi></mrow></mfrac><mo>=</mo><mfrac><mtext>FSR</mtext><mtext>FWHM</mtext></mfrac></mrow><annotation encoding="application/x-tex">\text{FSR} = \frac{\lambda^{2}}{2nd\cos\theta}, \qquad \mathcal{F} = \frac{\pi\sqrt{R}}{1-R} = \frac{\text{FSR}}{\text{FWHM}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord text"><span class="mord">FSR</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.1771em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.4911em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mord mathnormal">n</span><span class="mord mathnormal">d</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">cos</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathcal" style="margin-right:0.0993em;">F</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.373em;vertical-align:-0.7693em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.6037em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord mathnormal" style="margin-right:0.0077em;">R</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9267em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.0077em;">R</span></span></span><span style="top:-2.8867em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.08em" viewBox="0 0 400000 1080" preserveAspectRatio="xMinYMin slice"><path d="M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1133em;"><span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7693em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord">FWHM</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord">FSR</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Free spectral range (spacing between resonances, set by cavity length d and refractive index n) and finesse (resonance sharpness, set by reflectivity alone) — together they fix the resonance linewidth.</div>
+    </div>
+
+        <p>Because the round-trip phase δ depends on the incidence angle through
+        <span class="w">cos θ</span>, tilting an etalon shifts its resonance wavelength
+        without changing the mirrors at all — a standard tuning technique in real optical
+        systems, alongside temperature tuning of the spacing itself. Etalons are used
+        intracavity in lasers to force single-longitudinal-mode operation, and standalone
+        as narrowband spectral filters and scanning spectrum analyzers.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>The Etalon is specified the way a real one is speced on a datasheet — center
+        wavelength, transmission bandwidth (FWHM), free spectral range, and peak
+        transmission — rather than by the raw mirror spacing and reflectivity the Airy
+        function actually needs. Those spectral targets are inverted internally into the
+        matched-mirror reflectivity <span class="w">R</span> and cavity spacing that
+        produce them, then the exact closed-form Airy function above is evaluated at every
+        ray's real incidence angle: off-resonance light reflects, on-resonance light
+        transmits up to the configured peak, and rotating the element on the canvas shifts
+        the resonance exactly like tilting a real etalon — because the tracer uses the
+        ray's actual hit angle, not a separately stored tilt parameter.</p>
+
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is one of only two elements in the library implementing genuine
+        multi-beam interference rather than an idealized on/off band — the app's ray
+        tracer otherwise never tracks phase, so the etalon is special-cased as a single
+        surface driven by the closed-form Airy result instead of actually summing repeated
+        internal bounces. There's no mirror-parallelism defect (wedge), no temperature
+        drift of the spacing, and peak transmission below 100% is reached with a single
+        lumped loss term rather than a modeled absorption or scatter mechanism on each
+        coating.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/vipa/"><svg viewBox="-27.457370879546925 -27.457370879546925 54.91474175909385 54.91474175909385" aria-hidden="true"><path d="M -2.63,-17.36 L -0.19,17.56 L 2.63,17.36 L 0.19,-17.56 Z" fill="#c9e4f5" fill-opacity="0.62" stroke="#4a90c4" stroke-width="1.1"/><line x1="-2.63" y1="-17.36" x2="-1.52" y2="-1.40" stroke="#353b44" stroke-width="2.8"/><line x1="-1.31" y1="1.60" x2="-0.19" y2="17.56" stroke="#353b44" stroke-width="2.8"/><line x1="0.19" y1="-17.56" x2="2.63" y2="17.36" stroke="#5d5575" stroke-width="2.1" stroke-dasharray="3 1.5"/><line x1="-10.39" y1="0.73" x2="-2.81" y2="0.20" stroke="#7c3aed" stroke-width="1.5"/><path d="M -2.81,0.20 l -3,-2 l 0,4 Z" fill="#7c3aed"/></svg>VIPA</a><a href="../../wiki/dichroic/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-3" y="-12.7" width="6" height="25.4" fill="#dfeef7" stroke="#5d7f96" stroke-width="1.5"/><line x1="-3" y1="-12.7" x2="-3" y2="12.7" stroke="#b04ad0" stroke-width="2"/></svg>Dichroic mirror</a><a href="../../wiki/filter/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#bfe3c9" stroke="#557" stroke-width="1.5"/></svg>Filter</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/etalons.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Etalons</a></li><li><a href="https://www.rp-photonics.com/finesse.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Finesse</a></li><li><a href="https://www.rp-photonics.com/spotlight_2009_12_31.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Tilt Tuning of Etalons</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

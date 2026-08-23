@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CW Laser — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Emits a steady monochromatic collimated beam at one wavelength. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/cwlaser/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CW Laser — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Emits a steady monochromatic collimated beam at one wavelength.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/cwlaser/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="current">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#sources">Sources</a> / CW Laser</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg></div>
+        <div>
+          <h1>CW Laser</h1>
+        </div>
+      </div>
+      <p class="tagline">Emits a steady monochromatic collimated beam at one wavelength.</p>
+      <a class="place-cta" href="../../sketch/?place=cwlaser">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=cwlaser"
+          title="Interactive CW Laser — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the cw laser to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>Laser technology occupies a central position within photonics because laser
+        light exhibits several properties that distinguish it from conventional light
+        sources, beyond simple monochromaticity. A laser beam is characterized by high
+        spatial coherence, which permits propagation over considerable distances with
+        minimal divergence — frequently limited only by diffraction — and allows the beam
+        to be focused to a very small spot, yielding a correspondingly high intensity.</p>
+        <p>This coherence typically extends to the temporal domain as well: a
+        continuous-wave laser emits within a very narrow spectral bandwidth, in contrast
+        to sources such as incandescent or gas-discharge lamps, which radiate across a
+        broad spectral range. Emission is steady rather than pulsed: the output power a
+        detector reads is the same at every instant.</p>
+        <p>The theoretical foundation for the laser predates its experimental realization:
+        Townes, Schawlow, Basov, and Prokhorov independently developed the theory of
+        stimulated emission as a mechanism for light amplification, building on the
+        microwave maser Townes had demonstrated in 1953 — the concept was initially termed
+        the "optical maser" before "laser" became standard usage. Theodore Maiman first
+        realized this theory experimentally in 1960, constructing the first laser: a
+        pulsed, lamp-pumped ruby crystal. The same year saw two further milestones: the
+        helium–neon laser, the first to operate with a gaseous gain medium, and the first
+        semiconductor laser diode.</p>
+        <p>Real laser beams are not perfectly collimated: they exhibit Gaussian
+        propagation and diverge with distance. For a beam of waist radius
+        <span class="w">w₀</span>, the far-field half-angle divergence is given by</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>θ</mi><mo>≈</mo><mfrac><mi>λ</mi><mrow><mi>π</mi><msub><mi>w</mi><mn>0</mn></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">\theta \approx \frac{\lambda}{\pi w_0}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2074em;vertical-align:-0.836em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Far-field divergence half-angle of a Gaussian beam (small-angle, TEM₀₀ mode).</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>E</mi><mtext>photon</mtext></msub><mo>=</mo><mfrac><mrow><mi>h</mi><mi>c</mi></mrow><mi>λ</mi></mfrac></mrow><annotation encoding="application/x-tex">E_{\text{photon}} = \frac{hc}{\lambda}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.9694em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0576em;">E</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0576em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">photon</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0574em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">h</span><span class="mord mathnormal">c</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Photon energy — why shorter wavelengths (blue, UV) carry more energy per photon than longer ones (red, IR).</div>
+    </div>
+
+        <p>These properties originate from stimulated emission within a resonant cavity:
+        a gain medium bounded by two mirrors amplifies a specific wavelength on each round
+        trip, while losses — mirror transmission, absorption, scattering — deplete it.
+        Above threshold, the pump rate at which round-trip gain first equals round-trip
+        loss, the cavity sustains the stable, highly monochromatic, spatially coherent
+        beam described above.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>The CW Laser emits either a single collimated ray or, in <em>Beam with
+        size</em> mode, a fan of 25 parallel rays sampling a finite beam width — this is
+        what lets the tracer show a lens actually focusing a beam of nonzero extent,
+        rather than a single infinitesimal ray that can never miss an aperture.</p>
+        <p>Its spectrum is monochromatic by construction: one wavelength, no bandwidth
+        control. That is the whole point of the split between the three laser sources —
+        if a bench needs spectral width, it needs the Pulsed Laser or the Supercontinuum
+        laser instead, both of which model where that width comes from. Polarization is
+        set directly as a Stokes vector rather than emerging from a modeled cavity.</p>
+
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>There is no modeled gain medium, cavity round trip, or threshold —
+        wavelength, polarization, and power are configured directly as source parameters,
+        not derived from first principles. Divergence and M² are not modeled: a collimated
+        beam stays perfectly parallel over any distance.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/sclaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#24233a" stroke="#171629" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.1" fill="#fff">SC LASER</text><g stroke="#c4b5fd" stroke-width="1.1"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="1" height="9" fill="#7c3aed"/><rect x="46.85" y="-4.5" width="1" height="9" fill="#2563eb"/><rect x="47.7" y="-4.5" width="1" height="9" fill="#10b981"/><rect x="48.55" y="-4.5" width="1" height="9" fill="#eab308"/><rect x="49.4" y="-4.5" width="1" height="9" fill="#f97316"/><rect x="50.25" y="-4.5" width="1" height="9" fill="#ef4444"/></svg>Supercontinuum laser</a><a href="../../wiki/pointsource/"><svg viewBox="-21 -21 42 42" aria-hidden="true"><g transform="scale(1)"><circle r="4.5" fill="#65ff00" stroke="#333" stroke-width="1"/><line x1="6.0" y1="0.0" x2="11.0" y2="0.0" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="4.2" y1="4.2" x2="7.8" y2="7.8" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="0.0" y1="6.0" x2="0.0" y2="11.0" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="-4.2" y1="4.2" x2="-7.8" y2="7.8" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="-6.0" y1="0.0" x2="-11.0" y2="0.0" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="-4.2" y1="-4.2" x2="-7.8" y2="-7.8" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="-0.0" y1="-6.0" x2="-0.0" y2="-11.0" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="4.2" y1="-4.2" x2="7.8" y2="-7.8" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/></g></svg>Point source</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/lasers.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Lasers</a></li><li><a href="https://www.rp-photonics.com/laser_light.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Laser Light</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

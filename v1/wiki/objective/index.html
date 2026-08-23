@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Objective — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/objective/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Objective — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/objective/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="current">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#lenses">Lenses</a> / Objective</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-10 L 7,-17 L -21,-17 L -21,17 L 7,17 L 16,10 Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/><line x1="7" y1="-17" x2="7" y2="17" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-17" width="2.4" height="10.50" fill="#2f3e4d"/><rect x="-21" y="6.50" width="2.4" height="10.50" fill="#2f3e4d"/><line x1="16" y1="-10" x2="16" y2="10" stroke="#4a90c4" stroke-width="2"/></svg></div>
+        <div>
+          <h1>Objective</h1>
+        </div>
+      </div>
+      <p class="tagline">Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.</p>
+      <a class="place-cta" href="../../sketch/?place=objective">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=objective"
+          title="Interactive Objective — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the objective to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>A real microscope or camera objective is a highly corrected assembly of many
+        lens elements, not a single piece of glass — the element count exists almost
+        entirely to cancel spherical and chromatic aberration, flatten the field, and
+        reach a high numerical aperture without the image falling apart. Numerical
+        aperture <span class="w">NA</span> is the single number that matters most: it
+        sets the objective's light-gathering cone and, through diffraction, the finest
+        detail it can ever resolve, regardless of magnification:</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo>=</mo><mi>n</mi><mi>sin</mi><mo>⁡</mo><mi>θ</mi></mrow><annotation encoding="application/x-tex">\mathrm{NA} = n\sin\theta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">NA</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">n</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">sin</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span></span></span></span></span></div>
+      <div class="caption">Numerical aperture depends on both the accepted half-angle and the refractive index of the objective's designed front medium; NA above 1 therefore requires immersion.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>d</mi><mo>≈</mo><mfrac><mi>λ</mi><mrow><mn>2</mn><mtext> </mtext><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">d \approx \frac{\lambda}{2\,\mathrm{NA}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">d</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0574em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">NA</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">The Abbe diffraction limit — the smallest resolvable feature size, set by wavelength and numerical aperture alone.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>r</mi><mtext>BFP</mtext></msub><mo>≈</mo><mi>f</mi><mo>⋅</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></mrow><annotation encoding="application/x-tex">r_{\text{BFP}} \approx f \cdot \mathrm{NA}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6331em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">BFP</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">NA</span></span></span></span></span></span></div>
+      <div class="caption">Entrance-pupil radius at the back focal plane, for a well-corrected objective (the Abbe sine condition).</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>M</mi><mo>=</mo><mfrac><msub><mi>f</mi><mtext>tube</mtext></msub><msub><mi>f</mi><mtext>objective</mtext></msub></mfrac></mrow><annotation encoding="application/x-tex">M = \frac{f_{\text{tube}}}{f_{\text{objective}}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">M</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.3435em;vertical-align:-0.9721em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">objective</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">tube</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9721em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Magnification of an infinity-corrected objective, set purely by comparing its focal length to the tube lens's.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mtext>eff</mtext></msub><mo>≈</mo><mfrac><mi>D</mi><mrow><mn>2</mn><mi>f</mi></mrow></mfrac><mo>≤</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></mrow><annotation encoding="application/x-tex">\mathrm{NA}_{\text{eff}} \approx \frac{D}{2f} \le \mathrm{NA}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord"><span class="mord mathrm">NA</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">eff</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2408em;vertical-align:-0.8804em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">D</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8804em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≤</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">NA</span></span></span></span></span></span></div>
+      <div class="caption">The NA you actually work at when a beam of diameter D underfills the back pupil — the rating is a ceiling, not a guarantee.</div>
+    </div>
+
+        <p>Modern objectives are almost always <strong>infinity-corrected</strong>: a
+        point at the sample (the front focal plane) emits a cone that leaves the back of
+        the objective as a <em>collimated</em> beam, which a separate tube lens then
+        focuses onto a camera or eyepiece — nothing focuses light directly behind an
+        infinity objective on its own. The reference plane a focal length
+        <span class="w">f</span> behind the objective, on that tube-lens side, is the
+        <strong>back focal plane (BFP)</strong> — where the objective's entrance pupil
+        (radius above) is imaged. It matters most in laser-scanning microscopy: a scan
+        mirror, or its relayed image via a scan lens and tube lens, is deliberately
+        positioned at a plane conjugate to the BFP, so that as the mirror tilts, the beam
+        pivots around a fixed point inside the pupil instead of walking across it —
+        keeping the full aperture illuminated at every scan angle.</p>
+        <p>That same magnification formula is also why widefield imaging systems pick
+        the objective focal length they do. A high-power compound-microscope objective
+        (60×, 100×) has a very short effective focal length — often just a couple of
+        millimeters — paired with a long tube lens. Its <strong>working distance</strong>,
+        however, is a separate catalogue dimension: the axial clearance from the front
+        boundary to the in-focus specimen plane. High-magnification objectives often have
+        short working distances because of their practical optical and mechanical design,
+        but working distance is not obtained from the magnification formula and
+        long-working-distance objectives are specifically engineered exceptions. A
+        <strong>stereomicroscope</strong> uses low-to-moderate magnification, a wide field
+        of view, and enough working distance to get hands or tools under the lens; its zoom
+        system can vary magnification without turning working distance into focal length.</p>
+        <p>One practical consequence of that pupil: the NA on the barrel is a
+        <em>ceiling</em>, not a promise. You only work at the rated NA if your beam actually
+        fills the back pupil. A laser beam narrower than the pupil converges at a
+        proportionally smaller angle, giving a bigger focal spot and worse resolution than
+        the label implies — which is why laser-scanning systems deliberately
+        <strong>overfill</strong> the back aperture, accepting the power clipped off at the
+        rim in exchange for the full aperture and the tightest spot the objective can make.
+        Working distance, meanwhile, is a separate catalogue dimension bounded by the focal
+        length: the specimen plane sits one focal length from the principal plane, and the
+        glass between the front element and the sample takes up the difference, so working
+        distance is always shorter than EFL.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>An objective here is set by three things you would read off a real catalogue —
+        <strong>effective focal length (EFL)</strong>, <strong>working distance</strong>,
+        and <strong>rated NA</strong> — plus the front aperture that controls how big the
+        nose is drawn. EFL is the focal length of the whole multi-element assembly treated
+        as one equivalent lens, which is what "focal length" means on an objective; the
+        inspector label spells that out. Magnification is not something you type in. It is <em>reported</em> from the EFL against a 200&nbsp;mm reference
+        tube lens, because magnification belongs to the objective plus whichever tube lens
+        you actually place in the sketch, not to the objective alone. A fresh objective is
+        EFL 10&nbsp;mm — 20× on a 200&nbsp;mm tube lens — dry, NA 0.65, 100% transmission.</p>
+
+        <h3>Where the refracting plane sits, and why</h3>
+        <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
+        length EFL, but it does <em>not</em> put that plane at the front tip. It sits one
+        focal length short of the nominal focus — at the front tip plus
+        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for a real objective means
+        somewhere inside the barrel. That single choice is what makes three things true at
+        once:</p>
+        <ul>
+          <li>Collimated light from the tube-lens side focuses <em>exactly</em> one working
+          distance beyond the physical front tip, so the drawn focus is the working
+          distance you typed.</li>
+          <li>The plane still carries the objective's real focal length, so an external
+          200&nbsp;mm tube lens really does produce the reported magnification rather than
+          a decorative label.</li>
+          <li>The plane one EFL behind it is a genuine <strong>back focal plane (BFP)</strong>:
+          light focused there leaves the objective collimated. That is what widefield
+          (Köhler-style) illumination needs, and it is the plane a laser-scanning relay has
+          to image the scan mirror onto.</li>
+        </ul>
+        <p>The BFP is drawn as a labelled marker next to the WD focus, and it is a traced
+        conjugate rather than an annotation — put a source at it and the output really does
+        come out collimated.</p>
+        <p>Working distance is capped at EFL, and defaults to it. A real objective focuses
+        at or inside its own focal length, with the glass taking up the difference; the cap
+        also keeps the equivalent plane at or behind the front tip, inside the barrel, which
+        is where a real objective's principal plane and pupil sit. Nothing is drawn there —
+        an objective is an opaque barrel, not a visible singlet. When a short working
+        distance pushes the plane behind the default rear face, only the straight rear
+        section of the barrel lengthens; the tapered nose is fixed geometry.</p>
+
+        <h3>Rated NA is a real aperture, not a label</h3>
+        <p>The back pupil has diameter <span class="w">2fNA</span> and is the objective's
+        aperture stop. A beam that fills it converges at the rated angle: raise NA and the
+        focusing cone opens, lower it and the cone closes. Nothing else in the objective
+        sets the cone, so NA is a control rather than a caption.</p>
+        <p>That stop sits <em>at the back focal plane</em>, where an infinity objective's
+        entrance pupil belongs, and this is what makes relaying a scan mirror onto the BFP
+        marker do real work: a beam pivoting there stays centred in the pupil at every scan
+        angle and loses nothing, while a pivot anywhere else walks across the pupil and is
+        cut. (The single-plane model can push the BFP further back than any plausible barrel;
+        the stop is then clamped into the housing rather than left blocking light in mid-air
+        behind it, so the zero-walk property degrades for very long focal lengths.)</p>
+        <p>The metal around that opening blocks. Overfilling the back pupil is normal
+        laboratory practice — it is how you actually reach the full rated NA — and the
+        overflow is genuinely lost, so the objective reports what it costs. Two readouts sit
+        under the NA control:</p>
+        <ul>
+          <li><strong>Back-pupil fill</strong> — the beam diameter arriving, the pupil it has
+          to get through, and a first-order estimate of the fraction that survives. That
+          estimate is the area ratio for a uniform round beam, so doubling the fill costs
+          about three quarters of the power.</li>
+          <li><strong>Effective NA in use</strong> — underfilling does not merely waste the
+          rating, it hands you a smaller NA and a correspondingly wider focal spot. Fill half
+          the pupil and you are running at half the NA; the readout says so, and by how much
+          the spot widens. Overfilling is capped at the rating: you cannot buy more NA than
+          the objective has.</li>
+        </ul>
+        <p>A large <span class="w">2fNA</span> makes the housing physically wider rather than
+        silently clipping at the drawn outline, and the dark bars across the barrel's rear
+        face show the pupil diameter the beam has to fit through.</p>
+
+        <h3>Medium and acceptance angle</h3>
+        <p>The objective owns its medium; there is no separately placeable liquid
+        component. Dry/air caps rated NA at 0.85 — the practical ceiling for real dry
+        designs, rather than the physical <span class="w">n&nbsp;=&nbsp;1</span> limit —
+        water at 1.27, oil at 1.49, and a custom medium at the lesser of its index
+        <span class="w">n</span> and 1.49. The medium's index and the rated NA give the
+        object-side half-angle <span class="w">θ&nbsp;=&nbsp;asin(NA/n)</span> shown as a
+        readout; changing medium may clamp an out-of-range NA but never changes working
+        distance. Alongside the pupil, the tracer also rejects object-side rays steeper than
+        that half-angle. <strong>Show acceptance angle</strong> — off by default, because
+        most sketches want a plain barrel — draws it as a dashed sector at the actual
+        contact or nominal focus.</p>
+        <p>Water, oil, and custom objectives derive a non-selectable
+        <strong>immersion bridge</strong> to the nearest compatible contact in front: a
+        Sample, a Sample on piezo stage, or a facing fiber endpoint. The target is chosen
+        from the authored geometry, so a scanning stage carries the same relationship while
+        it remains aligned and in range, then disconnects instead of making the objective
+        jump between nearby samples.</p>
+        <p>The bridge spans the objective's complete front aperture and the contacted
+        specimen or fiber face. Two cubic Bézier curves bow inward between those edges to
+        make a legible meniscus in the canvas and in SVG, PNG, and GIF output. This is an
+        authored schematic, not a capillary-surface calculation. If no contact is available,
+        no liquid is drawn. Older high-NA sketches that never recorded a medium remain
+        explicitly unresolved until one is chosen.</p>
+
+        <h3>Handles and markers</h3>
+        <p>The purple tune control changes EFL and the blue resize handle changes the front
+        aperture. Editing working distance moves the refracting plane without touching EFL or
+        the reported magnification; raising EFL leaves an already-configured working distance
+        alone, while lowering EFL past it carries the working distance down with it. Toggle
+        "Show focal points" (the <span class="w">ƒ</span> button) or select the objective to
+        see both marked planes: <span class="w">BFP</span> on the tube-lens side and the
+        nominal <span class="w">WD focus</span> on the sample side.</p>
+        <p>When this objective sits between a pulsed laser and an illuminated
+        photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
+        to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
+        power, repetition rate, and pulse duration — see the inspector on a resin
+        sample's stage.</p>
+
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The 200&nbsp;mm reference tube length is a real, common convention
+        (Nikon and Leica both design infinity objectives against 200&nbsp;mm) but not a
+        universal one — Olympus uses 180&nbsp;mm and Zeiss 165&nbsp;mm — and OpticalSetup
+        doesn't model a manufacturer choice or a separate tube-lens element the way the
+        standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
+        reference length is used only for effective-focal-length metadata and the
+        first-order pupil estimate; it does not define the trace boundary or focus map.
+        Working distance is a saved property bounded only by EFL, not a value predicted by
+        magnification, NA, or immersion medium: a real catalogue pairs them through the
+        internal design, and OpticalSetup deliberately lets you keep a visible working
+        distance on a high-power objective so the sketch stays readable — a real 60&times;
+        oil objective works at a few tenths of a millimetre, which would be invisible here. The equivalent lens plane and the
+        back focal plane it defines are first-order stand-ins for a compound objective's
+        principal plane and pupil, not the real internal conjugates: one plane cannot
+        reproduce a real objective's aberration correction, field curvature, or the axial
+        spacing of its actual groups. The pupil stop and NA clipping remain qualitative and do not model
+        diffraction, aberration correction, internal stops, or polarization at high
+        angle. The pupil is a paraxial stop in a thin-lens tracer, so a beam filling it
+        converges at <span class="w">atan(NA)</span> rather than the sine-condition
+        <span class="w">asin(NA/n)</span> that the rated half-angle readout quotes; the
+        two agree closely at moderate NA and separate as NA approaches its ceiling. The
+        overfill estimate is a uniform-beam area ratio, not a Gaussian truncation or a
+        vignetting calculation. Dry objectives cap at NA 0.85, the practical ceiling for
+        real dry designs rather than the physical <span class="w">n = 1</span> limit. The drawn meniscus does not solve wetting, contact angle, surface tension,
+        volume, or gravity; it adds no refracting boundary and does not model cover glass,
+        index mismatch, focal shift, or immersion aberrations.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Convex lens</a><a href="../../wiki/thicklens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -1.64 12.7 A 60 60 0 0 1 -1.64 -12.7 L 1.64 -12.7 A 60 60 0 0 1 1.64 12.7 L -1.64 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Thick lens (spherical)</a><a href="../../wiki/telescope/"><svg viewBox="-94 -94 188 188" aria-hidden="true"><line x1="-75" y1="0" x2="75" y2="0" stroke="#b6bdc6" stroke-width="1" stroke-dasharray="4 4"/><path d="M -75,-12.7 Q -66,0 -75,12.7 Q -84,0 -75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><path d="M 75,-12.7 Q 84,0 75,12.7 Q 66,0 75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Telescope (lens pair)</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/microscope_objectives.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Microscope Objectives</a></li><li><a href="https://www.rp-photonics.com/numerical_aperture.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Numerical Aperture</a></li><li><a href="https://www.zeiss.com/microscopy/en/resources/insights-hub/foundational-knowledge/oil-immersion-refractive-index-and-lens-design.html" target="_blank" rel="noopener">ZEISS — Oil immersion, refractive index, and lens design</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

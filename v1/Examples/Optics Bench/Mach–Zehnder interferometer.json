@@ -1,0 +1,132 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "eyumbb09",
+   "type": "textlabel",
+   "x": 450,
+   "y": 80,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Mach–Zehnder interferometer — two separate paths recombine at a second beamsplitter",
+    "fontSize": 14,
+    "fill": "#333"
+   }
+  },
+  {
+   "id": "e9incbv0",
+   "type": "cwlaser",
+   "x": 100,
+   "y": 200,
+   "rot": 0,
+   "label": "laser",
+   "showLabel": true,
+   "params": {
+    "wavelength": 532,
+    "beamMode": "line",
+    "beamWidth": 6,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#e02020"
+   }
+  },
+  {
+   "id": "eejtp1yq",
+   "type": "bs",
+   "x": 300,
+   "y": 200,
+   "rot": 90,
+   "label": "BS1",
+   "showLabel": true,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "eo7a4heh",
+   "type": "box",
+   "x": 460,
+   "y": 200,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Sample",
+    "w": 60,
+    "h": 30,
+    "behavior": "pass",
+    "fill": "#dfe9ff"
+   }
+  },
+  {
+   "id": "efjtdmms",
+   "type": "mirror",
+   "x": 600,
+   "y": 200,
+   "rot": 135,
+   "label": "M1",
+   "showLabel": true,
+   "params": {
+    "length": 25.4,
+    "refl": 100
+   },
+   "labelPos": "r"
+  },
+  {
+   "id": "e0p2fspb",
+   "type": "mirror",
+   "x": 300,
+   "y": 400,
+   "rot": 135,
+   "label": "M2",
+   "showLabel": true,
+   "params": {
+    "length": 25.4,
+    "refl": 100
+   }
+  },
+  {
+   "id": "enxt7on8",
+   "type": "bs",
+   "x": 600,
+   "y": 400,
+   "rot": 90,
+   "label": "BS2",
+   "showLabel": true,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "etn24g3r",
+   "type": "detector",
+   "x": 780,
+   "y": 400,
+   "rot": 0,
+   "label": "output 1",
+   "showLabel": true,
+   "params": {
+    "aperture": 26
+   }
+  },
+  {
+   "id": "eq4a46pm",
+   "type": "detector",
+   "x": 600,
+   "y": 560,
+   "rot": 90,
+   "label": "output 2",
+   "showLabel": true,
+   "params": {
+    "aperture": 26
+   }
+  }
+ ],
+ "beams": []
+}
