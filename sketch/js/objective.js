@@ -1,48 +1,42 @@
 // Shared microscope-objective parameter model.
 //
-// OpticalSetup deliberately models an objective as one ideal, bidirectional
-// plane at the physical nose. The authored working distance is also the focal
-// distance of that ideal plane:
+// Infinity-corrected objectives have several catalogue properties that must
+// remain distinct. Effective focal length (EFL) is the objective's real
+// optical power. Working distance is the independently specified clearance
+// from the physical front boundary to the nominal specimen focus. Rated NA
+// and front-medium index determine the object-side acceptance angle.
 //
-//   collimated rear light -> point at FRONT_X + workingDistance
-//   point at that focus   -> collimated rear light
+// EFL and working distance are BOTH honoured at once by not assuming the
+// equivalent refracting plane sits at the front tip. Placing it at
 //
-// This is intentionally simpler than a compound prescription. It keeps the
-// front plane and axial housing footprint fixed, makes the visible focus agree
-// with the traced one, and avoids a hidden principal plane moving around
-// inside (or outside) the icon. The housing height follows the authored clear
-// aperture so the normal canvas resize gesture still has one honest meaning.
+//     lens plane = front tip + WD - EFL
 //
-// Rated NA and the front-medium index request an object-side half-angle. The
-// clear opening can limit that request, so every consumer uses the same
-// accepted radius and effective NA. The guide, traced lens span, angular
-// clipping, and downstream hand-offs therefore cannot disagree.
+// makes collimated light focus exactly WD beyond the tip while the plane
+// itself still has focal length EFL — so an external tube lens produces the
+// real catalogue magnification, and the back focal plane one EFL behind it
+// is a genuine conjugate: light focused there leaves the objective
+// collimated, which is what widefield (Köhler-style) illumination needs and
+// what a scan relay must be imaged onto. Working distance is capped at EFL,
+// so that plane always lands at or behind the tip — inside the barrel, where
+// a real objective's principal plane and pupil actually sit. It is never
+// drawn: an objective is an opaque barrel, not a visible singlet.
+//
+// Rated NA is a real aperture, not an annotation. The back pupil has
+// diameter 2*EFL*NA and is the objective's aperture stop, so a beam that
+// fills it converges at the rated angle and a beam that overfills it loses
+// the overflow to the barrel — which is how NA is set in a real experiment.
 
 export const OBJECTIVE_REFERENCE_TUBE_F_MM = 200;
 export const OBJECTIVE_FRONT_X = 16;
-export const OBJECTIVE_DEFAULT_BACK_X = -21;
-export const OBJECTIVE_SHOULDER_X = 7;
-export const OBJECTIVE_BODY_HALF_HEIGHT = 17;
-export const OBJECTIVE_NOSE_HALF_HEIGHT = 12;
-export const OBJECTIVE_MIN_NOSE_HALF_HEIGHT = 5;
-export const OBJECTIVE_NOSE_SHELL = 2;
-export const OBJECTIVE_BARREL_SHELL = 5;
-
 export const OBJECTIVE_NA_MIN = 0.05;
 export const OBJECTIVE_NA_MAX = 1.49;
-export const OBJECTIVE_NA_DEFAULT = 0.65;
 export const OBJECTIVE_MAG_MIN = 1;
 export const OBJECTIVE_MAG_MAX = 200;
-export const OBJECTIVE_WD_MIN = 0.05;
-export const OBJECTIVE_WD_MAX = 200;
+export const OBJECTIVE_WD_MIN = 1;
+// Working distance has no fixed ceiling any more: it is bounded by the
+// objective's own focal length (see objectiveMaximumWorkingDistance).
 export const OBJECTIVE_FRONT_APERTURE_MIN = 1;
-export const OBJECTIVE_FRONT_APERTURE_MAX = 20;
-
-// Compatibility names retained for code and saved scenes written by the
-// former independent-EFL model. In the ideal model EFL is exactly the focus
-// distance and is kept synchronized on normalization.
-export const OBJECTIVE_EFL_MIN = OBJECTIVE_WD_MIN;
-export const OBJECTIVE_EFL_MAX = OBJECTIVE_WD_MAX;
+export const OBJECTIVE_FRONT_APERTURE_MAX = 100;
 
 const CUSTOM_IMMERSION_INDEX_DEFAULT = 1.333;
 const IMMERSION_INDEX_MIN = 1;
@@ -51,21 +45,26 @@ const IMMERSION_INDEX_MAX = 2;
 const medium = (label, index, maxNA, fill, extra = {}) => Object.freeze({
   label,
   index,
+  // Keep the conventional optical symbol alongside the descriptive name so
+  // renderers and explanatory UI can use either without re-declaring data.
   n: index,
   maxNA,
   fill,
   ...extra,
 });
 
-// The medium describes the space between the objective nose and specimen.
-// The rendered bridge remains schematic; index is used for the NA angle.
+// This catalogue describes the objective's designed front medium. It is not
+// a set of independently placeable materials: scene code derives a coupling
+// gap from the objective and a compatible target. `legacy` is deliberately
+// unresolved so loading an older high-NA objective does not invent water or
+// oil that the saved sketch never specified.
 export const OBJECTIVE_MEDIA = Object.freeze({
+  // 0.85 is the practical dry ceiling; 1.00 is the physical limit of air
+  // that no real dry objective reaches.
   air: medium('Dry / air', 1, 0.85, null),
   water: medium('Water', 1.333, 1.27, '#8fd3ed'),
   oil: medium('Oil', 1.518, OBJECTIVE_NA_MAX, '#c9a227'),
   custom: medium('Custom index', null, null, '#9fc8bd'),
-  // Old high-NA sketches did not identify a medium. Keep that uncertainty
-  // visible instead of inventing water or oil.
   legacy: medium('Legacy (medium unresolved)', null, OBJECTIVE_NA_MAX, null, {
     selectable: false,
     unresolved: true,
@@ -75,38 +74,23 @@ export const OBJECTIVE_MEDIA = Object.freeze({
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-function inferredFocusDistance(params = {}, tubeF = OBJECTIVE_REFERENCE_TUBE_F_MM) {
-  if (!params || typeof params !== 'object' || Array.isArray(params)) return 10;
-  if (finite(params.workingDistance)) return params.workingDistance;
-  if (finite(params.focusDistance)) return params.focusDistance;
-  if (finite(params.efl)) return params.efl;
-  if (finite(params.f)) return params.f;
-  if (finite(params.magnification) && params.magnification > 0) {
-    const reference = clamp(finite(tubeF) ? tubeF : OBJECTIVE_REFERENCE_TUBE_F_MM, 1, 1000);
-    const magnification = clamp(params.magnification, OBJECTIVE_MAG_MIN, OBJECTIVE_MAG_MAX);
-    return reference / magnification;
-  }
-  return 10;
-}
+export const OBJECTIVE_EFL_MIN = 1;
+export const OBJECTIVE_EFL_MAX = 200;
 
-export function objectiveWorkingDistance(params = {}) {
-  return clamp(inferredFocusDistance(params), OBJECTIVE_WD_MIN, OBJECTIVE_WD_MAX);
-}
-
-export function objectiveMaximumWorkingDistance() {
-  return OBJECTIVE_WD_MAX;
-}
-
+// The primary optical parameter. Older sketches stored magnification
+// instead, so fall back to the tube-lens convention that produced it.
 export function objectiveEffectiveFocalLength(params = {}, tubeF = OBJECTIVE_REFERENCE_TUBE_F_MM) {
-  return clamp(inferredFocusDistance(params, tubeF), OBJECTIVE_EFL_MIN, OBJECTIVE_EFL_MAX);
+  const reference = clamp(finite(tubeF) ? tubeF : OBJECTIVE_REFERENCE_TUBE_F_MM, 1, 1000);
+  if (finite(params.efl)) return clamp(params.efl, OBJECTIVE_EFL_MIN, OBJECTIVE_EFL_MAX);
+  const legacyMag = clamp(finite(params.magnification) ? params.magnification : 20, OBJECTIVE_MAG_MIN, OBJECTIVE_MAG_MAX);
+  return clamp(reference / legacyMag, OBJECTIVE_EFL_MIN, OBJECTIVE_EFL_MAX);
 }
 
-// This readout remains available for compatibility and teaching. It is the
-// magnification of the ideal model with a 200 mm reference tube lens, not a
-// manufacturer catalogue prescription.
+// Now a reported consequence of EFL, not an independent setting: the
+// magnification you get once YOUR tube lens images the objective's output.
 export function objectiveMagnification(params = {}, tubeF = OBJECTIVE_REFERENCE_TUBE_F_MM) {
   const reference = clamp(finite(tubeF) ? tubeF : OBJECTIVE_REFERENCE_TUBE_F_MM, 1, 1000);
-  return reference / objectiveWorkingDistance(params);
+  return reference / objectiveEffectiveFocalLength(params, tubeF);
 }
 
 export function objectiveMediumKey(params = {}) {
@@ -114,6 +98,9 @@ export function objectiveMediumKey(params = {}) {
   if (typeof params.immersion === 'string' && Object.hasOwn(OBJECTIVE_MEDIA, params.immersion)) {
     return params.immersion;
   }
+  // New objectives store `air` explicitly. A missing value can therefore be
+  // interpreted as an old sketch, whose >1 NA must remain usable without
+  // pretending we know which immersion material the author intended.
   if (params.immersion === undefined && finite(params.na) && params.na > 1) return 'legacy';
   return 'air';
 }
@@ -134,9 +121,8 @@ export function objectiveMaximumNA(params = {}) {
   return OBJECTIVE_MEDIA[key].maxNA;
 }
 
-// The authored/rated value is bounded only by the selected medium. A smaller
-// clear opening is handled separately as an effective NA, without silently
-// rewriting what the user entered.
+export const OBJECTIVE_NA_DEFAULT = 0.65;
+
 export function objectiveNumericalAperture(params = {}, key = 'na') {
   return clamp(
     finite(params[key]) ? params[key] : OBJECTIVE_NA_DEFAULT,
@@ -145,45 +131,37 @@ export function objectiveNumericalAperture(params = {}, key = 'na') {
   );
 }
 
-export function objectiveFrontAperture(params = {}) {
-  const authored = finite(params.frontAperture)
-    ? params.frontAperture
-    : finite(params.clearAperture)
-      ? params.clearAperture
-      : finite(params.aperture)
-        ? params.aperture
-        : 20;
-  return clamp(authored, OBJECTIVE_FRONT_APERTURE_MIN, OBJECTIVE_FRONT_APERTURE_MAX);
+// A real objective focuses at or inside its own focal length: the nominal
+// specimen plane is one EFL from the principal plane, and the glass takes up
+// the difference. Working distance therefore defaults to EFL and can only be
+// shortened from there, which also keeps the equivalent plane inside the
+// barrel instead of floating out in front of the tip.
+export function objectiveMaximumWorkingDistance(params = {}) {
+  return Math.max(OBJECTIVE_WD_MIN, objectiveEffectiveFocalLength(params));
 }
 
-export function objectiveRatedAcceptanceHalfAngle(params = {}) {
+export function objectiveWorkingDistance(params = {}) {
+  const efl = objectiveEffectiveFocalLength(params);
+  return clamp(
+    finite(params.workingDistance) ? params.workingDistance : efl,
+    OBJECTIVE_WD_MIN,
+    objectiveMaximumWorkingDistance(params),
+  );
+}
+
+export function objectiveFrontAperture(params = {}) {
+  const fallback = clamp(2 * objectiveFocalLength(params), OBJECTIVE_FRONT_APERTURE_MIN, OBJECTIVE_FRONT_APERTURE_MAX);
+  return clamp(
+    finite(params.frontAperture) ? params.frontAperture : fallback,
+    OBJECTIVE_FRONT_APERTURE_MIN,
+    OBJECTIVE_FRONT_APERTURE_MAX,
+  );
+}
+
+export function objectiveAcceptanceHalfAngle(params = {}) {
   const index = objectiveMediumIndex(params);
   if (!finite(index) || index <= 0) return null;
   return Math.asin(clamp(objectiveNumericalAperture(params) / index, 0, 1));
-}
-
-// Radius of the real traced opening at the fixed nose plane. Unresolved old
-// high-NA scenes use the authored clear opening but export no trusted NA.
-export function objectiveAcceptedRadius(params = {}) {
-  const clearRadius = objectiveFrontAperture(params) / 2;
-  const ratedAngle = objectiveRatedAcceptanceHalfAngle(params);
-  if (!finite(ratedAngle)) return clearRadius;
-  const requested = objectiveWorkingDistance(params) * Math.tan(Math.min(ratedAngle, Math.PI / 2 - 1e-6));
-  return clamp(requested, 0, clearRadius);
-}
-
-export function objectiveEffectiveNumericalAperture(params = {}) {
-  const index = objectiveMediumIndex(params);
-  if (!finite(index) || index <= 0) return null;
-  const angle = Math.atan2(objectiveAcceptedRadius(params), objectiveWorkingDistance(params));
-  return Math.min(objectiveNumericalAperture(params), index * Math.sin(angle));
-}
-
-// The public acceptance angle is the angle the trace can actually deliver,
-// after both the rated NA and clear opening are accounted for.
-export function objectiveAcceptanceHalfAngle(params = {}) {
-  if (!finite(objectiveMediumIndex(params))) return null;
-  return Math.atan2(objectiveAcceptedRadius(params), objectiveWorkingDistance(params));
 }
 
 export function objectiveAcceptanceHalfAngleDeg(params = {}) {
@@ -192,25 +170,22 @@ export function objectiveAcceptanceHalfAngleDeg(params = {}) {
 }
 
 export function normalizeObjectiveParams(params = {}) {
-  const source = params && typeof params === 'object' && !Array.isArray(params) ? params : {};
-  const normalized = { ...source };
-  normalized.immersion = objectiveMediumKey(source);
+  const normalized = params && typeof params === 'object' && !Array.isArray(params)
+    ? { ...params }
+    : {};
+  normalized.immersion = objectiveMediumKey(normalized);
   normalized.immersionIndex = clamp(
-    finite(source.immersionIndex) ? source.immersionIndex : CUSTOM_IMMERSION_INDEX_DEFAULT,
+    finite(normalized.immersionIndex) ? normalized.immersionIndex : CUSTOM_IMMERSION_INDEX_DEFAULT,
     IMMERSION_INDEX_MIN,
     IMMERSION_INDEX_MAX,
   );
-  normalized.workingDistance = objectiveWorkingDistance(source);
-  // Keep the compatibility field synchronized so a round-tripped current
-  // sketch cannot retain two disagreeing focal models.
-  normalized.efl = normalized.workingDistance;
-  normalized.na = objectiveNumericalAperture({ ...source, ...normalized });
-  normalized.frontAperture = objectiveFrontAperture(source);
-  delete normalized.focusDistance;
+  normalized.na = objectiveNumericalAperture(normalized);
+  normalized.efl = objectiveEffectiveFocalLength(normalized);
+  normalized.workingDistance = objectiveWorkingDistance(normalized);
+  normalized.frontAperture = objectiveFrontAperture(normalized);
+  // Magnification is derived now; drop any stored copy so it can never
+  // disagree with the EFL that actually drives the trace.
   delete normalized.magnification;
-  delete normalized.f;
-  delete normalized.aperture;
-  delete normalized.clearAperture;
   return normalized;
 }
 
@@ -218,60 +193,79 @@ export function objectiveFocalLength(params = {}, tubeF = OBJECTIVE_REFERENCE_TU
   return objectiveEffectiveFocalLength(params, tubeF);
 }
 
-// The ideal refracting plane is the physical front of the objective.
-export function objectiveLensPlaneX() {
-  return OBJECTIVE_FRONT_X;
+// Where the equivalent thin lens actually sits, so that focal length and
+// working distance are both true at once (see the header note).
+export function objectiveLensPlaneX(params = {}) {
+  return OBJECTIVE_FRONT_X + objectiveWorkingDistance(params) - objectiveEffectiveFocalLength(params);
 }
 
+// One focal length behind the lens plane: a real traced conjugate, not a
+// marker. Light focused here leaves the objective collimated.
 export function objectiveBackFocalPlaneX(params = {}) {
-  return OBJECTIVE_FRONT_X - objectiveWorkingDistance(params);
+  return objectiveLensPlaneX(params) - objectiveEffectiveFocalLength(params);
 }
 
-export function objectiveBackX() {
-  return OBJECTIVE_DEFAULT_BACK_X;
+// The housing has to physically contain its own optics, so the barrel grows
+// backwards whenever a short working distance pulls the lens plane behind the
+// default rear face. Only the straight rear section lengthens — the tapered
+// nose keeps the shape an objective is recognised by.
+//
+// The nose spans SHOULDER_X..FRONT_X (9 mm) and the straight section
+// DEFAULT_BACK_X..SHOULDER_X (28 mm): a stubby taper on a long body, which is
+// what a real objective looks like from the side.
+export const OBJECTIVE_DEFAULT_BACK_X = -21;
+export const OBJECTIVE_SHOULDER_X = 7;
+export function objectiveBackX(params = {}) {
+  return Math.min(OBJECTIVE_DEFAULT_BACK_X, objectiveLensPlaneX(params) - 4);
 }
 
-export function objectivePupilRadius(params = {}) {
-  return objectiveAcceptedRadius(params);
+// The rated back pupil, which is the objective's real aperture stop: a beam
+// filling it converges at the rated NA, and anything wider is lost to the
+// barrel. 2*f*NA is the standard first-order (Abbe sine condition) estimate.
+export function objectivePupilRadius(params = {}, tubeF = OBJECTIVE_REFERENCE_TUBE_F_MM) {
+  return objectivePupilDiameter(params, tubeF) / 2;
 }
 
-export function objectivePupilDiameter(params = {}) {
-  return 2 * objectiveAcceptedRadius(params);
-}
-
-export function objectiveNoseHalfHeight(params = {}) {
-  const clearRadius = objectiveFrontAperture(params) / 2;
-  return clamp(
-    clearRadius + OBJECTIVE_NOSE_SHELL,
-    OBJECTIVE_MIN_NOSE_HALF_HEIGHT,
-    OBJECTIVE_NOSE_HALF_HEIGHT,
-  );
-}
-
+// Half-height of the barrel's straight rear section. The housing has to be
+// wide enough to hold its own pupil, so a large 2*f*NA makes the objective
+// physically fatter rather than silently clipping at the drawn outline.
 export function objectiveBarrelHalfHeight(params = {}) {
-  return Math.min(
-    OBJECTIVE_BODY_HALF_HEIGHT,
-    objectiveNoseHalfHeight(params) + OBJECTIVE_BARREL_SHELL,
-  );
+  return Math.max(objectiveFrontAperture(params) / 2 + 7, objectivePupilRadius(params) + 2);
 }
 
+// ...and at an arbitrary point along it, so a stop placed inside the tapered
+// nose cannot block light that visually passes outside the barrel.
 export function objectiveBarrelHalfHeightAt(params = {}, x = OBJECTIVE_SHOULDER_X) {
   const outer = objectiveBarrelHalfHeight(params);
-  const nose = objectiveNoseHalfHeight(params);
+  const tip = objectiveFrontAperture(params) / 2;
   if (x <= OBJECTIVE_SHOULDER_X) return outer;
-  if (x >= OBJECTIVE_FRONT_X) return nose;
+  if (x >= OBJECTIVE_FRONT_X) return tip;
   const t = (x - OBJECTIVE_SHOULDER_X) / (OBJECTIVE_FRONT_X - OBJECTIVE_SHOULDER_X);
-  return outer + (nose - outer) * t;
+  return outer + (tip - outer) * t;
 }
 
-// Compatibility alias. The simplified objective has no separate BFP stop;
-// its clear aperture and ideal lens share the fixed front plane.
-export function objectiveStopX() {
-  return OBJECTIVE_FRONT_X;
+// Where the aperture stop physically sits. For an infinity objective the
+// entrance pupil IS the back focal plane, and that is what makes relaying a
+// scan mirror onto the BFP worth doing: a beam pivoting there stays centred
+// in the stop at every scan angle, while a mismatched pivot walks across it
+// and vignettes. The single-plane model can push the BFP further back than
+// any real barrel, so the stop is clamped into the housing rather than left
+// blocking light in mid-air behind it.
+export function objectiveStopX(params = {}) {
+  return Math.max(objectiveBackFocalPlaneX(params), objectiveBackX(params) + 1);
 }
 
+// The purple acceptance sector is an explanatory overlay, off unless asked
+// for, so the default objective draws as a plain barrel.
 export function objectiveShowsAcceptance(params = {}) {
   return params?.showAcceptance === true;
+}
+
+// Common first-order estimate for an infinity objective's entrance pupil.
+// The physical front opening remains an independently resizable boundary;
+// this derived value describes the rated pupil rather than the outer barrel.
+export function objectivePupilDiameter(params = {}, tubeF = OBJECTIVE_REFERENCE_TUBE_F_MM) {
+  return clamp(2 * objectiveFocalLength(params, tubeF) * objectiveNumericalAperture(params), 0.5, 150);
 }
 
 export function migrateLegacyObjectiveParams(rawParams = {}, {
@@ -284,39 +278,43 @@ export function migrateLegacyObjectiveParams(rawParams = {}, {
   const params = rawParams && typeof rawParams === 'object' && !Array.isArray(rawParams)
     ? { ...rawParams }
     : {};
-
-  const reference = finite(tubeF) && tubeF > 0 ? tubeF : OBJECTIVE_REFERENCE_TUBE_F_MM;
-  const legacyFocal = finite(params[focalKey]) && params[focalKey] > 0 ? params[focalKey] : null;
-  const storedEfl = finite(params.efl) && params.efl > 0 ? params.efl : null;
-  const storedMagnification = finite(params[magnificationKey])
-    ? clamp(params[magnificationKey], OBJECTIVE_MAG_MIN, OBJECTIVE_MAG_MAX)
-    : null;
-
-  // Preserve the actual authored focus first. Minimal current scenes that
-  // only store EFL then fall back to that EFL, fixing the old default-20x
-  // migration bug. Older f/magnification sketches retain their old focus.
-  if (!finite(params.workingDistance)) {
-    if (storedEfl) params.workingDistance = storedEfl;
-    else if (legacyFocal) params.workingDistance = legacyFocal;
-    else if (storedMagnification) params.workingDistance = reference / storedMagnification;
-    else params.workingDistance = 10;
+  const focal = params[focalKey];
+  if (finite(focal) && focal > 0) {
+    const reference = finite(tubeF) && tubeF > 0 ? tubeF : OBJECTIVE_REFERENCE_TUBE_F_MM;
+    if (!finite(params[magnificationKey])) params[magnificationKey] = reference / focal;
+    if (!finite(params.efl)) params.efl = clamp(focal, OBJECTIVE_EFL_MIN, OBJECTIVE_EFL_MAX);
+    const aperture = params[apertureKey];
+    if (!finite(params[naKey]) && finite(aperture) && aperture > 0) {
+      params[naKey] = aperture / (2 * focal);
+    }
   }
-  params.workingDistance = clamp(params.workingDistance, OBJECTIVE_WD_MIN, OBJECTIVE_WD_MAX);
-  params.efl = params.workingDistance;
-
-  const aperture = finite(params.frontAperture)
-    ? params.frontAperture
-    : finite(params.clearAperture)
-      ? params.clearAperture
-      : finite(params[apertureKey])
-        ? params[apertureKey]
-        : 20;
-  params.frontAperture = clamp(aperture, OBJECTIVE_FRONT_APERTURE_MIN, OBJECTIVE_FRONT_APERTURE_MAX);
-
-  // The oldest objective stored its aperture as a pupil estimate. Recover an
-  // NA only when there is no authored value, then classify its medium below.
-  if (!finite(params[naKey]) && legacyFocal && finite(params[apertureKey]) && params[apertureKey] > 0) {
-    params[naKey] = params[apertureKey] / (2 * legacyFocal);
+  const reference = finite(tubeF) && tubeF > 0 ? tubeF : OBJECTIVE_REFERENCE_TUBE_F_MM;
+  // Derive compatibility geometry from the same bounded magnification that
+  // the registry will retain. Otherwise malformed legacy values such as 0
+  // or 10000 would seed WD/aperture from a different objective than the one
+  // that actually finishes loading.
+  const magnification = clamp(
+    finite(params[magnificationKey]) ? params[magnificationKey] : 20,
+    OBJECTIVE_MAG_MIN,
+    OBJECTIVE_MAG_MAX,
+  );
+  const equivalentFocalLength = reference / magnification;
+  // EFL became the primary optical parameter. A sketch that stored only
+  // magnification must be converted here, BEFORE the schema fills in the
+  // `efl` default — otherwise that default would win and silently give the
+  // objective a different focal length than the one it was saved with. The
+  // conversion uses the bounded magnification for the same reason the
+  // geometry below does.
+  if (!finite(params.efl)) {
+    params.efl = clamp(equivalentFocalLength, OBJECTIVE_EFL_MIN, OBJECTIVE_EFL_MAX);
+  }
+  // The previous model made WD exactly equal to EFL. Preserve that geometry
+  // when opening an older sketch, then let future edits keep them separate.
+  if (!finite(params.workingDistance)) params.workingDistance = equivalentFocalLength;
+  if (!finite(params.frontAperture)) {
+    params.frontAperture = finite(params[apertureKey]) && params[apertureKey] > 0
+      ? params[apertureKey]
+      : 2 * equivalentFocalLength;
   }
   if (params.immersion === undefined) {
     params.immersion = finite(params[naKey]) && params[naKey] > 1 ? 'legacy' : 'air';

@@ -3,14 +3,10 @@ import assert from 'node:assert/strict';
 
 import { createElement, galvoAngleAt, getDirectManipulation, getSize, registry } from '../sketch/js/elements.js';
 
-test('every resizable component exposes a handle backed by a real size parameter', () => {
+test('every component exposes a resize handle backed by a real size parameter', () => {
   for (const type of Object.keys(registry)) {
     const el = createElement(type);
     const direct = getDirectManipulation(el);
-    if (type === 'objective') {
-      assert.equal(direct?.resize?.y, 'frontAperture', 'the vertical handles own the real clear opening');
-      assert.equal(direct?.tune?.key, 'workingDistance', 'the separate purple handle moves the focus');
-    }
     assert.ok(direct?.resize, `${type} has resize metadata`);
     Object.assign(el.params, direct.resize.set || {});
     for (const [axis, key] of Object.entries(direct.resize).filter(([axis, key]) =>

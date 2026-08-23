@@ -10,6 +10,12 @@ import {
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
 } from './objective.js';
+import {
+  OBJECTIVE_FRONT_X as OBJECTIVE_V2_FRONT_X,
+  normalizeObjectiveParams as normalizeObjectiveV2Params,
+  objectiveBackFocalPlaneX as objectiveV2BackFocalPlaneX,
+  objectiveWorkingDistance as objectiveV2WorkingDistance,
+} from './objective-v2.js';
 import { immersionLayerSVG } from './immersion.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
@@ -703,11 +709,16 @@ function focalPoints(el) {
   switch (el.type) {
     case 'lens': case 'lensc': return [{ x: p.f, y: 0 }, { x: -p.f, y: 0 }];
     case 'objective': {
-      // A single ideal plane has symmetric focal points. A point at either
-      // marker exits the opposite side collimated.
+      // Legacy Objective retains its modeled BFP and independent WD focus.
       return [
-        { x: objectiveBackFocalPlaneX(p), y: 0, label: 'rear focus' },
-        { x: OBJECTIVE_FRONT_X + objectiveWorkingDistance(p), y: 0, label: 'focus' },
+        { x: objectiveBackFocalPlaneX(p), y: 0, label: 'BFP' },
+        { x: OBJECTIVE_FRONT_X + objectiveWorkingDistance(p), y: 0, label: 'WD focus' },
+      ];
+    }
+    case 'objectivev2': {
+      return [
+        { x: objectiveV2BackFocalPlaneX(p), y: 0, label: 'rear focus' },
+        { x: OBJECTIVE_V2_FRONT_X + objectiveV2WorkingDistance(p), y: 0, label: 'focus' },
       ];
     }
     case 'cmirror': case 'cmirrorx': case 'oap': return [{ x: -p.f, y: 0 }];
@@ -947,6 +958,7 @@ function writeParam(el, key, value) {
   if (spec?.type === 'derived') spec.set(el.params, value);
   else el.params[key] = value;
   if (el.type === 'objective') Object.assign(el.params, normalizeObjectiveParams(el.params));
+  if (el.type === 'objectivev2') Object.assign(el.params, normalizeObjectiveV2Params(el.params));
 }
 
 function boundedParam(el, key, value) {

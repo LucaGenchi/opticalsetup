@@ -126,25 +126,28 @@ shows their positions in the moving 2D sample. It does not calculate focal volum
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
-Standalone objectives use one ideal, bidirectional optical plane fixed at the physical
-front tip. The focus distance from that tip is also the plane's focal distance: rear
-collimated light focuses exactly there, and light from a point at that focus exits the
-rear side collimated. Focus, NA, and medium never move the front plane or stretch the
-axial footprint. The blue vertical handles resize the real clear aperture, and the
-housing height follows that opening with fixed shell padding. Free-space illumination
-continues through the nominal focus and diverges again; that post-focus continuation is
-drawn only as faint dashed outer edges in beam mode so it reads as the same beam after its
-waist rather than a newly emitted filled source.
+The Lenses palette offers two separately selectable objective models. **Objective** keeps
+the established infinity-objective approximation: independent effective focal length
+(EFL) and working distance place an equivalent internal lens at
+`front tip + WD − EFL`; its rated back pupil is `2·f·NA`, and pupil fill determines the
+effective NA in use. This preserves existing scenes, the BFP conjugate, tube-lens
+magnification readout, and overfill behavior.
 
-Rated NA and the selected front medium request an object-side cone with half-angle
-`asin(NA/n)`. The clear opening may be smaller than that request. OpticalSetup therefore
-uses one accepted radius, `min(clear aperture / 2, focus distance · tan(angle))`, for the
-traced lens span, angular clipping, optional two-line NA guide, and downstream effective
-NA. The inspector reports when the clear opening limits the rating. This is a coherent
-first-order model, not a compound objective prescription: it does not model internal
-groups, aberrations, diffraction, manufacturer tube lengths, or a separate pupil plane.
+**Objective V2** is the simpler fixed-plane alternative. One ideal bidirectional plane
+stays at the physical front tip, and its focus distance is also its focal distance. The
+blue vertical handles resize the real clear aperture while the housing height follows
+with fixed shell padding; focus, rated NA, and medium do not resize or move the plane.
+Free-space illumination continues through focus and diverges again, drawn as faint dashed
+outer edges after the waist in beam mode. Rated NA and medium request an object-side cone
+with half-angle `asin(NA/n)`, but a smaller clear opening lowers the effective NA. V2 uses
+one accepted radius, `min(clear aperture / 2, focus distance · tan(angle))`, for its trace,
+angular clipping, optional two-line guide, and downstream handoff.
 
-A non-air objective derives an exported immersion bridge to the nearest compatible
+Both are first-order teaching models rather than compound prescriptions. Neither models
+internal lens groups, corrected aberrations, diffraction, cover glass, or manufacturer
+prescriptions; V2 deliberately has no separate pupil or BFP plane.
+
+A non-air Objective or Objective V2 derives an exported immersion bridge to the nearest compatible
 sample, stage-mounted sample, or facing fiber end; a moving stage carries that same
 target while it remains aligned and in range, then disconnects rather than jumping
 elsewhere. Cubic Bézier sides join the objective's front-aperture edges to the contacted

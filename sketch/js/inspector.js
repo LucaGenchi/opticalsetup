@@ -16,6 +16,12 @@ import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-phot
 import {
   OBJECTIVE_MEDIA, normalizeObjectiveParams, objectiveMediumKey, objectiveWorkingDistance,
 } from './objective.js';
+import {
+  OBJECTIVE_MEDIA as OBJECTIVE_V2_MEDIA,
+  normalizeObjectiveParams as normalizeObjectiveV2Params,
+  objectiveMediumKey as objectiveV2MediumKey,
+  objectiveWorkingDistance as objectiveV2WorkingDistance,
+} from './objective-v2.js';
 import { immersionCouplingStatus } from './immersion.js';
 import { esc } from './util.js';
 import { WIKI_TYPES } from './wiki-types.js';
@@ -549,7 +555,10 @@ function refreshReadouts(sel) {
 }
 
 function objectiveCouplingHint(sel) {
-  const medium = objectiveMediumKey(sel.params);
+  const isV2 = sel.type === 'objectivev2';
+  const media = isV2 ? OBJECTIVE_V2_MEDIA : OBJECTIVE_MEDIA;
+  const medium = (isV2 ? objectiveV2MediumKey : objectiveMediumKey)(sel.params);
+  const workingDistance = (isV2 ? objectiveV2WorkingDistance : objectiveWorkingDistance)(sel.params);
   if (medium === 'air') {
     return `<div class="hint" data-objective-coupling-status="dry">Dry / air objective: NA is capped at 0.85, the practical ceiling for real dry designs. No liquid meniscus is drawn.</div>`;
   }
@@ -563,19 +572,18 @@ function objectiveCouplingHint(sel) {
   }
   const coupling = couplingStatus.coupling;
   if (!coupling) {
-    return `<div class="signal-warning" role="status" data-objective-coupling-status="open">⚠ No compatible immersion contact is in front of the objective. The NA guide ends at its nominal ${objectiveWorkingDistance(sel.params).toFixed(1)} mm working-distance focus.</div>`;
+    return `<div class="signal-warning" role="status" data-objective-coupling-status="open">⚠ No compatible immersion contact is in front of the objective. The NA guide ends at its nominal ${workingDistance.toFixed(1)} mm working-distance focus.</div>`;
   }
 
   const target = coupling.targetKind === 'element'
     ? (String(coupling.target?.label || '').trim() || registry[coupling.targetType]?.label || 'sample')
     : `${coupling.target?.bare ? 'Bare fiber' : 'Fiber'} end ${coupling.targetEnd === 0 ? 'A' : 'B'}`;
   const index = Number.isFinite(coupling.refractiveIndex) ? ` · n ${coupling.refractiveIndex.toFixed(3)}` : '';
-  const workingDistance = objectiveWorkingDistance(sel.params);
   const focusError = coupling.distance - workingDistance;
   const focus = Math.abs(focusError) <= 0.1
     ? 'at the nominal focus'
     : `focus offset ${focusError > 0 ? '+' : '−'}${Math.abs(focusError).toFixed(1)} mm`;
-  return `<div class="hint" data-objective-coupling-status="connected"><b>Immersion bridge:</b> ${esc(OBJECTIVE_MEDIA[medium].label)}${index} to ${esc(target)} · actual gap ${coupling.distance.toFixed(1)} mm · WD ${workingDistance.toFixed(1)} mm (${focus}). Medium changes n and θ, not WD. The meniscus remains schematic.</div>`;
+  return `<div class="hint" data-objective-coupling-status="connected"><b>Immersion bridge:</b> ${esc(media[medium].label)}${index} to ${esc(target)} · actual gap ${coupling.distance.toFixed(1)} mm · WD ${workingDistance.toFixed(1)} mm (${focus}). Medium changes n and θ, not WD. The meniscus remains schematic.</div>`;
 }
 
 export function renderInspector() {
@@ -681,7 +689,7 @@ export function renderInspector() {
         if (p.type === 'heading') { sectionFields += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
         sectionFields += paramField(p, sel);
       }
-      if (sel.type === 'objective') sectionFields += objectiveCouplingHint(sel);
+      if (['objective', 'objectivev2'].includes(sel.type)) sectionFields += objectiveCouplingHint(sel);
       insertVoxelHint();
       flushSection();
     }
@@ -1093,6 +1101,7 @@ export function applyInput(inp, rebuild = false) {
     sel.params[pkey] = val;
     if (pkey === 'specimenType') applySpecimenTypePreset(sel);
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
+    if (sel.type === 'objectivev2') Object.assign(sel.params, normalizeObjectiveV2Params(sel.params));
   }
   changed();
   if (pkey) refreshReadouts(sel);
@@ -1112,7 +1121,7 @@ export function applyInput(inp, rebuild = false) {
   // The objective's coupling status is derived from its placed pose. Keep the
   // hint in step with committed coordinate/rotation edits just as the canvas
   // layer already is; otherwise the panel can describe the previous target.
-  if (rebuild && sel.type === 'objective' && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
+  if (rebuild && ['objective', 'objectivev2'].includes(sel.type) && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
   if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion', 'preset', 'material'].includes(pkey)) { renderInspector(); return; }
   // A readout is derived from the other params, so any committed edit can

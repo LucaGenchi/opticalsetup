@@ -3,6 +3,10 @@
 import { distinctPoints, rotPt } from './util.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
+import {
+  migrateLegacyObjectiveParams as migrateObjectiveV2Params,
+  normalizeObjectiveParams as normalizeObjectiveV2Params,
+} from './objective-v2.js';
 import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
 import { normalizeSurfaceTable } from './lensgroup.js';
 
@@ -181,6 +185,8 @@ function normalizeElement(raw, definitions, used) {
   let rawParams = record(raw.params) ? raw.params : {};
   if (raw.type === 'objective') {
     rawParams = migrateLegacyObjectiveParams(rawParams);
+  } else if (raw.type === 'objectivev2') {
+    rawParams = migrateObjectiveV2Params(rawParams);
   }
   // The original rough BK7 fit was replaced by the real N-BK7 catalogue
   // entry. Any sketch still naming it loads onto that instead of failing the
@@ -221,6 +227,7 @@ function normalizeElement(raw, definitions, used) {
     if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params);
   }
   if (raw.type === 'objective') Object.assign(params, normalizeObjectiveParams(params));
+  if (raw.type === 'objectivev2') Object.assign(params, normalizeObjectiveV2Params(params));
   const rot = def?.rotatable === false ? 0 : finite(raw.rot) ? ((raw.rot % 360) + 360) % 360 : 0;
   let x = raw.x, y = raw.y;
   // Keep editable polygon bounds centered on the element transform. This makes

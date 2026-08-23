@@ -53,6 +53,31 @@ export function specimenIncidentBeams(elementId) {
   return specimenIncident.get(elementId) || [];
 }
 
+// Legacy Objective reports how broadly the incoming beam fills its modeled
+// back pupil. Objective V2 has no back-pupil model and therefore never writes
+// these fields.
+let objectivePupilHits = new Map();
+
+function recordObjectivePupil(elementId, radius, pupilRadius) {
+  if (!elementId || !Number.isFinite(radius) || !Number.isFinite(pupilRadius)) return;
+  const seen = objectivePupilHits.get(elementId);
+  if (!seen) objectivePupilHits.set(elementId, { pupilRadius, beamRadius: radius });
+  else seen.beamRadius = Math.max(seen.beamRadius, radius);
+}
+
+export function objectivePupilFill(elementId) {
+  const seen = objectivePupilHits.get(elementId);
+  if (!seen || seen.pupilRadius <= 0) return null;
+  const fill = seen.beamRadius / seen.pupilRadius;
+  const transmitted = fill <= 1 ? 1 : 1 / (fill * fill);
+  return {
+    pupilDiameter: 2 * seen.pupilRadius,
+    beamDiameter: 2 * seen.beamRadius,
+    fill,
+    transmitted,
+  };
+}
+
 // pulse-compressor element id -> the GDD the beam arrives carrying, and what
 // leaves. A compressor whose setting is small next to what a scene already
 // accumulated looks inert; showing both numbers is what makes it obvious that
@@ -1817,7 +1842,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
       r.segmentEvents[r.segmentEvents.length - 1] = interactionKey;
       if (hit.ambiguous && hit.surface.kind === 'refract') break;
       r.sig += `/${interactionKey}`;
-      if (hit.surface.el?.type === 'objective' && hit.surface.el?.id
+      if (['objective', 'objectivev2'].includes(hit.surface.el?.type) && hit.surface.el?.id
         && hit.surface.kind !== 'objectivefocus') {
         const objectives = Array.isArray(r.objectives) ? r.objectives : [];
         if (!objectives.some(objective => objective.id === hit.surface.el.id)) {
@@ -1825,6 +1850,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             id: hit.surface.el.id,
             na: Number.isFinite(hit.surface.data.objectiveNA) ? hit.surface.data.objectiveNA : null,
           }];
+        }
+        // Only the legacy Objective surfaces declare a modeled pupil span.
+        const span = hit.surface.data.pupilSpan;
+        if (Array.isArray(span) && Number.isFinite(hit.u)) {
+          recordObjectivePupil(
+            hit.surface.el.id,
+            Math.abs(span[0] + hit.u * (span[1] - span[0])),
+            hit.surface.data.pupilRadius,
+          );
         }
       }
       // Both specimen holders report where the beam lands, so the plain
@@ -2202,6 +2236,7 @@ export function traceScene(elements, beams = []) {
   const couplings = [];
   lastPaths = [];
   detectorHits = new Map();
+  objectivePupilHits = new Map();
   compressorGdd = new Map();
   gateTransmissionCache = new Map();
   specimenIncident = new Map();
@@ -2309,6 +2344,7 @@ export function traceScene(elements, beams = []) {
     } finally {
       specimenProbe = null;
       detectorHits = new Map();
+      objectivePupilHits = new Map();
       compressorGdd = new Map();
       gateTransmissionCache = new Map();
     }

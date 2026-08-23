@@ -97,7 +97,7 @@ test('legacy lasers without any temporal fields remain continuous-wave sources',
   assert.equal(loaded.params.temporalMode, 'cw');
 });
 
-test('legacy objective focal lengths migrate to the single focus model and bounded clear aperture', () => {
+test('legacy objective focal lengths migrate to magnification and numerical aperture', () => {
   const objective = createElement('objective', 100, 0);
   objective.params = { f: 20, aperture: 24, transEff: 90 };
 
@@ -111,7 +111,7 @@ test('legacy objective focal lengths migrate to the single focus model and bound
     na: 0.6,
     showAcceptance: false,
     transEff: 90,
-    frontAperture: 20,
+    frontAperture: 24,
   });
   assert.equal(registry.objective.surfaces(loadedObjective)[0].data.f, 20);
   assert.equal(Object.hasOwn(loadedObjective.params, 'f'), false);

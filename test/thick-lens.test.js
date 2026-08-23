@@ -87,7 +87,7 @@ test('the singlet and the group it generalises sit before the lens assemblies', 
     .filter(([, definition]) => definition.category === 'Lenses')
     .sort(([, a], [, b]) => a.paletteOrder - b.paletteOrder)
     .map(([type]) => type);
-  assert.deepEqual(lensPalette, ['lens', 'lensc', 'thicklens', 'lensgroup', 'telescope', 'objective']);
+  assert.deepEqual(lensPalette, ['lens', 'lensc', 'thicklens', 'lensgroup', 'telescope', 'objective', 'objectivev2']);
 });
 
 test('the cement gap is just wide enough for the tracer to see both interfaces', () => {

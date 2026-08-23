@@ -677,7 +677,218 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>OpticalSetup deliberately uses a simpler objective than a real compound
+        <p>An objective here is set by three things you would read off a real catalogue —
+        <strong>effective focal length (EFL)</strong>, <strong>working distance</strong>,
+        and <strong>rated NA</strong> — plus the front aperture that controls how big the
+        nose is drawn. EFL is the focal length of the whole multi-element assembly treated
+        as one equivalent lens, which is what "focal length" means on an objective; the
+        inspector label spells that out. Magnification is not something you type in. It is <em>reported</em> from the EFL against a 200&nbsp;mm reference
+        tube lens, because magnification belongs to the objective plus whichever tube lens
+        you actually place in the sketch, not to the objective alone. A fresh objective is
+        EFL 10&nbsp;mm — 20× on a 200&nbsp;mm tube lens — dry, NA 0.65, 100% transmission.</p>
+
+        <h3>Where the refracting plane sits, and why</h3>
+        <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
+        length EFL, but it does <em>not</em> put that plane at the front tip. It sits one
+        focal length short of the nominal focus — at the front tip plus
+        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for a real objective means
+        somewhere inside the barrel. That single choice is what makes three things true at
+        once:</p>
+        <ul>
+          <li>Collimated light from the tube-lens side focuses <em>exactly</em> one working
+          distance beyond the physical front tip, so the drawn focus is the working
+          distance you typed.</li>
+          <li>The plane still carries the objective's real focal length, so an external
+          200&nbsp;mm tube lens really does produce the reported magnification rather than
+          a decorative label.</li>
+          <li>The plane one EFL behind it is a genuine <strong>back focal plane (BFP)</strong>:
+          light focused there leaves the objective collimated. That is what widefield
+          (Köhler-style) illumination needs, and it is the plane a laser-scanning relay has
+          to image the scan mirror onto.</li>
+        </ul>
+        <p>The BFP is drawn as a labelled marker next to the WD focus, and it is a traced
+        conjugate rather than an annotation — put a source at it and the output really does
+        come out collimated.</p>
+        <p>Working distance is capped at EFL, and defaults to it. A real objective focuses
+        at or inside its own focal length, with the glass taking up the difference; the cap
+        also keeps the equivalent plane at or behind the front tip, inside the barrel, which
+        is where a real objective's principal plane and pupil sit. Nothing is drawn there —
+        an objective is an opaque barrel, not a visible singlet. When a short working
+        distance pushes the plane behind the default rear face, only the straight rear
+        section of the barrel lengthens; the tapered nose is fixed geometry.</p>
+
+        <h3>Rated NA is a real aperture, not a label</h3>
+        <p>The back pupil has diameter <span class="w">2fNA</span> and is the objective's
+        aperture stop. A beam that fills it converges at the rated angle: raise NA and the
+        focusing cone opens, lower it and the cone closes. Nothing else in the objective
+        sets the cone, so NA is a control rather than a caption.</p>
+        <p>That stop sits <em>at the back focal plane</em>, where an infinity objective's
+        entrance pupil belongs, and this is what makes relaying a scan mirror onto the BFP
+        marker do real work: a beam pivoting there stays centred in the pupil at every scan
+        angle and loses nothing, while a pivot anywhere else walks across the pupil and is
+        cut. (The single-plane model can push the BFP further back than any plausible barrel;
+        the stop is then clamped into the housing rather than left blocking light in mid-air
+        behind it, so the zero-walk property degrades for very long focal lengths.)</p>
+        <p>The metal around that opening blocks. Overfilling the back pupil is normal
+        laboratory practice — it is how you actually reach the full rated NA — and the
+        overflow is genuinely lost, so the objective reports what it costs. Two readouts sit
+        under the NA control:</p>
+        <ul>
+          <li><strong>Back-pupil fill</strong> — the beam diameter arriving, the pupil it has
+          to get through, and a first-order estimate of the fraction that survives. That
+          estimate is the area ratio for a uniform round beam, so doubling the fill costs
+          about three quarters of the power.</li>
+          <li><strong>Effective NA in use</strong> — underfilling does not merely waste the
+          rating, it hands you a smaller NA and a correspondingly wider focal spot. Fill half
+          the pupil and you are running at half the NA; the readout says so, and by how much
+          the spot widens. Overfilling is capped at the rating: you cannot buy more NA than
+          the objective has.</li>
+        </ul>
+        <p>A large <span class="w">2fNA</span> makes the housing physically wider rather than
+        silently clipping at the drawn outline, and the dark bars across the barrel's rear
+        face show the pupil diameter the beam has to fit through.</p>
+
+        <h3>Medium and acceptance angle</h3>
+        <p>The objective owns its medium; there is no separately placeable liquid
+        component. Dry/air caps rated NA at 0.85 — the practical ceiling for real dry
+        designs, rather than the physical <span class="w">n&nbsp;=&nbsp;1</span> limit —
+        water at 1.27, oil at 1.49, and a custom medium at the lesser of its index
+        <span class="w">n</span> and 1.49. The medium's index and the rated NA give the
+        object-side half-angle <span class="w">θ&nbsp;=&nbsp;asin(NA/n)</span> shown as a
+        readout; changing medium may clamp an out-of-range NA but never changes working
+        distance. Alongside the pupil, the tracer also rejects object-side rays steeper than
+        that half-angle. <strong>Show acceptance angle</strong> — off by default, because
+        most sketches want a plain barrel — draws it as a dashed sector at the actual
+        contact or nominal focus.</p>
+        <p>Water, oil, and custom objectives derive a non-selectable
+        <strong>immersion bridge</strong> to the nearest compatible contact in front: a
+        Sample, a Sample on piezo stage, or a facing fiber endpoint. The target is chosen
+        from the authored geometry, so a scanning stage carries the same relationship while
+        it remains aligned and in range, then disconnects instead of making the objective
+        jump between nearby samples.</p>
+        <p>The bridge spans the objective's complete front aperture and the contacted
+        specimen or fiber face. Two cubic Bézier curves bow inward between those edges to
+        make a legible meniscus in the canvas and in SVG, PNG, and GIF output. This is an
+        authored schematic, not a capillary-surface calculation. If no contact is available,
+        no liquid is drawn. Older high-NA sketches that never recorded a medium remain
+        explicitly unresolved until one is chosen.</p>
+
+        <h3>Handles and markers</h3>
+        <p>The purple tune control changes EFL and the blue resize handle changes the front
+        aperture. Editing working distance moves the refracting plane without touching EFL or
+        the reported magnification; raising EFL leaves an already-configured working distance
+        alone, while lowering EFL past it carries the working distance down with it. Toggle
+        "Show focal points" (the <span class="w">ƒ</span> button) or select the objective to
+        see both marked planes: <span class="w">BFP</span> on the tube-lens side and the
+        nominal <span class="w">WD focus</span> on the sample side.</p>
+        <p>When this objective sits between a pulsed laser and an illuminated
+        photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
+        to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
+        power, repetition rate, and pulse duration — see the inspector on a resin
+        sample's stage.</p>
+        <p>For pulse reporting, the equivalent plane silently contributes 30&nbsp;mm of
+        N-BK7. This is a class-typical GDD estimate, not a prescription: real objectives
+        can be roughly half to twice that value, and the estimate does not scale with NA,
+        magnification, immersion medium, or barrel geometry.</p>`,
+      formulas: [],
+      limitations: `<p>The 200&nbsp;mm reference tube length is a real, common convention
+        (Nikon and Leica both design infinity objectives against 200&nbsp;mm) but not a
+        universal one — Olympus uses 180&nbsp;mm and Zeiss 165&nbsp;mm — and OpticalSetup
+        doesn't model a manufacturer choice or a separate tube-lens element the way the
+        standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
+        reference length is used only for effective-focal-length metadata and the
+        first-order pupil estimate; it does not define the trace boundary or focus map.
+        Working distance is a saved property bounded only by EFL, not a value predicted by
+        magnification, NA, or immersion medium: a real catalogue pairs them through the
+        internal design, and OpticalSetup deliberately lets you keep a visible working
+        distance on a high-power objective so the sketch stays readable — a real 60&times;
+        oil objective works at a few tenths of a millimetre, which would be invisible here. The equivalent lens plane and the
+        back focal plane it defines are first-order stand-ins for a compound objective's
+        principal plane and pupil, not the real internal conjugates: one plane cannot
+        reproduce a real objective's aberration correction, field curvature, or the axial
+        spacing of its actual groups. The pupil stop and NA clipping remain qualitative and do not model
+        diffraction, aberration correction, internal stops, or polarization at high
+        angle. The pupil is a paraxial stop in a thin-lens tracer, so a beam filling it
+        converges at <span class="w">atan(NA)</span> rather than the sine-condition
+        <span class="w">asin(NA/n)</span> that the rated half-angle readout quotes; the
+        two agree closely at moderate NA and separate as NA approaches its ceiling. The
+        overfill estimate is a uniform-beam area ratio, not a Gaussian truncation or a
+        vignetting calculation. Dry objectives cap at NA 0.85, the practical ceiling for
+        real dry designs rather than the physical <span class="w">n = 1</span> limit. The drawn meniscus does not solve wetting, contact angle, surface tension,
+        volume, or gravity; it adds no refracting boundary and does not model cover glass,
+        index mismatch, focal shift, or immersion aberrations. The fixed 30&nbsp;mm
+        N-BK7 GDD equivalent can be wrong by about a factor of two for a particular
+        objective; detector readouts report the combined path total, while this page
+        identifies which part of that total is only assumed.</p>`,
+    },
+    related: ['lens', 'thicklens', 'telescope'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Microscope Objectives', url: 'https://www.rp-photonics.com/microscope_objectives.html' },
+      { label: 'RP Photonics Encyclopedia — Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
+      { label: 'ZEISS — Oil immersion, refractive index, and lens design', url: 'https://www.zeiss.com/microscopy/en/resources/insights-hub/foundational-knowledge/oil-immersion-refractive-index-and-lens-design.html' },
+    ],
+  },
+
+  {
+    type: 'objectivev2',
+    title: 'Objective V2',
+    category: 'Lenses',
+    realWorld: {
+      html: `
+        <p>A real microscope or camera objective is a highly corrected assembly of many
+        lens elements, not a single piece of glass — the element count exists almost
+        entirely to cancel spherical and chromatic aberration, flatten the field, and
+        reach a high numerical aperture without the image falling apart. Numerical
+        aperture <span class="w">NA</span> is the single number that matters most: it
+        sets the objective's light-gathering cone and, through diffraction, the finest
+        detail it can ever resolve, regardless of magnification:</p>`,
+      formulas: [
+        { tex: '\\mathrm{NA} = n\\sin\\theta', caption: "Numerical aperture depends on both the accepted half-angle and the refractive index of the objective's designed front medium; NA above 1 therefore requires immersion." },
+        { tex: 'd \\approx \\frac{\\lambda}{2\\,\\mathrm{NA}}', caption: "The Abbe diffraction limit — the smallest resolvable feature size, set by wavelength and numerical aperture alone." },
+        { tex: 'r_{\\text{BFP}} \\approx f \\cdot \\mathrm{NA}', caption: "Entrance-pupil radius at the back focal plane, for a well-corrected objective (the Abbe sine condition)." },
+        { tex: 'M = \\frac{f_{\\text{tube}}}{f_{\\text{objective}}}', caption: "Magnification of an infinity-corrected objective, set purely by comparing its focal length to the tube lens's." },
+        { tex: '\\mathrm{NA}_{\\text{eff}} \\approx \\frac{D}{2f} \\le \\mathrm{NA}', caption: "The NA you actually work at when a beam of diameter D underfills the back pupil — the rating is a ceiling, not a guarantee." },
+      ],
+      html2: `
+        <p>Modern objectives are almost always <strong>infinity-corrected</strong>: a
+        point at the sample (the front focal plane) emits a cone that leaves the back of
+        the objective as a <em>collimated</em> beam, which a separate tube lens then
+        focuses onto a camera or eyepiece — nothing focuses light directly behind an
+        infinity objective on its own. The reference plane a focal length
+        <span class="w">f</span> behind the objective, on that tube-lens side, is the
+        <strong>back focal plane (BFP)</strong> — where the objective's entrance pupil
+        (radius above) is imaged. It matters most in laser-scanning microscopy: a scan
+        mirror, or its relayed image via a scan lens and tube lens, is deliberately
+        positioned at a plane conjugate to the BFP, so that as the mirror tilts, the beam
+        pivots around a fixed point inside the pupil instead of walking across it —
+        keeping the full aperture illuminated at every scan angle.</p>
+        <p>That same magnification formula is also why widefield imaging systems pick
+        the objective focal length they do. A high-power compound-microscope objective
+        (60×, 100×) has a very short effective focal length — often just a couple of
+        millimeters — paired with a long tube lens. Its <strong>working distance</strong>,
+        however, is a separate catalogue dimension: the axial clearance from the front
+        boundary to the in-focus specimen plane. High-magnification objectives often have
+        short working distances because of their practical optical and mechanical design,
+        but working distance is not obtained from the magnification formula and
+        long-working-distance objectives are specifically engineered exceptions. A
+        <strong>stereomicroscope</strong> uses low-to-moderate magnification, a wide field
+        of view, and enough working distance to get hands or tools under the lens; its zoom
+        system can vary magnification without turning working distance into focal length.</p>
+        <p>One practical consequence of that pupil: the NA on the barrel is a
+        <em>ceiling</em>, not a promise. You only work at the rated NA if your beam actually
+        fills the back pupil. A laser beam narrower than the pupil converges at a
+        proportionally smaller angle, giving a bigger focal spot and worse resolution than
+        the label implies — which is why laser-scanning systems deliberately
+        <strong>overfill</strong> the back aperture, accepting the power clipped off at the
+        rim in exchange for the full aperture and the tightest spot the objective can make.
+        Working distance, meanwhile, is a separate catalogue dimension bounded by the focal
+        length: the specimen plane sits one focal length from the principal plane, and the
+        glass between the front element and the sample takes up the difference, so working
+        distance is always shorter than EFL.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p><strong>Objective V2</strong> is the simpler alternative users can choose alongside the original Objective. It deliberately uses a simpler objective than a real compound
         prescription: one ideal, bidirectional plane fixed at the physical front tip. The
         editable <strong>focus distance</strong> is also that plane's focal distance.
         Collimated light entering from the rear therefore meets exactly at the marked
@@ -749,13 +960,14 @@ export const wikiEntries = [
         particular objective; detector readouts report the combined path total, while this
         page identifies which part of that total is only assumed.</p>`,
     },
-    related: ['lens', 'thicklens', 'telescope'],
+    related: ['objective', 'lens', 'thicklens', 'telescope'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Microscope Objectives', url: 'https://www.rp-photonics.com/microscope_objectives.html' },
       { label: 'RP Photonics Encyclopedia — Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
       { label: 'ZEISS — Oil immersion, refractive index, and lens design', url: 'https://www.zeiss.com/microscopy/en/resources/insights-hub/foundational-knowledge/oil-immersion-refractive-index-and-lens-design.html' },
     ],
   },
+
 
   {
     type: 'prism',

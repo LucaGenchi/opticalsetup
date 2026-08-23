@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, getSize, registry } from '../sketch/js/elements.js';
+import { createElement, getDirectManipulation, getSize, registry } from '../sketch/js/elements.js';
 import { immersionLayerSVG } from '../sketch/js/immersion.js';
 import {
   OBJECTIVE_FRONT_X,
@@ -9,7 +9,7 @@ import {
   objectiveMediumIndex,
   objectiveNumericalAperture,
   objectiveWorkingDistance,
-} from '../sketch/js/objective.js';
+} from '../sketch/js/objective-v2.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 
@@ -32,13 +32,13 @@ function firstPathData(svg) {
 function objectiveBounds(objective) {
   return {
     size: getSize(objective),
-    anchor: registry.objective.boxAnchor?.(objective) || { x: 0, y: 0 },
-    bodyPath: firstPathData(registry.objective.svg(objective)),
+    anchor: registry.objectivev2.boxAnchor?.(objective) || { x: 0, y: 0 },
+    bodyPath: firstPathData(registry.objectivev2.svg(objective)),
   };
 }
 
 function objectiveLens(objective) {
-  const lens = registry.objective.surfaces(objective).find(surface => surface.kind === 'lens');
+  const lens = registry.objectivev2.surfaces(objective).find(surface => surface.kind === 'lens');
   assert.ok(lens, 'the objective exposes one ideal refracting plane');
   return lens;
 }
@@ -71,8 +71,32 @@ function farPointSourceRays(source, objective) {
   });
 }
 
+test('Objective and Objective V2 are separate user-selectable elements', () => {
+  assert.equal(registry.objective.label, 'Objective');
+  assert.equal(registry.objectivev2.label, 'Objective V2');
+  assert.equal(registry.objective.category, 'Lenses');
+  assert.equal(registry.objectivev2.category, 'Lenses');
+
+  const original = createElement('objective', 0, 0);
+  const v2 = createElement('objectivev2', 80, 0);
+  original.params.efl = 20;
+  original.params.workingDistance = 5;
+  v2.params.workingDistance = 5;
+  v2.params.efl = 5;
+
+  const originalLens = registry.objective.surfaces(original).find(surface => surface.kind === 'lens');
+  const v2Lens = registry.objectivev2.surfaces(v2).find(surface => surface.kind === 'lens');
+  assert.ok(originalLens.x1 < OBJECTIVE_FRONT_X, 'Objective retains its internal equivalent plane');
+  assert.equal(v2Lens.x1, OBJECTIVE_FRONT_X, 'Objective V2 uses the fixed front plane');
+  assert.equal(getDirectManipulation(original).tune.key, 'efl');
+  assert.equal(getDirectManipulation(v2).tune.key, 'workingDistance');
+
+  const roundTrip = parseSketch(file([original, v2]), registry).elements;
+  assert.deepEqual(roundTrip.map(element => element.type), ['objective', 'objectivev2']);
+});
+
 test('objective axial geometry stays fixed while clear aperture alone resizes the housing height', () => {
-  const objective = createElement('objective');
+  const objective = createElement('objectivev2');
   const expected = objectiveBounds(objective);
   const variants = [
     { workingDistance: 1, na: 0.05, immersion: 'air', frontAperture: 20 },
@@ -98,7 +122,7 @@ test('objective axial geometry stays fixed while clear aperture alone resizes th
 });
 
 test('the fixed plane focuses, draws a distinct physical continuation, and remains reciprocal', () => {
-  const objective = createElement('objective', 200, 0);
+  const objective = createElement('objectivev2', 200, 0);
   Object.assign(objective.params, {
     workingDistance: 12,
     frontAperture: 20,
@@ -156,7 +180,7 @@ test('the fixed plane focuses, draws a distinct physical continuation, and remai
 });
 
 test('NA, clear aperture, traced acceptance, and the visible marginal guide use one cone', () => {
-  const objective = createElement('objective', 0, 0);
+  const objective = createElement('objectivev2', 0, 0);
   Object.assign(objective.params, {
     workingDistance: 10,
     frontAperture: 2,
@@ -220,7 +244,7 @@ test('NA, clear aperture, traced acceptance, and the visible marginal guide use 
 });
 
 test('changing rated NA moves only the guide endpoints along the fixed front plane', () => {
-  const objective = createElement('objective', 40, 15);
+  const objective = createElement('objectivev2', 40, 15);
   Object.assign(objective.params, {
     workingDistance: 8,
     frontAperture: 40,
@@ -251,11 +275,11 @@ test('changing rated NA moves only the guide endpoints along the fixed front pla
 });
 
 test('legacy objective files migrate to the coherent model with bounded aperture-backed housing', () => {
-  const legacyMagnification = createElement('objective', 0, 0);
+  const legacyMagnification = createElement('objectivev2', 0, 0);
   legacyMagnification.params = { magnification: 25, na: 0.8, transEff: 90 };
-  const legacyFocal = createElement('objective', 60, 0);
+  const legacyFocal = createElement('objectivev2', 60, 0);
   legacyFocal.params = { f: 20, aperture: 24, transEff: 91 };
-  const transitional = createElement('objective', 120, 0);
+  const transitional = createElement('objectivev2', 120, 0);
   transitional.params = {
     efl: 12,
     workingDistance: 4,
@@ -307,7 +331,7 @@ test('legacy objective files migrate to the coherent model with bounded aperture
 });
 
 test('an objective without a light source never emits point-source-like traced rays', () => {
-  const objective = createElement('objective');
+  const objective = createElement('objectivev2');
   objective.params.showAcceptance = false;
   assert.deepEqual(traceScene([objective], []).drawables, []);
 });

@@ -5,18 +5,8 @@
 // Nothing here moves an element or creates save-file state.
 
 import { registry } from './elements.js';
-import {
-  OBJECTIVE_MEDIA,
-  objectiveAcceptanceHalfAngle,
-  objectiveAcceptedRadius,
-  objectiveEffectiveNumericalAperture,
-  objectiveFrontAperture,
-  objectiveMediumIndex,
-  objectiveMediumKey,
-  objectiveNumericalAperture,
-  objectiveShowsAcceptance,
-  objectiveWorkingDistance,
-} from './objective.js';
+import * as objectiveV1 from './objective.js';
+import * as objectiveV2 from './objective-v2.js';
 import { esc, rotPt, toWorld } from './util.js';
 
 const GEOMETRY_EPSILON = 1e-7;
@@ -24,6 +14,8 @@ const TIE_EPSILON = 1e-5;
 const FIBER_FACING_COS = Math.cos(20 * Math.PI / 180);
 
 const finite = value => typeof value === 'number' && Number.isFinite(value);
+const isObjectiveType = type => type === 'objective' || type === 'objectivev2';
+const objectiveModel = objective => objective?.type === 'objectivev2' ? objectiveV2 : objectiveV1;
 const finitePoint = point => point && finite(point.x) && finite(point.y);
 const add = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
 const sub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
@@ -62,7 +54,7 @@ function objectiveFrame(objective) {
   const source = toWorld(objective, localSource.x, localSource.y);
   const forward = unit(rotPt(1, 0, finite(objective.rot) ? objective.rot : 0));
   if (!finitePoint(source) || !finitePoint(forward)) return null;
-  const workingDistance = objectiveWorkingDistance(objective.params || {});
+  const workingDistance = objectiveModel(objective).objectiveWorkingDistance(objective.params || {});
   const reach = Math.min(250, Math.max(10, 1.5 * workingDistance));
   return finite(reach) ? { source, forward, reach, workingDistance } : null;
 }
@@ -268,14 +260,15 @@ export function resolveImmersionCouplings(elements = [], beams = [], { baseEleme
 }
 
 export function immersionCouplingStatus(objective, elements = [], beams = [], { baseElements = elements } = {}) {
-  if (objective?.type !== 'objective' || typeof objective.id !== 'string') return { state: 'invalid' };
-  const medium = objectiveMediumKey(objective.params || {});
-  if (medium === 'air' || medium === 'legacy' || !OBJECTIVE_MEDIA[medium]) return { state: medium, medium };
+  if (!isObjectiveType(objective?.type) || typeof objective.id !== 'string') return { state: 'invalid' };
+  const model = objectiveModel(objective);
+  const medium = model.objectiveMediumKey(objective.params || {});
+  if (medium === 'air' || medium === 'legacy' || !model.OBJECTIVE_MEDIA[medium]) return { state: medium, medium };
 
   const currentElements = Array.isArray(elements) ? elements : [];
   const authoredElements = Array.isArray(baseElements) ? baseElements : currentElements;
   const manualBeams = Array.isArray(beams) ? beams : [];
-  const authoredObjective = authoredElements.find(element => element?.id === objective.id && element.type === 'objective') || objective;
+  const authoredObjective = authoredElements.find(element => element?.id === objective.id && element.type === objective.type) || objective;
   const choice = nearestCandidate(candidatesFor(authoredObjective, authoredElements, manualBeams));
   if (choice.ambiguous) return { state: 'ambiguous', medium };
   if (!choice.candidate) return { state: 'open', medium };
@@ -295,8 +288,10 @@ export function immersionCouplingStatus(objective, elements = [], beams = [], { 
       objectiveId: objective.id,
       objective,
       medium,
-      refractiveIndex: objectiveMediumIndex(objective.params || {}),
-      numericalAperture: objectiveNumericalAperture(objective.params || {}),
+      refractiveIndex: model.objectiveMediumIndex(objective.params || {}),
+      numericalAperture: objective.type === 'objectivev2'
+        ? model.objectiveEffectiveNumericalAperture(objective.params || {})
+        : model.objectiveNumericalAperture(objective.params || {}),
       source: frame.source,
       forward: frame.forward,
       reach: frame.reach,
@@ -335,7 +330,7 @@ function meniscusGeometry(coupling) {
   if (!forward) return null;
   const side = normal(forward);
   const targetEdges = orderedTargetEdges(coupling, side);
-  const frontAperture = objectiveFrontAperture(coupling.objective?.params || {});
+  const frontAperture = objectiveModel(coupling.objective).objectiveFrontAperture(coupling.objective?.params || {});
   const sourceHalfWidth = finite(frontAperture) ? frontAperture / 2 : 0;
   const axialGap = dot(sub(coupling.contact, coupling.source), forward);
   if (!targetEdges || !(sourceHalfWidth > GEOMETRY_EPSILON) || !(axialGap > GEOMETRY_EPSILON)) return null;
@@ -373,20 +368,58 @@ function meniscusGeometry(coupling) {
   };
 }
 
-// The optional guide is the actual accepted cone: two marginal lines from the
+// The original Objective keeps its compact sector at the specimen contact.
+function acceptanceGeometryV1(objective, anchor, frame, meniscus = null) {
+  const params = objective?.params || {};
+  if (!objectiveV1.objectiveShowsAcceptance(params)) return null;
+  const refractiveIndex = objectiveV1.objectiveMediumIndex(params);
+  const numericalAperture = objectiveV1.objectiveNumericalAperture(params);
+  if (!(refractiveIndex > 0) || !(numericalAperture >= 0) || !finitePoint(anchor) || !frame) return null;
+  const halfAngle = objectiveV1.objectiveAcceptanceHalfAngle(params);
+  if (!finite(halfAngle)) return null;
+  const frontAperture = objectiveV1.objectiveFrontAperture(params);
+  const sourceHalfWidth = finite(frontAperture) ? frontAperture / 2 : 0;
+  const axialGap = dot(sub(anchor, frame.source), frame.forward);
+  if (!(sourceHalfWidth > GEOMETRY_EPSILON) || !(axialGap > GEOMETRY_EPSILON)) return null;
+  const lateralLimit = Math.max(
+    GEOMETRY_EPSILON,
+    (meniscus
+      ? Math.min(sourceHalfWidth, meniscus.positiveTargetWidth, meniscus.negativeTargetWidth)
+      : sourceHalfWidth) * 0.72,
+  );
+  const sinTheta = Math.sin(halfAngle);
+  const radiusByWidth = sinTheta > GEOMETRY_EPSILON ? lateralLimit / sinTheta : Infinity;
+  const radius = Math.min(9, axialGap * 0.56, radiusByWidth);
+  if (!(radius > GEOMETRY_EPSILON) || !finite(radius)) return null;
+  const side = normal(frame.forward);
+  const backward = mul(frame.forward, -Math.cos(halfAngle) * radius);
+  const spread = mul(side, Math.sin(halfAngle) * radius);
+  const positive = add(add(anchor, backward), spread);
+  const negative = add(add(anchor, backward), mul(spread, -1));
+  if (![positive, negative].every(finitePoint)) return null;
+  return {
+    d: `M ${pathPoint(anchor)} L ${pathPoint(positive)} ` +
+      `A ${fmt(radius)},${fmt(radius)} 0 0 1 ${pathPoint(negative)} Z`,
+    numericalAperture,
+    refractiveIndex,
+    halfAngleDegrees: halfAngle * 180 / Math.PI,
+  };
+}
+
+// Objective V2's optional guide is the actual accepted cone: two marginal lines from the
 // fixed ideal plane to its nominal focus. It deliberately ignores a displaced
 // immersion contact; moving a sample cannot move the objective's focal plane.
-function acceptanceGeometry(objective, frame) {
-  if (!objectiveShowsAcceptance(objective?.params || {})) return null;
+function acceptanceGeometryV2(objective, frame) {
+  if (!objectiveV2.objectiveShowsAcceptance(objective?.params || {})) return null;
   if (!frame || !finitePoint(frame.source)) return null;
-  const refractiveIndex = objectiveMediumIndex(objective?.params || {});
-  const numericalAperture = objectiveEffectiveNumericalAperture(objective?.params || {});
-  const ratedNumericalAperture = objectiveNumericalAperture(objective?.params || {});
+  const refractiveIndex = objectiveV2.objectiveMediumIndex(objective?.params || {});
+  const numericalAperture = objectiveV2.objectiveEffectiveNumericalAperture(objective?.params || {});
+  const ratedNumericalAperture = objectiveV2.objectiveNumericalAperture(objective?.params || {});
   if (!(refractiveIndex > 0) || !(numericalAperture >= 0)) return null;
-  const halfAngle = objectiveAcceptanceHalfAngle(objective?.params || {});
+  const halfAngle = objectiveV2.objectiveAcceptanceHalfAngle(objective?.params || {});
   if (!finite(halfAngle)) return null;
-  const radius = objectiveAcceptedRadius(objective?.params || {});
-  const workingDistance = objectiveWorkingDistance(objective?.params || {});
+  const radius = objectiveV2.objectiveAcceptedRadius(objective?.params || {});
+  const workingDistance = objectiveV2.objectiveWorkingDistance(objective?.params || {});
   if (!(radius > GEOMETRY_EPSILON) || !(workingDistance > GEOMETRY_EPSILON)) return null;
   const side = normal(frame.forward);
   const positive = add(frame.source, mul(side, radius));
@@ -409,16 +442,17 @@ export function immersionLayerSVG(elements = [], beams = [], { baseElements = el
   const currentElements = Array.isArray(elements) ? elements : [];
   const couplings = resolveImmersionCouplings(currentElements, beams, { baseElements });
   for (const objective of currentElements) {
-    if (objective?.type !== 'objective' || typeof objective.id !== 'string') continue;
-    const medium = objectiveMediumKey(objective.params || {});
-    if (medium === 'legacy' || !OBJECTIVE_MEDIA[medium]) continue;
+    if (!isObjectiveType(objective?.type) || typeof objective.id !== 'string') continue;
+    const model = objectiveModel(objective);
+    const medium = model.objectiveMediumKey(objective.params || {});
+    if (medium === 'legacy' || !model.OBJECTIVE_MEDIA[medium]) continue;
     const frame = objectiveFrame(objective);
     if (!frame) continue;
 
     const coupling = couplings.get(objective.id) || null;
     const meniscus = coupling ? meniscusGeometry(coupling) : null;
     if (coupling && meniscus) {
-      const fill = OBJECTIVE_MEDIA[coupling.medium]?.fill;
+      const fill = model.OBJECTIVE_MEDIA[coupling.medium]?.fill;
       const stroke = MEDIUM_STROKES[coupling.medium];
       if (fill && stroke && finite(coupling.refractiveIndex)) {
         svg += `<g class="immersion-coupling immersion-${coupling.medium}" ` +
@@ -429,20 +463,37 @@ export function immersionLayerSVG(elements = [], beams = [], { baseElements = el
       }
     }
 
-    const acceptance = acceptanceGeometry(objective, frame);
-    if (!acceptance) continue;
-    svg += `<g class="objective-na-overlay" data-objective-id="${esc(objective.id)}" ` +
-      `data-na-anchor="nominal-focus" data-na="${acceptance.numericalAperture.toFixed(3)}" ` +
-      `data-rated-na="${acceptance.ratedNumericalAperture.toFixed(3)}" ` +
-      `data-medium-index="${acceptance.refractiveIndex.toFixed(3)}" ` +
-      `data-half-angle-deg="${acceptance.halfAngleDegrees.toFixed(3)}" pointer-events="none">` +
-      `<line class="objective-na-marginal" x1="${fmt(acceptance.positive.x)}" y1="${fmt(acceptance.positive.y)}" ` +
-      `x2="${fmt(acceptance.focus.x)}" y2="${fmt(acceptance.focus.y)}" stroke="#51409a" ` +
-      `stroke-opacity="0.95" stroke-width="0.9" stroke-dasharray="2 1.5"/>` +
-      `<line class="objective-na-marginal" x1="${fmt(acceptance.negative.x)}" y1="${fmt(acceptance.negative.y)}" ` +
-      `x2="${fmt(acceptance.focus.x)}" y2="${fmt(acceptance.focus.y)}" stroke="#51409a" ` +
-      `stroke-opacity="0.95" stroke-width="0.9" stroke-dasharray="2 1.5"/>` +
-      `<title>Effective NA ${acceptance.numericalAperture.toFixed(3)}; marginal rays meet at the nominal focus</title></g>`;
+    if (objective.type === 'objectivev2') {
+      const acceptance = acceptanceGeometryV2(objective, frame);
+      if (!acceptance) continue;
+      svg += `<g class="objective-na-overlay objective-v2-na-overlay" data-objective-id="${esc(objective.id)}" ` +
+        `data-na-anchor="nominal-focus" data-na="${acceptance.numericalAperture.toFixed(3)}" ` +
+        `data-rated-na="${acceptance.ratedNumericalAperture.toFixed(3)}" ` +
+        `data-medium-index="${acceptance.refractiveIndex.toFixed(3)}" ` +
+        `data-half-angle-deg="${acceptance.halfAngleDegrees.toFixed(3)}" pointer-events="none">` +
+        `<line class="objective-na-marginal" x1="${fmt(acceptance.positive.x)}" y1="${fmt(acceptance.positive.y)}" ` +
+        `x2="${fmt(acceptance.focus.x)}" y2="${fmt(acceptance.focus.y)}" stroke="#51409a" ` +
+        `stroke-opacity="0.95" stroke-width="0.9" stroke-dasharray="2 1.5"/>` +
+        `<line class="objective-na-marginal" x1="${fmt(acceptance.negative.x)}" y1="${fmt(acceptance.negative.y)}" ` +
+        `x2="${fmt(acceptance.focus.x)}" y2="${fmt(acceptance.focus.y)}" stroke="#51409a" ` +
+        `stroke-opacity="0.95" stroke-width="0.9" stroke-dasharray="2 1.5"/>` +
+        `<title>Effective NA ${acceptance.numericalAperture.toFixed(3)}; marginal rays meet at the nominal focus</title></g>`;
+    } else {
+      const anchor = coupling
+        ? coupling.contact
+        : add(frame.source, mul(frame.forward, frame.workingDistance));
+      const acceptance = acceptanceGeometryV1(objective, anchor, frame, meniscus);
+      if (!acceptance) continue;
+      const anchorKind = coupling ? 'contact' : 'nominal-focus';
+      svg += `<g class="objective-na-overlay" data-objective-id="${esc(objective.id)}" ` +
+        `data-na-anchor="${anchorKind}" data-schematic="true" pointer-events="none">` +
+        `<path class="objective-na-acceptance" data-na="${acceptance.numericalAperture.toFixed(3)}" ` +
+        `data-medium-index="${acceptance.refractiveIndex.toFixed(3)}" ` +
+        `data-half-angle-deg="${acceptance.halfAngleDegrees.toFixed(3)}" d="${acceptance.d}" ` +
+        `fill="#6653b8" fill-opacity="0.16" stroke="#51409a" stroke-opacity="0.95" ` +
+        `stroke-width="0.9" stroke-dasharray="2 1.5">` +
+        `<title>Schematic NA acceptance half-angle ${acceptance.halfAngleDegrees.toFixed(1)} degrees</title></path></g>`;
+    }
   }
   return svg;
 }
