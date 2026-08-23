@@ -8,9 +8,8 @@ test('every resizable component exposes a handle backed by a real size parameter
     const el = createElement(type);
     const direct = getDirectManipulation(el);
     if (type === 'objective') {
-      assert.equal(direct?.resize, null, 'the objective housing is deliberately fixed');
-      assert.equal(direct?.tune?.key, 'workingDistance', 'its one handle moves the focus');
-      continue;
+      assert.equal(direct?.resize?.y, 'frontAperture', 'the vertical handles own the real clear opening');
+      assert.equal(direct?.tune?.key, 'workingDistance', 'the separate purple handle moves the focus');
     }
     assert.ok(direct?.resize, `${type} has resize metadata`);
     Object.assign(el.params, direct.resize.set || {});

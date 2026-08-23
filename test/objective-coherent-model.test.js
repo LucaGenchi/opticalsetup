@@ -71,13 +71,13 @@ function farPointSourceRays(source, objective) {
   });
 }
 
-test('objective housing and hit bounds stay fixed while optical settings and clear aperture change', () => {
+test('objective axial geometry stays fixed while clear aperture alone resizes the housing height', () => {
   const objective = createElement('objective');
   const expected = objectiveBounds(objective);
   const variants = [
-    { workingDistance: 1, na: 0.05, immersion: 'air', frontAperture: 1 },
+    { workingDistance: 1, na: 0.05, immersion: 'air', frontAperture: 20 },
     { workingDistance: 80, na: 0.85, immersion: 'air', frontAperture: 100 },
-    { workingDistance: 4, na: 1.4, immersion: 'oil', frontAperture: 8 },
+    { workingDistance: 4, na: 1.4, immersion: 'oil', frontAperture: 20 },
     { workingDistance: 30, na: 1.1, immersion: 'custom', immersionIndex: 1.42, frontAperture: 48 },
     // Retired optical-size fields can still be present transiently while an
     // old sketch is loading, but must never leak into canvas geometry.
@@ -88,9 +88,16 @@ test('objective housing and hit bounds stay fixed while optical settings and cle
     Object.assign(objective.params, params);
     assert.deepEqual(objectiveBounds(objective), expected);
   }
+
+  objective.params.frontAperture = 4;
+  const narrowed = objectiveBounds(objective);
+  assert.equal(narrowed.size.w, expected.size.w, 'aperture resizing never stretches the axial footprint');
+  assert.ok(narrowed.size.h < expected.size.h, 'the housing height follows a smaller clear opening');
+  assert.deepEqual(narrowed.anchor, expected.anchor, 'the fixed front/back placement keeps the same box anchor');
+  assert.notEqual(narrowed.bodyPath, expected.bodyPath, 'the visible housing follows the authored opening');
 });
 
-test('the fixed plane focuses without drawing a post-focus source fan and remains reciprocal', () => {
+test('the fixed plane focuses, draws a distinct physical continuation, and remains reciprocal', () => {
   const objective = createElement('objective', 200, 0);
   Object.assign(objective.params, {
     workingDistance: 12,
@@ -109,7 +116,8 @@ test('the fixed plane focuses without drawing a post-focus source fan and remain
   laser.params.beamMode = 'beam';
   laser.params.beamWidth = 4;
   const detector = createElement('detector', focusX + 120, 0);
-  const focusedEdges = traceScene([laser, objective, detector], []).drawables.filter(drawable => {
+  const scene = traceScene([laser, objective, detector], []);
+  const focusedEdges = scene.drawables.filter(drawable => {
     if (drawable.pts?.length !== 2) return false;
     const [start, end] = drawable.pts;
     return Math.abs(start.x - frontX) < EPSILON
@@ -121,7 +129,18 @@ test('the fixed plane focuses without drawing a post-focus source fan and remain
     const t = -start.y / (end.y - start.y);
     near(start.x + t * (end.x - start.x), focusX, 1e-6, 'each edge crosses the axis at the nominal focus');
   }
-  assert.ok(detectorReading(detector.id)?.signal > 0, 'the invisible continuation still reaches downstream physics');
+  const continuation = scene.drawables.filter(drawable => drawable.segment === 'post-focus');
+  assert.ok(continuation.some(drawable => drawable.type === 'poly'), 'the divergent beam envelope remains visible after focus');
+  const continuationEdges = continuation.filter(drawable => drawable.type === 'path');
+  assert.ok(continuationEdges.length >= 2, 'both post-focus edges remain visible');
+  assert.ok(continuationEdges.every(drawable => drawable.dash === '4 3'), 'post-focus edges use a distinct dashed treatment');
+  assert.ok(
+    Math.max(...continuation.map(drawable => drawable.opacity ?? 0))
+      < Math.max(...scene.drawables.filter(drawable => drawable.segment !== 'post-focus').map(drawable => drawable.opacity ?? 0)),
+    'the continuation is fainter than the incident and converging beam',
+  );
+  assert.ok(continuation.some(drawable => drawable.pts?.some(point => point.x > focusX + 50)), 'visible light propagates well beyond the waist');
+  assert.ok(detectorReading(detector.id)?.signal > 0, 'the same visible continuation reaches downstream physics');
 
   const point = createElement('pointsource', focusX, 0);
   point.rot = 180;
@@ -231,7 +250,7 @@ test('changing rated NA moves only the guide endpoints along the fixed front pla
   assert.ok(highHalfWidth > lowHalfWidth * 3, 'higher NA visibly opens the same cone');
 });
 
-test('legacy objective files migrate to the coherent model without changing the fixed housing', () => {
+test('legacy objective files migrate to the coherent model with bounded aperture-backed housing', () => {
   const legacyMagnification = createElement('objective', 0, 0);
   legacyMagnification.params = { magnification: 25, na: 0.8, transEff: 90 };
   const legacyFocal = createElement('objective', 60, 0);
@@ -255,7 +274,7 @@ test('legacy objective files migrate to the coherent model without changing the 
   assert.equal(fromMagnification.params.transEff, 90);
 
   assert.equal(fromFocal.params.workingDistance, 20);
-  assert.equal(fromFocal.params.frontAperture, 20, 'the clear opening is bounded inside the fixed 24 mm-high nose');
+  assert.equal(fromFocal.params.frontAperture, 20, 'the clear opening is bounded to the supported nose range');
   assert.equal(fromFocal.params.na, 0.6);
   assert.equal(fromFocal.params.transEff, 91);
 

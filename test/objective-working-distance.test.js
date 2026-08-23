@@ -219,18 +219,21 @@ test('focus distance is bounded directly, not by a second EFL value', () => {
   assert.equal(objectiveWorkingDistance({ efl: 8 }), 8, 'transitional EFL seeds focus only when WD is absent');
 });
 
-test('on-canvas tuning changes focus while the fixed housing has no resize handle', () => {
+test('on-canvas handles resize the clear aperture and tune focus independently', () => {
   const objective = createElement('objective');
   const direct = getDirectManipulation(objective);
-  assert.equal(direct.resize, null);
+  assert.equal(direct.resize.y, 'frontAperture');
   assert.equal(direct.tune.key, 'workingDistance');
   assert.equal(direct.tune.param.type, 'number');
 
   const before = getSize(objective);
   objective.params.workingDistance = 80;
-  objective.params.frontAperture = 1;
   objective.params.na = 0.05;
-  assert.deepEqual(getSize(objective), before, 'optical settings never resize the objective housing');
+  assert.deepEqual(getSize(objective), before, 'focus and NA do not resize the objective housing');
+  objective.params.frontAperture = 1;
+  const after = getSize(objective);
+  assert.equal(after.w, before.w, 'aperture resizing preserves the axial footprint');
+  assert.ok(after.h < before.h, 'a smaller clear aperture produces a smaller housing height');
 });
 
 test('legacy magnification seeds focus while clear aperture gets a safe fixed-body default', () => {

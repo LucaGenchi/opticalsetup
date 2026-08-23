@@ -1001,21 +1001,23 @@ function interact(ray, hit) {
         const acceptedSin = Math.min(1, Math.max(0, data.objectiveNA / data.objectiveMediumIndex));
         if (sinAngle > acceptedSin + 1e-9) return [];
       }
-      return [{ d: bent, intensity: ray.intensity * T }];
+      // A powered plane starts a new propagation section. In particular, a
+      // downstream lens can recollimate a post-focus beam, so do not carry
+      // the objective continuation styling through that next optic.
+      return [{ d: bent, intensity: ray.intensity * T, renderMode: null }];
     }
     case 'objectivefocus': {
-      // A focused illumination fan continuing past its waist is physically a
-      // valid paraxial trace, but visually reads as a point source emitted by
-      // the objective. Split the path just beyond the nominal focus and keep
-      // tracing the continuation invisibly so detector/sample physics remain
-      // unchanged. Rays approaching the objective from the specimen side have
-      // not crossed this objective yet and pass normally.
+      // A focused illumination fan must continue through its waist in free
+      // space. Mark, but never absorb or redirect, the forward continuation so
+      // rendering can make it fainter and dashed instead of making it look like
+      // a newly emitted point-source cone. Reverse collection rays pass with
+      // ordinary styling; a reflected ray crossing back resets the marker.
       const objectiveId = data.objectiveId;
       const crossedObjective = Array.isArray(ray.objectives)
         && ray.objectives.some(objective => objective.id === objectiveId);
       const forward = rotPt(1, 0, s.el?.rot || 0);
-      if (!crossedObjective || dot(d, forward) <= 0) return [{ d }];
-      return [{ d, tag: 'objective-focus', hidden: true }];
+      if (!crossedObjective) return [{ d }];
+      return [{ d, renderMode: dot(d, forward) > 0 ? 'post-focus' : null }];
     }
     case 'refract': {
       const materialId = s.el?.id || null;
@@ -1649,7 +1651,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
     return {
       ...r, opl, pts: [{ x: r.x, y: r.y }], opls: [opl],
-      segmentIntensities: [], segmentHistories: [], segmentEvents: [],
+      renderMode: r.renderMode || null,
+      segmentIntensities: [], segmentHistories: [], segmentEvents: [], segmentRenderModes: [],
       sig: '', depth: 0, last: null,
     };
   });
@@ -1659,6 +1662,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
     r.segmentIntensities.push(r.intensity);
     r.segmentHistories.push(r.sig);
     r.segmentEvents.push(null);
+    r.segmentRenderModes.push(r.renderMode || null);
     r.pts.push(p);
     r.opls.push(r.opl);
   };
@@ -1810,6 +1814,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         if ('stokes' in c0) r.stokes = cloneStokes(c0.stokes);
         if ('medium' in c0) r.medium = c0.medium;
         if ('ior' in c0) r.ior = c0.ior;
+        if ('renderMode' in c0) r.renderMode = c0.renderMode;
         r.last = hit.surface; r.depth++;
         continue;
       }
@@ -1843,12 +1848,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           sample: r.sample, writeReference: r.writeReference,
           objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),
+          renderMode: 'renderMode' in c ? c.renderMode : r.renderMode,
           pts: [{ x: ox, y: oy }],
           opl: r.opl,
           opls: [r.opl],
           segmentIntensities: [],
           segmentHistories: [],
           segmentEvents: [],
+          segmentRenderModes: [],
           sig: r.sig + '/' + (c.tag || 'w'),
           depth: r.depth + 1, last: hit.surface,
         });
@@ -1877,9 +1884,12 @@ function assembleDrawables(paths, opts, drawables) {
     return wavelengthToColor(r.wl);
   };
   const opOf = r => Math.max(0.25, Math.min(0.95, 0.35 + 0.6 * r.intensity));
+  const isPostFocus = r => r.renderMode === 'post-focus';
+  const segmentOf = r => isPostFocus(r) ? 'post-focus' : undefined;
+  const opacityOf = (r, opacity) => isPostFocus(r) ? opacity * 0.48 : opacity;
   const dashOf = r => r.chopped
     ? `${(r.chopped.period * r.chopped.duty).toFixed(1)} ${(r.chopped.period * (1 - r.chopped.duty)).toFixed(1)}`
-    : undefined;
+    : isPostFocus(r) ? '4 3' : undefined;
 
   const pushRay = (r, w, opacity, thin) => {
     if (r.pts.length < 2) return;
@@ -1895,7 +1905,7 @@ function assembleDrawables(paths, opts, drawables) {
         // full brightness at the source, ~1/20 of it at the fade boundary
         const opacity = Math.max(0.02, 0.55 / ((1 + 3.5 * tm) ** 2));
         drawables.push({
-          type: 'path', color: col, w: 1.8, opacity,
+          type: 'path', color: col, w: 1.8, opacity: opacityOf(r, opacity), segment: segmentOf(r),
           pts: [
             { x: a.x + (b.x - a.x) * t0, y: a.y + (b.y - a.y) * t0 },
             { x: a.x + (b.x - a.x) * t1, y: a.y + (b.y - a.y) * t1 },
@@ -1907,22 +1917,38 @@ function assembleDrawables(paths, opts, drawables) {
     if (r.speckle) {
       if (thin && r.sample != null && r.sample % 2 === 1) return; // thin out beam speckle
       const seed = (Math.round(Math.abs(r.pts[0].x * 13 + r.pts[0].y * 29)) + (r.sample == null ? r.sig.length * 7 : r.sample) * 101) | 0;
-      drawables.push({ type: 'dots', color: colorOf(r), dots: speckleDots(r.pts, thin ? 3 : 4, seed, thin ? 130 : 220) });
+      drawables.push({ type: 'dots', color: colorOf(r), segment: segmentOf(r), dots: speckleDots(r.pts, thin ? 3 : 4, seed, thin ? 130 : 220) });
       return;
     }
     if (r.bw >= 200 && r.sample == null) {
       // Coincident spectral halo: spectrum is visible without implying spatial
       // separation before a prism or grating.
-      drawables.push({ type: 'path', pts: r.pts, color: '#7c3aed', w: 5, opacity: 0.24, dash: dashOf(r) });
-      drawables.push({ type: 'path', pts: r.pts, color: '#f97316', w: 3.2, opacity: 0.28, dash: dashOf(r) });
-      drawables.push({ type: 'path', pts: r.pts, color: '#dbe7f5', w: 1.8, opacity: 0.95, dash: dashOf(r) });
+      drawables.push({ type: 'path', pts: r.pts, color: '#7c3aed', w: 5, opacity: opacityOf(r, 0.24), dash: dashOf(r), segment: segmentOf(r) });
+      drawables.push({ type: 'path', pts: r.pts, color: '#f97316', w: 3.2, opacity: opacityOf(r, 0.28), dash: dashOf(r), segment: segmentOf(r) });
+      drawables.push({ type: 'path', pts: r.pts, color: '#dbe7f5', w: 1.8, opacity: opacityOf(r, 0.95), dash: dashOf(r), segment: segmentOf(r) });
       return;
     }
-    drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w, opacity, dash: dashOf(r) });
+    drawables.push({
+      type: 'path', pts: r.pts, color: colorOf(r), w,
+      opacity: opacityOf(r, opacity), dash: dashOf(r), segment: segmentOf(r),
+    });
   };
 
   if (!isBeam) {
-    for (const r of paths) pushRay(r, 2, opOf(r), false);
+    for (const r of paths) {
+      if (r.segmentRenderModes?.some(Boolean)) {
+        for (let j = 0; j < r.pts.length - 1; j++) {
+          pushRay({
+            ...r,
+            pts: [r.pts[j], r.pts[j + 1]],
+            renderMode: r.segmentRenderModes[j] || null,
+            intensity: r.segmentIntensities?.[j] ?? r.intensity,
+          }, 2, opOf(r), false);
+        }
+      } else {
+        pushRay(r, 2, opOf(r), false);
+      }
+    }
     return;
   }
   // Beam mode is reconstructed one propagation segment at a time. Two nearby
@@ -1941,6 +1967,9 @@ function assembleDrawables(paths, opts, drawables) {
         intensity: r.segmentIntensities?.[j] ?? r.intensity,
         renderHistory: r.segmentHistories?.[j] ?? r.sig,
         renderEvent: r.segmentEvents?.[j] ?? null,
+        renderMode: Array.isArray(r.segmentRenderModes)
+          ? (r.segmentRenderModes[j] || null)
+          : r.renderMode,
       });
     }
   }
@@ -1962,16 +1991,19 @@ function assembleDrawables(paths, opts, drawables) {
       if (ra.speckle) { pushRay(ra, 0, 0, true); continue; } // grains, no fill
       const rb = nextByHistory.get(ra.renderHistory);
       if (rb && !rb.speckle) {
-        const op = 0.28 * Math.max(0.4, ra.intensity);
+        const op = opacityOf(ra, 0.28 * Math.max(0.4, ra.intensity));
         const [A, B] = ra.renderEvent === rb.renderEvent
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
         if (ra.chopped) {
           for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty)) {
-            drawables.push({ type: 'poly', pts: q, color: colorOf(ra), opacity: op });
+            drawables.push({ type: 'poly', pts: q, color: colorOf(ra), opacity: op, segment: segmentOf(ra) });
           }
         } else {
-          drawables.push({ type: 'poly', pts: A.concat([...B].reverse()), color: colorOf(ra), opacity: op });
+          drawables.push({
+            type: 'poly', pts: A.concat([...B].reverse()), color: colorOf(ra),
+            opacity: op, segment: segmentOf(ra),
+          });
         }
       }
     }
@@ -1983,7 +2015,12 @@ function assembleDrawables(paths, opts, drawables) {
   // outline strokes on the outer edges of the beam only
   for (const i of [0, K - 1]) {
     for (const r of bySample.get(i) || []) {
-      if (!r.speckle && !r.evanFade) drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w: 1.2, opacity: 0.7, dash: dashOf(r) });
+      if (!r.speckle && !r.evanFade) {
+        drawables.push({
+          type: 'path', pts: r.pts, color: colorOf(r), w: 1.2,
+          opacity: opacityOf(r, 0.7), dash: dashOf(r), segment: segmentOf(r),
+        });
+      }
     }
   }
 }

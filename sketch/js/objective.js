@@ -8,8 +8,10 @@
 //   point at that focus   -> collimated rear light
 //
 // This is intentionally simpler than a compound prescription. It keeps the
-// drawn body fixed, makes the visible focus agree with the traced one, and
-// avoids a hidden principal plane moving around inside (or outside) the icon.
+// front plane and axial housing footprint fixed, makes the visible focus agree
+// with the traced one, and avoids a hidden principal plane moving around
+// inside (or outside) the icon. The housing height follows the authored clear
+// aperture so the normal canvas resize gesture still has one honest meaning.
 //
 // Rated NA and the front-medium index request an object-side half-angle. The
 // clear opening can limit that request, so every consumer uses the same
@@ -22,6 +24,9 @@ export const OBJECTIVE_DEFAULT_BACK_X = -21;
 export const OBJECTIVE_SHOULDER_X = 7;
 export const OBJECTIVE_BODY_HALF_HEIGHT = 17;
 export const OBJECTIVE_NOSE_HALF_HEIGHT = 12;
+export const OBJECTIVE_MIN_NOSE_HALF_HEIGHT = 5;
+export const OBJECTIVE_NOSE_SHELL = 2;
+export const OBJECTIVE_BARREL_SHELL = 5;
 
 export const OBJECTIVE_NA_MIN = 0.05;
 export const OBJECTIVE_NA_MAX = 1.49;
@@ -234,15 +239,29 @@ export function objectivePupilDiameter(params = {}) {
   return 2 * objectiveAcceptedRadius(params);
 }
 
-export function objectiveBarrelHalfHeight() {
-  return OBJECTIVE_BODY_HALF_HEIGHT;
+export function objectiveNoseHalfHeight(params = {}) {
+  const clearRadius = objectiveFrontAperture(params) / 2;
+  return clamp(
+    clearRadius + OBJECTIVE_NOSE_SHELL,
+    OBJECTIVE_MIN_NOSE_HALF_HEIGHT,
+    OBJECTIVE_NOSE_HALF_HEIGHT,
+  );
 }
 
-export function objectiveBarrelHalfHeightAt(_params = {}, x = OBJECTIVE_SHOULDER_X) {
-  if (x <= OBJECTIVE_SHOULDER_X) return OBJECTIVE_BODY_HALF_HEIGHT;
-  if (x >= OBJECTIVE_FRONT_X) return OBJECTIVE_NOSE_HALF_HEIGHT;
+export function objectiveBarrelHalfHeight(params = {}) {
+  return Math.min(
+    OBJECTIVE_BODY_HALF_HEIGHT,
+    objectiveNoseHalfHeight(params) + OBJECTIVE_BARREL_SHELL,
+  );
+}
+
+export function objectiveBarrelHalfHeightAt(params = {}, x = OBJECTIVE_SHOULDER_X) {
+  const outer = objectiveBarrelHalfHeight(params);
+  const nose = objectiveNoseHalfHeight(params);
+  if (x <= OBJECTIVE_SHOULDER_X) return outer;
+  if (x >= OBJECTIVE_FRONT_X) return nose;
   const t = (x - OBJECTIVE_SHOULDER_X) / (OBJECTIVE_FRONT_X - OBJECTIVE_SHOULDER_X);
-  return OBJECTIVE_BODY_HALF_HEIGHT + (OBJECTIVE_NOSE_HALF_HEIGHT - OBJECTIVE_BODY_HALF_HEIGHT) * t;
+  return outer + (nose - outer) * t;
 }
 
 // Compatibility alias. The simplified objective has no separate BFP stop;

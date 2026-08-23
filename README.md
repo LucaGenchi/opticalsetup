@@ -118,10 +118,12 @@ third axis.
 Standalone objectives use one ideal, bidirectional optical plane fixed at the physical
 front tip. The focus distance from that tip is also the plane's focal distance: rear
 collimated light focuses exactly there, and light from a point at that focus exits the
-rear side collimated. The outer body and selection bounds never move or resize when an
-optical setting changes. The visible illumination fan ends at the nominal focus instead
-of continuing as a misleading point-source-like cone; its downstream trace remains
-active invisibly for sample and detector calculations.
+rear side collimated. Focus, NA, and medium never move the front plane or stretch the
+axial footprint. The blue vertical handles resize the real clear aperture, and the
+housing height follows that opening with fixed shell padding. Free-space illumination
+continues through the nominal focus and diverges again; that post-focus continuation is
+drawn fainter with dashed outer edges so it reads as the same beam after its waist rather
+than a newly emitted point source.
 
 Rated NA and the selected front medium request an object-side cone with half-angle
 `asin(NA/n)`. The clear opening may be smaller than that request. OpticalSetup therefore

@@ -165,7 +165,7 @@ test('normalization synchronizes compatibility EFL to the one authored focus dis
   assert.equal(objectiveWorkingDistance({ workingDistance: 6, efl: 80 }), 6);
 });
 
-test('clear aperture is finite and bounded inside the fixed objective nose', () => {
+test('clear aperture is finite and bounded inside the objective nose range', () => {
   assert.equal(objectiveFrontAperture({}), 20);
   assert.equal(objectiveFrontAperture({ frontAperture: -10 }), 1);
   assert.equal(objectiveFrontAperture({ frontAperture: 12.5 }), 12.5);

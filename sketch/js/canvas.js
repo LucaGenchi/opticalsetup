@@ -369,12 +369,13 @@ function renderBeams() {
   for (const hit of signalHits) sampleHitPositions.set(hit.stageId, hit);
   let s = '';
   for (const d of drawables) {
+    const segment = d.segment ? ` data-beam-segment="${d.segment}"` : '';
     if (d.type === 'poly') {
-      s += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}" stroke="none"/>`;
+      s += `<polygon${segment} points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}" stroke="none"/>`;
     } else if (d.type === 'dots') {
-      s += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
+      s += `<g${segment} fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
     } else {
-      s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}/>`;
+      s += `<polyline${segment} points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}/>`;
     }
   }
   beamLayer.innerHTML = s;

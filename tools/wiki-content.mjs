@@ -522,13 +522,15 @@ export const wikiEntries = [
         Collimated light entering from the rear therefore meets exactly at the marked
         sample-side focus, and a point source placed at that focus leaves the rear side
         collimated. There is no hidden moving principal plane and no independent EFL or
-        magnification control. The visible illumination ends at the nominal focus rather
-        than continuing as a point-source-like fan; OpticalSetup still traces that
-        continuation invisibly for downstream samples and detectors.</p>
-        <p>The objective's outer body, selection bounds, and front plane are fixed. The
-        <strong>clear aperture</strong> changes only the opening inside the nose. This keeps
-        an optical adjustment from stretching the component or making the visible tip and
-        traced surface disagree.</p>
+        magnification control. Free-space illumination continues through the nominal
+        focus and diverges again. OpticalSetup draws that post-focus section fainter with
+        dashed outer edges, making it visibly continuous with the converging beam without
+        presenting the waist as a new point source.</p>
+        <p>The objective's front plane and axial footprint are fixed. The blue vertical
+        handles resize the real <strong>clear aperture</strong>, and the housing height
+        follows the opening with fixed shell padding. Focus, NA, and medium never resize
+        the housing. This gives direct resizing one physical meaning without making the
+        visible tip and traced surface disagree.</p>
 
         <h3>One cone from NA, medium, aperture, and focus</h3>
         <p>The selected medium and rated NA request an object-side half-angle. The clear
@@ -560,10 +562,10 @@ export const wikiEntries = [
         no liquid is drawn.</p>
 
         <h3>Handles and markers</h3>
-        <p>The purple tune control changes focus distance. Clear aperture is an inspector
-        setting; the objective intentionally has no resize handle because its housing is
-        fixed. Toggle "Show focal points" (the <span class="w">ƒ</span> button) or select the
-        objective to see the symmetric rear and sample-side focus markers.</p>
+        <p>The two blue vertical handles resize the clear aperture and matching housing
+        height; the purple tune control changes focus distance independently. Toggle "Show
+        focal points" (the <span class="w">ƒ</span> button) or select the objective to see
+        the symmetric rear and sample-side focus markers.</p>
         <p>When this objective sits between a pulsed laser and an illuminated
         photocurable-resin sample, the <em>effective</em> traced NA can be handed off to the
         dedicated Two-Photon Lithography Lab alongside the laser settings.</p>`,

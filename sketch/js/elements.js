@@ -18,12 +18,12 @@ import {
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
 import {
-  OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT, OBJECTIVE_NOSE_HALF_HEIGHT,
+  OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT,
   OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
   objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
   objectiveEffectiveFocalLength, objectiveEffectiveNumericalAperture, objectiveFrontAperture,
   objectiveLensPlaneX, objectiveMaximumNA, objectiveMaximumWorkingDistance,
-  objectiveMediumIndex, objectiveMediumKey, objectiveNumericalAperture,
+  objectiveMediumIndex, objectiveMediumKey, objectiveNoseHalfHeight, objectiveNumericalAperture,
   objectiveAcceptedRadius, objectiveWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
@@ -1790,11 +1790,14 @@ export const registry = {
 
   objective: {
     // One ideal, bidirectional plane lives at the fixed physical nose. Its
-    // focal distance is the working distance, and the body never stretches.
+    // focal distance is the working distance. Only the housing height follows
+    // the clear opening; the axial footprint and optical plane stay fixed.
     label: 'Objective', category: 'Lenses', paletteOrder: 4, size: { w: 41, h: 40 },
+    size_: el => ({ w: 41, h: 2 * objectiveBarrelHalfHeight(el.params) + 6 }),
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 },
     immersionSource: () => ({ x: OBJECTIVE_FRONT_X, y: 0 }),
     boxAnchor: () => ({ x: (OBJECTIVE_FRONT_X + objectiveBackX()) / 2, y: 0 }),
+    directHint: 'blue handles resize the clear aperture and housing · purple knob tunes focus',
     params: [
       // Current save files may contain EFL. Keep that key hidden and synced
       // instead of exposing a second, contradictory focal control.
@@ -1852,7 +1855,7 @@ export const registry = {
       const outer = objectiveBarrelHalfHeight(el.params);
       const back = objectiveBackX(el.params);
       const shoulder = OBJECTIVE_SHOULDER_X;
-      const nose = OBJECTIVE_NOSE_HALF_HEIGHT;
+      const nose = objectiveNoseHalfHeight(el.params);
       return `<path d="M ${OBJECTIVE_FRONT_X},${-nose} L ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer} L ${OBJECTIVE_FRONT_X},${nose} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
         `<line x1="${shoulder}" y1="${-outer}" x2="${shoulder}" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
         `<line x1="${OBJECTIVE_FRONT_X}" y1="${-nose}" x2="${OBJECTIVE_FRONT_X}" y2="${-clear}" stroke="#2f3e4d" stroke-width="2.4"/>` +
@@ -1861,13 +1864,13 @@ export const registry = {
     },
     surfaces(el) {
       const lensX = objectiveLensPlaneX(el.params);
-      // Stop drawing immediately after the nominal focus, where a continued
-      // paraxial ray fan otherwise looks like a new point source. The tracer
-      // continues that branch invisibly for samples and detectors; see
-      // `objectivefocus` in raytrace.js. A small forward offset lets a sample
-      // surface placed exactly at focus receive the visible excitation first.
+      // A transparent marker just beyond the nominal focus lets the renderer
+      // distinguish the physical post-focus continuation without absorbing or
+      // splitting the ray. The small offset lets a sample surface placed
+      // exactly at focus receive the excitation first.
       const focusCutX = OBJECTIVE_FRONT_X + objectiveWorkingDistance(el.params) + 0.02;
-      const accepted = Math.min(OBJECTIVE_NOSE_HALF_HEIGHT, objectiveAcceptedRadius(el.params));
+      const nose = objectiveNoseHalfHeight(el.params);
+      const accepted = Math.min(nose, objectiveAcceptedRadius(el.params));
       const edge = accepted;
       const effectiveNA = objectiveEffectiveNumericalAperture(el.params);
       const shared = {
@@ -1889,9 +1892,9 @@ export const registry = {
         x1: focusCutX, y1: -1000, x2: focusCutX, y2: 1000, kind: 'objectivefocus',
         data: { objectiveId: el.id },
       },
-      ...(OBJECTIVE_NOSE_HALF_HEIGHT > edge + 0.01 ? [
-        { x1: lensX, y1: edge, x2: lensX, y2: OBJECTIVE_NOSE_HALF_HEIGHT, kind: 'absorb', data: shared },
-        { x1: lensX, y1: -edge, x2: lensX, y2: -OBJECTIVE_NOSE_HALF_HEIGHT, kind: 'absorb', data: shared },
+      ...(nose > edge + 0.01 ? [
+        { x1: lensX, y1: edge, x2: lensX, y2: nose, kind: 'absorb', data: shared },
+        { x1: lensX, y1: -edge, x2: lensX, y2: -nose, kind: 'absorb', data: shared },
       ] : [])];
     },
   },
@@ -3135,9 +3138,9 @@ const DIRECT = {
   // follows); resize sets the clear aperture, which is genuinely a size.
   thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
-  // The body and clear opening stay deliberate inspector settings. The one
-  // canvas control moves the nominal specimen focus of the ideal plane.
-  objective: { tune: { key: 'workingDistance', short: 'focus' } },
+  // The vertical handles resize the real clear opening and the housing follows
+  // it. The purple control independently moves the nominal specimen focus.
+  objective: { resize: { y: 'frontAperture' }, tune: { key: 'workingDistance', short: 'focus' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
@@ -3220,7 +3223,7 @@ const ELEMENT_HELP = {
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the clear aperture can reduce the effective NA. The same accepted cone drives tracing and the optional guide. Illumination is drawn only to focus so its continuation cannot look like a new point source, while downstream physics still traces invisibly.',
+  objective: 'One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the resizable clear aperture can reduce the effective NA. The housing height follows that opening without moving the optical plane. Light continues physically through focus; the post-focus segment is drawn fainter with dashed edges so it reads as the same beam after its waist, not a new source.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
@@ -3280,7 +3283,7 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (type === 'objective' && objectiveMediumKey(params) !== 'air') {
     note = 'Medium, rated NA, focus distance, and clear aperture determine one effective cone. The immersion bridge is schematic; it does not add refraction, focal shift, wetting, or aberration correction.';
   } else if (type === 'objective') {
-    note = 'Dry objectives are capped at NA 0.85. A small clear opening can lower effective NA; changing optical settings never stretches the fixed objective body.';
+    note = 'Dry objectives are capped at NA 0.85. The blue vertical handles resize the clear opening and housing; a small opening can lower effective NA without moving the front plane or focus.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
