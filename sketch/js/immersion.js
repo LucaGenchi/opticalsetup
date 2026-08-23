@@ -8,6 +8,8 @@ import { registry } from './elements.js';
 import {
   OBJECTIVE_MEDIA,
   objectiveAcceptanceHalfAngle,
+  objectiveAcceptedRadius,
+  objectiveEffectiveNumericalAperture,
   objectiveFrontAperture,
   objectiveMediumIndex,
   objectiveMediumKey,
@@ -371,44 +373,32 @@ function meniscusGeometry(coupling) {
   };
 }
 
-// A compact sector at the specimen contact makes the objective's configured
-// angular acceptance visible. It is deliberately local and bounded: this is
-// an NA glyph, not an additional traced beam or a solved objective prescription.
-function acceptanceGeometry(objective, anchor, frame, meniscus = null) {
-  // Off unless the author asks for it: most sketches want a plain barrel, and
-  // the sector was the first thing to make a crowded scene unreadable.
+// The optional guide is the actual accepted cone: two marginal lines from the
+// fixed ideal plane to its nominal focus. It deliberately ignores a displaced
+// immersion contact; moving a sample cannot move the objective's focal plane.
+function acceptanceGeometry(objective, frame) {
   if (!objectiveShowsAcceptance(objective?.params || {})) return null;
+  if (!frame || !finitePoint(frame.source)) return null;
   const refractiveIndex = objectiveMediumIndex(objective?.params || {});
-  const numericalAperture = objectiveNumericalAperture(objective?.params || {});
-  if (!(refractiveIndex > 0) || !(numericalAperture >= 0) || !finitePoint(anchor) || !frame) return null;
+  const numericalAperture = objectiveEffectiveNumericalAperture(objective?.params || {});
+  const ratedNumericalAperture = objectiveNumericalAperture(objective?.params || {});
+  if (!(refractiveIndex > 0) || !(numericalAperture >= 0)) return null;
   const halfAngle = objectiveAcceptanceHalfAngle(objective?.params || {});
   if (!finite(halfAngle)) return null;
-
-  const frontAperture = objectiveFrontAperture(objective?.params || {});
-  const sourceHalfWidth = finite(frontAperture) ? frontAperture / 2 : 0;
-  const axialGap = dot(sub(anchor, frame.source), frame.forward);
-  if (!(sourceHalfWidth > GEOMETRY_EPSILON) || !(axialGap > GEOMETRY_EPSILON)) return null;
-  const lateralLimit = Math.max(
-    GEOMETRY_EPSILON,
-    (meniscus
-      ? Math.min(sourceHalfWidth, meniscus.positiveTargetWidth, meniscus.negativeTargetWidth)
-      : sourceHalfWidth) * 0.72,
-  );
-  const sinTheta = Math.sin(halfAngle);
-  const radiusByWidth = sinTheta > GEOMETRY_EPSILON ? lateralLimit / sinTheta : Infinity;
-  const radius = Math.min(9, axialGap * 0.56, radiusByWidth);
-  if (!(radius > GEOMETRY_EPSILON) || !finite(radius)) return null;
-
+  const radius = objectiveAcceptedRadius(objective?.params || {});
+  const workingDistance = objectiveWorkingDistance(objective?.params || {});
+  if (!(radius > GEOMETRY_EPSILON) || !(workingDistance > GEOMETRY_EPSILON)) return null;
   const side = normal(frame.forward);
-  const backward = mul(frame.forward, -Math.cos(halfAngle) * radius);
-  const spread = mul(side, Math.sin(halfAngle) * radius);
-  const positive = add(add(anchor, backward), spread);
-  const negative = add(add(anchor, backward), mul(spread, -1));
-  if (![positive, negative].every(finitePoint)) return null;
+  const positive = add(frame.source, mul(side, radius));
+  const negative = add(frame.source, mul(side, -radius));
+  const focus = add(frame.source, mul(frame.forward, workingDistance));
+  if (![positive, negative, focus].every(finitePoint)) return null;
   return {
-    d: `M ${pathPoint(anchor)} L ${pathPoint(positive)} ` +
-      `A ${fmt(radius)},${fmt(radius)} 0 0 1 ${pathPoint(negative)} Z`,
+    positive,
+    negative,
+    focus,
     numericalAperture,
+    ratedNumericalAperture,
     refractiveIndex,
     halfAngleDegrees: halfAngle * 180 / Math.PI,
   };
@@ -439,20 +429,20 @@ export function immersionLayerSVG(elements = [], beams = [], { baseElements = el
       }
     }
 
-    const anchor = coupling
-      ? coupling.contact
-      : add(frame.source, mul(frame.forward, frame.workingDistance));
-    const acceptance = acceptanceGeometry(objective, anchor, frame, meniscus);
+    const acceptance = acceptanceGeometry(objective, frame);
     if (!acceptance) continue;
-    const anchorKind = coupling ? 'contact' : 'nominal-focus';
     svg += `<g class="objective-na-overlay" data-objective-id="${esc(objective.id)}" ` +
-      `data-na-anchor="${anchorKind}" data-schematic="true" pointer-events="none">` +
-      `<path class="objective-na-acceptance" data-na="${acceptance.numericalAperture.toFixed(3)}" ` +
+      `data-na-anchor="nominal-focus" data-na="${acceptance.numericalAperture.toFixed(3)}" ` +
+      `data-rated-na="${acceptance.ratedNumericalAperture.toFixed(3)}" ` +
       `data-medium-index="${acceptance.refractiveIndex.toFixed(3)}" ` +
-      `data-half-angle-deg="${acceptance.halfAngleDegrees.toFixed(3)}" d="${acceptance.d}" ` +
-      `fill="#6653b8" fill-opacity="0.16" stroke="#51409a" stroke-opacity="0.95" ` +
-      `stroke-width="0.9" stroke-dasharray="2 1.5">` +
-      `<title>Schematic NA acceptance half-angle ${acceptance.halfAngleDegrees.toFixed(1)} degrees</title></path></g>`;
+      `data-half-angle-deg="${acceptance.halfAngleDegrees.toFixed(3)}" pointer-events="none">` +
+      `<line class="objective-na-marginal" x1="${fmt(acceptance.positive.x)}" y1="${fmt(acceptance.positive.y)}" ` +
+      `x2="${fmt(acceptance.focus.x)}" y2="${fmt(acceptance.focus.y)}" stroke="#51409a" ` +
+      `stroke-opacity="0.95" stroke-width="0.9" stroke-dasharray="2 1.5"/>` +
+      `<line class="objective-na-marginal" x1="${fmt(acceptance.negative.x)}" y1="${fmt(acceptance.negative.y)}" ` +
+      `x2="${fmt(acceptance.focus.x)}" y2="${fmt(acceptance.focus.y)}" stroke="#51409a" ` +
+      `stroke-opacity="0.95" stroke-width="0.9" stroke-dasharray="2 1.5"/>` +
+      `<title>Effective NA ${acceptance.numericalAperture.toFixed(3)}; marginal rays meet at the nominal focus</title></g>`;
   }
   return svg;
 }

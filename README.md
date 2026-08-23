@@ -115,27 +115,19 @@ shows their positions in the moving 2D sample. It does not calculate focal volum
 two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
-Standalone objectives are set by effective focal length (EFL) — the focal length of
-the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
-a front aperture, and a rated NA. Magnification is reported from EFL against a 200 mm
-reference tube lens rather than typed in, because it belongs to the objective plus
-whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
-`front tip + WD − EFL`, always inside the barrel, so collimated light focuses exactly
-one working distance past the tip, an external tube lens produces the reported
-magnification, and the back focal plane one EFL behind the plane is a real traced
-conjugate that light focused on leaves collimated. Nothing is drawn at that plane; an
-objective is an opaque barrel. Rated NA is the back pupil (2·f·NA) and is the aperture
-stop, placed at the back focal plane where an infinity objective's entrance pupil
-belongs: a beam that fills it converges at the rated angle, a beam that overfills it
-loses the overflow to the barrel, and the inspector reports both the pupil fill and the
-smaller effective NA an underfilled pupil actually delivers. The designed front medium
-(dry/air capped at NA 0.85, water 1.27, oil 1.49, or a custom index) sets the index and
-the NA ceiling, and gives the object-side acceptance half-angle `asin(NA/n)`; it never
-rewrites working distance. The pupil is a paraxial stop in a thin-lens tracer, so a beam
-filling it converges at `atan(NA)` rather than the sine-condition `asin(NA/n)` the rated
-half-angle quotes — close at moderate NA, separating near the ceiling — and the single
-plane is a first-order stand-in for a compound prescription, not the real internal
-conjugates.
+Standalone objectives use one ideal, bidirectional optical plane fixed at the physical
+front tip. The focus distance from that tip is also the plane's focal distance: rear
+collimated light focuses exactly there, and light from a point at that focus exits the
+rear side collimated. The outer body and selection bounds never move or resize when an
+optical setting changes.
+
+Rated NA and the selected front medium request an object-side cone with half-angle
+`asin(NA/n)`. The clear opening may be smaller than that request. OpticalSetup therefore
+uses one accepted radius, `min(clear aperture / 2, focus distance · tan(angle))`, for the
+traced lens span, angular clipping, optional two-line NA guide, and downstream effective
+NA. The inspector reports when the clear opening limits the rating. This is a coherent
+first-order model, not a compound objective prescription: it does not model internal
+groups, aberrations, diffraction, manufacturer tube lengths, or a separate pupil plane.
 
 A non-air objective derives an exported immersion bridge to the nearest compatible
 sample, stage-mounted sample, or facing fiber end; a moving stage carries that same

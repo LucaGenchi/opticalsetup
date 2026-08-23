@@ -696,14 +696,11 @@ function focalPoints(el) {
   switch (el.type) {
     case 'lens': case 'lensc': return [{ x: p.f, y: 0 }, { x: -p.f, y: 0 }];
     case 'objective': {
-      // Both are real traced planes now: the specimen focus one working
-      // distance beyond the tip, and the back focal plane one focal length
-      // behind the equivalent lens. Light focused on the BFP leaves the
-      // objective collimated, so it is the plane a scan relay images onto and
-      // the one widefield illumination is focused into.
+      // A single ideal plane has symmetric focal points. A point at either
+      // marker exits the opposite side collimated.
       return [
-        { x: objectiveBackFocalPlaneX(p), y: 0, label: 'BFP' },
-        { x: OBJECTIVE_FRONT_X + objectiveWorkingDistance(p), y: 0, label: 'WD focus' },
+        { x: objectiveBackFocalPlaneX(p), y: 0, label: 'rear focus' },
+        { x: OBJECTIVE_FRONT_X + objectiveWorkingDistance(p), y: 0, label: 'focus' },
       ];
     }
     case 'cmirror': case 'cmirrorx': case 'oap': return [{ x: -p.f, y: 0 }];

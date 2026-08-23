@@ -6,6 +6,10 @@ import { buildSVG } from '../sketch/js/export.js';
 import {
   immersionCouplingStatus, immersionLayerSVG, resolveImmersionCouplings,
 } from '../sketch/js/immersion.js';
+import {
+  objectiveAcceptedRadius, objectiveAcceptanceHalfAngleDeg,
+  objectiveEffectiveNumericalAperture, objectiveWorkingDistance,
+} from '../sketch/js/objective.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { serialize, state } from '../sketch/js/state.js';
 import { toWorld } from '../sketch/js/util.js';
@@ -18,8 +22,8 @@ function objective(medium = 'water', y = 0) {
   element.params.immersion = medium;
   element.params.efl = 20;
   element.params.workingDistance = 20;
-  element.params.frontAperture = 40; // independent 40 mm front opening; coupling reach 30 mm
-  // The acceptance sector is an opt-in overlay now; these tests are about it.
+  element.params.frontAperture = 20;
+  // The two-marginal-ray NA guide is opt-in.
   element.params.showAcceptance = true;
   return element;
 }
@@ -43,6 +47,42 @@ function contactElement(type, id, source, dx, dy = 0) {
 
 function cloneElement(element) {
   return { ...element, params: { ...element.params } };
+}
+
+function marginalLines(svg) {
+  return [...svg.matchAll(
+    /<line class="objective-na-marginal" x1="([^"]+)" y1="([^"]+)" x2="([^"]+)" y2="([^"]+)"/g,
+  )].map(match => ({
+    x1: Number(match[1]),
+    y1: Number(match[2]),
+    x2: Number(match[3]),
+    y2: Number(match[4]),
+  }));
+}
+
+function assertMarginalGuide(svg, element) {
+  const source = sourceOf(element);
+  const radius = objectiveAcceptedRadius(element.params);
+  const focusX = source.x + objectiveWorkingDistance(element.params);
+  const effectiveNA = objectiveEffectiveNumericalAperture(element.params);
+  const halfAngle = objectiveAcceptanceHalfAngleDeg(element.params);
+  const lines = marginalLines(svg);
+
+  assert.equal(lines.length, 2, 'the guide is exactly two marginal rays');
+  assert.match(svg, /class="objective-na-overlay"[^>]*data-na-anchor="nominal-focus"/);
+  assert.ok(Math.abs(Number(svg.match(/data-na="([^"]+)"/)?.[1]) - effectiveNA) < 0.0005);
+  assert.ok(Math.abs(Number(svg.match(/data-half-angle-deg="([^"]+)"/)?.[1]) - halfAngle) < 0.0005);
+  assert.deepEqual(lines.map(line => line.y1).sort((a, b) => a - b), [
+    Number((source.y - radius).toFixed(2)),
+    Number((source.y + radius).toFixed(2)),
+  ]);
+  for (const line of lines) {
+    assert.equal(line.x1, Number(source.x.toFixed(2)), 'both rays start on the fixed front plane');
+    assert.equal(line.x2, Number(focusX.toFixed(2)), 'both rays end at nominal working distance');
+    assert.equal(line.y2, Number(source.y.toFixed(2)));
+    assert.ok(Object.values(line).every(Number.isFinite));
+  }
+  return lines;
 }
 
 test('nearest true forward segment contact wins; behind, off-axis, and out-of-reach contacts do not', () => {
@@ -72,7 +112,7 @@ test('equal-distance contacts are ambiguous and produce no coupling', () => {
   assert.equal(immersionCouplingStatus(obj, [obj, one, two]).state, 'ambiguous');
   const svg = immersionLayerSVG([obj, one, two]);
   assert.doesNotMatch(svg, /immersion-meniscus/);
-  assert.match(svg, /class="objective-na-overlay"[^>]*data-na-anchor="nominal-focus"/);
+  assertMarginalGuide(svg, obj);
 });
 
 test('a physical optic before the target blocks coupling while annotations do not', () => {
@@ -202,7 +242,7 @@ test('dry and open objectives render NA without liquid; unresolved legacy render
   assert.equal(resolveImmersionCouplings([air, airTarget]).size, 0);
   const airSVG = immersionLayerSVG([air, airTarget]);
   assert.doesNotMatch(airSVG, /immersion-meniscus/);
-  assert.match(airSVG, /class="objective-na-overlay"[^>]*data-na-anchor="nominal-focus"/);
+  assertMarginalGuide(airSVG, air);
 
   const legacy = objective('legacy');
   const legacyTarget = contactElement('sample', 'target-legacy', sourceOf(legacy), 8);
@@ -218,7 +258,7 @@ test('dry and open objectives render NA without liquid; unresolved legacy render
   const water = objective('water');
   const waterSVG = immersionLayerSVG([water]);
   assert.doesNotMatch(waterSVG, /immersion-meniscus/);
-  assert.match(waterSVG, /class="objective-na-overlay"[^>]*data-na-anchor="nominal-focus"/);
+  assertMarginalGuide(waterSVG, water);
 });
 
 test('water, oil, and custom bridges render distinct finite world-space spline menisci', () => {
@@ -235,10 +275,10 @@ test('water, oil, and custom bridges render distinct finite world-space spline m
     assert.match(svg, new RegExp(`data-immersion-objective-id="${obj.id}"`));
     assert.match(svg, new RegExp(`class="immersion-coupling immersion-${medium}"`));
     assert.match(svg, /class="immersion-meniscus"/);
-    assert.match(svg, /class="objective-na-overlay"[^>]*data-na-anchor="contact"[^>]*data-schematic="true"/);
-    assert.match(svg, /class="objective-na-acceptance"/);
+    assertMarginalGuide(svg, obj);
+    assert.doesNotMatch(svg, /objective-na-acceptance/);
     assert.doesNotMatch(svg, /NaN|Infinity|undefined/);
-    assert.equal((svg.match(/<path\b/g) || []).length, 2);
+    assert.equal((svg.match(/<path\b/g) || []).length, 1, 'only the meniscus is a path');
     const meniscusPath = svg.match(/class="immersion-meniscus" d="([^"]+)"/)?.[1] || '';
     assert.match(meniscusPath, /^M .* C .* L .* C .* Z$/, 'the liquid boundary uses two cubic side splines');
     const coordinates = meniscusPath.match(/-?\d+(?:\.\d+)?/g)?.map(Number) || [];
@@ -260,16 +300,16 @@ test('the meniscus attaches to the objective aperture edges and contacted specim
   const svg = immersionLayerSVG([obj, target]);
   const d = svg.match(/class="immersion-meniscus" d="([^"]+)"/)?.[1] || '';
 
-  // At 10x the drawn front pupil is 40 mm across, hence +/-20 mm from
-  // the objective centre. The rotated 50 mm specimen face contributes its
+  // The real clear opening is 20 mm across, hence +/-10 mm from the
+  // objective centre. The rotated 50 mm specimen face contributes its
   // full +/-25 mm contact footprint.
-  assert.match(d, new RegExp(`M ${source.x.toFixed(2)},${(source.y + 20).toFixed(2)}`));
+  assert.match(d, new RegExp(`M ${source.x.toFixed(2)},${(source.y + 10).toFixed(2)}`));
   assert.match(d, new RegExp(`${(source.x + 12).toFixed(2)},${(source.y + 25).toFixed(2)} L `));
   assert.match(d, new RegExp(`L ${(source.x + 12).toFixed(2)},${(source.y - 25).toFixed(2)} C `));
-  assert.match(d, new RegExp(`${source.x.toFixed(2)},${(source.y - 20).toFixed(2)} Z$`));
+  assert.match(d, new RegExp(`${source.x.toFixed(2)},${(source.y - 10).toFixed(2)} Z$`));
 });
 
-test('NA acceptance uses theta = asin(NA / n) and changes independently of the liquid meniscus', () => {
+test('NA guide uses the aperture-limited effective cone without deforming the meniscus', () => {
   const low = objective('water');
   low.params.na = 0.05;
   const lowTarget = contactElement('sample', 'na-target', sourceOf(low), 12);
@@ -280,18 +320,23 @@ test('NA acceptance uses theta = asin(NA / n) and changes independently of the l
   const highSVG = immersionLayerSVG([high, lowTarget]);
   const halfAngle = svg => Number(svg.match(/data-half-angle-deg="([^"]+)"/)?.[1]);
   const meniscus = svg => svg.match(/class="immersion-meniscus" d="([^"]+)"/)?.[1];
-  const acceptance = svg => svg.match(/class="objective-na-acceptance"[^>]* d="([^"]+)"/)?.[1];
 
-  assert.ok(Math.abs(halfAngle(lowSVG) - Math.asin(0.05 / 1.333) * 180 / Math.PI) < 0.001);
-  assert.ok(Math.abs(halfAngle(highSVG) - Math.asin(1.27 / 1.333) * 180 / Math.PI) < 0.001);
+  assertMarginalGuide(lowSVG, low);
+  assertMarginalGuide(highSVG, high);
+  assert.ok(Math.abs(halfAngle(lowSVG) - objectiveAcceptanceHalfAngleDeg(low.params)) < 0.001);
+  assert.ok(Math.abs(halfAngle(highSVG) - objectiveAcceptanceHalfAngleDeg(high.params)) < 0.001);
   assert.ok(halfAngle(highSVG) > halfAngle(lowSVG));
   assert.equal(meniscus(highSVG), meniscus(lowSVG), 'NA must not deform the liquid boundary');
-  assert.notEqual(acceptance(highSVG), acceptance(lowSVG), 'NA must visibly change the acceptance sector');
+  assert.notDeepEqual(marginalLines(highSVG), marginalLines(lowSVG), 'NA must move the marginal rays');
+  assert.ok(
+    objectiveEffectiveNumericalAperture(high.params) < high.params.na,
+    'the clear opening visibly limits the high rated NA',
+  );
 });
 
-test('at fixed NA the medium index changes the schematic acceptance angle', () => {
+test('at fixed rated NA the medium index changes the accepted marginal angle', () => {
   const water = objective('water');
-  water.params.na = 1;
+  water.params.na = 0.3;
   const target = contactElement('sample', 'medium-angle-target', sourceOf(water), 12);
   const oil = cloneElement(water);
   oil.params.immersion = 'oil';
@@ -299,8 +344,10 @@ test('at fixed NA the medium index changes the schematic acceptance angle', () =
   const waterSVG = immersionLayerSVG([water, target]);
   const oilSVG = immersionLayerSVG([oil, target]);
   const halfAngle = svg => Number(svg.match(/data-half-angle-deg="([^"]+)"/)?.[1]);
-  assert.ok(Math.abs(halfAngle(waterSVG) - Math.asin(1 / 1.333) * 180 / Math.PI) < 0.001);
-  assert.ok(Math.abs(halfAngle(oilSVG) - Math.asin(1 / 1.518) * 180 / Math.PI) < 0.001);
+  assertMarginalGuide(waterSVG, water);
+  assertMarginalGuide(oilSVG, oil);
+  assert.ok(Math.abs(halfAngle(waterSVG) - Math.asin(0.3 / 1.333) * 180 / Math.PI) < 0.001);
+  assert.ok(Math.abs(halfAngle(oilSVG) - Math.asin(0.3 / 1.518) * 180 / Math.PI) < 0.001);
   assert.ok(halfAngle(waterSVG) > halfAngle(oilSVG));
 });
 
@@ -312,52 +359,46 @@ test('dry and uncoupled objectives keep NA visibly responsive at nominal working
     high.params.na = medium === 'air' ? 1 : 1.2;
     const lowSVG = immersionLayerSVG([low]);
     const highSVG = immersionLayerSVG([high]);
-    const acceptance = svg => svg.match(/class="objective-na-acceptance"[^>]* d="([^"]+)"/)?.[1];
 
-    assert.match(lowSVG, /data-na-anchor="nominal-focus"/);
-    assert.match(highSVG, /data-na-anchor="nominal-focus"/);
+    assertMarginalGuide(lowSVG, low);
+    assertMarginalGuide(highSVG, high);
     assert.doesNotMatch(lowSVG, /immersion-meniscus/);
-    assert.notEqual(acceptance(lowSVG), acceptance(highSVG), `${medium} NA must change the visible cone`);
+    assert.notDeepEqual(
+      marginalLines(lowSVG),
+      marginalLines(highSVG),
+      `${medium} NA must change the visible marginal rays`,
+    );
   }
 });
 
-test('the open cone uses working distance while a connected cone uses the actual contact', () => {
+test('the guide always ends at nominal focus and ignores displaced immersion contacts', () => {
   const dry = objective('air');
   dry.params.workingDistance = 6;
+  dry.params.efl = 6;
   dry.params.na = 0.7;
-  const source = sourceOf(dry);
   const drySVG = immersionLayerSVG([dry]);
-  const conePath = svg => svg.match(/class="objective-na-acceptance"[^>]* d="([^"]+)"/)?.[1] || '';
-  assert.match(conePath(drySVG), new RegExp(`^M ${(source.x + 6).toFixed(2)},${source.y.toFixed(2)} `));
+  assertMarginalGuide(drySVG, dry);
 
-  const longerFocal = cloneElement(dry);
-  longerFocal.params.efl = 40;
-  assert.equal(
-    conePath(immersionLayerSVG([longerFocal])),
-    conePath(drySVG),
-    'raising EFL leaves an independently configured working distance alone',
-  );
-
-  // EFL is the one thing that DOES move working distance, and only downward:
-  // an objective cannot focus further away than its own focal length.
-  const shorterFocal = cloneElement(dry);
-  shorterFocal.params.efl = 2;
-  assert.match(
-    conePath(immersionLayerSVG([shorterFocal])),
-    new RegExp(`^M ${(source.x + 2).toFixed(2)},${source.y.toFixed(2)} `),
-    'shortening EFL past the working distance pulls the focus in with it',
-  );
+  const fartherFocus = cloneElement(dry);
+  fartherFocus.params.workingDistance = 14;
+  fartherFocus.params.efl = 14;
+  assertMarginalGuide(immersionLayerSVG([fartherFocus]), fartherFocus);
+  assert.notDeepEqual(marginalLines(immersionLayerSVG([fartherFocus])), marginalLines(drySVG));
 
   const wet = objective('water');
   wet.params.workingDistance = 20;
+  wet.params.efl = 20;
   const wetSource = sourceOf(wet);
-  const target = contactElement('sample', 'contact-anchor-target', wetSource, 12);
-  const wetSVG = immersionLayerSVG([wet, target]);
-  assert.match(wetSVG, /data-na-anchor="contact"/);
-  assert.match(conePath(wetSVG), new RegExp(`^M ${(wetSource.x + 12).toFixed(2)},${wetSource.y.toFixed(2)} `));
+  const nearTarget = contactElement('sample', 'near-contact-target', wetSource, 8);
+  const farTarget = contactElement('sample', 'far-contact-target', wetSource, 12);
+  const openLines = assertMarginalGuide(immersionLayerSVG([wet]), wet);
+  const nearLines = assertMarginalGuide(immersionLayerSVG([wet, nearTarget]), wet);
+  const farLines = assertMarginalGuide(immersionLayerSVG([wet, farTarget]), wet);
+  assert.deepEqual(nearLines, openLines, 'a nearer contact cannot pull the nominal focus forward');
+  assert.deepEqual(farLines, openLines, 'a farther contact cannot push the nominal focus backward');
 });
 
-test('minimum gaps and maximum custom NA keep both visual paths finite and bounded', () => {
+test('minimum gaps and maximum custom NA keep the meniscus and marginal lines finite', () => {
   const obj = objective('custom');
   obj.params.immersionIndex = 1.49;
   obj.params.na = 1.49;
@@ -365,10 +406,12 @@ test('minimum gaps and maximum custom NA keep both visual paths finite and bound
   const svg = immersionLayerSVG([obj, target]);
   const halfAngle = Number(svg.match(/data-half-angle-deg="([^"]+)"/)?.[1]);
 
-  assert.equal(halfAngle, 90);
-  assert.equal((svg.match(/<path\b/g) || []).length, 2);
+  assertMarginalGuide(svg, obj);
+  assert.ok(Math.abs(halfAngle - objectiveAcceptanceHalfAngleDeg(obj.params)) < 0.001);
+  assert.equal((svg.match(/<path\b/g) || []).length, 1);
+  assert.equal(marginalLines(svg).length, 2);
   assert.doesNotMatch(svg, /NaN|Infinity|undefined/);
-  for (const d of svg.matchAll(/ d="([^"]+)"/g)) {
+  for (const d of svg.matchAll(/<path[^>]+ d="([^"]+)"/g)) {
     assert.ok((d[1].match(/-?\d+(?:\.\d+)?/g) || []).map(Number).every(Number.isFinite));
   }
 });

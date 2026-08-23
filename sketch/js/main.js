@@ -75,12 +75,14 @@ const demoScenes = {
     mkDemo('box', 460, 300, 0, { text: '', w: 2, h: 2, behavior: 'pass', fill: '#c9d4e0' }, { label: 'still parallel — 3× wider', showLabel: true, labelPos: 't' }),
   ],
   objective: () => [
-    // The beam is sized to fill the 2fNA back pupil exactly, so the demo shows
-    // the objective working at its full rated NA — narrow the laser and the
-    // inspector's effective-NA readout drops with it.
-    mkDemo('cwlaser', 60, 300, 0, { beamMode: 'beam', beamWidth: 24 }),
-    mkDemo('objective', 300, 300, 0, { efl: 10, immersion: 'oil', na: 1.2 }),
-    mkDemo('sample', 329, 300, 90, {}, { label: '20× · NA 1.20 · oil', showLabel: true, labelPos: 't' }),
+    // The beam, traced opening, optional guide, and sample focus all use the
+    // same accepted cone in this deliberately simple objective model.
+    mkDemo('cwlaser', 60, 300, 0, { beamMode: 'beam', beamWidth: 18 }),
+    mkDemo('objective', 300, 300, 0, {
+      efl: 7, workingDistance: 7, frontAperture: 20,
+      immersion: 'oil', na: 1.2, showAcceptance: true,
+    }),
+    mkDemo('sample', 326, 300, 90, {}, { label: 'focus 7 mm · NA 1.20 · oil', showLabel: true, labelPos: 't' }),
   ],
   bs: () => [
     mkDemo('cwlaser', 60, 200, 0),

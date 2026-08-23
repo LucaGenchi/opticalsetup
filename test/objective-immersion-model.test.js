@@ -5,10 +5,13 @@ import {
   migrateLegacyObjectiveParams,
   normalizeObjectiveParams,
   OBJECTIVE_MEDIA,
+  objectiveEffectiveNumericalAperture,
+  objectiveFrontAperture,
   objectiveMaximumNA,
   objectiveMediumIndex,
   objectiveMediumKey,
   objectiveNumericalAperture,
+  objectiveWorkingDistance,
   OBJECTIVE_NA_DEFAULT,
 } from '../sketch/js/objective.js';
 
@@ -89,7 +92,7 @@ test('objective normalization returns an independent copy with valid medium, ind
     na: 1,
     efl: 5,
     workingDistance: 5,
-    frontAperture: 10,
+    frontAperture: 20,
   });
   assert.deepEqual(raw, {
     immersion: 'custom',
@@ -142,35 +145,62 @@ test('legacy migration marks the missing medium without changing the saved NA', 
   assert.equal(beyondCurrentRange.immersion, 'legacy');
 });
 
-test('focal/aperture migration classifies the derived NA and preserves an authored medium', () => {
+test('normalization synchronizes compatibility EFL to the one authored focus distance', () => {
+  assert.deepEqual(normalizeObjectiveParams({ efl: 12, workingDistance: 4, frontAperture: 30 }), {
+    efl: 4,
+    workingDistance: 4,
+    frontAperture: 20,
+    immersion: 'air',
+    immersionIndex: 1.333,
+    na: 0.65,
+  });
+  assert.deepEqual(normalizeObjectiveParams({ efl: 12, frontAperture: 12 }), {
+    efl: 12,
+    workingDistance: 12,
+    frontAperture: 12,
+    immersion: 'air',
+    immersionIndex: 1.333,
+    na: 0.65,
+  });
+  assert.equal(objectiveWorkingDistance({ workingDistance: 6, efl: 80 }), 6);
+});
+
+test('clear aperture is finite and bounded inside the fixed objective nose', () => {
+  assert.equal(objectiveFrontAperture({}), 20);
+  assert.equal(objectiveFrontAperture({ frontAperture: -10 }), 1);
+  assert.equal(objectiveFrontAperture({ frontAperture: 12.5 }), 12.5);
+  assert.equal(objectiveFrontAperture({ frontAperture: 100 }), 20);
+
+  const limited = { workingDistance: 10, frontAperture: 2, immersion: 'oil', na: 1.4 };
+  assert.ok(objectiveEffectiveNumericalAperture(limited) < objectiveNumericalAperture(limited));
+});
+
+test('focal/aperture migration classifies derived NA, bounds the clear opening, and preserves medium', () => {
   assert.deepEqual(migrateLegacyObjectiveParams({ f: 20, aperture: 40 }), {
     f: 20,
     aperture: 40,
-    magnification: 10,
     efl: 20,
     na: 1,
     workingDistance: 20,
-    frontAperture: 40,
+    frontAperture: 20,
     immersion: 'air',
   });
   assert.deepEqual(migrateLegacyObjectiveParams({ f: 20, aperture: 48 }), {
     f: 20,
     aperture: 48,
-    magnification: 10,
     efl: 20,
     na: 1.2,
     workingDistance: 20,
-    frontAperture: 48,
+    frontAperture: 20,
     immersion: 'legacy',
   });
   assert.deepEqual(migrateLegacyObjectiveParams({ f: 20, aperture: 48, immersion: 'oil' }), {
     f: 20,
     aperture: 48,
-    magnification: 10,
     efl: 20,
     na: 1.2,
     workingDistance: 20,
-    frontAperture: 48,
+    frontAperture: 20,
     immersion: 'oil',
   });
 });

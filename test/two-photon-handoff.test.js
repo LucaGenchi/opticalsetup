@@ -5,6 +5,7 @@ import { createElement } from '../sketch/js/elements.js';
 import { initInspector, renderInspector } from '../sketch/js/inspector.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { state } from '../sketch/js/state.js';
+import { objectiveEffectiveNumericalAperture } from '../sketch/js/objective.js';
 import {
   buildTwoPhotonHandoffUrl, TWO_PHOTON_LAB_URL, twoPhotonHandoffCandidates,
   twoPhotonLaserCandidates,
@@ -129,12 +130,13 @@ test('carries an unambiguous traced objective NA into the 2PP handoff', () => {
   const elements = [laser, objective, stage];
   const { signalHits } = traceScene(elements);
   const [candidate] = twoPhotonHandoffCandidates(elements, signalHits, stage.id);
+  const effectiveNA = objectiveEffectiveNumericalAperture(objective.params);
 
   assert.equal(candidate.laser.id, laser.id);
-  assert.equal(candidate.numericalAperture, 1.2);
+  assert.equal(candidate.numericalAperture, effectiveNA);
   assert.equal(
     new URL(buildTwoPhotonHandoffUrl(candidate.laser, undefined, candidate)).searchParams.get('numericalAperture'),
-    '1.2',
+    effectiveNA.toFixed(12).replace(/0+$/, '').replace(/\.$/, ''),
   );
 });
 
@@ -225,7 +227,9 @@ test('the mounted resin inspector includes the traced objective NA', () => {
   Object.assign(stage.params, { specimenType: 'resin' });
 
   const html = stageInspectorHTML(laser, stage, [objective]);
-  assert.match(html, /numericalAperture=1\.3/);
+  const effectiveNA = objectiveEffectiveNumericalAperture(objective.params)
+    .toFixed(12).replace(/0+$/, '').replace(/\.$/, '');
+  assert.ok(html.includes(`numericalAperture=${effectiveNA}`));
   assert.match(html, /traced objective NA/);
 });
 
