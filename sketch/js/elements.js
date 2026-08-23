@@ -3223,7 +3223,7 @@ const ELEMENT_HELP = {
   lensc: 'Diverges rays with a negative thin-lens focal length.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the resizable clear aperture can reduce the effective NA. The housing height follows that opening without moving the optical plane. Light continues physically through focus; the post-focus segment is drawn fainter with dashed edges so it reads as the same beam after its waist, not a new source.',
+  objective: 'One ideal bidirectional optical plane sits at the fixed front tip. Its focus distance places the nominal specimen focus; rated NA and the selected medium set the requested cone, while the resizable clear aperture can reduce the effective NA. The housing height follows that opening without moving the optical plane. Light continues physically through focus; beam mode shows only faint dashed post-focus edges so it reads as the same beam after its waist, not a new filled source.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',

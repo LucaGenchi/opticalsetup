@@ -1990,7 +1990,11 @@ function assembleDrawables(paths, opts, drawables) {
       if (ra.evanFade) { pushRay(ra, 0, 0, false); continue; } // fading glow, no fill
       if (ra.speckle) { pushRay(ra, 0, 0, true); continue; } // grains, no fill
       const rb = nextByHistory.get(ra.renderHistory);
-      if (rb && !rb.speckle) {
+      // After an objective waist, a filled divergent strip reads like a new
+      // area source. Beam mode therefore keeps the physical continuation as
+      // its two faint dashed outer edges (drawn below) without filling the
+      // entire post-focus cone. Line mode still shows every traced ray.
+      if (rb && !rb.speckle && !isPostFocus(ra)) {
         const op = opacityOf(ra, 0.28 * Math.max(0.4, ra.intensity));
         const [A, B] = ra.renderEvent === rb.renderEvent
           ? [ra.pts, rb.pts]

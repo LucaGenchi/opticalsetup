@@ -523,9 +523,9 @@ export const wikiEntries = [
         sample-side focus, and a point source placed at that focus leaves the rear side
         collimated. There is no hidden moving principal plane and no independent EFL or
         magnification control. Free-space illumination continues through the nominal
-        focus and diverges again. OpticalSetup draws that post-focus section fainter with
-        dashed outer edges, making it visibly continuous with the converging beam without
-        presenting the waist as a new point source.</p>
+        focus and diverges again. In beam mode OpticalSetup draws only its faint dashed
+        outer edges after focus, making it visibly continuous with the converging beam
+        without presenting the waist as a new filled point source.</p>
         <p>The objective's front plane and axial footprint are fixed. The blue vertical
         handles resize the real <strong>clear aperture</strong>, and the housing height
         follows the opening with fixed shell padding. Focus, NA, and medium never resize

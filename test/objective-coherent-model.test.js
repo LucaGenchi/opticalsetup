@@ -130,7 +130,7 @@ test('the fixed plane focuses, draws a distinct physical continuation, and remai
     near(start.x + t * (end.x - start.x), focusX, 1e-6, 'each edge crosses the axis at the nominal focus');
   }
   const continuation = scene.drawables.filter(drawable => drawable.segment === 'post-focus');
-  assert.ok(continuation.some(drawable => drawable.type === 'poly'), 'the divergent beam envelope remains visible after focus');
+  assert.ok(!continuation.some(drawable => drawable.type === 'poly'), 'beam mode does not fill a point-source-like post-focus cone');
   const continuationEdges = continuation.filter(drawable => drawable.type === 'path');
   assert.ok(continuationEdges.length >= 2, 'both post-focus edges remain visible');
   assert.ok(continuationEdges.every(drawable => drawable.dash === '4 3'), 'post-focus edges use a distinct dashed treatment');

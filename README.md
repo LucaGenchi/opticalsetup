@@ -122,8 +122,8 @@ rear side collimated. Focus, NA, and medium never move the front plane or stretc
 axial footprint. The blue vertical handles resize the real clear aperture, and the
 housing height follows that opening with fixed shell padding. Free-space illumination
 continues through the nominal focus and diverges again; that post-focus continuation is
-drawn fainter with dashed outer edges so it reads as the same beam after its waist rather
-than a newly emitted point source.
+drawn only as faint dashed outer edges in beam mode so it reads as the same beam after its
+waist rather than a newly emitted filled source.
 
 Rated NA and the selected front medium request an object-side cone with half-angle
 `asin(NA/n)`. The clear opening may be smaller than that request. OpticalSetup therefore
