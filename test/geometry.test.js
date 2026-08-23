@@ -10,6 +10,10 @@ import { buildSVG, exportPNG, exportSVG } from '../sketch/js/export.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { C_MM_PER_NS } from '../sketch/js/pulses.js';
 import { pulseTimelineHTML, shouldUseSlider } from '../sketch/js/inspector.js';
+
+// main.js registers these on startup, so a bundled scene may legitimately use
+// one; without the import the sweep parses against a registry the app never has.
+import '../sketch/js/detector-instruments.js';
 import { state, parseSketch } from '../sketch/js/state.js';
 import { distinctPoints } from '../sketch/js/util.js';
 import {

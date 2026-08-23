@@ -153,6 +153,53 @@ export const exampleEntries = [
     related: ['bs', 'mirror', 'detector'],
   },
   {
+    match: 'Ultrashort pulse chirping',
+    title: 'Ultrashort pulse chirping',
+    tagline: 'The same 150 fs pulse measured three ways — bare, chirped by 100 mm of dense flint, and recompressed — each on its own autocorrelator.',
+    html: `
+      <p>A transform-limited pulse is the shortest envelope its spectrum allows: every
+      frequency component arrives in phase. Glass takes that away. Because the refractive
+      index varies with wavelength, the blue components travel slower than the red ones,
+      so the pulse leaves the glass <em>chirped</em> — its colours strung out in time —
+      and therefore longer, even though nothing about its spectrum has changed and its ray
+      still runs dead straight.</p>
+      <p>The quantity that governs this is the group delay dispersion, the second
+      derivative of spectral phase. It accumulates along the path, adds up over every piece
+      of glass, and can be undone by anything supplying the opposite sign.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Three identical 150&nbsp;fs, 532&nbsp;nm Gaussian sources, each measured by its
+      own autocorrelator wired to a detector screen.</p>
+      <p>The first arm has nothing in the beam and reads 150&nbsp;fs — the reference. The
+      second passes through 100&nbsp;mm of N-SF11, a dense flint whose GVD at 532&nbsp;nm
+      is about 387&nbsp;fs²/mm: roughly +38&nbsp;680&nbsp;fs² in total, stretching the pulse
+      to about 731&nbsp;fs, nearly five times longer. The third adds a compressor set to
+      −38&nbsp;680&nbsp;fs², which cancels the glass exactly and returns the measurement to
+      150&nbsp;fs.</p>
+      <p>Each screen shows what an autocorrelator actually produces: delay on the horizontal
+      axis rather than laboratory time, the self-convolution of the pulse envelope, the
+      half-maximum chord that constitutes the measurement, and the duration inferred by
+      dividing out the shape factor (√2 for a Gaussian). Change the assumed shape on any
+      autocorrelator and it will tell you how far wrong that assumption puts the answer.</p>
+      <p>Wavelength matters as much as path length here: the same rod at 800&nbsp;nm
+      contributes only about 18&nbsp;750&nbsp;fs², because N-SF11's GVD falls steeply toward
+      the infrared. Retune the sources and watch all three traces change together.</p>`,
+    limitations: `<p>Only second-order dispersion is modelled. Real glass also has
+      third-order and higher terms that reshape a pulse asymmetrically rather than simply
+      widening it, and a real compressor is a grating, prism, or chirped-mirror assembly
+      with its own higher-order dispersion, loss, and alignment sensitivity rather than a
+      single signed number. The pulse is assumed to enter transform-limited; an input chirp
+      would add to or subtract from the glass instead of simply being stretched by it. The
+      autocorrelation curve is drawn from the inferred duration, not from a simulated
+      scanning measurement, and absorption in the glass is not modelled at all.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Group Delay Dispersion', url: 'https://www.rp-photonics.com/group_delay_dispersion.html' },
+      { label: 'RP Photonics Encyclopedia — Optical Autocorrelators', url: 'https://www.rp-photonics.com/autocorrelators.html' },
+    ],
+    related: ['pulsedlaser', 'glassrod', 'pulsecompressor', 'autocorrelator'],
+  },
+  {
     match: 'Pulse stretcher and compressor',
     title: 'Pulse stretcher and compressor',
     tagline: 'Watch a 50 fs Gaussian pulse broaden through fused silica, then contract when a signed-GDD compressor cancels the glass dispersion.',
@@ -176,7 +223,7 @@ export const exampleEntries = [
     limitations: `<p>The compressor is an adjustable lumped-GDD proxy. A real grating,
       prism, or chirped-mirror compressor also has higher-order dispersion, loss, alignment
       sensitivity, and potentially spatial chirp. The packet drawing is a qualitative
-      duration glyph capped at 8× its source length; use the detector for the unclamped
+      duration glyph that grows as the square root of the real stretch; use the detector for the unclamped
       numerical duration and GDD.</p>`,
     citations: [],
     resources: [
