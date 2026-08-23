@@ -7,7 +7,7 @@
 // dichroic, filter, split, grating, absorb, transmit (data may change
 // wavelength / deflect).
 
-import { distToSegment, esc, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
+import { distToSegment, esc, linkifyText, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
 import { compressorGddReading, detectorReading, objectivePupilFill, probeAt } from './raytrace.js';
 import { fwhmToSigma, spectrumSamples, transformLimitedBandwidthNm } from './spectrum.js';
@@ -3231,7 +3231,10 @@ export const registry = {
     noLabel: true,
     svg(el) {
       const p = el.params;
-      return `<text x="0" y="0" text-anchor="start" dominant-baseline="central" font-size="${p.fontSize}" fill="${p.fill}">${esc(p.text)}</text>`;
+      const content = linkifyText(p.text).map(part => part.href
+        ? `<a href="${esc(part.href)}" target="_blank" rel="noopener noreferrer" data-text-link="true"><tspan text-decoration="underline">${esc(part.text)}</tspan></a>`
+        : esc(part.text)).join('');
+      return `<text x="0" y="0" text-anchor="start" dominant-baseline="central" font-size="${p.fontSize}" fill="${p.fill}">${content}</text>`;
     },
     surfaces: () => [],
   },
@@ -3552,7 +3555,7 @@ const ELEMENT_HELP = {
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
-  textlabel: 'Diagram annotation; does not interact with rays.',
+  textlabel: 'Diagram annotation; web and DOI addresses become clickable links, and it does not interact with rays.',
   highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
   gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',

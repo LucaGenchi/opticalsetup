@@ -303,6 +303,10 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 #holes circle { fill: var(--grid-dot); }
 #canvas.tool-active { cursor: crosshair; }
 #canvas text { user-select: none; pointer-events: none; }
+#canvas [data-text-link], #canvas [data-text-link] tspan {
+  cursor: pointer;
+  pointer-events: all;
+}
 #canvas .display-control {
   cursor: pointer;
   pointer-events: all;
