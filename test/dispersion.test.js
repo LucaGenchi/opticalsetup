@@ -290,3 +290,66 @@ test('an autocorrelator measures the STRETCHED duration a scene actually deliver
   assert.ok(trace.inferredPulseWidthFs > 4 * laser.params.pulseWidthFs,
     'and that is far longer than what the laser was set to');
 });
+
+test('an autocorrelator on a detector screen draws its trace and the duration', () => {
+  const laser = createElement('pulsedlaser', 60, 0);
+  Object.assign(laser.params, {
+    wavelength: 532, beamMode: 'line', pulseWidthFs: 150,
+    transformLimited: true, pulseShape: 'gauss', bandwidth: 0,
+  });
+  const rod = createElement('glassrod', 300, 0);
+  Object.assign(rod.params, { material: 'nsf11', rodlen: 100, dia: 20 });
+  const meter = createElement('autocorrelator', 430, 0);
+  meter.params.aperture = 34;
+  const screen = createElement('display', 560, 0);
+  screen.params.sensorId = meter.id;
+  screen.params.screenOn = true;
+
+  const scene = [laser, rod, meter, screen];
+  traceAll(scene, []);
+  const svg = reg.display.svg(screen, scene);
+
+  assert.match(svg, /data-detector-readout="autocorrelator"/, 'the screen knows what it is showing');
+  assert.match(svg, /data-autocorrelation="\d+"/, 'it plots a sampled trace, not a single number');
+  assert.match(svg, /AUTOCORRELATION/, 'and labels the mode');
+  assert.match(svg, /0 DELAY/, 'the axis is delay, not laboratory time');
+
+  // the duration on the screen is the STRETCHED one the rod delivers
+  const arriving = detectorReading(meter.id).pulse.stretchedPulseWidthFs;
+  assert.ok(arriving > 700 && arriving < 760, `expected ~731 fs, got ${arriving}`);
+  assert.match(svg, new RegExp(`${Math.round(arriving).toLocaleString()} fs`),
+    'the screen reports what arrives, not the source setting');
+
+  // a CW source has nothing to autocorrelate, and must say so rather than plot
+  const cw = createElement('cwlaser', 60, 0);
+  cw.params.beamMode = 'line';
+  const cwScene = [cw, meter, screen];
+  traceAll(cwScene, []);
+  const cwSvg = reg.display.svg(screen, cwScene);
+  assert.doesNotMatch(cwSvg, /data-autocorrelation=/, 'no trace without a pulse');
+  assert.match(cwSvg, /NO PULSE/);
+});
+
+test('a supercontinuum stays one beam where its colours have not separated', () => {
+  // Eight spectral samples drawn at the single-ray opacity floor stacked to
+  // full coverage of a red-plus-violet blend, so white light turned purple
+  // the moment it crossed any dispersive glass.
+  const laser = createElement('sclaser', 60, 0);
+  Object.assign(laser.params, { scMin: 430, scMax: 870, beamMode: 'beam', beamWidth: 10 });
+  const lens = createElement('thicklens', 300, 0);
+  Object.assign(lens.params, { r1: 60, r2: -60, thickness: 6, dia: 25.4, glass: 'nbk7' });
+
+  const polys = traceScene([laser, lens], []).drawables.filter(d => d.type === 'poly');
+  const sliceAt = x => polys.filter(d =>
+    Math.min(...d.pts.map(p => p.x)) <= x && Math.max(...d.pts.map(p => p.x)) >= x);
+
+  const upstream = sliceAt(200), downstream = sliceAt(380);
+  assert.equal(new Set(upstream.map(d => d.color)).size, 1, 'undispersed light is one composite colour');
+  assert.ok(new Set(downstream.map(d => d.color)).size > 4, 'dispersed light really is sampled per wavelength');
+
+  // each spectral sibling must be drawn at a share of the single-ray floor
+  const upOpacity = upstream[0].opacity, downOpacity = downstream[0].opacity;
+  assert.ok(downOpacity < upOpacity / 2,
+    `spectral samples must be fainter than a single beam: ${downOpacity} vs ${upOpacity}`);
+  assert.ok(downOpacity > upOpacity / 12, 'but not so faint that a prism washes out');
+});

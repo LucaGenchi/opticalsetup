@@ -1159,7 +1159,14 @@ function interact(ray, hit) {
       };
       if (dispersive) {
         const samples = wlSamples(ray);
-        return samples.map((s, i) => transmitAt(s.wl, ray.intensity * s.weight, `w${i}`, 0));
+        // Each sample is one slice of a beam that is still physically single
+        // until the colours actually separate. Carrying the sibling count lets
+        // the renderer draw the overlapping region at a share of full opacity
+        // instead of stacking eight saturated colours on the same pixels.
+        return samples.map((s, i) => ({
+          ...transmitAt(s.wl, ray.intensity * s.weight, `w${i}`, 0),
+          spectralCount: samples.length,
+        }));
       }
       return [transmitAt(ray.wl)];
     }
@@ -1979,6 +1986,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           sourceId: 'sourceId' in c ? c.sourceId : r.sourceId,
           medium: 'medium' in c ? c.medium : r.medium,
           mediumMaterial: 'mediumMaterial' in c ? c.mediumMaterial : r.mediumMaterial,
+          spectralCount: 'spectralCount' in c ? c.spectralCount : r.spectralCount,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           gdd: childGdd,
           gddTrace: r.gddTrace ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
@@ -2109,7 +2117,19 @@ function assembleDrawables(paths, opts, drawables) {
       if (ra.speckle) { pushRay(ra, 0, 0, true); continue; } // grains, no fill
       const rb = nextByHistory.get(ra.renderHistory);
       if (rb && !rb.speckle) {
-        const op = 0.28 * Math.max(0.4, ra.intensity);
+        // A broadband ray split into N spectral samples is still one beam
+        // where those samples coincide. Flooring every sample at the
+        // single-ray minimum made eight translucent colours stack to full
+        // coverage of a red-plus-violet blend, so a white supercontinuum
+        // turned purple the moment it crossed any dispersive glass. Sharing
+        // the floor keeps the overlap near the composite and still lets the
+        // colours show where they genuinely separate.
+        // 1/sqrt(N) rather than 1/N: where the samples coincide (a lens) the
+        // stack is thin enough to read as the mixed light it physically is,
+        // and where they separate (a prism) each colour is still drawn boldly
+        // enough to be a rainbow rather than a wash.
+        const siblings = Math.max(1, ra.spectralCount || 1);
+        const op = 0.28 * Math.max(0.4 / Math.sqrt(siblings), ra.intensity);
         const [A, B] = ra.renderEvent === rb.renderEvent
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
