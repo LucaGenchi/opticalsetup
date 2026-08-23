@@ -82,12 +82,12 @@ test('shape names follow the Cartesian sign convention the lensmaker equation ne
   assert.ok(thickLensCardinals({ r1: -60, r2: 60, thickness: 5, dia: 25.4, glass: 'nbk7' }).f < 0);
 });
 
-test('the spherical singlet sits with foundational lenses before lens assemblies', () => {
+test('the singlet and the group it generalises sit before the lens assemblies', () => {
   const lensPalette = Object.entries(registry)
     .filter(([, definition]) => definition.category === 'Lenses')
     .sort(([, a], [, b]) => a.paletteOrder - b.paletteOrder)
     .map(([type]) => type);
-  assert.deepEqual(lensPalette, ['lens', 'lensc', 'thicklens', 'telescope', 'objective']);
+  assert.deepEqual(lensPalette, ['lens', 'lensc', 'thicklens', 'lensgroup', 'telescope', 'objective']);
 });
 
 test('the cement gap is just wide enough for the tracer to see both interfaces', () => {

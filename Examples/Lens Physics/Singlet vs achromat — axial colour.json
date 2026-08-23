@@ -1,0 +1,161 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "colour-title",
+      "type": "textlabel",
+      "x": 34,
+      "y": 55,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Same 100 mm focal length. Same supercontinuum. One corrected prescription.",
+        "fontSize": 18,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "singlet-heading",
+      "type": "textlabel",
+      "x": 34,
+      "y": 116,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "N-BK7 SINGLET — F-to-C focus shift −1.53 mm",
+        "fontSize": 12,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "singlet-source",
+      "type": "sclaser",
+      "x": 82,
+      "y": 202,
+      "rot": 0,
+      "label": "486–656 nm · Ø24 mm",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "scMin": 486.1,
+        "scMax": 656.3,
+        "avgPowerW": 1,
+        "beamMode": "beam",
+        "beamWidth": 24,
+        "showPulse": false,
+        "autoColor": false,
+        "color": "#cbd8ea"
+      }
+    },
+    {
+      "id": "singlet-group",
+      "type": "lensgroup",
+      "x": 320,
+      "y": 202,
+      "rot": 0,
+      "label": "uncorrected singlet · f 100 mm",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "preset": "singlet",
+        "rows": null,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "singlet-dump",
+      "type": "beamdump",
+      "x": 560,
+      "y": 202,
+      "rot": 0,
+      "label": "beam stop",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "aperture": 80
+      }
+    },
+    {
+      "id": "achromat-heading",
+      "type": "textlabel",
+      "x": 34,
+      "y": 352,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "N-BK7 + N-SF11 ACHROMAT — about 5000× less axial colour",
+        "fontSize": 12,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "achromat-source",
+      "type": "sclaser",
+      "x": 82,
+      "y": 438,
+      "rot": 0,
+      "label": "same 486–656 nm beam",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "scMin": 486.1,
+        "scMax": 656.3,
+        "avgPowerW": 1,
+        "beamMode": "beam",
+        "beamWidth": 24,
+        "showPulse": false,
+        "autoColor": false,
+        "color": "#cbd8ea"
+      }
+    },
+    {
+      "id": "achromat-group",
+      "type": "lensgroup",
+      "x": 320,
+      "y": 438,
+      "rot": 0,
+      "label": "cemented achromat · f 100 mm",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "preset": "doublet",
+        "rows": null,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "achromat-dump",
+      "type": "beamdump",
+      "x": 560,
+      "y": 438,
+      "rot": 0,
+      "label": "beam stop",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "aperture": 80
+      }
+    },
+    {
+      "id": "colour-hint",
+      "type": "textlabel",
+      "x": 34,
+      "y": 570,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Select either group to inspect its surface table, axial-colour readout, stop, and null-colour action.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": []
+}
