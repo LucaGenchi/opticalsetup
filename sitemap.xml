@@ -223,6 +223,18 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://opticalsetup.com/example-setups/multiphoton-microscope-shg-and-two-photon-fluorescence/</loc>
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/example-setups/coherent-raman-microscope-srs-and-cars/</loc>
+    <lastmod>2026-08-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://opticalsetup.com/example-setups/michelson-interferometer/</loc>
     <lastmod>2026-08-24</lastmod>
     <changefreq>monthly</changefreq>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coherent Raman microscope — Examples | OpticalSetup</title>
+<meta name="description" content="Two synchronised picosecond beams beating at a molecular vibration, read out three ways: stimulated Raman loss, forward CARS, and epi-CARS.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/coherent-raman-microscope-srs-and-cars/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Coherent Raman microscope — OpticalSetup Examples">
+<meta property="og:description" content="Two synchronised picosecond beams beating at a molecular vibration, read out three ways: stimulated Raman loss, forward CARS, and epi-CARS.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/coherent-raman-microscope-srs-and-cars/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Microscopy Implementations / Coherent Raman microscope</div>
+      <h1>Coherent Raman microscope</h1>
+      <p class="tagline" style="margin-top: 10px;">Two synchronised picosecond beams beating at a molecular vibration, read out three ways: stimulated Raman loss, forward CARS, and epi-CARS.</p>
+
+      <a class="place-cta" href="../../sketch/?example=coherent-raman-microscope-srs-and-cars">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=coherent-raman-microscope-srs-and-cars"
+          title="Coherent Raman microscope — click any component to see its live specs"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click any component to see its live specs — this embedded canvas can't be moved, deleted, or added to.</p>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+      
+      <p>Spontaneous Raman scattering identifies molecules by their vibrational
+      frequencies without any label at all, but it is desperately weak — perhaps one photon
+      in ten million — which makes it far too slow for imaging. Coherent Raman techniques
+      fix that by driving the vibration rather than waiting for it. Two beams, a
+      <strong>pump</strong> and a <strong>Stokes</strong>, are overlapped in space and
+      time; when their frequency difference matches a Raman-active vibration, they beat at
+      exactly that frequency and drive the whole ensemble of molecules in phase. The signal
+      that follows is coherent and can be orders of magnitude stronger than the
+      spontaneous one.</p>
+      <p>Which vibration is addressed is set entirely by the difference between the two
+      wavelengths, so tuning one beam sweeps the spectrum. Written as wavenumbers, the
+      vibration addressed is simply the difference of the two beams' reciprocal
+      wavelengths, and the anti-Stokes light that CARS produces appears at
+      2/λ<sub>pump</sub> − 1/λ<sub>Stokes</sub> — shorter than either input, which is what
+      makes it separable by a filter rather than by lock-in detection.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+        
+      <p>Two synchronised picosecond sources: a tunable pump, drawn at 780&nbsp;nm and
+      tunable across 750–950&nbsp;nm, and a fixed 1030&nbsp;nm Stokes. Picosecond rather
+      than femtosecond pulses are the deliberate choice here — their narrower bandwidth
+      matches the width of a Raman line, giving chemical selectivity that a femtosecond
+      pulse would wash out by driving many vibrations at once.</p>
+      <p>At 780 and 1030&nbsp;nm the pair addresses a vibration near
+      3100&nbsp;cm⁻¹; retuning the pump moves that anywhere across the fingerprint and
+      CH-stretch regions. A retroreflector delay line on the pump arm sets the temporal
+      overlap the whole technique depends on — without it the two pulses simply miss each
+      other — and a short-pass dichroic recombines the beams before the scanner.</p>
+      <p>The setup reads the interaction out in three independent ways:</p>
+      <ul>
+        <li><strong>Stimulated Raman loss.</strong> An electro-optic modulator and polarizer
+        impose a 20&nbsp;MHz intensity modulation on the <em>Stokes</em> beam. Where the
+        vibration is driven, energy transfers from pump to Stokes, so the <em>pump</em>
+        comes out slightly depleted and carries that 20&nbsp;MHz modulation as a
+        copy. The SRS channel therefore sits at 780&nbsp;nm — the pump — and a beamsplitter
+        picks off part of the modulated 1030&nbsp;nm Stokes onto a second detector as the
+        reference. Moving the modulation onto one beam and detecting it on the other is what
+        lifts a signal of one part in ten thousand out of the laser noise.</li>
+        <li><strong>Forward CARS.</strong> The same driven vibration also radiates a new
+        anti-Stokes beam. Selecting the CARS channel shows 628&nbsp;nm, which is exactly
+        where 2/λ<sub>pump</sub> − 1/λ<sub>Stokes</sub> puts it — blue-shifted of both
+        inputs, which is why it can be separated from them by filtering alone.</li>
+        <li><strong>Epi-CARS.</strong> A second PMT collects the backward-radiated fraction
+        through the excitation objective. It reads the same 628&nbsp;nm at a much smaller
+        amplitude, because CARS is a coherent process that phase-matches strongly in the
+        forward direction; what returns backwards comes from small or interface-like
+        structures, which is exactly what makes the epi channel informative rather than
+        redundant.</li>
+      </ul>
+      <p>Comparing the two mechanisms in one setup is the real lesson. SRS is a change in a
+      beam you already have, so it scales linearly with concentration and carries no
+      non-resonant background; CARS is a new colour you can filter for cleanly, but sits on
+      a non-resonant background that distorts its lineshape.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The Raman interaction is not computed. The sample generates its CARS
+      and SRS channels as configured signals with set efficiencies, so nothing here derives
+      a lineshape from a susceptibility, and the non-resonant background that complicates
+      real CARS is absent. Retuning the pump changes the anti-Stokes wavelength through the
+      energy relation, but no vibrational resonance is modelled, so the signal does not
+      rise and fall as you tune across a line. Temporal overlap is likewise not enforced:
+      the delay line is drawn and is physically meaningful, but mistiming the two pulses
+      will not extinguish the signal the way it would on a bench. The 20&nbsp;MHz
+      modulation is applied to the beam and detected, but no lock-in demodulation happens,
+      and the shot-noise-limited sensitivity that makes SRS work in practice is outside
+      what a ray tracer can express.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/retroreflector/"><svg viewBox="-23.7 -23.7 47.4 47.4" aria-hidden="true"><path d="M -12.7,12.7 L 0,0 L -12.7,-12.7" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"/></svg>Retroreflector</a><a href="../../wiki/objective/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-5.5 L 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5 L 16,5.5 Z" fill="#8d98a5" stroke="none"/><path d="M 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/><line x1="7" y1="-12.5" x2="7" y2="12.5" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-12.5" width="2.4" height="8.50" fill="#2f3e4d"/><rect x="-21" y="4.00" width="2.4" height="8.50" fill="#2f3e4d"/></svg>Objective</a>
+      </div>
+
+      
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/raman_scattering.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Raman Scattering</a></li><li><a href="https://www.rp-photonics.com/coherent_anti_stokes_raman_scattering.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Coherent Anti-Stokes Raman Scattering</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are curated and reviewed for pedagogical accuracy — see the <a href="../../community/">community section</a> for setups submitted directly by users, and the <a href="../../wiki/">wiki</a> for how each component actually works.</footer>
+</body>
+</html>
