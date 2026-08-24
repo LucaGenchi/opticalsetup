@@ -18,7 +18,7 @@ import {
   appendBoundaryGesture, boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
 } from './polygon.js';
 import {
-  FINE_GRID_PITCH, MICRO_GRID_PITCH, TABLE_HOLE_PITCH,
+  FINE_GRID_PITCH, TABLE_HOLE_PITCH,
   gridDetailForZoom, pinchView, snapToGrid, VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
 } from './viewport.js';
 import {
@@ -326,7 +326,7 @@ function renderGrid() {
   const y0 = -v.y / v.z - TABLE_HOLE_PITCH;
   const x1 = x0 + r.width / v.z + 2 * TABLE_HOLE_PITCH;
   const y1 = y0 + r.height / v.z + 2 * TABLE_HOLE_PITCH;
-  const { level } = gridDetailForZoom(v.z);
+  const { level, step: microStep } = gridDetailForZoom(v.z);
   // vector-effect keeps this in screen space, so use a literal hairline
   // width rather than compensating for zoom a second time.
   const lineWidth = 0.55;
@@ -334,7 +334,7 @@ function renderGrid() {
 
   // The smaller grid lines stay hairline-thin on screen: zoom reveals spatial
   // detail rather than turning the workbench into heavy graph paper.
-  if (level === 'micro') s += gridLines(x0, y0, x1, y1, MICRO_GRID_PITCH, '#eef1f4', lineWidth);
+  if (level === 'micro') s += gridLines(x0, y0, x1, y1, microStep, '#eef1f4', lineWidth);
   if (level !== 'table') s += gridLines(x0, y0, x1, y1, FINE_GRID_PITCH, '#e2e7ec', lineWidth);
 
   const majorStartX = Math.floor(x0 / TABLE_HOLE_PITCH) * TABLE_HOLE_PITCH;
