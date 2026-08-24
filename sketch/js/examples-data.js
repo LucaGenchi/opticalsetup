@@ -25,6 +25,18 @@ export const examples = [
     "slug": "spherical-aberration-ideal-lens-vs-spherical-singlet"
   },
   {
+    "group": "Microscopy Implementations",
+    "name": "Coherent Raman microscope — SRS and CARS",
+    "path": "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
+    "slug": "coherent-raman-microscope-srs-and-cars"
+  },
+  {
+    "group": "Microscopy Implementations",
+    "name": "Multiphoton microscope — SHG and two photon fluorescence",
+    "path": "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
+    "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
+  },
+  {
     "group": "Optics Bench",
     "name": "Mach–Zehnder interferometer",
     "path": "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
