@@ -28,11 +28,17 @@ test('viewport zoom remains bounded', () => {
   assert.equal(zoomViewAt({ x: 0, y: 0, z: 32 }, { x: 10, y: 10 }, 3).z, 64);
 });
 
-test('progressive grid and snapping refine only at close zoom', () => {
+test('progressive grid and snapping refine at precision zoom tiers', () => {
   assert.deepEqual(gridDetailForZoom(1.99), { step: 25, level: 'table' });
   assert.deepEqual(gridDetailForZoom(2), { step: 5, level: 'fine' });
   assert.deepEqual(gridDetailForZoom(8), { step: 1, level: 'micro' });
+  assert.deepEqual(gridDetailForZoom(29.99), { step: 1, level: 'micro' });
+  assert.deepEqual(gridDetailForZoom(30), { step: 0.25, level: 'micro' });
+
   assert.equal(snapToGrid(13.4, 1), 25);
   assert.equal(snapToGrid(13.4, 2), 15);
   assert.equal(snapToGrid(13.4, 8), 13);
+  assert.equal(snapToGrid(13.4, 9.99), 13);
+  assert.equal(snapToGrid(13.4, 10), 13.5);
+  assert.equal(snapToGrid(13.4, 30), 13.5);
 });
