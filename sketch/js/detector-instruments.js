@@ -8,11 +8,12 @@ import { detectorReading } from './raytrace.js';
 import { enhancedReading, objectImageAtCamera } from './detector-measurements.js';
 import { fwhmToSigma } from './spectrum.js';
 import { scopeTrace } from './pulses.js';
+import { autocorrelationReading } from './glass.js';
 import { esc, smoothPath, wavelengthToColor } from './util.js';
 
 export const DETECTOR_TYPES = [
   'camera', 'detector', 'pmt', 'powermeter', 'wavefrontdetector',
-  'polarimeter', 'spectrometer', 'generaldetector',
+  'polarimeter', 'spectrometer', 'generaldetector', 'autocorrelator',
 ];
 
 const DESCRIPTIONS = {
@@ -24,6 +25,7 @@ const DESCRIPTIONS = {
   polarimeter: 'Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.',
   spectrometer: 'Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.',
   generaldetector: 'Reports intensity, power, beam size, wavefront, polarization and Stokes parameters, wavelength and bandwidth, plus pulse repetition rate and duration.',
+  autocorrelator: 'Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one.',
   display: 'Connects to one detector and shows only the properties that detector measures. The cable carries data and never affects rays.',
 };
 
@@ -129,6 +131,19 @@ registry.spectrometer.params.push(
 registry.generaldetector = instrumentDefinition({
   label: 'General detector', code: 'ALL', readoutKind: 'general', paletteOrder: 8, width: 54, accent: '#67e8f9',
   aliases: ['universal detector', 'all properties', 'pulse detector', 'repetition rate', 'pulse duration'],
+});
+registry.autocorrelator = instrumentDefinition({
+  label: 'Autocorrelator', code: 'AC', readoutKind: 'autocorrelator', paletteOrder: 9, width: 56, accent: '#fca5a5',
+  aliases: ['pulse duration', 'pulse width', 'intensity autocorrelation', 'fwhm', 'chirp', 'pulse measurement'],
+});
+// A real autocorrelator cannot report a duration on its own: it measures the
+// autocorrelation trace and you divide out a factor that depends on the pulse
+// shape you assume. Making that assumption an explicit control is the point —
+// choose the wrong shape and the number is wrong by the ratio of the factors,
+// which is exactly the mistake the instrument invites in a real lab.
+registry.autocorrelator.params.push({
+  key: 'assumedShape', label: 'Assumed pulse shape', type: 'select', def: 'gauss',
+  options: [['gauss', 'Gaussian (÷1.414)'], ['sech2', 'Sech² (÷1.543)']],
 });
 registry.display.label = 'Detector screen';
 registry.display.paletteOrder = 20;
@@ -430,6 +445,58 @@ function formatPower(watts, signal) {
 function pulseRate(pulse) { return !pulse ? 'CW' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.repRateMHz)} MHz`; }
 function pulseDuration(pulse) { return !pulse ? '—' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.pulseWidthFs)} fs`; }
 
+// Intensity-autocorrelation trace: what an autocorrelator actually puts on a
+// screen. The horizontal axis is delay, not laboratory time — the instrument
+// scans one arm against the other — and the curve is the self-convolution of
+// the pulse envelope, which is why it is wider than the pulse by a
+// shape-dependent factor and always symmetric about zero delay.
+function autocorrelationPlot(sensor, reading) {
+  if (!reading.pulse || reading.pulse.mixed) return null;
+  const assumed = sensor.params?.assumedShape || 'gauss';
+  const actual = reading.pulse.pulseShape || 'gauss';
+  const arriving = Number.isFinite(reading.pulse.stretchedPulseWidthFs)
+    ? reading.pulse.stretchedPulseWidthFs : reading.pulse.pulseWidthFs;
+  const ac = autocorrelationReading(arriving, assumed, actual);
+  if (!ac) return null;
+
+  const baseline = 8, height = 19;
+  // Show +/- 1.6 trace widths so the wings and the half-maximum are both on
+  // screen whatever the duration.
+  const spanFs = Math.max(1e-6, ac.traceFwhmFs * 1.6);
+  const xAt = fs => -35 + 70 * (fs + spanFs) / (2 * spanFs);
+  const yAt = v => baseline - Math.max(0, Math.min(1, v)) * height;
+  // Gaussian autocorrelation of a Gaussian is Gaussian; sech² is close enough
+  // to sech² for a qualitative screen.
+  const shape = tau => (actual === 'sech2'
+    ? 1 / Math.cosh(1.7627 * tau / (ac.traceFwhmFs / 2)) ** 2
+    : Math.exp(-4 * Math.LN2 * (tau / ac.traceFwhmFs) ** 2));
+
+  const points = [];
+  for (let i = 0; i <= 96; i++) {
+    const tau = -spanFs + (2 * spanFs) * i / 96;
+    points.push(`${xAt(tau).toFixed(2)},${yAt(shape(tau)).toFixed(2)}`);
+  }
+
+  const halfY = yAt(0.5).toFixed(2);
+  const halfLeft = xAt(-ac.traceFwhmFs / 2).toFixed(2);
+  const halfRight = xAt(ac.traceFwhmFs / 2).toFixed(2);
+  const fs = v => (v < 100 ? `${v.toFixed(1)} fs` : `${Math.round(v).toLocaleString()} fs`);
+
+  return `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>` +
+    `<line x1="${xAt(0).toFixed(2)}" y1="${baseline}" x2="${xAt(0).toFixed(2)}" y2="${yAt(1).toFixed(2)}" stroke="#3d5566" stroke-width="0.5" stroke-dasharray="1 1"/>` +
+    `<polyline data-autocorrelation="${points.length}" points="${points.join(' ')}" fill="none" stroke="${reading.color || '#fca5a5'}" stroke-width="1.1"/>` +
+    // the half-maximum chord is the measurement itself, so draw it
+    `<line x1="${halfLeft}" y1="${halfY}" x2="${halfRight}" y2="${halfY}" stroke="#fca5a5" stroke-width="0.6" stroke-dasharray="1.6 1.2" opacity="0.85"/>` +
+    `<text x="${xAt(0).toFixed(2)}" y="${(baseline + 5.4)}" text-anchor="middle" font-size="3.4" fill="#5f7d8e">0 DELAY</text>` +
+    `<text x="-35" y="${(baseline + 5.4)}" font-size="3.4" fill="#5f7d8e">−${esc(fs(spanFs))}</text>` +
+    `<text x="35" y="${(baseline + 5.4)}" text-anchor="end" font-size="3.4" fill="#5f7d8e">+${esc(fs(spanFs))}</text>` +
+    // The curve peaks at centre, so the inferred duration sits in the empty
+    // upper-left corner where the wings are flat, clear of the header line.
+    `<text x="-35" y="-8.2" font-size="6.2" font-weight="780" fill="#ecf7fa">${esc(fs(ac.inferredPulseWidthFs))}</text>` +
+    `<text x="-35" y="-3.4" font-size="3.2" fill="${ac.shapeMismatch ? '#fca5a5' : '#7892a1'}">` +
+    `${ac.shapeMismatch ? `ASSUMES ${assumed === 'sech2' ? 'SECH²' : 'GAUSS'}, SOURCE ${actual === 'sech2' ? 'SECH²' : 'GAUSS'}` : `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)}`}</text>`;
+}
+
 function panel(sensor, reading, view) {
   const name = sensor.label || registry[sensor.type].label;
   if (sensor.type === 'detector') {
@@ -440,6 +507,14 @@ function panel(sensor, reading, view) {
     if (scope) return header(name, 'OSCILLOSCOPE', reading.pulse) + scope;
     return header(name, 'REL INTENSITY', reading.pulse) +
       `<circle cx="-31" cy="-1" r="2.3" fill="${reading.color}"/><text x="35" y="4" text-anchor="end" font-size="15" font-weight="780" fill="#ecf7fa">${compactNumber(reading.signal)}</text><text x="35" y="12" text-anchor="end" font-size="5" fill="#7892a1">Σw · REL INTENSITY</text>`;
+  }
+  if (sensor.type === 'autocorrelator') {
+    const plot = autocorrelationPlot(sensor, reading);
+    if (plot) return header(name, 'AUTOCORRELATION', reading.pulse) + plot;
+    return header(name, 'AUTOCORRELATION', reading.pulse) + metrics([
+      ['STATE', reading.pulse?.mixed ? 'MIXED TRAINS' : 'NO PULSE'],
+      ['DURATION', '—'],
+    ]);
   }
   if (sensor.type === 'pmt') return header(name, 'LOW-LIGHT INTENSITY', reading.pulse) + metrics([
     ['INPUT', `Σw ${compactNumber(reading.signal)}`], ['GAIN', `×${compactNumber(sensor.params.gain || 1)}`],

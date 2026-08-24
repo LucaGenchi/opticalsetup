@@ -18,7 +18,7 @@ import {
   appendBoundaryGesture, boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
 } from './polygon.js';
 import {
-  FINE_GRID_PITCH, MICRO_GRID_PITCH, TABLE_HOLE_PITCH,
+  FINE_GRID_PITCH, TABLE_HOLE_PITCH,
   gridDetailForZoom, pinchView, snapToGrid, VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
 } from './viewport.js';
 import {
@@ -326,7 +326,7 @@ function renderGrid() {
   const y0 = -v.y / v.z - TABLE_HOLE_PITCH;
   const x1 = x0 + r.width / v.z + 2 * TABLE_HOLE_PITCH;
   const y1 = y0 + r.height / v.z + 2 * TABLE_HOLE_PITCH;
-  const { level } = gridDetailForZoom(v.z);
+  const { level, step: microStep } = gridDetailForZoom(v.z);
   // vector-effect keeps this in screen space, so use a literal hairline
   // width rather than compensating for zoom a second time.
   const lineWidth = 0.55;
@@ -334,7 +334,7 @@ function renderGrid() {
 
   // The smaller grid lines stay hairline-thin on screen: zoom reveals spatial
   // detail rather than turning the workbench into heavy graph paper.
-  if (level === 'micro') s += gridLines(x0, y0, x1, y1, MICRO_GRID_PITCH, '#eef1f4', lineWidth);
+  if (level === 'micro') s += gridLines(x0, y0, x1, y1, microStep, '#eef1f4', lineWidth);
   if (level !== 'table') s += gridLines(x0, y0, x1, y1, FINE_GRID_PITCH, '#e2e7ec', lineWidth);
 
   const majorStartX = Math.floor(x0 / TABLE_HOLE_PITCH) * TABLE_HOLE_PITCH;
@@ -485,7 +485,13 @@ function renderPulseLayer() {
     }
     for (const marker of pulseMarkers(track, pulsePlayback.timeNs, { mode: pulsePlayback.mode })) {
       const physicalMin = 9 / z;
-      const width = pulsePlayback.mode === 'physical' ? Math.max(marker.widthMm, physicalMin) : marker.widthMm;
+      // Femtosecond packets are far below a screen pixel even in physical
+      // mode. The minimum glyph is therefore already schematic; scale that
+      // floor by the real duration ratio so GDD remains visible without
+      // misreporting the true c·tau length stored on the marker.
+      const width = pulsePlayback.mode === 'physical'
+        ? Math.max(marker.widthMm, physicalMin * (marker.visualStretch || 1))
+        : marker.widthMm;
       const rx = Math.max(2 / z, width / 2);
       const ry = Math.max(2.2 / z, Math.min(5 / z, 2.5 / z + 1.4 * Math.sqrt(Math.max(0, track.intensity || 0)) / z));
       const transmission = marker.transmission ?? 1;
@@ -493,7 +499,7 @@ function renderPulseLayer() {
         (0.45 + 0.45 * (track.intensity || 0)) * transmission));
       const highlightOpacity = Math.max(0.04, 0.82 * Math.sqrt(transmission));
       const packetFill = track.bw >= 200 ? 'url(#pulseSpectrum)' : track.color;
-      s += `<g transform="translate(${marker.x.toFixed(2)} ${marker.y.toFixed(2)}) rotate(${marker.angle.toFixed(2)})">` +
+      s += `<g class="pulse-marker" data-duration-fs="${marker.pulseWidthFs.toFixed(3)}" data-gdd-fs2="${marker.gddFs2.toFixed(3)}" transform="translate(${marker.x.toFixed(2)} ${marker.y.toFixed(2)}) rotate(${marker.angle.toFixed(2)})">` +
         `<ellipse rx="${(rx * 1.65).toFixed(2)}" ry="${(ry * 1.8).toFixed(2)}" fill="${packetFill}" opacity="${(opacity * 0.18).toFixed(2)}"/>` +
         `<ellipse rx="${rx.toFixed(2)}" ry="${ry.toFixed(2)}" fill="${packetFill}" opacity="${opacity.toFixed(2)}"/>` +
         `<ellipse rx="${Math.max(1 / z, rx * 0.32).toFixed(2)}" ry="${Math.max(0.8 / z, ry * 0.45).toFixed(2)}" fill="#fff" opacity="${highlightOpacity.toFixed(2)}"/>` +

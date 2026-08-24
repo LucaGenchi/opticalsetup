@@ -3,7 +3,7 @@
 A 2D optical-setup sketch builder for scientific illustrations, with live ray tracing.
 
 **➡ Try it in your browser: https://opticalsetup.com/sketch/**
-(mirror: https://lucagenchi.github.io/optics-sketch/sketch/)
+(mirror: https://lucagenchi.github.io/opticalsetup/sketch/)
 
 Search or browse optical elements, select one, and place it on a virtual optical table
 (top view). Set its parameters
@@ -33,11 +33,13 @@ figures as SVG or PNG.
   supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
   laser, directional LED, broadband point source, mirrors (flat with reflectivity,
   convex/concave, true parabolic,
-  galvo), paraxial lenses, spherical thick singlets, telescopes, objectives,
+  galvo), paraxial lenses, spherical thick singlets, editable surface-table lens
+  groups (including traced crown–flint achromats), telescopes, objectives,
   dichroics, filters, beamsplitters,
   polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
   diffusers, wavefront shapers (SLM, DMD, deformable mirror) with composable
   optical functions, modulators (AOM/AOTF/EOM/chopper), mechanical pulse-delay lines,
+  a signed-GDD pulse compressor,
   nonlinear crystals (SHG, THG,
   supercontinuum, OPO), fibers with per-end output specs, detectors, a focusing
   human eye, freeform glass/prisms with straight or circular-arc sides, and free
@@ -49,7 +51,10 @@ figures as SVG or PNG.
 - **Pulsed timing**: pulsed lasers animate wavelength-colored packets along the
   traced path. Physical mode uses optical-path delay and the configured repetition
   rate; schematic mode keeps packets visible at workbench scale while detector
-  delays remain physical. Mechanical delay lines add folded optical path, while AOMs
+  delays remain physical. For transform-limited Gaussian pulses, each packet's
+  envelope length follows the GDD accumulated at its current position, so glass
+  visibly stretches it and an opposite-GDD pulse compressor shortens it again.
+  Mechanical delay lines add folded optical path, while AOMs
   support square gating or graded sinusoidal intensity modulation. Playback can be
   paused, reset, and time-scaled. A chopper gates pulse trains in time and draws
   CW light as a chunked on/off pattern matching its duty cycle (in Hz, matching a
@@ -75,9 +80,10 @@ figures as SVG or PNG.
   pixel-averaged interference. Scalar readouts use arbitrary relative ray-weight
   units rather than implying a calibrated percentage.
 - **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets
+  and multi-element surface tables with aperture stops and emergent axial colour,
   with exact circular-surface intersections and catalogue-glass dispersion,
-  spectral band arithmetic at filters, Malus's law, grating equation, Cauchy
-  prism dispersion, cavity round trips
+  spectral band arithmetic at filters, Malus's law, grating equation,
+  Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
   with partial mirrors, image formation with magnification (arrow / letter F / tree
   objects and their computed images).
 - **Examples menu**: pedagogical image-formation setups (telescope, microscope,
@@ -104,12 +110,17 @@ figures as SVG or PNG.
 
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
 design package. It models ray paths, bounded relative power, spectral bands, Stokes
-polarization, thin-lens elements, refractive boundaries, timed pulse trains, and
-simple detector responses. Thick singlets use a 2D meridional section with spherical
-or flat faces; they do not model skew rays, aspheres, coatings, or calibrated off-axis
-aberrations. The app does not model general coherent wave propagation,
-diffraction-limited propagation, material dispersion beyond the stated simplified
-models, or laboratory-specific calibration. Its bounded interference model applies
+polarization, thin-lens elements, refractive boundaries, timed pulse trains,
+second-order material and compensator GDD, and simple detector responses. Thick
+singlets and lens groups use a 2D meridional section with spherical or flat faces;
+lens-group readouts follow the same aperture-aware realized prescription as the trace,
+including the tracer-safe 0.06 mm air gap used at nominally cemented interfaces. They
+do not model skew rays, aspheres, coatings, cement index, or calibrated off-axis
+aberrations. The app does not model coherent carrier phase, interference,
+diffraction-limited propagation, higher-order pulse dispersion, arbitrary spectral phase,
+input chirp beyond its configured state, or laboratory-specific calibration. The pulse
+compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
+Its bounded interference model applies
 only at camera sensors: it reconstructs one field per routed branch of a sized,
 monochromatic CW laser, carries optical path and the unitary phase of ideal
 non-polarizing beamsplitters and 100%-reflective flat mirrors through mechanical delay lines,
@@ -120,10 +131,10 @@ Independent sources add as intensities. A route through
 an optic whose carrier phase is not represented (including lenses, curved mirrors,
 partial-mirror coatings, gratings, diffusers, fibers, active mirrors/modulators,
 generated emission, and programmable shapers) falls back to the conservative deposited-intensity profile rather than
-inventing a phase. Paraxial image markers do not account for downstream clipping.
-Animated pulse packets are qualitative playback aids. SVG and PNG exports remain
-static and deterministic; GIF exports capture that illustrative playback rather
-than claiming a calibrated high-speed recording.
+inventing a phase. Paraxial image markers do not account
+for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
+and PNG exports remain static and deterministic; GIF exports capture that illustrative
+playback rather than claiming a calibrated high-speed recording.
 
 The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
 shows their positions in the moving 2D sample. It does not calculate focal volume,
@@ -132,7 +143,11 @@ third axis.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
 the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
-a front aperture, and a rated NA. Magnification is reported from EFL against a 200 mm
+a front aperture, and a rated NA. The normal inspector offers coordinated generic 4×,
+10×, 20×, 40×, 60× water, and 100× oil starting points; exact catalogue values live in
+a collapsed Advanced parameters section. These are plausible first-order specs, not
+manufacturer prescriptions, and EFL is no longer exposed as an unrestricted canvas-drag
+control. Magnification is reported from EFL against a 200 mm
 reference tube lens rather than typed in, because it belongs to the objective plus
 whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
 `front tip + WD − EFL`, always inside the barrel, so collimated light focuses exactly
@@ -161,9 +176,9 @@ components, solve wetting or surface tension, refract rays at the liquid boundar
 model cover glass, index mismatch, focal shift, or immersion aberrations.
 
 Freeform glass is a directly editable boundary of straight segments and exact
-three-point circular arcs with constant index or selectable catalogue-glass,
-two-term Cauchy dispersion. Those fits reproduce each glass's d-line index and Abbe
-number but are only qualitative outside the visible reference lines. The model also
+three-point circular arcs with constant index or selectable catalogue-glass
+Sellmeier dispersion. Catalogue glass accumulates GDD from the actual traced distance;
+the curves do not add absorption, temperature, or coating behavior. The model also
 supports per-surface transmission (a percentage, like every other optic's transmission
 efficiency), source-inside handling, and total internal reflection. Two glass bodies
 must not be placed in contact: the tracer cannot resolve interfaces closer than

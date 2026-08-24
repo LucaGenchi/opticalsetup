@@ -20,7 +20,7 @@ import { registry, categories, createElement, getSize, getElementMeta } from '..
 import '../sketch/js/etalon.js';
 import '../sketch/js/vipa.js';
 import '../sketch/js/detector-instruments.js';
-import { wikiEntries } from './wiki-content.mjs';
+import { wikiEntries, wikiToolSubjects } from './wiki-content.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE_URL = 'https://opticalsetup.com';
@@ -29,12 +29,25 @@ function renderFormula(tex) {
   return katex.renderToString(tex, { throwOnError: true, displayMode: true, output: 'htmlAndMathml' });
 }
 
+// Some wiki subjects are drawing tools rather than registry components — a
+// fiber is a path in state.beams, not an element — so they supply their own
+// icon and tagline instead of having them read off the registry.
+const toolEntries = new Map(wikiToolSubjects.map(t => [t.type, t]));
+
 function iconSVG(type) {
+  const tool = toolEntries.get(type);
+  if (tool) return `<svg viewBox="-24 -24 48 48" aria-hidden="true">${tool.icon}</svg>`;
   const def = registry[type];
   const el = createElement(type);
   const sz = getSize(el);
   const vb = Math.max(sz.w, sz.h) + 12;
   return `<svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}" aria-hidden="true">${def.svg(el)}</svg>`;
+}
+
+function taglineOf(entry) {
+  const tool = toolEntries.get(entry.type);
+  if (tool) return tool.tagline;
+  return getElementMeta(entry.type, createElement(entry.type).params).description;
 }
 
 function esc(s) {
@@ -123,11 +136,9 @@ function formulaBlock(f) {
 
 function pageHTML(entry, entries) {
   const base = '../..';
-  const def = registry[entry.type];
-  const el = createElement(entry.type);
-  const meta = getElementMeta(entry.type, el.params);
-  const tagline = meta.description;
-  const related = (entry.related || []).filter(t => registry[t] && !registry[t].hidden);
+  const tagline = taglineOf(entry);
+  const related = (entry.related || [])
+    .filter(t => toolEntries.has(t) || (registry[t] && !registry[t].hidden));
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -183,7 +194,7 @@ ${header(base)}
       ${related.length ? `
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
-        ${related.map(t => `<a href="${base}/wiki/${t}/">${iconSVG(t)}${esc(registry[t].label)}</a>`).join('')}
+        ${related.map(t => `<a href="${base}/wiki/${t}/">${iconSVG(t)}${esc(toolEntries.get(t)?.label ?? registry[t].label)}</a>`).join('')}
       </div>` : ''}
 
       ${referencesBlock(entry.citations)}
@@ -240,10 +251,9 @@ ${header(base)}
           <h2>${esc(cat)}</h2>
           <div class="hub-grid">
             ${byCategory.get(cat).map(e => {
-    const meta = getElementMeta(e.type, createElement(e.type).params);
     return `<a class="hub-card" href="${base}/wiki/${e.type}/">
                 <span class="ic">${iconSVG(e.type)}</span>
-                <span class="info"><span class="name">${esc(e.title)}</span><span class="desc">${esc(meta.description)}</span></span>
+                <span class="info"><span class="name">${esc(e.title)}</span><span class="desc">${esc(taglineOf(e))}</span></span>
               </a>`;
   }).join('')}
           </div>
@@ -269,7 +279,9 @@ async function writeWikiTypesManifest() {
 
 async function main() {
   for (const entry of wikiEntries) {
-    if (!registry[entry.type]) throw new Error(`wiki-content references unknown type "${entry.type}"`);
+    if (!registry[entry.type] && !toolEntries.has(entry.type)) {
+      throw new Error(`wiki-content references unknown type "${entry.type}"`);
+    }
   }
   const dir = join(ROOT, 'wiki');
   for (const entry of wikiEntries) {

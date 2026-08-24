@@ -10,6 +10,10 @@ import { buildSVG, exportPNG, exportSVG } from '../sketch/js/export.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { C_MM_PER_NS } from '../sketch/js/pulses.js';
 import { pulseTimelineHTML, shouldUseSlider } from '../sketch/js/inspector.js';
+
+// main.js registers these on startup, so a bundled scene may legitimately use
+// one; without the import the sweep parses against a registry the app never has.
+import '../sketch/js/detector-instruments.js';
 import { state, parseSketch } from '../sketch/js/state.js';
 import { distinctPoints } from '../sketch/js/util.js';
 import {
@@ -116,8 +120,9 @@ test('the microscope element is gone — it was a grey box hiding an unaimable o
 test('objectives expose EFL, WD and immersion, and place the equivalent lens so both stay true', () => {
   const objective = createElement('objective');
   assert.deepEqual(registry.objective.params.map(param => param.key), [
-    'efl', 'magnification', 'workingDistance', 'immersion', 'immersionIndex',
-    'na', 'acceptanceHalfAngle', 'showAcceptance', 'pupilFill', 'effectiveNA', 'transEff', 'frontAperture',
+    'objectivePreset', 'magnification', 'pupilFill', 'effectiveNA', 'objective-advanced',
+    'efl', 'workingDistance', 'immersion', 'immersionIndex', 'na',
+    'acceptanceHalfAngle', 'showAcceptance', 'transEff', 'frontAperture',
   ]);
   assert.equal(Object.hasOwn(objective.params, 'f'), false);
   assert.equal(Object.hasOwn(objective.params, 'aperture'), false);
@@ -125,10 +130,10 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   assert.equal(Object.hasOwn(objective.params, 'acceptanceHalfAngle'), false, 'theta is derived from NA and n');
   assert.equal(Object.hasOwn(objective.params, 'workingDistance'), true, 'WD is an independent saved objective spec');
   assert.equal(objective.params.efl, 10);
-  assert.equal(objective.params.workingDistance, 10);
-  assert.equal(objective.params.frontAperture, 20);
+  assert.equal(objective.params.workingDistance, 5);
+  assert.equal(objective.params.frontAperture, 11);
   assert.equal(objective.params.immersion, 'air');
-  assert.equal(objective.params.na, 0.65);
+  assert.equal(objective.params.na, 0.4);
   assert.equal(objective.params.showAcceptance, false, 'the NA sector is an opt-in overlay');
 
   let surface = registry.objective.surfaces(objective)[0];
@@ -136,15 +141,14 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   // produces the reported magnification instead of a decorative label.
   assert.equal(surface.data.f, 10, 'the traced plane has the objective EFL');
   assert.equal(surface.data.effectiveFocalLength, 10);
-  assert.equal(surface.data.workingDistance, 10);
-  assert.equal(surface.data.objectiveNA, 0.65);
+  assert.equal(surface.data.workingDistance, 5);
+  assert.equal(surface.data.objectiveNA, 0.4);
   assert.equal(surface.data.objectiveMediumIndex, 1);
-  // at EFL = WD the equivalent plane happens to land on the front tip
-  assert.equal(surface.x1, 16);
+  assert.ok(Math.abs(surface.x1 - 11) < 1e-9, 'the plausible 20× preset places its equivalent plane inside the barrel');
   // Its clear aperture is the rated back pupil 2*f*NA, which is what makes
   // NA actually set the convergence angle instead of only labelling it.
-  assert.equal(surface.data.pupilRadius, 6.5, 'pupil radius = 10 mm * 0.65');
-  assert.ok(Math.abs((surface.y2 - surface.y1) - 13) < 0.05, 'the bore matches the rated pupil');
+  assert.equal(surface.data.pupilRadius, 4, 'pupil radius = 10 mm * 0.40');
+  assert.ok(Math.abs((surface.y2 - surface.y1) - 8) < 0.05, 'the bore matches the rated pupil');
 
   objective.params.na = 1.4;
   surface = registry.objective.surfaces(objective)[0];
@@ -155,7 +159,7 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   surface = registry.objective.surfaces(objective)[0];
   assert.equal(surface.data.objectiveNA, 1.4);
   assert.equal(surface.data.pupilRadius, 14);
-  assert.equal(objectiveFrontAperture(objective.params), 20, 'the physical front opening stays independent');
+  assert.equal(objectiveFrontAperture(objective.params), 11, 'the physical front opening stays independent');
 
   objective.params.immersion = 'legacy';
   surface = registry.objective.surfaces(objective)[0];
@@ -221,6 +225,7 @@ test('pulsed lasers produce optical-path tracks and physical detector arrival ti
   assert.ok(scene.pulseTracks.length > 0);
   assert.deepEqual(scene.pulseTracks[0].pulse, {
     sourceId: laser.id, repRateMHz: 80, pulseWidthFs: 120, phaseNs: 0,
+    centerWavelengthNm: 532, pulseShape: 'gauss', transformLimited: true,
   });
   const reading = detectorReading(detector.id);
   assert.ok(reading.pulse);
@@ -352,6 +357,16 @@ test('long labels and probe cards are inside fitted export bounds', () => {
   const viewBox = svg.match(/viewBox="([^\"]+)"/)[1].split(' ').map(Number);
   assert.ok(viewBox[2] > 500, 'label width contributes to export bounds');
   assert.ok(viewBox[3] > 100, 'probe card height contributes to export bounds');
+});
+
+test('linked text annotations remain hyperlinks in SVG export', () => {
+  const label = createElement('textlabel', 0, 0);
+  label.params.text = 'Paper: 10.1000/182';
+  state.elements = [label];
+  state.beams = [];
+  const svg = buildSVG();
+  assert.match(svg, /<a href="https:\/\/doi\.org\/10\.1000\/182"[^>]*target="_blank"/);
+  assert.match(svg, /<tspan text-decoration="underline">10\.1000\/182<\/tspan>/);
 });
 
 test('SVG and PNG exports reach the browser download trigger', async () => {

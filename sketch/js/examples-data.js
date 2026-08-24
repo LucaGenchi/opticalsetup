@@ -14,9 +14,27 @@ export const examples = [
   },
   {
     "group": "Lens Physics",
+    "name": "Singlet vs achromat — axial colour",
+    "path": "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
+    "slug": "singlet-vs-achromat-axial-colour"
+  },
+  {
+    "group": "Lens Physics",
     "name": "Spherical aberration — ideal lens vs spherical singlet",
     "path": "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",
     "slug": "spherical-aberration-ideal-lens-vs-spherical-singlet"
+  },
+  {
+    "group": "Microscopy Implementations",
+    "name": "Coherent Raman microscope — SRS and CARS",
+    "path": "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
+    "slug": "coherent-raman-microscope-srs-and-cars"
+  },
+  {
+    "group": "Microscopy Implementations",
+    "name": "Multiphoton microscope — SHG and two photon fluorescence",
+    "path": "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
+    "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
   },
   {
     "group": "Optics Bench",
@@ -29,5 +47,11 @@ export const examples = [
     "name": "Michelson interferometer",
     "path": "../Examples/Optics%20Bench/Michelson%20interferometer.json",
     "slug": "michelson-interferometer"
+  },
+  {
+    "group": "Ultrashort Pulses",
+    "name": "Ultrashort pulse chirping",
+    "path": "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
+    "slug": "ultrashort-pulse-chirping"
   }
 ];
