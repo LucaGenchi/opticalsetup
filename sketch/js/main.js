@@ -179,6 +179,40 @@ const demoScenes = {
     mkDemo('polarizer', 240, 200, 0, { pangle: 90 }),
     mkDemo('detector', 360, 200, 0, {}, { label: 'transmitted power', showLabel: true }),
   ],
+  // A waveplate alone shows nothing: it changes a state, not a path or an
+  // intensity. Each of these pairs the element with a probe reading the state
+  // before it and something that turns the change into a visible result.
+  hwp: () => [
+    mkDemo('cwlaser', 40, 200, 0, { pol: 0 }),
+    mkDemo('polarizer', 120, 200, 0, { pangle: 0 }),
+    mkDemo('hwp', 210, 200, 0, { a: 22.5 }),
+    mkDemo('probe', 280, 200, 0, { prop: 'pol' }, { label: 'rotated 45°', showLabel: true, labelPos: 't' }),
+    mkDemo('polarizer', 350, 200, 0, { pangle: 45 }, { label: 'analyzer at 45°', showLabel: true, labelPos: 'b' }),
+    mkDemo('detector', 460, 200, 0, {}, { label: 'full power through', showLabel: true }),
+  ],
+  qwp: () => [
+    mkDemo('cwlaser', 40, 200, 0, { pol: 0 }),
+    mkDemo('polarizer', 130, 200, 0, { pangle: 0 }),
+    mkDemo('qwp', 230, 200, 0, { a: 45 }),
+    mkDemo('probe', 310, 200, 0, { prop: 'pol' }, { label: 'now circular', showLabel: true, labelPos: 't' }),
+    mkDemo('polarimeter', 430, 200, 0, {}, { label: 'Stokes readout', showLabel: true }),
+  ],
+  pbs: () => [
+    mkDemo('cwlaser', 40, 200, 0, { pol: 0 }),
+    mkDemo('polarizer', 120, 200, 0, { pangle: 0 }),
+    mkDemo('hwp', 200, 200, 0, { a: 22.5 }, { label: 'rotate to split', showLabel: true, labelPos: 't' }),
+    mkDemo('pbs', 320, 200, 0, { size: 25.4 }),
+    mkDemo('detector', 450, 200, 0, {}, { label: 'transmitted (horizontal)', showLabel: true }),
+    mkDemo('detector', 320, 90, 270, {}, { label: 'reflected (vertical)', showLabel: true, labelPos: 't' }),
+  ],
+  isolator: () => [
+    mkDemo('cwlaser', 40, 200, 0, {}),
+    mkDemo('isolator', 190, 200, 0, {}, { label: 'passes forward', showLabel: true, labelPos: 't' }),
+    mkDemo('detector', 300, 200, 0, {}, { label: 'forward beam arrives', showLabel: true }),
+    mkDemo('cwlaser', 560, 300, 180, {}, { label: 'a return beam', showLabel: true, labelPos: 't' }),
+    mkDemo('isolator', 330, 300, 0, {}, { label: 'blocks the reverse', showLabel: true, labelPos: 'b' }),
+    mkDemo('detector', 150, 300, 180, {}, { label: 'nothing gets back', showLabel: true, labelPos: 'l' }),
+  ],
   aom: () => [
     mkDemo('pulsedlaser', 60, 200, 0, {
       repRateMHz: 80, pulseWidthFs: 100,
