@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bare fiber — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="The same guided path with the connector plugs omitted and flat-cleaved ends, for custom laboratory assemblies. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/barefiber/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Bare fiber — OpticalSetup Encyclopedia">
+<meta property="og:description" content="The same guided path with the connector plugs omitted and flat-cleaved ends, for custom laboratory assemblies.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/barefiber/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="current">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#fibers">Fibers</a> / Bare fiber</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-24 -24 48 48" aria-hidden="true"><path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="butt"/></svg></div>
+        <div>
+          <h1>Bare fiber</h1>
+        </div>
+      </div>
+      <p class="tagline">The same guided path with the connector plugs omitted and flat-cleaved ends, for custom laboratory assemblies.</p>
+      <a class="place-cta" href="../../sketch/?place=barefiber">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=barefiber"
+          title="Interactive Bare fiber — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the bare fiber to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>An optical fiber guides light along its own length instead of across open
+        space. A cylindrical <strong>core</strong> of slightly higher refractive index is
+        surrounded by a <strong>cladding</strong> of slightly lower index, and light that
+        strikes the boundary at a shallow enough angle is totally internally reflected back
+        into the core. Repeated indefinitely, that confinement carries a beam around bends
+        and over distances that no free-space path could survive, which is why fiber
+        underpins both global telecommunications and a great deal of everyday optics on the
+        bench.</p>
+        <p>Two numbers govern how light gets in. The <strong>numerical aperture</strong>
+        is set by the two indices and defines a cone of acceptance: light arriving within
+        that half-angle couples into the guided mode, and light outside it does not. The
+        <strong>core diameter</strong> then decides how many spatial modes the fiber
+        supports — a large multimode core carries many, while a single-mode core of a few
+        micrometres carries exactly one and therefore preserves a clean wavefront.</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo>=</mo><msqrt><mrow><msubsup><mi>n</mi><mtext>core</mtext><mn>2</mn></msubsup><mo>−</mo><msubsup><mi>n</mi><mtext>clad</mtext><mn>2</mn></msubsup></mrow></msqrt></mrow><annotation encoding="application/x-tex">\mathrm{NA} = \sqrt{n_{\text{core}}^{2} - n_{\text{clad}}^{2}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">NA</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.84em;vertical-align:-0.5588em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.2812em;"><span class="svg-align" style="top:-3.8em;"><span class="pstrut" style="height:3.8em;"></span><span class="mord" style="padding-left:1em;"><span class="mord"><span class="mord mathnormal">n</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7401em;"><span style="top:-2.453em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">core</span></span></span></span></span><span style="top:-2.989em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.247em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal">n</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7959em;"><span style="top:-2.3987em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">clad</span></span></span></span></span><span style="top:-3.0448em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.3013em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.2412em;"><span class="pstrut" style="height:3.8em;"></span><span class="hide-tail" style="min-width:1.02em;height:1.88em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.88em" viewBox="0 0 400000 1944" preserveAspectRatio="xMinYMin slice"><path d="M983 90
+l0 -0
+c4,-6.7,10,-10,18,-10 H400000v40
+H1013.1s-83.4,268,-264.1,840c-180.7,572,-277,876.3,-289,913c-4.7,4.7,-12.7,7,-24,7
+s-12,0,-12,0c-1.3,-3.3,-3.7,-11.7,-7,-25c-35.3,-125.3,-106.7,-373.3,-214,-744
+c-10,12,-21,25,-33,39s-32,39,-32,39c-6,-5.3,-15,-14,-27,-26s25,-30,25,-30
+c26.7,-32.7,52,-63,76,-91s52,-60,52,-60s208,722,208,722
+c56,-175.3,126.3,-397.3,211,-666c84.7,-268.7,153.8,-488.2,207.5,-658.5
+c53.7,-170.3,84.5,-266.8,92.5,-289.5z
+M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.5588em;"><span></span></span></span></span></span></span></span></span></span></div>
+      <div class="caption">Numerical aperture from the index step — it sets both the acceptance cone on the way in and the divergence cone on the way out.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>θ</mi><mi>max</mi><mo>⁡</mo></msub><mo>=</mo><mi>arcsin</mi><mo>⁡</mo><mrow><mo fence="true">(</mo><mfrac><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><msub><mi>n</mi><mn>0</mn></msub></mfrac><mo fence="true">)</mo></mrow></mrow><annotation encoding="application/x-tex">\theta_{\max} = \arcsin\left(\frac{\mathrm{NA}}{n_0}\right)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mop mtight"><span class="mtight">m</span><span class="mtight">a</span><span class="mtight">x</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.4em;vertical-align:-0.95em;"></span><span class="mop">arcsin</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">(</span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">n</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathrm">NA</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">)</span></span></span></span></span></span></span></div>
+      <div class="caption">Half-angle of the acceptance cone in a medium of index n₀ — in air, simply arcsin(NA).</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>P</mi><mo stretchy="false">(</mo><mi>L</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>P</mi><mn>0</mn></msub><mtext> </mtext><msup><mn>10</mn><mrow><mo>−</mo><mi>α</mi><mi>L</mi><mi mathvariant="normal">/</mi><mn>10</mn></mrow></msup></mrow><annotation encoding="application/x-tex">P(L) = P_0 \, 10^{-\alpha L / 10}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord mathnormal">L</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.088em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mord"><span class="mord">0</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.938em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mathnormal mtight" style="margin-right:0.0037em;">α</span><span class="mord mathnormal mtight">L</span><span class="mord mtight">/10</span></span></span></span></span></span></span></span></span></span></span></span></span></div>
+      <div class="caption">Attenuation along a fiber of length L for a loss coefficient α in dB per unit length.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>t</mi><mo>=</mo><mfrac><mrow><msub><mi>n</mi><mi>g</mi></msub><mi>L</mi></mrow><mi>c</mi></mfrac></mrow><annotation encoding="application/x-tex">t = \frac{n_g L}{c}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6151em;"></span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">c</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">n</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0359em;">g</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord mathnormal">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Transit time through the fiber — the group index n_g, not the phase index, sets the delay a pulse or an interferometer actually sees.</div>
+    </div>
+      
+        <p>What emerges at the far end is not the beam that went in. A fiber scrambles the
+        spatial information it carries, so a multimode fiber illuminated with coherent light
+        produces speckle rather than an image; the output simply diverges into a cone set by
+        the fiber's NA. Light is attenuated along the way, by absorption and by scattering,
+        at a rate conventionally quoted in decibels per kilometre — around 0.2&nbsp;dB/km for
+        silica telecom fiber at 1550&nbsp;nm, which is the wavelength band the material is
+        most transparent to and the reason that band dominates long-haul communication.</p>
+        <p>Fiber also delays light. The group index of silica is close to 1.47, so a pulse
+        travels at roughly two-thirds of its vacuum speed and a fiber path is optically much
+        longer than its physical length — a distinction that matters enormously in
+        interferometry, where the optical path difference is what sets the fringes.</p>
+        <p>A separate and very active line of work turns the fiber's scrambling into
+        something useful. Because the mixing is deterministic, it can be measured and
+        inverted: a wavefront shaped correctly at the input emerges from a multimode fiber
+        as a diffraction-limited focus at a chosen point in the output plane, and scanning
+        that focus turns a hair-thin fiber into a microscope objective. These
+        <strong>lensless endoscopes</strong> image deep inside tissue through a probe no
+        wider than the fiber itself — and are typically built from bare, cleaved fiber
+        rather than from connectorized cable.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>A bare fiber is drawn rather than placed: pick the tool, click waypoints along the
+        route you want, and double-click to finish. The result is a path, not a component,
+        so it curves smoothly through its waypoints and can be reshaped afterwards by
+        dragging the round handles. Everything optical about it lives on that path.</p>
+        
+        <p>A bare fiber is the same optical component as the connectorized
+        <a href="../fiber/">optical fiber</a> — identical acceptance cone, loss, delay, and
+        output behaviour — drawn without the connector plugs and with flat-cleaved rather
+        than rounded ends. It is there for the many laboratory setups that are assembled
+        from bare cleaved or spliced fiber rather than from terminated patch cables, where
+        drawing an FC/PC plug would misrepresent the hardware. The one functional
+        difference follows from the geometry: the end face a beam has to hit is narrower,
+        since it is the fiber itself rather than the wider connector body, so aligning a
+        source onto a bare end is correspondingly fussier — as it is on a real bench.</p>
+        <p>A new fiber starts as <strong>diagram only</strong>. Its ends block whatever
+        light reaches them, and nothing comes out — which is the honest depiction of an
+        unconnected cable lying on a table. Tick <strong>Beam propagates</strong> to make it
+        an optical path, and the inspector then exposes the properties that make it one.</p>
+
+        <h3>Getting light in</h3>
+        <p>Coupling is a real test, not an assumption. A ray reaching an end face couples
+        in only if it arrives within the acceptance cone — the <strong>Input NA</strong>,
+        0.22 by default — measured against that end's own axis. A beam that arrives too
+        steeply is simply not accepted, exactly as it would not be on a bench. An
+        <a href="../objective/">objective</a> aimed at a fiber end couples into it the same
+        way, which is how the lensless-endoscope setups in the community gallery are built.</p>
+
+        <h3>What the fiber does to the light</h3>
+        <p>Three saved properties act along the drawn length. <strong>Loss</strong>, in
+        dB/m (0.2 by default), attenuates the light over the path's true geometric length.
+        The <strong>group index</strong> (1.468 by default, fused silica) multiplies that
+        length into optical path, so a fiber arm in an interferometer contributes the delay
+        it really would, and a pulse arrives when it should rather than when a free-space
+        path of the same drawn length would deliver it.</p>
+        <p>Wavelength, spectrum, polarization state, and pulse envelope all survive the
+        journey, as does any group-delay dispersion the light picked up <em>before</em> it
+        coupled in. Speckle does not: light emerges from the far end as a clean cone or
+        focus rather than as the grain a real multimode fiber would impose.</p>
+
+        <h3>Getting light out</h3>
+        <p>Each end carries its own independent output specification, so the two ends can
+        behave differently and coupling works in both directions — light entering end A
+        leaves from B under B's spec, and vice versa. Two styles are available:</p>
+        <ul>
+          <li><strong>Diverging</strong> — the ordinary case. Light leaves the tip as a
+          cone of half-angle arcsin(NA), using that end's output NA (0.12 by default),
+          which is what a real fiber tip does.</li>
+          <li><strong>Focused</strong> — light leaves as a converging fan of a chosen
+          output diameter that comes to a focus a chosen distance ahead. This is not what a
+          plain cleaved fiber does; it is there for <strong>lensless endoscopes</strong> and
+          for the lensed and GRIN-terminated fibers that deliver a focus directly from the
+          fiber tip. It is what lets you sketch a fiber probe that images a sample without
+          drawing an objective in front of it.</li>
+        </ul>
+        
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span>
+        <p>The fiber is modelled as a guided path with an acceptance cone, a loss, and a
+        delay — not as a waveguide. Nothing here computes modes, so single-mode and
+        multimode fibers are not distinguished, and the mode scrambling that dominates a
+        real multimode output is absent: the output is a clean cone or focus, never
+        speckle. Bend loss is not modelled either, so a tightly drawn path costs no more
+        than a straight one, and the loss figure is applied uniformly rather than varying
+        with wavelength. Nine rays are launched from the output end, which sets how finely
+        the emerging cone is sampled.</p>
+        <p>Most significantly, <strong>the fiber's own chromatic dispersion is not
+        modelled</strong>. Dispersion accumulated elsewhere in the setup is carried through
+        correctly, but the fiber itself neither stretches nor compresses a pulse, so a
+        femtosecond pulse emerges from a long fiber exactly as long as it went in. Real
+        fiber is one of the most dispersive elements in any ultrafast setup. Fiber
+        <strong>dispersion</strong> — and <strong>wavelength conversion</strong>, covering
+        the nonlinear behaviour that makes fiber a source as well as a conduit — are both
+        candidates for a future release.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/fiber/"><svg viewBox="-24 -24 48 48" aria-hidden="true"><path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="round"/><g transform="translate(-20 6) rotate(-20)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g><g transform="translate(20 -6) rotate(160)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g></svg>Optical fiber</a><a href="../../wiki/objective/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-5.5 L 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5 L 16,5.5 Z" fill="#8d98a5" stroke="none"/><path d="M 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/><line x1="7" y1="-12.5" x2="7" y2="12.5" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-12.5" width="2.4" height="8.50" fill="#2f3e4d"/><rect x="-21" y="4.00" width="2.4" height="8.50" fill="#2f3e4d"/></svg>Objective</a><a href="../../wiki/sclaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#24233a" stroke="#171629" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.1" fill="#fff">SC LASER</text><g stroke="#c4b5fd" stroke-width="1.1"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="1" height="9" fill="#7c3aed"/><rect x="46.85" y="-4.5" width="1" height="9" fill="#2563eb"/><rect x="47.7" y="-4.5" width="1" height="9" fill="#10b981"/><rect x="48.55" y="-4.5" width="1" height="9" fill="#eab308"/><rect x="49.4" y="-4.5" width="1" height="9" fill="#f97316"/><rect x="50.25" y="-4.5" width="1" height="9" fill="#ef4444"/></svg>Supercontinuum laser</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a>
+      </div>
+
+      
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/fibers.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Optical Fibers</a></li><li><a href="https://www.rp-photonics.com/numerical_aperture.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Numerical Aperture</a></li><li><a href="https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6835" target="_blank" rel="noopener">Thorlabs — Optical Fiber Tutorial</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

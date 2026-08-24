@@ -45,7 +45,36 @@ function mkDemo(type, x, y, rot = 0, params = {}, extra = {}) {
   return e;
 }
 
+// The two fiber tools are wiki subjects like any component, but they are
+// drawn paths rather than registry types, so the demo/deep-link gates below
+// have to admit them by name.
+const FIBER_DEMOS = new Set(['fiber', 'barefiber']);
+
+// Fibers are drawn paths (state.beams), not registry elements, so their demo
+// scenes return {elements, beams} instead of a bare element array.
+function fiberDemo({ bare }) {
+  const y = 190;
+  return {
+    elements: [
+      mkDemo('cwlaser', 40, y, 0, { beamMode: 'beam', beamWidth: 6 }),
+      mkDemo('lens', 150, y, 0, { f: 30, dia: 20 }),
+    ],
+    beams: [{
+      kind: 'fiber', bare, propagate: true, color: '#e8a800', width: 4,
+      // The entry segment has to line up with the incoming beam: coupling is a
+      // real acceptance-cone test, and a fiber whose first leg leaves at 40 deg
+      // to the source simply refuses the light.
+      pts: [{ x: 180, y }, { x: 250, y }, { x: 330, y: y + 70 }, { x: 420, y: y + 70 }],
+      inputNA: 0.22, groupIndex: 1.468, lossDbPerM: 0.2,
+      out0: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },
+      out1: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },
+    }],
+  };
+}
+
 const demoScenes = {
+  fiber: () => fiberDemo({ bare: false }),
+  barefiber: () => fiberDemo({ bare: true }),
   mirror: () => [
     mkDemo('cwlaser', 60, 150, 0),
     mkDemo('mirror', 220, 150, 45, { length: 50.8 }),
@@ -1041,7 +1070,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
-  const isTypeDemo = Boolean(demoType && registry[demoType] && !registry[demoType].hidden);
+  const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
   const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
@@ -1070,10 +1099,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     // to add/move/delete anything. See state.demoMode call sites in this
     // file and canvas.js for what's disabled.
     const build = demoScenes[demoType];
-    const sceneElements = build ? build() : [createElement(demoType, 0, 0)];
+    const built = build ? build() : [createElement(demoType, 0, 0)];
+    const sceneElements = Array.isArray(built) ? built : (built.elements || []);
+    const sceneBeams = Array.isArray(built) ? [] : (built.beams || []);
     state.elements.push(...sceneElements);
-    const hero = sceneElements.find(e => e.type === demoType) || sceneElements[0];
-    state.selection = { kind: 'element', id: hero.id };
+    if (sceneBeams.length) {
+      const parsed = parseSketch(JSON.stringify({ elements: [], beams: sceneBeams }), registry);
+      state.beams.push(...parsed.beams);
+    }
+    // A fiber demo's subject is the drawn path, not one of the elements that
+    // feed it, so select the beam instead.
+    if (state.beams.length && FIBER_DEMOS.has(demoType)) {
+      state.selection = { kind: 'beam', id: state.beams[0].id };
+    } else {
+      const hero = sceneElements.find(e => e.type === demoType) || sceneElements[0];
+      state.selection = { kind: 'element', id: hero.id };
+    }
   } else if (isCommunityDemo) {
     // Community embed: the actual submitted scene, locked the same way as a
     // wiki demo (state.demoMode), but with no single "hero" element — the
@@ -1149,7 +1190,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Deep link from the wiki ("Open in the canvas" on a component page):
     // ?place=<type> arms the placement tool for that component on load.
     const placeType = params.get('place');
-    if (placeType && registry[placeType] && !registry[placeType].hidden) {
+    if (placeType && FIBER_DEMOS.has(placeType)) {
+      startBeamTool(placeType);
+    } else if (placeType && registry[placeType] && !registry[placeType].hidden) {
       startPlacing(placeType);
     }
   }

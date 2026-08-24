@@ -19,6 +19,27 @@ function cite(...nums) {
   return `<sup class="cite">[${nums.map(n => `<a href="#ref-${n}">${n}</a>`).join(',')}]</sup>`;
 }
 
+
+// Wiki subjects that are drawing tools rather than registry components. A
+// fiber is a path in state.beams, so it has no registry svg() or metadata to
+// read — it supplies its own icon and tagline here instead.
+export const wikiToolSubjects = [
+  {
+    type: 'fiber',
+    label: 'Optical fiber',
+    tagline: 'Routes light along a drawn path between two connectorized ends, with its own acceptance angle, loss, and output cone.',
+    icon: `<path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="round"/>`
+      + `<g transform="translate(-20 6) rotate(-20)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g>`
+      + `<g transform="translate(20 -6) rotate(160)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g>`,
+  },
+  {
+    type: 'barefiber',
+    label: 'Bare fiber',
+    tagline: 'The same guided path with the connector plugs omitted and flat-cleaved ends, for custom laboratory assemblies.',
+    icon: `<path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="butt"/>`,
+  },
+];
+
 export const wikiEntries = [
   {
     type: 'cwlaser',
@@ -848,6 +869,257 @@ export const wikiEntries = [
     ],
   },
 
+  {
+    type: 'fiber',
+    title: 'Optical fiber',
+    category: 'Fibers',
+    realWorld: {
+      html: `
+        <p>An optical fiber guides light along its own length instead of across open
+        space. A cylindrical <strong>core</strong> of slightly higher refractive index is
+        surrounded by a <strong>cladding</strong> of slightly lower index, and light that
+        strikes the boundary at a shallow enough angle is totally internally reflected back
+        into the core. Repeated indefinitely, that confinement carries a beam around bends
+        and over distances that no free-space path could survive, which is why fiber
+        underpins both global telecommunications and a great deal of everyday optics on the
+        bench.</p>
+        <p>Two numbers govern how light gets in. The <strong>numerical aperture</strong>
+        is set by the two indices and defines a cone of acceptance: light arriving within
+        that half-angle couples into the guided mode, and light outside it does not. The
+        <strong>core diameter</strong> then decides how many spatial modes the fiber
+        supports — a large multimode core carries many, while a single-mode core of a few
+        micrometres carries exactly one and therefore preserves a clean wavefront.</p>`,
+      formulas: [
+        { tex: '\\mathrm{NA} = \\sqrt{n_{\\text{core}}^{2} - n_{\\text{clad}}^{2}}', caption: 'Numerical aperture from the index step — it sets both the acceptance cone on the way in and the divergence cone on the way out.' },
+        { tex: '\\theta_{\\max} = \\arcsin\\left(\\frac{\\mathrm{NA}}{n_0}\\right)', caption: 'Half-angle of the acceptance cone in a medium of index n₀ — in air, simply arcsin(NA).' },
+        { tex: 'P(L) = P_0 \\, 10^{-\\alpha L / 10}', caption: 'Attenuation along a fiber of length L for a loss coefficient α in dB per unit length.' },
+        { tex: 't = \\frac{n_g L}{c}', caption: 'Transit time through the fiber — the group index n_g, not the phase index, sets the delay a pulse or an interferometer actually sees.' },
+      ],
+      html2: `
+        <p>What emerges at the far end is not the beam that went in. A fiber scrambles the
+        spatial information it carries, so a multimode fiber illuminated with coherent light
+        produces speckle rather than an image; the output simply diverges into a cone set by
+        the fiber's NA. Light is attenuated along the way, by absorption and by scattering,
+        at a rate conventionally quoted in decibels per kilometre — around 0.2&nbsp;dB/km for
+        silica telecom fiber at 1550&nbsp;nm, which is the wavelength band the material is
+        most transparent to and the reason that band dominates long-haul communication.</p>
+        <p>Fiber also delays light. The group index of silica is close to 1.47, so a pulse
+        travels at roughly two-thirds of its vacuum speed and a fiber path is optically much
+        longer than its physical length — a distinction that matters enormously in
+        interferometry, where the optical path difference is what sets the fringes.</p>
+        <p>A separate and very active line of work turns the fiber's scrambling into
+        something useful. Because the mixing is deterministic, it can be measured and
+        inverted: a wavefront shaped correctly at the input emerges from a multimode fiber
+        as a diffraction-limited focus at a chosen point in the output plane, and scanning
+        that focus turns a hair-thin fiber into a microscope objective. These
+        <strong>lensless endoscopes</strong> image deep inside tissue through a probe no
+        wider than the fiber itself.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>A fiber is drawn rather than placed: pick the tool, click waypoints along the
+        route you want, and double-click to finish. The result is a path, not a component,
+        so it curves smoothly through its waypoints and can be reshaped afterwards by
+        dragging the round handles. Everything optical about it lives on that path.</p>
+        
+        <p>The connectors drawn at each end are the terminated patch cable you would pick
+        up off a bench. For the same component without them — a cleaved or spliced fiber,
+        as used in custom laboratory assemblies — draw a <a href="../barefiber/">bare
+        fiber</a> instead; it behaves identically and differs only in how it renders and in
+        the width of the end face a beam has to hit.</p>
+        <p>A new fiber starts as <strong>diagram only</strong>. Its ends block whatever
+        light reaches them, and nothing comes out — which is the honest depiction of an
+        unconnected cable lying on a table. Tick <strong>Beam propagates</strong> to make it
+        an optical path, and the inspector then exposes the properties that make it one.</p>
+
+        <h3>Getting light in</h3>
+        <p>Coupling is a real test, not an assumption. A ray reaching an end face couples
+        in only if it arrives within the acceptance cone — the <strong>Input NA</strong>,
+        0.22 by default — measured against that end's own axis. A beam that arrives too
+        steeply is simply not accepted, exactly as it would not be on a bench. An
+        <a href="../objective/">objective</a> aimed at a fiber end couples into it the same
+        way, which is how the lensless-endoscope setups in the community gallery are built.</p>
+
+        <h3>What the fiber does to the light</h3>
+        <p>Three saved properties act along the drawn length. <strong>Loss</strong>, in
+        dB/m (0.2 by default), attenuates the light over the path's true geometric length.
+        The <strong>group index</strong> (1.468 by default, fused silica) multiplies that
+        length into optical path, so a fiber arm in an interferometer contributes the delay
+        it really would, and a pulse arrives when it should rather than when a free-space
+        path of the same drawn length would deliver it.</p>
+        <p>Wavelength, spectrum, polarization state, and pulse envelope all survive the
+        journey, as does any group-delay dispersion the light picked up <em>before</em> it
+        coupled in. Speckle does not: light emerges from the far end as a clean cone or
+        focus rather than as the grain a real multimode fiber would impose.</p>
+
+        <h3>Getting light out</h3>
+        <p>Each end carries its own independent output specification, so the two ends can
+        behave differently and coupling works in both directions — light entering end A
+        leaves from B under B's spec, and vice versa. Two styles are available:</p>
+        <ul>
+          <li><strong>Diverging</strong> — the ordinary case. Light leaves the tip as a
+          cone of half-angle arcsin(NA), using that end's output NA (0.12 by default),
+          which is what a real fiber tip does.</li>
+          <li><strong>Focused</strong> — light leaves as a converging fan of a chosen
+          output diameter that comes to a focus a chosen distance ahead. This is not what a
+          plain cleaved fiber does; it is there for <strong>lensless endoscopes</strong> and
+          for the lensed and GRIN-terminated fibers that deliver a focus directly from the
+          fiber tip. It is what lets you sketch a fiber probe that images a sample without
+          drawing an objective in front of it.</li>
+        </ul>`,
+      limitations: `
+        <p>The fiber is modelled as a guided path with an acceptance cone, a loss, and a
+        delay — not as a waveguide. Nothing here computes modes, so single-mode and
+        multimode fibers are not distinguished, and the mode scrambling that dominates a
+        real multimode output is absent: the output is a clean cone or focus, never
+        speckle. Bend loss is not modelled either, so a tightly drawn path costs no more
+        than a straight one, and the loss figure is applied uniformly rather than varying
+        with wavelength. Nine rays are launched from the output end, which sets how finely
+        the emerging cone is sampled.</p>
+        <p>Most significantly, <strong>the fiber's own chromatic dispersion is not
+        modelled</strong>. Dispersion accumulated elsewhere in the setup is carried through
+        correctly, but the fiber itself neither stretches nor compresses a pulse, so a
+        femtosecond pulse emerges from a long fiber exactly as long as it went in. Real
+        fiber is one of the most dispersive elements in any ultrafast setup. Fiber
+        <strong>dispersion</strong> — and <strong>wavelength conversion</strong>, covering
+        the nonlinear behaviour that makes fiber a source as well as a conduit — are both
+        candidates for a future release.</p>`,
+    },
+    related: ['barefiber', 'objective', 'sclaser', 'detector'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Optical Fibers', url: 'https://www.rp-photonics.com/fibers.html' },
+      { label: 'RP Photonics Encyclopedia — Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
+      { label: 'Thorlabs — Optical Fiber Tutorial', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6835' },
+    ],
+  },
+  {
+    type: 'barefiber',
+    title: 'Bare fiber',
+    category: 'Fibers',
+    realWorld: {
+      html: `
+        <p>An optical fiber guides light along its own length instead of across open
+        space. A cylindrical <strong>core</strong> of slightly higher refractive index is
+        surrounded by a <strong>cladding</strong> of slightly lower index, and light that
+        strikes the boundary at a shallow enough angle is totally internally reflected back
+        into the core. Repeated indefinitely, that confinement carries a beam around bends
+        and over distances that no free-space path could survive, which is why fiber
+        underpins both global telecommunications and a great deal of everyday optics on the
+        bench.</p>
+        <p>Two numbers govern how light gets in. The <strong>numerical aperture</strong>
+        is set by the two indices and defines a cone of acceptance: light arriving within
+        that half-angle couples into the guided mode, and light outside it does not. The
+        <strong>core diameter</strong> then decides how many spatial modes the fiber
+        supports — a large multimode core carries many, while a single-mode core of a few
+        micrometres carries exactly one and therefore preserves a clean wavefront.</p>`,
+      formulas: [
+        { tex: '\\mathrm{NA} = \\sqrt{n_{\\text{core}}^{2} - n_{\\text{clad}}^{2}}', caption: 'Numerical aperture from the index step — it sets both the acceptance cone on the way in and the divergence cone on the way out.' },
+        { tex: '\\theta_{\\max} = \\arcsin\\left(\\frac{\\mathrm{NA}}{n_0}\\right)', caption: 'Half-angle of the acceptance cone in a medium of index n₀ — in air, simply arcsin(NA).' },
+        { tex: 'P(L) = P_0 \\, 10^{-\\alpha L / 10}', caption: 'Attenuation along a fiber of length L for a loss coefficient α in dB per unit length.' },
+        { tex: 't = \\frac{n_g L}{c}', caption: 'Transit time through the fiber — the group index n_g, not the phase index, sets the delay a pulse or an interferometer actually sees.' },
+      ],
+      html2: `
+        <p>What emerges at the far end is not the beam that went in. A fiber scrambles the
+        spatial information it carries, so a multimode fiber illuminated with coherent light
+        produces speckle rather than an image; the output simply diverges into a cone set by
+        the fiber's NA. Light is attenuated along the way, by absorption and by scattering,
+        at a rate conventionally quoted in decibels per kilometre — around 0.2&nbsp;dB/km for
+        silica telecom fiber at 1550&nbsp;nm, which is the wavelength band the material is
+        most transparent to and the reason that band dominates long-haul communication.</p>
+        <p>Fiber also delays light. The group index of silica is close to 1.47, so a pulse
+        travels at roughly two-thirds of its vacuum speed and a fiber path is optically much
+        longer than its physical length — a distinction that matters enormously in
+        interferometry, where the optical path difference is what sets the fringes.</p>
+        <p>A separate and very active line of work turns the fiber's scrambling into
+        something useful. Because the mixing is deterministic, it can be measured and
+        inverted: a wavefront shaped correctly at the input emerges from a multimode fiber
+        as a diffraction-limited focus at a chosen point in the output plane, and scanning
+        that focus turns a hair-thin fiber into a microscope objective. These
+        <strong>lensless endoscopes</strong> image deep inside tissue through a probe no
+        wider than the fiber itself — and are typically built from bare, cleaved fiber
+        rather than from connectorized cable.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>A bare fiber is drawn rather than placed: pick the tool, click waypoints along the
+        route you want, and double-click to finish. The result is a path, not a component,
+        so it curves smoothly through its waypoints and can be reshaped afterwards by
+        dragging the round handles. Everything optical about it lives on that path.</p>
+        
+        <p>A bare fiber is the same optical component as the connectorized
+        <a href="../fiber/">optical fiber</a> — identical acceptance cone, loss, delay, and
+        output behaviour — drawn without the connector plugs and with flat-cleaved rather
+        than rounded ends. It is there for the many laboratory setups that are assembled
+        from bare cleaved or spliced fiber rather than from terminated patch cables, where
+        drawing an FC/PC plug would misrepresent the hardware. The one functional
+        difference follows from the geometry: the end face a beam has to hit is narrower,
+        since it is the fiber itself rather than the wider connector body, so aligning a
+        source onto a bare end is correspondingly fussier — as it is on a real bench.</p>
+        <p>A new fiber starts as <strong>diagram only</strong>. Its ends block whatever
+        light reaches them, and nothing comes out — which is the honest depiction of an
+        unconnected cable lying on a table. Tick <strong>Beam propagates</strong> to make it
+        an optical path, and the inspector then exposes the properties that make it one.</p>
+
+        <h3>Getting light in</h3>
+        <p>Coupling is a real test, not an assumption. A ray reaching an end face couples
+        in only if it arrives within the acceptance cone — the <strong>Input NA</strong>,
+        0.22 by default — measured against that end's own axis. A beam that arrives too
+        steeply is simply not accepted, exactly as it would not be on a bench. An
+        <a href="../objective/">objective</a> aimed at a fiber end couples into it the same
+        way, which is how the lensless-endoscope setups in the community gallery are built.</p>
+
+        <h3>What the fiber does to the light</h3>
+        <p>Three saved properties act along the drawn length. <strong>Loss</strong>, in
+        dB/m (0.2 by default), attenuates the light over the path's true geometric length.
+        The <strong>group index</strong> (1.468 by default, fused silica) multiplies that
+        length into optical path, so a fiber arm in an interferometer contributes the delay
+        it really would, and a pulse arrives when it should rather than when a free-space
+        path of the same drawn length would deliver it.</p>
+        <p>Wavelength, spectrum, polarization state, and pulse envelope all survive the
+        journey, as does any group-delay dispersion the light picked up <em>before</em> it
+        coupled in. Speckle does not: light emerges from the far end as a clean cone or
+        focus rather than as the grain a real multimode fiber would impose.</p>
+
+        <h3>Getting light out</h3>
+        <p>Each end carries its own independent output specification, so the two ends can
+        behave differently and coupling works in both directions — light entering end A
+        leaves from B under B's spec, and vice versa. Two styles are available:</p>
+        <ul>
+          <li><strong>Diverging</strong> — the ordinary case. Light leaves the tip as a
+          cone of half-angle arcsin(NA), using that end's output NA (0.12 by default),
+          which is what a real fiber tip does.</li>
+          <li><strong>Focused</strong> — light leaves as a converging fan of a chosen
+          output diameter that comes to a focus a chosen distance ahead. This is not what a
+          plain cleaved fiber does; it is there for <strong>lensless endoscopes</strong> and
+          for the lensed and GRIN-terminated fibers that deliver a focus directly from the
+          fiber tip. It is what lets you sketch a fiber probe that images a sample without
+          drawing an objective in front of it.</li>
+        </ul>`,
+      limitations: `
+        <p>The fiber is modelled as a guided path with an acceptance cone, a loss, and a
+        delay — not as a waveguide. Nothing here computes modes, so single-mode and
+        multimode fibers are not distinguished, and the mode scrambling that dominates a
+        real multimode output is absent: the output is a clean cone or focus, never
+        speckle. Bend loss is not modelled either, so a tightly drawn path costs no more
+        than a straight one, and the loss figure is applied uniformly rather than varying
+        with wavelength. Nine rays are launched from the output end, which sets how finely
+        the emerging cone is sampled.</p>
+        <p>Most significantly, <strong>the fiber's own chromatic dispersion is not
+        modelled</strong>. Dispersion accumulated elsewhere in the setup is carried through
+        correctly, but the fiber itself neither stretches nor compresses a pulse, so a
+        femtosecond pulse emerges from a long fiber exactly as long as it went in. Real
+        fiber is one of the most dispersive elements in any ultrafast setup. Fiber
+        <strong>dispersion</strong> — and <strong>wavelength conversion</strong>, covering
+        the nonlinear behaviour that makes fiber a source as well as a conduit — are both
+        candidates for a future release.</p>`,
+    },
+    related: ['fiber', 'objective', 'sclaser', 'detector'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Optical Fibers', url: 'https://www.rp-photonics.com/fibers.html' },
+      { label: 'RP Photonics Encyclopedia — Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
+      { label: 'Thorlabs — Optical Fiber Tutorial', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6835' },
+    ],
+  },
   {
     type: 'prism',
     title: 'Prism',
