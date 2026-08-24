@@ -1428,6 +1428,305 @@ export const wikiEntries = [
   },
 
   {
+    type: 'hwp',
+    title: 'Half-wave plate',
+    category: 'Polarization',
+    realWorld: {
+      html: `
+        <p>A waveplate is a slice of birefringent crystal — quartz, magnesium fluoride,
+        calcite — in which the refractive index depends on the direction the light is
+        polarized. Two perpendicular directions in the plate face are special: the
+        <strong>fast axis</strong>, along which light sees the lower index and travels
+        quicker, and the <strong>slow axis</strong> perpendicular to it. Any incoming
+        polarization can be resolved into components along those two axes, and because the
+        components travel at different speeds, one emerges behind the other. Nothing is
+        absorbed; only the relative phase between the two components changes.</p>
+        <p>How much phase separates them is the <strong>retardance</strong>, and it depends
+        on the index difference, the plate thickness, and the wavelength:</p>`,
+      formulas: [
+        { tex: '\\Gamma = \\frac{2\\pi\\,\\Delta n\\,d}{\\lambda}', caption: 'Retardance of a plate of thickness d, for an index difference Δn between the slow and fast axes.' },
+        { tex: 'd = \\frac{\\lambda}{2\\,\\Delta n}', caption: 'The thickness that makes Γ exactly π — half a wave. For quartz at 633 nm, Δn ≈ 0.009, so this is about 35 µm: real plates are either bonded to a substrate or made an odd multiple of this thickness.' },
+        { tex: '\\theta_{\\text{out}} = 2\\alpha - \\theta_{\\text{in}}', caption: 'A half-wave plate mirrors the polarization about its fast axis. Linear light at θ to that axis therefore comes out rotated by 2θ.' },
+      ],
+      html2: `
+        <p>At exactly half a wave, one component is inverted relative to the other, and the
+        effect on linear polarization is a <em>reflection about the fast axis</em>. The
+        practical consequence is the one everybody uses: rotating the plate by some angle
+        rotates the polarization by twice that angle. A plate turned 22.5° rotates the light
+        45°; turned 45°, it rotates it a full 90°. Because it is a phase device rather than
+        an absorbing one, this rotation is lossless — which is exactly why a half-wave plate
+        followed by a polarizer is the standard way to control laser power continuously
+        without touching the laser.</p>
+        <p>On circularly polarized light the same mirror operation reverses the handedness,
+        turning left-circular into right-circular.</p>
+        <p>Retardance depends on wavelength, so a plate is specified for one. Used far from
+        that wavelength it is no longer half-wave and the rotation degrades. A
+        <strong>zero-order</strong> plate is genuinely as thin as the formula demands and is
+        relatively forgiving of wavelength, angle, and temperature; a
+        <strong>multi-order</strong> plate is a thicker, cheaper piece that adds several
+        whole waves on top and is correspondingly fussier. <strong>Achromatic</strong>
+        designs combine two materials so that the retardance stays near half a wave across a
+        broad band.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The plate has one control that matters: the <strong>fast axis</strong> angle, on
+        the purple canvas knob or in the inspector. Polarization is carried through the
+        whole sketch as a Stokes vector, and the plate applies an exact 180° retardance
+        about that axis — geometrically, a rotation of the polarization state on the
+        Poincaré sphere.</p>
+        <p>The behaviour that follows is the real one, not an approximation of it. Linear
+        light at 0° through a plate with its axis at 22.5° comes out at exactly 45°; set the
+        axis to 45° and the same input comes out at 90°. Align the axis with the input
+        polarization, or put it perpendicular, and nothing changes — a half-wave plate does
+        nothing to light already polarized along one of its own axes. Send circular light
+        through and the handedness flips.</p>
+        <p>Two consequences are worth knowing. The plate is <strong>lossless</strong>: it
+        changes the state, never the intensity, so a power-control stage needs the polarizer
+        after it to convert the rotation into attenuation. And <strong>unpolarized light
+        passes through unchanged</strong>, which is correct rather than a shortcut — there
+        is no preferred direction for the plate to act on. Put a
+        <a href="../polarizer/">polarizer</a> before it if you want a defined state to
+        rotate.</p>
+        <p>Polarization modulation survives the plate too: a beam being switched between two
+        states by an <a href="../aom/">electro-optic modulator</a> keeps alternating after
+        the waveplate, with both states rotated together, rather than having the modulation
+        flattened away.</p>`,
+      limitations: `<p>The retardance is exactly half a wave at every wavelength. Nothing
+        here models Δn, the plate thickness, or their dispersion, so there is no distinction
+        between zero-order, multi-order, and achromatic plates, and no degradation when a
+        plate is used away from its design wavelength — in a real setup that is the single
+        most common reason a waveplate underperforms. The plate is also perfectly lossless
+        and perfectly aligned: no Fresnel reflection at the faces, no absorption, no
+        sensitivity to angle of incidence or temperature, and no walk-off between the two
+        rays inside a birefringent crystal. Its optical thickness is not modelled either, so
+        it contributes no group-delay dispersion to a pulse.</p>`,
+    },
+    related: ['qwp', 'polarizer', 'pbs', 'eom'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Waveplates', url: 'https://www.rp-photonics.com/waveplates.html' },
+      { label: 'RP Photonics Encyclopedia — Birefringence', url: 'https://www.rp-photonics.com/birefringence.html' },
+    ],
+  },
+  {
+    type: 'qwp',
+    title: 'Quarter-wave plate',
+    category: 'Polarization',
+    realWorld: {
+      html: `
+        <p>A quarter-wave plate is the same birefringent slice as a
+        <a href="../hwp/">half-wave plate</a>, cut half as thick. It splits the incoming
+        polarization into components along its fast and slow axes and delays one by a
+        quarter of a wave — 90° of phase — relative to the other.</p>
+        <p>That quarter wave is the amount that converts <em>between</em> linear and
+        circular polarization rather than moving light around within either family. Two
+        equal components 90° out of phase trace a circle as they add; the same two
+        components in phase trace a straight line. So the plate's effect depends entirely on
+        how the input is oriented relative to its axes:</p>`,
+      formulas: [
+        { tex: '\\Gamma = \\frac{2\\pi\\,\\Delta n\\,d}{\\lambda} = \\frac{\\pi}{2}', caption: 'Quarter-wave condition — the same retardance expression as any waveplate, set to 90°.' },
+        { tex: 'd = \\frac{\\lambda}{4\\,\\Delta n}', caption: 'The thickness that achieves it: about 18 µm of quartz at 633 nm, which is why true zero-order plates are usually bonded to a thicker window.' },
+      ],
+      html2: `
+        <p>At <strong>45°</strong> to the fast axis, the input splits into two equal
+        components and the plate turns linear light into circular. At <strong>0° or
+        90°</strong>, all the light is already along one axis, there is no second component
+        to delay, and the polarization passes through untouched. At any angle in between the
+        two components are unequal and the result is <strong>elliptical</strong> — the
+        general case, of which linear and circular are the two limits.</p>
+        <p>The conversion runs both ways, and that reversibility is what makes the plate so
+        useful. Circular light entering a quarter-wave plate comes out linear. Pairing one
+        with a polarizer therefore builds a simple optical gate: light passes the polarizer,
+        becomes circular, reflects off something — which reverses the handedness — returns
+        through the plate as linear light rotated 90° from the original, and is rejected by
+        the polarizer it came through. That trick suppresses back-reflections in everything
+        from optical drives to interferometers, and it is the reason quarter-wave plates
+        turn up wherever a beam has to go out and come back along the same path.</p>
+        <p>Circular polarization is also worth having in its own right. It carries no
+        preferred direction in the plane, so it excites molecules regardless of their
+        orientation, and its two handednesses interact differently with chiral matter —
+        the basis of circular dichroism spectroscopy.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Like the half-wave plate, the quarter-wave plate exposes one control, the
+        <strong>fast axis</strong> angle, and applies an exact retardance to the beam's
+        Stokes vector — 90° in this case. It starts at 45°, the angle that produces circular
+        light from a horizontally polarized input.</p>
+        <p>The full range of behaviour is there and can be read off any detector that
+        reports polarization. Linear light at 0° with the axis at 45° comes out fully
+        circular. Rotate the axis to 0° or 90° and the light passes through still linear.
+        Set it to 22.5° and the output is elliptical, with the tilt of the ellipse and the
+        amount of circularity both visible in a <a href="../detector/">polarimeter's</a>
+        Stokes readout. Feed circular light in and linear light comes out.</p>
+        <p>Two quarter-wave plates in series with the same axis are equivalent to one
+        half-wave plate — worth trying, because it makes concrete that retardance simply
+        accumulates.</p>
+        <p>As with any waveplate here, the element is lossless and does nothing at all to
+        unpolarized light, which has no defined phase relationship for the plate to act on.
+        Establish a state with a <a href="../polarizer/">polarizer</a> first.</p>`,
+      limitations: `<p>The retardance is exactly a quarter wave at every wavelength, so
+        there is no wavelength dependence, no distinction between zero-order, multi-order,
+        and achromatic plates, and no degradation away from a design wavelength. The plate
+        is lossless and insensitive to angle of incidence and temperature, there is no
+        walk-off inside the crystal, and it adds no group-delay dispersion to a pulse. The
+        circular light it produces is mathematically perfect; a real plate leaves a small
+        residual ellipticity that matters in sensitive polarimetry.</p>`,
+    },
+    related: ['hwp', 'polarizer', 'pbs', 'isolator'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Waveplates', url: 'https://www.rp-photonics.com/waveplates.html' },
+      { label: 'RP Photonics Encyclopedia — Circular Polarization', url: 'https://www.rp-photonics.com/circular_polarization.html' },
+    ],
+  },
+  {
+    type: 'pbs',
+    title: 'Polarizing beamsplitter',
+    category: 'Polarization',
+    realWorld: {
+      html: `
+        <p>An ordinary beamsplitter divides a beam by intensity and does not care how it is
+        polarized. A polarizing beamsplitter divides it by polarization instead: one linear
+        state is transmitted, the orthogonal state is reflected, and — unlike a
+        <a href="../polarizer/">polarizer</a>, which absorbs or dumps what it rejects —
+        both halves leave as usable beams. Nothing is thrown away, which is what makes the
+        device a router rather than a filter.</p>
+        <p>The usual form is a cube: two right-angle prisms cemented along their
+        hypotenuses, with a multilayer dielectric coating sandwiched between them. Light
+        meets that internal interface at 45°, and the layer stack is designed so that the
+        <em>p</em>-polarized component (electric field in the plane of incidence) is
+        transmitted while the <em>s</em>-polarized component is reflected through 90°. The
+        two outputs are therefore linearly polarized and perpendicular to one another.</p>
+        <p>How the incoming power divides follows Malus's law, so the split is set by the
+        input polarization angle rather than by the cube:</p>`,
+      formulas: [
+        { tex: 'T = \\cos^{2}\\theta, \\qquad R = \\sin^{2}\\theta', caption: 'Fraction transmitted and reflected for linearly polarized light at θ to the transmission axis. Unpolarized light averages to 50/50.' },
+      ],
+      html2: `
+        <p>Putting a <a href="../hwp/">half-wave plate</a> in front turns this into a
+        <strong>continuously variable beamsplitter</strong>: rotating the plate rotates the
+        input polarization, sweeping the split from all-transmitted to all-reflected without
+        any absorption anywhere. That pairing is one of the most common two-element
+        combinations on an optical bench, used for power control, for balanced splitting,
+        and for routing a beam between two experiments.</p>
+        <p>Run backwards, the same cube <em>combines</em> two orthogonally polarized beams
+        into one path — the standard way to overlap two lasers with no loss, which no
+        intensity beamsplitter can do.</p>
+        <p>One asymmetry matters in practice. The transmitted port is usually very pure,
+        with extinction ratios of 1000:1 or better, because the coating is good at rejecting
+        <em>s</em>. The reflected port is markedly worse, often nearer 20:1, since some
+        <em>p</em> light leaks into it. If an experiment needs a clean state, take it from
+        the transmitted port, or clean the reflected one up with a polarizer afterwards.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The cube is drawn with its coated diagonal, and that diagonal is the traced
+        surface. It transmits horizontal polarization along the incoming axis and reflects
+        vertical polarization through 90°, splitting a single incoming ray into two outgoing
+        beams that the tracer follows independently.</p>
+        <p>The division follows Malus's law exactly: linear light at 0° goes fully through,
+        at 90° fully across, at 45° splits half and half, and at 30° divides 75/25.
+        Unpolarized light splits evenly, as it should. Both outputs emerge in
+        <em>pure</em> linear states — horizontal on the transmitted port, vertical on the
+        reflected one — regardless of what arrived, which is what makes a PBS a polarization
+        <em>cleanup</em> element and not merely a splitter. A port receiving less than 2% of
+        the light is dropped rather than drawn as a hairline that suggests a beam nobody
+        could use.</p>
+        <p>Because the cube resolves polarization into two paths, it is also how the sketch
+        makes polarization <em>visible</em>: put one after a
+        <a href="../hwp/">half-wave plate</a> and rotating the plate's axis visibly shifts
+        power from one output arm to the other, with no attenuation anywhere in the path.</p>
+        <p>The cube also handles fast polarization switching properly. A beam alternating
+        between two states pulse by pulse leaves each port as a genuinely gated pulse train,
+        with the two ports complementary — so an
+        <a href="../aom/">electro-optic modulator</a> followed by a PBS produces two real
+        interleaved trains rather than two steady half-power beams.</p>`,
+      limitations: `<p>The cube is ideal. Both ports are perfectly pure, which the
+        reflected port of a real cube is emphatically not — expect nearer 20:1 there — so
+        an experiment whose result depends on reflected-port purity will look better here
+        than on a bench. There is no coating loss, no residual reflection at the entrance
+        and exit faces, and no angular or spectral acceptance: the split is the same at
+        every wavelength and every angle of incidence, whereas a real cube is specified for
+        a band and degrades outside it. The glass path through the cube is not modelled
+        either, so it adds no optical path and no group-delay dispersion to a pulse.</p>`,
+    },
+    related: ['polarizer', 'hwp', 'bs', 'isolator'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Polarizers', url: 'https://www.rp-photonics.com/polarizers.html' },
+      { label: 'RP Photonics Encyclopedia — Beam Splitters', url: 'https://www.rp-photonics.com/beam_splitters.html' },
+    ],
+  },
+  {
+    type: 'isolator',
+    title: 'Optical isolator',
+    category: 'Polarization',
+    realWorld: {
+      html: `
+        <p>An optical isolator is a one-way valve for light: it passes a beam in the forward
+        direction and blocks anything coming back. Lasers need one because they are unusually
+        vulnerable to their own reflected light. A few per cent returning into the cavity can
+        destabilise the output power, broaden the linewidth, drive a diode into mode-hopping,
+        or — with enough power — damage the facet outright. Every optic downstream reflects
+        something, so on any serious laser bench the isolator goes in first.</p>
+        <p>What makes it possible is a genuinely unusual piece of physics. Almost everything
+        in optics is <strong>reciprocal</strong>: reverse the direction of propagation and
+        the light retraces its path exactly. A <a href="../hwp/">waveplate</a> that rotates
+        polarization one way on the way out rotates it back on the way in, so no arrangement
+        of ordinary optics can distinguish forward from backward. The
+        <strong>Faraday effect</strong> can. A magneto-optic material in a strong axial
+        magnetic field rotates polarization by an angle fixed by the field direction, not by
+        the direction the light travels — a beam going the other way is rotated the
+        <em>same</em> absolute way, not back.</p>`,
+      formulas: [
+        { tex: '\\beta = V B d', caption: 'Faraday rotation angle: the Verdet constant of the material times the axial field times the path length. The isolator is built so that β = 45°.' },
+      ],
+      html2: `
+        <p>A standard isolator stacks three parts: an input polarizer, a 45° Faraday
+        rotator, and an output polarizer set 45° from the input one. Forward, light is
+        polarized, rotated 45°, and arrives aligned with the output polarizer — it passes.
+        Backward, light entering the output polarizer is rotated a further 45° <em>in the
+        same absolute sense</em>, reaching the input polarizer at 90° to it, and is
+        rejected. The non-reciprocity is the whole mechanism; without it the return trip
+        would simply undo the outward one.</p>
+        <p>Real devices reach 30–40&nbsp;dB of isolation while costing 1–2&nbsp;dB going
+        forward. Because the Verdet constant and the required rotation both depend on
+        wavelength, an isolator is specified for a particular one, and its performance falls
+        off away from it.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The isolator is modelled as what it does rather than how it does it: a
+        directional gate. Rays travelling along the element's forward direction pass through
+        untouched; rays with any backward component are removed from the trace entirely.
+        Rotating the element sets which way is forward, so an isolator turned 180° blocks
+        the beam it previously passed — the simplest way to see the element working.</p>
+        <p>Its use here is the same as on a bench. Put one right after a laser, aim a mirror
+        or a partially reflecting surface downstream, and the return beam that would
+        otherwise travel back into the source stops at the isolator instead. Because the
+        sketch traces reflections as real rays, that back-propagating beam is genuinely
+        there to be blocked rather than merely implied.</p>
+        <p>Note that despite living in the Polarization category, this element does not
+        touch polarization at all. A beam's Stokes state is identical before and after it.
+        That is a deliberate simplification, and it differs from a real isolator in a way
+        worth knowing about — see below.</p>`,
+      limitations: `<p>The Faraday mechanism is not modelled. There is no rotator and there
+        are no internal polarizers, so the element does not polarize its output the way a
+        real isolator does: light leaves in whatever state it arrived, whereas a real device
+        emits light polarized along its output polarizer regardless of the input. If your
+        setup depends on that, place an explicit <a href="../polarizer/">polarizer</a> after
+        the isolator to represent it. Isolation is also perfect and instantaneous rather than
+        the 30–40&nbsp;dB a real device achieves, forward transmission is lossless rather
+        than costing 1–2&nbsp;dB, and there is no wavelength, temperature, or field
+        dependence — a real isolator works properly only near the wavelength it was built
+        for. Nothing outside the clear aperture is affected.</p>`,
+    },
+    related: ['polarizer', 'qwp', 'pbs', 'cwlaser'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Faraday Isolators', url: 'https://www.rp-photonics.com/faraday_isolators.html' },
+      { label: 'RP Photonics Encyclopedia — Faraday Effect', url: 'https://www.rp-photonics.com/faraday_effect.html' },
+    ],
+  },
+  {
     type: 'aom',
     title: 'Acousto-optic modulator (AOM)',
     category: 'Modulators',
