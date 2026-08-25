@@ -1194,21 +1194,24 @@ window.addEventListener('DOMContentLoaded', async () => {
       replaceScene(sharedScene, { resetHistory: true });
       zoomFit();
     } else if (!loadAutosave(registry)) {
-      // starter scene: CW laser -> lens -> beamsplitter -> two detection arms
+      // Starter scene: the three sources, nothing else. A worked setup here
+      // reads as "this is the thing to study" rather than "this is yours to
+      // build", and it has to be cleared before anyone can start. Three lit
+      // beams show the tracer working and leave the bench empty.
       const mk = (t, x, y, rot = 0, params = {}, label = '') => {
         const e = createElement(t, x, y); e.rot = rot; Object.assign(e.params, params);
         if (label) { e.label = label; e.showLabel = true; }
         return e;
       };
       state.elements.push(
-        mk('cwlaser', 75, 200, 0, { wavelength: 488 }, 'Laser 488 nm'),
-        mk('lens', 275, 200, 0, { f: 150 }, 'f = 150 mm'),
-        mk('bs', 425, 200, 0),
-        mk('mirror', 625, 200, 135),
-        mk('filter', 625, 330, 90, { ftype: 'bandpass', center: 488, band: 20 }),
-        mk('detector', 625, 430, 90, {}, 'PD'),
-        mk('dichroic', 425, 75, 45, { dtype: 'longpass', cutoff: 550 }),
-        mk('pmt', 600, 75, 0, {}, 'PMT'),
+        // Two lines, not one: at 18 pt the single line is 303 mm wide against a
+        // 315 mm canvas on a 375 px phone, so it clipped. Wrapping fits any
+        // width without shrinking the type.
+        mk('textlabel', 60, 84, 0, { text: 'Choose a source', fontSize: 18, fill: '#333333' }),
+        mk('textlabel', 60, 110, 0, { text: 'and start developing', fontSize: 18, fill: '#333333' }),
+        mk('cwlaser', 100, 170, 0, {}),
+        mk('pulsedlaser', 100, 280, 0, {}),
+        mk('sclaser', 100, 390, 0, {}),
       );
     }
   }
