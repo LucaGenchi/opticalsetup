@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry, getVisualBounds, boxAnchor, getElementMeta, getDirectManipulation } from '../sketch/js/elements.js';
 import { linkifyText } from '../sketch/js/util.js';
+import { markdownLayout, parseInlineMarkdown } from '../sketch/js/markdown.js';
 
 // ---------------- text label: left-anchored, grows rightward ----------------
 
@@ -29,7 +30,46 @@ test('text labels turn safe web and DOI addresses into SVG hyperlinks', () => {
   assert.match(svg, /href="https:\/\/example\.org\/result\?a=1&amp;b=2"/);
   assert.match(svg, /data-text-link="true"/);
   assert.match(svg, /text-decoration="underline"/);
-  assert.match(svg, /<\/a>\.<\/text>$/);
+  assert.match(svg, /<\/a><tspan>\.<\/tspan><\/text><\/g>$/);
+});
+
+test('text labels render a safe, SVG-native Markdown subset', () => {
+  const label = createElement('textlabel', 0, 0);
+  label.params.text = '# Result\n- **Bright** path\n- *Dark* path with `phase` and ~~old~~';
+  const svg = registry.textlabel.svg(label);
+
+  assert.match(svg, /data-markdown="true"/);
+  assert.match(svg, /font-size="21\.00"/);
+  assert.match(svg, />• <\/tspan>/);
+  assert.match(svg, /font-weight="700">Bright<\/tspan>/);
+  assert.match(svg, /font-style="italic">Dark<\/tspan>/);
+  assert.match(svg, /ui-monospace[^>]*>phase<\/tspan>/);
+  assert.match(svg, /text-decoration="line-through">old<\/tspan>/);
+  assert.doesNotMatch(svg, /# Result|\*\*Bright\*\*/);
+});
+
+test('Markdown links are sanitized and raw URLs remain clickable', () => {
+  const tokens = parseInlineMarkdown('[paper](https://example.org/paper) and https://example.org/data');
+  assert.deepEqual(tokens.filter(token => token.href).map(token => token.href), [
+    'https://example.org/paper',
+    'https://example.org/data',
+  ]);
+  assert.deepEqual(parseInlineMarkdown('[unsafe](javascript:alert(1))'), [
+    { text: '[unsafe](javascript:alert(1))', href: null },
+  ]);
+});
+
+test('multiline Markdown expands text bounds vertically and keeps the authored left edge', () => {
+  const oneLine = markdownLayout('One line', 14);
+  const manyLines = markdownLayout('# Heading\nFirst line\nSecond line', 14);
+  assert.ok(manyLines.height > oneLine.height * 2);
+
+  const label = createElement('textlabel', 100, 50);
+  const before = getVisualBounds(label);
+  label.params.text = '# Heading\nFirst line\nSecond line';
+  const after = getVisualBounds(label);
+  assert.ok(Math.abs(before.x0 - after.x0) < 1e-9);
+  assert.ok(after.y1 - after.y0 > before.y1 - before.y0);
 });
 
 test('link detection trims prose punctuation, preserves DOI parentheses, and rejects active schemes', () => {
@@ -57,7 +97,11 @@ test('non-link annotation markup remains escaped', () => {
 });
 
 test('text label help announces automatic web and DOI links', () => {
-  assert.match(getElementMeta('textlabel', createElement('textlabel').params).description, /web and DOI addresses become clickable links/i);
+  const label = createElement('textlabel');
+  assert.match(getElementMeta('textlabel', label.params).description, /Markdown annotation/i);
+  assert.match(getElementMeta('textlabel', label.params).description, /web and DOI addresses become clickable links/i);
+  assert.equal(registry.textlabel.params.find(param => param.key === 'text').canvasEdit, true);
+  assert.match(registry.textlabel.directHint, /edit Markdown on the canvas/i);
 });
 
 test('boxAnchor is the identity offset for every element type except the left-anchored text label', () => {

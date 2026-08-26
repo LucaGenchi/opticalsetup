@@ -7,8 +7,9 @@
 // dichroic, filter, split, grating, absorb, transmit (data may change
 // wavelength / deflect).
 
-import { distToSegment, esc, linkifyText, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
+import { distToSegment, esc, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
+import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { compressorGddReading, detectorReading, objectivePupilFill, probeAt } from './raytrace.js';
 import { fwhmToSigma, spectrumSamples, transformLimitedBandwidthNm } from './spectrum.js';
 import {
@@ -3239,23 +3240,25 @@ export const registry = {
   },
 
   textlabel: {
-    label: 'Text label', category: 'Annotations', size: el => ({ w: Math.max(30, String(el.params.text).length * el.params.fontSize * 0.6), h: el.params.fontSize + 10 }),
+    label: 'Text label', category: 'Annotations', size: el => {
+      const layout = markdownLayout(el.params.text, el.params.fontSize);
+      return { w: layout.width, h: layout.height };
+    },
     // The element position is the box's LEFT edge, not its center (see
     // boxAnchor()), so typing longer text grows the box to the right instead
     // of re-centering it around the drop point every keystroke.
     anchorX: 'left',
+    paramsTitle: 'Text style',
     params: [
-      { key: 'text', label: 'Text', type: 'text', def: 'Label' },
+      { key: 'text', label: 'Text', type: 'text', def: 'Label', canvasEdit: true },
       { key: 'fontSize', label: 'Size (pt)', type: 'number', min: 6, max: 72, step: 1, def: 14 },
       { key: 'fill', label: 'Color', type: 'color', def: '#333333' },
     ],
+    directHint: 'Double-click the text, use Edit text, or press Enter to edit Markdown on the canvas. Blue handles change its base size.',
     noLabel: true,
     svg(el) {
       const p = el.params;
-      const content = linkifyText(p.text).map(part => part.href
-        ? `<a href="${esc(part.href)}" target="_blank" rel="noopener noreferrer" data-text-link="true"><tspan text-decoration="underline">${esc(part.text)}</tspan></a>`
-        : esc(part.text)).join('');
-      return `<text x="0" y="0" text-anchor="start" dominant-baseline="central" font-size="${p.fontSize}" fill="${p.fill}">${content}</text>`;
+      return markdownTextSVG(p.text, { fontSize: p.fontSize, fill: p.fill });
     },
     surfaces: () => [],
   },
@@ -3579,7 +3582,7 @@ const ELEMENT_HELP = {
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
-  textlabel: 'Diagram annotation; web and DOI addresses become clickable links, and it does not interact with rays.',
+  textlabel: 'Markdown annotation with headings, lists, emphasis, and code; web and DOI addresses become clickable links. It does not interact with rays.',
   highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
   gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',
