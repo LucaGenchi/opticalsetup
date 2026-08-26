@@ -1,4 +1,4 @@
-// Pure viewport mathematics shared by wheel controls and touch gestures.
+// Pure viewport and pointer-gesture decisions shared by the workbench.
 
 export const VIEW_MIN_ZOOM = 0.15;
 export const VIEW_MAX_ZOOM = 64;
@@ -15,6 +15,20 @@ export const MICRO_GRID_MIN_ZOOM = 8;
 export const PRECISION_GRID_MIN_ZOOM = 30;
 export const PRECISION_SNAP_MIN_ZOOM = 10;
 export const PRECISION_SNAP_PITCH = 0.25;
+
+const INSPECTABLE_SELECTION_MODES = new Set(['move', 'movebeam']);
+
+export function shouldOpenInspectorAfterSelectionGesture({
+  mode,
+  changed = false,
+  maxDistancePx = 0,
+  pointerType = 'mouse',
+} = {}) {
+  if (!INSPECTABLE_SELECTION_MODES.has(mode) || changed) return false;
+  // Keep normal click jitter a click while making touch taps forgiving.
+  const threshold = pointerType === 'touch' ? 10 : 4;
+  return Number.isFinite(maxDistancePx) && maxDistancePx < threshold;
+}
 
 export function clampZoom(value, min = VIEW_MIN_ZOOM, max = VIEW_MAX_ZOOM) {
   return Math.min(max, Math.max(min, value));

@@ -19,7 +19,8 @@ import {
 } from './polygon.js';
 import {
   FINE_GRID_PITCH, TABLE_HOLE_PITCH,
-  gridDetailForZoom, pinchView, snapToGrid, VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
+  gridDetailForZoom, pinchView, shouldOpenInspectorAfterSelectionGesture, snapToGrid,
+  VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
 } from './viewport.js';
 import {
   MAX_TIME_SCALE, MIN_TIME_SCALE, pulsePeriodNs, pulsesReadAsCW,
@@ -1436,19 +1437,25 @@ function onDown(e) {
   if (el) {
     state.selection = { kind: 'element', id: el.id };
     if (!state.demoMode) {
-      drag = { mode: 'move', el, ox: el.x - w.x, oy: el.y - w.y, moved: false };
+      drag = {
+        mode: 'move', el, ox: el.x - w.x, oy: el.y - w.y, moved: false,
+        pointerType: e.pointerType, pressClientX: e.clientX, pressClientY: e.clientY, maxDistancePx: 0,
+      };
       svg.setPointerCapture(e.pointerId);
     }
-    renderAll(); onSelectionChange({ openMobile: e.pointerType !== 'touch' });
+    renderAll(); onSelectionChange({ openMobile: state.demoMode });
     return;
   }
   // manual beam?
   const b = state.demoMode ? null : hitBeam(w);
   if (b) {
     state.selection = { kind: 'beam', id: b.id };
-    drag = { mode: 'movebeam', beam: b, lx: w.x, ly: w.y, moved: false };
+    drag = {
+      mode: 'movebeam', beam: b, lx: w.x, ly: w.y, moved: false,
+      pointerType: e.pointerType, pressClientX: e.clientX, pressClientY: e.clientY, maxDistancePx: 0,
+    };
     svg.setPointerCapture(e.pointerId);
-    renderAll(); onSelectionChange({ openMobile: e.pointerType !== 'touch' });
+    renderAll(); onSelectionChange();
     return;
   }
   // empty space: deselect + pan
@@ -1495,6 +1502,13 @@ function onMove(e) {
   if (placing) { placing.pos = snapElPos(placing.el, w.x, w.y, e.altKey); renderElements(); return; }
   if (drawing) { drawing.cursor = { x: snapPos(w.x), y: snapPos(w.y) }; renderManual(); return; }
   if (!drag) return;
+  if ((drag.mode === 'move' || drag.mode === 'movebeam')
+      && Number.isFinite(drag.pressClientX) && Number.isFinite(drag.pressClientY)) {
+    drag.maxDistancePx = Math.max(
+      drag.maxDistancePx || 0,
+      Math.hypot(e.clientX - drag.pressClientX, e.clientY - drag.pressClientY),
+    );
+  }
 
   if (drag.mode === 'pan') {
     state.view.x = drag.vx + (e.clientX - drag.sx);
@@ -1703,9 +1717,22 @@ function onUp(e) {
   }
   const dragMode = drag.mode;
   const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(dragMode);
+  if ((dragMode === 'move' || dragMode === 'movebeam')
+      && Number.isFinite(drag.pressClientX) && Number.isFinite(drag.pressClientY)) {
+    drag.maxDistancePx = Math.max(
+      drag.maxDistancePx || 0,
+      Math.hypot(e.clientX - drag.pressClientX, e.clientY - drag.pressClientY),
+    );
+  }
+  const openInspector = shouldOpenInspectorAfterSelectionGesture({
+    mode: dragMode,
+    changed: wasChange,
+    maxDistancePx: drag.maxDistancePx,
+    pointerType: drag.pointerType,
+  });
   drag = null;
   if (wasChange) { setStatus(''); changed(); onSelectionChange(); }
-  else if (e.pointerType === 'touch' && (dragMode === 'move' || dragMode === 'movebeam')) onSelectionChange({ openMobile: true });
+  else if (openInspector) onSelectionChange({ openMobile: true });
 }
 
 function bindWheel() {
