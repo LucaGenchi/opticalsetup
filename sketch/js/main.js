@@ -242,7 +242,18 @@ const demoScenes = {
     }, { label: 'grating pattern, 15% left undiffracted', showLabel: true, labelPos: 'b' }),
     // The 45 deg SLM reflects at x=287, not at its element origin, so the dump
     // sits there rather than under the element's centre.
-    mkDemo('beamdump', 287, 70, 90, { aperture: 30 }, { label: '0th order, dumped', showLabel: true, labelPos: 'l' }),
+    mkDemo('beamdump', 287, 70, 90, { aperture: 30 }, { label: '0th order, dumped', showLabel: true, labelPos: 'r' }),
+  ],
+  // The DMD's whole point is that ON and OFF leave in different directions, so
+  // the demo shows the OFF order and terminates it the way a real setup must.
+  dmd: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 16 }),
+    mkDemo('dmd', 300, 200, 45, { length: 40, tilt: 12, pitch: 8, duty: 0.5, routeOff: true },
+      { label: '±12° mirrors — ON and OFF leave 48° apart', showLabel: true, labelPos: 'b' }),
+    // At 12 deg tilt the ON beam leaves at -66 deg and the OFF at -114 deg, so
+    // they cross y=70 at x=345 and x=232 respectively.
+    mkDemo('detector', 345, 70, 294, { aperture: 40 }, { label: 'ON beam', showLabel: true, labelPos: 'r' }),
+    mkDemo('beamdump', 232, 70, 0, { aperture: 34 }, { label: 'OFF beam, dumped', showLabel: true, labelPos: 'l' }),
   ],
   aom: () => [
     mkDemo('pulsedlaser', 60, 200, 0, {
