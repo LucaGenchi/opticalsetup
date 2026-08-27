@@ -1992,6 +1992,139 @@ export const wikiEntries = [
     ],
   },
   {
+    type: 'slm',
+    title: 'Spatial light modulator',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A spatial light modulator is a programmable optic. Instead of grinding a surface
+        into a fixed shape, it imposes a phase pattern that software can change frame by
+        frame — so one device can act as a lens, a grating, a corrector for aberrations it
+        measures on the fly, or a hologram that paints an arbitrary intensity pattern in a
+        distant plane.</p>
+
+        <h3>How liquid crystals do it</h3>
+        <p>The working substance is a <strong>nematic liquid crystal</strong>: rod-shaped
+        molecules that share a common orientation — the <em>director</em> — while remaining
+        free to move past one another like a liquid. That orientational order without
+        positional order is what makes the phase useful. Aligned rods are optically
+        <strong>birefringent</strong>: light polarized along the director sees the
+        extraordinary index <span class="w">n<sub>e</sub></span>, light polarized across it
+        sees the ordinary index <span class="w">n<sub>o</sub></span>, and the difference is
+        large — around 0.1 to 0.2, roughly ten times that of a quartz
+        <a href="../hwp/">waveplate</a>.</p>
+        <p>Applying a voltage across a pixel tilts the director toward the field. The index
+        seen by light polarized along the original director slides continuously from
+        <span class="w">n<sub>e</sub></span> toward <span class="w">n<sub>o</sub></span>, so
+        the optical path through that pixel — and therefore the phase of the light leaving
+        it — becomes a smooth function of the applied voltage:</p>`,
+      formulas: [
+        { tex: '\\Gamma(V) = \\frac{2\\pi\\,\\Delta n(V)\\,d}{\\lambda}', caption: 'Phase retardance of one pixel: the voltage-dependent index difference times the liquid-crystal layer thickness. This is the same expression as a waveplate, with Δn now under electrical control.' },
+        { tex: '\\Gamma_{\\text{LCOS}} = 2 \\times \\frac{2\\pi\\,\\Delta n(V)\\,d}{\\lambda}', caption: 'A reflective device doubles it: light crosses the layer on the way in and again on the way out, so half the thickness achieves a full 2π stroke.' },
+      ],
+      html2: `
+        <p>Nearly all phase-only modulators are <strong>LCOS</strong> — liquid crystal on
+        silicon. A CMOS backplane addresses each pixel and carries a mirror beneath it, with
+        the liquid-crystal layer above; light enters, reflects off the pixel mirror, and
+        leaves having crossed the modulating layer twice. Pixels are a few micrometres
+        across, the phase is quantised to 8 bits, and the device is calibrated so that its
+        full drive range corresponds to exactly 2π at one design wavelength.</p>
+        <p>Two consequences follow from the physics and are worth knowing before you design
+        around one. First, <strong>the input must be linearly polarized along the
+        director</strong>: only that component is modulated, so light in the orthogonal
+        state passes through unchanged and dilutes the pattern. Every SLM setup therefore
+        has a <a href="../polarizer/">polarizer</a> in front of it. Second, liquid crystals
+        are <strong>slow</strong> — reorientation takes milliseconds, so refresh rates are
+        tens of hertz, not the megahertz an acousto-optic device reaches.</p>
+
+        <h3>The zero-order problem</h3>
+        <p>An SLM never modulates all the light that lands on it, and the unmodulated
+        fraction leaves along the direction of a plain mirror — the specular, or
+        <strong>zeroth-order</strong>, beam. It sits on the optical axis, undiffracted,
+        while the pattern you asked for is formed around it. Several causes contribute:</p>
+        <ul>
+          <li><strong>Fill factor below 100%.</strong> The gaps between pixels, and the
+          circuitry at their edges, are not modulated. That light reflects with no phase
+          structure at all.</li>
+          <li><strong>Front-surface reflection</strong> from the protective cover glass,
+          which never reaches the liquid crystal.</li>
+          <li><strong>Incomplete 2π stroke.</strong> If the calibration is off, or the
+          device is used away from its design wavelength, the phase never wraps cleanly and
+          a residual unmodulated component survives.</li>
+          <li><strong>Phase quantisation and flicker</strong> from the digital drive
+          scheme.</li>
+        </ul>
+        <p>Together these typically leave a few per cent up to about ten per cent of the
+        incident power in the zeroth order — which, concentrated in a single undiffracted
+        spot, is frequently the <em>brightest</em> feature in the output plane. In
+        holographic optical tweezers it is a trap nobody asked for; in a
+        <a href="../objective/">microscope</a> it is a bright spot at the centre of the
+        field; at high power it can damage a sample outright.</p>
+        <p>The standard remedy is to steer the useful light away from it. Adding a linear
+        phase ramp — a blazed grating — to the displayed hologram deflects the whole pattern
+        off-axis, leaving the zeroth order behind on the axis where it can be removed with a
+        <a href="../beamdump/">beam block</a> at an intermediate focus. Careful
+        per-wavelength calibration of the 2π lookup table reduces the residue at the source,
+        and slightly tilting the device separates the cover-glass reflection from the
+        modulated beam.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The SLM is <strong>reflective</strong> by default, matching an LCOS device, with
+        a <strong>Transmissive</strong> toggle for the less common transmissive kind. Its
+        active size sets how much of a beam it intercepts, and the blue handle resizes it on
+        the canvas.</p>
+        <p>What it does to light is set by a stack of <strong>optical function</strong>
+        layers, applied in order — up to four:</p>
+        <ul>
+          <li><strong>Lens array</strong> — divides the aperture into lenslets of a chosen
+          count and focal length, so one beam becomes several focused spots. Each lenslet is
+          tracked separately, so beams do not blend between them.</li>
+          <li><strong>Grating</strong> — a programmable diffraction grating with a chosen
+          line density and list of orders, which is how a real SLM steers and splits.</li>
+          <li><strong>Beam steer</strong> — a plain angular deflection, the simplest thing a
+          phase ramp does.</li>
+          <li><strong>Speckle / diffuser</strong> — scatters into a cone, standing in for a
+          random phase pattern.</li>
+        </ul>
+
+        <h3>The zeroth order, on a toggle</h3>
+        <p>Because the undiffracted beam is a real and often dominant feature of any SLM
+        setup, it is available here rather than quietly ignored — but it is
+        <strong>off by default</strong>, so a teaching diagram is not cluttered by a stray
+        beam nobody asked about.</p>
+        <p>Turn on <strong>0th-order reflection</strong> and set the fraction (0.1, ten per
+        cent, by default — a realistic figure for a good device) and the element splits its
+        output: that fraction leaves along the plain specular direction, exactly where a
+        mirror would send it, while the patterned light carries the rest. With a grating
+        layer on a device at 45°, you can watch the two separate — the diffracted beam
+        steered by the pattern, the zeroth order going straight on, and the balance between
+        them shifting as you change the fraction.</p>
+        <p>The toggle correctly does nothing on an unpatterned SLM. With no layers
+        configured the device is simply a mirror, and there is no diffracted order for a
+        "zeroth" to be measured against.</p>
+        <p>This makes the standard mitigation something you can actually draw: add a grating
+        layer to steer the useful light off-axis, then put a <a href="../beamdump/">beam
+        dump</a> in the path of the zeroth order and terminate it.</p>`,
+      limitations: `<p>No phase map is computed. The layers are geometric ray operations
+        chosen to stand in for what a hologram does, not a diffraction calculation over a
+        pixel array — so there is no pixel pitch, no fill factor, no 8-bit quantisation, no
+        2π stroke, and no wavelength dependence of Δn. The zeroth-order fraction is a number
+        you set, not one derived from the fill factor and calibration that actually cause it.
+        The polarization requirement is not enforced either: a real device modulates only
+        the component along its director, whereas this one acts on any input state, so a
+        sketch will not warn you about the missing polarizer. Grating orders share the light
+        evenly rather than following a blaze, and the millisecond response and frame rate of
+        a real liquid crystal are not represented at all — the pattern here changes
+        instantly.</p>`,
+    },
+    related: ['dmd', 'dm', 'polarizer', 'grating', 'beamdump'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spatial Light Modulators', url: 'https://www.rp-photonics.com/spatial_light_modulators.html' },
+      { label: 'RP Photonics Encyclopedia — Liquid Crystal Modulators', url: 'https://www.rp-photonics.com/liquid_crystal_modulators.html' },
+    ],
+  },
+  {
     type: 'detector',
     title: 'Photodetector',
     category: 'Detectors',
