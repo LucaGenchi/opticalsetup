@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metalens — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/metalens/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Metalens — OpticalSetup Encyclopedia">
+<meta property="og:description" content="A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/metalens/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="current">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#lenses">Lenses</a> / Metalens</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-15.35 -15.35 30.7 30.7" aria-hidden="true"><rect x="-1.5" y="-6.35" width="3" height="12.7" rx="0.8" fill="#c9edf0" stroke="#247d87" stroke-width="1.2"/><g stroke="#247d87" stroke-width="0.9" stroke-linecap="round"><line x1="-2" y1="-2.839806331424733" x2="2" y2="-2.839806331424733"/><line x1="-2" y1="2.839806331424733" x2="2" y2="2.839806331424733"/><line x1="-2.5" y1="-4.016092628413841" x2="2.5" y2="-4.016092628413841"/><line x1="-2.5" y1="4.016092628413841" x2="2.5" y2="4.016092628413841"/><line x1="-3" y1="-4.918688849683419" x2="3" y2="-4.918688849683419"/><line x1="-3" y1="4.918688849683419" x2="3" y2="4.918688849683419"/><line x1="-3.5" y1="-5.679612662849466" x2="3.5" y2="-5.679612662849466"/><line x1="-3.5" y1="5.679612662849466" x2="3.5" y2="5.679612662849466"/><line x1="-4" y1="-6.35" x2="4" y2="-6.35"/><line x1="-4" y1="6.35" x2="4" y2="6.35"/></g></svg></div>
+        <div>
+          <h1>Metalens</h1>
+        </div>
+      </div>
+      <p class="tagline">A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency.</p>
+      <a class="place-cta" href="../../sketch/?place=metalens">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=metalens"
+          title="Interactive Metalens — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the metalens to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>A metalens is a flat optical surface patterned with subwavelength
+        structures. Those meta-atoms impose a position-dependent phase delay instead
+        of relying on the curved entrance and exit faces of a glass lens. An ideal
+        focusing phase profile at design wavelength <span class="w">λ₀</span> is
+        hyperbolic rather than the quadratic profile of the paraxial limit:</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>ϕ</mi><mo stretchy="false">(</mo><mi>r</mi><mo separator="true">,</mo><msub><mi>λ</mi><mn>0</mn></msub><mo stretchy="false">)</mo><mo>=</mo><mo>−</mo><mfrac><mrow><mn>2</mn><mi>π</mi></mrow><msub><mi>λ</mi><mn>0</mn></msub></mfrac><mrow><mo fence="true">(</mo><msqrt><mrow><msubsup><mi>f</mi><mn>0</mn><mn>2</mn></msubsup><mo>+</mo><msup><mi>r</mi><mn>2</mn></msup></mrow></msqrt><mo>−</mo><msub><mi>f</mi><mn>0</mn></msub><mo fence="true">)</mo></mrow><mspace></mspace><mspace width="1em"/><mo stretchy="false">(</mo><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">d</mi></mrow><mspace width="0.3333em"/><mn>2</mn><mi>π</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\phi(r,\lambda_0) = -\frac{2\pi}{\lambda_0}\left(\sqrt{f_0^2+r^2}-f_0\right) \pmod{2\pi}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">ϕ</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.0278em;">r</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.4em;vertical-align:-0.95em;"></span><span class="mord">−</span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.0359em;">π</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">(</span></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.2987em;"><span class="svg-align" style="top:-3.8em;"><span class="pstrut" style="height:3.8em;"></span><span class="mord" style="padding-left:1em;"><span class="mord"><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7959em;"><span style="top:-2.4337em;margin-left:-0.1076em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span><span style="top:-3.0448em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2663em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">r</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.7401em;"><span style="top:-2.989em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span><span style="top:-3.2587em;"><span class="pstrut" style="height:3.8em;"></span><span class="hide-tail" style="min-width:1.02em;height:1.88em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.88em" viewBox="0 0 400000 1944" preserveAspectRatio="xMinYMin slice"><path d="M983 90
+l0 -0
+c4,-6.7,10,-10,18,-10 H400000v40
+H1013.1s-83.4,268,-264.1,840c-180.7,572,-277,876.3,-289,913c-4.7,4.7,-12.7,7,-24,7
+s-12,0,-12,0c-1.3,-3.3,-3.7,-11.7,-7,-25c-35.3,-125.3,-106.7,-373.3,-214,-744
+c-10,12,-21,25,-33,39s-32,39,-32,39c-6,-5.3,-15,-14,-27,-26s25,-30,25,-30
+c26.7,-32.7,52,-63,76,-91s52,-60,52,-60s208,722,208,722
+c56,-175.3,126.3,-397.3,211,-666c84.7,-268.7,153.8,-488.2,207.5,-658.5
+c53.7,-170.3,84.5,-266.8,92.5,-289.5z
+M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.5413em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">)</span></span></span><span class="mspace allowbreak"></span><span class="mspace" style="margin-right:1em;"></span><span class="mspace" style="margin-right:0.1667em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord"><span class="mord"><span class="mord mathrm">mod</span></span></span><span class="mspace" style="margin-right:0.3333em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mclose">)</span></span></span></span></span></div>
+      <div class="caption">Ideal phase required to bring a normally incident plane wave to a focus f₀ from radius r.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo>=</mo><mi>sin</mi><mo>⁡</mo><mtext> ⁣</mtext><mrow><mo fence="true">[</mo><mi>arctan</mi><mo>⁡</mo><mtext> ⁣</mtext><mrow><mo fence="true">(</mo><mfrac><mi>D</mi><mrow><mn>2</mn><mi mathvariant="normal">∣</mi><msub><mi>f</mi><mn>0</mn></msub><mi mathvariant="normal">∣</mi></mrow></mfrac><mo fence="true">)</mo></mrow><mo fence="true">]</mo></mrow></mrow><annotation encoding="application/x-tex">\mathrm{NA} = \sin\!\left[\arctan\!\left(\frac{D}{2|f_0|}\right)\right]</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">NA</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.4em;vertical-align:-0.95em;"></span><span class="mop">sin</span><span class="mspace" style="margin-right:-0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">[</span></span><span class="mop">arctan</span><span class="mspace" style="margin-right:-0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">(</span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2∣</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">D</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.936em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">)</span></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">]</span></span></span></span></span></span></span></div>
+      <div class="caption">Geometric numerical aperture in air for clear diameter D and focal length f₀.</div>
+    </div>
+      
+        <p>A phase pattern fabricated for one wavelength normally has strong
+        diffractive chromaticity: longer wavelengths focus nearer and shorter
+        wavelengths focus farther away. Achromatic metalenses add engineered group
+        delay, but bandwidth, aperture, NA, polarization response, and efficiency are
+        coupled design constraints rather than independent knobs<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Practical
+        focusing efficiency also sends some incident power into zeroth order, unwanted
+        diffraction orders, reflection, absorption, and scatter<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>OpticalSetup treats the patterned surface as a zero-thickness paraxial
+        phase-gradient proxy. In <strong>Chromatic</strong> mode, the nominal focal
+        length <span class="w">f₀</span> is exact at the design wavelength and every
+        sampled wavelength follows the ordinary diffractive scaling:</p>
+        <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>f</mi><mo stretchy="false">(</mo><mi>λ</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>f</mi><mn>0</mn></msub><mfrac><msub><mi>λ</mi><mn>0</mn></msub><mi>λ</mi></mfrac></mrow><annotation encoding="application/x-tex">f(\lambda) = f_0\frac{\lambda_0}{\lambda}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mopen">(</span><span class="mord mathnormal">λ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0574em;vertical-align:-0.686em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">The wavelength-dependent focal length used by the chromatic metalens trace.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msup><mi>u</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup><mo>=</mo><mi>u</mi><mo>−</mo><mfrac><mi>h</mi><mrow><mi>f</mi><mo stretchy="false">(</mo><mi>λ</mi><mo stretchy="false">)</mo></mrow></mfrac></mrow><annotation encoding="application/x-tex">u&#x27; = u - \frac{h}{f(\lambda)}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8019em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8019em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6667em;vertical-align:-0.0833em;"></span><span class="mord mathnormal">u</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.3074em;vertical-align:-0.936em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mopen">(</span><span class="mord mathnormal">λ</span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">h</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.936em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Each sampled wavelength then uses the same paraxial ray-transfer relation as the ideal thin lens.</div>
+    </div>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>No phase map or electromagnetic field is propagated. The
+        simulator does not design meta-atoms, derive efficiency, show the unfocused
+        zeroth order, validate group-delay feasibility, or calculate polarization
+        conversion, PSF, MTF, Strehl ratio, diffraction-limited spot size, field angle,
+        aberrations, substrate effects, or fabrication tolerances. Achromatic mode is
+        explicitly an idealized system-level behavior, not proof that the selected
+        diameter, NA, bandwidth, and efficiency can be fabricated together.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Convex lens</a><a href="../../wiki/thicklens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -1.64 12.7 A 60 60 0 0 1 -1.64 -12.7 L 1.64 -12.7 A 60 60 0 0 1 1.64 12.7 L -1.64 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Thick lens (spherical)</a><a href="../../wiki/grating/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg>Diffraction grating</a><a href="../../wiki/slm/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/><line x1="-11" y1="-18" x2="-7" y2="-18" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-13" x2="-7" y2="-13" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-8" x2="-7" y2="-8" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-3" x2="-7" y2="-3" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="2" x2="-7" y2="2" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="7" x2="-7" y2="7" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="12" x2="-7" y2="12" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="17" x2="-7" y2="17" stroke="#4ac0b0" stroke-width="2.5"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">SLM</text></svg>SLM</a><a href="../../wiki/objective/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-5.5 L 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5 L 16,5.5 Z" fill="#8d98a5" stroke="none"/><path d="M 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/><line x1="7" y1="-12.5" x2="7" y2="12.5" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-12.5" width="2.4" height="8.50" fill="#2f3e4d"/><rect x="-21" y="4.00" width="2.4" height="8.50" fill="#2f3e4d"/></svg>Objective</a>
+      </div>
+
+      
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://doi.org/10.1038/ncomms8069" target="_blank" rel="noopener">Arbabi et al., “Subwavelength-thick lenses with high numerical apertures and large efficiency,” Nature Communications 6, 7069 (2015)</a></li><li><a href="https://doi.org/10.1126/science.aaf6644" target="_blank" rel="noopener">Khorasaninejad et al., “Metalenses at visible wavelengths,” Science 352, 1190–1194 (2016)</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

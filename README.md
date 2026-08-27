@@ -33,7 +33,8 @@ figures as SVG or PNG.
   supercontinuum, continuous-wave or pulsed), a first-class pulsed supercontinuum
   laser, directional LED, broadband point source, mirrors (flat with reflectivity,
   convex/concave, true parabolic,
-  galvo), paraxial lenses, spherical thick singlets, editable surface-table lens
+  galvo), paraxial lenses, wavelength-aware flat metalenses, spherical thick
+  singlets, editable surface-table lens
   groups (including traced crown–flint achromats), telescopes, objectives,
   dichroics, filters, beamsplitters,
   polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
@@ -116,6 +117,17 @@ aberrations. The app does not model coherent carrier phase, interference,
 diffraction-limited propagation, higher-order pulse dispersion, arbitrary spectral phase,
 input chirp beyond its configured state, or laboratory-specific calibration. The pulse
 compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
+
+The metalens is a zero-thickness paraxial phase-gradient proxy rather than an
+electromagnetic metasurface solver. In chromatic mode its focal length follows the
+ordinary diffractive relation `f(λ) = f₀λ₀/λ`; broadband light is sampled into the
+same wavelength rays used by gratings and prisms, so the axial color appears in the
+traced geometry. Idealized achromatic mode holds one focus inside a configured band
+and returns continuously to diffractive behavior outside it. Focusing efficiency is a
+user-set power fraction. The model does not derive efficiency, nanopillar geometry,
+group-delay feasibility, polarization conversion, PSF, MTF, Strehl ratio, diffraction-
+limited spot size, field angle, aberrations, or fabrication tolerances.
+
 Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
 and PNG exports remain static and deterministic; GIF exports capture that illustrative

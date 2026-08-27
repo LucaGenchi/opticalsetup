@@ -371,9 +371,65 @@ export const wikiEntries = [
         diameter-aware estimate is typically within about 10% for ordinary plano-convex
         catalogue singlets; it does not change the traced ray geometry.</p>`,
     },
-    related: ['lensc', 'thicklens', 'telescope', 'objective', 'cmirror'],
+    related: ['lensc', 'metalens', 'thicklens', 'telescope', 'objective', 'cmirror'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Lenses', url: 'https://www.rp-photonics.com/lenses.html' },
+    ],
+  },
+
+  {
+    type: 'metalens',
+    title: 'Metalens',
+    category: 'Lenses',
+    realWorld: {
+      html: `
+        <p>A metalens is a flat optical surface patterned with subwavelength
+        structures. Those meta-atoms impose a position-dependent phase delay instead
+        of relying on the curved entrance and exit faces of a glass lens. An ideal
+        focusing phase profile at design wavelength <span class="w">λ₀</span> is
+        hyperbolic rather than the quadratic profile of the paraxial limit:</p>`,
+      formulas: [
+        { tex: '\\phi(r,\\lambda_0) = -\\frac{2\\pi}{\\lambda_0}\\left(\\sqrt{f_0^2+r^2}-f_0\\right) \\pmod{2\\pi}', caption: 'Ideal phase required to bring a normally incident plane wave to a focus f₀ from radius r.' },
+        { tex: '\\mathrm{NA} = \\sin\\!\\left[\\arctan\\!\\left(\\frac{D}{2|f_0|}\\right)\\right]', caption: 'Geometric numerical aperture in air for clear diameter D and focal length f₀.' },
+      ],
+      html2: `
+        <p>A phase pattern fabricated for one wavelength normally has strong
+        diffractive chromaticity: longer wavelengths focus nearer and shorter
+        wavelengths focus farther away. Achromatic metalenses add engineered group
+        delay, but bandwidth, aperture, NA, polarization response, and efficiency are
+        coupled design constraints rather than independent knobs${cite(1)}. Practical
+        focusing efficiency also sends some incident power into zeroth order, unwanted
+        diffraction orders, reflection, absorption, and scatter${cite(2)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>OpticalSetup treats the patterned surface as a zero-thickness paraxial
+        phase-gradient proxy. In <strong>Chromatic</strong> mode, the nominal focal
+        length <span class="w">f₀</span> is exact at the design wavelength and every
+        sampled wavelength follows the ordinary diffractive scaling:</p>`,
+      formulas: [
+        { tex: 'f(\\lambda) = f_0\\frac{\\lambda_0}{\\lambda}', caption: 'The wavelength-dependent focal length used by the chromatic metalens trace.' },
+        { tex: "u' = u - \\frac{h}{f(\\lambda)}", caption: 'Each sampled wavelength then uses the same paraxial ray-transfer relation as the ideal thin lens.' },
+      ],
+      html2: `
+        <p>A broadband ray is expanded into the same weighted wavelength samples used
+        by prisms and gratings, making axial color visible in the actual traced paths.
+        <strong>Idealized achromatic band</strong> holds <span class="w">f=f₀</span>
+        inside the chosen range and transitions continuously back to diffractive
+        scaling outside it. Focusing efficiency attenuates the focused output by the
+        configured power fraction.</p>`,
+      limitations: `<p>No phase map or electromagnetic field is propagated. The
+        simulator does not design meta-atoms, derive efficiency, show the unfocused
+        zeroth order, validate group-delay feasibility, or calculate polarization
+        conversion, PSF, MTF, Strehl ratio, diffraction-limited spot size, field angle,
+        aberrations, substrate effects, or fabrication tolerances. Achromatic mode is
+        explicitly an idealized system-level behavior, not proof that the selected
+        diameter, NA, bandwidth, and efficiency can be fabricated together.</p>`,
+    },
+    related: ['lens', 'thicklens', 'grating', 'slm', 'objective'],
+    resources: [
+      { label: 'Arbabi et al., “Subwavelength-thick lenses with high numerical apertures and large efficiency,” Nature Communications 6, 7069 (2015)', url: 'https://doi.org/10.1038/ncomms8069' },
+      { label: 'Khorasaninejad et al., “Metalenses at visible wavelengths,” Science 352, 1190–1194 (2016)', url: 'https://doi.org/10.1126/science.aaf6644' },
     ],
   },
 
@@ -412,7 +468,7 @@ export const wikiEntries = [
         sag estimate (roughly a 10% class estimate); the assumed thickness never becomes
         traced geometry.</p>`,
     },
-    related: ['lens', 'thicklens', 'telescope', 'objective'],
+    related: ['lens', 'metalens', 'thicklens', 'telescope', 'objective'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Lenses', url: 'https://www.rp-photonics.com/lenses.html' },
     ],

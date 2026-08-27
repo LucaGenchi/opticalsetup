@@ -1,6 +1,6 @@
 // Qualitative measurements derived from the ray tracer for detector screens.
 
-import { registry } from './elements.js';
+import { metalensFocalLength, registry } from './elements.js';
 import { detectorReading, probeAt } from './raytrace.js';
 import {
   add, dot, mul, norm, perp, rotPt, sub, toLocal, toWorld, wavelengthToColor,
@@ -140,10 +140,11 @@ function worldLenses(elements) {
     let surfaces;
     try { surfaces = def.surfaces(element); } catch (_) { continue; }
     for (const surface of surfaces || []) {
-      if (surface.kind !== 'lens' || !surface.data?.f) continue;
+      if ((surface.kind !== 'lens' && surface.kind !== 'metalens') || !surface.data?.f) continue;
       lenses.push({
         a: toWorld(element, surface.x1, surface.y1),
         b: toWorld(element, surface.x2, surface.y2),
+        kind: surface.kind,
         data: surface.data,
       });
     }
@@ -151,7 +152,7 @@ function worldLenses(elements) {
   return lenses;
 }
 
-function imagePoint(point, forward, up, hits) {
+function imagePoint(point, forward, up, hits, wavelength) {
   const rays = [{ point, direction: forward }, { point, direction: norm(add(forward, up)) }];
   for (const hit of hits) {
     for (const ray of rays) {
@@ -161,7 +162,9 @@ function imagePoint(point, forward, up, hits) {
       const offset = sub(hit.surface.a, ray.point);
       const distance = (offset.x * edge.y - offset.y * edge.x) / denominator;
       ray.point = add(ray.point, mul(ray.direction, distance));
-      ray.direction = lensBend(ray.direction, ray.point, hit.surface, hit.surface.data.f);
+      const focalLength = hit.surface.kind === 'metalens'
+        ? metalensFocalLength(hit.surface.data, wavelength) : hit.surface.data.f;
+      ray.direction = lensBend(ray.direction, ray.point, hit.surface, focalLength);
     }
   }
   const [first, second] = rays;
@@ -195,7 +198,8 @@ export function objectImageAtCamera(camera, elements = []) {
     }
     hits.sort((a, b) => a.distance - b.distance);
     if (!hits.length) continue;
-    const imageBase = imagePoint(base, forward, up, hits), imageTip = imagePoint(tip, forward, up, hits);
+    const imageBase = imagePoint(base, forward, up, hits, params.wavelength);
+    const imageTip = imagePoint(tip, forward, up, hits, params.wavelength);
     if (!imageBase || !imageTip) continue;
     const localBase = toLocal(camera, imageBase.x, imageBase.y);
     const localTip = toLocal(camera, imageTip.x, imageTip.y);
