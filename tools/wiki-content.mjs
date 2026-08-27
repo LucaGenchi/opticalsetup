@@ -2223,6 +2223,107 @@ export const wikiEntries = [
     ],
   },
   {
+    type: 'dm',
+    title: 'Deformable mirror',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A deformable mirror corrects a wavefront by changing its own shape. Light does
+        not always arrive with the flat, well-behaved wavefront that optical design assumes:
+        the atmosphere scrambles starlight, the eye's own cornea and lens distort a view of
+        the retina, and tissue aberrates a focus long before a microscope reaches the depth
+        it was built for. In every case the instrument is fine and the wavefront is not, so
+        the fix is to add the <em>conjugate</em> of the distortion and cancel it.</p>
+        <p>The device is a thin reflective faceplate — a metallised membrane or a polished
+        silicon layer — sitting on an array of actuators that push and pull it. Piezoelectric
+        stacks, electrostatic pads, voice coils, and MEMS all appear, but the principle is
+        the same: drive each actuator and the surface bends locally.</p>
+        <p>Reflection is what makes the mechanics easy. Displacing the surface by
+        <span class="w">h</span> shortens or lengthens the path twice, once on the way in
+        and once on the way out, so a very small movement buys a large optical
+        correction:</p>`,
+      formulas: [
+        { tex: '\\text{OPD} = 2h', caption: 'Optical path difference from a surface displacement h. A quarter-wavelength of mechanical stroke produces half a wavelength of optical correction — which is why deformable mirrors move by micrometres, not millimetres.' },
+        { tex: 'S \\approx \\exp\\!\\left[-\\left(\\frac{2\\pi\\sigma}{\\lambda}\\right)^{2}\\right]', caption: 'Maréchal approximation for Strehl ratio from residual wavefront error σ. Getting σ down to about λ/14 gives S ≈ 0.8 — the usual definition of "diffraction limited", and the target a correction loop aims at.' },
+        { tex: '\\delta = 2\\theta', caption: 'Tilting a mirror by θ deflects the beam by 2θ. Worth remembering when reading this element’s controls — see below.' },
+      ],
+      html2: `
+        <h3>Working in a loop</h3>
+        <p>A deformable mirror is almost never set by hand. It runs closed-loop with a
+        wavefront sensor — usually a Shack–Hartmann, a lenslet array whose spot
+        displacements measure local wavefront slope. The measured wavefront is decomposed
+        into <strong>Zernike modes</strong> — tip, tilt, defocus, astigmatism, coma,
+        spherical aberration, and higher — the actuator commands that best cancel them are
+        computed, and the cycle repeats at hundreds or thousands of hertz, fast enough to
+        keep up with atmospheric turbulence.</p>
+        <p>The low-order modes carry most of the power. Tip and tilt alone account for the
+        largest share of atmospheric distortion, so big telescopes often split the job: a
+        small, fast tip–tilt mirror handles the bulk motion while the deformable mirror,
+        with hundreds or thousands of actuators, takes the higher orders. How well the
+        higher orders can be corrected is set by actuator count and spacing — a mirror
+        cannot reproduce structure finer than its actuator pitch, and the residue left over
+        is called fitting error.</p>
+        <p>Designs trade smoothness against independence. A <strong>continuous
+        facesheet</strong> gives a smooth surface but neighbouring actuators pull on each
+        other, so each has an influence function rather than acting alone. A
+        <strong>segmented</strong> mirror gives independent control at the price of gaps
+        between segments, which diffract. <strong>MEMS</strong> devices are compact and
+        cheap with limited stroke; <strong>bimorph</strong> and <strong>voice-coil</strong>
+        mirrors offer large stroke with fewer actuators.</p>
+        <p>The applications are wherever a wavefront arrives spoiled: ground-based astronomy,
+        adaptive-optics retinal imaging, deep-tissue and two-photon microscopy, laser beam
+        shaping, and free-space optical communication.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>This element models the two lowest-order corrections a deformable mirror makes —
+        the ones that dominate real aberration budgets — as a mirror with an adjustable
+        curvature and an adjustable deflection. Three controls:</p>
+        <ul>
+          <li><strong>Aperture</strong>, the size of the reflective face; the blue handle
+          resizes it.</li>
+          <li><strong>Defocus focal length</strong>, which curves the surface. Positive
+          values make it concave: light reflects converging, and the focus lands that many
+          millimetres in front of the mirror — set 100&nbsp;mm and the beam crosses the axis
+          100&nbsp;mm away, set 200&nbsp;mm and it crosses at 200. Negative values make it
+          convex, so the return beam diverges from a virtual focus behind the surface.
+          Leave it at zero for a flat mirror.</li>
+          <li><strong>Tip / tilt</strong>, on the purple knob, which steers the reflected
+          beam.</li>
+        </ul>
+        <p>Pair one with a <a href="../detector/">wavefront detector</a> and the correction
+        becomes measurable rather than merely drawn: a flat mirror returns a collimated
+        beam, a positive focal length returns a converging one, and a negative focal length
+        a diverging one, with the detector naming the state and reporting the cone
+        angle.</p>
+
+        <h3>One convention to know</h3>
+        <p>The <strong>Tip / tilt</strong> control applies its angle directly to the
+        outgoing beam: set 5° and the reflected beam leaves 5° away from where it would have
+        gone. That is the <em>beam deviation</em>, not the mechanical tilt of the surface —
+        a real mirror tilted by 5° would deflect the beam by 10°. Rotating the whole element
+        on the canvas does behave physically, giving the usual factor of two, so the two
+        routes to a tilt are not equivalent. If you are reasoning about actuator stroke,
+        halve the number.</p>`,
+      limitations: `<p>Only <strong>tip, tilt, and defocus</strong> are modelled — the
+        lowest Zernike orders. There is no astigmatism, coma, spherical aberration, or
+        arbitrary surface shape, which is awkward given that correcting exactly those higher
+        orders is the reason deformable mirrors exist; this element captures what they do
+        first, not what makes them special. Nothing represents the mechanism either: no
+        actuators, no actuator count or pitch, no influence functions or inter-actuator
+        coupling, no stroke limit, and therefore no fitting error. The surface is perfectly
+        smooth, so segment gaps and print-through never diffract, and there is no temporal
+        response — the shape changes instantly rather than over the milliseconds a real
+        mirror needs. Nothing closes the loop: there is no sensor driving the correction, so
+        the shape is one you set by hand rather than one the system finds.</p>`,
+    },
+    related: ['slm', 'dmd', 'cmirror', 'detector'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Adaptive Optics', url: 'https://www.rp-photonics.com/adaptive_optics.html' },
+      { label: 'RP Photonics Encyclopedia — Deformable Mirrors', url: 'https://www.rp-photonics.com/deformable_mirrors.html' },
+    ],
+  },
+  {
     type: 'detector',
     title: 'Photodetector',
     category: 'Detectors',

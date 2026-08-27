@@ -255,6 +255,15 @@ const demoScenes = {
     mkDemo('detector', 345, 70, 294, { aperture: 40 }, { label: 'ON beam', showLabel: true, labelPos: 'r' }),
     mkDemo('beamdump', 232, 70, 0, { aperture: 34 }, { label: 'OFF beam, dumped', showLabel: true, labelPos: 'l' }),
   ],
+  // Defocus only reads as a correction if something measures it, so the demo
+  // folds the beam off a curved DM straight into a wavefront sensor.
+  dm: () => [
+    mkDemo('cwlaser', 60, 200, 0, { beamMode: 'beam', beamWidth: 24 }),
+    mkDemo('dm', 350, 200, 45, { length: 50, f: 180, steer: 0 },
+      { label: 'concave, f = 180 mm', showLabel: true, labelPos: 'b' }),
+    mkDemo('wavefrontdetector', 345, 100, 267, { aperture: 40 },
+      { label: 'reads the corrected wavefront', showLabel: true, labelPos: 'r' }),
+  ],
   aom: () => [
     mkDemo('pulsedlaser', 60, 200, 0, {
       repRateMHz: 80, pulseWidthFs: 100,
