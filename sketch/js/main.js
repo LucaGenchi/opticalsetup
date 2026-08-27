@@ -232,6 +232,18 @@ const demoScenes = {
     mkDemo('detector', 400, 200, 0, {}, { label: 'the branch you want', showLabel: true }),
     mkDemo('blocker', 220, 320, 0, { w: 40, h: 16 }, { label: 'absorbs, but never drawn in an export', showLabel: true, labelPos: 'b' }),
   ],
+  // The SLM's point is that the pattern and the leftover specular beam leave
+  // in different directions, so the demo needs a pattern AND the 0th order on.
+  slm: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 8 }),
+    mkDemo('slm', 300, 200, 45, {
+      length: 40, zeroOrder: true, zeroFrac: 0.15,
+      layers: [{ type: 'grating', lines: 600, orders: '1' }],
+    }, { label: 'grating pattern, 15% left undiffracted', showLabel: true, labelPos: 'b' }),
+    // The 45 deg SLM reflects at x=287, not at its element origin, so the dump
+    // sits there rather than under the element's centre.
+    mkDemo('beamdump', 287, 70, 90, { aperture: 30 }, { label: '0th order, dumped', showLabel: true, labelPos: 'l' }),
+  ],
   aom: () => [
     mkDemo('pulsedlaser', 60, 200, 0, {
       repRateMHz: 80, pulseWidthFs: 100,
