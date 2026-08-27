@@ -230,13 +230,14 @@ function animatedChopper(el) {
 }
 
 function animatedOpticalElements() {
-  if (!hasGalvoMotion() && !hasStageMotion() && !hasRetroMotion()) return state.elements;
+  if (!hasGalvoMotion() && !hasStageMotion() && !hasRetroMotion() && !hasSlmMotion()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
     if (el.type === 'stage') return animatedStageElement(el);
     if (el.type === 'retroreflector') return animatedRetroElement(el);
+    if (el.type === 'slm' && el.params.phaseCycle) return { ...el, _animationTimeS: motionTimeSeconds };
     return el;
   });
 }
@@ -248,6 +249,7 @@ function animatedVisualElements() {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
     if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
+    if (el.type === 'slm' && el.params.phaseCycle) return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'stage') return stageWithSignalSpot(el);
     if (el.type === 'sample') return withSignalSpot(el);
     if (el.type === 'retroreflector') return animatedRetroElement(el);
@@ -266,7 +268,8 @@ function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'chopper' && el.params.modulate)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
-    || (el.type === 'retroreflector' && el.params.moveMode === 'linear'));
+    || (el.type === 'retroreflector' && el.params.moveMode === 'linear')
+    || (el.type === 'slm' && !!el.params.phaseCycle));
 }
 
 function hasGalvoMotion() {
@@ -279,6 +282,10 @@ function hasStageMotion() {
 
 function hasRetroMotion() {
   return state.elements.some(el => el.type === 'retroreflector' && el.params.moveMode === 'linear');
+}
+
+function hasSlmMotion() {
+  return state.elements.some(el => el.type === 'slm' && !!el.params.phaseCycle);
 }
 
 function hasSignalSpotStage() {
@@ -296,7 +303,7 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasRetroMotion();
+    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasRetroMotion() || hasSlmMotion();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();

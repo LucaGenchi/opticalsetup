@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v20';
+const CACHE_NAME = 'opticalsetup-pwa-v21';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -35,6 +35,7 @@ const PRECACHE_PATHS = [
   "./js/qr.js",
   "./js/raytrace.js",
   "./js/share.js",
+  "./js/slm-pattern.js",
   "./js/spectrum.js",
   "./js/state.js",
   "./js/theme.js",

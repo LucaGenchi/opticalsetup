@@ -2074,6 +2074,11 @@ export const wikiEntries = [
         a <strong>Transmissive</strong> toggle for the less common transmissive kind. Its
         active size sets how much of a beam it intercepts, and the blue handle resizes it on
         the canvas.</p>
+        <p>A <strong>PNG phase cycle</strong> can be loaded directly. Image rows map to
+        position along the one-dimensional SLM aperture, columns are discrete time frames,
+        and grayscale maps to a fixed 0–2π phase range. Loading starts playback immediately;
+        the columns loop automatically, with only the total cycle time exposed as a control.
+        At each ray hit the tracer uses the local wrapped phase gradient to steer the ray.</p>
         <p>What it does to light is set by a stack of <strong>optical function</strong>
         layers, applied in order — up to four:</p>
         <ul>
@@ -2100,23 +2105,25 @@ export const wikiEntries = [
         layer on a device at 45°, you can watch the two separate — the diffracted beam
         steered by the pattern, the zeroth order going straight on, and the balance between
         them shifting as you change the fraction.</p>
-        <p>The toggle correctly does nothing on an unpatterned SLM. With no layers
+        <p>The toggle correctly does nothing on an unpatterned SLM. With no layers or PNG
         configured the device is simply a mirror, and there is no diffracted order for a
         "zeroth" to be measured against.</p>
         <p>This makes the standard mitigation something you can actually draw: add a grating
         layer to steer the useful light off-axis, then put a <a href="../beamdump/">beam
         dump</a> in the path of the zeroth order and terminate it.</p>`,
-      limitations: `<p>No phase map is computed. The layers are geometric ray operations
-        chosen to stand in for what a hologram does, not a diffraction calculation over a
-        pixel array — so there is no pixel pitch, no fill factor, no 8-bit quantisation, no
-        2π stroke, and no wavelength dependence of Δn. The zeroth-order fraction is a number
-        you set, not one derived from the fill factor and calibration that actually cause it.
+      limitations: `<p>The uploaded 8-bit 0–2π phase map is reduced to its local
+        one-dimensional gradient and used to steer geometric rays. There is no propagation
+        of a complex optical field and therefore no diffraction pattern, interference,
+        holographic reconstruction, speckle, or focal-plane intensity image. The PNG's row
+        spacing is spread across the drawn aperture rather than treated as a calibrated
+        hardware pixel pitch; fill factor and wavelength dependence of Δn are not modeled.
+        The zeroth-order fraction is a number you set, not one derived from the fill factor
+        and calibration that actually cause it.
         The polarization requirement is not enforced either: a real device modulates only
         the component along its director, whereas this one acts on any input state, so a
         sketch will not warn you about the missing polarizer. Grating orders share the light
-        evenly rather than following a blaze, and the millisecond response and frame rate of
-        a real liquid crystal are not represented at all — the pattern here changes
-        instantly.</p>`,
+        evenly rather than following a blaze. PNG frames change discretely over the chosen
+        loop time; the liquid crystal's own response time is not modeled.</p>`,
     },
     related: ['dmd', 'dm', 'polarizer', 'grating', 'beamdump'],
     resources: [

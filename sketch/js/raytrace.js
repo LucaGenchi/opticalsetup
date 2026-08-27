@@ -12,6 +12,7 @@ import {
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
+import { phaseCycleGradient } from './slm-pattern.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -1633,11 +1634,30 @@ function interact(ray, hit) {
       // SLM / DMD / deformable mirror: base reflection (or transmission),
       // then apply each function layer in order. Layers that diffract
       // (grating) can multiply rays; capped to keep tracing bounded.
-      const zf = data.zeroOrder && (data.layers || []).length
+      const patterned = !!data.phaseCycle || (data.layers || []).length > 0;
+      const zf = data.zeroOrder && patterned
         ? Math.min(0.95, Math.max(0, data.zeroFrac ?? 0.1)) : 0;
       let rays = [{ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '' }];
       const L = data.length;
       const mid = mul(add(s.a, s.b), 0.5);
+      if (data.phaseCycle) {
+        const h = dot(sub(hit.p, mid), t);
+        const aperturePosition = h / Math.max(1e-6, L) + 0.5;
+        const gradient = phaseCycleGradient(
+          data.phaseCycle, aperturePosition, data.animationTime || 0, data.cycleTime || 2, L,
+        );
+        const wavelengthMm = ray.wl * 1e-6;
+        rays = rays.flatMap(r => {
+          const tangentSin = dot(r.d, t) + wavelengthMm * gradient;
+          if (Math.abs(tangentSin) > 1) return [];
+          const normalSign = dot(r.d, n) >= 0 ? 1 : -1;
+          return [{
+            ...r,
+            d: norm(add(mul(n, normalSign * Math.sqrt(Math.max(0, 1 - tangentSin * tangentSin))), mul(t, tangentSin))),
+            tag: r.tag + 'p',
+          }];
+        });
+      }
       for (const ly of (data.layers || []).slice(0, 4)) {
         const next = [];
         for (const r of rays) {

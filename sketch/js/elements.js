@@ -2448,6 +2448,8 @@ export const registry = {
       { key: 'length', label: 'Active size (mm)', type: 'number', min: 10, max: 100, step: 2, def: 40 },
       { key: 'zeroOrder', label: '0th-order reflection', type: 'checkbox', def: false },
       { key: 'zeroFrac', label: '0th-order fraction (0–1)', type: 'number', min: 0.01, max: 0.9, step: 0.01, def: 0.1, show: p => p.zeroOrder },
+      { key: 'phaseCycle', label: 'Phase cycle', type: 'phasecycle', def: null },
+      { key: 'cycleTime', label: 'Cycle time (s)', type: 'number', min: 0.1, max: 3600, step: 0.1, def: 2, show: p => !!p.phaseCycle },
       layersParam,
     ],
     size_: el => ({ w: 30, h: el.params.length + 10 }),
@@ -2466,6 +2468,8 @@ export const registry = {
         data: {
           layers: el.params.layers || [], length: el.params.length, transmissive: !!el.params.transmissive,
           zeroOrder: !!el.params.zeroOrder, zeroFrac: el.params.zeroFrac || 0.1,
+          phaseCycle: el.params.phaseCycle || null, cycleTime: el.params.cycleTime || 2,
+          animationTime: el._animationTimeS || 0,
         },
       }, ...body];
     },
@@ -3559,7 +3563,7 @@ const ELEMENT_HELP = {
   slit: 'Blocks rays outside the configured aperture gap.',
   beamdump: 'Absorbs incident rays.',
   blocker: 'Absorbs rays but stays hidden in exported figures.',
-  slm: 'Reflects by default and can overlay lens-array, grating, steering, or speckle functions.',
+  slm: 'Reflects by default and can play a PNG phase cycle or overlay lens-array, grating, steering, and speckle functions.',
   dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
@@ -3619,7 +3623,9 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (type === 'crystal' && (!params.convert || params.convert === 'none')) {
     tier = 'configurable';
     note = 'Choose a conversion mode to generate an output wavelength.';
-  } else if (SHAPERS.has(type) && (!Array.isArray(params.layers) || params.layers.length === 0)) {
+  } else if (type === 'slm' && params.phaseCycle) {
+    note = 'Plays PNG columns as discrete frames: rows map to the 1D aperture and grayscale maps to 0–2π. Rays follow the local phase gradient; diffraction and interference are not calculated.';
+  } else if (SHAPERS.has(type) && !params.phaseCycle && (!Array.isArray(params.layers) || params.layers.length === 0)) {
     tier = 'configurable';
     note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
   } else if (DIAGRAM_ONLY.has(type)) {

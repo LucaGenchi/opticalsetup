@@ -5,6 +5,7 @@ import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from 
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
 import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
 import { normalizeSurfaceTable } from './lensgroup.js';
+import { normalizePhaseCycle } from './slm-pattern.js';
 
 // Elements whose boundary refracts and therefore carries per-surface
 // transmission of its own.
@@ -96,6 +97,7 @@ function resolveBound(bound, params, fallback) {
 function normalizeParam(value, spec, params = {}) {
   if (spec.type === 'signals') return normalizeChannels(value);
   if (spec.type === 'layers') return normalizeLayers(value);
+  if (spec.type === 'phasecycle') return normalizePhaseCycle(value);
   if (spec.type === 'surfacetable') return value == null ? null : normalizeSurfaceTable(value);
   if (spec.type === 'boundary') return normalizeBoundaryPoints(value, spec.def || []);
   if (spec.type === 'points') return normalizePolygonPoints(value, spec.def || []);

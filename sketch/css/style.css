@@ -756,6 +756,16 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .layeradd { width: 100%; margin-top: 2px; border-style: dashed; color: var(--muted); }
 .layeradd:hover { color: var(--accent); border-color: var(--accent); }
 .layer .field input[type="number"], .layer .field input[type="text"] { flex: 0 0 84px; width: 84px; }
+.slm-pattern-control { margin-bottom: 10px; }
+.slm-pattern-control.loaded {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+}
+.slm-pattern-file { min-width: 0; }
+.slm-pattern-file strong, .slm-pattern-file span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.slm-pattern-file strong { color: var(--text); font-size: 11.5px; white-space: nowrap; }
+.slm-pattern-file span { margin-top: 2px; color: var(--muted); font-size: 9.5px; }
+.slm-pattern-control.loaded button { flex: 0 0 auto; }
 
 /* Lens prescription editor: deliberately a compact vertical instrument
    table rather than a horizontally scrolling spreadsheet. */

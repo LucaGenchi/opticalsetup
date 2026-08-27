@@ -24,6 +24,7 @@ import {
   AIR, MAX_SURFACE_ROWS, ROW_RADIUS_MAX, ROW_THICKNESS_MAX, ROW_THICKNESS_MIN,
   ROW_STOP_DIAMETER_MIN, normalizeSurfaceTable, nullSurfaceTableAxialColour, surfaceRowsOf,
 } from './lensgroup.js';
+import { decodePhaseCyclePNG } from './slm-pattern.js';
 
 let panel;
 let undoArmed = false; // push one undo snapshot per editing session
@@ -544,6 +545,19 @@ function paramField(p, sel) {
     return field(p.label, `<select data-p="${p.key}">${options.join('')}</select>`)
       + (sensors.length ? '' : `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`);
   }
+  if (p.type === 'phasecycle') {
+    if (!v) {
+      return `<div class="slm-pattern-control">
+        <button type="button" id="slmPatternLoad" class="layeradd">Load pattern</button>
+        <input type="file" id="slmPatternFile" accept="image/png,.png" hidden>
+        <div class="hint">PNG rows map to SLM position, columns to discrete time frames, and grayscale to 0–2π phase.</div>
+      </div>`;
+    }
+    return `<div class="slm-pattern-control loaded">
+      <div class="slm-pattern-file"><strong>${esc(v.name)}</strong><span>${v.width} time frames × ${v.height} phase pixels</span></div>
+      <button type="button" id="slmPatternDelete" class="danger">Delete</button>
+    </div>`;
+  }
   if (p.type === 'layers') return layersHTML(Array.isArray(v) ? v : []);
   if (p.type === 'surfacetable') return surfaceTableHTML(sel);
   if (p.type === 'signals') return signalsHTML(sel);
@@ -822,7 +836,7 @@ export function renderInspector() {
     panel.innerHTML = h;
   }
 
-  panel.querySelectorAll('input,select').forEach(inp => {
+  panel.querySelectorAll('input:not([type="file"]),select').forEach(inp => {
     inp.addEventListener('input', () => applyInput(inp));
     inp.addEventListener('change', () => applyInput(inp, true));
   });
@@ -837,6 +851,41 @@ export function renderInspector() {
   if (clearVoxels) clearVoxels.addEventListener('click', () => {
     const s = findSelected();
     if (s?.type === 'stage') document.dispatchEvent(new CustomEvent('optics:clearvoxels', { detail: { stageId: s.id } }));
+  });
+  const patternLoad = panel.querySelector('#slmPatternLoad');
+  const patternFile = panel.querySelector('#slmPatternFile');
+  if (patternLoad && patternFile) {
+    patternLoad.addEventListener('click', () => patternFile.click());
+    patternFile.addEventListener('change', async () => {
+      const file = patternFile.files?.[0];
+      if (!file) return;
+      const targetId = findSelected()?.id;
+      patternLoad.disabled = true;
+      patternLoad.textContent = 'Loading…';
+      try {
+        const cycle = await decodePhaseCyclePNG(file);
+        const s = state.elements.find(element => element.id === targetId);
+        if (!s || s.type !== 'slm' || s.params.phaseCycle) return;
+        pushUndo();
+        s.params.phaseCycle = cycle;
+        changed();
+        renderInspector();
+      } catch (error) {
+        alert(error.message || 'Could not load the SLM pattern.');
+        patternLoad.disabled = false;
+        patternLoad.textContent = 'Load pattern';
+        patternFile.value = '';
+      }
+    });
+  }
+  const patternDelete = panel.querySelector('#slmPatternDelete');
+  if (patternDelete) patternDelete.addEventListener('click', () => {
+    const s = findSelected();
+    if (!s || s.type !== 'slm' || !s.params.phaseCycle) return;
+    pushUndo();
+    s.params.phaseCycle = null;
+    changed();
+    renderInspector();
   });
   // wavefront-shaper layer add/remove
   const addBtn = panel.querySelector('#layerAdd');

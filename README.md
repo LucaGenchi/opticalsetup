@@ -38,7 +38,8 @@ figures as SVG or PNG.
   dichroics, filters, beamsplitters,
   polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
   diffusers, wavefront shapers (SLM, DMD, deformable mirror) with composable
-  optical functions, modulators (AOM/AOTF/EOM/chopper), mechanical pulse-delay lines,
+  optical functions and automatically looping PNG phase cycles on the SLM,
+  modulators (AOM/AOTF/EOM/chopper), mechanical pulse-delay lines,
   a signed-GDD pulse compressor,
   nonlinear crystals (SHG, THG,
   supercontinuum, OPO), fibers with per-end output specs, detectors, a focusing
@@ -120,6 +121,12 @@ Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
 and PNG exports remain static and deterministic; GIF exports capture that illustrative
 playback rather than claiming a calibrated high-speed recording.
+
+An SLM PNG cycle is a 1D geometric phase-gradient proxy: image rows map to
+position along the aperture, columns are discrete time frames, and 8-bit grayscale
+maps to a fixed 0–2π phase range. The local wrapped gradient steers rays, but the
+model does not propagate a complex optical field or calculate diffraction,
+interference, speckle, pixel fill factor, or a focal-plane intensity image.
 
 The 2PP resin preview records pulsed ray arrivals at the stage sample plane and
 shows their positions in the moving 2D sample. It does not calculate focal volume,
