@@ -264,6 +264,19 @@ const demoScenes = {
     mkDemo('wavefrontdetector', 345, 100, 267, { aperture: 40 },
       { label: 'reads the corrected wavefront', showLabel: true, labelPos: 'r' }),
   ],
+  // The AOTF's real job is picking one laser line out of several, so the demo
+  // combines three and tunes the filter to the middle one.
+  aotf: () => [
+    // The three lines have to fall inside the active aperture, and their
+    // deflected orders inside the spectrometer's, so the spacings are set to
+    // the 6 deg deflection over the 300 mm to the detector.
+    mkDemo('cwlaser', 60, 170, 0, { wavelength: 488, beamMode: 'line' }, { label: '488 nm', showLabel: true, labelPos: 't' }),
+    mkDemo('cwlaser', 60, 200, 0, { wavelength: 532, beamMode: 'line' }, { label: '532 nm', showLabel: true, labelPos: 't' }),
+    mkDemo('cwlaser', 60, 230, 0, { wavelength: 633, beamMode: 'line' }, { label: '633 nm', showLabel: true, labelPos: 'b' }),
+    mkDemo('aotf', 320, 200, 0, { center: 532, band: 6, deflect: 6, rfMHz: 80, eff: 0.85, aperture: 70 },
+      { label: 'tuned to 532 nm', showLabel: true, labelPos: 'b' }),
+    mkDemo('spectrometer', 620, 231, 6, { aperture: 100 }, { label: 'only the selected line', showLabel: true, labelPos: 'r' }),
+  ],
   aom: () => [
     mkDemo('pulsedlaser', 60, 200, 0, {
       repRateMHz: 80, pulseWidthFs: 100,

@@ -2324,6 +2324,105 @@ export const wikiEntries = [
     ],
   },
   {
+    type: 'aotf',
+    title: 'Acousto-optic tunable filter',
+    category: 'Modulators',
+    realWorld: {
+      html: `
+        <p>An AOTF selects a colour electronically. Sound travelling through a crystal
+        compresses and rarefies it, and since the refractive index depends on density, an
+        acoustic wave is a moving index grating that light can diffract from. That much it
+        shares with an <a href="../aom/">acousto-optic modulator</a>. The difference — and
+        the whole point of the device — is that an AOTF arranges the interaction so that
+        only <em>one wavelength</em> can diffract at a time.</p>
+        <p>It does this by working in a <strong>birefringent</strong> crystal, usually
+        tellurium dioxide, in a geometry where the diffracted light comes out in the
+        orthogonal polarization state — ordinary becomes extraordinary, or the reverse.
+        Because the two states have different refractive indices, the momentum-matching
+        condition between the optical and acoustic waves can only be satisfied at one
+        optical wavelength for a given acoustic frequency. An AOM diffracts whatever you
+        send it; an AOTF diffracts a single colour and lets everything else pass
+        straight through.</p>
+        <p>Change the RF drive frequency and you change the wavelength that matches. That
+        is the tuning mechanism, and it is purely electronic — no moving parts, no filter
+        wheel, no grating to rotate. The RF <em>power</em>, meanwhile, sets the diffraction
+        efficiency, so the same device controls intensity at the same time.</p>`,
+      formulas: [
+        { tex: '\\nu_{\\text{out}} = \\nu_{\\text{in}} + f_{a}', caption: 'The diffracted light is Doppler-shifted by the acoustic drive frequency — tens to hundreds of MHz, tiny beside an optical frequency but enough to matter in heterodyne detection.' },
+        { tex: '\\frac{\\Delta\\lambda}{\\lambda} = -\\frac{f_{a}}{\\nu}', caption: 'The same shift as a fractional wavelength change. At 80 MHz on 532 nm this is about 75 pm — real, and far too small to see on a spectrum.' },
+        { tex: '\\tau \\approx \\frac{D}{v_{a}}', caption: 'Switching time is the acoustic transit across the beam. In TeO₂ the shear wave travels around 650 m/s, so a 1 mm beam switches in roughly 1.5 µs — microseconds, against the tens of milliseconds a filter wheel needs.' },
+      ],
+      html2: `
+        <p>Two consequences make AOTFs indispensable in modern microscopes. First, the
+        <strong>speed</strong>: switching in microseconds means the wavelength can change
+        between pixels of a scan, not between frames. Second, and more powerfully, the
+        crystal can be driven with <strong>several RF tones at once</strong> — each one
+        selects its own wavelength, and each one's amplitude sets that wavelength's
+        intensity independently. One small crystal thereby replaces a rack of shutters,
+        filters, and attenuators, which is why a confocal microscope's laser combiner is
+        almost always an AOTF.</p>
+        <p>Typical passbands are a few nanometres — narrow enough to isolate one laser line
+        from another, broad enough to pass a useful fraction of a fluorescence band. The
+        rejected light is not absorbed but simply undiffracted, so it continues through the
+        crystal along the original path and has to be caught by a
+        <a href="../beamdump/">beam dump</a> rather than left to wander.</p>
+        <p>Beyond microscopy, AOTFs appear in hyperspectral and multispectral imaging, in
+        Raman instruments, in fluorescence spectroscopy, and in astronomical instruments
+        where a filter wheel's mass and mechanism are unwelcome.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The element is traced as what the real device is: a <strong>bandpass filter
+        followed by an acousto-optic deflector</strong>, in series inside one body. Light
+        within the passband is diffracted into the selected order; everything else does not
+        make it through.</p>
+        <p>Six controls, matching what you would set on a real driver:</p>
+        <ul>
+          <li><strong>Selected wavelength</strong> and <strong>passband width</strong> — the
+          colour picked out, and how much of the spectrum comes with it.</li>
+          <li><strong>Deflection</strong> — the angle the selected order leaves at, applied
+          exactly as set.</li>
+          <li><strong>RF frequency</strong> — shifts the diffracted light's optical
+          frequency. At 80 MHz on 532 nm the output really does come out at
+          531.999925 nm, which you can read on a detector even though no spectrum would
+          ever resolve it.</li>
+          <li><strong>Selected-order efficiency</strong> — the fraction diffracted, which is
+          what RF power buys on a real device. Set 0.85 and a detector on the deflected beam
+          reads exactly 0.85 of the incident line.</li>
+          <li><strong>Active aperture</strong>, resizable on the canvas.</li>
+        </ul>
+        <p>The natural demonstration is the one AOTFs are actually used for: combine several
+        laser lines onto one path, then tune the filter and watch a single line emerge on
+        the deflected beam while the others do not. Tuning between 488, 532 and 633&nbsp;nm
+        picks out each in turn, at exactly the efficiency you set.</p>`,
+      limitations: `<p><strong>Watch the passband against a broadband source.</strong> A
+        supercontinuum is represented by a finite set of spectral samples — eight across its
+        span, so about 35&nbsp;nm apart on a 420–700&nbsp;nm source. An AOTF passband
+        narrower than that spacing can fall entirely between two samples and pass
+        <em>nothing at all</em>, which looks like a broken element rather than a sampling
+        artefact. Measured on that source, passbands below about 8&nbsp;nm returned no
+        signal whatever. Real AOTFs have 1–2&nbsp;nm passbands, so this is easy to hit:
+        widen the band, or use discrete laser lines, where selection works exactly.</p>
+        <p>The physics is also loosened in ways worth knowing. The passband is a hard-edged
+        window rather than the sinc²-like response with sidelobes a real crystal produces.
+        The selected wavelength, the deflection angle, and the RF frequency are three
+        independent controls here, whereas in a real device one acoustic frequency
+        determines all three at once through phase matching — so it is possible to set a
+        combination no crystal could realise. The polarization rotation that defines the
+        anisotropic interaction is not modelled, so the diffracted beam leaves in the state
+        it arrived and cannot be cleaned up with a polarizer the way a real one is. There is
+        no undiffracted zeroth-order beam to dump, only one passband at a time rather than
+        the multi-tone operation that makes the device so useful, no relation between RF
+        power and efficiency, and no acoustic transit time — the wavelength changes
+        instantly.</p>`,
+    },
+    related: ['aom', 'eom', 'filter', 'sclaser'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Acousto-optic Tunable Filters', url: 'https://www.rp-photonics.com/acousto_optic_tunable_filters.html' },
+      { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
+    ],
+  },
+  {
     type: 'detector',
     title: 'Photodetector',
     category: 'Detectors',
