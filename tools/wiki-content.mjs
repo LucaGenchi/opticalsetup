@@ -1765,6 +1765,233 @@ export const wikiEntries = [
   },
 
   {
+    type: 'beamdump',
+    title: 'Beam dump',
+    category: 'Beam Block',
+    realWorld: {
+      html: `
+        <p>A beam dump ends a beam. Every optical setup produces light that has done its
+        job — the unused port of a beamsplitter, the rejected polarization, the zeroth order
+        off a grating, the beam left over when an experiment is realigned — and all of it
+        has to stop somewhere deliberate. Left alone it lands on a wall, a colleague, or
+        back in the laser.</p>
+        <p>Doing that well is harder than it sounds, because "absorbing" light is really
+        <em>converting it to heat</em> while reflecting as little as possible. The usual
+        design is geometric rather than material: a cone, a wedge, or a stack of angled
+        vanes, anodised matte black, arranged so that any light not absorbed on first
+        contact reflects <em>deeper into</em> the cavity rather than back out. Several
+        bounces at a few per cent reflectivity each leave a negligible fraction escaping.
+        The black surface does the absorbing; the geometry catches what the surface
+        misses.</p>
+
+        <h3>Why high-power dumps need cooling</h3>
+        <p>A dump absorbs essentially the entire beam, so it receives the laser's full
+        average power as heat in a small volume. That is a genuine thermal engineering
+        problem, and it sets how a dump is built:</p>
+        <ul>
+          <li>Up to a few watts, a black-anodised aluminium cone with fins radiates and
+          convects the heat away passively.</li>
+          <li>From tens of watts, passive cooling stops keeping up and the dump needs
+          forced air or a substantial heat sink.</li>
+          <li>At hundreds of watts and above — industrial and materials-processing lasers —
+          dumps are <strong>water-cooled</strong>, with flow interlocks that shut the laser
+          down if circulation fails.</li>
+        </ul>
+        <p>Exceeding a dump's rating is not a small mistake. The anodised layer can burn
+        away, destroying the absorption it was providing and releasing particulates;
+        absorbing glass can crack from thermal shock; and a dump that starts reflecting is
+        worse than no dump at all, because nobody is expecting a beam to come back out of
+        it. Ultrafast lasers add a second constraint: a femtosecond pulse train of modest
+        <em>average</em> power carries enormous <em>peak</em> intensity, and can ablate an
+        absorber that would handle the same average power from a CW source without
+        complaint. Dumps are rated for both.</p>`,
+      formulas: [
+        { tex: 'P_{\\text{abs}} \\approx P_{\\text{in}}', caption: 'The defining property: a dump converts essentially the whole beam to heat, so its thermal load is the full incident power — not a fraction of it.' },
+        { tex: 'R_{\\text{eff}} \\approx R^{N}', caption: 'Why the geometry matters more than the coating: N bounces inside the cavity at surface reflectivity R leave only R^N escaping. Four bounces at 5% reflect back about 6 parts per million.' },
+      ],
+      html2: `
+        <h3>Safety practice around beam blocks</h3>
+        <p>Beam dumps are the most basic piece of laser safety hardware on a bench, and they
+        work only as part of a wider practice:</p>
+        <ul>
+          <li><strong>Terminate every beam, including the ones you did not plan.</strong>
+          An uncoated glass surface reflects about 4% per face at normal incidence, so every
+          window, sample, and filter throws off stray beams. Those are what actually reach
+          people's eyes; the main beam is usually the one everybody is watching.</li>
+          <li><strong>Keep every beam in one horizontal plane, well below seated eye
+          level</strong>, and never raise your eyes to that plane. Most accidents happen
+          when someone bends down to look at something.</li>
+          <li><strong>Remove watches, rings, and badges</strong> before working near an open
+          beam. A polished surface at an unlucky angle is an unplanned mirror.</li>
+          <li><strong>Wear eyewear matched to both wavelength and optical density.</strong>
+          Goggles that block 1064&nbsp;nm may transmit 532&nbsp;nm freely — a real hazard in
+          multi-wavelength setups such as a two-colour Raman microscope, where the pump,
+          Stokes, and generated signal are all different colours.</li>
+          <li><strong>Never look along a beam axis</strong>, even attenuated. Use a viewing
+          card, a fluorescent target, or an IR viewer.</li>
+          <li><strong>Enclose the beam path</strong> where you can, and use interlocks and
+          warning signage where you cannot.</li>
+          <li>For <strong>Class 4</strong> lasers, remember that even <em>diffuse</em>
+          reflections can be hazardous to eyes and skin, and that the beam is a credible
+          ignition source for paper, cloth, and solvents.</li>
+        </ul>
+        <p>None of this is modelled by a ray tracer, and a sketch that looks tidy on screen
+        can still describe a setup that is unsafe to build. Treat a drawing as a plan, not
+        a risk assessment.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The dump is drawn as a closed body whose faces are all absorbing, so any ray that
+        reaches it from any direction stops there and is removed from the trace. Nothing is
+        transmitted, nothing is reflected, and no ray continues past it. The only control is
+        the clear aperture, which sets how large a target it presents.</p>
+        <p>Its practical use here is the same as on a bench: give the unused ports somewhere
+        to end. Put one on the second output of a <a href="../bs/">beamsplitter</a>, on the
+        rejected port of a <a href="../pbs/">polarizing beamsplitter</a>, or on an
+        unwanted diffraction order from a <a href="../grating/">grating</a>, and the figure
+        stops showing a beam wandering off into empty space. It makes a diagram read as a
+        deliberate design rather than an unfinished one, and it is what a reviewer of your
+        figure will look for.</p>
+        <p>Because a dumped ray is removed rather than attenuated, a dump is also a clean
+        way to isolate one branch of a setup while you study another — block one arm of an
+        interferometer and the remaining path is all that is traced.</p>`,
+      limitations: `<p>Absorption is total and perfect: there is no residual reflectivity,
+        no wavelength dependence, and no angular limit, whereas a real dump reflects a small
+        fraction and does so more at grazing incidence. Nothing thermal is modelled at all —
+        no absorbed power, no temperature rise, no damage threshold, and no warning when a
+        sketch dumps a kilowatt into a component that could not survive it. The dump's
+        rating and its cooling requirement are entirely the designer's responsibility, and
+        the section above is the only place this tool addresses them.</p>`,
+    },
+    related: ['blocker', 'slit', 'bs', 'pbs'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Beam Dumps', url: 'https://www.rp-photonics.com/beam_dumps.html' },
+      { label: 'RP Photonics Encyclopedia — Laser Safety', url: 'https://www.rp-photonics.com/laser_safety.html' },
+    ],
+  },
+  {
+    type: 'slit',
+    title: 'Slit',
+    category: 'Beam Block',
+    realWorld: {
+      html: `
+        <p>A slit is an aperture: two opaque jaws with a gap between them. Unlike a
+        <a href="../beamdump/">beam dump</a>, whose job is to stop a beam entirely, a slit
+        stops only part of one — it passes the light within its gap and absorbs everything
+        outside it. That makes it a shaping and selecting element, though the light it
+        rejects still has to be absorbed, and at high power the jaws face the same thermal
+        problem a dump does.</p>
+        <p>Slits do two quite different jobs depending on where they sit. In a plane where
+        the beam is <em>spatially</em> spread out, a slit trims the beam's cross-section —
+        cutting off a tail, defining a sheet of light, or setting the illuminated strip in a
+        line-scan system. In a plane where wavelengths have been spread out by a
+        <a href="../grating/">grating</a> or <a href="../prism/">prism</a>, exactly the same
+        component becomes a <em>wavelength</em> selector: it passes a band and rejects the
+        rest. A monochromator is, in essence, a dispersing element with a slit at each end,
+        and the slit width sets the spectral resolution directly.</p>
+        <p>There is a limit to how far this can be pushed. Narrowing a slit does not narrow
+        the transmitted beam indefinitely, because diffraction sets in: the narrower the
+        aperture, the more the light spreads after it.</p>`,
+      formulas: [
+        { tex: '\\theta \\approx \\frac{\\lambda}{a}', caption: 'Diffraction spreading after a slit of width a — the angular half-width of the central lobe. Below roughly a millimetre for visible light, closing the slit further makes the far-field beam wider, not narrower.' },
+        { tex: '\\Delta\\lambda \\approx \\frac{a}{f}\\,\\frac{d\\lambda}{d\\theta}', caption: 'Spectral bandwidth passed by a slit of width a at the focal plane of a spectrograph of focal length f — the slit width and the dispersion together set the resolution.' },
+      ],
+      html2: `
+        <p>Because a slit rejects most of the light reaching it, it is a lossy component by
+        design, and in a spectrograph the trade-off is explicit: a narrower slit buys
+        resolution at the cost of signal. Choosing the width is choosing where on that curve
+        to sit.</p>
+        <p>The rejected light does not vanish. On a low-power source it simply warms the
+        jaws; on a high-power one the jaws need the same treatment as a beam dump — an
+        absorbing surface that can shed heat, and at high enough power, active cooling. A
+        pair of thin blackened blades that works at milliwatts will not survive tens of
+        watts.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The slit is drawn as two absorbing jaws with a gap between them, and it is traced
+        exactly that way: rays passing through the gap continue completely unchanged, and
+        rays striking either jaw are absorbed and removed. Two controls set it — the
+        <strong>gap</strong>, and the overall optic size that fixes how far the jaws
+        extend.</p>
+        <p>The useful consequence is that a slit here is a genuine spatial filter. Send a
+        wide beam at one and only the central portion survives, so you can define a beam
+        width mid-path, clip the wings off a diverging beam, or take one branch of a fan and
+        discard the rest. Place one after a <a href="../grating/">grating</a> or a
+        <a href="../prism/">prism</a> and it becomes a wavelength selector, because the
+        colours have been separated in space by then and the slit is choosing among
+        positions.</p>
+        <p>The purple canvas knob adjusts the gap directly, which makes the selection easy
+        to explore: widen it until the branch you want passes, then narrow it until only
+        that branch does.</p>`,
+      limitations: `<p><strong>Diffraction is not modelled</strong>, and for a slit that is
+        the significant omission: narrowing the gap here simply passes a narrower bundle of
+        rays, whereas a real slit below about a millimetre starts spreading the light it
+        transmits, and a very narrow one produces a broad diffraction pattern rather than a
+        thin beam. Nothing in this element will ever show that reversal. Transmission
+        through the gap is also perfect and edge effects are absent — no partial
+        transmission at the jaw edges, no scattering off them, and no wavelength dependence.
+        As with the beam dump, the absorbed light produces no heat and carries no damage
+        threshold, so a sketch will happily throw arbitrary power at a pair of thin
+        blades.</p>`,
+    },
+    related: ['beamdump', 'blocker', 'grating', 'prism'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Monochromators', url: 'https://www.rp-photonics.com/monochromators.html' },
+      { label: 'RP Photonics Encyclopedia — Diffraction', url: 'https://www.rp-photonics.com/diffraction.html' },
+    ],
+  },
+  {
+    type: 'blocker',
+    title: 'Invisible blocker',
+    category: 'Beam Block',
+    realWorld: {
+      html: `
+        <p>This element has no laboratory counterpart. It is a figure-making tool: a region
+        that absorbs any ray entering it, drawn on the canvas while you work and then
+        <strong>omitted from exported figures</strong>.</p>
+        <p>The need it answers is a real one, though. A ray tracer follows every branch it
+        generates, including ones that are physically correct but irrelevant to the point a
+        figure is making — a weak back-reflection wandering across the frame, a stray
+        diffraction order, the ghost from a beamsplitter's second surface. On a bench you
+        would put a card in the way and forget about it. The equivalent here is a blocker:
+        it takes the unwanted branch out of the trace without adding a component to the
+        drawing that a reader would have to interpret.</p>
+        <p>The honest framing is that this is a <em>presentation</em> control, not physics.
+        If a stray beam exists in your setup it exists in reality too, and hiding it from a
+        figure is a choice about what the figure is for. Use it to remove distractions from
+        a teaching diagram; do not use it to make a setup look cleaner than it is, and never
+        use it to hide a beam that would need terminating in the real build — see the
+        safety notes on the <a href="../beamdump/">beam dump</a> page.</p>`,
+      formulas: [],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The blocker is a rectangle whose faces all absorb. Any ray reaching it stops
+        there, exactly as with a <a href="../beamdump/">beam dump</a> — the difference is
+        purely in the drawing. It carries <code>hideInExport</code>, so it is visible on the
+        canvas while you compose and absent from SVG and PNG exports. In the exported
+        figure the blocked beam simply ends, with nothing to explain why.</p>
+        <p>Two controls set its width and height, and the blue handles resize it on the
+        canvas, so it can be shaped to catch exactly the branch you want and nothing
+        else.</p>
+        <p>Its bounds are still counted when a figure is fitted for export, so a blocker
+        parked far from the setup will pad the exported crop with empty space even though it
+        is not drawn. Keep it close to the beam it is catching, or use a
+        <a href="../figureframe/">figure frame</a> to define the crop explicitly.</p>`,
+      limitations: `<p>Absorption is perfect and total, like the beam dump's. The single
+        thing to understand about this element is that it changes what a figure
+        <em>shows</em>, not what the setup <em>is</em>: the trace it removes was a real
+        branch of the light, and its absence from the exported drawing is your editorial
+        decision rather than a physical result. A reader of the figure has no way to tell a
+        blocker was used.</p>`,
+    },
+    related: ['beamdump', 'slit', 'figureframe'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Beam Dumps', url: 'https://www.rp-photonics.com/beam_dumps.html' },
+    ],
+  },
+  {
     type: 'detector',
     title: 'Photodetector',
     category: 'Detectors',
