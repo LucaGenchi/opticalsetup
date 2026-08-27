@@ -2125,6 +2125,104 @@ export const wikiEntries = [
     ],
   },
   {
+    type: 'dmd',
+    title: 'Digital micromirror device',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A DMD is an array of hundreds of thousands of aluminium mirrors, each a few
+        micrometres across, sitting on a CMOS memory cell. Every mirror has exactly two
+        stable positions — tilted one way or the other about its diagonal, typically by
+        <strong>±12°</strong> — and is held there electrostatically against mechanical
+        landing posts. Writing a bit to the cell underneath flips it.</p>
+        <p>That makes the device fundamentally different from a
+        <a href="../slm/">liquid-crystal SLM</a>. An SLM is <em>analogue</em> and works on
+        <em>phase</em>: it retards light and can therefore redirect it. A DMD is
+        <em>binary</em> and works on <em>amplitude</em>: each mirror either sends its light
+        toward the target or throws it away. There is no in-between position.</p>
+        <p>Because a mirror tilted by θ deflects a beam by 2θ, the two states send light in
+        directions separated by four times the tilt angle:</p>`,
+      formulas: [
+        { tex: '\\delta = 2\\theta', caption: 'A mirror tilted by θ deflects the reflected beam by 2θ — the reason a small mechanical tilt buys a large optical separation.' },
+        { tex: '\\Delta = 4\\theta', caption: 'Angle between the ON and OFF beams, since the two mirror states tilt opposite ways. At the standard ±12° that is 48°, which is why a DLP projection lens sits well off the illumination axis.' },
+        { tex: 'd\\sin\\theta_m = m\\lambda', caption: 'The mirror array is periodic, so it is also a grating. At roughly 7.6 µm pitch this matters as soon as the illumination is coherent.' },
+      ],
+      html2: `
+        <h3>Grey levels out of a binary device</h3>
+        <p>If each mirror is only ever fully on or fully off, brightness has to come from
+        somewhere else — and it comes from <strong>time</strong>. The mirror is switched on
+        and off thousands of times per frame, and the fraction of the frame it spends in the
+        ON state sets the perceived brightness. The eye, or any detector slower than the
+        switching, integrates the result. Pulse-width modulation in space's place.</p>
+        <p>This is why DMDs are <em>fast</em>. A micromirror flips in microseconds, giving
+        binary frame rates in the tens of kilohertz — three or four orders of magnitude
+        quicker than liquid crystal, which has to physically reorient. It also explains the
+        colour-fringing "rainbow effect" some people see in single-chip DLP projectors,
+        where red, green and blue are displayed sequentially rather than together.</p>
+
+        <h3>What it is good and bad at</h3>
+        <p>Being a mirror rather than a birefringent layer, a DMD is
+        <strong>polarization-insensitive</strong> and <strong>broadband</strong> — aluminium
+        reflects from the ultraviolet well into the infrared, so one device works at any
+        wavelength. It has a high fill factor, around 92%, and tolerates far more optical
+        power than liquid crystal. Those properties took it well beyond projectors: maskless
+        photolithography, structured-illumination microscopy, hyperspectral imaging,
+        single-pixel and compressive-sensing cameras, and patterned optogenetic
+        stimulation.</p>
+        <p>The cost is efficiency. Because it works by discarding light rather than
+        redirecting it, everything in the OFF state is simply thrown away — at 50% duty you
+        lose half the beam, and that light has to be caught by a
+        <a href="../beamdump/">beam dump</a>, which at high power needs to be a real cooled
+        one. A phase SLM steering the same light into the pattern wastes almost none of it.
+        The periodicity is the other complication: with coherent illumination the array
+        behaves as a blazed grating and splits the beam into diffraction orders, so a
+        laser-illuminated DMD needs its geometry chosen so that the wanted order and the
+        blaze direction coincide.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The device is traced as a binary mirror array. Rays are sorted into ON and OFF
+        by where they land, and each state reflects into its own direction — the ON beam
+        deflected one way from the specular direction, the OFF beam the other:</p>
+        <ul>
+          <li><strong>Micromirror tilt</strong> sets the deflection. The ON and OFF beams
+          emerge separated by exactly four times this angle, so the default 12° puts 48°
+          between them, matching a real device.</li>
+          <li><strong>Pattern pitch</strong> and <strong>ON fraction</strong> define the
+          pattern itself as periodic stripes across the aperture — the fraction of each
+          period whose mirrors are ON.</li>
+          <li><strong>Show OFF order</strong> decides whether the discarded beam is drawn.</li>
+        </ul>
+        <p>That last toggle is worth understanding. It is <strong>off by default</strong>,
+        so the rejected light simply stops at the device — which is what a setup with a
+        properly dumped OFF path looks like, and keeps a teaching figure uncluttered. Turn
+        it on and the OFF beam is traced to wherever it actually goes, which is the honest
+        picture while you are designing: you can see the 48° separation, confirm nothing
+        downstream is sitting in that path, and put a <a href="../beamdump/">beam dump</a>
+        there to terminate it.</p>
+        <p>Sweeping the tilt is the quickest way to see the geometry that makes DLP work.
+        At 6° the two beams leave 24° apart and are awkward to separate; at 20° they are
+        80° apart and trivially separable, but the device would be harder to build. The
+        real ±12° is the compromise.</p>`,
+      limitations: `<p><strong>Diffraction is not modelled</strong>, and for a DMD that is
+        the significant omission: a real array is periodic at roughly 7.6&nbsp;µm and acts
+        as a blazed grating, so coherent illumination produces a set of diffraction orders
+        that a laser-based design has to be built around. Here reflection is purely
+        geometric and a single beam produces a single ON beam. The pattern is also
+        periodic stripes measured in millimetres of canvas rather than an addressable array
+        of micromirrors, so it cannot display an image, and there is no time dimension —
+        no pulse-width modulation, no grey levels, no switching time, and no colour
+        sequencing. Fill-factor loss, aluminium reflectivity, absorption, and the damage
+        threshold are all absent, so the ON and OFF beams together carry the full incident
+        power.</p>`,
+    },
+    related: ['slm', 'dm', 'beamdump', 'grating'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spatial Light Modulators', url: 'https://www.rp-photonics.com/spatial_light_modulators.html' },
+      { label: 'Texas Instruments — DLP Technology', url: 'https://www.ti.com/dlp-chip/overview.html' },
+    ],
+  },
+  {
     type: 'detector',
     title: 'Photodetector',
     category: 'Detectors',
