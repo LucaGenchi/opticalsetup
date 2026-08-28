@@ -2329,94 +2329,107 @@ export const wikiEntries = [
     category: 'Modulators',
     realWorld: {
       html: `
-        <p>An AOTF selects a colour electronically. Sound travelling through a crystal
-        compresses and rarefies it, and since the refractive index depends on density, an
+        <p>An AOTF selects colours electronically. Sound travelling through a crystal
+        compresses and rarefies it, and since the refractive index follows density, an
         acoustic wave is a moving index grating that light can diffract from. That much it
         shares with an <a href="../aom/">acousto-optic modulator</a>. The difference — and
-        the whole point of the device — is that an AOTF arranges the interaction so that
-        only <em>one wavelength</em> can diffract at a time.</p>
-        <p>It does this by working in a <strong>birefringent</strong> crystal, usually
-        tellurium dioxide, in a geometry where the diffracted light comes out in the
-        orthogonal polarization state — ordinary becomes extraordinary, or the reverse.
-        Because the two states have different refractive indices, the momentum-matching
-        condition between the optical and acoustic waves can only be satisfied at one
-        optical wavelength for a given acoustic frequency. An AOM diffracts whatever you
-        send it; an AOTF diffracts a single colour and lets everything else pass
-        straight through.</p>
-        <p>Change the RF drive frequency and you change the wavelength that matches. That
-        is the tuning mechanism, and it is purely electronic — no moving parts, no filter
-        wheel, no grating to rotate. The RF <em>power</em>, meanwhile, sets the diffraction
-        efficiency, so the same device controls intensity at the same time.</p>`,
+        the whole point of the device — is that an AOTF arranges the interaction so only
+        <em>one wavelength at a time</em> can diffract from a given tone.</p>
+        <p>It does this in a <strong>birefringent</strong> crystal, usually tellurium
+        dioxide, in a geometry where the diffracted light emerges in the orthogonal
+        polarization state. Because the two states have different refractive indices, the
+        momentum-matching condition between the optical and acoustic waves is satisfied at
+        only one optical wavelength per acoustic frequency. An AOM diffracts whatever you
+        send it; an AOTF picks a line out of it.</p>
+        <p>Change the RF drive frequency and you change the line. That is the tuning
+        mechanism, and it is purely electronic — no filter wheel to rotate, no grating to
+        turn. The RF <em>power</em> sets the diffraction efficiency, so the same device
+        controls how much of that line gets through.</p>`,
       formulas: [
-        { tex: '\\nu_{\\text{out}} = \\nu_{\\text{in}} + f_{a}', caption: 'The diffracted light is Doppler-shifted by the acoustic drive frequency — tens to hundreds of MHz, tiny beside an optical frequency but enough to matter in heterodyne detection.' },
-        { tex: '\\frac{\\Delta\\lambda}{\\lambda} = -\\frac{f_{a}}{\\nu}', caption: 'The same shift as a fractional wavelength change. At 80 MHz on 532 nm this is about 75 pm — real, and far too small to see on a spectrum.' },
-        { tex: '\\tau \\approx \\frac{D}{v_{a}}', caption: 'Switching time is the acoustic transit across the beam. In TeO₂ the shear wave travels around 650 m/s, so a 1 mm beam switches in roughly 1.5 µs — microseconds, against the tens of milliseconds a filter wheel needs.' },
+        { tex: '\\tau \\approx \\frac{D}{v_{a}}', caption: 'Switching time is the acoustic transit across the beam. In TeO₂ the shear wave travels around 650 m/s, so a 1 mm beam switches in roughly 1.5 µs — against the tens of milliseconds a filter wheel needs.' },
+        { tex: 'P_{\\text{line}} \\approx P_{\\text{in}}\\,\\frac{\\Delta\\lambda}{\\Delta\\lambda_{\\text{source}}}\\,\\eta', caption: 'What a narrow selection actually costs: picking 2 nm out of a 280 nm supercontinuum keeps well under 1% of the power, however efficient the diffraction is.' },
       ],
       html2: `
-        <p>Two consequences make AOTFs indispensable in modern microscopes. First, the
-        <strong>speed</strong>: switching in microseconds means the wavelength can change
-        between pixels of a scan, not between frames. Second, and more powerfully, the
-        crystal can be driven with <strong>several RF tones at once</strong> — each one
-        selects its own wavelength, and each one's amplitude sets that wavelength's
-        intensity independently. One small crystal thereby replaces a rack of shutters,
-        filters, and attenuators, which is why a confocal microscope's laser combiner is
-        almost always an AOTF.</p>
-        <p>Typical passbands are a few nanometres — narrow enough to isolate one laser line
-        from another, broad enough to pass a useful fraction of a fluorescence band. The
-        rejected light is not absorbed but simply undiffracted, so it continues through the
-        crystal along the original path and has to be caught by a
-        <a href="../beamdump/">beam dump</a> rather than left to wander.</p>
-        <p>Beyond microscopy, AOTFs appear in hyperspectral and multispectral imaging, in
-        Raman instruments, in fluorescence spectroscopy, and in astronomical instruments
-        where a filter wheel's mass and mechanism are unwelcome.</p>`,
+        <h3>Multiplexed and sequential drive</h3>
+        <p>The property that makes AOTFs indispensable is that the crystal does not have to
+        be driven with one tone. Apply <strong>several RF frequencies simultaneously</strong>
+        and each selects its own wavelength, with its own amplitude setting that line's
+        intensity independently. That is <strong>multiplexing</strong>: every selected line
+        is present in the output at the same time. One small crystal thereby replaces a rack
+        of shutters, filters, and attenuators — which is why the laser combiner in a confocal
+        or multiphoton microscope is almost always an AOTF.</p>
+        <p>Driving one tone at a time instead, stepping from line to line, is
+        <strong>sequential</strong> operation. Only one wavelength is present at any instant.
+        Because switching takes microseconds, the sequence can be faster than a pixel dwell,
+        so a scan can step excitation wavelengths line by line or even pixel by pixel and
+        build a separate image per colour — which is exactly what multiplexed drive cannot
+        do, since there every colour arrives at once and the detector cannot tell them
+        apart.</p>
+        <p>Typical passbands are one to a few nanometres — narrow enough to isolate one
+        laser line from its neighbour. The light that is not selected is not absorbed; it
+        simply fails to diffract and continues on, which means a real installation always
+        has somewhere for it to go, usually a <a href="../beamdump/">beam dump</a>.</p>
+        <p>Beyond microscopy, AOTFs appear in hyperspectral and multispectral imaging, Raman
+        instruments, fluorescence spectroscopy, and space-borne instruments where a filter
+        wheel's mass and mechanism are unwelcome.</p>`,
     },
     inOpticalSetup: {
       html: `
-        <p>The element is traced as what the real device is: a <strong>bandpass filter
-        followed by an acousto-optic deflector</strong>, in series inside one body. Light
-        within the passband is diffracted into the selected order; everything else does not
-        make it through.</p>
-        <p>Six controls, matching what you would set on a real driver:</p>
-        <ul>
-          <li><strong>Selected wavelength</strong> and <strong>passband width</strong> — the
-          colour picked out, and how much of the spectrum comes with it.</li>
-          <li><strong>Deflection</strong> — the angle the selected order leaves at, applied
-          exactly as set.</li>
-          <li><strong>RF frequency</strong> — shifts the diffracted light's optical
-          frequency. At 80 MHz on 532 nm the output really does come out at
-          531.999925 nm, which you can read on a detector even though no spectrum would
-          ever resolve it.</li>
-          <li><strong>Selected-order efficiency</strong> — the fraction diffracted, which is
-          what RF power buys on a real device. Set 0.85 and a detector on the deflected beam
-          reads exactly 0.85 of the incident line.</li>
-          <li><strong>Active aperture</strong>, resizable on the canvas.</li>
-        </ul>
-        <p>The natural demonstration is the one AOTFs are actually used for: combine several
-        laser lines onto one path, then tune the filter and watch a single line emerge on
-        the deflected beam while the others do not. Tuning between 488, 532 and 633&nbsp;nm
-        picks out each in turn, at exactly the efficiency you set.</p>`,
-      limitations: `<p><strong>Watch the passband against a broadband source.</strong> A
-        supercontinuum is represented by a finite set of spectral samples — eight across its
-        span, so about 35&nbsp;nm apart on a 420–700&nbsp;nm source. An AOTF passband
-        narrower than that spacing can fall entirely between two samples and pass
-        <em>nothing at all</em>, which looks like a broken element rather than a sampling
-        artefact. Measured on that source, passbands below about 8&nbsp;nm returned no
-        signal whatever. Real AOTFs have 1–2&nbsp;nm passbands, so this is easy to hit:
-        widen the band, or use discrete laser lines, where selection works exactly.</p>
-        <p>The physics is also loosened in ways worth knowing. The passband is a hard-edged
-        window rather than the sinc²-like response with sidelobes a real crystal produces.
-        The selected wavelength, the deflection angle, and the RF frequency are three
-        independent controls here, whereas in a real device one acoustic frequency
-        determines all three at once through phase matching — so it is possible to set a
-        combination no crystal could realise. The polarization rotation that defines the
-        anisotropic interaction is not modelled, so the diffracted beam leaves in the state
-        it arrived and cannot be cleaned up with a polarizer the way a real one is. There is
-        no undiffracted zeroth-order beam to dump, only one passband at a time rather than
-        the multi-tone operation that makes the device so useful, no relation between RF
-        power and efficiency, and no acoustic transit time — the wavelength changes
-        instantly.</p>`,
+        <p>The element is built around a list of <strong>selected lines</strong>, one per RF
+        tone, in the same spirit as the <a href="../slm/">SLM's</a> stacked functions. A
+        fresh AOTF has a single line; press <em>Add line</em> to stack more, up to eight.
+        Each line carries its own wavelength, passband, and efficiency, so a weak line and a
+        strong one can be selected together.</p>
+
+        <h3>Where the light goes</h3>
+        <p>The selected lines leave along the <strong>incoming axis</strong>, so the
+        selection stays on the optical axis and the rest of a setup can be built downstream
+        of it in a straight line. Everything not selected — the beam
+        <strong>depleted</strong> of those lines — is deflected to an angle you choose.</p>
+        <p>That depleted beam is <strong>hidden by default</strong>, because in a working
+        instrument it goes straight into a dump and drawing it only clutters the figure.
+        Turn on <em>Show depleted beam</em> while designing and it is traced to wherever it
+        actually goes, so you can confirm nothing downstream is sitting in its path and put
+        a <a href="../beamdump/">beam dump</a> there. Hiding it changes only the drawing:
+        the power accounting is the same either way.</p>
+
+        <h3>Driving the lines</h3>
+        <p><strong>Multiplexed</strong> drive opens every selected line at once, so all of
+        them are in the output together and a spectrometer downstream shows the whole set.
+        <strong>Sequential</strong> drive steps through them one at a time at a rate you set,
+        so exactly one line is present at any instant and the spectrometer shows it change
+        as the sequence advances.</p>
+        <p>The sequence runs on the canvas clock, slowed to a step or two a second — a real
+        driver steps at kilohertz, far too fast to read — in the same illustrative spirit as
+        a scanning galvo or a chopper wheel. Each line is fully open while it is its turn;
+        the sequence chooses <em>which</em> line, not how much of it gets through.</p>
+
+        <h3>What the numbers do</h3>
+        <p>Selection is exact and conserves energy. A 20&nbsp;nm window on a 420–700&nbsp;nm
+        supercontinuum passes 20/280 of the power and the depleted port carries the rest,
+        summing to one. Efficiency multiplies on top, so three multiplexed lines at 0.9
+        selected from three matching laser lines deliver 2.7× a single line's worth. Narrow
+        selections work too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the
+        beam and still traces correctly rather than being discarded as negligible.</p>`,
+      limitations: `<p><strong>The geometry is the reverse of a physical device.</strong> In
+        a real AOTF the selected light is the <em>diffracted</em> first order and leaves at
+        an angle, while the remainder passes straight through as the zeroth order. This
+        element draws the opposite assignment — the selection continues along the incoming
+        axis and the remainder is deflected — because it keeps a multi-line selection on the
+        optical axis where the rest of a setup is built. The power accounting is identical
+        either way; only which port is bent differs.</p>
+        <p>The passband is a hard-edged window rather than the sinc²-like response with
+        sidelobes a real crystal produces, and it is set directly rather than following from
+        an acoustic frequency: in a real device one RF tone fixes the selected wavelength,
+        the diffraction angle, and the polarization rotation together through phase
+        matching, so a combination set here need not correspond to any crystal. The
+        polarization rotation itself is not modelled, so the selected light leaves in the
+        state it arrived and cannot be cleaned up with a <a href="../polarizer/">polarizer</a>
+        the way a real one is. There is no relation between RF power and efficiency, no
+        acoustic transit time — lines switch instantly — and no crystal transmission range,
+        so a line can be selected at any wavelength the source provides.</p>`,
     },
-    related: ['aom', 'eom', 'filter', 'sclaser'],
+    related: ['aom', 'eom', 'filter', 'sclaser', 'beamdump'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Acousto-optic Tunable Filters', url: 'https://www.rp-photonics.com/acousto_optic_tunable_filters.html' },
       { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },

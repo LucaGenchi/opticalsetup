@@ -264,18 +264,19 @@ const demoScenes = {
     mkDemo('wavefrontdetector', 345, 100, 267, { aperture: 40 },
       { label: 'reads the corrected wavefront', showLabel: true, labelPos: 'r' }),
   ],
-  // The AOTF's real job is picking one laser line out of several, so the demo
-  // combines three and tunes the filter to the middle one.
+  // The AOTF's real job is selecting several lines out of a broad source, so
+  // the demo takes three from a supercontinuum and dumps the remainder.
   aotf: () => [
-    // The three lines have to fall inside the active aperture, and their
-    // deflected orders inside the spectrometer's, so the spacings are set to
-    // the 6 deg deflection over the 300 mm to the detector.
-    mkDemo('cwlaser', 60, 170, 0, { wavelength: 488, beamMode: 'line' }, { label: '488 nm', showLabel: true, labelPos: 't' }),
-    mkDemo('cwlaser', 60, 200, 0, { wavelength: 532, beamMode: 'line' }, { label: '532 nm', showLabel: true, labelPos: 't' }),
-    mkDemo('cwlaser', 60, 230, 0, { wavelength: 633, beamMode: 'line' }, { label: '633 nm', showLabel: true, labelPos: 'b' }),
-    mkDemo('aotf', 320, 200, 0, { center: 532, band: 6, deflect: 6, rfMHz: 80, eff: 0.85, aperture: 70 },
-      { label: 'tuned to 532 nm', showLabel: true, labelPos: 'b' }),
-    mkDemo('spectrometer', 620, 231, 6, { aperture: 100 }, { label: 'only the selected line', showLabel: true, labelPos: 'r' }),
+    mkDemo('sclaser', 60, 250, 0, { scMin: 420, scMax: 700, beamMode: 'beam', beamWidth: 10, showPulse: true },
+      { label: 'supercontinuum', showLabel: true, labelPos: 't' }),
+    mkDemo('aotf', 400, 250, 0, {
+      aperture: 26, deflect: 14, showDepleted: true, modMode: 'static', modFreqHz: 1000,
+      channels: [{ wl: 488, band: 4, eff: 0.9 }, { wl: 532, band: 4, eff: 0.9 }, { wl: 633, band: 4, eff: 0.9 }],
+    }, { label: '488 · 532 · 633 nm selected', showLabel: true, labelPos: 't' }),
+    mkDemo('spectrometer', 760, 250, 0, { aperture: 40 }, { label: 'the selected lines', showLabel: true, labelPos: 'r' }),
+    // The 14 deg depleted branch crosses x=700 at y=325, not at the 345 a
+    // quick reading of the geometry suggests.
+    mkDemo('beamdump', 700, 325, 14, { aperture: 44 }, { label: 'depleted beam, dumped', showLabel: true, labelPos: 'b' }),
   ],
   aom: () => [
     mkDemo('pulsedlaser', 60, 200, 0, {
