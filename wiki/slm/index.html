@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spatial light modulator — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Reflects by default and can overlay lens-array, grating, steering, or speckle functions. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/slm/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spatial light modulator — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Reflects by default and can overlay lens-array, grating, steering, or speckle functions.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/slm/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="current">Spatial light modulator</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#wavefront-shaping">Wavefront Shaping</a> / Spatial light modulator</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/><line x1="-11" y1="-18" x2="-7" y2="-18" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-13" x2="-7" y2="-13" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-8" x2="-7" y2="-8" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-3" x2="-7" y2="-3" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="2" x2="-7" y2="2" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="7" x2="-7" y2="7" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="12" x2="-7" y2="12" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="17" x2="-7" y2="17" stroke="#4ac0b0" stroke-width="2.5"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">SLM</text></svg></div>
+        <div>
+          <h1>Spatial light modulator</h1>
+        </div>
+      </div>
+      <p class="tagline">Reflects by default and can overlay lens-array, grating, steering, or speckle functions.</p>
+      <a class="place-cta" href="../../sketch/?place=slm">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=slm"
+          title="Interactive Spatial light modulator — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the spatial light modulator to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>A spatial light modulator is a programmable optic. Instead of grinding a surface
+        into a fixed shape, it imposes a phase pattern that software can change frame by
+        frame — so one device can act as a lens, a grating, a corrector for aberrations it
+        measures on the fly, or a hologram that paints an arbitrary intensity pattern in a
+        distant plane.</p>
+
+        <h3>How liquid crystals do it</h3>
+        <p>The working substance is a <strong>nematic liquid crystal</strong>: rod-shaped
+        molecules that share a common orientation — the <em>director</em> — while remaining
+        free to move past one another like a liquid. That orientational order without
+        positional order is what makes the phase useful. Aligned rods are optically
+        <strong>birefringent</strong>: light polarized along the director sees the
+        extraordinary index <span class="w">n<sub>e</sub></span>, light polarized across it
+        sees the ordinary index <span class="w">n<sub>o</sub></span>, and the difference is
+        large — around 0.1 to 0.2, roughly ten times that of a quartz
+        <a href="../hwp/">waveplate</a>.</p>
+        <p>Applying a voltage across a pixel tilts the director toward the field. The index
+        seen by light polarized along the original director slides continuously from
+        <span class="w">n<sub>e</sub></span> toward <span class="w">n<sub>o</sub></span>, so
+        the optical path through that pixel — and therefore the phase of the light leaving
+        it — becomes a smooth function of the applied voltage:</p>
+      <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">Γ</mi><mo stretchy="false">(</mo><mi>V</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mrow><mn>2</mn><mi>π</mi><mtext> </mtext><mi mathvariant="normal">Δ</mi><mi>n</mi><mo stretchy="false">(</mo><mi>V</mi><mo stretchy="false">)</mo><mtext> </mtext><mi>d</mi></mrow><mi>λ</mi></mfrac></mrow><annotation encoding="application/x-tex">\Gamma(V) = \frac{2\pi\,\Delta n(V)\,d}{\lambda}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">Γ</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.113em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal">n</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Phase retardance of one pixel: the voltage-dependent index difference times the liquid-crystal layer thickness. This is the same expression as a waveplate, with Δn now under electrical control.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi mathvariant="normal">Γ</mi><mtext>LCOS</mtext></msub><mo>=</mo><mn>2</mn><mo>×</mo><mfrac><mrow><mn>2</mn><mi>π</mi><mtext> </mtext><mi mathvariant="normal">Δ</mi><mi>n</mi><mo stretchy="false">(</mo><mi>V</mi><mo stretchy="false">)</mo><mtext> </mtext><mi>d</mi></mrow><mi>λ</mi></mfrac></mrow><annotation encoding="application/x-tex">\Gamma_{\text{LCOS}} = 2 \times \frac{2\pi\,\Delta n(V)\,d}{\lambda}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord">Γ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">LCOS</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.113em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal">n</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">A reflective device doubles it: light crosses the layer on the way in and again on the way out, so half the thickness achieves a full 2π stroke.</div>
+    </div>
+      
+        <p>Nearly all phase-only modulators are <strong>LCOS</strong> — liquid crystal on
+        silicon. A CMOS backplane addresses each pixel and carries a mirror beneath it, with
+        the liquid-crystal layer above; light enters, reflects off the pixel mirror, and
+        leaves having crossed the modulating layer twice. Pixels are a few micrometres
+        across, the phase is quantised to 8 bits, and the device is calibrated so that its
+        full drive range corresponds to exactly 2π at one design wavelength.</p>
+        <p>Two consequences follow from the physics and are worth knowing before you design
+        around one. First, <strong>the input must be linearly polarized along the
+        director</strong>: only that component is modulated, so light in the orthogonal
+        state passes through unchanged and dilutes the pattern. Every SLM setup therefore
+        has a <a href="../polarizer/">polarizer</a> in front of it. Second, liquid crystals
+        are <strong>slow</strong> — reorientation takes milliseconds, so refresh rates are
+        tens of hertz, not the megahertz an acousto-optic device reaches.</p>
+
+        <h3>The zero-order problem</h3>
+        <p>An SLM never modulates all the light that lands on it, and the unmodulated
+        fraction leaves along the direction of a plain mirror — the specular, or
+        <strong>zeroth-order</strong>, beam. It sits on the optical axis, undiffracted,
+        while the pattern you asked for is formed around it. Several causes contribute:</p>
+        <ul>
+          <li><strong>Fill factor below 100%.</strong> The gaps between pixels, and the
+          circuitry at their edges, are not modulated. That light reflects with no phase
+          structure at all.</li>
+          <li><strong>Front-surface reflection</strong> from the protective cover glass,
+          which never reaches the liquid crystal.</li>
+          <li><strong>Incomplete 2π stroke.</strong> If the calibration is off, or the
+          device is used away from its design wavelength, the phase never wraps cleanly and
+          a residual unmodulated component survives.</li>
+          <li><strong>Phase quantisation and flicker</strong> from the digital drive
+          scheme.</li>
+        </ul>
+        <p>Together these typically leave a few per cent up to about ten per cent of the
+        incident power in the zeroth order — which, concentrated in a single undiffracted
+        spot, is frequently the <em>brightest</em> feature in the output plane. In
+        holographic optical tweezers it is a trap nobody asked for; in a
+        <a href="../objective/">microscope</a> it is a bright spot at the centre of the
+        field; at high power it can damage a sample outright.</p>
+        <p>The standard remedy is to steer the useful light away from it. Adding a linear
+        phase ramp — a blazed grating — to the displayed hologram deflects the whole pattern
+        off-axis, leaving the zeroth order behind on the axis where it can be removed with a
+        <a href="../beamdump/">beam block</a> at an intermediate focus. Careful
+        per-wavelength calibration of the 2π lookup table reduces the residue at the source,
+        and slightly tilting the device separates the cover-glass reflection from the
+        modulated beam.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>The SLM is <strong>reflective</strong> by default, matching an LCOS device, with
+        a <strong>Transmissive</strong> toggle for the less common transmissive kind. Its
+        active size sets how much of a beam it intercepts, and the blue handle resizes it on
+        the canvas.</p>
+        <p>What it does to light is set by a stack of <strong>optical function</strong>
+        layers, applied in order — up to four:</p>
+        <ul>
+          <li><strong>Lens array</strong> — divides the aperture into lenslets of a chosen
+          count and focal length, so one beam becomes several focused spots. Each lenslet is
+          tracked separately, so beams do not blend between them.</li>
+          <li><strong>Grating</strong> — a programmable diffraction grating with a chosen
+          line density and list of orders, which is how a real SLM steers and splits.</li>
+          <li><strong>Beam steer</strong> — a plain angular deflection, the simplest thing a
+          phase ramp does.</li>
+          <li><strong>Speckle / diffuser</strong> — scatters into a cone, standing in for a
+          random phase pattern.</li>
+        </ul>
+
+        <h3>The zeroth order, on a toggle</h3>
+        <p>Because the undiffracted beam is a real and often dominant feature of any SLM
+        setup, it is available here rather than quietly ignored — but it is
+        <strong>off by default</strong>, so a teaching diagram is not cluttered by a stray
+        beam nobody asked about.</p>
+        <p>Turn on <strong>0th-order reflection</strong> and set the fraction (0.1, ten per
+        cent, by default — a realistic figure for a good device) and the element splits its
+        output: that fraction leaves along the plain specular direction, exactly where a
+        mirror would send it, while the patterned light carries the rest. With a grating
+        layer on a device at 45°, you can watch the two separate — the diffracted beam
+        steered by the pattern, the zeroth order going straight on, and the balance between
+        them shifting as you change the fraction.</p>
+        <p>The toggle correctly does nothing on an unpatterned SLM. With no layers
+        configured the device is simply a mirror, and there is no diffracted order for a
+        "zeroth" to be measured against.</p>
+        <p>This makes the standard mitigation something you can actually draw: add a grating
+        layer to steer the useful light off-axis, then put a <a href="../beamdump/">beam
+        dump</a> in the path of the zeroth order and terminate it.</p>
+        
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>No phase map is computed. The layers are geometric ray operations
+        chosen to stand in for what a hologram does, not a diffraction calculation over a
+        pixel array — so there is no pixel pitch, no fill factor, no 8-bit quantisation, no
+        2π stroke, and no wavelength dependence of Δn. The zeroth-order fraction is a number
+        you set, not one derived from the fill factor and calibration that actually cause it.
+        The polarization requirement is not enforced either: a real device modulates only
+        the component along its director, whereas this one acts on any input state, so a
+        sketch will not warn you about the missing polarizer. Grating orders share the light
+        evenly rather than following a blaze, and the millisecond response and frame rate of
+        a real liquid crystal are not represented at all — the pattern here changes
+        instantly.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/dmd/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/><line x1="-11" y1="-14" x2="-7" y2="-18" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-8" x2="-7" y2="-12" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-2" x2="-7" y2="-6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="4" x2="-7" y2="0" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="10" x2="-7" y2="6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="16" x2="-7" y2="12" stroke="#cfd6dd" stroke-width="1.6"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">DMD</text></svg>DMD</a><a href="../../wiki/dm/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="8" y="-25" width="4" height="50" fill="#4d565f"/><rect x="4" y="-23" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-16" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-9" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-2" width="4" height="4" fill="#8d98a5"/><rect x="4" y="5" width="4" height="4" fill="#8d98a5"/><rect x="4" y="12" width="4" height="4" fill="#8d98a5"/><rect x="4" y="19" width="4" height="4" fill="#8d98a5"/><path d="M 0,-25 Q 3,-18.75 0,-12.5 Q -3,-6.25 0,0 Q 3,6.25 0,12.5 Q -3,18.75 0,25" fill="none" stroke="#444" stroke-width="2.5"/></svg>Deformable mirror</a><a href="../../wiki/polarizer/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/><g transform="rotate(0)"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/><path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g></svg>Polarizer</a><a href="../../wiki/grating/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg>Diffraction grating</a><a href="../../wiki/beamdump/"><svg viewBox="-19 -19 38 38" aria-hidden="true"><path d="M -10,-11 L 10,-11 L 10,11 L -10,11 Z M -10,-11 L 4,0 L -10,11" fill="#26292e" stroke="#111" stroke-width="1.5"/></svg>Beam dump</a>
+      </div>
+
+      
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/spatial_light_modulators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Spatial Light Modulators</a></li><li><a href="https://www.rp-photonics.com/liquid_crystal_modulators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Liquid Crystal Modulators</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

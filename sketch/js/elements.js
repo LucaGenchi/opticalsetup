@@ -36,6 +36,7 @@ import {
   objectiveWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
+import { normalizeAotfChannels, aotfOpenChannels, aotfSummary } from './aotf.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -2697,23 +2698,54 @@ export const registry = {
     size_: el => ({ w: 56, h: (el.params.aperture || 26) + 4 }),
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
-      { key: 'center', label: 'Selected wavelength (nm)', type: 'number', min: 150, max: 8000, step: 1, def: 532 },
-      { key: 'band', label: 'Passband width (nm)', type: 'number', min: 0.5, max: 2000, step: 0.5, def: 1 },
-      { key: 'deflect', label: 'Deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 4 },
-      { key: 'rfMHz', label: 'RF frequency (MHz)', type: 'number', min: -10000, max: 10000, step: 1, def: 80 },
-      { key: 'eff', label: 'Selected-order efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.8 },
+      {
+        key: 'channels', label: 'Selected lines', type: 'aotfchannels',
+        def: [{ wl: 532, band: 2, eff: 0.8 }],
+        // Older sketches selected exactly one line through flat center/band/eff
+        // params. Those keys are gone from the schema, so they survive only in
+        // the raw saved object — carry that line across rather than dropping
+        // the author's selection for the default.
+        migrate: (p, raw = {}) => normalizeAotfChannels(Number.isFinite(+raw.center)
+          ? [{ wl: +raw.center, band: +raw.band, eff: +raw.eff }]
+          : null),
+      },
+      {
+        key: 'modMode', label: 'Line drive', type: 'select', def: 'static',
+        options: [
+          ['static', 'Multiplexed — every line at once'],
+          ['cycle', 'Sequential — one line at a time'],
+        ],
+      },
+      {
+        key: 'modFreqHz', label: 'Sequence rate (Hz)', type: 'number', min: 0.1, max: 1000000, step: 10, def: 1000,
+        show: p => p.modMode === 'cycle',
+      },
+      { key: 'showDepleted', label: 'Show depleted beam', type: 'checkbox', def: false },
+      {
+        key: 'deflect', label: 'Depleted-beam deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 6,
+        show: p => p.showDepleted === true,
+      },
     ],
     svg(el) {
       return boxSVG(52, el.params.aperture || 26, '#7fc7c4', '#397b78', 'AOTF', '#153b39', isFlipped(el));
     },
     surfaces(el) {
       const p = el.params, h = (p.aperture || 26) / 2;
-      // Qualitative composition of a narrow spectral selector and its selected
-      // acousto-optic order; this does not imply a calibrated device response.
-      return [
-        { x1: -1, y1: -h, x2: -1, y2: h, kind: 'filter', data: { ftype: 'bandpass', center: p.center, band: p.band } },
-        { x1: 1, y1: -h, x2: 1, y2: h, kind: 'aom', data: { deflect: p.deflect, rfMHz: p.rfMHz, zero: false, eff: p.eff, gate: null } },
-      ];
+      // One surface, not a filter plus a deflector: the selected lines and the
+      // beam depleted of them leave the same face along different paths, and
+      // splitting that across two surfaces would let the second one act on
+      // light the first had already routed away.
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'aotf',
+        data: {
+          // Only the lines open at this instant are handed to the tracer, so a
+          // sequential drive really does show one line at a time and steps to
+          // the next as the animation clock advances.
+          channels: aotfOpenChannels(p, el._animationTimeS || 0),
+          deflect: Number(p.deflect) || 0,
+          showDepleted: p.showDepleted === true,
+        },
+      }];
     },
   },
 
@@ -3481,7 +3513,7 @@ const DIRECT = {
   display: { resize: { uniform: 'displayScale' } },
   beamdump: { resize: { y: 'aperture' } },
   aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
-  aotf: { resize: { y: 'aperture' }, tune: { key: 'center', short: 'λ select' } },
+  aotf: { resize: { y: 'aperture' } },
   delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL' } },
   pulsecompressor: { resize: { y: 'aperture' }, tune: { key: 'gddFs2', short: 'GDD' } },
   eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
@@ -3568,7 +3600,7 @@ const ELEMENT_HELP = {
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
-  aotf: 'Selects a configurable spectral band, then deflects and attenuates the selected acousto-optic order.',
+  aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',

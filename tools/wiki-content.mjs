@@ -1765,6 +1765,677 @@ export const wikiEntries = [
   },
 
   {
+    type: 'beamdump',
+    title: 'Beam dump',
+    category: 'Beam Block',
+    realWorld: {
+      html: `
+        <p>A beam dump ends a beam. Every optical setup produces light that has done its
+        job — the unused port of a beamsplitter, the rejected polarization, the zeroth order
+        off a grating, the beam left over when an experiment is realigned — and all of it
+        has to stop somewhere deliberate. Left alone it lands on a wall, a colleague, or
+        back in the laser.</p>
+        <p>Doing that well is harder than it sounds, because "absorbing" light is really
+        <em>converting it to heat</em> while reflecting as little as possible. The usual
+        design is geometric rather than material: a cone, a wedge, or a stack of angled
+        vanes, anodised matte black, arranged so that any light not absorbed on first
+        contact reflects <em>deeper into</em> the cavity rather than back out. Several
+        bounces at a few per cent reflectivity each leave a negligible fraction escaping.
+        The black surface does the absorbing; the geometry catches what the surface
+        misses.</p>
+
+        <h3>Why high-power dumps need cooling</h3>
+        <p>A dump absorbs essentially the entire beam, so it receives the laser's full
+        average power as heat in a small volume. That is a genuine thermal engineering
+        problem, and it sets how a dump is built:</p>
+        <ul>
+          <li>Up to a few watts, a black-anodised aluminium cone with fins radiates and
+          convects the heat away passively.</li>
+          <li>From tens of watts, passive cooling stops keeping up and the dump needs
+          forced air or a substantial heat sink.</li>
+          <li>At hundreds of watts and above — industrial and materials-processing lasers —
+          dumps are <strong>water-cooled</strong>, with flow interlocks that shut the laser
+          down if circulation fails.</li>
+        </ul>
+        <p>Exceeding a dump's rating is not a small mistake. The anodised layer can burn
+        away, destroying the absorption it was providing and releasing particulates;
+        absorbing glass can crack from thermal shock; and a dump that starts reflecting is
+        worse than no dump at all, because nobody is expecting a beam to come back out of
+        it. Ultrafast lasers add a second constraint: a femtosecond pulse train of modest
+        <em>average</em> power carries enormous <em>peak</em> intensity, and can ablate an
+        absorber that would handle the same average power from a CW source without
+        complaint. Dumps are rated for both.</p>`,
+      formulas: [
+        { tex: 'P_{\\text{abs}} \\approx P_{\\text{in}}', caption: 'The defining property: a dump converts essentially the whole beam to heat, so its thermal load is the full incident power — not a fraction of it.' },
+        { tex: 'R_{\\text{eff}} \\approx R^{N}', caption: 'Why the geometry matters more than the coating: N bounces inside the cavity at surface reflectivity R leave only R^N escaping. Four bounces at 5% reflect back about 6 parts per million.' },
+      ],
+      html2: `
+        <h3>Safety practice around beam blocks</h3>
+        <p>Beam dumps are the most basic piece of laser safety hardware on a bench, and they
+        work only as part of a wider practice:</p>
+        <ul>
+          <li><strong>Terminate every beam, including the ones you did not plan.</strong>
+          An uncoated glass surface reflects about 4% per face at normal incidence, so every
+          window, sample, and filter throws off stray beams. Those are what actually reach
+          people's eyes; the main beam is usually the one everybody is watching.</li>
+          <li><strong>Keep every beam in one horizontal plane, well below seated eye
+          level</strong>, and never raise your eyes to that plane. Most accidents happen
+          when someone bends down to look at something.</li>
+          <li><strong>Remove watches, rings, and badges</strong> before working near an open
+          beam. A polished surface at an unlucky angle is an unplanned mirror.</li>
+          <li><strong>Wear eyewear matched to both wavelength and optical density.</strong>
+          Goggles that block 1064&nbsp;nm may transmit 532&nbsp;nm freely — a real hazard in
+          multi-wavelength setups such as a two-colour Raman microscope, where the pump,
+          Stokes, and generated signal are all different colours.</li>
+          <li><strong>Never look along a beam axis</strong>, even attenuated. Use a viewing
+          card, a fluorescent target, or an IR viewer.</li>
+          <li><strong>Enclose the beam path</strong> where you can, and use interlocks and
+          warning signage where you cannot.</li>
+          <li>For <strong>Class 4</strong> lasers, remember that even <em>diffuse</em>
+          reflections can be hazardous to eyes and skin, and that the beam is a credible
+          ignition source for paper, cloth, and solvents.</li>
+        </ul>
+        <p>None of this is modelled by a ray tracer, and a sketch that looks tidy on screen
+        can still describe a setup that is unsafe to build. Treat a drawing as a plan, not
+        a risk assessment.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The dump is drawn as a closed body whose faces are all absorbing, so any ray that
+        reaches it from any direction stops there and is removed from the trace. Nothing is
+        transmitted, nothing is reflected, and no ray continues past it. The only control is
+        the clear aperture, which sets how large a target it presents.</p>
+        <p>Its practical use here is the same as on a bench: give the unused ports somewhere
+        to end. Put one on the second output of a <a href="../bs/">beamsplitter</a>, on the
+        rejected port of a <a href="../pbs/">polarizing beamsplitter</a>, or on an
+        unwanted diffraction order from a <a href="../grating/">grating</a>, and the figure
+        stops showing a beam wandering off into empty space. It makes a diagram read as a
+        deliberate design rather than an unfinished one, and it is what a reviewer of your
+        figure will look for.</p>
+        <p>Because a dumped ray is removed rather than attenuated, a dump is also a clean
+        way to isolate one branch of a setup while you study another — block one arm of an
+        interferometer and the remaining path is all that is traced.</p>`,
+      limitations: `<p>Absorption is total and perfect: there is no residual reflectivity,
+        no wavelength dependence, and no angular limit, whereas a real dump reflects a small
+        fraction and does so more at grazing incidence. Nothing thermal is modelled at all —
+        no absorbed power, no temperature rise, no damage threshold, and no warning when a
+        sketch dumps a kilowatt into a component that could not survive it. The dump's
+        rating and its cooling requirement are entirely the designer's responsibility, and
+        the section above is the only place this tool addresses them.</p>`,
+    },
+    related: ['blocker', 'slit', 'bs', 'pbs'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Beam Dumps', url: 'https://www.rp-photonics.com/beam_dumps.html' },
+      { label: 'RP Photonics Encyclopedia — Laser Safety', url: 'https://www.rp-photonics.com/laser_safety.html' },
+    ],
+  },
+  {
+    type: 'slit',
+    title: 'Slit',
+    category: 'Beam Block',
+    realWorld: {
+      html: `
+        <p>A slit is an aperture: two opaque jaws with a gap between them. Unlike a
+        <a href="../beamdump/">beam dump</a>, whose job is to stop a beam entirely, a slit
+        stops only part of one — it passes the light within its gap and absorbs everything
+        outside it. That makes it a shaping and selecting element, though the light it
+        rejects still has to be absorbed, and at high power the jaws face the same thermal
+        problem a dump does.</p>
+        <p>Slits do two quite different jobs depending on where they sit. In a plane where
+        the beam is <em>spatially</em> spread out, a slit trims the beam's cross-section —
+        cutting off a tail, defining a sheet of light, or setting the illuminated strip in a
+        line-scan system. In a plane where wavelengths have been spread out by a
+        <a href="../grating/">grating</a> or <a href="../prism/">prism</a>, exactly the same
+        component becomes a <em>wavelength</em> selector: it passes a band and rejects the
+        rest. A monochromator is, in essence, a dispersing element with a slit at each end,
+        and the slit width sets the spectral resolution directly.</p>
+        <p>There is a limit to how far this can be pushed. Narrowing a slit does not narrow
+        the transmitted beam indefinitely, because diffraction sets in: the narrower the
+        aperture, the more the light spreads after it.</p>`,
+      formulas: [
+        { tex: '\\theta \\approx \\frac{\\lambda}{a}', caption: 'Diffraction spreading after a slit of width a — the angular half-width of the central lobe. Below roughly a millimetre for visible light, closing the slit further makes the far-field beam wider, not narrower.' },
+        { tex: '\\Delta\\lambda \\approx \\frac{a}{f}\\,\\frac{d\\lambda}{d\\theta}', caption: 'Spectral bandwidth passed by a slit of width a at the focal plane of a spectrograph of focal length f — the slit width and the dispersion together set the resolution.' },
+      ],
+      html2: `
+        <p>Because a slit rejects most of the light reaching it, it is a lossy component by
+        design, and in a spectrograph the trade-off is explicit: a narrower slit buys
+        resolution at the cost of signal. Choosing the width is choosing where on that curve
+        to sit.</p>
+        <p>The rejected light does not vanish. On a low-power source it simply warms the
+        jaws; on a high-power one the jaws need the same treatment as a beam dump — an
+        absorbing surface that can shed heat, and at high enough power, active cooling. A
+        pair of thin blackened blades that works at milliwatts will not survive tens of
+        watts.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The slit is drawn as two absorbing jaws with a gap between them, and it is traced
+        exactly that way: rays passing through the gap continue completely unchanged, and
+        rays striking either jaw are absorbed and removed. Two controls set it — the
+        <strong>gap</strong>, and the overall optic size that fixes how far the jaws
+        extend.</p>
+        <p>The useful consequence is that a slit here is a genuine spatial filter. Send a
+        wide beam at one and only the central portion survives, so you can define a beam
+        width mid-path, clip the wings off a diverging beam, or take one branch of a fan and
+        discard the rest. Place one after a <a href="../grating/">grating</a> or a
+        <a href="../prism/">prism</a> and it becomes a wavelength selector, because the
+        colours have been separated in space by then and the slit is choosing among
+        positions.</p>
+        <p>The purple canvas knob adjusts the gap directly, which makes the selection easy
+        to explore: widen it until the branch you want passes, then narrow it until only
+        that branch does.</p>`,
+      limitations: `<p><strong>Diffraction is not modelled</strong>, and for a slit that is
+        the significant omission: narrowing the gap here simply passes a narrower bundle of
+        rays, whereas a real slit below about a millimetre starts spreading the light it
+        transmits, and a very narrow one produces a broad diffraction pattern rather than a
+        thin beam. Nothing in this element will ever show that reversal. Transmission
+        through the gap is also perfect and edge effects are absent — no partial
+        transmission at the jaw edges, no scattering off them, and no wavelength dependence.
+        As with the beam dump, the absorbed light produces no heat and carries no damage
+        threshold, so a sketch will happily throw arbitrary power at a pair of thin
+        blades.</p>`,
+    },
+    related: ['beamdump', 'blocker', 'grating', 'prism'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Monochromators', url: 'https://www.rp-photonics.com/monochromators.html' },
+      { label: 'RP Photonics Encyclopedia — Diffraction', url: 'https://www.rp-photonics.com/diffraction.html' },
+    ],
+  },
+  {
+    type: 'blocker',
+    title: 'Invisible blocker',
+    category: 'Beam Block',
+    realWorld: {
+      html: `
+        <p>This element has no laboratory counterpart. It is a figure-making tool: a region
+        that absorbs any ray entering it, drawn on the canvas while you work and then
+        <strong>omitted from exported figures</strong>.</p>
+        <p>The need it answers is a real one, though. A ray tracer follows every branch it
+        generates, including ones that are physically correct but irrelevant to the point a
+        figure is making — a weak back-reflection wandering across the frame, a stray
+        diffraction order, the ghost from a beamsplitter's second surface. On a bench you
+        would put a card in the way and forget about it. The equivalent here is a blocker:
+        it takes the unwanted branch out of the trace without adding a component to the
+        drawing that a reader would have to interpret.</p>
+        <p>The honest framing is that this is a <em>presentation</em> control, not physics.
+        If a stray beam exists in your setup it exists in reality too, and hiding it from a
+        figure is a choice about what the figure is for. Use it to remove distractions from
+        a teaching diagram; do not use it to make a setup look cleaner than it is, and never
+        use it to hide a beam that would need terminating in the real build — see the
+        safety notes on the <a href="../beamdump/">beam dump</a> page.</p>`,
+      formulas: [],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The blocker is a rectangle whose faces all absorb. Any ray reaching it stops
+        there, exactly as with a <a href="../beamdump/">beam dump</a> — the difference is
+        purely in the drawing. It carries <code>hideInExport</code>, so it is visible on the
+        canvas while you compose and absent from SVG and PNG exports. In the exported
+        figure the blocked beam simply ends, with nothing to explain why.</p>
+        <p>Two controls set its width and height, and the blue handles resize it on the
+        canvas, so it can be shaped to catch exactly the branch you want and nothing
+        else.</p>
+        <p>Its bounds are still counted when a figure is fitted for export, so a blocker
+        parked far from the setup will pad the exported crop with empty space even though it
+        is not drawn. Keep it close to the beam it is catching, or use a
+        <a href="../figureframe/">figure frame</a> to define the crop explicitly.</p>`,
+      limitations: `<p>Absorption is perfect and total, like the beam dump's. The single
+        thing to understand about this element is that it changes what a figure
+        <em>shows</em>, not what the setup <em>is</em>: the trace it removes was a real
+        branch of the light, and its absence from the exported drawing is your editorial
+        decision rather than a physical result. A reader of the figure has no way to tell a
+        blocker was used.</p>`,
+    },
+    related: ['beamdump', 'slit', 'figureframe'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Beam Dumps', url: 'https://www.rp-photonics.com/beam_dumps.html' },
+    ],
+  },
+  {
+    type: 'slm',
+    title: 'Spatial light modulator',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A spatial light modulator is a programmable optic. Instead of grinding a surface
+        into a fixed shape, it imposes a phase pattern that software can change frame by
+        frame — so one device can act as a lens, a grating, a corrector for aberrations it
+        measures on the fly, or a hologram that paints an arbitrary intensity pattern in a
+        distant plane.</p>
+
+        <h3>How liquid crystals do it</h3>
+        <p>The working substance is a <strong>nematic liquid crystal</strong>: rod-shaped
+        molecules that share a common orientation — the <em>director</em> — while remaining
+        free to move past one another like a liquid. That orientational order without
+        positional order is what makes the phase useful. Aligned rods are optically
+        <strong>birefringent</strong>: light polarized along the director sees the
+        extraordinary index <span class="w">n<sub>e</sub></span>, light polarized across it
+        sees the ordinary index <span class="w">n<sub>o</sub></span>, and the difference is
+        large — around 0.1 to 0.2, roughly ten times that of a quartz
+        <a href="../hwp/">waveplate</a>.</p>
+        <p>Applying a voltage across a pixel tilts the director toward the field. The index
+        seen by light polarized along the original director slides continuously from
+        <span class="w">n<sub>e</sub></span> toward <span class="w">n<sub>o</sub></span>, so
+        the optical path through that pixel — and therefore the phase of the light leaving
+        it — becomes a smooth function of the applied voltage:</p>`,
+      formulas: [
+        { tex: '\\Gamma(V) = \\frac{2\\pi\\,\\Delta n(V)\\,d}{\\lambda}', caption: 'Phase retardance of one pixel: the voltage-dependent index difference times the liquid-crystal layer thickness. This is the same expression as a waveplate, with Δn now under electrical control.' },
+        { tex: '\\Gamma_{\\text{LCOS}} = 2 \\times \\frac{2\\pi\\,\\Delta n(V)\\,d}{\\lambda}', caption: 'A reflective device doubles it: light crosses the layer on the way in and again on the way out, so half the thickness achieves a full 2π stroke.' },
+      ],
+      html2: `
+        <p>Nearly all phase-only modulators are <strong>LCOS</strong> — liquid crystal on
+        silicon. A CMOS backplane addresses each pixel and carries a mirror beneath it, with
+        the liquid-crystal layer above; light enters, reflects off the pixel mirror, and
+        leaves having crossed the modulating layer twice. Pixels are a few micrometres
+        across, the phase is quantised to 8 bits, and the device is calibrated so that its
+        full drive range corresponds to exactly 2π at one design wavelength.</p>
+        <p>Two consequences follow from the physics and are worth knowing before you design
+        around one. First, <strong>the input must be linearly polarized along the
+        director</strong>: only that component is modulated, so light in the orthogonal
+        state passes through unchanged and dilutes the pattern. Every SLM setup therefore
+        has a <a href="../polarizer/">polarizer</a> in front of it. Second, liquid crystals
+        are <strong>slow</strong> — reorientation takes milliseconds, so refresh rates are
+        tens of hertz, not the megahertz an acousto-optic device reaches.</p>
+
+        <h3>The zero-order problem</h3>
+        <p>An SLM never modulates all the light that lands on it, and the unmodulated
+        fraction leaves along the direction of a plain mirror — the specular, or
+        <strong>zeroth-order</strong>, beam. It sits on the optical axis, undiffracted,
+        while the pattern you asked for is formed around it. Several causes contribute:</p>
+        <ul>
+          <li><strong>Fill factor below 100%.</strong> The gaps between pixels, and the
+          circuitry at their edges, are not modulated. That light reflects with no phase
+          structure at all.</li>
+          <li><strong>Front-surface reflection</strong> from the protective cover glass,
+          which never reaches the liquid crystal.</li>
+          <li><strong>Incomplete 2π stroke.</strong> If the calibration is off, or the
+          device is used away from its design wavelength, the phase never wraps cleanly and
+          a residual unmodulated component survives.</li>
+          <li><strong>Phase quantisation and flicker</strong> from the digital drive
+          scheme.</li>
+        </ul>
+        <p>Together these typically leave a few per cent up to about ten per cent of the
+        incident power in the zeroth order — which, concentrated in a single undiffracted
+        spot, is frequently the <em>brightest</em> feature in the output plane. In
+        holographic optical tweezers it is a trap nobody asked for; in a
+        <a href="../objective/">microscope</a> it is a bright spot at the centre of the
+        field; at high power it can damage a sample outright.</p>
+        <p>The standard remedy is to steer the useful light away from it. Adding a linear
+        phase ramp — a blazed grating — to the displayed hologram deflects the whole pattern
+        off-axis, leaving the zeroth order behind on the axis where it can be removed with a
+        <a href="../beamdump/">beam block</a> at an intermediate focus. Careful
+        per-wavelength calibration of the 2π lookup table reduces the residue at the source,
+        and slightly tilting the device separates the cover-glass reflection from the
+        modulated beam.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The SLM is <strong>reflective</strong> by default, matching an LCOS device, with
+        a <strong>Transmissive</strong> toggle for the less common transmissive kind. Its
+        active size sets how much of a beam it intercepts, and the blue handle resizes it on
+        the canvas.</p>
+        <p>What it does to light is set by a stack of <strong>optical function</strong>
+        layers, applied in order — up to four:</p>
+        <ul>
+          <li><strong>Lens array</strong> — divides the aperture into lenslets of a chosen
+          count and focal length, so one beam becomes several focused spots. Each lenslet is
+          tracked separately, so beams do not blend between them.</li>
+          <li><strong>Grating</strong> — a programmable diffraction grating with a chosen
+          line density and list of orders, which is how a real SLM steers and splits.</li>
+          <li><strong>Beam steer</strong> — a plain angular deflection, the simplest thing a
+          phase ramp does.</li>
+          <li><strong>Speckle / diffuser</strong> — scatters into a cone, standing in for a
+          random phase pattern.</li>
+        </ul>
+
+        <h3>The zeroth order, on a toggle</h3>
+        <p>Because the undiffracted beam is a real and often dominant feature of any SLM
+        setup, it is available here rather than quietly ignored — but it is
+        <strong>off by default</strong>, so a teaching diagram is not cluttered by a stray
+        beam nobody asked about.</p>
+        <p>Turn on <strong>0th-order reflection</strong> and set the fraction (0.1, ten per
+        cent, by default — a realistic figure for a good device) and the element splits its
+        output: that fraction leaves along the plain specular direction, exactly where a
+        mirror would send it, while the patterned light carries the rest. With a grating
+        layer on a device at 45°, you can watch the two separate — the diffracted beam
+        steered by the pattern, the zeroth order going straight on, and the balance between
+        them shifting as you change the fraction.</p>
+        <p>The toggle correctly does nothing on an unpatterned SLM. With no layers
+        configured the device is simply a mirror, and there is no diffracted order for a
+        "zeroth" to be measured against.</p>
+        <p>This makes the standard mitigation something you can actually draw: add a grating
+        layer to steer the useful light off-axis, then put a <a href="../beamdump/">beam
+        dump</a> in the path of the zeroth order and terminate it.</p>`,
+      limitations: `<p>No phase map is computed. The layers are geometric ray operations
+        chosen to stand in for what a hologram does, not a diffraction calculation over a
+        pixel array — so there is no pixel pitch, no fill factor, no 8-bit quantisation, no
+        2π stroke, and no wavelength dependence of Δn. The zeroth-order fraction is a number
+        you set, not one derived from the fill factor and calibration that actually cause it.
+        The polarization requirement is not enforced either: a real device modulates only
+        the component along its director, whereas this one acts on any input state, so a
+        sketch will not warn you about the missing polarizer. Grating orders share the light
+        evenly rather than following a blaze, and the millisecond response and frame rate of
+        a real liquid crystal are not represented at all — the pattern here changes
+        instantly.</p>`,
+    },
+    related: ['dmd', 'dm', 'polarizer', 'grating', 'beamdump'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spatial Light Modulators', url: 'https://www.rp-photonics.com/spatial_light_modulators.html' },
+      { label: 'RP Photonics Encyclopedia — Liquid Crystal Modulators', url: 'https://www.rp-photonics.com/liquid_crystal_modulators.html' },
+    ],
+  },
+  {
+    type: 'dmd',
+    title: 'Digital micromirror device',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A DMD is an array of hundreds of thousands of aluminium mirrors, each a few
+        micrometres across, sitting on a CMOS memory cell. Every mirror has exactly two
+        stable positions — tilted one way or the other about its diagonal, typically by
+        <strong>±12°</strong> — and is held there electrostatically against mechanical
+        landing posts. Writing a bit to the cell underneath flips it.</p>
+        <p>That makes the device fundamentally different from a
+        <a href="../slm/">liquid-crystal SLM</a>. An SLM is <em>analogue</em> and works on
+        <em>phase</em>: it retards light and can therefore redirect it. A DMD is
+        <em>binary</em> and works on <em>amplitude</em>: each mirror either sends its light
+        toward the target or throws it away. There is no in-between position.</p>
+        <p>Because a mirror tilted by θ deflects a beam by 2θ, the two states send light in
+        directions separated by four times the tilt angle:</p>`,
+      formulas: [
+        { tex: '\\delta = 2\\theta', caption: 'A mirror tilted by θ deflects the reflected beam by 2θ — the reason a small mechanical tilt buys a large optical separation.' },
+        { tex: '\\Delta = 4\\theta', caption: 'Angle between the ON and OFF beams, since the two mirror states tilt opposite ways. At the standard ±12° that is 48°, which is why a DLP projection lens sits well off the illumination axis.' },
+        { tex: 'd\\sin\\theta_m = m\\lambda', caption: 'The mirror array is periodic, so it is also a grating. At roughly 7.6 µm pitch this matters as soon as the illumination is coherent.' },
+      ],
+      html2: `
+        <h3>Grey levels out of a binary device</h3>
+        <p>If each mirror is only ever fully on or fully off, brightness has to come from
+        somewhere else — and it comes from <strong>time</strong>. The mirror is switched on
+        and off thousands of times per frame, and the fraction of the frame it spends in the
+        ON state sets the perceived brightness. The eye, or any detector slower than the
+        switching, integrates the result. Pulse-width modulation in space's place.</p>
+        <p>This is why DMDs are <em>fast</em>. A micromirror flips in microseconds, giving
+        binary frame rates in the tens of kilohertz — three or four orders of magnitude
+        quicker than liquid crystal, which has to physically reorient. It also explains the
+        colour-fringing "rainbow effect" some people see in single-chip DLP projectors,
+        where red, green and blue are displayed sequentially rather than together.</p>
+
+        <h3>What it is good and bad at</h3>
+        <p>Being a mirror rather than a birefringent layer, a DMD is
+        <strong>polarization-insensitive</strong> and <strong>broadband</strong> — aluminium
+        reflects from the ultraviolet well into the infrared, so one device works at any
+        wavelength. It has a high fill factor, around 92%, and tolerates far more optical
+        power than liquid crystal. Those properties took it well beyond projectors: maskless
+        photolithography, structured-illumination microscopy, hyperspectral imaging,
+        single-pixel and compressive-sensing cameras, and patterned optogenetic
+        stimulation.</p>
+        <p>The cost is efficiency. Because it works by discarding light rather than
+        redirecting it, everything in the OFF state is simply thrown away — at 50% duty you
+        lose half the beam, and that light has to be caught by a
+        <a href="../beamdump/">beam dump</a>, which at high power needs to be a real cooled
+        one. A phase SLM steering the same light into the pattern wastes almost none of it.
+        The periodicity is the other complication: with coherent illumination the array
+        behaves as a blazed grating and splits the beam into diffraction orders, so a
+        laser-illuminated DMD needs its geometry chosen so that the wanted order and the
+        blaze direction coincide.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The device is traced as a binary mirror array. Rays are sorted into ON and OFF
+        by where they land, and each state reflects into its own direction — the ON beam
+        deflected one way from the specular direction, the OFF beam the other:</p>
+        <ul>
+          <li><strong>Micromirror tilt</strong> sets the deflection. The ON and OFF beams
+          emerge separated by exactly four times this angle, so the default 12° puts 48°
+          between them, matching a real device.</li>
+          <li><strong>Pattern pitch</strong> and <strong>ON fraction</strong> define the
+          pattern itself as periodic stripes across the aperture — the fraction of each
+          period whose mirrors are ON.</li>
+          <li><strong>Show OFF order</strong> decides whether the discarded beam is drawn.</li>
+        </ul>
+        <p>That last toggle is worth understanding. It is <strong>off by default</strong>,
+        so the rejected light simply stops at the device — which is what a setup with a
+        properly dumped OFF path looks like, and keeps a teaching figure uncluttered. Turn
+        it on and the OFF beam is traced to wherever it actually goes, which is the honest
+        picture while you are designing: you can see the 48° separation, confirm nothing
+        downstream is sitting in that path, and put a <a href="../beamdump/">beam dump</a>
+        there to terminate it.</p>
+        <p>Sweeping the tilt is the quickest way to see the geometry that makes DLP work.
+        At 6° the two beams leave 24° apart and are awkward to separate; at 20° they are
+        80° apart and trivially separable, but the device would be harder to build. The
+        real ±12° is the compromise.</p>`,
+      limitations: `<p><strong>Diffraction is not modelled</strong>, and for a DMD that is
+        the significant omission: a real array is periodic at roughly 7.6&nbsp;µm and acts
+        as a blazed grating, so coherent illumination produces a set of diffraction orders
+        that a laser-based design has to be built around. Here reflection is purely
+        geometric and a single beam produces a single ON beam. The pattern is also
+        periodic stripes measured in millimetres of canvas rather than an addressable array
+        of micromirrors, so it cannot display an image, and there is no time dimension —
+        no pulse-width modulation, no grey levels, no switching time, and no colour
+        sequencing. Fill-factor loss, aluminium reflectivity, absorption, and the damage
+        threshold are all absent, so the ON and OFF beams together carry the full incident
+        power.</p>`,
+    },
+    related: ['slm', 'dm', 'beamdump', 'grating'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spatial Light Modulators', url: 'https://www.rp-photonics.com/spatial_light_modulators.html' },
+      { label: 'Texas Instruments — DLP Technology', url: 'https://www.ti.com/dlp-chip/overview.html' },
+    ],
+  },
+  {
+    type: 'dm',
+    title: 'Deformable mirror',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A deformable mirror corrects a wavefront by changing its own shape. Light does
+        not always arrive with the flat, well-behaved wavefront that optical design assumes:
+        the atmosphere scrambles starlight, the eye's own cornea and lens distort a view of
+        the retina, and tissue aberrates a focus long before a microscope reaches the depth
+        it was built for. In every case the instrument is fine and the wavefront is not, so
+        the fix is to add the <em>conjugate</em> of the distortion and cancel it.</p>
+        <p>The device is a thin reflective faceplate — a metallised membrane or a polished
+        silicon layer — sitting on an array of actuators that push and pull it. Piezoelectric
+        stacks, electrostatic pads, voice coils, and MEMS all appear, but the principle is
+        the same: drive each actuator and the surface bends locally.</p>
+        <p>Reflection is what makes the mechanics easy. Displacing the surface by
+        <span class="w">h</span> shortens or lengthens the path twice, once on the way in
+        and once on the way out, so a very small movement buys a large optical
+        correction:</p>`,
+      formulas: [
+        { tex: '\\text{OPD} = 2h', caption: 'Optical path difference from a surface displacement h. A quarter-wavelength of mechanical stroke produces half a wavelength of optical correction — which is why deformable mirrors move by micrometres, not millimetres.' },
+        { tex: 'S \\approx \\exp\\!\\left[-\\left(\\frac{2\\pi\\sigma}{\\lambda}\\right)^{2}\\right]', caption: 'Maréchal approximation for Strehl ratio from residual wavefront error σ. Getting σ down to about λ/14 gives S ≈ 0.8 — the usual definition of "diffraction limited", and the target a correction loop aims at.' },
+        { tex: '\\delta = 2\\theta', caption: 'Tilting a mirror by θ deflects the beam by 2θ. Worth remembering when reading this element’s controls — see below.' },
+      ],
+      html2: `
+        <h3>Working in a loop</h3>
+        <p>A deformable mirror is almost never set by hand. It runs closed-loop with a
+        wavefront sensor — usually a Shack–Hartmann, a lenslet array whose spot
+        displacements measure local wavefront slope. The measured wavefront is decomposed
+        into <strong>Zernike modes</strong> — tip, tilt, defocus, astigmatism, coma,
+        spherical aberration, and higher — the actuator commands that best cancel them are
+        computed, and the cycle repeats at hundreds or thousands of hertz, fast enough to
+        keep up with atmospheric turbulence.</p>
+        <p>The low-order modes carry most of the power. Tip and tilt alone account for the
+        largest share of atmospheric distortion, so big telescopes often split the job: a
+        small, fast tip–tilt mirror handles the bulk motion while the deformable mirror,
+        with hundreds or thousands of actuators, takes the higher orders. How well the
+        higher orders can be corrected is set by actuator count and spacing — a mirror
+        cannot reproduce structure finer than its actuator pitch, and the residue left over
+        is called fitting error.</p>
+        <p>Designs trade smoothness against independence. A <strong>continuous
+        facesheet</strong> gives a smooth surface but neighbouring actuators pull on each
+        other, so each has an influence function rather than acting alone. A
+        <strong>segmented</strong> mirror gives independent control at the price of gaps
+        between segments, which diffract. <strong>MEMS</strong> devices are compact and
+        cheap with limited stroke; <strong>bimorph</strong> and <strong>voice-coil</strong>
+        mirrors offer large stroke with fewer actuators.</p>
+        <p>The applications are wherever a wavefront arrives spoiled: ground-based astronomy,
+        adaptive-optics retinal imaging, deep-tissue and two-photon microscopy, laser beam
+        shaping, and free-space optical communication.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>This element models the two lowest-order corrections a deformable mirror makes —
+        the ones that dominate real aberration budgets — as a mirror with an adjustable
+        curvature and an adjustable deflection. Three controls:</p>
+        <ul>
+          <li><strong>Aperture</strong>, the size of the reflective face; the blue handle
+          resizes it.</li>
+          <li><strong>Defocus focal length</strong>, which curves the surface. Positive
+          values make it concave: light reflects converging, and the focus lands that many
+          millimetres in front of the mirror — set 100&nbsp;mm and the beam crosses the axis
+          100&nbsp;mm away, set 200&nbsp;mm and it crosses at 200. Negative values make it
+          convex, so the return beam diverges from a virtual focus behind the surface.
+          Leave it at zero for a flat mirror.</li>
+          <li><strong>Tip / tilt</strong>, on the purple knob, which steers the reflected
+          beam.</li>
+        </ul>
+        <p>Pair one with a <a href="../detector/">wavefront detector</a> and the correction
+        becomes measurable rather than merely drawn: a flat mirror returns a collimated
+        beam, a positive focal length returns a converging one, and a negative focal length
+        a diverging one, with the detector naming the state and reporting the cone
+        angle.</p>
+
+        <h3>One convention to know</h3>
+        <p>The <strong>Tip / tilt</strong> control applies its angle directly to the
+        outgoing beam: set 5° and the reflected beam leaves 5° away from where it would have
+        gone. That is the <em>beam deviation</em>, not the mechanical tilt of the surface —
+        a real mirror tilted by 5° would deflect the beam by 10°. Rotating the whole element
+        on the canvas does behave physically, giving the usual factor of two, so the two
+        routes to a tilt are not equivalent. If you are reasoning about actuator stroke,
+        halve the number.</p>`,
+      limitations: `<p>Only <strong>tip, tilt, and defocus</strong> are modelled — the
+        lowest Zernike orders. There is no astigmatism, coma, spherical aberration, or
+        arbitrary surface shape, which is awkward given that correcting exactly those higher
+        orders is the reason deformable mirrors exist; this element captures what they do
+        first, not what makes them special. Nothing represents the mechanism either: no
+        actuators, no actuator count or pitch, no influence functions or inter-actuator
+        coupling, no stroke limit, and therefore no fitting error. The surface is perfectly
+        smooth, so segment gaps and print-through never diffract, and there is no temporal
+        response — the shape changes instantly rather than over the milliseconds a real
+        mirror needs. Nothing closes the loop: there is no sensor driving the correction, so
+        the shape is one you set by hand rather than one the system finds.</p>`,
+    },
+    related: ['slm', 'dmd', 'cmirror', 'detector'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Adaptive Optics', url: 'https://www.rp-photonics.com/adaptive_optics.html' },
+      { label: 'RP Photonics Encyclopedia — Deformable Mirrors', url: 'https://www.rp-photonics.com/deformable_mirrors.html' },
+    ],
+  },
+  {
+    type: 'aotf',
+    title: 'Acousto-optic tunable filter',
+    category: 'Modulators',
+    realWorld: {
+      html: `
+        <p>An AOTF selects colours electronically. Sound travelling through a crystal
+        compresses and rarefies it, and since the refractive index follows density, an
+        acoustic wave is a moving index grating that light can diffract from. That much it
+        shares with an <a href="../aom/">acousto-optic modulator</a>. The difference — and
+        the whole point of the device — is that an AOTF arranges the interaction so only
+        <em>one wavelength at a time</em> can diffract from a given tone.</p>
+        <p>It does this in a <strong>birefringent</strong> crystal, usually tellurium
+        dioxide, in a geometry where the diffracted light emerges in the orthogonal
+        polarization state. Because the two states have different refractive indices, the
+        momentum-matching condition between the optical and acoustic waves is satisfied at
+        only one optical wavelength per acoustic frequency. An AOM diffracts whatever you
+        send it; an AOTF picks a line out of it.</p>
+        <p>Change the RF drive frequency and you change the line. That is the tuning
+        mechanism, and it is purely electronic — no filter wheel to rotate, no grating to
+        turn. The RF <em>power</em> sets the diffraction efficiency, so the same device
+        controls how much of that line gets through.</p>`,
+      formulas: [
+        { tex: '\\tau \\approx \\frac{D}{v_{a}}', caption: 'Switching time is the acoustic transit across the beam. In TeO₂ the shear wave travels around 650 m/s, so a 1 mm beam switches in roughly 1.5 µs — against the tens of milliseconds a filter wheel needs.' },
+        { tex: 'P_{\\text{line}} \\approx P_{\\text{in}}\\,\\frac{\\Delta\\lambda}{\\Delta\\lambda_{\\text{source}}}\\,\\eta', caption: 'What a narrow selection actually costs: picking 2 nm out of a 280 nm supercontinuum keeps well under 1% of the power, however efficient the diffraction is.' },
+      ],
+      html2: `
+        <h3>Multiplexed and sequential drive</h3>
+        <p>The property that makes AOTFs indispensable is that the crystal does not have to
+        be driven with one tone. Apply <strong>several RF frequencies simultaneously</strong>
+        and each selects its own wavelength, with its own amplitude setting that line's
+        intensity independently. That is <strong>multiplexing</strong>: every selected line
+        is present in the output at the same time. One small crystal thereby replaces a rack
+        of shutters, filters, and attenuators — which is why the laser combiner in a confocal
+        or multiphoton microscope is almost always an AOTF.</p>
+        <p>Driving one tone at a time instead, stepping from line to line, is
+        <strong>sequential</strong> operation. Only one wavelength is present at any instant.
+        Because switching takes microseconds, the sequence can be faster than a pixel dwell,
+        so a scan can step excitation wavelengths line by line or even pixel by pixel and
+        build a separate image per colour — which is exactly what multiplexed drive cannot
+        do, since there every colour arrives at once and the detector cannot tell them
+        apart.</p>
+        <p>Typical passbands are one to a few nanometres — narrow enough to isolate one
+        laser line from its neighbour. The light that is not selected is not absorbed; it
+        simply fails to diffract and continues on, which means a real installation always
+        has somewhere for it to go, usually a <a href="../beamdump/">beam dump</a>.</p>
+        <p>Beyond microscopy, AOTFs appear in hyperspectral and multispectral imaging, Raman
+        instruments, fluorescence spectroscopy, and space-borne instruments where a filter
+        wheel's mass and mechanism are unwelcome.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The element is built around a list of <strong>selected lines</strong>, one per RF
+        tone, in the same spirit as the <a href="../slm/">SLM's</a> stacked functions. A
+        fresh AOTF has a single line; press <em>Add line</em> to stack more, up to eight.
+        Each line carries its own wavelength, passband, and efficiency, so a weak line and a
+        strong one can be selected together.</p>
+
+        <h3>Where the light goes</h3>
+        <p>The selected lines leave along the <strong>incoming axis</strong>, so the
+        selection stays on the optical axis and the rest of a setup can be built downstream
+        of it in a straight line. Everything not selected — the beam
+        <strong>depleted</strong> of those lines — is deflected to an angle you choose.</p>
+        <p>That depleted beam is <strong>hidden by default</strong>, because in a working
+        instrument it goes straight into a dump and drawing it only clutters the figure.
+        Turn on <em>Show depleted beam</em> while designing and it is traced to wherever it
+        actually goes, so you can confirm nothing downstream is sitting in its path and put
+        a <a href="../beamdump/">beam dump</a> there. Hiding it changes only the drawing:
+        the power accounting is the same either way.</p>
+
+        <h3>Driving the lines</h3>
+        <p><strong>Multiplexed</strong> drive opens every selected line at once, so all of
+        them are in the output together and a spectrometer downstream shows the whole set.
+        <strong>Sequential</strong> drive steps through them one at a time at a rate you set,
+        so exactly one line is present at any instant and the spectrometer shows it change
+        as the sequence advances.</p>
+        <p>The sequence runs on the canvas clock, slowed to a step or two a second — a real
+        driver steps at kilohertz, far too fast to read — in the same illustrative spirit as
+        a scanning galvo or a chopper wheel. Each line is fully open while it is its turn;
+        the sequence chooses <em>which</em> line, not how much of it gets through.</p>
+
+        <h3>What the numbers do</h3>
+        <p>Selection is exact and conserves energy. A 20&nbsp;nm window on a 420–700&nbsp;nm
+        supercontinuum passes 20/280 of the power and the depleted port carries the rest,
+        summing to one. Efficiency multiplies on top, so three multiplexed lines at 0.9
+        selected from three matching laser lines deliver 2.7× a single line's worth. Narrow
+        selections work too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the
+        beam and still traces correctly rather than being discarded as negligible.</p>`,
+      limitations: `<p><strong>The geometry is the reverse of a physical device.</strong> In
+        a real AOTF the selected light is the <em>diffracted</em> first order and leaves at
+        an angle, while the remainder passes straight through as the zeroth order. This
+        element draws the opposite assignment — the selection continues along the incoming
+        axis and the remainder is deflected — because it keeps a multi-line selection on the
+        optical axis where the rest of a setup is built. The power accounting is identical
+        either way; only which port is bent differs.</p>
+        <p>The passband is a hard-edged window rather than the sinc²-like response with
+        sidelobes a real crystal produces, and it is set directly rather than following from
+        an acoustic frequency: in a real device one RF tone fixes the selected wavelength,
+        the diffraction angle, and the polarization rotation together through phase
+        matching, so a combination set here need not correspond to any crystal. The
+        polarization rotation itself is not modelled, so the selected light leaves in the
+        state it arrived and cannot be cleaned up with a <a href="../polarizer/">polarizer</a>
+        the way a real one is. There is no relation between RF power and efficiency, no
+        acoustic transit time — lines switch instantly — and no crystal transmission range,
+        so a line can be selected at any wavelength the source provides.</p>`,
+    },
+    related: ['aom', 'eom', 'filter', 'sclaser', 'beamdump'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Acousto-optic Tunable Filters', url: 'https://www.rp-photonics.com/acousto_optic_tunable_filters.html' },
+      { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
+    ],
+  },
+  {
     type: 'detector',
     title: 'Photodetector',
     category: 'Detectors',

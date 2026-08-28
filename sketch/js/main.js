@@ -213,6 +213,71 @@ const demoScenes = {
     mkDemo('isolator', 330, 300, 0, {}, { label: 'blocks the reverse', showLabel: true, labelPos: 'b' }),
     mkDemo('detector', 150, 300, 180, {}, { label: 'nothing gets back', showLabel: true, labelPos: 'l' }),
   ],
+  // Beam blocks only show what they do when there is a beam to stop and
+  // something on the far side that stops receiving it.
+  beamdump: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
+    mkDemo('bs', 200, 200, 0, { ratio: 0.5 }),
+    mkDemo('detector', 380, 200, 0, {}, { label: 'kept port', showLabel: true }),
+    mkDemo('beamdump', 200, 330, 90, { aperture: 22 }, { label: 'unused port ends here', showLabel: true, labelPos: 'b' }),
+  ],
+  slit: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 30 }),
+    mkDemo('slit', 220, 200, 0, { gap: 8, length: 50.8 }, { label: 'passes 8 mm of a 30 mm beam', showLabel: true, labelPos: 't' }),
+    mkDemo('camera', 400, 200, 0, { ch: 40, pixels: 40 }, { label: 'trimmed beam', showLabel: true }),
+  ],
+  blocker: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
+    mkDemo('bs', 220, 200, 0, { ratio: 0.5 }),
+    mkDemo('detector', 400, 200, 0, {}, { label: 'the branch you want', showLabel: true }),
+    mkDemo('blocker', 220, 320, 0, { w: 40, h: 16 }, { label: 'absorbs, but never drawn in an export', showLabel: true, labelPos: 'b' }),
+  ],
+  // The SLM's point is that the pattern and the leftover specular beam leave
+  // in different directions, so the demo needs a pattern AND the 0th order on.
+  slm: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 8 }),
+    mkDemo('slm', 300, 200, 45, {
+      length: 40, zeroOrder: true, zeroFrac: 0.15,
+      layers: [{ type: 'grating', lines: 600, orders: '1' }],
+    }, { label: 'grating pattern, 15% left undiffracted', showLabel: true, labelPos: 'b' }),
+    // The 45 deg SLM reflects at x=287, not at its element origin, so the dump
+    // sits there rather than under the element's centre.
+    mkDemo('beamdump', 287, 70, 90, { aperture: 30 }, { label: '0th order, dumped', showLabel: true, labelPos: 'r' }),
+  ],
+  // The DMD's whole point is that ON and OFF leave in different directions, so
+  // the demo shows the OFF order and terminates it the way a real setup must.
+  dmd: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 16 }),
+    mkDemo('dmd', 300, 200, 45, { length: 40, tilt: 12, pitch: 8, duty: 0.5, routeOff: true },
+      { label: '±12° mirrors — ON and OFF leave 48° apart', showLabel: true, labelPos: 'b' }),
+    // At 12 deg tilt the ON beam leaves at -66 deg and the OFF at -114 deg, so
+    // they cross y=70 at x=345 and x=232 respectively.
+    mkDemo('detector', 345, 70, 294, { aperture: 40 }, { label: 'ON beam', showLabel: true, labelPos: 'r' }),
+    mkDemo('beamdump', 232, 70, 0, { aperture: 34 }, { label: 'OFF beam, dumped', showLabel: true, labelPos: 'l' }),
+  ],
+  // Defocus only reads as a correction if something measures it, so the demo
+  // folds the beam off a curved DM straight into a wavefront sensor.
+  dm: () => [
+    mkDemo('cwlaser', 60, 200, 0, { beamMode: 'beam', beamWidth: 24 }),
+    mkDemo('dm', 350, 200, 45, { length: 50, f: 180, steer: 0 },
+      { label: 'concave, f = 180 mm', showLabel: true, labelPos: 'b' }),
+    mkDemo('wavefrontdetector', 345, 100, 267, { aperture: 40 },
+      { label: 'reads the corrected wavefront', showLabel: true, labelPos: 'r' }),
+  ],
+  // The AOTF's real job is selecting several lines out of a broad source, so
+  // the demo takes three from a supercontinuum and dumps the remainder.
+  aotf: () => [
+    mkDemo('sclaser', 60, 250, 0, { scMin: 420, scMax: 700, beamMode: 'beam', beamWidth: 10, showPulse: true },
+      { label: 'supercontinuum', showLabel: true, labelPos: 't' }),
+    mkDemo('aotf', 400, 250, 0, {
+      aperture: 26, deflect: 14, showDepleted: true, modMode: 'static', modFreqHz: 1000,
+      channels: [{ wl: 488, band: 4, eff: 0.9 }, { wl: 532, band: 4, eff: 0.9 }, { wl: 633, band: 4, eff: 0.9 }],
+    }, { label: '488 · 532 · 633 nm selected', showLabel: true, labelPos: 't' }),
+    mkDemo('spectrometer', 760, 250, 0, { aperture: 40 }, { label: 'the selected lines', showLabel: true, labelPos: 'r' }),
+    // The 14 deg depleted branch crosses x=700 at y=325, not at the 345 a
+    // quick reading of the geometry suggests.
+    mkDemo('beamdump', 700, 325, 14, { aperture: 44 }, { label: 'depleted beam, dumped', showLabel: true, labelPos: 'b' }),
+  ],
   aom: () => [
     mkDemo('pulsedlaser', 60, 200, 0, {
       repRateMHz: 80, pulseWidthFs: 100,
