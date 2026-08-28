@@ -36,7 +36,7 @@ import {
   objectiveWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
-import { normalizeAotfChannels, aotfSummary } from './aotf.js';
+import { normalizeAotfChannels, aotfOpenChannels, aotfSummary } from './aotf.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -2710,15 +2710,21 @@ export const registry = {
           : null),
       },
       {
-        key: 'modMode', label: 'Channel drive', type: 'select', def: 'static',
-        options: [['static', 'Static — all lines at once'], ['cycle', 'Cycle — one line at a time']],
+        key: 'modMode', label: 'Line drive', type: 'select', def: 'static',
+        options: [
+          ['static', 'Multiplexed — every line at once'],
+          ['cycle', 'Sequential — one line at a time'],
+        ],
       },
       {
-        key: 'modFreqHz', label: 'Cycle rate (Hz)', type: 'number', min: 0.1, max: 1000000, step: 10, def: 1000,
+        key: 'modFreqHz', label: 'Sequence rate (Hz)', type: 'number', min: 0.1, max: 1000000, step: 10, def: 1000,
         show: p => p.modMode === 'cycle',
       },
-      { key: 'deflect', label: 'Depleted-beam deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 6 },
       { key: 'showDepleted', label: 'Show depleted beam', type: 'checkbox', def: false },
+      {
+        key: 'deflect', label: 'Depleted-beam deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 6,
+        show: p => p.showDepleted === true,
+      },
     ],
     svg(el) {
       return boxSVG(52, el.params.aperture || 26, '#7fc7c4', '#397b78', 'AOTF', '#153b39', isFlipped(el));
@@ -2732,9 +2738,10 @@ export const registry = {
       return [{
         x1: 0, y1: -h, x2: 0, y2: h, kind: 'aotf',
         data: {
-          channels: normalizeAotfChannels(p.channels),
-          modMode: p.modMode === 'cycle' ? 'cycle' : 'static',
-          modFreqHz: Math.min(1e6, Math.max(0.1, Number(p.modFreqHz) || 1000)),
+          // Only the lines open at this instant are handed to the tracer, so a
+          // sequential drive really does show one line at a time and steps to
+          // the next as the animation clock advances.
+          channels: aotfOpenChannels(p, el._animationTimeS || 0),
           deflect: Number(p.deflect) || 0,
           showDepleted: p.showDepleted === true,
         },
@@ -3593,7 +3600,7 @@ const ELEMENT_HELP = {
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
-  aotf: 'Selects one or more spectral lines and passes them straight through, driven together or cycling one at a time; the beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
+  aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',

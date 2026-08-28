@@ -230,11 +230,12 @@ function animatedChopper(el) {
 }
 
 function animatedOpticalElements() {
-  if (!hasGalvoMotion() && !hasStageMotion() && !hasRetroMotion()) return state.elements;
+  if (!hasGalvoMotion() && !hasStageMotion() && !hasRetroMotion() && !hasAotfSequence()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
+    if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'stage') return animatedStageElement(el);
     if (el.type === 'retroreflector') return animatedRetroElement(el);
     return el;
@@ -247,6 +248,7 @@ function animatedVisualElements() {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
+    if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
     if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     if (el.type === 'stage') return stageWithSignalSpot(el);
     if (el.type === 'sample') return withSignalSpot(el);
@@ -266,7 +268,16 @@ function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'chopper' && el.params.modulate)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
-    || (el.type === 'retroreflector' && el.params.moveMode === 'linear'));
+    || (el.type === 'retroreflector' && el.params.moveMode === 'linear'))
+    || hasAotfSequence();
+}
+
+// A sequential AOTF steps between its selected lines, so the traced spectrum
+// changes with the clock exactly as a scanning galvo's angle does.
+function hasAotfSequence() {
+  return state.elements.some(el => el.type === 'aotf'
+    && el.params.modMode === 'cycle'
+    && Array.isArray(el.params.channels) && el.params.channels.length > 1);
 }
 
 function hasGalvoMotion() {
@@ -296,7 +307,7 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasRetroMotion();
+    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();

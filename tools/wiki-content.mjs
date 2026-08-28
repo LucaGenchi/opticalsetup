@@ -2350,18 +2350,21 @@ export const wikiEntries = [
         { tex: 'P_{\\text{line}} \\approx P_{\\text{in}}\\,\\frac{\\Delta\\lambda}{\\Delta\\lambda_{\\text{source}}}\\,\\eta', caption: 'What a narrow selection actually costs: picking 2 nm out of a 280 nm supercontinuum keeps well under 1% of the power, however efficient the diffraction is.' },
       ],
       html2: `
-        <h3>Many lines at once</h3>
+        <h3>Multiplexed and sequential drive</h3>
         <p>The property that makes AOTFs indispensable is that the crystal does not have to
         be driven with one tone. Apply <strong>several RF frequencies simultaneously</strong>
         and each selects its own wavelength, with its own amplitude setting that line's
-        intensity independently. One small crystal thereby replaces a rack of shutters,
-        filters, and attenuators — which is why the laser combiner in a confocal or
-        multiphoton microscope is almost always an AOTF.</p>
-        <p>The alternative is to <strong>time-multiplex</strong>: drive one tone, then the
-        next, cycling through the lines. Because switching takes microseconds, the cycle can
-        be faster than a pixel dwell, so a scan can interleave excitation wavelengths line
-        by line or even pixel by pixel. Each line is then open for its share of the period,
-        and a detector slower than the cycle reads that share of its intensity.</p>
+        intensity independently. That is <strong>multiplexing</strong>: every selected line
+        is present in the output at the same time. One small crystal thereby replaces a rack
+        of shutters, filters, and attenuators — which is why the laser combiner in a confocal
+        or multiphoton microscope is almost always an AOTF.</p>
+        <p>Driving one tone at a time instead, stepping from line to line, is
+        <strong>sequential</strong> operation. Only one wavelength is present at any instant.
+        Because switching takes microseconds, the sequence can be faster than a pixel dwell,
+        so a scan can step excitation wavelengths line by line or even pixel by pixel and
+        build a separate image per colour — which is exactly what multiplexed drive cannot
+        do, since there every colour arrives at once and the detector cannot tell them
+        apart.</p>
         <p>Typical passbands are one to a few nanometres — narrow enough to isolate one
         laser line from its neighbour. The light that is not selected is not absorbed; it
         simply fails to diffract and continues on, which means a real installation always
@@ -2391,24 +2394,23 @@ export const wikiEntries = [
         the power accounting is the same either way.</p>
 
         <h3>Driving the lines</h3>
-        <p><strong>Static</strong> drive opens every selected line at once — the multi-tone
-        case. <strong>Cycle</strong> opens them one at a time in turn at a rate you set,
-        which is the time-multiplexed case, and each line then carries its share of the
-        period. With three lines cycling, a slow detector reads a third of what it would
-        read with all three static.</p>
-        <p>On a <em>pulsed</em> beam that sharing rides on the pulse train rather than on
-        the beam's brightness: individual pulses keep their full amplitude and simply arrive
-        in bursts, exactly as a gated train does, and the average is what a slow detector
-        reports. On a <em>CW</em> beam there is no pulse structure to carry it, so the beam
-        itself is dimmer by the duty factor. Both are correct for what they describe.</p>
+        <p><strong>Multiplexed</strong> drive opens every selected line at once, so all of
+        them are in the output together and a spectrometer downstream shows the whole set.
+        <strong>Sequential</strong> drive steps through them one at a time at a rate you set,
+        so exactly one line is present at any instant and the spectrometer shows it change
+        as the sequence advances.</p>
+        <p>The sequence runs on the canvas clock, slowed to a step or two a second — a real
+        driver steps at kilohertz, far too fast to read — in the same illustrative spirit as
+        a scanning galvo or a chopper wheel. Each line is fully open while it is its turn;
+        the sequence chooses <em>which</em> line, not how much of it gets through.</p>
 
         <h3>What the numbers do</h3>
         <p>Selection is exact and conserves energy. A 20&nbsp;nm window on a 420–700&nbsp;nm
         supercontinuum passes 20/280 of the power and the depleted port carries the rest,
-        summing to one. Efficiency multiplies on top, so three lines at 0.9 selected from
-        three matching laser lines deliver 2.7× a single line's worth. Narrow selections work
-        too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the beam and still
-        traces correctly rather than being discarded as negligible.</p>`,
+        summing to one. Efficiency multiplies on top, so three multiplexed lines at 0.9
+        selected from three matching laser lines deliver 2.7× a single line's worth. Narrow
+        selections work too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the
+        beam and still traces correctly rather than being discarded as negligible.</p>`,
       limitations: `<p><strong>The geometry is the reverse of a physical device.</strong> In
         a real AOTF the selected light is the <em>diffracted</em> first order and leaves at
         an angle, while the remainder passes straight through as the zeroth order. This

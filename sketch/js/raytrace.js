@@ -12,7 +12,7 @@ import {
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
-import { normalizeAotfChannels, aotfChannelBand, aotfDutyOf } from './aotf.js';
+import { normalizeAotfChannels, aotfChannelBand } from './aotf.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -1288,10 +1288,9 @@ function interact(ray, hit) {
       // beam is deflected away as the depleted port. A channel narrower than
       // the beam's band takes only its overlap, so picking 2 nm out of a
       // supercontinuum really does keep only 2 nm worth of power.
+      // `channels` is already only the lines open at this instant: every one
+      // under multiplexed drive, exactly one under sequential drive.
       const channels = normalizeAotfChannels(data.channels);
-      const duty = aotfDutyOf(channels, data.modMode);
-      const cycling = data.modMode === 'cycle' && channels.length > 1;
-      const periodNs = 1e9 / Math.min(1e6, Math.max(0.1, data.modFreqHz || 1000));
       const a = (data.deflect || 0) * D2R;
       const deflected = { x: d.x * Math.cos(a) - d.y * Math.sin(a), y: d.x * Math.sin(a) + d.y * Math.cos(a) };
       const out = [];
@@ -1299,19 +1298,10 @@ function interact(ray, hit) {
 
       channels.forEach((c, i) => {
         if (!(c.eff > 0)) return;
-        // A cycling drive costs each line its share of the period. On a pulsed
-        // beam the gate below already carries that, so folding it into the
-        // intensity as well would charge for it twice; CW has no gate to carry
-        // it, so there it has to be the intensity factor.
-        const pass = c.eff * (ray.pulse && cycling ? 1 : duty);
-        // A cycling drive opens each channel for its slice of the period, so a
-        // pulse train really is gated and a slow detector reads the average.
-        const gate = cycling ? {
-          opl: ray.opl, frequencyMHz: (data.modFreqHz || 1000) / 1e6,
-          duty, phaseNs: (i * periodNs) / channels.length, shape: 'square', depth: 1,
-        } : null;
+        // An open line is fully open: the sequence decides which line, not how
+        // much of it gets through.
+        const pass = c.eff;
         const withGate = child => {
-          if (gate && ray.pulse) child.pulse = { ...ray.pulse, gates: [...(ray.pulse.gates || []), gate] };
           // The selected line is the useful output and is often a thin slice
           // of a broad source, so it must survive the weak-ray cull that would
           // otherwise delete exactly the beam the user asked for.
