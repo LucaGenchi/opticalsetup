@@ -1,6 +1,7 @@
 // Right-hand inspector: edit properties of the selected element or manual beam.
 
 import { state, changed, pushUndo, findSelected } from './state.js';
+import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf.js';
 import {
   registry, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
@@ -350,6 +351,27 @@ function layersHTML(layers) {
   return h;
 }
 
+function aotfChannelsHTML(channels) {
+  const list = normalizeAotfChannels(channels);
+  let h = `<div class="lsechead">Selected lines — up to ${MAX_AOTF_CHANNELS} RF tones</div>`;
+  list.forEach((c, i) => {
+    h += `<div class="layer"><div class="layerrow">` +
+      `<strong style="flex:1">Line ${i + 1}</strong>` +
+      (list.length > 1
+        ? `<button type="button" class="layerdel" data-acdel="${i}" title="Remove this line" aria-label="Remove line ${i + 1}">✕</button>`
+        : '') +
+      `</div>`;
+    h += field('Wavelength (nm)', `<input type="number" data-aci="${i}" data-ack="wl" min="150" max="8000" step="1" value="${c.wl}">`);
+    h += field('Passband (nm)', `<input type="number" data-aci="${i}" data-ack="band" min="0.1" max="2000" step="0.1" value="${c.band}">`);
+    h += numberField('Efficiency (0–1)', `data-aci="${i}" data-ack="eff"`, c.eff, { min: 0, max: 1, step: 0.05 });
+    h += `</div>`;
+  });
+  if (list.length < MAX_AOTF_CHANNELS) {
+    h += `<button type="button" id="aotfChannelAdd" class="layeradd">＋ Add line</button>`;
+  }
+  return h;
+}
+
 function surfaceTableHTML(sel) {
   const rows = normalizeSurfaceTable(surfaceRowsOf(sel.params));
   const presetActive = sel.params.preset && sel.params.preset !== 'custom';
@@ -545,6 +567,7 @@ function paramField(p, sel) {
       + (sensors.length ? '' : `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`);
   }
   if (p.type === 'layers') return layersHTML(Array.isArray(v) ? v : []);
+  if (p.type === 'aotfchannels') return aotfChannelsHTML(v);
   if (p.type === 'surfacetable') return surfaceTableHTML(sel);
   if (p.type === 'signals') return signalsHTML(sel);
   // A derived quantity, shown in the same box shape as an editable field so
@@ -849,6 +872,30 @@ export function renderInspector() {
     changed();
     renderInspector();
   });
+  const aotfAdd = panel.querySelector('#aotfChannelAdd');
+  if (aotfAdd) aotfAdd.addEventListener('click', () => {
+    const s = findSelected();
+    if (!s) return;
+    pushUndo();
+    const list = normalizeAotfChannels(s.params.channels);
+    if (list.length < MAX_AOTF_CHANNELS) list.push(newAotfChannel());
+    s.params.channels = list;
+    changed();
+    renderInspector();
+  });
+  panel.querySelectorAll('[data-acdel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = findSelected();
+      if (!s) return;
+      const list = normalizeAotfChannels(s.params.channels);
+      if (list.length <= 1) return;   // an AOTF with no tone is just a window
+      pushUndo();
+      list.splice(+btn.dataset.acdel, 1);
+      s.params.channels = list;
+      changed();
+      renderInspector();
+    });
+  });
   panel.querySelectorAll('[data-ldel]').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = findSelected();
@@ -1121,6 +1168,17 @@ export function applyInput(inp, rebuild = false) {
   }
 
   // wavefront-shaper layer fields
+  if (inp.dataset.aci !== undefined) {
+    const list = normalizeAotfChannels(sel.params.channels);
+    const c = list[+inp.dataset.aci];
+    if (c) {
+      c[inp.dataset.ack] = val;
+      sel.params.channels = normalizeAotfChannels(list);
+    }
+    changed();
+    if (rebuild) renderInspector();
+    return;
+  }
   if (inp.dataset.li !== undefined) {
     const layers = sel.params.layers;
     const ly = layers && layers[+inp.dataset.li];
