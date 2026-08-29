@@ -2593,6 +2593,53 @@ export const registry = {
     },
   },
 
+  // The same phase-shaping engine as the SLM, but built the way a metasurface
+  // actually is: a patterned layer on a thin transparent carrier, working in
+  // transmission. The optics are shared deliberately -- a metasurface and an
+  // LCOS panel differ in how the phase is fixed, not in what a phase profile
+  // does to a ray.
+  metasurface: {
+    label: 'Metasurface', category: 'Wavefront Shaping', size: { w: 10, h: 50 },
+    aliases: ['meta-optic', 'metasurface phase plate', 'flat optic', 'nanostructured surface'],
+    snapPt: { x: 0, y: 0 },
+    params: [
+      { key: 'transmissive', label: 'Transmissive', type: 'checkbox', def: true },
+      { key: 'length', label: 'Active size (mm)', type: 'number', min: 4, max: 100, step: 2, def: 30 },
+      { key: 'zeroOrder', label: 'Undiffracted 0th order', type: 'checkbox', def: false },
+      { key: 'zeroFrac', label: '0th-order fraction (0–1)', type: 'number', min: 0.01, max: 0.9, step: 0.01, def: 0.1, show: p => p.zeroOrder },
+      layersParam,
+    ],
+    size_: el => ({ w: 10, h: el.params.length + 8 }),
+    svg(el) {
+      const L = el.params.length / 2;
+      // A thin transparent carrier with the patterned layer sitting on its
+      // input face -- the way these are made, and what tells it apart from
+      // the SLM's opaque panel at a glance.
+      const substrate = `<rect x="-1.4" y="${-L}" width="2.8" height="${2 * L}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="0.9"/>`;
+      const layer = `<rect x="-2.9" y="${-L}" width="1.5" height="${2 * L}" fill="#f2c230" stroke="#a67c06" stroke-width="0.7"/>`;
+      // Meta-atom ticks: dense, and finer than any drawn feature elsewhere,
+      // because subwavelength structure is the whole point of the surface.
+      let atoms = '';
+      for (let y = -L + 1.2; y < L - 0.6; y += 2.2) {
+        atoms += `<line x1="-2.6" y1="${y.toFixed(2)}" x2="-1.7" y2="${y.toFixed(2)}" stroke="#7a5a04" stroke-width="0.5"/>`;
+      }
+      return substrate + layer + atoms;
+    },
+    surfaces(el) {
+      const L = el.params.length / 2;
+      // Reflective mode needs a body behind the surface, exactly as the SLM
+      // does; in transmission the carrier is clear and nothing blocks.
+      const body = el.params.transmissive ? [] : shaperBody(-2.9, 1.4, L, L + 2);
+      return [{
+        x1: 0, y1: -L, x2: 0, y2: L, kind: 'shaper',
+        data: {
+          layers: el.params.layers || [], length: el.params.length,
+          transmissive: el.params.transmissive !== false,
+          zeroOrder: !!el.params.zeroOrder, zeroFrac: el.params.zeroFrac || 0.1,
+        },
+      }, ...body];
+    },
+  },
   dmd: {
     label: 'DMD', category: 'Wavefront Shaping', size: { w: 30, h: 50 },
     snapPt: { x: -9, y: 0 }, // active face
@@ -3626,6 +3673,7 @@ const DIRECT = {
   freeglass: { resize: { uniform: 'scale' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   diffuser: { resize: { y: 'length' }, tune: { key: 'div', short: 'spread' } },
   slm: { resize: { y: 'length' }, tune: { key: 'zeroFrac', short: '0th', when: p => p.zeroOrder } },
+  metasurface: { resize: { y: 'length' }, tune: { key: 'zeroFrac', short: '0th', when: p => p.zeroOrder } },
   dmd: { resize: { y: 'length' }, tune: { key: 'tilt', short: 'tilt' } },
   dm: { resize: { y: 'length' }, tune: { key: 'steer', short: 'steer' } },
   detector: { resize: { y: 'aperture' } },
@@ -3715,6 +3763,7 @@ const ELEMENT_HELP = {
   beamdump: 'Absorbs incident rays.',
   blocker: 'Absorbs rays but stays hidden in exported figures.',
   slm: 'Reflects by default and can overlay lens-array, grating, steering, or speckle functions.',
+  metasurface: 'A patterned layer on a thin transparent carrier, working in transmission by default. Overlays the same lens-array, grating, steering, and speckle functions as the SLM, with an optional undiffracted zeroth order — but the phase profile is fixed at fabrication rather than programmable.',
   dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
@@ -3742,7 +3791,7 @@ const ELEMENT_HELP = {
 };
 
 const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'gascell', 'window']);
-const SHAPERS = new Set(['slm']);
+const SHAPERS = new Set(['slm', 'metasurface']);
 
 export function getElementMeta(type, params = {}, context = {}) {
   let tier = DIAGRAM_ONLY.has(type) ? 'diagram' : 'simulated';
@@ -3780,7 +3829,11 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Choose a conversion mode to generate an output wavelength.';
   } else if (SHAPERS.has(type) && (!Array.isArray(params.layers) || params.layers.length === 0)) {
     tier = 'configurable';
-    note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
+    // An unpatterned shaper is whatever its own default geometry makes it:
+    // a mirror for the SLM, a clear window for a transmissive metasurface.
+    note = params.transmissive
+      ? 'Currently a clear window. Add an optical structure to shape the wavefront.'
+      : 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
   } else if (DIAGRAM_ONLY.has(type)) {
     note = 'This element is intentionally visual and never changes traced rays.';
   } else if (type === 'thicklens' || type === 'freeglass') {

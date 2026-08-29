@@ -2196,6 +2196,94 @@ export const wikiEntries = [
     ],
   },
   {
+    type: 'metasurface',
+    title: 'Metasurface',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A metasurface is a flat optic that works by pattern rather than by shape.
+        Instead of bending light with a curved glass surface, it carries an array of
+        <strong>meta-atoms</strong> — pillars, fins, or slots smaller than the wavelength —
+        each imposing its own local phase delay on the light passing through. Choose the
+        phase at every point across the aperture and you choose what the surface does.</p>
+        <p>Because the structures are subwavelength, they do not diffract individually; the
+        surface behaves as a continuous phase profile <span class="w">Φ(x)</span>. What
+        steers the light is the <em>gradient</em> of that profile, which generalises
+        Snell's law: a phase that varies along the surface adds momentum to the transmitted
+        beam.</p>`,
+      formulas: [
+        { tex: 'n_t\\sin\\theta_t - n_i\\sin\\theta_i = \\frac{\\lambda_0}{2\\pi}\\frac{d\\Phi}{dx}', caption: "The generalised Snell's law. With no phase gradient this collapses to ordinary refraction; a constant gradient deflects the beam, and a position-dependent one focuses, splits, or scatters it." },
+        { tex: '\\Phi(r) = -\\frac{2\\pi}{\\lambda_0}\\left(\\sqrt{f^2+r^2}-f\\right)', caption: 'The particular profile that focuses. A metasurface carrying this one is a <a href="../metalens/">metalens</a> — the same device, given a lens\\u2019s job.' },
+      ],
+      html2: `
+        <p>What makes the idea powerful is that the profile is arbitrary. The same
+        fabrication process yields a lens, a blazed grating, a beam splitter, a vortex
+        plate carrying orbital angular momentum, a polarisation-selective element that
+        does different things to each state, or a hologram — decided entirely by the
+        pattern. And because the whole optic is a film a fraction of a micrometre thick on
+        a carrier, it replaces components that would otherwise be centimetres of glass,
+        which is why metasurfaces are pursued for phone cameras, endoscopes, AR displays,
+        and satellite instruments.</p>
+        <p>The costs are real. Efficiency is finite, so some light leaves undiffracted in
+        the <strong>zeroth order</strong> along with scatter and reflection. Most designs
+        are strongly chromatic, since the phase is set for one wavelength and every other
+        colour sees the wrong profile. Many are polarisation-sensitive by construction.
+        And the pattern is <strong>fixed at fabrication</strong> — which is the sharp
+        distinction from an <a href="../slm/">SLM</a>, whose liquid crystal lets the same
+        aperture display a new profile thousands of times a second. A metasurface trades
+        that programmability for being thin, passive, fast at the speed of light, and
+        needing no drive electronics.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The metasurface is drawn as what it is: a patterned layer on a thin transparent
+        carrier. It is <strong>transmissive by default</strong>, since that is how these
+        optics are almost always used, with a toggle for the reflective case.</p>
+        <p>It shares its phase engine with the <a href="../slm/">SLM</a> — deliberately,
+        because a phase profile does the same thing to a ray whether liquid crystal or
+        etched silicon put it there. The difference between the two elements is what they
+        represent, not what the light does. So the same stack of <strong>optical
+        functions</strong> applies, up to four, in order:</p>
+        <ul>
+          <li><strong>Lens array</strong> — divides the aperture into lenslets, the
+          multi-focus profile a metasurface array carries.</li>
+          <li><strong>Grating</strong> — a fixed blazed deflector with chosen line density
+          and orders. Verified against the grating equation: 600 lines/mm at 532&nbsp;nm
+          sends the first order to 18.61°, exactly arcsin(λ/d).</li>
+          <li><strong>Beam steer</strong> — the constant phase gradient of the generalised
+          Snell's law above, the simplest metasurface there is.</li>
+          <li><strong>Speckle / diffuser</strong> — a randomised profile.</li>
+        </ul>
+        <p>Layers compose in sequence, so a steer of 5° followed by a 600&nbsp;lines/mm
+        grating puts the output at 23.98° — the two sines adding, as they should.</p>
+        <p>The <strong>undiffracted 0th order</strong> toggle models finite efficiency:
+        turn it on and the chosen fraction leaves along the original path while the
+        patterned light carries the rest, so a design can be drawn with its leakage and a
+        <a href="../beamdump/">beam dump</a> put where the waste goes. It is off by
+        default so a teaching figure stays clean.</p>
+        <p>For the specific case of a focusing metasurface with a wavelength-dependent
+        focal length, use the <a href="../metalens/">metalens</a> instead — it models the
+        diffractive <span class="w">f(λ) = f₀λ₀/λ</span> scaling that this element's
+        geometric layers do not.</p>`,
+      limitations: `<p>No phase map is computed and no field is propagated. The layers are
+        geometric ray operations standing in for what a profile does, so there are no
+        meta-atoms, no subwavelength geometry, no fill factor, and no diffraction
+        calculation — an aperture that would be far too small to work in reality traces
+        exactly like a large one. The steering here is also achromatic where a real
+        metasurface is strongly chromatic: only the grating layer disperses, through the
+        grating equation, while a steer or lens-array layer treats every wavelength alike.
+        Polarisation is untouched, though polarisation sensitivity is a defining property
+        of many real designs, and the zeroth-order fraction is a number you set rather
+        than one derived from the structure. Efficiency, scatter, substrate reflections,
+        and fabrication tolerance are all absent.</p>`,
+    },
+    related: ['slm', 'metalens', 'dmd', 'grating', 'beamdump'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Metasurfaces', url: 'https://www.rp-photonics.com/metasurfaces.html' },
+      { label: 'RP Photonics Encyclopedia — Diffractive Optics', url: 'https://www.rp-photonics.com/diffractive_optics.html' },
+    ],
+  },
+  {
     type: 'dmd',
     title: 'Digital micromirror device',
     category: 'Wavefront Shaping',
