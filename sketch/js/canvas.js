@@ -713,6 +713,10 @@ function focalPoints(el) {
   const p = el.params;
   switch (el.type) {
     case 'lens': case 'lensc': return [{ x: p.f, y: 0 }, { x: -p.f, y: 0 }];
+    case 'metalens': return [
+      { x: p.f, y: 0, label: p.designType === 'achromatic' ? 'f band' : 'f @ λ₀' },
+      { x: -p.f, y: 0, label: p.designType === 'achromatic' ? 'f band' : 'f @ λ₀' },
+    ];
     case 'objective': {
       // Both are real traced planes now: the specimen focus one working
       // distance beyond the tip, and the back focal plane one focal length

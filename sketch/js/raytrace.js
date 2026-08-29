@@ -8,7 +8,7 @@ import {
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
-  fluorophoreSpec, fluorophoreAbsorption,
+  fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
@@ -83,6 +83,23 @@ function recordCompressor(elementId, incoming, outgoing) {
 
 export function compressorGddReading(elementId) {
   return compressorGdd.get(elementId) || null;
+}
+
+// metalens element id -> distinct wavelength/focal-length pairs observed on
+// the most recent trace. The inspector uses the trace, not the source config,
+// so filters and wavelength conversion upstream are reflected immediately.
+let metalensHits = new Map();
+
+function recordMetalensHit(elementId, wavelengthNm, focalLengthMm) {
+  if (!elementId || !Number.isFinite(wavelengthNm) || !Number.isFinite(focalLengthMm)) return;
+  let hits = metalensHits.get(elementId);
+  if (!hits) { hits = new Map(); metalensHits.set(elementId, hits); }
+  hits.set(wavelengthNm.toFixed(6), { wavelengthNm, focalLengthMm });
+}
+
+export function metalensReading(elementId) {
+  return [...(metalensHits.get(elementId)?.values() || [])]
+    .sort((a, b) => a.wavelengthNm - b.wavelengthNm);
 }
 
 export function objectivePupilFill(elementId) {
@@ -1087,6 +1104,27 @@ function interact(ray, hit) {
       out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted });
       return out;
     }
+    case 'metalens': {
+      const efficiency = Math.min(1, Math.max(0, Number(data.focusEff) / 100 || 0));
+      const sampled = ray.bw > 0;
+      const samples = wlSamples(ray);
+      return samples.map((sample, i) => {
+        const focalLength = metalensFocalLength(data, sample.wl);
+        recordMetalensHit(s.el?.id, sample.wl, focalLength);
+        return {
+          d: lensBend(d, hit.p, s, focalLength),
+          wl: sample.wl,
+          bw: sampled ? 0 : ray.bw,
+          ...(sampled ? {
+            spec: null,
+            color: wavelengthToColor(sample.wl),
+            spectralCount: samples.length,
+            tag: `w${i}`,
+          } : {}),
+          intensity: ray.intensity * efficiency * (sampled ? sample.weight : 1),
+        };
+      });
+    }
     case 'lens': {
       // transmission efficiency (AR-coating/absorption loss): a straight
       // power/intensity attenuation, no deviation of the focused direction.
@@ -1873,7 +1911,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         // centimetres of visible glow, and the light is really there.
         const CAPTURE = r.captureLen || EVAN_LEN * 1.5;
         const captured = hit && hit.t <= CAPTURE
-          && (hit.surface.kind === 'lens' || hit.surface.kind === 'fiberin');
+          && (hit.surface.kind === 'lens' || hit.surface.kind === 'metalens' || hit.surface.kind === 'fiberin');
         if (!captured) {
           const L = hit ? Math.min(hit.t, EVAN_LEN) : EVAN_LEN;
           appendPoint(r, { x: r.x + r.dx * L, y: r.y + r.dy * L }, L);
@@ -2254,6 +2292,7 @@ export function traceScene(elements, beams = []) {
   detectorHits = new Map();
   objectivePupilHits = new Map();
   compressorGdd = new Map();
+  metalensHits = new Map();
   gateTransmissionCache = new Map();
   specimenIncident = new Map();
 
@@ -2362,6 +2401,7 @@ export function traceScene(elements, beams = []) {
       detectorHits = new Map();
       objectivePupilHits = new Map();
       compressorGdd = new Map();
+      metalensHits = new Map();
       gateTransmissionCache = new Map();
     }
   }
@@ -2402,7 +2442,7 @@ export function traceScene(elements, beams = []) {
     // lens surfaces crossed by the object's own axis ray, ordered by distance
     const hits = [];
     for (const s of surfaces) {
-      if (s.kind !== 'lens') continue;
+      if (s.kind !== 'lens' && s.kind !== 'metalens') continue;
       const e = sub(s.b, s.a);
       const den = u.x * e.y - u.y * e.x;
       if (Math.abs(den) < 1e-9) continue;
@@ -2412,7 +2452,9 @@ export function traceScene(elements, beams = []) {
       if (t > 1 && q >= 0 && q <= 1) hits.push({ t, s });
     }
     hits.sort((a, b) => a.t - b.t);
-    if (!hits.length || hits.some(h => !h.s.data.f)) continue;
+    const imageFocalLength = s => s.kind === 'metalens'
+      ? metalensFocalLength(s.data, pp.wavelength) : s.data.f;
+    if (!hits.length || hits.some(h => !imageFocalLength(h.s))) continue;
 
     // image of any point: trace two independent real rays from it through
     // every lens hit with the same bending physics as live ray tracing
@@ -2431,7 +2473,7 @@ export function traceScene(elements, beams = []) {
           const t = (dp.x * e.y - dp.y * e.x) / den;
           const hitP = add(r.p, mul(r.d, t));
           r.p = hitP;
-          r.d = lensBend(r.d, hitP, s, s.data.f);
+          r.d = lensBend(r.d, hitP, s, imageFocalLength(s));
         }
       }
       const [rA, rB] = rays;

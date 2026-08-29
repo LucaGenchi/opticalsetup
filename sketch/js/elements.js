@@ -3,13 +3,13 @@
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
 //         surfaces(el)->[{x1,y1,x2,y2,kind,data}], source(el)->[rays],
 //         immersionSource(el)->{x,y}, immersionContact(el)->segment|segments }
-// Surface kinds handled by the tracer: mirror, lens, cmirror, refract,
+// Surface kinds handled by the tracer: mirror, lens, metalens, cmirror, refract,
 // dichroic, filter, split, grating, absorb, transmit (data may change
 // wavelength / deflect).
 
 import { distToSegment, esc, linkifyText, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
-import { compressorGddReading, detectorReading, objectivePupilFill, probeAt } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, probeAt } from './raytrace.js';
 import { fwhmToSigma, spectrumSamples, transformLimitedBandwidthNm } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -1264,6 +1264,67 @@ export function estimatedThinLensThicknessMm(params, wavelengthNm = 587.6) {
   return Math.max(1.5, sag + 2.5);
 }
 
+// ---- flat metasurface lens ----------------------------------------------
+// OpticalSetup does not propagate carrier phase or solve a meta-atom unit
+// cell. A metalens is therefore a zero-thickness, wavelength-aware paraxial
+// phase-gradient proxy: exact at its configured first-order focus, honest
+// about ordinary diffractive chromaticity, and deliberately silent about PSF,
+// Strehl, fabrication feasibility, and where the unfocused power goes.
+export function metalensFocalLength(params = {}, wavelengthNm = 532) {
+  const nominal = Number(params.f);
+  if (!Number.isFinite(nominal)) return 0;
+  const wavelength = Math.max(1e-6, Number.isFinite(Number(wavelengthNm)) ? Number(wavelengthNm) : 532);
+  if (params.designType === 'achromatic') {
+    const a = Number.isFinite(Number(params.bandMin)) ? Number(params.bandMin) : 450;
+    const b = Number.isFinite(Number(params.bandMax)) ? Number(params.bandMax) : 650;
+    const lo = Math.max(1e-6, Math.min(a, b));
+    const hi = Math.max(lo, Math.max(a, b));
+    if (wavelength >= lo && wavelength <= hi) return nominal;
+    // Anchor the ordinary diffractive law to the nearest corrected edge. The
+    // focal length is continuous at both edges instead of jumping when a
+    // broadband source crosses the idealized correction band.
+    return nominal * (wavelength < lo ? lo : hi) / wavelength;
+  }
+  const designWavelength = Math.max(1e-6,
+    Number.isFinite(Number(params.designWavelength)) ? Number(params.designWavelength) : 532);
+  return nominal * designWavelength / wavelength;
+}
+
+export function metalensNumericalAperture(params = {}) {
+  const diameter = Math.max(0, Number.isFinite(Number(params.dia)) ? Number(params.dia) : 0);
+  const focalLength = Math.abs(Number.isFinite(Number(params.f)) ? Number(params.f) : 0);
+  if (!(diameter > 0) || !(focalLength > 0)) return 0;
+  return Math.sin(Math.atan(diameter / (2 * focalLength)));
+}
+
+function formatMetalensFocal(value) {
+  if (!Number.isFinite(value)) return '—';
+  const abs = Math.abs(value);
+  return `${abs >= 100 ? value.toFixed(0) : abs >= 10 ? value.toFixed(1) : value.toFixed(2)} mm`;
+}
+
+function metalensOpticalReadout(params) {
+  const f = Math.abs(Number(params.f));
+  const diameter = Number(params.dia);
+  if (!(f > 0) || !(diameter > 0)) return 'No optical power';
+  return `NA ${metalensNumericalAperture(params).toFixed(3)} · f/${(f / diameter).toFixed(2)}`;
+}
+
+function metalensIncidentReadout(el) {
+  const reading = el ? metalensReading(el.id) : null;
+  if (!reading?.length) return 'No incident light';
+  const wavelengths = reading.map(sample => sample.wavelengthNm);
+  const focals = reading.map(sample => sample.focalLengthMm);
+  const wl = wavelengths.length === 1
+    ? `${Number(wavelengths[0].toFixed(1))} nm`
+    : `${Number(Math.min(...wavelengths).toFixed(1))}–${Number(Math.max(...wavelengths).toFixed(1))} nm`;
+  const lo = Math.min(...focals), hi = Math.max(...focals);
+  const focus = Math.abs(hi - lo) < 0.005
+    ? formatMetalensFocal((lo + hi) / 2)
+    : `${formatMetalensFocal(lo).replace(' mm', '')}–${formatMetalensFocal(hi)}`;
+  return `${wl} → ${focus}`;
+}
+
 function prismGeometry(el) {
   const height = Math.max(5, el.params.psize || 25.4);
   const apex = Math.min(80, Math.max(10, el.params.apex || 60)) * Math.PI / 180;
@@ -1730,6 +1791,66 @@ export const registry = {
     },
   },
 
+  metalens: {
+    label: 'Metalens', category: 'Lenses', paletteOrder: 2, size: { w: 12, h: 20 },
+    aliases: ['flat lens', 'metasurface lens', 'meta optic', 'meta-optic', 'diffractive lens'],
+    params: [
+      {
+        key: 'designType', label: 'Spectral design', type: 'select', def: 'chromatic',
+        options: [
+          ['chromatic', 'Chromatic (diffractive)'],
+          ['achromatic', 'Idealized achromatic band'],
+        ],
+      },
+      { key: 'f', label: 'Nominal focal length (mm)', type: 'number', min: -3000, max: 3000, step: 1, def: 20, slider: false },
+      {
+        key: 'designWavelength', label: 'Design wavelength (nm)', type: 'number',
+        min: 100, max: 12000, step: 1, def: 532, show: p => p.designType !== 'achromatic',
+      },
+      {
+        key: 'bandMin', label: 'Achromatic minimum (nm)', type: 'number',
+        min: 100, max: 12000, step: 10, def: 450, show: p => p.designType === 'achromatic',
+      },
+      {
+        key: 'bandMax', label: 'Achromatic maximum (nm)', type: 'number',
+        min: 100, max: 12000, step: 10, def: 650, show: p => p.designType === 'achromatic',
+      },
+      { key: 'dia', label: 'Clear aperture', type: 'optsize', def: 12.7 },
+      { key: 'focusEff', label: 'Focusing efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 70 },
+      { key: 'opticalSpec', label: 'Nominal NA · f-number', type: 'readout', readout: p => metalensOpticalReadout(p) },
+      { key: 'incidentFocus', label: 'Incident wavelength → focus', type: 'readout', readout: (_p, el) => metalensIncidentReadout(el) },
+    ],
+    size_: el => ({ w: 12, h: Math.max(1, el.params.dia) + 6 }),
+    svg(el) {
+      const h = Math.max(0.5, el.params.dia / 2);
+      let zones = '';
+      // A meridional view of wrapped phase zones: spacing tightens toward
+      // the rim, unlike the evenly spaced rules of the grating icon.
+      for (let i = 1; i <= 5; i++) {
+        const y = h * Math.sqrt(i / 5);
+        const halfWidth = 1.5 + 2.5 * i / 5;
+        zones += `<line x1="${-halfWidth}" y1="${-y}" x2="${halfWidth}" y2="${-y}"/>`;
+        zones += `<line x1="${-halfWidth}" y1="${y}" x2="${halfWidth}" y2="${y}"/>`;
+      }
+      return `<rect x="-1.5" y="${-h}" width="3" height="${2 * h}" rx="0.8" fill="#c9edf0" stroke="#247d87" stroke-width="1.2"/>`
+        + `<g stroke="#247d87" stroke-width="0.9" stroke-linecap="round">${zones}</g>`;
+    },
+    surfaces(el) {
+      const h = Math.max(0.5, el.params.dia / 2);
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'metalens',
+        data: {
+          designType: el.params.designType,
+          f: el.params.f,
+          designWavelength: el.params.designWavelength,
+          bandMin: el.params.bandMin,
+          bandMax: el.params.bandMax,
+          focusEff: el.params.focusEff,
+        },
+      }];
+    },
+  },
+
   // A real lens instead of a paraxial one: two spherical surfaces with actual
   // glass between them, refracted by Snell's law at each. Nothing about its
   // focal length is configured — it emerges from the radii, thickness and
@@ -1737,7 +1858,7 @@ export const registry = {
   // of it for free rather than being painted on. See thickLensCardinals() for
   // the paraxial summary shown in the inspector.
   thicklens: {
-    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 2,
+    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 3,
     aliases: ['real lens', 'spherical lens', 'singlet', 'biconvex', 'plano-convex', 'meniscus', 'aberration'],
     params: [
       { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 60, slider: false },
@@ -1790,7 +1911,7 @@ export const registry = {
   // achromatic doublet and anything else the table can express. Nothing about
   // the focal length is configured; see lensgroup.js.
   lensgroup: {
-    label: 'Lens group (surface table)', category: 'Lenses', paletteOrder: 3,
+    label: 'Lens group (surface table)', category: 'Lenses', paletteOrder: 4,
     aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table'],
     params: [
       { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
@@ -1913,7 +2034,7 @@ export const registry = {
   },
 
   telescope: {
-    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 4, size: { w: 174, h: 62 },
+    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 5, size: { w: 174, h: 62 },
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -1960,7 +2081,7 @@ export const registry = {
     // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
     // because WD is capped at EFL. It is never drawn — an objective is an
     // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses', paletteOrder: 5, size: { w: 36, h: 40 },
+    label: 'Objective', category: 'Lenses', paletteOrder: 6, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
@@ -3479,6 +3600,7 @@ const DIRECT = {
   oap: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
+  metalens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   // Radii are the physics, so the tune knob drives R1 (and the shape
   // follows); resize sets the clear aperture, which is genuinely a size.
   thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
@@ -3571,6 +3693,7 @@ const ELEMENT_HELP = {
   oap: 'Reflects from segmented parabolic geometry toward the configured focus.',
   lens: 'Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
   lensc: 'Diverges rays with a negative thin-lens focal length. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
+  metalens: 'A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency.',
   lensgroup: 'Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
@@ -3636,6 +3759,10 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Medium and NA set a qualitative angular acceptance guide. The curved immersion bridge is schematic; it does not add refraction, focal shift, wetting, or aberration correction.';
   } else if (type === 'objective') {
     note = 'Dry objectives are capped at NA 0.85, the practical ceiling for real dry designs. NA sets the back-pupil diameter 2fNA, so it changes the focusing cone and what an overfilled beam costs.';
+  } else if (type === 'metalens' && params.designType === 'achromatic') {
+    note = 'The configured band holds one idealized geometric focus. Meta-atom group-delay limits, PSF, Strehl, field angle, fabrication feasibility, and wavelength-dependent efficiency are not solved.';
+  } else if (type === 'metalens') {
+    note = 'Focal length follows f(λ) = f₀λ₀/λ. Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
