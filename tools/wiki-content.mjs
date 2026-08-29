@@ -393,6 +393,14 @@ export const wikiEntries = [
         { tex: '\\mathrm{NA} = \\sin\\!\\left[\\arctan\\!\\left(\\frac{D}{2|f_0|}\\right)\\right]', caption: 'Geometric numerical aperture in air for clear diameter D and focal length f₀.' },
       ],
       html2: `
+        <p>The direction of that colour error is the surprising part, and worth
+        holding on to: a metalens is chromatic the <em>opposite</em> way round from
+        glass. A refractive lens has a higher index in the blue, so blue comes to a
+        focus <em>nearer</em> than red. A diffractive surface has a focal length
+        inversely proportional to wavelength, so <strong>red focuses nearer and blue
+        further away</strong>. Their colour fringes therefore run in opposite
+        directions — which is also why a diffractive surface can be used to cancel
+        the chromatic aberration of a refractive one rather than compounding it.</p>
         <p>A phase pattern fabricated for one wavelength normally has strong
         diffractive chromaticity: longer wavelengths focus nearer and shorter
         wavelengths focus farther away. Achromatic metalenses add engineered group
@@ -427,9 +435,16 @@ export const wikiEntries = [
         diameter, NA, bandwidth, and efficiency can be fabricated together.</p>`,
     },
     related: ['lens', 'thicklens', 'grating', 'slm', 'objective'],
-    resources: [
+    // These two back the cited claims in the prose, so they belong in
+    // `citations` -- that is what emits the #ref anchors the [1]/[2]
+    // superscripts link to. Left only in `resources`, both links were dead.
+    citations: [
       { label: 'Arbabi et al., “Subwavelength-thick lenses with high numerical apertures and large efficiency,” Nature Communications 6, 7069 (2015)', url: 'https://doi.org/10.1038/ncomms8069' },
       { label: 'Khorasaninejad et al., “Metalenses at visible wavelengths,” Science 352, 1190–1194 (2016)', url: 'https://doi.org/10.1126/science.aaf6644' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Diffractive Optics', url: 'https://www.rp-photonics.com/diffractive_optics.html' },
+      { label: 'RP Photonics Encyclopedia — Chromatic Aberrations', url: 'https://www.rp-photonics.com/chromatic_aberrations.html' },
     ],
   },
 
