@@ -19,7 +19,8 @@ import {
 } from './polygon.js';
 import {
   FINE_GRID_PITCH, TABLE_HOLE_PITCH,
-  gridDetailForZoom, pinchView, snapToGrid, VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
+  gridDetailForZoom, pinchView, shouldOpenInspectorAfterSelectionGesture, snapToGrid,
+  VIEW_MAX_ZOOM, VIEW_MIN_ZOOM, zoomViewAt,
 } from './viewport.js';
 import {
   MAX_TIME_SCALE, MIN_TIME_SCALE, pulsePeriodNs, pulsesReadAsCW,
@@ -230,11 +231,12 @@ function animatedChopper(el) {
 }
 
 function animatedOpticalElements() {
-  if (!hasGalvoMotion() && !hasStageMotion() && !hasRetroMotion()) return state.elements;
+  if (!hasGalvoMotion() && !hasStageMotion() && !hasRetroMotion() && !hasAotfSequence()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
+    if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'stage') return animatedStageElement(el);
     if (el.type === 'retroreflector') return animatedRetroElement(el);
     return el;
@@ -247,6 +249,7 @@ function animatedVisualElements() {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
+    if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
     if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     if (el.type === 'stage') return stageWithSignalSpot(el);
     if (el.type === 'sample') return withSignalSpot(el);
@@ -266,7 +269,16 @@ function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'chopper' && el.params.modulate)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
-    || (el.type === 'retroreflector' && el.params.moveMode === 'linear'));
+    || (el.type === 'retroreflector' && el.params.moveMode === 'linear'))
+    || hasAotfSequence();
+}
+
+// A sequential AOTF steps between its selected lines, so the traced spectrum
+// changes with the clock exactly as a scanning galvo's angle does.
+function hasAotfSequence() {
+  return state.elements.some(el => el.type === 'aotf'
+    && el.params.modMode === 'cycle'
+    && Array.isArray(el.params.channels) && el.params.channels.length > 1);
 }
 
 function hasGalvoMotion() {
@@ -296,7 +308,7 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasRetroMotion();
+    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();
@@ -1440,19 +1452,25 @@ function onDown(e) {
   if (el) {
     state.selection = { kind: 'element', id: el.id };
     if (!state.demoMode) {
-      drag = { mode: 'move', el, ox: el.x - w.x, oy: el.y - w.y, moved: false };
+      drag = {
+        mode: 'move', el, ox: el.x - w.x, oy: el.y - w.y, moved: false,
+        pointerType: e.pointerType, pressClientX: e.clientX, pressClientY: e.clientY, maxDistancePx: 0,
+      };
       svg.setPointerCapture(e.pointerId);
     }
-    renderAll(); onSelectionChange({ openMobile: e.pointerType !== 'touch' });
+    renderAll(); onSelectionChange({ openMobile: state.demoMode });
     return;
   }
   // manual beam?
   const b = state.demoMode ? null : hitBeam(w);
   if (b) {
     state.selection = { kind: 'beam', id: b.id };
-    drag = { mode: 'movebeam', beam: b, lx: w.x, ly: w.y, moved: false };
+    drag = {
+      mode: 'movebeam', beam: b, lx: w.x, ly: w.y, moved: false,
+      pointerType: e.pointerType, pressClientX: e.clientX, pressClientY: e.clientY, maxDistancePx: 0,
+    };
     svg.setPointerCapture(e.pointerId);
-    renderAll(); onSelectionChange({ openMobile: e.pointerType !== 'touch' });
+    renderAll(); onSelectionChange();
     return;
   }
   // empty space: deselect + pan
@@ -1499,6 +1517,13 @@ function onMove(e) {
   if (placing) { placing.pos = snapElPos(placing.el, w.x, w.y, e.altKey); renderElements(); return; }
   if (drawing) { drawing.cursor = { x: snapPos(w.x), y: snapPos(w.y) }; renderManual(); return; }
   if (!drag) return;
+  if ((drag.mode === 'move' || drag.mode === 'movebeam')
+      && Number.isFinite(drag.pressClientX) && Number.isFinite(drag.pressClientY)) {
+    drag.maxDistancePx = Math.max(
+      drag.maxDistancePx || 0,
+      Math.hypot(e.clientX - drag.pressClientX, e.clientY - drag.pressClientY),
+    );
+  }
 
   if (drag.mode === 'pan') {
     state.view.x = drag.vx + (e.clientX - drag.sx);
@@ -1707,9 +1732,22 @@ function onUp(e) {
   }
   const dragMode = drag.mode;
   const wasChange = drag.moved === true && ['move', 'rotate', 'resize', 'resizeAnchor', 'tune', 'editpoint', 'vertex', 'movebeam', 'movemulti'].includes(dragMode);
+  if ((dragMode === 'move' || dragMode === 'movebeam')
+      && Number.isFinite(drag.pressClientX) && Number.isFinite(drag.pressClientY)) {
+    drag.maxDistancePx = Math.max(
+      drag.maxDistancePx || 0,
+      Math.hypot(e.clientX - drag.pressClientX, e.clientY - drag.pressClientY),
+    );
+  }
+  const openInspector = shouldOpenInspectorAfterSelectionGesture({
+    mode: dragMode,
+    changed: wasChange,
+    maxDistancePx: drag.maxDistancePx,
+    pointerType: drag.pointerType,
+  });
   drag = null;
   if (wasChange) { setStatus(''); changed(); onSelectionChange(); }
-  else if (e.pointerType === 'touch' && (dragMode === 'move' || dragMode === 'movebeam')) onSelectionChange({ openMobile: true });
+  else if (openInspector) onSelectionChange({ openMobile: true });
 }
 
 function bindWheel() {

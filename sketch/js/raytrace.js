@@ -12,6 +12,7 @@ import {
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
+import { normalizeAotfChannels, aotfChannelBand } from './aotf.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -489,6 +490,10 @@ export function signalHitsFromLastTrace(stageId) {
 }
 
 const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
+// A deliberately selected line can be a thin slice of a broad source and
+// still be the whole point of the setup, so branches flagged keepWeak are
+// held to a far lower floor than the generic negligible-ray cull.
+const MIN_WEAK_INT = 1e-5;
 
 // Two beams count as "different colours" for wave mixing only if they are
 // resolvably apart; the same laser sampled twice must not mix with itself.
@@ -1316,6 +1321,68 @@ function interact(ray, hit) {
       }
       return [{ d: rotv(d, jitter(ray.sample, sid) * div), speckle: true }];
     }
+    case 'aotf': {
+      // Selected lines leave along the incoming axis; whatever is left of the
+      // beam is deflected away as the depleted port. A channel narrower than
+      // the beam's band takes only its overlap, so picking 2 nm out of a
+      // supercontinuum really does keep only 2 nm worth of power.
+      // `channels` is already only the lines open at this instant: every one
+      // under multiplexed drive, exactly one under sequential drive.
+      const channels = normalizeAotfChannels(data.channels);
+      const a = (data.deflect || 0) * D2R;
+      const deflected = { x: d.x * Math.cos(a) - d.y * Math.sin(a), y: d.x * Math.sin(a) + d.y * Math.cos(a) };
+      const out = [];
+      let takenFraction = 0;
+
+      channels.forEach((c, i) => {
+        if (!(c.eff > 0)) return;
+        // An open line is fully open: the sequence decides which line, not how
+        // much of it gets through.
+        const pass = c.eff;
+        const withGate = child => {
+          // The selected line is the useful output and is often a thin slice
+          // of a broad source, so it must survive the weak-ray cull that would
+          // otherwise delete exactly the beam the user asked for.
+          child.keepWeak = true;
+          return child;
+        };
+        const band = aotfChannelBand(c);
+
+        if (!ray.bw) {
+          if (ray.wl < band[0] || ray.wl > band[1]) return;
+          takenFraction += pass;
+          out.push(withGate({ d, intensity: ray.intensity * pass, tag: `c${i}` }));
+          return;
+        }
+        if (ray.spec && ray.spec.kind !== 'flat') {
+          const trans = applyTransmission(ray.spec, ray.wl, wl => (wl >= band[0] && wl <= band[1] ? 1 : 0));
+          if (!trans) return;
+          takenFraction += trans.fraction * pass;
+          out.push(withGate({
+            d, wl: trans.wl, bw: trans.bw, spec: trans.spec,
+            intensity: ray.intensity * trans.fraction * pass, tag: `c${i}`,
+          }));
+          return;
+        }
+        const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], band);
+        if (!ix) return;
+        const child = bandChild(ray, d, ix[0], ix[1], `c${i}`);
+        takenFraction += (child.intensity / ray.intensity) * pass;
+        child.intensity *= pass;
+        out.push(withGate(child));
+      });
+
+      if (data.showDepleted) {
+        const left = Math.max(0, 1 - Math.min(1, takenFraction));
+        if (left > 0) {
+          out.push({
+            d: deflected, intensity: ray.intensity * left, tag: 'depleted',
+            wl: ray.wl, bw: ray.bw, spec: ray.spec,
+          });
+        }
+      }
+      return out;
+    }
     case 'aom': {
       const out = [];
       const a = data.deflect * D2R, c = Math.cos(a), sn = Math.sin(a);
@@ -1828,7 +1895,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
   while (stack.length) {
     const r = stack.pop();
     for (; ;) {
-      if (r.depth > MAX_DEPTH || r.intensity < MIN_INT) break;
+      if (r.depth > MAX_DEPTH || r.intensity < (r.keepWeak ? MIN_WEAK_INT : MIN_INT)) break;
       const hit = nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, surfaces, r.last);
       if (r.evan) {
         // evanescent (isotropic fluorescence, or a diagram point source):
@@ -2025,6 +2092,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           medium: 'medium' in c ? c.medium : r.medium,
           mediumMaterial: 'mediumMaterial' in c ? c.mediumMaterial : r.mediumMaterial,
           spectralCount: 'spectralCount' in c ? c.spectralCount : r.spectralCount,
+          keepWeak: 'keepWeak' in c ? c.keepWeak : r.keepWeak,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           gdd: childGdd,
           gddTrace: r.gddTrace ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,

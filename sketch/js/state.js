@@ -216,9 +216,14 @@ function normalizeElement(raw, definitions, used) {
   // `migrate` hook. It runs only when the saved element genuinely lacks the
   // key, deriving a value from whatever the old format did carry — the
   // plain default would otherwise erase that evidence before anyone reads it.
+  //
+  // The hook gets the raw saved params as well as the normalized ones. A key
+  // the schema has since dropped never reaches `params` at all, so a migration
+  // that reads a retired field — the AOTF's old single `center`/`band` pair,
+  // say — can only find it in the raw object.
   for (const spec of def?.params || []) {
     if (spec.type === 'readout' || spec.type === 'derived' || spec.type === 'derived-select' || spec.type === 'section') continue;
-    if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params);
+    if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params, raw.params || {});
   }
   if (raw.type === 'objective') Object.assign(params, normalizeObjectiveParams(params));
   const rot = def?.rotatable === false ? 0 : finite(raw.rot) ? ((raw.rot % 360) + 360) % 360 : 0;
