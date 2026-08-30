@@ -19,7 +19,7 @@ export const DETECTOR_TYPES = [
 const DESCRIPTIONS = {
   camera: 'Spatially resolves beam intensity, beam diameter, a qualitative 2D intensity map, and an object image formed on the sensor.',
   detector: 'Measures the relative intensity incident on its active surface.',
-  pmt: 'Measures intensity with qualitative gain and saturation for weak fluorescence, microscopy, and point-source signals.',
+  pmt: 'Amplifies a faint signal \u2014 fluorescence, microscopy, single-point detection \u2014 into a readable one, and reports whether it clears the tube\u2019s own dark floor.',
   powermeter: 'Reports incoming optical power when source power is configured, otherwise relative detected power.',
   wavefrontdetector: 'Reports intensity and classifies the incident beam as collimated, converging, or diverging with a qualitative divergence angle.',
   polarimeter: 'Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.',

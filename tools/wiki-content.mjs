@@ -2702,6 +2702,126 @@ export const wikiEntries = [
   },
 
   {
+    type: 'pmt',
+    title: 'Photomultiplier (PMT)',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>A <a href="../detector/">photodiode</a> turns one absorbed photon into one
+        electron. That is a vanishingly small amount of charge, and once the signal is
+        weak enough, the amplifier reading it contributes more electrical noise than the
+        light contributes current — the measurement stops being about the light at all. A
+        <strong>photomultiplier tube</strong> solves this by amplifying the photoelectron
+        <em>before</em> any electronics touch it.</p>
+        <p>Light lands on a <strong>photocathode</strong>, a thin film in an evacuated glass
+        envelope, and ejects a photoelectron. A strong electric field accelerates it onto a
+        <strong>dynode</strong> — an electrode held at a few hundred volts more positive —
+        hard enough that the impact knocks loose several <em>secondary</em> electrons. Those
+        are accelerated onto the next dynode, and so on down a chain of typically 8 to 12
+        stages before the whole shower is collected at the anode. If each stage yields
+        <span class="w">δ</span> secondary electrons per incident one, the total gain over
+        <span class="w">n</span> stages compounds:</p>`,
+      formulas: [
+        { tex: 'G = \\delta^{\\,n}, \\qquad \\delta \\propto V_{\\text{stage}}^{\\,k}', caption: 'A modest per-stage yield compounds into an enormous total: δ ≈ 4 over 10 dynodes is a gain near 10⁶. Because δ depends on the accelerating voltage, gain is set by the supply voltage — and is steeply sensitive to it, which is why PMT gain is always plotted on a log axis against voltage.' },
+      ],
+      html2: `
+        <p>A single photoelectron therefore arrives at the anode as a pulse of ~10⁶
+        electrons — far above the noise of any reasonable amplifier. This is what makes a PMT
+        able to register <strong>individual photons</strong>, and it is the entire reason the
+        instrument exists.</p>
+
+        <h3>Gain is not sensitivity</h3>
+        <p>The most common misconception about PMTs is that turning up the gain makes the
+        instrument more sensitive. It does not. Gain multiplies everything arriving at the
+        first dynode — the signal and the tube's own noise alike — so the ratio between them
+        is fixed before any amplification happens.</p>
+        <p>That noise has a specific source. The photocathode is warm, so electrons
+        occasionally escape it by thermal energy alone, with no photon involved. Each one is
+        amplified into a full-size output pulse indistinguishable from a real detection. This
+        is <strong>dark current</strong>, and its rate is what a datasheet quotes as
+        <strong>dark counts</strong> per second. Cooling the tube reduces it — which is why
+        photon-counting instruments often run their PMTs cooled — but no amount of gain will,
+        because gain amplifies the dark electrons by exactly the same factor.</p>
+        <p>So the useful figure of merit is the ratio of signal to dark, and the only ways to
+        improve it are to collect more light or to lower the dark rate. Where the gain
+        genuinely matters is in getting the signal clear of the <em>downstream</em>
+        electronics' noise floor — which it does spectacularly well.</p>
+
+        <h3>What it costs</h3>
+        <p>A PMT is not simply a better photodiode. Its photocathode <strong>quantum
+        efficiency</strong> — the fraction of arriving photons that eject a photoelectron at
+        all — is typically only 20–40% at its peak, and falls off sharply outside the band the
+        cathode material was chosen for${cite(1)}. A silicon photodiode reaches 80–90%
+        over a much broader range. The PMT wins not by converting more photons, but by
+        amplifying the few it does convert before anything can bury them.</p>
+        <p>Photocathode material sets the accessible band much as semiconductor bandgap does
+        for a photodiode: bialkali cathodes peak in the blue and are effectively blind past
+        ~650&nbsp;nm, while extended-red and multialkali types reach into the near
+        infrared${cite(1)}. Beyond roughly 900&nbsp;nm there is no practical photocathode at
+        all, which is why near-infrared work returns to semiconductor detectors.</p>
+        <p>Two practical constraints matter on a real bench. Output is linear only up to a
+        maximum anode current; beyond it, space charge in the last dynode stages compresses
+        the response and a brighter input stops reading brighter. And a PMT exposed to room
+        light while powered can be <strong>permanently damaged</strong> — which is why they
+        live in light-tight housings, are interlocked to the room lights in some labs, and are
+        always powered down before anything is opened.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The PMT reads the same relative ray weight every detector in this palette does,
+        then applies an <strong>electron gain</strong> to it. Gain is set as a power of ten,
+        from ×1 to ×10⁷, matching how a real tube's gain-versus-voltage curve is specified.
+        This is the element to reach for when a signal is genuinely faint: specimen
+        fluorescence collected through an objective typically arrives carrying somewhere
+        around 10⁻⁴ to 10⁻³ of relative weight, which a plain photodetector reports as a
+        number too small to compare against anything. A gain of 10⁵ lifts exactly that
+        signal into a readable range.</p>
+
+        <h3>The dark floor, and why gain cannot beat it</h3>
+        <p>The <strong>equivalent dark input</strong> is the tube's own dark current
+        expressed as the light level that would produce the same output — referred to the
+        photocathode, so it sits alongside the signal and is amplified by the same gain. The
+        panel reports both the amplified dark floor and the <strong>signal / dark</strong>
+        ratio, and that ratio is deliberately <em>independent of gain</em>: sweep the gain
+        across every decade it offers and the ratio does not move at all. Lower the dark
+        floor, or collect more light, and it does. That is the single most useful thing this
+        model has to say.</p>
+        <p>The state line answers the questions in the order they matter. <strong>Saturated</strong>
+        comes first, because once the output clips at the configured maximum the number is no
+        longer trustworthy at all — a brighter input reads the same as a dimmer one.
+        Otherwise it reports whether the signal clears the dark floor:
+        <strong>below dark floor</strong> when the tube's own noise is larger than the signal,
+        <strong>marginal</strong> when it is less than three times larger, and
+        <strong>linear range</strong> when it is comfortably measurable.</p>`,
+      formulas: [
+        { tex: '\\text{output} = \\min(\\text{max}, \\; \\Sigma w \\cdot G), \\qquad \\frac{S}{D} = \\frac{\\Sigma w}{d}', caption: 'Amplified output clips at the configured maximum. The signal-to-dark ratio divides the summed ray weight by the equivalent dark input — G cancels, which is exactly the point.' },
+      ],
+      limitations: `<p>Gain here is a plain multiplier on relative ray weight, not a dynode
+        cascade: there is no supply voltage, no stage count, no δ, and no gain drift with
+        voltage or temperature. The dark floor is a fixed threshold you set, not a rate — the
+        tracer is deterministic, so nothing fluctuates, there are no dark <em>counts</em> to
+        integrate, and no shot noise on the signal itself. That means the reported ratio is a
+        clean comparison of two configured levels, not a predicted measurement SNR, and it
+        will never reproduce the √N behaviour that governs how long a real experiment must
+        integrate.</p>
+        <p>Nothing about the photocathode is modelled: no quantum efficiency, no spectral
+        response, and no blindness past the red cutoff — so a PMT here reads 900&nbsp;nm light
+        exactly as readily as 400&nbsp;nm, which no real bialkali tube would. Saturation is a
+        hard clip rather than the gradual space-charge compression of a real tube, there is no
+        afterpulsing, no dead time, no dynode fatigue, and no damage from overexposure.
+        Compare readings between configurations, never as an absolute count rate.</p>`,
+    },
+    related: ['detector', 'camera', 'powermeter', 'sample', 'objective'],
+    citations: [
+      { label: 'Hamamatsu — Photomultiplier Tubes: Basics and Applications (photocathode quantum efficiency and spectral response)', url: 'https://www.hamamatsu.com/content/dam/hamamatsu-photonics/sites/documents/99_SALES_LIBRARY/etd/PMT_handbook_v4E.pdf' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Photomultipliers', url: 'https://www.rp-photonics.com/photomultipliers.html' },
+      { label: 'RP Photonics Encyclopedia — Photon Counting', url: 'https://www.rp-photonics.com/photon_counting.html' },
+    ],
+  },
+
+  {
     type: 'dichroic',
     title: 'Dichroic mirror',
     category: 'Filters & Splitters',
