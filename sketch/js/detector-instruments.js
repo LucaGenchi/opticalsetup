@@ -12,7 +12,7 @@ import { autocorrelationReading } from './glass.js';
 import { esc, smoothPath, wavelengthToColor } from './util.js';
 
 export const DETECTOR_TYPES = [
-  'camera', 'detector', 'pmt', 'powermeter', 'wavefrontdetector',
+  'detector', 'camera', 'pmt', 'powermeter', 'wavefrontdetector',
   'polarimeter', 'spectrometer', 'generaldetector', 'autocorrelator',
 ];
 
@@ -84,7 +84,7 @@ function instrumentDefinition({ label, code, readoutKind, paletteOrder, width, a
 }
 
 Object.assign(registry.camera, {
-  paletteOrder: 1, sensorFaceX: -22, description: DESCRIPTIONS.camera,
+  paletteOrder: 2, sensorFaceX: -22, description: DESCRIPTIONS.camera,
   aliases: ['beam camera', 'beam profiler', 'image sensor', '2d intensity map', 'beam diameter', 'object image'],
 });
 registry.camera.params = [
@@ -93,7 +93,7 @@ registry.camera.params = [
   { key: 'rows', label: '2D display rows', type: 'number', min: 6, max: 24, step: 1, def: 12 },
 ];
 Object.assign(registry.detector, {
-  paletteOrder: 2, sensorFaceX: -19, description: DESCRIPTIONS.detector,
+  paletteOrder: 1, sensorFaceX: -19, description: DESCRIPTIONS.detector,
   aliases: ['photodiode', 'intensity detector', 'light intensity'],
 });
 Object.assign(registry.pmt, {

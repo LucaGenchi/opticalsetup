@@ -2600,31 +2600,89 @@ export const wikiEntries = [
     category: 'Detectors',
     realWorld: {
       html: `
-        <p>A real photodetector converts incident optical power to an electrical
-        photocurrent with some responsivity <span class="w">R</span> (amps per watt),
-        set by the detector's quantum efficiency <span class="w">η</span> — the fraction
-        of incident photons that produce a collected charge carrier:</p>`,
+        <p>A photodetector is a semiconductor <strong>photodiode</strong>: a p-n (or p-i-n)
+        junction that absorbs a photon and, if the photon carries enough energy to cross the
+        material's bandgap, promotes an electron into the conduction band. The junction's
+        built-in field sweeps that electron and the hole it left behind apart before they can
+        recombine, and the result is a photocurrent proportional to the incident optical
+        power. How efficiently that conversion happens is the <strong>quantum efficiency</strong>
+        <span class="w">η</span> — the fraction of incident photons that produce a
+        collected charge carrier — and how much current comes out per watt of light in is
+        the <strong>responsivity</strong> <span class="w">R</span>:</p>`,
       formulas: [
-        { tex: 'R = \\frac{\\eta e}{h\\nu} \\quad [\\text{A/W}]', caption: 'Responsivity of an ideal photodetector at optical frequency ν.' },
+        { tex: 'R = \\frac{\\eta e}{h\\nu} = \\frac{\\eta e \\lambda}{hc} \\quad [\\text{A/W}]', caption: 'Responsivity at optical frequency ν (equivalently, wavelength λ). For a fixed η, R rises with wavelength — a 1550 nm photon carries less energy than a 500 nm one, so the same absorbed photon flux yields more amps per watt at the longer wavelength.' },
+        { tex: 'f_{3\\text{dB}} \\approx \\frac{1}{2\\pi R_L C_j}', caption: 'The 3 dB electrical bandwidth set by the junction acting as a capacitor Cⱼ discharging through a load resistance R_L. A larger sensor area collects more light but adds junction capacitance, so higher sensitivity and higher speed pull in opposite directions.' },
       ],
+      html2: `
+        <h3>Sensor material sets the usable colours</h3>
+        <p>η is not a constant — it is a function of wavelength set by the semiconductor's
+        <strong>bandgap</strong>, and it is the reason a detector has to be chosen for the
+        wavelength it needs to see rather than assumed to work everywhere. A photon below the
+        bandgap energy simply cannot promote an electron, however bright the beam: η drops to
+        zero at a sharp cutoff wavelength, not a gentle roll-off.</p>
+        <p><strong>Silicon</strong> is the default choice for anything visible or near-infrared.
+        Its 1.12 eV bandgap gives it a cutoff around 1100&nbsp;nm, and a typical
+        commercial Si photodiode's responsivity climbs from a few tenths of an A/W in the
+        visible to a peak near 0.5–0.6&nbsp;A/W around 900–1000&nbsp;nm, right before that
+        cutoff${cite(1)}. It covers essentially every laser wavelength in this app's own
+        palette below 1064&nbsp;nm.</p>
+        <p><strong>InGaAs</strong> (indium gallium arsenide) is the standard choice once a
+        setup reaches into the <strong>short-wave infrared</strong> — the telecom bands
+        around 1310 and 1550&nbsp;nm, or Er-doped fiber sources. Its smaller ~0.75 eV
+        bandgap pushes the cutoff out to roughly 1.7&nbsp;µm, with peak responsivity around
+        0.9–1.0&nbsp;A/W near 1550&nbsp;nm${cite(1)} — silicon is completely blind out
+        there; those photons simply don't carry enough energy to cross its wider gap.
+        Other materials (germanium, extended-range InGaAs, HgCdTe) push further into the
+        mid-infrared at the cost of more dark current and usually needing cooling, but Si and
+        InGaAs between them cover the overwhelming majority of laboratory optics.</p>
+        <h3>Frequency response</h3>
+        <p>A photodiode also cannot follow an arbitrarily fast amplitude modulation — the RC
+        time constant above, together with how long a photo-generated carrier takes to drift
+        across the depletion region, caps how fast its electrical output can track the optical
+        signal. This is why detector datasheets fork into two families that rarely overlap. A
+        large-area photodiode built for power metering — like the <a href="../powermeter/">power
+        meter</a> in this palette — trades bandwidth for active area and sensitivity, and is
+        typically limited to the kHz range or slower. A telecom-grade InGaAs photodiode with a
+        250&nbsp;µm active area, by contrast, is built for the opposite trade and can exceed
+        10&nbsp;GHz${cite(2)} — fast enough to demodulate a digital data stream, but far too
+        small and insensitive to usefully catch a divergent free-space beam. Choosing a
+        photodetector for a real setup means picking a point on that speed-versus-area curve,
+        not just a material.</p>`,
     },
     inOpticalSetup: {
       html: `
-        <p>The detector reports a <em>qualitative</em> relative signal — the sum of every
-        ray's intensity reaching its front face — plus the spectrum, polarization state,
-        and spot extent of whatever light arrives, all read directly off the traced rays.
-        This is genuinely useful for seeing <em>whether</em> light reaches a detector,
-        roughly how strong it is relative to other configurations, and what its spectral
-        or polarization content is.</p>`,
+        <p>The photodetector reports a <em>qualitative</em> relative signal — the sum of every
+        ray's power reaching its front face, in arbitrary units — plus the wavelength or
+        detected spectral band, polarization state, and spot extent of whatever light
+        arrives, all read directly off the traced rays. If the arriving light is pulsed, it
+        also reports the accumulated <a href="../pulsecompressor/">GDD</a>, optical path
+        delay, and arrival spread, the same as every other instrument in the Detectors
+        category. This is genuinely useful for seeing <em>whether</em> light reaches a given
+        point, roughly how strong it is relative to other configurations, and what its
+        spectral or polarization content is — regardless of what real sensor a lab bench
+        would need there.</p>`,
       formulas: [],
-      limitations: `<p>The reported signal is not calibrated to any real unit — there is
-        no watts-in, amps-out responsivity curve, no dark current, no saturation physics
-        beyond what's explicitly modeled on the PMT variant. Treat the number as relative,
-        not absolute.</p>`,
+      limitations: `<p>The reported signal is not calibrated to any real unit, and there is no
+        concept of sensor material at all: a photodetector in this app reads every wavelength
+        in its traced light with equal weight, whether that light is 405&nbsp;nm (well inside
+        silicon's range) or 1550&nbsp;nm (which silicon cannot detect at all and would need
+        InGaAs). There is no responsivity curve, no bandgap cutoff, and no way to configure or
+        even see which material is assumed. There is also no frequency response of any kind —
+        no bandwidth, no rise time, no 3 dB cutoff — so a beam modulated far beyond what any
+        real photodiode could follow reads at full strength exactly like a steady beam. Dark
+        current, noise-equivalent power, and saturation are likewise not modeled here; the
+        PMT variant is the only detector in this category with any qualitative gain/saturation
+        behavior at all. Treat every reading as relative and instantaneous, never as a
+        prediction of what a specific real sensor would output.</p>`,
     },
-    related: ['pmt', 'camera', 'eye'],
+    related: ['pmt', 'camera', 'powermeter', 'eye'],
+    citations: [
+      { label: 'Thorlabs — Photodiode Tutorial (responsivity vs. wavelength for Si, Ge, and InGaAs detectors)', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=285' },
+      { label: 'RP Photonics Encyclopedia — Photodiodes', url: 'https://www.rp-photonics.com/photodiodes.html' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Photodetectors', url: 'https://www.rp-photonics.com/photodetectors.html' },
+      { label: 'RP Photonics Encyclopedia — Responsivity', url: 'https://www.rp-photonics.com/responsivity.html' },
     ],
   },
 
