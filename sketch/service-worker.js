@@ -27,6 +27,7 @@ const PRECACHE_PATHS = [
   "./js/immersion.js",
   "./js/lensgroup.js",
   "./js/main.js",
+  "./js/markdown.js",
   "./js/objective.js",
   "./js/polarization.js",
   "./js/polygon.js",

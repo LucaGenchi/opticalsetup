@@ -28,6 +28,7 @@ import {
 
 let svg, viewport, gridLayer, highlightLayer, immersionLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
 let statusEl;
+let textEditor = null;
 let pulseTracks = [];
 let writeHits = [];
 let signalHits = [];
@@ -144,6 +145,7 @@ export function renderAll() {
   renderElements();
   renderVoxels();
   renderOverlay();
+  syncTextEditorPosition();
   syncMotionAnimation();
   notifyViewChange();
 }
@@ -796,11 +798,17 @@ function renderOverlay() {
     const rotateControl = registry[sel.type]?.rotatable === false ? ''
       : `<line x1="${off.x}" y1="${off.y - hh}" x2="${off.x}" y2="${off.y - hh - 18 / z}" stroke="#2f6fed" stroke-width="${1.2 / z}"/>` +
         `<circle id="rotHandle" cx="${off.x}" cy="${off.y - hh - 22 / z}" r="${5 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`;
+    const textEditControl = sel.type === 'textlabel' && !state.demoMode && textEditor?.el !== sel
+      ? `<g data-text-edit="${esc(sel.id)}" role="button" aria-label="Edit text on canvas" transform="translate(${off.x - hw} ${off.y - hh - 27 / z})">` +
+        `<rect x="0" y="0" width="66" height="20" rx="6" transform="scale(${1 / z})" transform-origin="0 0" fill="#2f6fed" stroke="#ffffff" stroke-width="1"/>` +
+        `<text x="33" y="13.6" transform="scale(${1 / z})" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">Edit text</text></g>`
+      : '';
     s += `<g transform="translate(${sel.x} ${sel.y}) rotate(${sel.rot || 0})">` +
       `<rect x="${off.x - hw}" y="${off.y - hh}" width="${2 * hw}" height="${2 * hh}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>` +
       rotateControl +
       resizeHandles.map(({ x, y }) =>
         `<rect x="${x - 4.5 / z}" y="${y - 4.5 / z}" width="${9 / z}" height="${9 / z}" rx="${1.4 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`).join('') +
+      textEditControl +
       `</g>`;
     const editPoints = registry[sel.type]?.editPoints?.get?.(sel) || [];
     if (editPoints.length) {
@@ -997,6 +1005,101 @@ let touchGesture = null; // two-finger viewport gesture start state
 // synthesize a browser dblclick, so we also detect two close clicks here.
 let lastDrawClick = null; // {t, x, y} in screen coords
 
+function syncTextEditorPosition() {
+  if (!textEditor?.wrapper || !svg) return;
+  const { el, wrapper } = textEditor;
+  if (!state.elements.includes(el)) {
+    wrapper.remove();
+    textEditor = null;
+    return;
+  }
+  const wrap = svg.parentElement;
+  const canvasRect = svg.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  const z = state.view.z;
+  const size = getSize(el);
+  const availableWidth = Math.max(240, wrap.clientWidth - 20);
+  const width = Math.min(460, availableWidth, Math.max(300, size.w * z + 70));
+  wrapper.style.width = `${width}px`;
+  const x = canvasRect.left - wrapRect.left + state.view.x + el.x * z;
+  const y = canvasRect.top - wrapRect.top + state.view.y + el.y * z - size.h * z / 2;
+  const left = Math.max(10, Math.min(wrap.clientWidth - width - 10, x));
+  const estimatedHeight = wrapper.offsetHeight || 170;
+  const preferredTop = y - 44;
+  const top = Math.max(10, Math.min(wrap.clientHeight - estimatedHeight - 10, preferredTop));
+  wrapper.style.left = `${left}px`;
+  wrapper.style.top = `${top}px`;
+}
+
+function finishTextEdit({ cancel = false } = {}) {
+  if (!textEditor) return;
+  const active = textEditor;
+  const finalText = active.textarea.value;
+  textEditor = null;
+  active.wrapper.remove();
+  setStatus('');
+  active.el.params.text = active.original;
+  if (!cancel && finalText !== active.original) {
+    pushUndo();
+    active.el.params.text = finalText;
+    changed();
+    onSelectionChange();
+  } else {
+    renderAll();
+  }
+  svg.focus({ preventScroll: true });
+}
+
+export function beginTextEdit(el = findSelected()) {
+  if (!el || el.type !== 'textlabel' || state.demoMode) return false;
+  if (textEditor?.el === el) {
+    textEditor.textarea.focus();
+    return true;
+  }
+  if (textEditor) finishTextEdit();
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'canvas-text-editor';
+  wrapper.setAttribute('role', 'group');
+  wrapper.setAttribute('aria-label', 'Edit Markdown text annotation');
+  wrapper.innerHTML = `<div class="canvas-text-editor-head"><span>Markdown text</span><button type="button">Done</button></div>` +
+    `<textarea aria-label="Markdown text" spellcheck="true"></textarea>` +
+    `<div class="canvas-text-editor-help"><span><b>**bold**</b> · <i>*italic*</i> · # heading · - list · [link](https://…)</span><span>⌘↵ done · Esc cancel</span></div>`;
+  svg.parentElement.appendChild(wrapper);
+  const textarea = wrapper.querySelector('textarea');
+  const done = wrapper.querySelector('button');
+  textarea.value = String(el.params.text ?? '');
+  textarea.rows = Math.max(3, Math.min(8, textarea.value.split('\n').length + 1));
+  textEditor = { el, original: textarea.value, wrapper, textarea };
+
+  textarea.addEventListener('input', () => {
+    el.params.text = textarea.value;
+    textarea.rows = Math.max(3, Math.min(8, textarea.value.split('\n').length + 1));
+    renderAll();
+  });
+  textarea.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      finishTextEdit({ cancel: true });
+    } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      event.stopPropagation();
+      finishTextEdit();
+    }
+  });
+  textarea.addEventListener('blur', () => finishTextEdit());
+  done.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    finishTextEdit();
+  });
+  syncTextEditorPosition();
+  textarea.focus({ preventScroll: true });
+  textarea.select();
+  setStatus('Editing Markdown · ⌘↵ done · Esc cancel');
+  return true;
+}
+
 function isManualDoubleClick(e) {
   const now = performance.now();
   const isDouble = lastDrawClick
@@ -1057,7 +1160,10 @@ function placeCurrentElement(w, keepPlacing = false, bypassSnap = false) {
   const type = el.type;
   placing = keepPlacing ? { el: createElement(type), pos: { x: sp.x, y: sp.y } } : null;
   if (!placing) { state.tool = 'select'; setStatus(''); notifyTool(); }
-  changed(); onSelectionChange({ openMobile: true });
+  const editOnCanvas = type === 'textlabel' && !keepPlacing;
+  changed();
+  onSelectionChange({ openMobile: !editOnCanvas });
+  if (editOnCanvas) beginTextEdit(el);
   return true;
 }
 
@@ -1222,11 +1328,27 @@ function bindPointer() {
   window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', onUp);
   svg.addEventListener('dblclick', e => {
-    if (state.tool === 'beam' && drawing) { e.preventDefault(); finishBeam(); }
+    const w = screenToWorld(e.clientX, e.clientY);
+    const text = e.target.closest?.('[data-text-link]') ? null : hitElement(w);
+    if (text?.type === 'textlabel' && state.tool === 'select') {
+      e.preventDefault();
+      state.selection = { kind: 'element', id: text.id };
+      renderAll();
+      onSelectionChange();
+      beginTextEdit(text);
+    } else if (state.tool === 'beam' && drawing) { e.preventDefault(); finishBeam(); }
     else if (polygonDrawing) { e.preventDefault(); finishPolygon(); }
   });
   window.addEventListener('keydown', e => {
     svg.classList.remove('pointer-focused');
+    if (e.key === 'Enter' && (e.target === document.body || e.target === svg)) {
+      const selected = findSelected();
+      if (selected?.type === 'textlabel' && state.tool === 'select') {
+        e.preventDefault();
+        beginTextEdit(selected);
+        return;
+      }
+    }
     if (e.code === 'Space' && (e.target === document.body || e.target === svg)) {
       spaceDown = true; svg.style.cursor = 'grab'; e.preventDefault();
     }
@@ -1247,6 +1369,20 @@ function onDown(e) {
     if (activeTouches.size >= 2) {
       beginTouchGesture();
       svg.setPointerCapture(e.pointerId);
+      return;
+    }
+  }
+
+  const editTextControl = e.target.closest?.('[data-text-edit]');
+  if (editTextControl && !state.demoMode) {
+    const text = state.elements.find(el => el.id === editTextControl.getAttribute('data-text-edit'));
+    if (text?.type === 'textlabel') {
+      e.preventDefault();
+      e.stopPropagation();
+      state.selection = { kind: 'element', id: text.id };
+      renderAll();
+      onSelectionChange();
+      beginTextEdit(text);
       return;
     }
   }
@@ -1343,6 +1479,21 @@ function onDown(e) {
       onSelectionChange();
       e.preventDefault();
       e.stopPropagation();
+      return;
+    }
+  }
+
+  // Links inside Markdown labels remain links, not drag handles. Selecting
+  // the owner is useful context, but pointer capture would suppress normal
+  // browser link activation.
+  const textLink = e.target.closest?.('[data-text-link]');
+  const textOwner = textLink?.closest?.('[data-element-id]');
+  if (textLink && textOwner) {
+    const text = state.elements.find(el => el.id === textOwner.getAttribute('data-element-id'));
+    if (text?.type === 'textlabel') {
+      state.selection = { kind: 'element', id: text.id };
+      renderAll();
+      onSelectionChange();
       return;
     }
   }

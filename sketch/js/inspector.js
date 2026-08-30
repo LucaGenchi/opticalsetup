@@ -736,6 +736,10 @@ export function renderInspector() {
       };
       for (const p of def.params || []) {
         if (p.hidden) continue;
+        // Text annotations own their body directly on the canvas. The
+        // inspector retains precise style controls without duplicating an
+        // editor in a competing surface.
+        if (p.canvasEdit) continue;
         // Physical-size fields that read as presentation rather than physics
         // are rendered down in Label & appearance instead (see below).
         if (p.appearance) continue;

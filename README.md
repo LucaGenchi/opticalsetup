@@ -22,7 +22,9 @@ figures as SVG or PNG.
 - **Direct manipulation**: selecting any component reveals size-backed blue
   edge/corner handles, a rotation handle, and a component-specific purple tuning
   knob. Freeform glass also exposes its blue boundary anchors and purple circular-arc
-  nodes. Right-click offers duplicate, rotate, and delete without leaving the canvas.
+  nodes. Text annotations render headings, lists, emphasis, code, and links from
+  Markdown; place one or double-click it to edit directly on the canvas. Right-click
+  offers duplicate, rotate, and delete without leaving the canvas.
 - **Instrument-grade inspector**: the panel leads with the selected element's own
   settings, with bounded numeric ranges getting a slider synced to an exact-entry
   field; position and label controls collapse into their own disclosure sections.
