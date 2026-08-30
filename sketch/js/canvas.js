@@ -1003,6 +1003,13 @@ let polygonDrawing = null; // registry-driven closed polygon construction
 let spaceDown = false;
 const activeTouches = new Map(); // pointer id -> canvas-local point
 let touchGesture = null; // two-finger viewport gesture start state
+// A Markdown label's own animation (pulse playback, AOTF cycling, etc.) can
+// rebuild its SVG mid-click: real pointer-down-to-up takes long enough for a
+// running animation tick to replace the exact <a> the user pressed on with a
+// fresh equivalent before the browser's native click/navigation completes on
+// it, silently orphaning the click. Track the press ourselves and open the
+// link explicitly on release instead of trusting the native anchor click.
+let pendingTextLink = null; // {href, pointerId, x, y}
 // Manual double-click detection for finishing a beam/fiber/polygon. The
 // native 'dblclick' listener is kept as a backup, but some input paths
 // (trackpad double-taps, remote/automated pointer events) don't reliably
@@ -1341,6 +1348,13 @@ function bindPointer() {
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', onUp);
+  // The pendingTextLink press/release pair in onDown/onUp is what actually
+  // opens the link now (robust to the label's own DOM being rebuilt mid-
+  // gesture by animation). Block the native anchor click outright so a case
+  // where it does survive can never fire a second, duplicate tab alongside it.
+  svg.addEventListener('click', e => {
+    if (e.target.closest?.('[data-text-link]')) e.preventDefault();
+  }, true);
   svg.addEventListener('dblclick', e => {
     const w = screenToWorld(e.clientX, e.clientY);
     const text = e.target.closest?.('[data-text-link]') ? null : hitElement(w);
@@ -1497,18 +1511,19 @@ function onDown(e) {
     }
   }
 
-  // Links inside Markdown labels remain links, not drag handles. Selecting
-  // the owner is useful context, but pointer capture would suppress normal
-  // browser link activation — and so would re-rendering synchronously here:
-  // Chrome drops the native click entirely if its target leaves the DOM
-  // before pointerup, which a synchronous renderAll() rebuilding this very
-  // <a> would do. Defer the selection past the click so the anchor survives
-  // long enough to actually navigate.
+  // Links inside Markdown labels remain links, not drag handles. We do not
+  // trust the browser's native anchor click for this: an animated label
+  // (pulse playback, AOTF cycling, ...) can rebuild its SVG mid-gesture, and
+  // a real press-to-release takes long enough for that to replace the exact
+  // <a> the user pressed on before the native click/navigation completes on
+  // it — silently orphaning the click. Track the press ourselves instead and
+  // open the link explicitly on release; see pendingTextLink in onUp.
   const textLink = e.target.closest?.('[data-text-link]');
   const textOwner = textLink?.closest?.('[data-element-id]');
   if (textLink && textOwner) {
     const text = state.elements.find(el => el.id === textOwner.getAttribute('data-element-id'));
     if (text?.type === 'textlabel') {
+      pendingTextLink = { href: textLink.getAttribute('href'), pointerId: e.pointerId, x: e.clientX, y: e.clientY };
       requestAnimationFrame(() => {
         state.selection = { kind: 'element', id: text.id };
         renderAll();
@@ -1816,6 +1831,19 @@ function onMove(e) {
 }
 
 function onUp(e) {
+  if (pendingTextLink?.pointerId === e.pointerId) {
+    const { href, x, y } = pendingTextLink;
+    pendingTextLink = null;
+    // onDown's touch branch already added this pointer to activeTouches
+    // before falling through to the text-link check; mirror the cleanup it
+    // never reached so a later multi-touch gesture doesn't see a stale entry.
+    if (e.pointerType === 'touch') activeTouches.delete(e.pointerId);
+    const threshold = e.pointerType === 'touch' ? 10 : 6;
+    if (e.type !== 'pointercancel' && href && Math.hypot(e.clientX - x, e.clientY - y) <= threshold) {
+      window.open(href, '_blank', 'noopener,noreferrer');
+    }
+    return;
+  }
   if (e.pointerType === 'touch' && activeTouches.has(e.pointerId)) {
     activeTouches.delete(e.pointerId);
     if (touchGesture) {
