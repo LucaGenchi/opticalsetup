@@ -3799,7 +3799,13 @@ const SHAPERS = new Set(['slm', 'metasurface']);
 export function getElementMeta(type, params = {}, context = {}) {
   let tier = DIAGRAM_ONLY.has(type) ? 'diagram' : 'simulated';
   let note = '';
-  let description = ELEMENT_HELP[type] || registry[type]?.description || 'Optical workbench component.';
+  // A registry-level override (detector-instruments.js sets one per
+  // instrument) is more specific than this generic fallback table and must
+  // win -- otherwise every Detectors-category tagline outside the live
+  // palette (the wiki build, search strings built from this path) silently
+  // reverts to the generic text the moment a type also happens to appear in
+  // ELEMENT_HELP below.
+  let description = registry[type]?.description || ELEMENT_HELP[type] || 'Optical workbench component.';
   const displayLinkMissing = type === 'display' && params.sensorId
     && context.element && Array.isArray(context.elements)
     && !resolveDisplaySensor(context.element, context.elements);

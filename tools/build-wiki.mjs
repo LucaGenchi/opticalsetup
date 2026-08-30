@@ -134,6 +134,25 @@ function formulaBlock(f) {
     </div>`;
 }
 
+// realWorld reads top to bottom as html -> formulas -> html2 -> formulas2 ->
+// html3, so a formula can sit right in the paragraph that explains it rather
+// than clustering every formula right after the opening paragraph regardless
+// of which later section it belongs to. Most entries use only html/formulas;
+// html2 is common for a second topic; html3/formulas2 exist for a rarer case
+// -- a formula that belongs deeper in, next to its own paragraph, like the
+// photodetector's frequency-response section. Filtering out unset parts
+// (rather than always interpolating all five on their own template line)
+// keeps every other entry's build free of dangling blank lines.
+function realWorldHTML(rw) {
+  return [
+    rw.html,
+    (rw.formulas || []).map(formulaBlock).join(''),
+    rw.html2,
+    (rw.formulas2 || []).map(formulaBlock).join(''),
+    rw.html3,
+  ].filter(Boolean).join('\n');
+}
+
 function pageHTML(entry, entries) {
   const base = '../..';
   const tagline = taglineOf(entry);
@@ -180,9 +199,7 @@ ${header(base)}
       <p class="embed-caption">Click the ${esc(entry.title).toLowerCase()} to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-      ${entry.realWorld.html}
-      ${(entry.realWorld.formulas || []).map(formulaBlock).join('')}
-      ${entry.realWorld.html2 || ''}
+      ${realWorldHTML(entry.realWorld)}
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">

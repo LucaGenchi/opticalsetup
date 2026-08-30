@@ -2611,7 +2611,6 @@ export const wikiEntries = [
         the <strong>responsivity</strong> <span class="w">R</span>:</p>`,
       formulas: [
         { tex: 'R = \\frac{\\eta e}{h\\nu} = \\frac{\\eta e \\lambda}{hc} \\quad [\\text{A/W}]', caption: 'Responsivity at optical frequency ν (equivalently, wavelength λ). For a fixed η, R rises with wavelength — a 1550 nm photon carries less energy than a 500 nm one, so the same absorbed photon flux yields more amps per watt at the longer wavelength.' },
-        { tex: 'f_{3\\text{dB}} \\approx \\frac{1}{2\\pi R_L C_j}', caption: 'The 3 dB electrical bandwidth set by the junction acting as a capacitor Cⱼ discharging through a load resistance R_L. A larger sensor area collects more light but adds junction capacitance, so higher sensitivity and higher speed pull in opposite directions.' },
       ],
       html2: `
         <h3>Sensor material sets the usable colours</h3>
@@ -2631,23 +2630,39 @@ export const wikiEntries = [
         around 1310 and 1550&nbsp;nm, or Er-doped fiber sources. Its smaller ~0.75 eV
         bandgap pushes the cutoff out to roughly 1.7&nbsp;µm, with peak responsivity around
         0.9–1.0&nbsp;A/W near 1550&nbsp;nm${cite(1)} — silicon is completely blind out
-        there; those photons simply don't carry enough energy to cross its wider gap.
-        Other materials (germanium, extended-range InGaAs, HgCdTe) push further into the
-        mid-infrared at the cost of more dark current and usually needing cooling, but Si and
-        InGaAs between them cover the overwhelming majority of laboratory optics.</p>
+        there; those photons simply don't carry enough energy to cross its wider gap.</p>
+        <p><strong>Germanium</strong> was the original short-wave infrared material, and is
+        still around: a smaller ~0.67 eV bandgap stretches its cutoff out to roughly
+        1.8&nbsp;µm, past even InGaAs, with peak responsivity around 0.7–0.8&nbsp;A/W near
+        1.5–1.6&nbsp;µm${cite(1)}. What displaced it from most telecom and low-light work is
+        dark current — the reverse-bias leakage current a photodiode carries with no light at
+        all, which competes directly with a weak real signal. Germanium's is roughly
+        two to three orders of magnitude higher than InGaAs at the same reverse bias and room
+        temperature${cite(1)}, so germanium detectors usually need cooling to be
+        useful for anything faint, while InGaAs does not. It remains a cheaper option where
+        that noise floor doesn't matter. Beyond these three, extended-range InGaAs and HgCdTe
+        push further into the mid-infrared at the cost of even more dark current and, for
+        HgCdTe, mandatory cooling — but silicon, InGaAs, and germanium between them cover the
+        overwhelming majority of laboratory optics.</p>
         <h3>Frequency response</h3>
-        <p>A photodiode also cannot follow an arbitrarily fast amplitude modulation — the RC
-        time constant above, together with how long a photo-generated carrier takes to drift
-        across the depletion region, caps how fast its electrical output can track the optical
-        signal. This is why detector datasheets fork into two families that rarely overlap. A
-        large-area photodiode built for power metering — like the <a href="../powermeter/">power
-        meter</a> in this palette — trades bandwidth for active area and sensitivity, and is
-        typically limited to the kHz range or slower. A telecom-grade InGaAs photodiode with a
-        250&nbsp;µm active area, by contrast, is built for the opposite trade and can exceed
-        10&nbsp;GHz${cite(2)} — fast enough to demodulate a digital data stream, but far too
-        small and insensitive to usefully catch a divergent free-space beam. Choosing a
-        photodetector for a real setup means picking a point on that speed-versus-area curve,
-        not just a material.</p>`,
+        <p>A photodiode also cannot follow an arbitrarily fast amplitude modulation. Its
+        junction behaves as a capacitor <span class="w">C_j</span> discharging through a load
+        resistance <span class="w">R_L</span>, and that RC time constant — together with how
+        long a photo-generated carrier takes to drift across the depletion region — sets a
+        3 dB electrical bandwidth beyond which the output can no longer track the optical
+        signal:</p>`,
+      formulas2: [
+        { tex: 'f_{3\\text{dB}} \\approx \\frac{1}{2\\pi R_L C_j}', caption: 'A larger sensor area collects more light but adds junction capacitance Cⱼ, so higher sensitivity and higher speed pull in opposite directions — which is why detector datasheets fork into two families that rarely overlap.' },
+      ],
+      html3: `
+        <p>A large-area photodiode built for power metering — like the
+        <a href="../powermeter/">power meter</a> in this palette — trades bandwidth for active
+        area and sensitivity, and is typically limited to the kHz range or slower. A
+        telecom-grade InGaAs photodiode with a 250&nbsp;µm active area, by contrast, is built
+        for the opposite trade and can exceed 10&nbsp;GHz${cite(2)} — fast enough to demodulate
+        a digital data stream, but far too small and insensitive to usefully catch a divergent
+        free-space beam. Choosing a photodetector for a real setup means picking a point on
+        that speed-versus-area curve, not just a material.</p>`,
     },
     inOpticalSetup: {
       html: `

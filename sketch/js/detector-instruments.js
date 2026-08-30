@@ -13,7 +13,7 @@ import { esc, smoothPath, wavelengthToColor } from './util.js';
 
 export const DETECTOR_TYPES = [
   'detector', 'camera', 'pmt', 'powermeter', 'wavefrontdetector',
-  'polarimeter', 'spectrometer', 'generaldetector', 'autocorrelator',
+  'polarimeter', 'spectrometer', 'autocorrelator', 'generaldetector',
 ];
 
 const DESCRIPTIONS = {
@@ -135,12 +135,8 @@ registry.spectrometer.params.push(
   ] },
   { key: 'labelPeaks', label: 'Label peaks on the axis', type: 'checkbox', def: true },
 );
-registry.generaldetector = instrumentDefinition({
-  label: 'General detector', code: 'ALL', readoutKind: 'general', paletteOrder: 8, width: 54, accent: '#67e8f9',
-  aliases: ['universal detector', 'all properties', 'pulse detector', 'repetition rate', 'pulse duration'],
-});
 registry.autocorrelator = instrumentDefinition({
-  label: 'Autocorrelator', code: 'AC', readoutKind: 'autocorrelator', paletteOrder: 9, width: 56, accent: '#fca5a5',
+  label: 'Autocorrelator', code: 'AC', readoutKind: 'autocorrelator', paletteOrder: 8, width: 56, accent: '#fca5a5',
   aliases: ['pulse duration', 'pulse width', 'intensity autocorrelation', 'fwhm', 'chirp', 'pulse measurement'],
 });
 // A real autocorrelator cannot report a duration on its own: it measures the
@@ -151,6 +147,10 @@ registry.autocorrelator = instrumentDefinition({
 registry.autocorrelator.params.push({
   key: 'assumedShape', label: 'Assumed pulse shape', type: 'select', def: 'gauss',
   options: [['gauss', 'Gaussian (÷1.414)'], ['sech2', 'Sech² (÷1.543)']],
+});
+registry.generaldetector = instrumentDefinition({
+  label: 'General detector', code: 'DET', readoutKind: 'general', paletteOrder: 9, width: 54, accent: '#67e8f9',
+  aliases: ['universal detector', 'all properties', 'pulse detector', 'repetition rate', 'pulse duration'],
 });
 registry.display.label = 'Detector screen';
 registry.display.paletteOrder = 20;
