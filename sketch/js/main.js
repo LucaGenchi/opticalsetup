@@ -278,6 +278,19 @@ const demoScenes = {
     // quick reading of the geometry suggests.
     mkDemo('beamdump', 700, 325, 14, { aperture: 44 }, { label: 'depleted beam, dumped', showLabel: true, labelPos: 'b' }),
   ],
+  // Transmissive by default, so the demo reads left to right: a wide beam in,
+  // a blazed deflection out, and the undiffracted leakage terminated.
+  metasurface: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
+    mkDemo('metasurface', 300, 200, 0, {
+      transmissive: true, length: 30, zeroOrder: true, zeroFrac: 0.15,
+      layers: [{ type: 'grating', lines: 600, orders: '1' }],
+    }, { label: 'blazed grating profile, 15% leaks undiffracted', showLabel: true, labelPos: 'b' }),
+    // 600 lines/mm sends the first order to 18.6 deg, so over the 260 mm to the
+    // detector the beam drops 87 mm -- centre it there, not on the axis.
+    mkDemo('detector', 560, 288, 19, { aperture: 70 }, { label: 'first order', showLabel: true, labelPos: 'r' }),
+    mkDemo('beamdump', 520, 200, 0, { aperture: 30 }, { label: '0th order, dumped', showLabel: true, labelPos: 't' }),
+  ],
   aom: () => [
     mkDemo('pulsedlaser', 60, 200, 0, {
       repRateMHz: 80, pulseWidthFs: 100,
