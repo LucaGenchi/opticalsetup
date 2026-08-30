@@ -308,7 +308,7 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   pointer-events: all;
 }
 #canvas [data-text-edit], #canvas [data-text-edit] * {
-  cursor: text;
+  cursor: pointer;
   pointer-events: all;
 }
 .canvas-text-editor {

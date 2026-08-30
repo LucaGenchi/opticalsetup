@@ -68,20 +68,27 @@ function lineBlock(raw, baseSize) {
   return { text: raw, size: baseSize, kind: raw ? 'paragraph' : 'blank' };
 }
 
+// Advance widths in em, calibrated against the canvas font stack. `1` stays
+// out of the narrow class: it is a tabular digit here, not an `i`.
 function glyphWidth(character) {
   if (/\s/.test(character)) return 0.33;
-  if (/[ilI1'.,:;|!`]/.test(character)) return 0.29;
+  if (/[ilI'.,:;|!`]/.test(character)) return 0.29;
   if (/[MW@#%&]/.test(character)) return 0.86;
   if (/[A-Z]/.test(character)) return 0.67;
-  if (/[0-9]/.test(character)) return 0.56;
+  if (/[0-9]/.test(character)) return 0.58;
   if (character.codePointAt(0) > 0x2ff) return 0.95;
   return 0.55;
 }
 
+// Monospace has one advance for every glyph, so an inline-code run must not
+// be measured with the proportional table — a `code line` of narrow letters
+// would otherwise come out far too short and crop in the exported figure.
+const MONO_ADVANCE = 0.61;
+
 function tokenWidth(token, size) {
+  if (token.code) return [...token.text].length * size * MONO_ADVANCE;
   const units = [...token.text].reduce((sum, character) => sum + glyphWidth(character), 0);
-  const face = token.code ? 1.08 : token.bold ? 1.045 : 1;
-  return units * size * face;
+  return units * size * (token.bold ? 1.045 : 1);
 }
 
 function tokensWidth(tokens, size) {

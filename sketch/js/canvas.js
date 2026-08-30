@@ -798,8 +798,12 @@ function renderOverlay() {
     const rotateControl = registry[sel.type]?.rotatable === false ? ''
       : `<line x1="${off.x}" y1="${off.y - hh}" x2="${off.x}" y2="${off.y - hh - 18 / z}" stroke="#2f6fed" stroke-width="${1.2 / z}"/>` +
         `<circle id="rotHandle" cx="${off.x}" cy="${off.y - hh - 22 / z}" r="${5 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`;
+    // Below the box, not above it. A short label's box is narrower than this
+    // 66px button, so placed at the rotate handle's height it would cover the
+    // handle and steal its clicks — and above that it lands under the mobile
+    // canvas toolbar. Text labels carry no element label, so below is clear.
     const textEditControl = sel.type === 'textlabel' && !state.demoMode && textEditor?.el !== sel
-      ? `<g data-text-edit="${esc(sel.id)}" role="button" aria-label="Edit text on canvas" transform="translate(${off.x - hw} ${off.y - hh - 27 / z})">` +
+      ? `<g data-text-edit="${esc(sel.id)}" role="button" aria-label="Edit text on canvas" transform="translate(${off.x - hw} ${off.y + hh + 8 / z})">` +
         `<rect x="0" y="0" width="66" height="20" rx="6" transform="scale(${1 / z})" transform-origin="0 0" fill="#2f6fed" stroke="#ffffff" stroke-width="1"/>` +
         `<text x="33" y="13.6" transform="scale(${1 / z})" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">Edit text</text></g>`
       : '';
@@ -1095,7 +1099,11 @@ export function beginTextEdit(el = findSelected()) {
   });
   syncTextEditorPosition();
   textarea.focus({ preventScroll: true });
-  textarea.select();
+  // Select-all only for the placeholder a freshly placed label carries, so the
+  // first keystroke replaces it. Re-opening real prose puts the caret at the
+  // end instead of arming a wipe of everything the user already wrote.
+  if (textarea.value === registry.textlabel.params.find(spec => spec.key === 'text').def) textarea.select();
+  else textarea.setSelectionRange(textarea.value.length, textarea.value.length);
   setStatus('Editing Markdown · ⌘↵ done · Esc cancel');
   return true;
 }
@@ -1149,7 +1157,7 @@ function continueTouchPan() {
   drag = { mode: 'pan', sx: point.x, sy: point.y, vx: state.view.x, vy: state.view.y, touch: true };
 }
 
-function placeCurrentElement(w, keepPlacing = false, bypassSnap = false) {
+function placeCurrentElement(w, keepPlacing = false, bypassSnap = false, deferEdit = true) {
   if (!placing) return false;
   pushUndo();
   const el = placing.el;
@@ -1163,7 +1171,13 @@ function placeCurrentElement(w, keepPlacing = false, bypassSnap = false) {
   const editOnCanvas = type === 'textlabel' && !keepPlacing;
   changed();
   onSelectionChange({ openMobile: !editOnCanvas });
-  if (editOnCanvas) beginTextEdit(el);
+  // Mouse placement runs inside pointerdown, whose default action then moves
+  // focus to the canvas — focusing the textarea now would be undone one tick
+  // later and the editor would close itself on blur, so open it after the
+  // event. Touch placement already runs on pointerup and must stay synchronous:
+  // iOS only raises the keyboard for a focus() call inside the gesture.
+  if (editOnCanvas && deferEdit) requestAnimationFrame(() => beginTextEdit(el));
+  else if (editOnCanvas) beginTextEdit(el);
   return true;
 }
 
@@ -1807,7 +1821,7 @@ function onUp(e) {
       drag = null;
       if (e.type === 'pointercancel') { renderAll(); return; }
       const w = screenToWorld(e.clientX, e.clientY);
-      placeCurrentElement(w, false, false);
+      placeCurrentElement(w, false, false, false);
       return;
     }
   }
