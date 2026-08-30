@@ -317,6 +317,7 @@ function recordDetectorHit(ray, hit) {
     readoutKind: registry[hit.surface.el?.type]?.readoutKind || 'detector',
     gain: hit.surface.data.gain,
     saturation: hit.surface.data.saturation,
+    darkInput: hit.surface.data.darkInput,
     pixels: hit.surface.data.pixels,
     pathDelayNs: Number.isFinite(ray.opl) ? ray.opl / C_MM_PER_NS : 0,
     gddFs2: Number.isFinite(ray.gdd) ? ray.gdd : 0,
@@ -343,11 +344,20 @@ export function detectorReading(elementId) {
   const detectorType = activeHits[0].detectorType || 'Detector';
   const readoutKind = activeHits[0].readoutKind || 'detector';
   let outputSignal = signal, saturated = false, profile = null, profileColors = null, centroid = null;
+  let snr = null, darkOutput = null, gain = null;
   if (readoutKind === 'pmt') {
-    const gain = Math.max(1, activeHits[0].gain || 1);
+    gain = Math.max(1, activeHits[0].gain || 1);
     const saturation = Math.max(1, activeHits[0].saturation || 100);
+    // The dark floor is referred to the photocathode: the equivalent input
+    // that would produce the same output as the tube's own dark current. It
+    // is amplified by exactly the same gain as the signal, which is why the
+    // ratio below does not depend on gain at all — the single most useful
+    // thing a PMT model can say, and the one most often assumed otherwise.
+    const darkInput = Math.max(0, Number(activeHits[0].darkInput) || 0);
     outputSignal = Math.min(saturation, signal * gain);
     saturated = signal * gain >= saturation;
+    darkOutput = darkInput * gain;
+    snr = darkInput > 0 ? signal / darkInput : Infinity;
   } else if (readoutKind === 'camera') {
     const count = Math.min(64, Math.max(8, Math.round(activeHits[0].pixels || 16)));
     profile = Array(count).fill(0);
@@ -457,6 +467,9 @@ export function detectorReading(elementId) {
     readoutKind,
     outputSignal,
     saturated,
+    gain,
+    darkOutput,
+    snr,
     profile,
     profileColors,
     centroid,

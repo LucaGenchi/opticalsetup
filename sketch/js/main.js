@@ -1,7 +1,9 @@
 // App bootstrap: palette, toolbar, keyboard shortcuts.
 
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave } from './state.js';
-import { registry, categories, createElement, getElementMeta } from './elements.js';
+import {
+  registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement,
+} from './elements.js';
 // Registers the redesigned detector catalogue, the Etalon, and the VIPA
 // element onto `registry`. Imported here, not from pwa.js: service-worker
 // registration is unrelated, and every Node entry point that validates
@@ -1181,9 +1183,30 @@ function bindContextMenu() {
   });
 }
 
+// Create a detector screen already wired to `sensorId` and drop it in the
+// first clear spot on the side its cable leaves from, so connecting a readout
+// is one click instead of place-then-find-the-sensor-in-a-dropdown.
+function connectDetectorScreen(sensorId) {
+  if (state.demoMode) return;
+  const sensor = state.elements.find(el => el.id === sensorId);
+  if (!sensor || !registry[sensor.type]?.readoutKind) return;
+  pushUndo();
+  const screen = createElement('display', sensor.x, sensor.y);
+  screen.params.sensorId = sensor.id;
+  const spot = findFreePlacement(screen, state.elements, sensor, dataPortDirection(sensor));
+  screen.x = spot.x;
+  screen.y = spot.y;
+  state.elements.push(screen);
+  state.selection = { kind: 'element', id: screen.id };
+  changed();
+  renderInspector();
+  showToast(`Detector screen connected to ${sensor.label || registry[sensor.type].label}`);
+}
+
 // inspector panel buttons dispatch these
 document.addEventListener('optics:delete', deleteSelected);
 document.addEventListener('optics:duplicate', duplicateSelected);
+document.addEventListener('optics:connectscreen', e => connectDetectorScreen(e.detail?.sensorId));
 document.addEventListener('optics:clearvoxels', e => clearVoxelPreview(e.detail?.stageId));
 document.addEventListener('optics:toolchange', e => syncToolMode(e.detail));
 document.addEventListener('optics:pulsestate', e => syncPulseControls(e.detail));

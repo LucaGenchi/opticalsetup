@@ -5,11 +5,11 @@ import {
   resolvedDisplayView,
 } from './elements.js';
 import { detectorReading } from './raytrace.js';
-import { enhancedReading, objectImageAtCamera } from './detector-measurements.js';
+import { enhancedReading, objectImageAtCamera, pmtVerdict } from './detector-measurements.js';
 import { fwhmToSigma } from './spectrum.js';
 import { scopeTrace } from './pulses.js';
 import { autocorrelationReading } from './glass.js';
-import { esc, smoothPath, wavelengthToColor } from './util.js';
+import { esc, formatSignal, smoothPath, wavelengthToColor } from './util.js';
 
 export const DETECTOR_TYPES = [
   'detector', 'camera', 'pmt', 'powermeter', 'wavefrontdetector',
@@ -31,14 +31,9 @@ const DESCRIPTIONS = {
 
 const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
 
-function compactNumber(value) {
-  if (!Number.isFinite(value)) return '—';
-  const abs = Math.abs(value);
-  if (abs >= 1000) return value.toExponential(1);
-  if (abs >= 100) return value.toFixed(0);
-  if (abs >= 10) return value.toFixed(1);
-  return value.toFixed(2);
-}
+// Shared with the inspector so a value never reads as "0.00" on one surface
+// and "3.1e-4" on the other.
+const compactNumber = formatSignal;
 
 function flipped(el) {
   const rotation = ((el.rot || 0) % 360 + 360) % 360;
@@ -574,10 +569,14 @@ function panel(sensor, reading, elements, view) {
       ['DURATION', '—'],
     ]);
   }
-  if (sensor.type === 'pmt') return header(name, 'LOW-LIGHT INTENSITY', reading.pulse) + metrics([
-    ['INPUT', `Σw ${compactNumber(reading.signal)}`], ['GAIN', `×${compactNumber(sensor.params.gain || 1)}`],
-    ['PMT OUTPUT', `${compactNumber(reading.outputSignal)} a.u.`], ['STATE', reading.saturated ? 'SATURATED' : 'LINEAR'],
-  ]);
+  if (sensor.type === 'pmt') {
+    const verdict = pmtVerdict(reading);
+    return header(name, 'LOW-LIGHT INTENSITY', reading.pulse) + metrics([
+      ['INPUT', `\u03a3w ${compactNumber(reading.signal)}`], ['GAIN', `\u00d7${compactNumber(reading.gain)}`],
+      ['PMT OUTPUT', `${compactNumber(reading.outputSignal)} a.u.`],
+      ['S / DARK', Number.isFinite(reading.snr) ? `${compactNumber(reading.snr)}\u00d7` : '\u2014'],
+    ]) + `<text x="-36" y="17.5" font-size="4.6" font-weight="700" fill="${verdict?.key === 'linear' ? '#7fd7a6' : '#f0b46a'}">${esc((verdict?.label || '').toUpperCase())}</text>`;
+  }
   if (sensor.type === 'powermeter') {
     const [value, unit] = formatPower(reading.detectedPowerW, reading.signal);
     // The value and its unit sit on one baseline; the old provenance caption

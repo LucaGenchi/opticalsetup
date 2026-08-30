@@ -7,7 +7,7 @@
 // dichroic, filter, split, grating, absorb, transmit (data may change
 // wavelength / deflect).
 
-import { distToSegment, esc, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
+import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, probeAt } from './raytrace.js';
@@ -268,6 +268,41 @@ function rectAbsorb(w, h) {
     { x1: x, y1: y, x2: -x, y2: y, kind: 'absorb' },
     { x1: -x, y1: y, x2: -x, y2: -y, kind: 'absorb' },
   ];
+}
+
+// ---- PMT gain and dark floor --------------------------------------------
+// Both are stored as plain multipliers and edited as base-10 exponents. A
+// sketch saved before the dark floor existed simply has no `darkInput`, so
+// every reader goes through these and gets the default instead of NaN.
+export const PMT_MAX_GAIN = 1e7;
+const PMT_DARK_MIN_LOG = -8, PMT_DARK_MAX_LOG = -2;
+
+export function pmtGain(params = {}) {
+  const stored = Number(params.gain);
+  if (!Number.isFinite(stored) || stored < 1) return 1e4;
+  return Math.min(PMT_MAX_GAIN, stored);
+}
+
+export function pmtGainFromLog(value) {
+  const exponent = Math.min(7, Math.max(0, Number(value) || 0));
+  // Round to three significant figures so the slider lands on 1e4 and 3.16e4
+  // rather than 10000.000000000002.
+  const raw = 10 ** exponent;
+  const decade = 10 ** Math.floor(Math.log10(raw));
+  return Math.min(PMT_MAX_GAIN, Math.max(1, Math.round(raw / decade * 100) / 100 * decade));
+}
+
+export function pmtDarkInput(params = {}) {
+  const stored = Number(params.darkInput);
+  if (!Number.isFinite(stored) || stored <= 0) return 1e-5;
+  return Math.min(1, stored);
+}
+
+export function pmtDarkFromLog(value) {
+  const exponent = Math.min(PMT_DARK_MAX_LOG, Math.max(PMT_DARK_MIN_LOG, Number(value) || PMT_DARK_MIN_LOG));
+  const raw = 10 ** exponent;
+  const decade = 10 ** Math.floor(Math.log10(raw));
+  return Math.round(raw / decade * 100) / 100 * decade;
 }
 
 // One-sided detector housing: light is measured at the front face and the
@@ -2725,10 +2760,26 @@ export const registry = {
     snapPt: { x: -25, y: 0 }, // entrance window
     dataPort: { x: 27, y: 0 },
     size_: el => ({ w: 54, h: (el.params.aperture || 26) + 4 }),
+    // Gain and the dark floor both span decades, so each stores a plain
+    // multiplier (unchanged on disk, so old sketches keep their exact values)
+    // and is edited through a base-10 exponent slider — the axis a real PMT
+    // datasheet plots them on, and the only one a 1..10⁷ range is usable at.
     params: [
       { key: 'aperture', label: 'Photocathode height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 26 },
-      { key: 'gain', label: 'Qualitative gain', type: 'number', min: 1, max: 1000, step: 1, def: 10 },
-      { key: 'saturation', label: 'Output saturation', type: 'number', min: 1, max: 10000, step: 10, def: 100 },
+      { key: 'gain', label: 'Electron gain', type: 'number', min: 1, max: PMT_MAX_GAIN, step: 1, def: 1e4, hidden: true },
+      {
+        key: 'gainLog', label: 'Gain (×10ⁿ)', type: 'derived', min: 0, max: 7, step: 0.1,
+        get: p => Math.round(Math.log10(pmtGain(p)) * 10) / 10,
+        set: (p, value) => { p.gain = pmtGainFromLog(value); },
+      },
+      { key: 'gainReadout', label: 'Electron gain', type: 'readout', readout: p => `×${formatSignal(pmtGain(p))}` },
+      { key: 'darkInput', label: 'Equivalent dark input', type: 'number', min: 0, max: 1, step: 1e-9, def: 1e-5, hidden: true },
+      {
+        key: 'darkLog', label: 'Dark floor (10ⁿ a.u.)', type: 'derived', min: -8, max: -2, step: 0.1,
+        get: p => Math.round(Math.log10(pmtDarkInput(p)) * 10) / 10,
+        set: (p, value) => { p.darkInput = pmtDarkFromLog(value); },
+      },
+      { key: 'saturation', label: 'Max output (a.u.)', type: 'number', min: 1, max: 1e7, step: 10, def: 1e4 },
     ],
     svg(el) {
       const h = el.params.aperture || 26;
@@ -2737,7 +2788,9 @@ export const registry = {
         `<text x="2" y="0" ${isFlipped(el) ? 'transform="rotate(180 2 0)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text>` +
         signalLamp(el, 16, -h / 2 + 6);
     },
-    surfaces: el => detectorSurfaces(52, el.params.aperture || 26, 'PMT', { gain: el.params.gain, saturation: el.params.saturation }),
+    surfaces: el => detectorSurfaces(52, el.params.aperture || 26, 'PMT', {
+      gain: pmtGain(el.params), saturation: el.params.saturation, darkInput: pmtDarkInput(el.params),
+    }),
   },
 
   camera: {
@@ -3680,7 +3733,9 @@ const DIRECT = {
   dmd: { resize: { y: 'length' }, tune: { key: 'tilt', short: 'tilt' } },
   dm: { resize: { y: 'length' }, tune: { key: 'steer', short: 'steer' } },
   detector: { resize: { y: 'aperture' } },
-  pmt: { resize: { y: 'aperture' }, tune: { key: 'gain', short: 'gain' } },
+  // Tunes the exponent, not the raw multiplier: dragging a 1..10⁷ linear
+  // range would crawl through the first decade and never reach the rest.
+  pmt: { resize: { y: 'aperture' }, tune: { key: 'gainLog', short: 'gain ×10^' } },
   camera: { resize: { y: 'ch' }, tune: { key: 'pixels', short: 'px' } },
   eye: { resize: { uniform: 'diameter' }, tune: { key: 'focus', short: 'f' } },
   display: { resize: { uniform: 'displayScale' } },
@@ -3770,7 +3825,7 @@ const ELEMENT_HELP = {
   dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
-  pmt: 'Applies configurable qualitative gain and saturation to detected optical signal.',
+  pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
   camera: 'Bins incident rays into a configurable one-dimensional sensor profile.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
@@ -3821,6 +3876,8 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'The configured band holds one idealized geometric focus. Meta-atom group-delay limits, PSF, Strehl, field angle, fabrication feasibility, and wavelength-dependent efficiency are not solved.';
   } else if (type === 'metalens') {
     note = 'Focal length follows f(λ) = f₀λ₀/λ. Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
+  } else if (type === 'pmt') {
+    note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
@@ -3945,6 +4002,69 @@ export function getVisualBounds(el, { includeLabel = true } = {}) {
     }
   }
   return { x0, y0, x1, y1 };
+}
+
+// The world direction an element's data port faces, as a unit vector. The
+// port is stored in element-local coordinates, so it has to be rotated with
+// the element before it means anything on the bench.
+export function dataPortDirection(el) {
+  const raw = registry[el?.type]?.dataPort;
+  const port = typeof raw === 'function' ? raw(el) : raw;
+  const angle = (el?.rot || 0) * Math.PI / 180;
+  const x = (port?.x || 0) * Math.cos(angle) - (port?.y || 0) * Math.sin(angle);
+  const y = (port?.x || 0) * Math.sin(angle) + (port?.y || 0) * Math.cos(angle);
+  const length = Math.hypot(x, y);
+  return length > 1e-9 ? { x: x / length, y: y / length } : { x: 1, y: 0 };
+}
+
+// Somewhere to drop `el` that no existing element already occupies. Searches
+// outward from `near`, trying the `prefer` direction first and fanning to
+// either side before widening the ring, so a screen lands on the side the
+// sensor's cable actually leaves from whenever that side is free.
+//
+// Only element boxes count as occupied. Beams are deliberately ignored: a
+// screen is a bench instrument that reads a cable, it does not block light,
+// and refusing every spot a ray crosses would leave nowhere to put it in a
+// busy sketch.
+export function findFreePlacement(el, elements, near, prefer = { x: 1, y: 0 }) {
+  const size = getSize(el);
+  const margin = 14;
+  const occupied = elements
+    .filter(other => other && other.id !== el.id)
+    .map(other => getVisualBounds(other))
+    .filter(Boolean);
+
+  const fits = (x, y) => {
+    const bounds = getVisualBounds({ ...el, x, y });
+    if (!bounds) return false;
+    return !occupied.some(other => bounds.x0 - margin < other.x1 && bounds.x1 + margin > other.x0
+      && bounds.y0 - margin < other.y1 && bounds.y1 + margin > other.y0);
+  };
+
+  const baseAngle = Math.atan2(prefer.y, prefer.x);
+  const fan = [0, 28, -28, 56, -56, 90, -90, 124, -124, 152, -152, 180];
+  // `near` is the sensor's centre and the returned point is the screen's
+  // centre, so the first ring has to clear half the screen before it clears
+  // anything else — plus a gap wide enough to leave the data cable readable.
+  const firstRing = Math.max(size.w, size.h) / 2 + 58;
+  const ringStep = 34, rings = 12;
+  for (let ring = 0; ring < rings; ring++) {
+    const radius = firstRing + ring * ringStep;
+    for (const degrees of fan) {
+      const angle = baseAngle + degrees * Math.PI / 180;
+      const x = near.x + Math.cos(angle) * radius;
+      const y = near.y + Math.sin(angle) * radius;
+      if (fits(x, y)) return { x: Math.round(x), y: Math.round(y) };
+    }
+  }
+  // Every candidate was blocked. Place it beyond the whole search area rather
+  // than on top of something: an overlap the user must untangle is worse than
+  // a screen further out than they expected.
+  const radius = firstRing + rings * ringStep;
+  return {
+    x: Math.round(near.x + Math.cos(baseAngle) * radius),
+    y: Math.round(near.y + Math.sin(baseAngle) * radius),
+  };
 }
 
 // element label, drawn OUTSIDE the rotated group: always upright, positioned

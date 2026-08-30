@@ -8,6 +8,34 @@ import {
 
 const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
 
+// What a PMT reading actually means, in the order the answers matter. Both
+// the inspector and the detector screen render this, so the thresholds live
+// here once rather than drifting apart in two places.
+//
+// Saturation is reported first because it invalidates the number: once the
+// output clips, a brighter input reads the same as a dimmer one. Below that,
+// the question is whether the signal clears the tube's own dark floor —
+// which turning the gain up cannot change, since gain multiplies both.
+export const PMT_DETECTION_SNR = 3;
+
+export function pmtVerdict(reading) {
+  if (!reading || reading.readoutKind !== 'pmt') return null;
+  if (reading.saturated) {
+    return { key: 'saturated', label: 'Saturated', detail: 'Output is clipping — lower the gain or attenuate the input.' };
+  }
+  const snr = reading.snr;
+  if (!Number.isFinite(snr)) {
+    return { key: 'linear', label: 'Linear range', detail: 'No dark floor set, so every arriving signal counts as measurable.' };
+  }
+  if (snr < 1) {
+    return { key: 'buried', label: 'Below dark floor', detail: 'The tube\'s own dark current is larger than this signal. More gain amplifies both and will not recover it.' };
+  }
+  if (snr < PMT_DETECTION_SNR) {
+    return { key: 'marginal', label: 'Marginal', detail: 'Only just above the dark floor. Collect more light — gain cannot improve this ratio.' };
+  }
+  return { key: 'linear', label: 'Linear range', detail: 'Comfortably above the dark floor and below saturation.' };
+}
+
 export function sensorFaceX(sensor) {
   const def = registry[sensor?.type];
   if (Number.isFinite(def?.sensorFaceX)) return def.sensorFaceX;

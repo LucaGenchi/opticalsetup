@@ -816,6 +816,9 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 
 .btnrow { display: flex; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
 .btnrow button { flex: 1; }
+/* Sits directly under the measurement card as part of the reading, not as a
+   footer action, so it drops the separator the Duplicate/Delete row carries. */
+.btnrow.screen-link { margin-top: 10px; padding-top: 0; border-top: none; }
 .hint { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 6px; }
 
 /* A signal channel the current bench cannot actually produce. Themed from

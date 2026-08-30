@@ -12,13 +12,14 @@ import {
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
 import { autocorrelationReading } from './glass.js';
+import { pmtVerdict } from './detector-measurements.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import {
   OBJECTIVE_MEDIA, normalizeObjectiveParams, objectiveMediumKey, objectiveWorkingDistance,
 } from './objective.js';
 import { immersionCouplingStatus } from './immersion.js';
-import { esc } from './util.js';
+import { esc, formatSignal } from './util.js';
 import { WIKI_TYPES } from './wiki-types.js';
 import { GLASS_OPTIONS } from './glass.js';
 import {
@@ -241,8 +242,7 @@ function measurementHTML(el) {
       <div class="measurement-foot">Aim a traced beam at ${viaDisplay ? "the linked sensor's" : "the component's"} front face to see a qualitative reading.</div>
     </div>`;
   }
-  const signal = rd.signal >= 1000 ? '>999 a.u.'
-    : `${rd.signal >= 100 ? Math.round(rd.signal) : rd.signal >= 10 ? rd.signal.toFixed(1) : rd.signal.toFixed(2)} a.u.`;
+  const signal = `${formatSignal(rd.signal)} a.u.`;
   const spectral = rd.bandMax - rd.bandMin > 2
     ? `${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)} nm`
     : `${Math.round(rd.wavelength)} nm`;
@@ -279,9 +279,13 @@ function measurementHTML(el) {
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
   const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color);
+  const verdict = pmtVerdict(rd);
   const detectorRows = readoutKind === 'pmt' ? `
-      <dt>Amplified output</dt><dd>${rd.outputSignal.toFixed(2)} a.u.</dd>
-      <dt>PMT state</dt><dd>${rd.saturated ? 'Saturated' : 'Linear range'}</dd>`
+      <dt>Electron gain</dt><dd>×${formatSignal(rd.gain)}</dd>
+      <dt>Amplified output</dt><dd>${formatSignal(rd.outputSignal)} a.u.</dd>
+      <dt>Dark floor out</dt><dd>${rd.darkOutput ? `${formatSignal(rd.darkOutput)} a.u.` : '—'}</dd>
+      <dt>Signal / dark</dt><dd>${Number.isFinite(rd.snr) ? `${formatSignal(rd.snr)}×` : '—'}</dd>
+      <dt>PMT state</dt><dd>${esc(verdict?.label || '—')}</dd>`
     : readoutKind === 'camera' ? `
       <dt>Centroid</dt><dd>${rd.centroid === null ? '—' : `${rd.centroid.toFixed(2)} mm`}</dd>
       <dt>Sensor bins</dt><dd>${rd.profile?.length || 0}</dd>`
@@ -311,8 +315,25 @@ function measurementHTML(el) {
     </dl>
     ${cameraProfile}
     ${pulseTimeline}
+    ${verdict ? `<div class="measurement-foot pmt-verdict ${esc(verdict.key)}">${esc(verdict.detail)}</div>` : ''}
     <div class="measurement-foot">Relative ray weight from the qualitative tracer—not calibrated optical power.</div>
   </div>`;
+}
+
+// Every instrument that measures something can drive a detector screen, so
+// each one offers to create and wire up its own. Shown only when this sensor
+// has no screen yet: the common case is wanting one, and a second screen on
+// the same sensor is still available from the screen's own sensor dropdown.
+function screenLinkHTML(el) {
+  if (!registry[el.type]?.readoutKind || state.demoMode) return '';
+  const linked = state.elements.filter(candidate => candidate.type === 'display'
+    && candidate.params.sensorId === el.id);
+  if (linked.length) {
+    return `<div class="hint" data-screen-link="connected">Showing on ${linked.length > 1
+      ? `${linked.length} detector screens`
+      : 'a detector screen'}. Select the screen to move, resize, or switch its input.</div>`;
+  }
+  return `<div class="btnrow screen-link"><button type="button" id="inspConnectScreen">Connect to a detector screen</button></div>`;
 }
 
 export function refreshMeasurements() {
@@ -671,7 +692,7 @@ export function renderInspector() {
   if (state.selection.kind === 'element') {
     const def = registry[sel.type];
     const meta = getElementMeta(sel.type, sel.params, { element: sel, elements: state.elements });
-    let h = inspectorHead(def, meta, sel) + measurementHTML(sel);
+    let h = inspectorHead(def, meta, sel) + measurementHTML(sel) + screenLinkHTML(sel);
     const direct = getDirectManipulation(sel);
     if (direct || def.editPoints) {
       const actions = [direct?.resize ? 'blue handles resize the physical component' : '',
@@ -860,6 +881,11 @@ export function renderInspector() {
   if (del) del.addEventListener('click', () => document.dispatchEvent(new CustomEvent('optics:delete')));
   const dup = panel.querySelector('#inspDup');
   if (dup) dup.addEventListener('click', () => document.dispatchEvent(new CustomEvent('optics:duplicate')));
+  const connectScreen = panel.querySelector('#inspConnectScreen');
+  if (connectScreen) connectScreen.addEventListener('click', () => {
+    const s = findSelected();
+    if (s) document.dispatchEvent(new CustomEvent('optics:connectscreen', { detail: { sensorId: s.id } }));
+  });
   const clearVoxels = panel.querySelector('#inspClearVoxels');
   if (clearVoxels) clearVoxels.addEventListener('click', () => {
     const s = findSelected();

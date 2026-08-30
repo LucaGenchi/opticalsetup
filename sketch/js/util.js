@@ -196,3 +196,17 @@ export function manualBeamSVG(b) {
   if (b.arrow) s += arrowHeadSVG(p, b.color, b.width);
   return s;
 }
+
+// Readable magnitude for the relative ray-weight readouts, which routinely
+// span many decades once a specimen's emission efficiency is in play. A plain
+// two-decimal format prints a real 3.1e-4 signal as "0.00", which reads as
+// "nothing arrived" when something did — exactly the case a PMT exists for.
+export function formatSignal(value) {
+  if (!Number.isFinite(value)) return '—';
+  const magnitude = Math.abs(value);
+  if (magnitude === 0) return '0';
+  if (magnitude >= 1e4 || magnitude < 0.01) return value.toExponential(1).replace('e+', 'e');
+  if (magnitude >= 100) return value.toFixed(0);
+  if (magnitude >= 10) return value.toFixed(1);
+  return value.toFixed(2);
+}
