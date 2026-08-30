@@ -1499,15 +1499,21 @@ function onDown(e) {
 
   // Links inside Markdown labels remain links, not drag handles. Selecting
   // the owner is useful context, but pointer capture would suppress normal
-  // browser link activation.
+  // browser link activation — and so would re-rendering synchronously here:
+  // Chrome drops the native click entirely if its target leaves the DOM
+  // before pointerup, which a synchronous renderAll() rebuilding this very
+  // <a> would do. Defer the selection past the click so the anchor survives
+  // long enough to actually navigate.
   const textLink = e.target.closest?.('[data-text-link]');
   const textOwner = textLink?.closest?.('[data-element-id]');
   if (textLink && textOwner) {
     const text = state.elements.find(el => el.id === textOwner.getAttribute('data-element-id'));
     if (text?.type === 'textlabel') {
-      state.selection = { kind: 'element', id: text.id };
-      renderAll();
-      onSelectionChange();
+      requestAnimationFrame(() => {
+        state.selection = { kind: 'element', id: text.id };
+        renderAll();
+        onSelectionChange();
+      });
       return;
     }
   }
