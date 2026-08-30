@@ -280,6 +280,21 @@ const demoScenes = {
   ],
   // Transmissive by default, so the demo reads left to right: a wide beam in,
   // a blazed deflection out, and the undiffracted leakage terminated.
+  textlabel: () => [
+    mkDemo('textlabel', 40, 60, 0, {
+      text: '# Beam path notes\n'
+        + 'Annotations are **diagram only** and never touch the traced rays.\n'
+        + '\n'
+        + '- pump *1030 nm*, 200 fs\n'
+        + '- signal *515 nm* after the crystal\n'
+        + '- residual GDD `+1200 fs^2`\n'
+        + '\n'
+        + '> Double-click any label to edit its Markdown on the canvas.\n'
+        + '\n'
+        + 'Plain addresses stay clickable: https://doi.org/10.1364/AO.1.000001',
+      fontSize: 13,
+    }),
+  ],
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {

@@ -307,6 +307,25 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   cursor: pointer;
   pointer-events: all;
 }
+#canvas [data-text-edit], #canvas [data-text-edit] * {
+  cursor: pointer;
+  pointer-events: all;
+}
+.canvas-text-editor {
+  position: absolute; z-index: 24; display: grid; gap: 8px;
+  padding: 10px; border: 1px solid var(--accent-border); border-radius: 11px;
+  background: var(--floating-strong); box-shadow: 0 14px 38px rgba(27, 43, 68, .18);
+}
+.canvas-text-editor-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.canvas-text-editor-head span { color: var(--accent-text); font-size: 10px; font-weight: 780; letter-spacing: .62px; text-transform: uppercase; }
+.canvas-text-editor-head button { min-height: 28px; padding: 4px 10px; border-color: var(--accent); background: var(--accent); color: #fff; font-size: 10px; font-weight: 720; }
+.canvas-text-editor textarea {
+  box-sizing: border-box; width: 100%; min-height: 76px; padding: 9px 10px; resize: vertical;
+  border: 1px solid var(--border-strong); border-radius: 7px; background: var(--panel); color: var(--text);
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2;
+}
+.canvas-text-editor-help { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 9px; line-height: 1.35; }
+.canvas-text-editor-help span:last-child { flex: 0 0 auto; }
 #canvas .display-control {
   cursor: pointer;
   pointer-events: all;
@@ -553,6 +572,10 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   #palette .library-title-row { padding-right: 42px; }
 
   #canvasWrap { min-width: 0; }
+  .canvas-text-editor { max-width: calc(100% - 20px); }
+  .canvas-text-editor-help { display: block; }
+  .canvas-text-editor-help span { display: block; }
+  .canvas-text-editor-help span + span { margin-top: 3px; }
   #toolMode { top: 10px; left: 10px; max-width: calc(100% - 126px); padding: 7px 9px; font-size: 10px; }
   .canvas-controls { top: 10px; right: 10px; gap: 0; padding: 3px; }
   .canvas-controls button { min-width: 31px; height: 31px; padding: 3px 5px; font-size: 11px; }

@@ -28,6 +28,7 @@ import {
 
 let svg, viewport, gridLayer, highlightLayer, immersionLayer, beamLayer, pulseLayer, manualLayer, elementLayer, voxelLayer, overlayLayer;
 let statusEl;
+let textEditor = null;
 let pulseTracks = [];
 let writeHits = [];
 let signalHits = [];
@@ -144,6 +145,7 @@ export function renderAll() {
   renderElements();
   renderVoxels();
   renderOverlay();
+  syncTextEditorPosition();
   syncMotionAnimation();
   notifyViewChange();
 }
@@ -796,11 +798,21 @@ function renderOverlay() {
     const rotateControl = registry[sel.type]?.rotatable === false ? ''
       : `<line x1="${off.x}" y1="${off.y - hh}" x2="${off.x}" y2="${off.y - hh - 18 / z}" stroke="#2f6fed" stroke-width="${1.2 / z}"/>` +
         `<circle id="rotHandle" cx="${off.x}" cy="${off.y - hh - 22 / z}" r="${5 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`;
+    // Below the box, not above it. A short label's box is narrower than this
+    // 66px button, so placed at the rotate handle's height it would cover the
+    // handle and steal its clicks — and above that it lands under the mobile
+    // canvas toolbar. Text labels carry no element label, so below is clear.
+    const textEditControl = sel.type === 'textlabel' && !state.demoMode && textEditor?.el !== sel
+      ? `<g data-text-edit="${esc(sel.id)}" role="button" aria-label="Edit text on canvas" transform="translate(${off.x - hw} ${off.y + hh + 8 / z})">` +
+        `<rect x="0" y="0" width="66" height="20" rx="6" transform="scale(${1 / z})" transform-origin="0 0" fill="#2f6fed" stroke="#ffffff" stroke-width="1"/>` +
+        `<text x="33" y="13.6" transform="scale(${1 / z})" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">Edit text</text></g>`
+      : '';
     s += `<g transform="translate(${sel.x} ${sel.y}) rotate(${sel.rot || 0})">` +
       `<rect x="${off.x - hw}" y="${off.y - hh}" width="${2 * hw}" height="${2 * hh}" fill="none" stroke="#2f6fed" stroke-width="${1.2 / z}" stroke-dasharray="${4 / z} ${3 / z}"/>` +
       rotateControl +
       resizeHandles.map(({ x, y }) =>
         `<rect x="${x - 4.5 / z}" y="${y - 4.5 / z}" width="${9 / z}" height="${9 / z}" rx="${1.4 / z}" fill="#fff" stroke="#2f6fed" stroke-width="${1.5 / z}"/>`).join('') +
+      textEditControl +
       `</g>`;
     const editPoints = registry[sel.type]?.editPoints?.get?.(sel) || [];
     if (editPoints.length) {
@@ -991,11 +1003,117 @@ let polygonDrawing = null; // registry-driven closed polygon construction
 let spaceDown = false;
 const activeTouches = new Map(); // pointer id -> canvas-local point
 let touchGesture = null; // two-finger viewport gesture start state
+// A Markdown label's own animation (pulse playback, AOTF cycling, etc.) can
+// rebuild its SVG mid-click: real pointer-down-to-up takes long enough for a
+// running animation tick to replace the exact <a> the user pressed on with a
+// fresh equivalent before the browser's native click/navigation completes on
+// it, silently orphaning the click. Track the press ourselves and open the
+// link explicitly on release instead of trusting the native anchor click.
+let pendingTextLink = null; // {href, pointerId, x, y}
 // Manual double-click detection for finishing a beam/fiber/polygon. The
 // native 'dblclick' listener is kept as a backup, but some input paths
 // (trackpad double-taps, remote/automated pointer events) don't reliably
 // synthesize a browser dblclick, so we also detect two close clicks here.
 let lastDrawClick = null; // {t, x, y} in screen coords
+
+function syncTextEditorPosition() {
+  if (!textEditor?.wrapper || !svg) return;
+  const { el, wrapper } = textEditor;
+  if (!state.elements.includes(el)) {
+    wrapper.remove();
+    textEditor = null;
+    return;
+  }
+  const wrap = svg.parentElement;
+  const canvasRect = svg.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  const z = state.view.z;
+  const size = getSize(el);
+  const availableWidth = Math.max(240, wrap.clientWidth - 20);
+  const width = Math.min(460, availableWidth, Math.max(300, size.w * z + 70));
+  wrapper.style.width = `${width}px`;
+  const x = canvasRect.left - wrapRect.left + state.view.x + el.x * z;
+  const y = canvasRect.top - wrapRect.top + state.view.y + el.y * z - size.h * z / 2;
+  const left = Math.max(10, Math.min(wrap.clientWidth - width - 10, x));
+  const estimatedHeight = wrapper.offsetHeight || 170;
+  const preferredTop = y - 44;
+  const top = Math.max(10, Math.min(wrap.clientHeight - estimatedHeight - 10, preferredTop));
+  wrapper.style.left = `${left}px`;
+  wrapper.style.top = `${top}px`;
+}
+
+function finishTextEdit({ cancel = false } = {}) {
+  if (!textEditor) return;
+  const active = textEditor;
+  const finalText = active.textarea.value;
+  textEditor = null;
+  active.wrapper.remove();
+  setStatus('');
+  active.el.params.text = active.original;
+  if (!cancel && finalText !== active.original) {
+    pushUndo();
+    active.el.params.text = finalText;
+    changed();
+    onSelectionChange();
+  } else {
+    renderAll();
+  }
+  svg.focus({ preventScroll: true });
+}
+
+export function beginTextEdit(el = findSelected()) {
+  if (!el || el.type !== 'textlabel' || state.demoMode) return false;
+  if (textEditor?.el === el) {
+    textEditor.textarea.focus();
+    return true;
+  }
+  if (textEditor) finishTextEdit();
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'canvas-text-editor';
+  wrapper.setAttribute('role', 'group');
+  wrapper.setAttribute('aria-label', 'Edit Markdown text annotation');
+  wrapper.innerHTML = `<div class="canvas-text-editor-head"><span>Markdown text</span><button type="button">Done</button></div>` +
+    `<textarea aria-label="Markdown text" spellcheck="true"></textarea>` +
+    `<div class="canvas-text-editor-help"><span><b>**bold**</b> · <i>*italic*</i> · # heading · - list · [link](https://…)</span><span>⌘↵ done · Esc cancel</span></div>`;
+  svg.parentElement.appendChild(wrapper);
+  const textarea = wrapper.querySelector('textarea');
+  const done = wrapper.querySelector('button');
+  textarea.value = String(el.params.text ?? '');
+  textarea.rows = Math.max(3, Math.min(8, textarea.value.split('\n').length + 1));
+  textEditor = { el, original: textarea.value, wrapper, textarea };
+
+  textarea.addEventListener('input', () => {
+    el.params.text = textarea.value;
+    textarea.rows = Math.max(3, Math.min(8, textarea.value.split('\n').length + 1));
+    renderAll();
+  });
+  textarea.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      finishTextEdit({ cancel: true });
+    } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      event.stopPropagation();
+      finishTextEdit();
+    }
+  });
+  textarea.addEventListener('blur', () => finishTextEdit());
+  done.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    finishTextEdit();
+  });
+  syncTextEditorPosition();
+  textarea.focus({ preventScroll: true });
+  // Select-all only for the placeholder a freshly placed label carries, so the
+  // first keystroke replaces it. Re-opening real prose puts the caret at the
+  // end instead of arming a wipe of everything the user already wrote.
+  if (textarea.value === registry.textlabel.params.find(spec => spec.key === 'text').def) textarea.select();
+  else textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  setStatus('Editing Markdown · ⌘↵ done · Esc cancel');
+  return true;
+}
 
 function isManualDoubleClick(e) {
   const now = performance.now();
@@ -1046,7 +1164,7 @@ function continueTouchPan() {
   drag = { mode: 'pan', sx: point.x, sy: point.y, vx: state.view.x, vy: state.view.y, touch: true };
 }
 
-function placeCurrentElement(w, keepPlacing = false, bypassSnap = false) {
+function placeCurrentElement(w, keepPlacing = false, bypassSnap = false, deferEdit = true) {
   if (!placing) return false;
   pushUndo();
   const el = placing.el;
@@ -1057,7 +1175,16 @@ function placeCurrentElement(w, keepPlacing = false, bypassSnap = false) {
   const type = el.type;
   placing = keepPlacing ? { el: createElement(type), pos: { x: sp.x, y: sp.y } } : null;
   if (!placing) { state.tool = 'select'; setStatus(''); notifyTool(); }
-  changed(); onSelectionChange({ openMobile: true });
+  const editOnCanvas = type === 'textlabel' && !keepPlacing;
+  changed();
+  onSelectionChange({ openMobile: !editOnCanvas });
+  // Mouse placement runs inside pointerdown, whose default action then moves
+  // focus to the canvas — focusing the textarea now would be undone one tick
+  // later and the editor would close itself on blur, so open it after the
+  // event. Touch placement already runs on pointerup and must stay synchronous:
+  // iOS only raises the keyboard for a focus() call inside the gesture.
+  if (editOnCanvas && deferEdit) requestAnimationFrame(() => beginTextEdit(el));
+  else if (editOnCanvas) beginTextEdit(el);
   return true;
 }
 
@@ -1221,12 +1348,35 @@ function bindPointer() {
   window.addEventListener('pointermove', onMove);
   window.addEventListener('pointerup', onUp);
   window.addEventListener('pointercancel', onUp);
+  // The pendingTextLink press/release pair in onDown/onUp is what actually
+  // opens the link now (robust to the label's own DOM being rebuilt mid-
+  // gesture by animation). Block the native anchor click outright so a case
+  // where it does survive can never fire a second, duplicate tab alongside it.
+  svg.addEventListener('click', e => {
+    if (e.target.closest?.('[data-text-link]')) e.preventDefault();
+  }, true);
   svg.addEventListener('dblclick', e => {
-    if (state.tool === 'beam' && drawing) { e.preventDefault(); finishBeam(); }
+    const w = screenToWorld(e.clientX, e.clientY);
+    const text = e.target.closest?.('[data-text-link]') ? null : hitElement(w);
+    if (text?.type === 'textlabel' && state.tool === 'select') {
+      e.preventDefault();
+      state.selection = { kind: 'element', id: text.id };
+      renderAll();
+      onSelectionChange();
+      beginTextEdit(text);
+    } else if (state.tool === 'beam' && drawing) { e.preventDefault(); finishBeam(); }
     else if (polygonDrawing) { e.preventDefault(); finishPolygon(); }
   });
   window.addEventListener('keydown', e => {
     svg.classList.remove('pointer-focused');
+    if (e.key === 'Enter' && (e.target === document.body || e.target === svg)) {
+      const selected = findSelected();
+      if (selected?.type === 'textlabel' && state.tool === 'select') {
+        e.preventDefault();
+        beginTextEdit(selected);
+        return;
+      }
+    }
     if (e.code === 'Space' && (e.target === document.body || e.target === svg)) {
       spaceDown = true; svg.style.cursor = 'grab'; e.preventDefault();
     }
@@ -1247,6 +1397,20 @@ function onDown(e) {
     if (activeTouches.size >= 2) {
       beginTouchGesture();
       svg.setPointerCapture(e.pointerId);
+      return;
+    }
+  }
+
+  const editTextControl = e.target.closest?.('[data-text-edit]');
+  if (editTextControl && !state.demoMode) {
+    const text = state.elements.find(el => el.id === editTextControl.getAttribute('data-text-edit'));
+    if (text?.type === 'textlabel') {
+      e.preventDefault();
+      e.stopPropagation();
+      state.selection = { kind: 'element', id: text.id };
+      renderAll();
+      onSelectionChange();
+      beginTextEdit(text);
       return;
     }
   }
@@ -1343,6 +1507,28 @@ function onDown(e) {
       onSelectionChange();
       e.preventDefault();
       e.stopPropagation();
+      return;
+    }
+  }
+
+  // Links inside Markdown labels remain links, not drag handles. We do not
+  // trust the browser's native anchor click for this: an animated label
+  // (pulse playback, AOTF cycling, ...) can rebuild its SVG mid-gesture, and
+  // a real press-to-release takes long enough for that to replace the exact
+  // <a> the user pressed on before the native click/navigation completes on
+  // it — silently orphaning the click. Track the press ourselves instead and
+  // open the link explicitly on release; see pendingTextLink in onUp.
+  const textLink = e.target.closest?.('[data-text-link]');
+  const textOwner = textLink?.closest?.('[data-element-id]');
+  if (textLink && textOwner) {
+    const text = state.elements.find(el => el.id === textOwner.getAttribute('data-element-id'));
+    if (text?.type === 'textlabel') {
+      pendingTextLink = { href: textLink.getAttribute('href'), pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+      requestAnimationFrame(() => {
+        state.selection = { kind: 'element', id: text.id };
+        renderAll();
+        onSelectionChange();
+      });
       return;
     }
   }
@@ -1645,6 +1831,19 @@ function onMove(e) {
 }
 
 function onUp(e) {
+  if (pendingTextLink?.pointerId === e.pointerId) {
+    const { href, x, y } = pendingTextLink;
+    pendingTextLink = null;
+    // onDown's touch branch already added this pointer to activeTouches
+    // before falling through to the text-link check; mirror the cleanup it
+    // never reached so a later multi-touch gesture doesn't see a stale entry.
+    if (e.pointerType === 'touch') activeTouches.delete(e.pointerId);
+    const threshold = e.pointerType === 'touch' ? 10 : 6;
+    if (e.type !== 'pointercancel' && href && Math.hypot(e.clientX - x, e.clientY - y) <= threshold) {
+      window.open(href, '_blank', 'noopener,noreferrer');
+    }
+    return;
+  }
   if (e.pointerType === 'touch' && activeTouches.has(e.pointerId)) {
     activeTouches.delete(e.pointerId);
     if (touchGesture) {
@@ -1656,7 +1855,7 @@ function onUp(e) {
       drag = null;
       if (e.type === 'pointercancel') { renderAll(); return; }
       const w = screenToWorld(e.clientX, e.clientY);
-      placeCurrentElement(w, false, false);
+      placeCurrentElement(w, false, false, false);
       return;
     }
   }
