@@ -129,25 +129,48 @@ function sampleWavefront(sensor, reading) {
   };
 }
 
-function configuredPower(elements) {
-  const sources = elements.filter(element => registry[element?.type]?.source);
-  const powered = sources.filter(source => Number.isFinite(source.params?.avgPowerW));
-  if (!sources.length || !powered.length) return null;
-  return powered.reduce((sum, source) => sum + Math.max(0, source.params.avgPowerW), 0) / sources.length;
+// Absolute power at a detector: for each source that actually reached it,
+// the fraction of that source's emitted power which arrived, times the watts
+// it is configured for. Several sources on one detector simply add up.
+//
+// This replaces an earlier scene-wide mean of every source's power field,
+// which was wrong in both directions: a source whose light never touched this
+// detector still pulled the reading around, and a source type with no power
+// field at all (the point source) counted in the denominator while
+// contributing nothing -- so adding an unrelated point source anywhere in the
+// sketch halved an otherwise correct reading.
+function detectedPower(reading, elements) {
+  const byId = new Map(elements.filter(Boolean).map(element => [element.id, element]));
+  let watts = 0, attributed = 0, total = 0;
+  for (const { sourceId, fraction } of reading.sourceFractions || []) {
+    total += fraction;
+    const source = sourceId ? byId.get(sourceId) : null;
+    const configured = Number(source?.params?.avgPowerW);
+    if (!Number.isFinite(configured)) continue;
+    watts += Math.max(0, configured) * fraction;
+    attributed += fraction;
+  }
+  // Nothing arriving here came from a source carrying a power figure, so
+  // there is no watt value to report -- the screen falls back to relative.
+  if (attributed <= 0) return { watts: null, complete: false };
+  return { watts, complete: attributed >= total - 1e-9 };
 }
 
 export function enhancedReading(sensor, elements = []) {
   const reading = detectorReading(sensor.id);
   if (!reading) return null;
-  const wattsPerRelativeUnit = configuredPower(elements);
+  const power = detectedPower(reading, elements);
   return {
     ...reading,
     beamDiameter: reading.samples > 1 ? Math.max(0, reading.spotSpan) : 0,
     stokes: sampleStokes(sensor, reading),
     wavefront: sampleWavefront(sensor, reading),
     bandwidth: Math.max(0, reading.bandMax - reading.bandMin),
-    detectedPowerW: wattsPerRelativeUnit == null ? null : reading.signal * wattsPerRelativeUnit,
-    powerIsEstimated: wattsPerRelativeUnit != null,
+    detectedPowerW: power.watts,
+    powerIsEstimated: power.watts != null,
+    // False when some of the light that arrived came from a source with no
+    // power field of its own, so the watt figure is a floor, not the total.
+    powerCoversAllArrivals: power.complete,
   };
 }
 

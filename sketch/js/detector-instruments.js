@@ -20,7 +20,7 @@ const DESCRIPTIONS = {
   camera: 'Spatially resolves beam intensity, beam diameter, a qualitative 2D intensity map, and an object image formed on the sensor.',
   detector: 'Measures the relative intensity incident on its active surface.',
   pmt: 'Amplifies a faint signal \u2014 fluorescence, microscopy, single-point detection \u2014 into a readable one, and reports whether it clears the tube\u2019s own dark floor.',
-  powermeter: 'Reports incoming optical power when source power is configured, otherwise relative detected power.',
+  powermeter: 'Reports absolute optical power by carrying each source\u2019s configured watts through everything that attenuated it on the way here.',
   wavefrontdetector: 'Reports intensity and classifies the incident beam as collimated, converging, or diverging with a qualitative divergence angle.',
   polarimeter: 'Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.',
   spectrometer: 'Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.',
@@ -581,9 +581,16 @@ function panel(sensor, reading, elements, view) {
     const [value, unit] = formatPower(reading.detectedPowerW, reading.signal);
     // The value and its unit sit on one baseline; the old provenance caption
     // ("from configured source power") collided with the unit and is dropped.
+    // A partial attribution does get its own line: the figure is then a floor,
+    // because some of the light that arrived came from a source carrying no
+    // power rating of its own, and silently under-reporting would be worse.
+    const partial = reading.detectedPowerW != null && reading.powerCoversAllArrivals === false
+      ? '<text x="-36" y="17.5" font-size="4.4" font-weight="700" fill="#f0b46a">+ UNRATED SOURCE</text>'
+      : '';
     return header(name, 'OPTICAL POWER', reading.pulse)
       + `<text x="35" y="6" text-anchor="end" font-size="14" font-weight="780" fill="#ecf7fa">${value}</text>`
-      + `<text x="35" y="14" text-anchor="end" font-size="5.2" fill="#86efac">${unit}</text>`;
+      + `<text x="35" y="14" text-anchor="end" font-size="5.2" fill="#86efac">${unit}</text>`
+      + partial;
   }
   if (sensor.type === 'wavefrontdetector') {
     const wave = reading.wavefront, divergence = wave.state === 'COLLIMATED' ? '0.00°' : `${wave.divergenceDeg.toFixed(2)}°`;

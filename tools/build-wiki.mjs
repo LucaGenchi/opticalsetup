@@ -134,22 +134,22 @@ function formulaBlock(f) {
     </div>`;
 }
 
-// realWorld reads top to bottom as html -> formulas -> html2 -> formulas2 ->
-// html3, so a formula can sit right in the paragraph that explains it rather
-// than clustering every formula right after the opening paragraph regardless
-// of which later section it belongs to. Most entries use only html/formulas;
-// html2 is common for a second topic; html3/formulas2 exist for a rarer case
-// -- a formula that belongs deeper in, next to its own paragraph, like the
-// photodetector's frequency-response section. Filtering out unset parts
-// (rather than always interpolating all five on their own template line)
-// keeps every other entry's build free of dangling blank lines.
-function realWorldHTML(rw) {
+// Both prose sections read top to bottom as html -> formulas -> html2 ->
+// formulas2 -> html3, so a formula can sit right in the paragraph that
+// explains it rather than clustering every formula immediately after the
+// opening paragraph regardless of which later section it belongs to. Most
+// entries use only html/formulas; html2 is common for a second topic;
+// html3/formulas2 cover the rarer case of a formula that belongs deeper in,
+// next to its own paragraph. Filtering out unset parts (rather than always
+// interpolating all five on their own template line) keeps every other
+// entry's build free of dangling blank lines.
+function proseSectionHTML(section) {
   return [
-    rw.html,
-    (rw.formulas || []).map(formulaBlock).join(''),
-    rw.html2,
-    (rw.formulas2 || []).map(formulaBlock).join(''),
-    rw.html3,
+    section.html,
+    (section.formulas || []).map(formulaBlock).join(''),
+    section.html2,
+    (section.formulas2 || []).map(formulaBlock).join(''),
+    section.html3,
   ].filter(Boolean).join('\n');
 }
 
@@ -199,12 +199,11 @@ ${header(base)}
       <p class="embed-caption">Click the ${esc(entry.title).toLowerCase()} to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-      ${realWorldHTML(entry.realWorld)}
+      ${proseSectionHTML(entry.realWorld)}
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        ${entry.inOpticalSetup.html}
-        ${(entry.inOpticalSetup.formulas || []).map(formulaBlock).join('')}
+        ${proseSectionHTML(entry.inOpticalSetup)}
         ${entry.inOpticalSetup.limitations ? `<div class="limitations"><span class="lbl">Simplified vs. reality</span>${entry.inOpticalSetup.limitations}</div>` : ''}
       </div>
 

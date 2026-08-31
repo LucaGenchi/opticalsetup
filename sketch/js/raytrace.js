@@ -302,6 +302,7 @@ function recordDetectorHit(ray, hit) {
     bw: ray.bw || 0,
     spec: ray.spec || null,
     sourceId: ray.sourceId || null,
+    originId: ray.originId || null,
     pol: ray.pol,
     stokes: cloneStokes(ray.stokes),
     u: hit.u,
@@ -343,6 +344,19 @@ export function detectorReading(elementId) {
   const spotSpan = aperture * (Math.max(...us) - Math.min(...us));
   const detectorType = activeHits[0].detectorType || 'Detector';
   const readoutKind = activeHits[0].readoutKind || 'detector';
+  // How much of each originating source's own emitted power arrived here.
+  // Every source launches rays summing to 1, and each interaction scales that
+  // weight by what it actually transmits, so this fraction already carries the
+  // whole source-to-detector efficiency chain -- split ratios, filter
+  // transmission, clipped apertures, chopper duty, conversion efficiency.
+  // Attribution is by originId, so a specimen's fluorescence is still charged
+  // to the laser that pumped it rather than to the specimen.
+  const arrivedByOrigin = new Map();
+  for (const hit of activeHits) {
+    const key = hit.originId || null;
+    arrivedByOrigin.set(key, (arrivedByOrigin.get(key) || 0) + Math.max(0, hit.power));
+  }
+  const sourceFractions = [...arrivedByOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction }));
   let outputSignal = signal, saturated = false, profile = null, profileColors = null, centroid = null;
   let snr = null, darkOutput = null, gain = null;
   if (readoutKind === 'pmt') {
@@ -467,6 +481,7 @@ export function detectorReading(elementId) {
     readoutKind,
     outputSignal,
     saturated,
+    sourceFractions,
     gain,
     darkOutput,
     snr,
@@ -773,6 +788,7 @@ function fiberEmissionRays(c) {
     wl: c.wl, bw: c.bw || 0, spec: c.spec || null, speckle: false, intensity: Math.min(1, c.intensity * transmission),
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
     pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, sourceId: c.sourceId || null,
+    originId: c.originId || null,
     oplStart: (c.opl || 0) + lengthMm * ng + 2,
     // The fiber's own chromatic dispersion is not modelled, but dispersion
     // already accumulated before coupling must survive the relaunch.
@@ -2043,6 +2059,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             intensity: r.intensity, power: r.power, pol: r.pol, stokes: cloneStokes(r.stokes),
             pulse: r.pulse, opl: r.opl, gdd: r.gdd,
             sourceId: r.sourceId || null,
+            originId: r.originId || null,
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -2102,6 +2119,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           // signal at a new wavelength is not the source's light any more.
           color: 'color' in c ? c.color : r.color,
           sourceId: 'sourceId' in c ? c.sourceId : r.sourceId,
+          // Deliberately not overridable by the child: a specimen's
+          // fluorescence is new light with a new sourceId, but its power is
+          // still a fraction of the laser that drove it.
+          originId: r.originId || null,
           medium: 'medium' in c ? c.medium : r.medium,
           mediumMaterial: 'mediumMaterial' in c ? c.mediumMaterial : r.mediumMaterial,
           spectralCount: 'spectralCount' in c ? c.spectralCount : r.spectralCount,
@@ -2363,8 +2384,13 @@ export function traceScene(elements, beams = []) {
         medium: initialBody?.id || null, mediumMaterial: initialMaterial, ior: initialIor,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,
         // Which source this light started from, so the spectrometer can
-        // normalize each source's own contribution independently.
+        // normalize each source's own contribution independently. A specimen
+        // relabels sourceId when it emits a signal of its own, so `originId`
+        // additionally records the element that actually put the energy into
+        // the scene, and is never rewritten downstream -- that is the only id
+        // a watt figure can be attributed to.
         sourceId: el.id,
+        originId: el.id,
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
       };
     });

@@ -2867,30 +2867,44 @@ export const wikiEntries = [
         <p>The power meter measures the same relative ray weight every detector in this
         palette does. On its own — selected in the canvas, read from its inspector panel — that
         relative number is all it shows, identical to a plain photodetector. The Watts reading
-        appears only once it drives a <a href="../display/">detector screen</a> ("Connect to a
-        detector screen" in its inspector does this in one click): the screen converts relative
-        weight to power using the <strong>Average power (W)</strong> field already set on
-        whichever source(s) are in the scene, so a source configured for 100&nbsp;mW and a
-        power meter reading half the relative weight of a fully-open beam shows 50&nbsp;mW.</p>`,
+        appears once it drives a <a href="../display/">detector screen</a> ("Connect to a
+        detector screen" in its inspector does this in one click).</p>
+        <p>That figure is built per source. Every source launches rays whose weights sum to
+        one, and each interaction along the way scales that weight by what it actually
+        transmits — a beamsplitter's ratio, a filter's transmission, an aperture that clips
+        part of the beam, a chopper's duty cycle, a nonlinear crystal's conversion efficiency.
+        The weight that survives to the sensor face is therefore the whole source-to-detector
+        efficiency chain in one number, and multiplying it by that source's
+        <strong>Average power (W)</strong> gives the watts it delivered here. Several sources
+        landing on the same meter simply add:</p>`,
       formulas: [
-        { tex: '\\hat P_{\\text{det}} = w_{\\text{rel}} \\cdot \\overline{P_{\\text{src}}}, \\qquad \\overline{P_{\\text{src}}} = \\frac{1}{N}\\sum_{i=1}^{N} P_{\\text{src},i}', caption: 'The calibration reference is the mean configured source power, averaged over every source element in the scene — N is the total source count, not just the ones whose light reaches this detector.' },
+        { tex: 'P_{\\text{det}} = \\sum_{s\\,\\to\\,\\text{det}} \\eta_{s}\\, P_{s}, \\qquad \\eta_{s} = \\!\\!\\sum_{\\text{rays from } s} \\!\\! w_{\\text{ray}}', caption: 'Only sources whose light actually arrives contribute. η is the surviving fraction of that source\'s own emitted power, so a 100 mW laser behind two filters passing 50% and 25% reads 12.5 mW, and a second laser on the same meter adds its own term.' },
       ],
-      limitations: `<p>That averaging is worth understanding exactly, because it can read low
-        for a reason that has nothing to do with the optics. The reference power is the mean of
-        every source's Average power field <em>in the whole scene</em> — sources whose light
-        never reaches this particular meter still count, and a source type with no power field at
-        all (the point source) contributes zero to the sum while still counting toward
-        <span class="w">N</span>. A single 100&nbsp;mW laser aimed straight at a power meter reads
-        100&nbsp;mW; add an unrelated point source anywhere else in the sketch and, with nothing
-        about the beam path changed, the same meter now reads 50&nbsp;mW — half the true value —
-        because the estimate no longer knows which source it should be calibrated against.</p>
-        <p>Beyond that: the conversion is a single flat factor with no wavelength dependence at
-        all, so it behaves like an idealized thermal sensor regardless of what the element
-        actually represents, and there is no way to select or see which sensor type is assumed.
-        There is no damage threshold, no saturation, and no response-time difference between a
-        thermal sensor's seconds-long settling and a photodiode's microsecond response — a
-        pulsed and a CW source of the same average power read identically. Treat the Watts
-        figure as a scaled version of the relative signal, not a calibrated measurement.</p>`,
+      html2: `
+        <p>Attribution follows the light through wavelength changes too. When a specimen
+        fluoresces, the emission is new light at a new colour, but its power is still a
+        fraction of the laser that pumped it — so it is charged to that laser, not to the
+        specimen. In the <a href="../pmt/">PMT</a>'s fluorescence example the meter would read
+        the pump power times the roughly 2&times;10⁻³ that survives excitation focusing,
+        conversion efficiency, collection solid angle, and the emission filter.</p>
+        <p>If some of the light arriving carries no power rating at all — the point source has
+        no Average power field — the screen reports the rated contribution and marks the
+        reading <em>+ unrated source</em>, because that number is then a floor rather than the
+        total. When nothing arriving is rated, it falls back to showing relative weight.</p>`,
+      limitations: `<p>The conversion is wavelength-flat: one watt of 400&nbsp;nm and one watt
+        of 1550&nbsp;nm read identically, so the element behaves like an idealized broadband
+        thermal sensor no matter which real sensor type you have in mind, and there is no way
+        to select one or to get the wavelength-setting error that a real photodiode meter
+        punishes you for. Power is average power only — a pulsed and a CW source of the same
+        average read the same, with no peak-power figure and no notion of a pulsed beam
+        damaging a sensor a CW beam of equal average power would not.</p>
+        <p>There is no damage threshold, no saturation, no noise floor, and no response time,
+        so nothing distinguishes a thermopile's seconds-long settling from a photodiode's
+        microseconds. The watts are exact arithmetic on the traced efficiencies rather than a
+        measurement: they inherit every idealization upstream of them — hard-edged filter
+        passbands, flat per-surface transmission instead of Fresnel losses, no scatter and no
+        absorption that the tracer was not told about — so treat the number as what this
+        idealized bench delivers, not as what a real one would.</p>`,
     },
     related: ['detector', 'pmt', 'display', 'cwlaser'],
     citations: [
