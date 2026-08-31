@@ -80,7 +80,40 @@ export const wikiEntries = [
         trip, while losses — mirror transmission, absorption, scattering — deplete it.
         Above threshold, the pump rate at which round-trip gain first equals round-trip
         loss, the cavity sustains the stable, highly monochromatic, spatially coherent
-        beam described above.</p>`,
+        beam described above.</p>
+        <h3>Coherence length</h3>
+        <p>No real laser is perfectly monochromatic. The emission occupies a finite
+        linewidth, and the physical meaning of that linewidth is that the optical phase
+        drifts: predict the phase far enough ahead and the prediction stops being right.
+        <em>Coherence length</em> is the distance over which the phase stays predictable —
+        formally the coherence time times the vacuum speed of light${cite(1)}.</p>
+        <p>It matters because it decides whether an experiment sees fringes. Split a beam,
+        send the halves down two arms and recombine them: the two waves can only interfere
+        if the one arriving from the long arm still remembers the phase of the one from the
+        short arm. Make the arms differ by much more than the coherence length and the
+        fringes vanish, leaving the ports simply to add their powers${cite(1)}. The same
+        constraint sets how deep a hologram can be recorded, and how far apart the two arms
+        of an interferometric sensor may be.</p>
+        <p>Linewidth and coherence length are inversely related, though the exact prefactor
+        depends on the lineshape and is not universal. For the Lorentzian spectrum produced
+        by a random walk of the optical phase, Paschotta gives${cite(1)}</p>`,
+      formulas2: [
+        { tex: 'L_{\\text{coh}} = c\\,\\tau_{\\text{coh}} = \\frac{c}{\\pi\\,\\Delta\\nu}', caption: 'Lorentzian lineshape: the distance at which the coherence function falls to 1/e, for a FWHM linewidth Δν. The literature often quotes this without the π when only an order of magnitude is wanted.' },
+      ],
+      html3: `
+        <p>The span across real sources is enormous. A stabilised single-frequency
+        solid-state laser at 10&nbsp;kHz linewidth reaches roughly 9.5&nbsp;km; systems
+        built for optical clocks, stabilised below 1&nbsp;Hz, exceed 300 000&nbsp;km. A
+        laser diode is far shorter, limited by phase noise from spontaneous emission in a
+        short, strongly out-coupled resonator. At the opposite extreme, the superluminescent
+        diodes used for optical coherence tomography are made <em>deliberately</em>
+        broadband — tens of nanometres — precisely because a coherence length of a few
+        micrometres is what gives that technique its axial resolution: only light returning
+        from one narrow depth can still interfere with the reference${cite(1)}.</p>
+        <p>One caution from the same source is worth carrying. The shape and width of a
+        spectrum do not by themselves fully determine coherence: a frequency comb has a
+        broad spectrum and excellent long-range coherence, and no single-number coherence
+        length describes it${cite(1)}.</p>`,
     },
     inOpticalSetup: {
       html: `
@@ -88,18 +121,59 @@ export const wikiEntries = [
         size</em> mode, a fan of 25 parallel rays sampling a finite beam width — this is
         what lets the tracer show a lens actually focusing a beam of nonzero extent,
         rather than a single infinitesimal ray that can never miss an aperture.</p>
-        <p>Its spectrum is monochromatic by construction: one wavelength, no bandwidth
-        control. That is the whole point of the split between the three laser sources —
-        if a bench needs spectral width, it needs the Pulsed Laser or the Supercontinuum
-        laser instead, both of which model where that width comes from. Polarization is
-        set directly as a Stokes vector rather than emerging from a modeled cavity.</p>`,
-      formulas: [],
+        <p>Its spectrum is monochromatic by construction: the beam carries one wavelength
+        and is drawn and detected as one colour. That is the point of the split between the
+        three laser sources — a bench that needs real spectral <em>width</em>, with distinct
+        wavelengths propagating and dispersing separately, needs the Pulsed Laser or the
+        Supercontinuum laser instead, both of which model where that width comes from.
+        Polarization is set directly as a Stokes vector rather than emerging from a modeled
+        cavity.</p>
+        <p>What the CW Laser does carry is a <strong>coherence length</strong>, and it is
+        the one place a linewidth enters this source. It changes no ray and no colour; it
+        decides how far the two arms of an interferometer may differ before their fringes
+        fade. Fields recombining at a beamsplitter are weighted, pair by pair, by a Gaussian
+        visibility in their path difference.</p>`,
+      formulas: [
+        { tex: 'V(\\Delta L) = \\exp\\!\\left[-4\\ln 2\\left(\\frac{\\Delta L}{l_c}\\right)^{2}\\right]', caption: 'Fringe visibility against arm mismatch. The coherence length l_c is the full width at half maximum of this envelope, so ΔL = l_c/2 halves the contrast.' },
+        { tex: 'l_c = \\frac{2\\ln 2}{\\pi}\\,\\frac{\\lambda^{2}}{\\Delta\\lambda}', caption: 'The linewidth the inspector reports as implied by a given coherence length — the Gaussian convention standard in optical coherence tomography, where l_c is the axial resolution.' },
+      ],
+      html2: `
+        <p>Zero, the default, means the idealised source: the arms interfere perfectly
+        however far apart they are, which is how every scene behaved before this parameter
+        existed. Give it a finite value and the bench becomes a ruler — sweep the delay line
+        and fringes appear only where the arms match, which is the measurement an
+        interferometer is actually for. The inspector reports the linewidth that coherence
+        length implies, so the two ways of describing the same source stay visible together:
+        50&nbsp;nm at 840&nbsp;nm gives 6.2&nbsp;µm, the familiar axial resolution of a
+        broadband OCT source.</p>
+        <p>Note the convention. This model uses the Gaussian form standard in optical
+        coherence tomography, in which <span class="w">l<sub>c</sub></span> is the
+        <em>full width at half maximum</em> of the visibility envelope. The Lorentzian
+        expression quoted above${cite(1)} is a different definition — the 1/e point of a
+        differently shaped coherence function — and the two disagree by a numerical factor.
+        Neither is more correct; they describe different lineshapes, and this prefactor is
+        exactly the kind of detail that source cautions is not universal.</p>
+        <p>Energy is conserved at every visibility: the self-powers of the recombining
+        fields always add, and only their cross term is scaled by
+        <span class="w">V</span>. The two ports of an interferometer therefore always sum to
+        the input, whether they are fringing hard or have washed out to a flat half
+        each.</p>`,
       limitations: `<p>There is no modeled gain medium, cavity round trip, or threshold —
         wavelength, polarization, and power are configured directly as source parameters,
         not derived from first principles. Divergence and M² are not modeled: a collimated
-        beam stays perfectly parallel over any distance.</p>`,
+        beam stays perfectly parallel over any distance.</p>
+        <p>Coherence length is a visibility envelope applied at recombination, not a
+        simulated phase-noise process: the beam carries no actual linewidth, so the source
+        stays exactly one wavelength for colour, dispersion, and every spectral readout, and
+        the implied linewidth is reported rather than propagated. Spatial coherence is not
+        modelled at all — only the temporal kind — and the envelope is Gaussian by
+        assumption, so a lineshape that behaves differently, a frequency comb above all,
+        cannot be represented by this single number.</p>`,
     },
     related: ['pulsedlaser', 'sclaser', 'pointsource', 'mirror'],
+    citations: [
+      { label: 'R. Paschotta, “Coherence Length,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/coherence_length.html' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Lasers', url: 'https://www.rp-photonics.com/lasers.html' },
       { label: 'RP Photonics Encyclopedia — Laser Light', url: 'https://www.rp-photonics.com/laser_light.html' },
@@ -3069,6 +3143,147 @@ export const wikiEntries = [
     ],
   },
 
+  {
+    type: 'phaseplate',
+    title: 'Phase object',
+    category: 'Specimens',
+    realWorld: {
+      html: `
+        <p>Most of what a microscope is pointed at does not absorb light. A living cell in
+        culture medium, a gas flow, a flame, a fibre being drawn, a layer of transparent
+        polymer — all of them are close to perfectly clear. Shine light through and almost
+        exactly as much comes out the other side, so a detector that measures intensity
+        sees nothing at all. Such an object is called a <em>phase object</em>: it is
+        invisible not because it fails to affect the light, but because everything it does
+        happens in a quantity ordinary detection throws away.</p>
+        <p>What it does affect is the arrival time. Light slows in a medium of refractive
+        index <span class="w">n</span>, so a thickness <span class="w">t</span> of material
+        with an index different from its surroundings advances or retards the wave that
+        crosses it relative to the wave beside it. The accumulated optical path difference
+        is</p>`,
+      formulas: [
+        { tex: '\\mathrm{OPD} = (n_{\\text{object}} - n_{\\text{medium}})\\, t', caption: 'Optical path difference written by a transparent object of thickness t.' },
+        { tex: '\\Delta\\varphi = \\frac{2\\pi}{\\lambda}\\,\\mathrm{OPD}', caption: 'The phase shift that path difference corresponds to, at vacuum wavelength λ.' },
+      ],
+      html2: `
+        <p>The numbers involved are small and stubbornly invisible. A typical cell is
+        perhaps 5&nbsp;µm thick with an index around 1.37 in medium of index 1.33, giving
+        an OPD near 0.2&nbsp;µm — well under half a wavelength of green light. No amount of
+        contrast stretching recovers it from an intensity image, because the intensity
+        image genuinely does not contain it.</p>
+        <p>Every technique for seeing such an object works the same way underneath:
+        interfere the light that passed through it with a reference that did not, so the
+        phase difference becomes a difference in brightness. Two beams of intensity
+        <span class="w">I₁</span> and <span class="w">I₂</span> meeting with a phase
+        difference <span class="w">Δφ</span> give</p>`,
+      formulas2: [
+        { tex: 'I = I_1 + I_2 + 2\\sqrt{I_1 I_2}\\,\\cos\\Delta\\varphi', caption: 'Two-beam interference: the cross term is what carries the phase into intensity.' },
+      ],
+      html3: `
+        <p>Frits Zernike built the first practical instrument on exactly this idea. His
+        phase-contrast microscope splits the light a specimen scatters from the light that
+        passes it undisturbed, retards one against the other by a quarter wave in a ring
+        etched into a glass plate at the back focal plane, and lets them recombine — turning
+        a phase object into a bright-and-dark image without staining or killing it. It won
+        the 1953 Nobel Prize in Physics and remains the reason live-cell microscopy is
+        possible at all${cite(1)}.</p>
+        <p>The same principle scales far beyond a microscope. Differential interference
+        contrast interferes each point of the specimen with a slightly sheared copy of
+        itself, so the image reports the phase <em>gradient</em>. Quantitative phase imaging
+        recovers the OPD map as a calibrated number per pixel, which for a cell of known
+        index is essentially a dry-mass measurement. And a Mach–Zehnder interferometer with
+        a wind tunnel in one arm turns the density field of a shock wave into countable
+        fringes${cite(2)} — the technique that made compressible flow visible long before
+        computational fluid dynamics.</p>
+        <p>The practical rule in every one of these is the same. A phase object shifted by a
+        whole wavelength is indistinguishable from no object at all, because the wave
+        recombines exactly as it started. Contrast is maximised near half a wave, where the
+        recombination is fully destructive, and that is the condition instruments are
+        designed around.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Phase object writes optical path across the beam without bending it. It has
+        no index and no thickness to configure; it is specified directly by the quantity
+        that matters, the peak path difference it adds, and by how that path is distributed
+        across its clear aperture. Four profiles are available:</p>
+        <ul>
+          <li><strong>Central bar</strong> — the middle third of the aperture retarded, the
+          rest untouched. A phase-contrast test object, and the default.</li>
+          <li><strong>Wedge</strong> — path rising linearly from one edge to the other, the
+          classic tilted-plate fringe generator.</li>
+          <li><strong>Step</strong> — half the aperture retarded, half clear.</li>
+          <li><strong>Curved</strong> — quadratic, thickest at the centre and falling to
+          zero at both edges, like a lenslet or a droplet.</li>
+        </ul>
+        <p>Each ray crossing the plate picks up the path its own crossing point calls for,
+        so the phase written across the beam is a real spatial pattern rather than a single
+        number. Recombine that arm against a reference and the pattern becomes intensity —
+        which is the whole reason the element exists. The default is a central bar of
+        0.27&nbsp;µm, half a wave at 532&nbsp;nm: the phase-contrast condition.</p>`,
+      formulas: [
+        { tex: 'N_{\\text{fringes}} = \\frac{\\mathrm{OPD}_{\\text{peak}}}{\\lambda}\\times\\frac{d_{\\text{beam}}}{d_{\\text{aperture}}}', caption: 'What the inspector reports as “Fringes across the beam”: only the illuminated part of the profile is written onto the light.' },
+      ],
+      html2: `
+        <p>Two behaviours surprise people, and both are real optics rather than
+        simplifications.</p>
+        <p><strong>The profile spans the clear aperture, not the beam.</strong> A narrow
+        beam through a wide wedge samples only a short section of the ramp and picks up an
+        almost uniform delay — a piston, not a tilt, and pistons produce no fringes. Match
+        the aperture to the beam and the full profile is written. The inspector's “Fringes
+        across the beam” readout uses the span the trace actually lit, so it reports what
+        the light picks up rather than what the plate could write.</p>
+        <p><strong>Some settings move a port total and some cannot, and the difference is
+        not about strength.</strong> Averaging the two-beam formula across the beam leaves
+        the port at half the light plus a term that swings with the reference arm, and the
+        size of that swing is the length of the mean phasor of the written phase —
+        <span class="w">|⟨e<sup>iΔφ(u)</sup>⟩|</span> over the illuminated aperture. When
+        the phases written across the beam cancel as a phasor, the total is pinned at half
+        the light however the reference is set, and the fringes merely slide sideways
+        underneath an unchanging number.</p>
+        <p>That happens at particular settings rather than for particular profiles. A wedge
+        spanning exactly one whole fringe cancels, and so does one spanning two, or twenty;
+        but the same wedge at <em>half</em> a fringe swings harder than anything else here,
+        between 0.19 and 0.81 of the input. A half-aperture step cancels when its step is
+        exactly half a wave, and swings once it is not. The central bar is asymmetric — a
+        third of the beam against two thirds — so it swings by a third, between 0.67 and
+        0.33, which is why it makes the most legible default. When the current setting
+        genuinely cannot move the total, the readout says <em>total stays put, read the
+        profile</em> rather than leaving the element looking inert.</p>
+        <p>The added path is genuine, not a bookkeeping phase: a pulse crossing the plate
+        arrives later by OPD/c, which a photodetector or autocorrelator downstream will
+        report. And on its own the element is exactly as invisible as its physical
+        counterpart — put a detector straight after it at any setting and the reading is
+        unchanged. It takes a reference arm to reveal it.</p>`,
+      limitations: `<p>This is a pure phase screen. It has no absorption and, more
+        significantly, no refraction: a real transparent object with an index step both
+        delays light <em>and</em> bends it, and a strong phase gradient deflects a ray by an
+        angle this element does not apply. The rays leave exactly parallel to how they
+        arrived, carrying only the added path.</p>
+        <p>The profile is one-dimensional across the aperture, matching the tracer's 2D
+        meridional plane — there is no second transverse axis, so a true 2D phase map such
+        as a real cell presents cannot be authored. The four shapes are fixed; arbitrary
+        OPD maps, measured phase data, and the Zernike quarter-wave <em>ring</em> at a back
+        focal plane are not available, so the phase-contrast <em>microscope</em> cannot be
+        reproduced as an instrument even though the physics it exploits is here.</p>
+        <p>The path difference is specified in micrometres and held fixed across
+        wavelength, which correctly makes the resulting phase scale as 1/λ but means the
+        element carries no material dispersion of its own: a real object's index varies with
+        wavelength and its OPD varies with it. Nothing scatters, and there is no partially
+        coherent imaging theory — the fringes come from the tracer's coherent recombination,
+        so the contrast a real instrument loses to finite condenser aperture and source
+        extent is not modelled.</p>`,
+    },
+    related: ['sample', 'stage', 'camera', 'bs', 'delayline'],
+    citations: [
+      { label: 'F. Zernike, “How I discovered phase contrast,” Science 121(3141), 345–349 (1955) — the Nobel lecture account of the method', url: 'https://doi.org/10.1126/science.121.3141.345' },
+      { label: 'W. Merzkirch, “Flow Visualization,” 2nd ed., Academic Press (1987) — interferometric density measurement in compressible flow', url: 'https://www.sciencedirect.com/book/9780124913516/flow-visualization' },
+    ],
+    resources: [
+      { label: 'Nikon MicroscopyU — Introduction to Phase Contrast Microscopy', url: 'https://www.microscopyu.com/techniques/phase-contrast/introduction-to-phase-contrast-microscopy' },
+      { label: 'RP Photonics Encyclopedia — Optical Path Length', url: 'https://www.rp-photonics.com/optical_path_length.html' },
+    ],
+  },
   {
     type: 'polarimeter',
     title: 'Polarimeter',

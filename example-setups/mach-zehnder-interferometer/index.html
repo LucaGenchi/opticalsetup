@@ -104,30 +104,73 @@
       it would on a real bench. The two linked screens show complementary
       camera outputs: equal arms make one port bright and the other dark.
       Entering half a wavelength in the ΔL arm (0.000266&nbsp;mm at
-      532&nbsp;nm) swaps them.</p>
+      532&nbsp;nm) swaps them, and a full wavelength brings them back — the
+      ports trade the light between them without ever losing any, which is the
+      first thing to check about any interferometer.</p>
+      <p>Three things are worth trying on top of that, because each turns the
+      layout into a different instrument.</p>
+      <p><strong>Sweep the delay line continuously.</strong> The readings trace
+      out the cosine fringe, and every intermediate setting splits the light
+      between the ports. This is the interferometer as a comparator: a
+      displacement of a fraction of a wavelength in one arm is read off as a
+      change in brightness, which is how these layouts measure distance,
+      vibration, and refractive index.</p>
+      <p><strong>Give the laser a coherence length.</strong> The source defaults
+      to zero, meaning idealised — it interferes at any arm mismatch. Set it to
+      a real value, say 0.5&nbsp;mm, and the fringes now survive only while the
+      arms are matched to within roughly that distance<sup class="cite">[<a href="#ref-3">3</a>]</sup>; push the
+      delay line to 5&nbsp;mm and the ports settle to a flat half each,
+      because the two waves no longer arrive with a predictable phase relation.
+      That fading is not a defect — it is the measurement. It is what makes an
+      interferometer a ruler for optical path, and with a deliberately broadband
+      source it is the origin of the axial sectioning in optical coherence
+      tomography<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
+      <p><strong>Drop a phase object into one arm.</strong> Straight from the
+      palette it is a central bar of half a wave, and it is invisible on its own
+      — put a detector after it and nothing changes. Here it turns the ports
+      into 0.67 and 0.33, and its shape appears in the camera's intensity
+      profile. That is phase contrast: an object that absorbs nothing made
+      visible purely by the path it adds. Raise its path difference to a full
+      wave, 0.532&nbsp;µm, and the object disappears completely — a wave
+      recombines exactly as it started — which is the reason instruments are
+      built around the half-wave condition rather than the strongest one
+      available.</p>
+      <p>Switching the profile to a wedge is worth doing next, because it shows
+      that how the path is distributed matters as much as how much there is. At
+      half a fringe across the beam a wedge swings the ports harder than
+      anything else here, between 0.19 and 0.81. Take it to exactly one whole
+      fringe and the totals stop moving altogether, while the camera profile
+      draws a complete fringe — bright at both edges of the beam, dark through
+      the middle. The phases written across the beam now cancel when averaged,
+      so the pattern is entirely real and the single number reporting it is
+      blind to it. The inspector says <em>total stays
+      put, read the profile</em> whenever that is the case.</p>
         <div class="limitations"><span class="lbl">What you won't see</span><p>The tracer combines only phase-valid routes from this
       sized monochromatic CW laser. Optical path, 100%-reflective flat-mirror phase,
       and a unitary non-polarizing beamsplitter phase are represented. Compatible
       fields are grouped at the second beamsplitter before the output beams are drawn;
       a camera additionally integrates any remaining cross terms over its finite 1D
-      pixels. This is not a
-      general wave-optics solver: diffraction, coherence length, vibration,
-      surface figure, and 2D sensor response are absent. Putting an optic
-      whose carrier phase is not modeled in either arm makes the tracer fall
-      back to conservative deposited intensity instead of inventing a
-      fringe.</p></div>
+      pixels.</p>
+      <p>Temporal coherence is modelled only as a visibility envelope in the arm
+      mismatch, set by the source's coherence length: the beam still carries a single
+      wavelength, so the linewidth that coherence length implies is reported but never
+      propagated, and spatial coherence is not modelled at all. This is not a general
+      wave-optics solver either — diffraction, vibration, surface figure, and 2D sensor
+      response are absent. Putting an optic whose carrier phase is not modeled in either
+      arm makes the tracer fall back to conservative deposited intensity instead of
+      inventing a fringe.</p></div>
       </div>
 
       
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
-        <a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a>
+        <a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/phaseplate/"><svg viewBox="-13 -13 26 26" aria-hidden="true"><rect x="-5" y="-6" width="10" height="12" rx="2" fill="#dbeafe" stroke="#5b7fb5" stroke-width="1.3" opacity="0.55"/><path d="M -4,-1 L 4,-1 L 4,1 L -4,1 Z" fill="#93b4de" stroke="#41618f" stroke-width="1.1" opacity="0.9"/><text x="0" y="4" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="700" fill="#33507a">φ</text></svg>Phase object</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a>
       </div>
 
       
       <h2 class="section-head real"><span class="sw"></span>References</h2>
       <ol class="reference-list">
-        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Mach%E2%80%93Zehnder_interferometer" target="_blank" rel="noopener">Wikipedia — Mach–Zehnder interferometer (history and applications)</a></li><li id="ref-2"><a href="https://www.rp-photonics.com/interferometers.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Interferometers (Mach–Zehnder section)</a></li>
+        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Mach%E2%80%93Zehnder_interferometer" target="_blank" rel="noopener">Wikipedia — Mach–Zehnder interferometer (history and applications)</a></li><li id="ref-2"><a href="https://www.rp-photonics.com/interferometers.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Interferometers (Mach–Zehnder section)</a></li><li id="ref-3"><a href="https://www.rp-photonics.com/coherence_length.html" target="_blank" rel="noopener">R. Paschotta, “Coherence Length,” RP Photonics Encyclopedia</a></li>
       </ol>
 
       

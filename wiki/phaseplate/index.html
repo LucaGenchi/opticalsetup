@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase object — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Retards part of the beam without bending it — invisible on its own, and the thing an interferometer exists to reveal. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/phaseplate/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Phase object — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Retards part of the beam without bending it — invisible on its own, and the thing an interferometer exists to reveal.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/phaseplate/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul>
+            <li><a href="../../wiki/phaseplate/" class="current">Phase object</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#specimens">Specimens</a> / Phase object</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-13 -13 26 26" aria-hidden="true"><rect x="-5" y="-6" width="10" height="12" rx="2" fill="#dbeafe" stroke="#5b7fb5" stroke-width="1.3" opacity="0.55"/><path d="M -4,-1 L 4,-1 L 4,1 L -4,1 Z" fill="#93b4de" stroke="#41618f" stroke-width="1.1" opacity="0.9"/><text x="0" y="4" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="700" fill="#33507a">φ</text></svg></div>
+        <div>
+          <h1>Phase object</h1>
+        </div>
+      </div>
+      <p class="tagline">Retards part of the beam without bending it — invisible on its own, and the thing an interferometer exists to reveal.</p>
+      <a class="place-cta" href="../../sketch/?place=phaseplate">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=phaseplate"
+          title="Interactive Phase object — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the phase object to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>Most of what a microscope is pointed at does not absorb light. A living cell in
+        culture medium, a gas flow, a flame, a fibre being drawn, a layer of transparent
+        polymer — all of them are close to perfectly clear. Shine light through and almost
+        exactly as much comes out the other side, so a detector that measures intensity
+        sees nothing at all. Such an object is called a <em>phase object</em>: it is
+        invisible not because it fails to affect the light, but because everything it does
+        happens in a quantity ordinary detection throws away.</p>
+        <p>What it does affect is the arrival time. Light slows in a medium of refractive
+        index <span class="w">n</span>, so a thickness <span class="w">t</span> of material
+        with an index different from its surroundings advances or retards the wave that
+        crosses it relative to the wave beside it. The accumulated optical path difference
+        is</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mrow><mi mathvariant="normal">O</mi><mi mathvariant="normal">P</mi><mi mathvariant="normal">D</mi></mrow><mo>=</mo><mo stretchy="false">(</mo><msub><mi>n</mi><mtext>object</mtext></msub><mo>−</mo><msub><mi>n</mi><mtext>medium</mtext></msub><mo stretchy="false">)</mo><mtext> </mtext><mi>t</mi></mrow><annotation encoding="application/x-tex">\mathrm{OPD} = (n_{\text{object}} - n_{\text{medium}})\, t</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">OPD</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">n</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">object</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">n</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">medium</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span></span></span></span></span></div>
+      <div class="caption">Optical path difference written by a transparent object of thickness t.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">Δ</mi><mi>φ</mi><mo>=</mo><mfrac><mrow><mn>2</mn><mi>π</mi></mrow><mi>λ</mi></mfrac><mtext> </mtext><mrow><mi mathvariant="normal">O</mi><mi mathvariant="normal">P</mi><mi mathvariant="normal">D</mi></mrow></mrow><annotation encoding="application/x-tex">\Delta\varphi = \frac{2\pi}{\lambda}\,\mathrm{OPD}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord">Δ</span><span class="mord mathnormal">φ</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0074em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.0359em;">π</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">OPD</span></span></span></span></span></span></div>
+      <div class="caption">The phase shift that path difference corresponds to, at vacuum wavelength λ.</div>
+    </div>
+
+        <p>The numbers involved are small and stubbornly invisible. A typical cell is
+        perhaps 5&nbsp;µm thick with an index around 1.37 in medium of index 1.33, giving
+        an OPD near 0.2&nbsp;µm — well under half a wavelength of green light. No amount of
+        contrast stretching recovers it from an intensity image, because the intensity
+        image genuinely does not contain it.</p>
+        <p>Every technique for seeing such an object works the same way underneath:
+        interfere the light that passed through it with a reference that did not, so the
+        phase difference becomes a difference in brightness. Two beams of intensity
+        <span class="w">I₁</span> and <span class="w">I₂</span> meeting with a phase
+        difference <span class="w">Δφ</span> give</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>I</mi><mo>=</mo><msub><mi>I</mi><mn>1</mn></msub><mo>+</mo><msub><mi>I</mi><mn>2</mn></msub><mo>+</mo><mn>2</mn><msqrt><mrow><msub><mi>I</mi><mn>1</mn></msub><msub><mi>I</mi><mn>2</mn></msub></mrow></msqrt><mtext> </mtext><mi>cos</mi><mo>⁡</mo><mi mathvariant="normal">Δ</mi><mi>φ</mi></mrow><annotation encoding="application/x-tex">I = I_1 + I_2 + 2\sqrt{I_1 I_2}\,\cos\Delta\varphi</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.24em;vertical-align:-0.2395em;"></span><span class="mord">2</span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.0005em;"><span class="svg-align" style="top:-3.2em;"><span class="pstrut" style="height:3.2em;"></span><span class="mord" style="padding-left:1em;"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-2.9605em;"><span class="pstrut" style="height:3.2em;"></span><span class="hide-tail" style="min-width:1.02em;height:1.28em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.28em" viewBox="0 0 400000 1296" preserveAspectRatio="xMinYMin slice"><path d="M263,681c0.7,0,18,39.7,52,119
+c34,79.3,68.167,158.7,102.5,238c34.3,79.3,51.8,119.3,52.5,120
+c340,-704.7,510.7,-1060.3,512,-1067
+l0 -0
+c4.7,-7.3,11,-11,19,-11
+H40000v40H1012.3
+s-271.3,567,-271.3,567c-38.7,80.7,-84,175,-136,283c-52,108,-89.167,185.3,-111.5,232
+c-22.3,46.7,-33.8,70.3,-34.5,71c-4.7,4.7,-12.3,7,-23,7s-12,-1,-12,-1
+s-109,-253,-109,-253c-72.7,-168,-109.3,-252,-110,-252c-10.7,8,-22,16.7,-34,26
+c-22,17.3,-33.3,26,-34,26s-26,-26,-26,-26s76,-59,76,-59s76,-60,76,-60z
+M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2395em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">cos</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal">φ</span></span></span></span></span></div>
+      <div class="caption">Two-beam interference: the cross term is what carries the phase into intensity.</div>
+    </div>
+
+        <p>Frits Zernike built the first practical instrument on exactly this idea. His
+        phase-contrast microscope splits the light a specimen scatters from the light that
+        passes it undisturbed, retards one against the other by a quarter wave in a ring
+        etched into a glass plate at the back focal plane, and lets them recombine — turning
+        a phase object into a bright-and-dark image without staining or killing it. It won
+        the 1953 Nobel Prize in Physics and remains the reason live-cell microscopy is
+        possible at all<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>The same principle scales far beyond a microscope. Differential interference
+        contrast interferes each point of the specimen with a slightly sheared copy of
+        itself, so the image reports the phase <em>gradient</em>. Quantitative phase imaging
+        recovers the OPD map as a calibrated number per pixel, which for a cell of known
+        index is essentially a dry-mass measurement. And a Mach–Zehnder interferometer with
+        a wind tunnel in one arm turns the density field of a shock wave into countable
+        fringes<sup class="cite">[<a href="#ref-2">2</a>]</sup> — the technique that made compressible flow visible long before
+        computational fluid dynamics.</p>
+        <p>The practical rule in every one of these is the same. A phase object shifted by a
+        whole wavelength is indistinguishable from no object at all, because the wave
+        recombines exactly as it started. Contrast is maximised near half a wave, where the
+        recombination is fully destructive, and that is the condition instruments are
+        designed around.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>The Phase object writes optical path across the beam without bending it. It has
+        no index and no thickness to configure; it is specified directly by the quantity
+        that matters, the peak path difference it adds, and by how that path is distributed
+        across its clear aperture. Four profiles are available:</p>
+        <ul>
+          <li><strong>Central bar</strong> — the middle third of the aperture retarded, the
+          rest untouched. A phase-contrast test object, and the default.</li>
+          <li><strong>Wedge</strong> — path rising linearly from one edge to the other, the
+          classic tilted-plate fringe generator.</li>
+          <li><strong>Step</strong> — half the aperture retarded, half clear.</li>
+          <li><strong>Curved</strong> — quadratic, thickest at the centre and falling to
+          zero at both edges, like a lenslet or a droplet.</li>
+        </ul>
+        <p>Each ray crossing the plate picks up the path its own crossing point calls for,
+        so the phase written across the beam is a real spatial pattern rather than a single
+        number. Recombine that arm against a reference and the pattern becomes intensity —
+        which is the whole reason the element exists. The default is a central bar of
+        0.27&nbsp;µm, half a wave at 532&nbsp;nm: the phase-contrast condition.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>N</mi><mtext>fringes</mtext></msub><mo>=</mo><mfrac><msub><mrow><mi mathvariant="normal">O</mi><mi mathvariant="normal">P</mi><mi mathvariant="normal">D</mi></mrow><mtext>peak</mtext></msub><mi>λ</mi></mfrac><mo>×</mo><mfrac><msub><mi>d</mi><mtext>beam</mtext></msub><msub><mi>d</mi><mtext>aperture</mtext></msub></mfrac></mrow><annotation encoding="application/x-tex">N_{\text{fringes}} = \frac{\mathrm{OPD}_{\text{peak}}}{\lambda}\times\frac{d_{\text{beam}}}{d_{\text{aperture}}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.9694em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">fringes</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord"><span class="mord mathrm">OPD</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">peak</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.3435em;vertical-align:-0.9721em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">aperture</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">beam</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9721em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">What the inspector reports as “Fringes across the beam”: only the illuminated part of the profile is written onto the light.</div>
+    </div>
+
+        <p>Two behaviours surprise people, and both are real optics rather than
+        simplifications.</p>
+        <p><strong>The profile spans the clear aperture, not the beam.</strong> A narrow
+        beam through a wide wedge samples only a short section of the ramp and picks up an
+        almost uniform delay — a piston, not a tilt, and pistons produce no fringes. Match
+        the aperture to the beam and the full profile is written. The inspector's “Fringes
+        across the beam” readout uses the span the trace actually lit, so it reports what
+        the light picks up rather than what the plate could write.</p>
+        <p><strong>Some settings move a port total and some cannot, and the difference is
+        not about strength.</strong> Averaging the two-beam formula across the beam leaves
+        the port at half the light plus a term that swings with the reference arm, and the
+        size of that swing is the length of the mean phasor of the written phase —
+        <span class="w">|⟨e<sup>iΔφ(u)</sup>⟩|</span> over the illuminated aperture. When
+        the phases written across the beam cancel as a phasor, the total is pinned at half
+        the light however the reference is set, and the fringes merely slide sideways
+        underneath an unchanging number.</p>
+        <p>That happens at particular settings rather than for particular profiles. A wedge
+        spanning exactly one whole fringe cancels, and so does one spanning two, or twenty;
+        but the same wedge at <em>half</em> a fringe swings harder than anything else here,
+        between 0.19 and 0.81 of the input. A half-aperture step cancels when its step is
+        exactly half a wave, and swings once it is not. The central bar is asymmetric — a
+        third of the beam against two thirds — so it swings by a third, between 0.67 and
+        0.33, which is why it makes the most legible default. When the current setting
+        genuinely cannot move the total, the readout says <em>total stays put, read the
+        profile</em> rather than leaving the element looking inert.</p>
+        <p>The added path is genuine, not a bookkeeping phase: a pulse crossing the plate
+        arrives later by OPD/c, which a photodetector or autocorrelator downstream will
+        report. And on its own the element is exactly as invisible as its physical
+        counterpart — put a detector straight after it at any setting and the reading is
+        unchanged. It takes a reference arm to reveal it.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is a pure phase screen. It has no absorption and, more
+        significantly, no refraction: a real transparent object with an index step both
+        delays light <em>and</em> bends it, and a strong phase gradient deflects a ray by an
+        angle this element does not apply. The rays leave exactly parallel to how they
+        arrived, carrying only the added path.</p>
+        <p>The profile is one-dimensional across the aperture, matching the tracer's 2D
+        meridional plane — there is no second transverse axis, so a true 2D phase map such
+        as a real cell presents cannot be authored. The four shapes are fixed; arbitrary
+        OPD maps, measured phase data, and the Zernike quarter-wave <em>ring</em> at a back
+        focal plane are not available, so the phase-contrast <em>microscope</em> cannot be
+        reproduced as an instrument even though the physics it exploits is here.</p>
+        <p>The path difference is specified in micrometres and held fixed across
+        wavelength, which correctly makes the resulting phase scale as 1/λ but means the
+        element carries no material dispersion of its own: a real object's index varies with
+        wavelength and its OPD varies with it. Nothing scatters, and there is no partially
+        coherent imaging theory — the fringes come from the tracer's coherent recombination,
+        so the contrast a real instrument loses to finite condenser aperture and source
+        extent is not modelled.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/sample/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-25" y="-3.00" width="50" height="6" fill="#c9e4f5" stroke="none"/></svg>Sample</a><a href="../../wiki/stage/"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -37,-8 L -37,6 L -15,6" fill="none" stroke="#4d565f" stroke-width="4"/><path d="M 37,-8 L 37,6 L 15,6" fill="none" stroke="#4d565f" stroke-width="4"/><rect x="-25" y="-3.00" width="50" height="6" fill="#c9e4f5" fill-opacity="0.75" stroke="none"/></svg>Sample on piezo stage</a><a href="../../wiki/camera/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Camera</a><a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a><a href="../../wiki/delayline/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-15" width="36" height="30" rx="3" fill="#d8d1ec" stroke="#69588f" stroke-width="1.4"/><g  fill="none" stroke="#514171" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M -15,0 H -6 L 4,-7 H 11 L 4,0 L 11,7 H 4 L -6,0"/><path d="M -1,-10 V 10" stroke-dasharray="2 2" opacity="0.65"/></g><text x="0" y="13"  text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="700" fill="#44365f">ΔL</text></svg>Mechanical delay line</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://doi.org/10.1126/science.121.3141.345" target="_blank" rel="noopener">F. Zernike, “How I discovered phase contrast,” Science 121(3141), 345–349 (1955) — the Nobel lecture account of the method</a></li><li id="ref-2"><a href="https://www.sciencedirect.com/book/9780124913516/flow-visualization" target="_blank" rel="noopener">W. Merzkirch, “Flow Visualization,” 2nd ed., Academic Press (1987) — interferometric density measurement in compressible flow</a></li>
+      </ol>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.microscopyu.com/techniques/phase-contrast/introduction-to-phase-contrast-microscopy" target="_blank" rel="noopener">Nikon MicroscopyU — Introduction to Phase Contrast Microscopy</a></li><li><a href="https://www.rp-photonics.com/optical_path_length.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Optical Path Length</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

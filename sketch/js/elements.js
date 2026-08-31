@@ -518,19 +518,24 @@ export function cameraReadingState(reading) {
 // Extra optical path a phase object adds at a given height across its
 // aperture, as a fraction of the configured peak. `u` is the normalized
 // crossing point the tracer already computes for every surface hit.
-// How far the recombined port total swings as the reference arm is moved a
-// half wave, for a beam covering `fringes` of this profile. Sampled rather
-// than solved: the profiles are piecewise and the integral is not worth a
-// closed form for a hint string.
+// How far the recombined port total can swing as the reference arm is moved,
+// for a beam covering `fringes` of this profile.
+//
+// Averaging cos^2((phi(u) + d)/2) over the beam gives 1/2 + (1/2)(C cos d -
+// S sin d), where C and S are the mean cosine and sine of the written phase.
+// That is one sinusoid in the reference phase d, so its full peak-to-peak
+// range is just the length of the mean phasor -- no search over d needed, and
+// no chance of sampling only the reference phases where a given profile
+// happens to be flat.
 function portSwing(profile, fringes) {
-  const SAMPLES = 128;
-  let bright = 0, dark = 0;
+  const SAMPLES = 256;
+  let meanCos = 0, meanSin = 0;
   for (let i = 0; i < SAMPLES; i++) {
     const phase = 2 * Math.PI * fringes * phasePlateOpdFraction(profile, (i + 0.5) / SAMPLES);
-    bright += Math.cos(phase / 2) ** 2;
-    dark += Math.cos((phase + Math.PI) / 2) ** 2;
+    meanCos += Math.cos(phase);
+    meanSin += Math.sin(phase);
   }
-  return Math.abs(bright - dark) / SAMPLES;
+  return Math.hypot(meanCos, meanSin) / SAMPLES;
 }
 
 export function phasePlateOpdFraction(profile, u) {
@@ -3211,12 +3216,12 @@ export const registry = {
           if (fringes < 0.02) return `${count} — too little path to see`;
           // How much the recombined port total can actually move is a
           // different question from how many fringes there are, and it is the
-          // one a user watching a single number is really asking. A profile
-          // that spends equal area bright and dark -- a wedge, a half-aperture
-          // step -- averages back to half the light however the reference arm
-          // is set, so its total never budges no matter how strong it is.
-          // Saying that is the difference between a subtle element and an
-          // element that looks broken.
+          // one a user watching a single number is really asking. When the
+          // phases written across the beam cancel as a phasor -- a wedge
+          // spanning a whole number of fringes, a half-aperture step at half a
+          // wave -- the total sits at half the light however the reference arm
+          // is set, and only the profile carries the pattern. Saying that is
+          // the difference between a subtle element and one that looks broken.
           if (portSwing(params.profile, fringes) < 0.05) {
             return `${count} — total stays put, read the profile`;
           }
@@ -4157,7 +4162,7 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (type === 'metalens') {
     note = 'Focal length follows f(λ) = f₀λ₀/λ. Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
   } else if (type === 'phaseplate') {
-    note = 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. Keep that near half a fringe and the port total swings; push it past one and the fringes average out, leaving the camera profile as the only readout.';
+    note = 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. A wedge near half a fringe swings the port total hardest; at a whole fringe the written phases cancel and the total stops moving while the profile still shows the pattern, which is when the readout says so.';
   } else if (type === 'pmt') {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'eom' && !params.modulate) {

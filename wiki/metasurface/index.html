@@ -56,10 +56,10 @@
     </div>
   </header>
   <div class="wiki-shell">
-
+    
     <nav class="wiki-nav" aria-label="Component wiki index">
       <h2>Components</h2>
-
+      
         <div class="cat">
           <div class="cat-name">Sources</div>
           <ul>
@@ -132,6 +132,12 @@
             <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
           </ul>
         </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul>
+            <li><a href="../../wiki/phaseplate/" class="">Phase object</a></li>
+          </ul>
+        </div>
     </nav>
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#wavefront-shaping">Wavefront Shaping</a> / Metasurface</div>
@@ -152,7 +158,7 @@
       <p class="embed-caption">Click the metasurface to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-
+      
         <p>A metasurface is a flat optic that works by pattern rather than by shape.
         Instead of bending light with a curved glass surface, it carries an array of
         <strong>meta-atoms</strong> — pillars, fins, or slots smaller than the wavelength —
@@ -201,7 +207,7 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-
+        
         <p>The metasurface is drawn as what it is: a patterned layer on a thin transparent
         carrier. It is <strong>transmissive by default</strong>, since that is how these
         optics are almost always used, with a toggle for the reflective case.</p>
@@ -244,15 +250,15 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         and fabrication tolerance are all absent.</p></div>
       </div>
 
-
+      
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
         <a href="../../wiki/slm/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/><line x1="-11" y1="-18" x2="-7" y2="-18" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-13" x2="-7" y2="-13" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-8" x2="-7" y2="-8" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-3" x2="-7" y2="-3" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="2" x2="-7" y2="2" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="7" x2="-7" y2="7" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="12" x2="-7" y2="12" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="17" x2="-7" y2="17" stroke="#4ac0b0" stroke-width="2.5"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">SLM</text></svg>SLM</a><a href="../../wiki/metalens/"><svg viewBox="-15.35 -15.35 30.7 30.7" aria-hidden="true"><rect x="-1.5" y="-6.35" width="3" height="12.7" rx="0.8" fill="#c9edf0" stroke="#247d87" stroke-width="1.2"/><g stroke="#247d87" stroke-width="0.9" stroke-linecap="round"><line x1="-2" y1="-2.839806331424733" x2="2" y2="-2.839806331424733"/><line x1="-2" y1="2.839806331424733" x2="2" y2="2.839806331424733"/><line x1="-2.5" y1="-4.016092628413841" x2="2.5" y2="-4.016092628413841"/><line x1="-2.5" y1="4.016092628413841" x2="2.5" y2="4.016092628413841"/><line x1="-3" y1="-4.918688849683419" x2="3" y2="-4.918688849683419"/><line x1="-3" y1="4.918688849683419" x2="3" y2="4.918688849683419"/><line x1="-3.5" y1="-5.679612662849466" x2="3.5" y2="-5.679612662849466"/><line x1="-3.5" y1="5.679612662849466" x2="3.5" y2="5.679612662849466"/><line x1="-4" y1="-6.35" x2="4" y2="-6.35"/><line x1="-4" y1="6.35" x2="4" y2="6.35"/></g></svg>Metalens</a><a href="../../wiki/dmd/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/><line x1="-11" y1="-14" x2="-7" y2="-18" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-8" x2="-7" y2="-12" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-2" x2="-7" y2="-6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="4" x2="-7" y2="0" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="10" x2="-7" y2="6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="16" x2="-7" y2="12" stroke="#cfd6dd" stroke-width="1.6"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">DMD</text></svg>DMD</a><a href="../../wiki/grating/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg>Diffraction grating</a><a href="../../wiki/beamdump/"><svg viewBox="-19 -19 38 38" aria-hidden="true"><path d="M -10,-11 L 10,-11 L 10,11 L -10,11 Z M -10,-11 L 4,0 L -10,11" fill="#26292e" stroke="#111" stroke-width="1.5"/></svg>Beam dump</a>
       </div>
 
+      
 
-
-
+      
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
         <li><a href="https://www.rp-photonics.com/metasurfaces.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Metasurfaces</a></li><li><a href="https://www.rp-photonics.com/diffractive_optics.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Diffractive Optics</a></li>

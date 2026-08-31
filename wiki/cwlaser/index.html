@@ -132,6 +132,12 @@
             <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
           </ul>
         </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul>
+            <li><a href="../../wiki/phaseplate/" class="">Phase object</a></li>
+          </ul>
+        </div>
     </nav>
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#sources">Sources</a> / CW Laser</div>
@@ -190,6 +196,40 @@
         Above threshold, the pump rate at which round-trip gain first equals round-trip
         loss, the cavity sustains the stable, highly monochromatic, spatially coherent
         beam described above.</p>
+        <h3>Coherence length</h3>
+        <p>No real laser is perfectly monochromatic. The emission occupies a finite
+        linewidth, and the physical meaning of that linewidth is that the optical phase
+        drifts: predict the phase far enough ahead and the prediction stops being right.
+        <em>Coherence length</em> is the distance over which the phase stays predictable —
+        formally the coherence time times the vacuum speed of light<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>It matters because it decides whether an experiment sees fringes. Split a beam,
+        send the halves down two arms and recombine them: the two waves can only interfere
+        if the one arriving from the long arm still remembers the phase of the one from the
+        short arm. Make the arms differ by much more than the coherence length and the
+        fringes vanish, leaving the ports simply to add their powers<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The same
+        constraint sets how deep a hologram can be recorded, and how far apart the two arms
+        of an interferometric sensor may be.</p>
+        <p>Linewidth and coherence length are inversely related, though the exact prefactor
+        depends on the lineshape and is not universal. For the Lorentzian spectrum produced
+        by a random walk of the optical phase, Paschotta gives<sup class="cite">[<a href="#ref-1">1</a>]</sup></p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>L</mi><mtext>coh</mtext></msub><mo>=</mo><mi>c</mi><mtext> </mtext><msub><mi>τ</mi><mtext>coh</mtext></msub><mo>=</mo><mfrac><mi>c</mi><mrow><mi>π</mi><mtext> </mtext><mi mathvariant="normal">Δ</mi><mi>ν</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">L_{\text{coh}} = c\,\tau_{\text{coh}} = \frac{c}{\pi\,\Delta\nu}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">L</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">coh</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord mathnormal">c</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">coh</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.7936em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal" style="margin-right:0.0637em;">ν</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">c</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Lorentzian lineshape: the distance at which the coherence function falls to 1/e, for a FWHM linewidth Δν. The literature often quotes this without the π when only an order of magnitude is wanted.</div>
+    </div>
+
+        <p>The span across real sources is enormous. A stabilised single-frequency
+        solid-state laser at 10&nbsp;kHz linewidth reaches roughly 9.5&nbsp;km; systems
+        built for optical clocks, stabilised below 1&nbsp;Hz, exceed 300 000&nbsp;km. A
+        laser diode is far shorter, limited by phase noise from spontaneous emission in a
+        short, strongly out-coupled resonator. At the opposite extreme, the superluminescent
+        diodes used for optical coherence tomography are made <em>deliberately</em>
+        broadband — tens of nanometres — precisely because a coherence length of a few
+        micrometres is what gives that technique its axial resolution: only light returning
+        from one narrow depth can still interfere with the reference<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>One caution from the same source is worth carrying. The shape and width of a
+        spectrum do not by themselves fully determine coherence: a frequency comb has a
+        broad spectrum and excellent long-range coherence, and no single-number coherence
+        length describes it<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
@@ -198,15 +238,57 @@
         size</em> mode, a fan of 25 parallel rays sampling a finite beam width — this is
         what lets the tracer show a lens actually focusing a beam of nonzero extent,
         rather than a single infinitesimal ray that can never miss an aperture.</p>
-        <p>Its spectrum is monochromatic by construction: one wavelength, no bandwidth
-        control. That is the whole point of the split between the three laser sources —
-        if a bench needs spectral width, it needs the Pulsed Laser or the Supercontinuum
-        laser instead, both of which model where that width comes from. Polarization is
-        set directly as a Stokes vector rather than emerging from a modeled cavity.</p>
+        <p>Its spectrum is monochromatic by construction: the beam carries one wavelength
+        and is drawn and detected as one colour. That is the point of the split between the
+        three laser sources — a bench that needs real spectral <em>width</em>, with distinct
+        wavelengths propagating and dispersing separately, needs the Pulsed Laser or the
+        Supercontinuum laser instead, both of which model where that width comes from.
+        Polarization is set directly as a Stokes vector rather than emerging from a modeled
+        cavity.</p>
+        <p>What the CW Laser does carry is a <strong>coherence length</strong>, and it is
+        the one place a linewidth enters this source. It changes no ray and no colour; it
+        decides how far the two arms of an interferometer may differ before their fringes
+        fade. Fields recombining at a beamsplitter are weighted, pair by pair, by a Gaussian
+        visibility in their path difference.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>V</mi><mo stretchy="false">(</mo><mi mathvariant="normal">Δ</mi><mi>L</mi><mo stretchy="false">)</mo><mo>=</mo><mi>exp</mi><mo>⁡</mo><mtext> ⁣</mtext><mrow><mo fence="true">[</mo><mo>−</mo><mn>4</mn><mi>ln</mi><mo>⁡</mo><mn>2</mn><msup><mrow><mo fence="true">(</mo><mfrac><mrow><mi mathvariant="normal">Δ</mi><mi>L</mi></mrow><msub><mi>l</mi><mi>c</mi></msub></mfrac><mo fence="true">)</mo></mrow><mn>2</mn></msup><mo fence="true">]</mo></mrow></mrow><annotation encoding="application/x-tex">V(\Delta L) = \exp\!\left[-4\ln 2\left(\frac{\Delta L}{l_c}\right)^{2}\right]</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mopen">(</span><span class="mord">Δ</span><span class="mord mathnormal">L</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:3em;vertical-align:-1.25em;"></span><span class="mop">exp</span><span class="mspace" style="margin-right:-0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size4">[</span></span><span class="mord">−</span><span class="mord">4</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">ln</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">(</span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0197em;">l</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0197em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">c</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">Δ</span><span class="mord mathnormal">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">)</span></span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:1.654em;"><span style="top:-3.9029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size4">]</span></span></span></span></span></span></span></div>
+      <div class="caption">Fringe visibility against arm mismatch. The coherence length l_c is the full width at half maximum of this envelope, so ΔL = l_c/2 halves the contrast.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>l</mi><mi>c</mi></msub><mo>=</mo><mfrac><mrow><mn>2</mn><mi>ln</mi><mo>⁡</mo><mn>2</mn></mrow><mi>π</mi></mfrac><mtext> </mtext><mfrac><msup><mi>λ</mi><mn>2</mn></msup><mrow><mi mathvariant="normal">Δ</mi><mi>λ</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">l_c = \frac{2\ln 2}{\pi}\,\frac{\lambda^{2}}{\Delta\lambda}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0197em;">l</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0197em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">c</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.1771em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">π</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">ln</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.4911em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">Δ</span><span class="mord mathnormal">λ</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">The linewidth the inspector reports as implied by a given coherence length — the Gaussian convention standard in optical coherence tomography, where l_c is the axial resolution.</div>
+    </div>
+
+        <p>Zero, the default, means the idealised source: the arms interfere perfectly
+        however far apart they are, which is how every scene behaved before this parameter
+        existed. Give it a finite value and the bench becomes a ruler — sweep the delay line
+        and fringes appear only where the arms match, which is the measurement an
+        interferometer is actually for. The inspector reports the linewidth that coherence
+        length implies, so the two ways of describing the same source stay visible together:
+        50&nbsp;nm at 840&nbsp;nm gives 6.2&nbsp;µm, the familiar axial resolution of a
+        broadband OCT source.</p>
+        <p>Note the convention. This model uses the Gaussian form standard in optical
+        coherence tomography, in which <span class="w">l<sub>c</sub></span> is the
+        <em>full width at half maximum</em> of the visibility envelope. The Lorentzian
+        expression quoted above<sup class="cite">[<a href="#ref-1">1</a>]</sup> is a different definition — the 1/e point of a
+        differently shaped coherence function — and the two disagree by a numerical factor.
+        Neither is more correct; they describe different lineshapes, and this prefactor is
+        exactly the kind of detail that source cautions is not universal.</p>
+        <p>Energy is conserved at every visibility: the self-powers of the recombining
+        fields always add, and only their cross term is scaled by
+        <span class="w">V</span>. The two ports of an interferometer therefore always sum to
+        the input, whether they are fringing hard or have washed out to a flat half
+        each.</p>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>There is no modeled gain medium, cavity round trip, or threshold —
         wavelength, polarization, and power are configured directly as source parameters,
         not derived from first principles. Divergence and M² are not modeled: a collimated
-        beam stays perfectly parallel over any distance.</p></div>
+        beam stays perfectly parallel over any distance.</p>
+        <p>Coherence length is a visibility envelope applied at recombination, not a
+        simulated phase-noise process: the beam carries no actual linewidth, so the source
+        stays exactly one wavelength for colour, dispersion, and every spectral readout, and
+        the implied linewidth is reported rather than propagated. Spatial coherence is not
+        modelled at all — only the temporal kind — and the envelope is Gaussian by
+        assumption, so a lineshape that behaves differently, a frequency comb above all,
+        cannot be represented by this single number.</p></div>
       </div>
 
       
@@ -216,6 +298,10 @@
       </div>
 
       
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/coherence_length.html" target="_blank" rel="noopener">R. Paschotta, “Coherence Length,” RP Photonics Encyclopedia</a></li>
+      </ol>
 
       
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>

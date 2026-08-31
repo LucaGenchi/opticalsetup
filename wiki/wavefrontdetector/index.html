@@ -56,10 +56,10 @@
     </div>
   </header>
   <div class="wiki-shell">
-
+    
     <nav class="wiki-nav" aria-label="Component wiki index">
       <h2>Components</h2>
-
+      
         <div class="cat">
           <div class="cat-name">Sources</div>
           <ul>
@@ -132,6 +132,12 @@
             <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
           </ul>
         </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul>
+            <li><a href="../../wiki/phaseplate/" class="">Phase object</a></li>
+          </ul>
+        </div>
     </nav>
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#detectors">Detectors</a> / Wavefront detector</div>
@@ -152,7 +158,7 @@
       <p class="embed-caption">Click the wavefront detector to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-
+      
         <p>Every other detector on this bench answers <em>how much</em> light arrived, and
         maybe what colour it was. A wavefront sensor answers a different question entirely:
         <strong>what shape</strong> is the light. A beam's wavefront is the surface joining
@@ -241,7 +247,7 @@
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-
+        
         <p>OpticalSetup traces rays, and a ray is by definition perpendicular to the
         wavefront — so ray direction <em>is</em> local wavefront slope, already available
         without any lenslets. The wavefront detector uses that directly: at its sensor face it
@@ -296,19 +302,19 @@ c-10,0,-16.667,5,-20,15z M188 15 H145 v585 v1200 v585 h43z"/></svg></span></span
         declining to answer.</p></div>
       </div>
 
-
+      
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
         <a href="../../wiki/dm/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="8" y="-25" width="4" height="50" fill="#4d565f"/><rect x="4" y="-23" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-16" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-9" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-2" width="4" height="4" fill="#8d98a5"/><rect x="4" y="5" width="4" height="4" fill="#8d98a5"/><rect x="4" y="12" width="4" height="4" fill="#8d98a5"/><rect x="4" y="19" width="4" height="4" fill="#8d98a5"/><path d="M 0,-25 Q 3,-18.75 0,-12.5 Q -3,-6.25 0,0 Q 3,6.25 0,12.5 Q -3,18.75 0,25" fill="none" stroke="#444" stroke-width="2.5"/></svg>Deformable mirror</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/camera/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Camera</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Convex lens</a><a href="../../wiki/metasurface/"><svg viewBox="-25 -25 50 50" aria-hidden="true"><rect x="-1.4" y="-15" width="2.8" height="30" fill="#c9e4f5" stroke="#4a90c4" stroke-width="0.9"/><rect x="-2.9" y="-15" width="1.5" height="30" fill="#f2c230" stroke="#a67c06" stroke-width="0.7"/><line x1="-2.6" y1="-13.80" x2="-1.7" y2="-13.80" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-11.60" x2="-1.7" y2="-11.60" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-9.40" x2="-1.7" y2="-9.40" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-7.20" x2="-1.7" y2="-7.20" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-5.00" x2="-1.7" y2="-5.00" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-2.80" x2="-1.7" y2="-2.80" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-0.60" x2="-1.7" y2="-0.60" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="1.60" x2="-1.7" y2="1.60" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="3.80" x2="-1.7" y2="3.80" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="6.00" x2="-1.7" y2="6.00" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="8.20" x2="-1.7" y2="8.20" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="10.40" x2="-1.7" y2="10.40" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="12.60" x2="-1.7" y2="12.60" stroke="#7a5a04" stroke-width="0.5"/></svg>Metasurface</a>
       </div>
 
-
+      
       <h2 class="section-head real"><span class="sw"></span>References</h2>
       <ol class="reference-list">
         <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Shack%E2%80%93Hartmann_wavefront_sensor" target="_blank" rel="noopener">Shack–Hartmann wavefront sensor — Wikipedia (Hartmann’s 1904 mask, Shack and Platt’s lenslet substitution, insensitivity to wavefront discontinuities, ophthalmic and astronomical use)</a></li><li id="ref-2"><a href="https://www.rp-photonics.com/shack_hartmann_wavefront_sensors.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Shack–Hartmann Wavefront Sensors (lenslet geometry, sensitivity and dynamic-range limits)</a></li><li id="ref-3"><a href="https://doi.org/10.1038/s41377-024-01528-9" target="_blank" rel="noopener">Go et al., “Meta Shack–Hartmann wavefront sensor with large sampling density and large angular field of view,” Light: Science &amp; Applications 13, 187 (2024)</a></li><li id="ref-4"><a href="https://www.axiomoptics.com/application/wavefront-sensing-aaplications/" target="_blank" rel="noopener">Axiom Optics — Wavefront sensing applications (optical testing, beam diagnostics and M², adaptive optics, real-time alignment)</a></li>
       </ol>
 
-
+      
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
         <li><a href="https://www.rp-photonics.com/adaptive_optics.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Adaptive Optics</a></li><li><a href="https://www.rp-photonics.com/wavefronts.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Wavefronts</a></li>

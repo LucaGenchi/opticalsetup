@@ -237,26 +237,73 @@ test('the readout says so when the fringes are too fine to move the total', () =
   assert.match(spec.readout({ ...el.params, opdUm: 5 }, el), /if the beam fills the aperture/);
 });
 
-test('the readout warns about the profiles whose total genuinely cannot move', () => {
+test('the readout warns exactly when the total genuinely cannot move', () => {
   const spec = registry.phaseplate.params.find(p => p.key === 'phaseFringes');
   const scene = parseSketch(MZ);
   const plate = createElement('phaseplate', 520, 200);
   scene.elements.push(plate);
-  const say = params => {
+  const delay = scene.elements.find(el => el.type === 'delayline');
+  const camera = scene.elements.filter(el => el.type === 'camera')[0];
+
+  // Sweep the reference arm a whole wave and watch how far the port actually
+  // travels. Whatever the hint claims has to agree with that -- checking the
+  // wording against a hand-listed set of profiles just re-asserts whatever the
+  // formula already believes.
+  const check = params => {
     Object.assign(plate.params, params);
+    let lowest = Infinity, highest = -Infinity;
+    for (let step = 0; step < 32; step++) {
+      delay.params.delayMm = step * 532e-6 / 32;
+      traceAll(scene.elements);
+      const value = detectorReading(camera.id).signal;
+      lowest = Math.min(lowest, value);
+      highest = Math.max(highest, value);
+    }
+    delay.params.delayMm = 0;
     traceAll(scene.elements);
-    return spec.readout(plate.params, plate);
+    return { swing: highest - lowest, says: spec.readout(plate.params, plate) };
   };
-  // A wedge and a half-aperture step spend equal area bright and dark, so
-  // their port total sits at half the light whatever the reference arm does.
-  assert.match(say({ profile: 'ramp', opdUm: 0.27 }), /total stays put/);
-  assert.match(say({ profile: 'step', opdUm: 0.27 }), /total stays put/);
-  // The default asymmetric bar does move it, and says nothing alarming.
-  assert.doesNotMatch(say({ profile: 'bar', opdUm: 0.27 }), /stays put/);
-  // A wedge steep enough to write many fringes averages out just the same.
-  assert.match(say({ profile: 'ramp', opdUm: 8 }), /total stays put/);
-  // A bar is a single phase step, not a spatial fringe pattern, so a whole
-  // number of waves wraps back to no step at all rather than washing out --
-  // the plate becomes invisible again and the port swings fully.
-  assert.doesNotMatch(say({ profile: 'bar', opdUm: 0.532 }), /stays put/);
+
+  for (const params of [
+    { profile: 'ramp', opdUm: 0.27 },    // half a fringe: swings hardest of all
+    { profile: 'ramp', opdUm: 0.532 },   // one whole fringe: cancels exactly
+    { profile: 'ramp', opdUm: 1.064 },   // two fringes: cancels again
+    { profile: 'ramp', opdUm: 8 },       // many fringes: averaged away
+    { profile: 'step', opdUm: 0.266 },   // half a wave across half the beam
+    { profile: 'step', opdUm: 0.4 },     // the same step off half a wave DOES move
+    { profile: 'bar', opdUm: 0.266 },
+    { profile: 'bar', opdUm: 0.532 },
+    { profile: 'bump', opdUm: 0.27 },
+  ]) {
+    const { swing, says } = check(params);
+    const warned = /stays put/.test(says);
+    const label = `${params.profile} ${params.opdUm} µm (measured swing ${swing.toFixed(4)})`;
+    if (warned) assert.ok(swing < 0.1, `${label} was called immovable but moves`);
+    else assert.ok(swing > 0.1, `${label} promised movement it does not have`);
+  }
 });
+
+// The trap the first implementation fell into: comparing only the two
+// reference phases 0 and pi. Those are the extremes for a central bar, and
+// they are exactly where a wedge is flat -- so a wedge that swings across
+// two thirds of full scale measured as motionless.
+test('the swing hint is not fooled by a profile whose extremes sit off 0 and pi', () => {
+  const spec = registry.phaseplate.params.find(p => p.key === 'phaseFringes');
+  const scene = parseSketch(MZ);
+  const plate = createElement('phaseplate', 520, 200);
+  Object.assign(plate.params, { profile: 'ramp', opdUm: 0.27 });
+  scene.elements.push(plate);
+  const delay = scene.elements.find(el => el.type === 'delayline');
+  const camera = scene.elements.filter(el => el.type === 'camera')[0];
+  const at = delayMm => {
+    delay.params.delayMm = delayMm;
+    traceAll(scene.elements);
+    return detectorReading(camera.id).signal;
+  };
+  // Sampled at 0 and half a wave this wedge looks perfectly still...
+  assert.ok(Math.abs(at(0) - at(532e-6 / 2)) < 0.05);
+  // ...while a quarter wave away it has moved most of the way across.
+  assert.ok(Math.abs(at(532e-6 / 4) - at(0)) > 0.25);
+  assert.doesNotMatch(spec.readout(plate.params, plate), /stays put/);
+});
+
