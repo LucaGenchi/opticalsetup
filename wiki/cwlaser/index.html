@@ -210,8 +210,8 @@
         constraint sets how deep a hologram can be recorded, and how far apart the two arms
         of an interferometric sensor may be.</p>
         <p>Linewidth and coherence length are inversely related, though the exact prefactor
-        depends on the lineshape and is not universal. For the Lorentzian spectrum produced
-        by a random walk of the optical phase, Paschotta gives<sup class="cite">[<a href="#ref-1">1</a>]</sup></p>
+        depends on the lineshape and is not universal<sup class="cite">[<a href="#ref-1">1</a>,<a href="#ref-2">2</a>]</sup>. For the Lorentzian spectrum produced
+        by a random walk of the optical phase, the expression is<sup class="cite">[<a href="#ref-1">1</a>]</sup></p>
 <div class="formula">
       <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>L</mi><mtext>coh</mtext></msub><mo>=</mo><mi>c</mi><mtext> </mtext><msub><mi>τ</mi><mtext>coh</mtext></msub><mo>=</mo><mfrac><mi>c</mi><mrow><mi>π</mi><mtext> </mtext><mi mathvariant="normal">Δ</mi><mi>ν</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">L_{\text{coh}} = c\,\tau_{\text{coh}} = \frac{c}{\pi\,\Delta\nu}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">L</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">coh</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord mathnormal">c</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">coh</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.7936em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal" style="margin-right:0.0637em;">ν</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">c</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
       <div class="caption">Lorentzian lineshape: the distance at which the coherence function falls to 1/e, for a FWHM linewidth Δν. The literature often quotes this without the π when only an order of magnitude is wanted.</div>
@@ -226,10 +226,12 @@
         broadband — tens of nanometres — precisely because a coherence length of a few
         micrometres is what gives that technique its axial resolution: only light returning
         from one narrow depth can still interfere with the reference<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
-        <p>One caution from the same source is worth carrying. The shape and width of a
-        spectrum do not by themselves fully determine coherence: a frequency comb has a
-        broad spectrum and excellent long-range coherence, and no single-number coherence
-        length describes it<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>Two cautions are worth carrying. The shape and width of a spectrum do not by
+        themselves fully determine coherence: a frequency comb has a broad spectrum and
+        excellent long-range coherence, and no single-number coherence length describes
+        it<sup class="cite">[<a href="#ref-1">1</a>]</sup>. And “coherence length” is not one quantity but a family of them —
+        several inequivalent definitions are in use, and which is meant matters as soon as
+        a real source departs from an idealised lineshape<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
@@ -271,8 +273,9 @@
         <em>full width at half maximum</em> of the visibility envelope. The Lorentzian
         expression quoted above<sup class="cite">[<a href="#ref-1">1</a>]</sup> is a different definition — the 1/e point of a
         differently shaped coherence function — and the two disagree by a numerical factor.
-        Neither is more correct; they describe different lineshapes, and this prefactor is
-        exactly the kind of detail that source cautions is not universal.</p>
+        Neither is more correct: they describe different lineshapes under different
+        conventions, and real source spectra are non-Gaussian often enough that the choice
+        of definition is itself a documented source of disagreement<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
         <p>Energy is conserved at every visibility: the self-powers of the recombining
         fields always add, and only their cross term is scaled by
         <span class="w">V</span>. The two ports of an interferometer therefore always sum to
@@ -300,7 +303,7 @@
       
       <h2 class="section-head real"><span class="sw"></span>References</h2>
       <ol class="reference-list">
-        <li id="ref-1"><a href="https://www.rp-photonics.com/coherence_length.html" target="_blank" rel="noopener">R. Paschotta, “Coherence Length,” RP Photonics Encyclopedia</a></li>
+        <li id="ref-1"><a href="https://www.rp-photonics.com/coherence_length.html" target="_blank" rel="noopener">“Coherence Length,” RP Photonics Encyclopedia</a></li><li id="ref-2"><a href="https://doi.org/10.1364/AO.41.005256" target="_blank" rel="noopener">C. Akcay, P. Parrein and J. P. Rolland, “Estimation of longitudinal resolution in optical coherence imaging,” Applied Optics 41(25), 5256–5262 (2002) — compares several definitions of coherence length and the limits of the Gaussian assumption for real source spectra</a></li>
       </ol>
 
       

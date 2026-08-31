@@ -402,7 +402,7 @@ export const exampleEntries = [
     citations: [
       { label: 'Wikipedia — Mach–Zehnder interferometer (history and applications)', url: 'https://en.wikipedia.org/wiki/Mach%E2%80%93Zehnder_interferometer' },
       { label: 'RP Photonics Encyclopedia — Interferometers (Mach–Zehnder section)', url: 'https://www.rp-photonics.com/interferometers.html' },
-      { label: 'R. Paschotta, “Coherence Length,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/coherence_length.html' },
+      { label: '“Coherence Length,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/coherence_length.html' },
     ],
     resources: [],
     related: ['bs', 'mirror', 'camera', 'delayline', 'phaseplate', 'cwlaser'],

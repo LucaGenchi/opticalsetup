@@ -95,8 +95,8 @@ export const wikiEntries = [
         constraint sets how deep a hologram can be recorded, and how far apart the two arms
         of an interferometric sensor may be.</p>
         <p>Linewidth and coherence length are inversely related, though the exact prefactor
-        depends on the lineshape and is not universal. For the Lorentzian spectrum produced
-        by a random walk of the optical phase, Paschotta gives${cite(1)}</p>`,
+        depends on the lineshape and is not universal${cite(1, 2)}. For the Lorentzian spectrum produced
+        by a random walk of the optical phase, the expression is${cite(1)}</p>`,
       formulas2: [
         { tex: 'L_{\\text{coh}} = c\\,\\tau_{\\text{coh}} = \\frac{c}{\\pi\\,\\Delta\\nu}', caption: 'Lorentzian lineshape: the distance at which the coherence function falls to 1/e, for a FWHM linewidth Δν. The literature often quotes this without the π when only an order of magnitude is wanted.' },
       ],
@@ -110,10 +110,12 @@ export const wikiEntries = [
         broadband — tens of nanometres — precisely because a coherence length of a few
         micrometres is what gives that technique its axial resolution: only light returning
         from one narrow depth can still interfere with the reference${cite(1)}.</p>
-        <p>One caution from the same source is worth carrying. The shape and width of a
-        spectrum do not by themselves fully determine coherence: a frequency comb has a
-        broad spectrum and excellent long-range coherence, and no single-number coherence
-        length describes it${cite(1)}.</p>`,
+        <p>Two cautions are worth carrying. The shape and width of a spectrum do not by
+        themselves fully determine coherence: a frequency comb has a broad spectrum and
+        excellent long-range coherence, and no single-number coherence length describes
+        it${cite(1)}. And “coherence length” is not one quantity but a family of them —
+        several inequivalent definitions are in use, and which is meant matters as soon as
+        a real source departs from an idealised lineshape${cite(2)}.</p>`,
     },
     inOpticalSetup: {
       html: `
@@ -151,8 +153,9 @@ export const wikiEntries = [
         <em>full width at half maximum</em> of the visibility envelope. The Lorentzian
         expression quoted above${cite(1)} is a different definition — the 1/e point of a
         differently shaped coherence function — and the two disagree by a numerical factor.
-        Neither is more correct; they describe different lineshapes, and this prefactor is
-        exactly the kind of detail that source cautions is not universal.</p>
+        Neither is more correct: they describe different lineshapes under different
+        conventions, and real source spectra are non-Gaussian often enough that the choice
+        of definition is itself a documented source of disagreement${cite(2)}.</p>
         <p>Energy is conserved at every visibility: the self-powers of the recombining
         fields always add, and only their cross term is scaled by
         <span class="w">V</span>. The two ports of an interferometer therefore always sum to
@@ -172,7 +175,8 @@ export const wikiEntries = [
     },
     related: ['pulsedlaser', 'sclaser', 'pointsource', 'mirror'],
     citations: [
-      { label: 'R. Paschotta, “Coherence Length,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/coherence_length.html' },
+      { label: '“Coherence Length,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/coherence_length.html' },
+      { label: 'C. Akcay, P. Parrein and J. P. Rolland, “Estimation of longitudinal resolution in optical coherence imaging,” Applied Optics 41(25), 5256–5262 (2002) — compares several definitions of coherence length and the limits of the Gaussian assumption for real source spectra', url: 'https://doi.org/10.1364/AO.41.005256' },
     ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Lasers', url: 'https://www.rp-photonics.com/lasers.html' },
