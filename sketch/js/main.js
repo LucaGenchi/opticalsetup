@@ -366,6 +366,30 @@ const demoScenes = {
       mkDemo('display', 540, 310, 0, { sensorId: diverging.id, displayScale: 0.45 }),
     ];
   },
+  // The same elliptical state read two ways: straight off the instrument on
+  // top, and on the bottom the measurement it stands in for -- an analyzer at
+  // 45 deg onto a plain photodetector, which is one of the four intensities
+  // the classical method needs. I(45 deg) = 0.75 here, and 2I - S0 gives back
+  // the S2 = 0.5 the polarimeter reports directly.
+  polarimeter: () => {
+    const meter = mkDemo('polarimeter', 330, 80, 0, { aperture: 34 });
+    const photodiode = mkDemo('detector', 390, 250, 0, { aperture: 34 });
+    return [
+      mkDemo('cwlaser', 40, 80, 0, { beamMode: 'beam', beamWidth: 12, pol: 0 },
+        { label: 'linear 0°', showLabel: true, labelPos: 'b' }),
+      mkDemo('qwp', 200, 80, 0, { a: 22.5 },
+        { label: 'quarter-wave plate at 22.5° — now elliptical', showLabel: true, labelPos: 't' }),
+      meter,
+      mkDemo('display', 520, 80, 0, { sensorId: meter.id, displayScale: 0.5 }),
+
+      mkDemo('cwlaser', 40, 250, 0, { beamMode: 'beam', beamWidth: 12, pol: 0 }),
+      mkDemo('qwp', 200, 250, 0, { a: 22.5 }),
+      mkDemo('polarizer', 295, 250, 0, { pangle: 45 },
+        { label: 'analyzer at 45° — one of the four classical intensities', showLabel: true, labelPos: 'b' }),
+      photodiode,
+      mkDemo('display', 520, 250, 0, { sensorId: photodiode.id, displayScale: 0.5 }),
+    ];
+  },
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {

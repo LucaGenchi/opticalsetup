@@ -134,23 +134,41 @@ function formulaBlock(f) {
     </div>`;
 }
 
-// Both prose sections read top to bottom as html -> formulas -> html2 ->
-// formulas2 -> html3, so a formula can sit right in the paragraph that
-// explains it rather than clustering every formula immediately after the
-// opening paragraph regardless of which later section it belongs to. Most
-// entries use only html/formulas; html2 is common for a second topic;
-// html3/formulas2 cover the rarer case of a formula that belongs deeper in,
-// next to its own paragraph. Filtering out unset parts (rather than always
-// interpolating all five on their own template line) keeps every other
-// entry's build free of dangling blank lines.
-function proseSectionHTML(section) {
-  return [
-    section.html,
-    (section.formulas || []).map(formulaBlock).join(''),
-    section.html2,
-    (section.formulas2 || []).map(formulaBlock).join(''),
-    section.html3,
-  ].filter(Boolean).join('\n');
+// Both prose sections read top to bottom as an alternating sequence:
+// html, formulas, html2, formulas2, html3, formulas3, ... so a formula can
+// sit in the paragraph that explains it rather than clustering every formula
+// immediately after the opening paragraph. Most entries use only
+// html/formulas; longer ones (the polarimeter walks through two published
+// measurement methods) run several blocks deep.
+const PROSE_DEPTH = 8;
+
+function proseKeysUpTo(depth) {
+  const keys = [];
+  for (let index = 1; index <= depth; index += 1) {
+    keys.push(index === 1 ? 'html' : `html${index}`);
+    keys.push(index === 1 ? 'formulas' : `formulas${index}`);
+  }
+  return keys;
+}
+
+function proseSectionHTML(section, label) {
+  // A key that does not fit the sequence would otherwise be dropped in
+  // silence -- an entry sets html4, the prose never appears on the page, and
+  // nothing says so. That has happened twice; fail the build instead.
+  const known = new Set([...proseKeysUpTo(PROSE_DEPTH), 'limitations']);
+  const stray = Object.keys(section).filter(key => !known.has(key));
+  if (stray.length) {
+    throw new Error(`${label}: unrecognized content key(s) ${stray.join(', ')} would not be rendered. `
+      + `Use the html/formulas/html2/formulas2/... sequence (up to ${PROSE_DEPTH} blocks).`);
+  }
+  const parts = [];
+  for (let index = 1; index <= PROSE_DEPTH; index += 1) {
+    const html = section[index === 1 ? 'html' : `html${index}`];
+    if (html) parts.push(html);
+    const formulas = section[index === 1 ? 'formulas' : `formulas${index}`];
+    if (formulas && formulas.length) parts.push(formulas.map(formulaBlock).join(''));
+  }
+  return parts.join('\n');
 }
 
 function pageHTML(entry, entries) {
@@ -199,11 +217,11 @@ ${header(base)}
       <p class="embed-caption">Click the ${esc(entry.title).toLowerCase()} to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-      ${proseSectionHTML(entry.realWorld)}
+      ${proseSectionHTML(entry.realWorld, `${entry.type} realWorld`)}
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        ${proseSectionHTML(entry.inOpticalSetup)}
+        ${proseSectionHTML(entry.inOpticalSetup, `${entry.type} inOpticalSetup`)}
         ${entry.inOpticalSetup.limitations ? `<div class="limitations"><span class="lbl">Simplified vs. reality</span>${entry.inOpticalSetup.limitations}</div>` : ''}
       </div>
 

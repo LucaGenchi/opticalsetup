@@ -388,14 +388,22 @@ export function detectorReading(elementId) {
   const stokesHits = activeHits.filter(h => h.stokes);
   const numericPol = activeHits.filter(h => typeof h.pol === 'number').map(h => h.pol);
   let polarization = 'Unpolarized';
+  // The power-weighted mean of every arriving hit's Stokes vector. This is
+  // the incoherent sum the Stokes formalism is built for: two equally strong
+  // orthogonal beams average to the origin of the Poincare sphere and are
+  // genuinely unpolarized, which is a state a single ray cannot represent.
+  // Exposed rather than kept local because the polarimeter needs the vector
+  // itself, not just the sentence describing it -- deriving them separately
+  // let the label and the numbers disagree on one reading.
+  let normalizedStokes = null;
   if (stokesHits.length === activeHits.length) {
     const sw = stokesHits.reduce((sum, h) => sum + Math.max(0, h.power), 0);
-    const mixed = {
+    normalizedStokes = {
       s1: stokesHits.reduce((sum, h) => sum + h.stokes.s1 * h.power, 0) / sw,
       s2: stokesHits.reduce((sum, h) => sum + h.stokes.s2 * h.power, 0) / sw,
       s3: stokesHits.reduce((sum, h) => sum + h.stokes.s3 * h.power, 0) / sw,
     };
-    polarization = polarizationDescription(mixed);
+    polarization = polarizationDescription(normalizedStokes);
   } else if (activeHits.every(h => h.pol === 'c')) polarization = 'Circular';
   else if (numericPol.length === activeHits.length) {
     const lo = Math.min(...numericPol), hi = Math.max(...numericPol);
@@ -472,6 +480,7 @@ export function detectorReading(elementId) {
     bandMin,
     bandMax,
     polarization,
+    normalizedStokes,
     spotSpan,
     color: mixedWavelengthColor(activeHits),
     spectrum: detectorSpectrum(activeHits),

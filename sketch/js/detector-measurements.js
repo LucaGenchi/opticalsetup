@@ -65,23 +65,19 @@ function stokesFallback(description) {
   return { s1: 0, s2: 0, s3: 0 };
 }
 
+// The tracer already power-weights every arriving hit's Stokes vector into
+// one normalized vector, so use that rather than re-deriving it here.
+//
+// This used to probe 21 points across the sensor face instead, which was
+// wrong in two ways whenever more than one beam arrived. probeAt() returns
+// the nearest single beam at a point, never a mixture, so two overlapping
+// counter-polarized beams reported the pure state of whichever one the probe
+// happened to find -- DoP 1.0 for light that is genuinely unpolarized. And
+// because the label came from the tracer's mix while the numbers came from
+// the probes, one reading could say "Unpolarized" beside a reported DoP of
+// 0.67. Both now come from the same vector, so they cannot disagree.
 function sampleStokes(sensor, reading) {
-  const aperture = sensorAperture(sensor), face = sensorFaceX(sensor) - 1.5;
-  let weight = 0, s1 = 0, s2 = 0, s3 = 0;
-  for (let index = 0; index < 21; index++) {
-    const y = -aperture / 2 + aperture * index / 20;
-    const point = toWorld(sensor, face, y);
-    const probe = probeAt(point.x, point.y, Math.max(1.2, aperture / 32));
-    if (!probe?.stokes) continue;
-    const w = Math.max(0.000001, Number.isFinite(probe.intensity) ? probe.intensity : 1);
-    weight += w;
-    s1 += probe.stokes.s1 * w;
-    s2 += probe.stokes.s2 * w;
-    s3 += probe.stokes.s3 * w;
-  }
-  const normalized = weight > 0
-    ? { s1: s1 / weight, s2: s2 / weight, s3: s3 / weight }
-    : stokesFallback(reading.polarization);
+  const normalized = reading.normalizedStokes || stokesFallback(reading.polarization);
   return {
     normalized: {
       ...normalized,

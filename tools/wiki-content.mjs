@@ -3070,6 +3070,149 @@ export const wikiEntries = [
   },
 
   {
+    type: 'polarimeter',
+    title: 'Polarimeter',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>Polarization is the direction the electric field oscillates in as light
+        travels. Describing it fully means describing an <strong>ellipse</strong> — the
+        figure the field vector traces out in the plane transverse to propagation — with its
+        orientation, its ellipticity, and its handedness. The trouble is that this ellipse is
+        an amplitude description, and amplitude is not something a detector can see. Detectors
+        respond to intensity, so the ellipse "can neither be observed nor
+        measured"${cite(1)} directly.</p>
+        <p>George Gabriel Stokes solved this in 1852 by describing the polarization state
+        with four quantities that are all <em>intensities</em>, and so all measurable. The
+        <strong>Stokes parameters</strong> are, in the modern convention:</p>`,
+      formulas: [
+        { tex: '\\begin{aligned} S_0 &= I_{0°} + I_{90°} &&\\text{total intensity} \\\\ S_1 &= I_{0°} - I_{90°} &&\\text{horizontal vs. vertical} \\\\ S_2 &= I_{45°} - I_{135°} &&\\text{diagonal vs. anti-diagonal} \\\\ S_3 &= I_{\\text{RCP}} - I_{\\text{LCP}} &&\\text{right vs. left circular} \\end{aligned}', caption: 'Each parameter is a difference of two intensities through opposite analyzers, which is exactly why the set is measurable when the polarization ellipse is not. S₀ is the total power; the other three say how it is distributed between each pair of opposite states.' },
+      ],
+      html2: `
+        <p>Dividing the last three by <span class="w">S₀</span> gives normalized parameters
+        <span class="w">s₁, s₂, s₃</span>, each between −1 and +1, and these are the Cartesian
+        coordinates of a point on or inside the <strong>Poincaré sphere</strong>. The equator
+        holds every linear state, the poles the two circular ones, and everything between is
+        elliptical. A lossless waveplate does not change how polarized the light is, only
+        which state it is in, so it moves the point around the surface — which is why the
+        sphere is such a natural way to think about retarders.</p>
+        <p>The radius of that point is the <strong>degree of polarization</strong>:</p>`,
+      formulas2: [
+        { tex: 'P = \\frac{\\sqrt{S_1^{\\,2} + S_2^{\\,2} + S_3^{\\,2}}}{S_0}, \\qquad 0 \\le P \\le 1', caption: 'P = 1 is fully polarized (a point on the surface), P = 0 is unpolarized (the centre), and anything between is partially polarized. Crucially, S₁² + S₂² + S₃² < S₀² is possible — a fact no single polarization ellipse can express.' },
+      ],
+      html3: `
+        <p>That last point is what makes the Stokes description more than a change of
+        notation. Unpolarized light is not one state; it is an <em>incoherent mixture</em> of
+        states, and mixtures add as Stokes vectors. Two equally strong orthogonal beams
+        superposed give <span class="w">S₁ = S₂ = S₃ = 0</span> with
+        <span class="w">S₀</span> unchanged: the sphere's centre, genuinely unpolarized. No
+        single ellipse can represent that, which is why real sources — sunlight, a lamp, an
+        LED — need the Stokes formalism and not the ellipse.</p>
+
+        <h3>Measuring the four parameters</h3>
+        <p>A polarimeter is whatever apparatus turns the four definitions above into four
+        numbers. The <strong>classical method</strong> follows them almost literally: send the
+        beam through a rotatable linear polarizer onto a power meter and record the
+        transmitted intensity at a few analyzer angles. With the analyzer at
+        <span class="w">θ</span> and an optional waveplate of retardance
+        <span class="w">φ</span> in front of it, the transmitted intensity
+        is${cite(1)}</p>`,
+      formulas3: [
+        { tex: 'I(\\theta, \\varphi) = \\tfrac{1}{2}\\left(S_0 + S_1\\cos 2\\theta + S_2 \\sin 2\\theta \\cos\\varphi - S_3 \\sin 2\\theta \\sin\\varphi \\right)', caption: 'Three measurements with no waveplate (θ = 0°, 45°, 90°) give S₀, S₁ and S₂; a fourth with a quarter-wave plate inserted (φ = 90°) at θ = 45° gives S₃, since S₃ = S₀ − 2I(45°, 90°).' },
+      ],
+      html4: `
+        <p>It works, but Schaefer and colleagues list its weaknesses plainly${cite(1)}: the
+        analyzer has to be aligned accurately at each angle, the waveplate has to be inserted
+        and aligned for the last reading, inserting it absorbs light and so changes the very
+        equations being used, and only four data points are taken — so a single bad reading
+        has nothing to average against.</p>
+        <p>The <strong>rotating quarter-wave plate method</strong> fixes all four at once. Put
+        the waveplate <em>first</em> and rotate it through an angle
+        <span class="w">θ</span>, keep the analyzer fixed, and record intensity continuously.
+        Nothing is inserted or removed mid-measurement, only one element moves, and the
+        transmitted intensity becomes a truncated Fourier series${cite(1)}:</p>`,
+      formulas4: [
+        { tex: 'I(\\theta) = \\tfrac{1}{2}\\left(A + B\\sin 2\\theta + C\\cos 4\\theta + D\\sin 4\\theta\\right), \\qquad \\begin{aligned} S_0 &= A - C & S_1 &= 2C \\\\ S_2 &= 2D & S_3 &= B \\end{aligned}', caption: 'All four parameters fall out of the harmonic content of one continuous scan. Because the highest term is the fourth harmonic, Nyquist requires at least eight samples per rotation — and in practice many more are taken and least-squares fitted, so every point improves the result instead of one point being decisive.' },
+      ],
+      html5: `
+        <p>Thorlabs have a short build video that walks through both methods on a real bench,
+        with a polarizer, a quarter-wave plate and a power meter, and shows the actual mounts
+        and the data reduction${cite(2)} — a good companion to the algebra above if you intend
+        to assemble one.</p>
+        <p>Commercial polarimeters mostly avoid moving parts altogether: a division-of-amplitude
+        instrument splits the beam into four paths with fixed analyzers and reads all four
+        detectors at once, and rotating-waveplate designs are still common where speed matters
+        less than cost. Polarimetry underpins fiber and telecom monitoring, stress birefringence
+        measurement in glass and plastics, ellipsometry for thin-film thickness, remote sensing,
+        and polarization-resolved microscopy of ordered biological structure such as collagen.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Every ray in OpticalSetup carries a normalized Stokes vector, and the polarization
+        elements transform it exactly as the Poincaré-sphere picture says they should. A
+        <a href="../polarizer/">polarizer</a> projects onto its axis by Malus's law in Stokes
+        form, and a <a href="../qwp/">waveplate</a> rotates the vector about the axis set by
+        its own fast axis, through an angle equal to its retardance. Prepared states land
+        where they should: a linear source reads
+        <span class="w">(1, 0, 0)</span>, the same beam through a quarter-wave plate at 45°
+        reads <span class="w">(0, 0, −1)</span> — circular — and at 22.5° reads
+        <span class="w">(0.5, 0.5, −0.707)</span>, still fully polarized.</p>
+        <p>The polarimeter reports <span class="w">S₀</span> as the arriving intensity,
+        the three normalized components scaled to it, the degree of polarization, and a plain
+        description of the state. It gets those from the power-weighted mean of every ray
+        landing on its face — which means <strong>partially polarized and unpolarized light
+        are representable</strong>, even though no individual ray can be either. Two equally
+        strong counter-polarized beams on one face average to the centre of the sphere and are
+        correctly reported as unpolarized, with <span class="w">S₀</span> undiminished.</p>
+
+        <h3>The instrument is a shortcut, not a separate physics</h3>
+        <p>This element does not measure anything: it reads out a vector the tracer has been
+        carrying all along. The measurement it stands in for can nevertheless be performed
+        properly on the bench, out of ordinary parts, because the polarizer really does
+        implement <span class="w">I = ½(S₀ + S₁cos2θ + S₂sin2θ)</span> — the same equation the
+        classical method inverts.</p>
+        <p>Both published methods have been checked against it. Building the classical
+        four-intensity measurement out of a polarizer, a quarter-wave plate and a plain
+        <a href="../detector/">photodetector</a>, then applying
+        <span class="w">S₀ = I(0°)+I(90°)</span> and the rest, recovers the polarimeter's own
+        numbers to better than one part in 10¹⁵. So does the rotating-waveplate method:
+        sixteen intensities through a rotating quarter-wave plate and a fixed analyzer,
+        Fourier-analyzed into <span class="w">A, B, C, D</span>, give back the same Stokes
+        vector. Both are locked in as regression tests, so the shortcut and the honest
+        measurement cannot drift apart.</p>`,
+      limitations: `<p>Waveplates here are perfectly achromatic: a quarter-wave plate applies
+        exactly 90° of retardance at 405&nbsp;nm and at 1550&nbsp;nm alike. A real waveplate is
+        quarter-wave only near its design wavelength, with retardance scaling roughly as
+        1/λ, so a genuine polarimeter's calibration is wavelength-specific and this one's is
+        not. Polarizers are ideal too — perfect extinction on one axis, no leakage, no
+        wavelength dependence, and no insertion loss beyond the projection itself, so the
+        "inserting the waveplate absorbs light" problem that motivates the rotating method
+        cannot be reproduced here.</p>
+        <p>Nothing depolarizes. Scattering, stress birefringence, thermal effects and
+        multimode fiber all scramble polarization in reality; here the only route to a
+        partially polarized reading is incoherently mixing distinct beams on one detector
+        face. There is no Mueller-matrix generality either: elements apply their specific
+        transformations rather than an arbitrary 4×4 matrix, so diattenuation and
+        depolarization cannot be authored as element properties.</p>
+        <p>The readout itself is noiseless and instantaneous — no detector noise, no analyzer
+        misalignment, no waveplate retardance error, and none of the systematic
+        error budget that dominates real polarimetry. And because the tracer works in a 2D
+        meridional plane, the Stokes vector is carried as an abstract state attached to rays
+        rather than as a field orientation in three dimensions; it is exact within that model,
+        but it is not a full vector-field treatment.</p>`,
+    },
+    related: ['polarizer', 'qwp', 'hwp', 'pbs', 'detector'],
+    citations: [
+      { label: 'B. Schaefer, E. Collett, R. Smyth, D. Barrett and B. Fraher, “Measuring the Stokes polarization parameters,” American Journal of Physics 75(2), 163–168 (2007)', url: 'https://doi.org/10.1119/1.2386162' },
+      { label: 'Thorlabs Insights — “Build a Polarimeter to Find Stokes Values, Polarization State (Viewer Inspired)” (YouTube, 2021): both the classical and rotating-waveplate methods built on a real bench', url: 'https://www.youtube.com/watch?v=pR4r7gMyN5U' },
+    ],
+    resources: [
+      { label: 'Stokes parameters — Wikipedia', url: 'https://en.wikipedia.org/wiki/Stokes_parameters' },
+      { label: 'RP Photonics Encyclopedia — Polarization of Light', url: 'https://www.rp-photonics.com/polarization_of_light.html' },
+    ],
+  },
+
+  {
     type: 'dichroic',
     title: 'Dichroic mirror',
     category: 'Filters & Splitters',
