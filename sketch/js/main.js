@@ -297,6 +297,32 @@ const demoScenes = {
       fontSize: 13,
     }),
   ],
+  // A real fluorescence detection chain, because that is what the tube is
+  // for: focus the excitation into a slide, block it after the specimen, and
+  // let the PMT amplify what little fluorescence the collection lens picked
+  // up. The signal reaching the photocathode is ~2e-3 of relative weight --
+  // faint enough that a plain photodetector would report it as 0.00.
+  pmt: () => {
+    const tube = mkDemo('pmt', 440, 150, 0, { aperture: 40, gain: 1e5, saturation: 1e6, darkInput: 1e-6 });
+    return [
+      mkDemo('cwlaser', 40, 150, 0, { wavelength: 488, beamMode: 'beam', beamWidth: 12 },
+        { label: '488 nm excitation', showLabel: true, labelPos: 't' }),
+      mkDemo('lens', 150, 150, 0, { f: 60, dia: 25 }, { label: 'focus into the slide', showLabel: true, labelPos: 'b' }),
+      mkDemo('sample', 210, 150, 90, {
+        specimenType: 'linear', transmitExc: true, transmission: 0.9, aperture: 44,
+        channels: [{
+          kind: 'fluor', wl: 520, eff: 0.35, epi: false, epiRatio: 0.15, autoWl: false,
+          autoColor: true, color: '#22c55e', material: 'lipid', fluorophore: 'custom',
+          retardance: 90, axis: 45, transferEff: 0.1, requireOverlap: true,
+        }],
+      }, { label: 'fluorescent slide', showLabel: true, labelPos: 't' }),
+      mkDemo('lens', 285, 150, 0, { f: 55, dia: 50 }, { label: 'collect emission', showLabel: true, labelPos: 'b' }),
+      mkDemo('filter', 345, 150, 0, { ftype: 'longpass', cutoff: 500, length: 50 },
+        { label: 'blocks the excitation', showLabel: true, labelPos: 't' }),
+      tube,
+      mkDemo('display', 440, 272, 0, { sensorId: tube.id, displayScale: 0.55 }),
+    ];
+  },
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {
@@ -318,10 +344,27 @@ const demoScenes = {
     }),
     mkDemo('box', 370, 200, 0, { text: '', w: 10, h: 90, behavior: 'block', fill: '#f2f3f5' }, { label: '1st order (deflected) + 0th order', showLabel: true, labelPos: 'r' }),
   ],
-  detector: () => [
-    mkDemo('cwlaser', 60, 200, 0),
-    mkDemo('detector', 220, 200, 0),
-  ],
+  // Two benches at once, because the interesting thing about this detector
+  // is that the SAME instrument reports a steady beam and a pulse train
+  // differently: a CW arrival is one relative-intensity number, while a
+  // pulsed arrival has real temporal structure and the linked screen becomes
+  // an oscilloscope instead.
+  detector: () => {
+    const cwDetector = mkDemo('detector', 250, 95, 0, { aperture: 30 });
+    const pulsedDetector = mkDemo('detector', 250, 330, 0, { aperture: 30 });
+    return [
+      mkDemo('cwlaser', 60, 95, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 14 },
+        { label: 'CW source — steady beam', showLabel: true, labelPos: 't' }),
+      cwDetector,
+      mkDemo('display', 430, 95, 0, { sensorId: cwDetector.id, displayScale: 0.55 }),
+
+      mkDemo('pulsedlaser', 60, 330, 0,
+        { wavelength: 532, beamMode: 'beam', beamWidth: 14, repRateMHz: 80, pulseWidthFs: 150, showPulse: true },
+        { label: 'Pulsed source — same detector', showLabel: true, labelPos: 't' }),
+      pulsedDetector,
+      mkDemo('display', 430, 330, 0, { sensorId: pulsedDetector.id, displayScale: 0.55 }),
+    ];
+  },
   cmirror: () => [
     mkDemo('cwlaser', 60, 150, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('cmirror', 220, 150, 45, { f: 100, length: 50.8 }),
