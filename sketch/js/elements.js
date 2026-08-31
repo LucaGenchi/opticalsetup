@@ -3177,7 +3177,7 @@ export const registry = {
   // each sampled ray simply arrives with its own optical path and the camera
   // resolves the resulting fringes across the sensor.
   phaseplate: {
-    label: 'Phase object', category: 'Wavefront Shaping', size: { w: 14, h: 40 },
+    label: 'Phase object', category: 'Specimens', paletteOrder: 3, size: { w: 14, h: 40 },
     aliases: ['phase plate', 'phase mask', 'phase contrast', 'wedge', 'phase step', 'optical path difference'],
     params: [
       {
@@ -3490,11 +3490,11 @@ export const registry = {
     },
   },
 
-  // ---------------- Microscopy ----------------
+  // ---------------- Specimens ----------------
   sample: {
     // Horizontal at rot 0: the clear-aperture/long axis runs left-right
     // (local x), the beam crosses it top-to-bottom (local y).
-    label: 'Sample', category: 'Microscopy', size: { w: 40, h: 14 },
+    label: 'Sample', category: 'Specimens', paletteOrder: 1, size: { w: 40, h: 14 },
     size_: el => ({ w: (el.params.aperture || 34) + 6, h: Math.max(14, sampleThickness(el.params) + 8) }),
     params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true }, ...sampleModeParams()],
     svg(el) {
@@ -3522,7 +3522,7 @@ export const registry = {
     // axis runs left-right (local x), the beam crosses top-to-bottom
     // (local y). The mounting brackets grip the specimen's left/right short
     // edges accordingly.
-    label: 'Sample on piezo stage', category: 'Microscopy', size: { w: 56, h: 22 },
+    label: 'Sample on piezo stage', category: 'Specimens', paletteOrder: 2, size: { w: 56, h: 22 },
     size_: el => ({ w: (el.params.aperture || 50) + 30, h: Math.max(22, sampleThickness(el.params) + 14) }),
     params: [
       { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
@@ -4231,7 +4231,7 @@ export const categories = [
   'Modulators',
   'Pulse Timing',
   'Nonlinear Optics',
-  'Microscopy',
+  'Specimens',
   'Custom',
   'Lab elements',
 ];

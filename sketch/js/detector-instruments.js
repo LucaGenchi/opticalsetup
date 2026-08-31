@@ -146,7 +146,11 @@ registry.display.label = 'Detector screen';
 registry.display.paletteOrder = 20;
 registry.display.description = DESCRIPTIONS.display;
 registry.display.aliases = [...new Set([...(registry.display.aliases || []), 'detector screen', 'instrument display'])];
-if (registry.eye) { registry.eye.category = 'Microscopy'; registry.eye.paletteOrder = 20; }
+// The eye reads light and reports a signal, so it belongs with the
+// instruments. It sits after the detector screen rather than among the nine
+// bench detectors: it is an observer rather than a lab instrument, and
+// keeping it last leaves the general detector immediately before the screen.
+if (registry.eye) registry.eye.paletteOrder = 21;
 
 function header(name, mode, pulse) {
   const title = String(name).toUpperCase(), size = Math.max(3.7, Math.min(6, 46 / Math.max(1, title.length * 0.62)));
@@ -663,7 +667,6 @@ async function rebuildGroup(category) {
 async function enhancePalette() {
   if (typeof document === 'undefined') return;
   await rebuildGroup('Detectors');
-  await rebuildGroup('Microscopy');
   const group = document.querySelector('.palette-group[data-category="Detectors"]');
   if (group) group.open = true;
   const count = document.getElementById('libraryCount');

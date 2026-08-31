@@ -21,8 +21,12 @@ test('Detectors contains the requested instruments in order', () => {
     .sort((a, b) => (a[1].paletteOrder ?? 100) - (b[1].paletteOrder ?? 100))
     .map(([type]) => type);
 
-  assert.deepEqual(listed, DETECTOR_TYPES);
-  assert.equal(registry.eye.category, 'Microscopy');
+  // The eye reads light too, so it lands in this filter -- but it is an
+  // observer rather than one of the nine bench instruments, and it sits after
+  // the detector screen so the general detector keeps its place just before it.
+  assert.deepEqual(listed, [...DETECTOR_TYPES, 'eye']);
+  assert.equal(registry.eye.category, 'Detectors');
+  assert.ok(registry.eye.paletteOrder > registry.display.paletteOrder);
   assert.equal(registry.display.label, 'Detector screen');
 });
 
