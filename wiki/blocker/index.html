@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invisible blocker — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Absorbs rays but stays hidden in exported figures. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/blocker/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Invisible blocker — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Absorbs rays but stays hidden in exported figures.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/blocker/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="current">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#beam-block">Beam Block</a> / Invisible blocker</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-38 -38 76 76" aria-hidden="true"><rect x="-8" y="-30" width="16" height="60" rx="2" fill="rgba(208,96,96,0.07)" stroke="#d89c9c" stroke-width="1" stroke-dasharray="4 3"/><text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="9" fill="#c98080">✂</text></svg></div>
+        <div>
+          <h1>Invisible blocker</h1>
+        </div>
+      </div>
+      <p class="tagline">Absorbs rays but stays hidden in exported figures.</p>
+      <a class="place-cta" href="../../sketch/?place=blocker">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=blocker"
+          title="Interactive Invisible blocker — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the invisible blocker to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>This element has no laboratory counterpart. It is a figure-making tool: a region
+        that absorbs any ray entering it, drawn on the canvas while you work and then
+        <strong>omitted from exported figures</strong>.</p>
+        <p>The need it answers is a real one, though. A ray tracer follows every branch it
+        generates, including ones that are physically correct but irrelevant to the point a
+        figure is making — a weak back-reflection wandering across the frame, a stray
+        diffraction order, the ghost from a beamsplitter's second surface. On a bench you
+        would put a card in the way and forget about it. The equivalent here is a blocker:
+        it takes the unwanted branch out of the trace without adding a component to the
+        drawing that a reader would have to interpret.</p>
+        <p>The honest framing is that this is a <em>presentation</em> control, not physics.
+        If a stray beam exists in your setup it exists in reality too, and hiding it from a
+        figure is a choice about what the figure is for. Use it to remove distractions from
+        a teaching diagram; do not use it to make a setup look cleaner than it is, and never
+        use it to hide a beam that would need terminating in the real build — see the
+        safety notes on the <a href="../beamdump/">beam dump</a> page.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>The blocker is a rectangle whose faces all absorb. Any ray reaching it stops
+        there, exactly as with a <a href="../beamdump/">beam dump</a> — the difference is
+        purely in the drawing. It carries <code>hideInExport</code>, so it is visible on the
+        canvas while you compose and absent from SVG and PNG exports. In the exported
+        figure the blocked beam simply ends, with nothing to explain why.</p>
+        <p>Two controls set its width and height, and the blue handles resize it on the
+        canvas, so it can be shaped to catch exactly the branch you want and nothing
+        else.</p>
+        <p>Its bounds are still counted when a figure is fitted for export, so a blocker
+        parked far from the setup will pad the exported crop with empty space even though it
+        is not drawn. Keep it close to the beam it is catching, or use a
+        <a href="../figureframe/">figure frame</a> to define the crop explicitly.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Absorption is perfect and total, like the beam dump's. The single
+        thing to understand about this element is that it changes what a figure
+        <em>shows</em>, not what the setup <em>is</em>: the trace it removes was a real
+        branch of the light, and its absence from the exported drawing is your editorial
+        decision rather than a physical result. A reader of the figure has no way to tell a
+        blocker was used.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/beamdump/"><svg viewBox="-19 -19 38 38" aria-hidden="true"><path d="M -10,-11 L 10,-11 L 10,11 L -10,11 Z M -10,-11 L 4,0 L -10,11" fill="#26292e" stroke="#111" stroke-width="1.5"/></svg>Beam dump</a><a href="../../wiki/slit/"><svg viewBox="-34.4 -34.4 68.8 68.8" aria-hidden="true"><rect x="-2.5" y="-25.4" width="5" height="21.4" fill="#333"/><rect x="-2.5" y="4" width="5" height="21.4" fill="#333"/></svg>Slit</a><a href="../../wiki/figureframe/"><svg viewBox="-166 -166 332 332" aria-hidden="true"><rect x="-160" y="-100" width="320" height="200" fill="none" stroke="#7d8ca3" stroke-width="1.2" stroke-dasharray="7 5"/><path d="M -160,-88 V -100 H -148 M 148,-100 H 160 V -88 M 160,88 V 100 H 148 M -148,100 H -160 V 88" fill="none" stroke="#50637d" stroke-width="2"/><text x="-153" y="-85" font-size="9" font-weight="700" letter-spacing="0.7" fill="#64748b">FIGURE</text></svg>Figure frame</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/beam_dumps.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Beam Dumps</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

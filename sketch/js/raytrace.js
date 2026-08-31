@@ -8,10 +8,11 @@ import {
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
-  fluorophoreSpec, fluorophoreAbsorption,
+  fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
+import { normalizeAotfChannels, aotfChannelBand } from './aotf.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -23,7 +24,9 @@ import {
   legacyPolarization, polarizationDescription,
 } from './polarization.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
-import { glassIndex, isDispersiveGlass } from './glass.js';
+import {
+  gaussianPulseDurationAfterGDD, glassGVD, glassIndex, isDispersiveGlass,
+} from './glass.js';
 import {
   gaussianSpectrum, flatSpectrum, spectrumSamples, spectrumSupport, spectrumWeight,
   applyTransmission, resolveSourceSpectrum,
@@ -45,6 +48,12 @@ let detectorMisses = new Map();
 // invalidate that source's camera fields after the complete trace, while
 // retaining every hit for conservative power deposition.
 let incompleteCoherenceIds = new Map();
+// A coherent trace is discovered once as independent rays, then replayed
+// with the compatible fields at each ideal beam-splitter crossing collapsed
+// into one outgoing field per physical port. The replay makes the corrected
+// power available to every downstream consumer: beam drawing, probes, and
+// detectors all see the same result.
+const MAX_COHERENT_GROUP_PASSES = 4;
 let gateTransmissionCache = new Map();
 // Non-null only during the mixing probe pass in traceScene(): surface id ->
 // Set of wavelengths observed arriving at that specimen.
@@ -76,6 +85,41 @@ function recordObjectivePupil(elementId, radius, pupilRadius) {
   else seen.beamRadius = Math.max(seen.beamRadius, radius);
 }
 
+// pulse-compressor element id -> the GDD the beam arrives carrying, and what
+// leaves. A compressor whose setting is small next to what a scene already
+// accumulated looks inert; showing both numbers is what makes it obvious that
+// -2000 fs² against 38680 fs² is doing exactly 5% of the job.
+let compressorGdd = new Map();
+
+function recordCompressor(elementId, incoming, outgoing) {
+  if (!elementId || !Number.isFinite(incoming)) return;
+  const seen = compressorGdd.get(elementId);
+  // several rays cross it; the widest-magnitude arrival is the representative
+  if (!seen || Math.abs(incoming) > Math.abs(seen.incoming)) {
+    compressorGdd.set(elementId, { incoming, outgoing });
+  }
+}
+
+export function compressorGddReading(elementId) {
+  return compressorGdd.get(elementId) || null;
+}
+
+// metalens element id -> distinct wavelength/focal-length pairs observed on
+// the most recent trace. The inspector uses the trace, not the source config,
+// so filters and wavelength conversion upstream are reflected immediately.
+let metalensHits = new Map();
+
+function recordMetalensHit(elementId, wavelengthNm, focalLengthMm) {
+  if (!elementId || !Number.isFinite(wavelengthNm) || !Number.isFinite(focalLengthMm)) return;
+  let hits = metalensHits.get(elementId);
+  if (!hits) { hits = new Map(); metalensHits.set(elementId, hits); }
+  hits.set(wavelengthNm.toFixed(6), { wavelengthNm, focalLengthMm });
+}
+
+export function metalensReading(elementId) {
+  return [...(metalensHits.get(elementId)?.values() || [])]
+    .sort((a, b) => a.wavelengthNm - b.wavelengthNm);
+}
 export function objectivePupilFill(elementId) {
   const seen = objectivePupilHits.get(elementId);
   if (!seen || seen.pupilRadius <= 0) return null;
@@ -405,6 +449,8 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     phaseValid: ray.phaseValid === true,
     phaseIssue: ray.phaseIssue || null,
     phaseOffset: Number.isFinite(ray.phaseOffset) ? ray.phaseOffset : 0,
+    fieldGroupCount: Number.isInteger(ray.fieldGroupCount) ? ray.fieldGroupCount : 1,
+    originId: ray.originId || null,
     pol: ray.pol,
     stokes: cloneStokes(ray.stokes),
     u,
@@ -421,9 +467,11 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     readoutKind: registry[surface.el?.type]?.readoutKind || 'detector',
     gain: surface.data.gain,
     saturation: surface.data.saturation,
+    darkInput: surface.data.darkInput,
     pixels: surface.data.pixels,
     interference: surface.data.interference !== false,
     pathDelayNs: Number.isFinite(oplMm) ? oplMm / C_MM_PER_NS : 0,
+    gddFs2: Number.isFinite(ray.gdd) ? ray.gdd : 0,
     pulse: ray.pulse ? { ...ray.pulse } : null,
   };
 }
@@ -447,12 +495,15 @@ export function detectorReading(elementId) {
   // A fully blocked pulse can still geometrically reach the detector. It must
   // not contaminate spectrum, polarization, spot, timing, or source counts.
   const activeHits = hits.filter(h => Number.isFinite(h.power) && h.power > 1e-12);
-  const descriptor = activeHits[0] || nearMisses[0];
+  const groupedDarkHits = hits.filter(h => h.fieldGroupCount > 1 && h.phaseValid);
+  const descriptor = activeHits[0] || groupedDarkHits[0] || nearMisses[0];
   const detectorType = descriptor?.detectorType || 'Detector';
   const readoutKind = descriptor?.readoutKind || 'detector';
   const raySignal = activeHits.reduce((sum, h) => sum + Math.max(0, h.power), 0);
   if (readoutKind !== 'camera' && raySignal <= 1e-12) return null;
-  const cameraHits = readoutKind === 'camera' ? [...activeHits, ...nearMisses] : activeHits;
+  const cameraHits = readoutKind === 'camera'
+    ? [...(activeHits.length ? activeHits : groupedDarkHits), ...nearMisses]
+    : activeHits;
   if (!cameraHits.length) return null;
   const metadataPower = cameraHits.reduce((sum, hit) => sum + Math.max(0, hit.power), 0);
   let wavelength = cameraHits.reduce((sum, h) => sum + h.wl * h.power, 0) / metadataPower;
@@ -467,11 +518,33 @@ export function detectorReading(elementId) {
   let signal = raySignal, outputSignal = signal, saturated = false, profile = null, profileColors = null, centroid = null;
   let depositedProfile = null, depositedSignal = raySignal, profileMode = null, coherentPaths = 0, interference = null;
   let cameraResult = null;
+  // How much of each originating source's own emitted power arrived here.
+  // Every source launches rays summing to 1, and each interaction scales that
+  // weight by what it actually transmits, so this fraction already carries the
+  // whole source-to-detector efficiency chain -- split ratios, filter
+  // transmission, clipped apertures, chopper duty, conversion efficiency.
+  // Attribution is by originId, so a specimen's fluorescence is still charged
+  // to the laser that pumped it rather than to the specimen.
+  const arrivedByOrigin = new Map();
+  for (const hit of activeHits) {
+    const key = hit.originId || null;
+    arrivedByOrigin.set(key, (arrivedByOrigin.get(key) || 0) + Math.max(0, hit.power));
+  }
+  const sourceFractions = [...arrivedByOrigin].map(([sourceId, fraction]) => ({ sourceId, fraction }));
+  let snr = null, darkOutput = null, gain = null;
   if (readoutKind === 'pmt') {
-    const gain = Math.max(1, descriptor.gain || 1);
+    gain = Math.max(1, descriptor.gain || 1);
     const saturation = Math.max(1, descriptor.saturation || 100);
+    // The dark floor is referred to the photocathode: the equivalent input
+    // that would produce the same output as the tube's own dark current. It
+    // is amplified by exactly the same gain as the signal, which is why the
+    // ratio below does not depend on gain at all — the single most useful
+    // thing a PMT model can say, and the one most often assumed otherwise.
+    const darkInput = Math.max(0, Number(descriptor.darkInput) || 0);
     outputSignal = Math.min(saturation, signal * gain);
     saturated = signal * gain >= saturation;
+    darkOutput = darkInput * gain;
+    snr = darkInput > 0 ? signal / darkInput : Infinity;
   } else if (readoutKind === 'camera') {
     const count = Math.min(64, Math.max(8, Math.round(descriptor.pixels || 16)));
     const camera = cameraProfileFromHits(cameraHits, count, aperture, {
@@ -486,6 +559,18 @@ export function detectorReading(elementId) {
     profileMode = camera.profileMode;
     coherentPaths = camera.coherentPaths;
     interference = camera.interference;
+    const upstreamGroupCount = Math.max(1, ...hits.map(hit => hit.fieldGroupCount || 1));
+    if (upstreamGroupCount > 1 && profileMode !== 'coherent') {
+      profileMode = 'coherent';
+      coherentPaths = upstreamGroupCount;
+      interference = {
+        ...interference,
+        applied: true,
+        coherentSources: 1,
+        pathCount: upstreamGroupCount,
+        reason: 'fields were grouped at an upstream recombination surface',
+      };
+    }
     signal = profile.reduce((sum, value) => sum + value, 0);
     outputSignal = signal;
     spectrum = cameraAdjustedSpectrum(cameraHits, camera);
@@ -539,36 +624,68 @@ export function detectorReading(elementId) {
   if (pulsed.length) {
     const delays = pulsed.map(h => h.pathDelayNs).filter(Number.isFinite);
     const first = pulsed[0].pulse;
-    const trainMap = new Map();
+    const hitGroups = new Map();
     for (const h of pulsed) {
       const p = h.pulse;
       const key = p.sourceId || [p.repRateMHz, p.pulseWidthFs, p.phaseNs].join(':');
-      if (!trainMap.has(key)) trainMap.set(key, {
+      const group = hitGroups.get(key) || [];
+      group.push(h);
+      hitGroups.set(key, group);
+    }
+    const trains = [...hitGroups.values()].map(sourceHits => {
+      const p = sourceHits[0].pulse;
+      const centerWavelength = Number.isFinite(p.centerWavelengthNm)
+        ? p.centerWavelengthNm : sourceHits[0].wl;
+      const nearestDistance = Math.min(...sourceHits.map(h => Math.abs(h.wl - centerWavelength)));
+      const centerHits = sourceHits.filter(h => Math.abs(Math.abs(h.wl - centerWavelength) - nearestDistance) < 1e-7);
+      const weight = centerHits.reduce((sum, h) => sum + Math.max(0, h.power || 0), 0);
+      const weighted = key => weight > 0
+        ? centerHits.reduce((sum, h) => sum + h[key] * Math.max(0, h.power || 0), 0) / weight
+        : centerHits[0]?.[key] || 0;
+      const gddFs2 = weighted('gddFs2');
+      const canBroaden = p.transformLimited === true && (p.pulseShape || 'gauss') === 'gauss';
+      return {
         repRateMHz: p.repRateMHz,
         pulseWidthFs: p.pulseWidthFs,
         phaseNs: p.phaseNs,
         gates: Array.isArray(p.gates) ? p.gates.map(g => ({ ...g })) : [],
-        pathDelayNs: h.pathDelayNs,
-      });
-    }
-    const trains = [...trainMap.values()];
+        pathDelayNs: Math.min(...sourceHits.map(h => h.pathDelayNs)),
+        gddFs2,
+        stretchedPulseWidthFs: canBroaden
+          ? gaussianPulseDurationAfterGDD(p.pulseWidthFs, gddFs2)
+          : null,
+      };
+    });
     const sources = new Set(pulsed.map(h => h.pulse.sourceId).filter(Boolean));
     const trainSettings = new Set(trains.map(p => [p.repRateMHz, p.pulseWidthFs, p.phaseNs].join(':')));
     const mixed = trainSettings.size > 1;
+    const trainWeight = trains.length || 1;
+    const gddFs2 = trains.reduce((sum, train) => sum + train.gddFs2, 0) / trainWeight;
+    const gddValues = trains.map(train => train.gddFs2);
+    const canBroaden = first.transformLimited === true && (first.pulseShape || 'gauss') === 'gauss';
     pulse = {
       sources: Math.max(1, sources.size),
       mixed,
       repRateMHz: mixed ? null : first.repRateMHz,
       pulseWidthFs: mixed ? null : first.pulseWidthFs,
       phaseNs: mixed ? null : first.phaseNs,
+      // The autocorrelator needs the real shape to show what assuming the
+      // wrong one would cost, and whether a duration is derivable at all.
+      pulseShape: mixed ? null : (first.pulseShape || 'gauss'),
+      transformLimited: mixed ? null : first.transformLimited === true,
       trains,
+      gddFs2,
+      gddRangeFs2: [Math.min(...gddValues), Math.max(...gddValues)],
+      stretchedPulseWidthFs: !mixed && canBroaden
+        ? gaussianPulseDurationAfterGDD(first.pulseWidthFs, gddFs2)
+        : null,
       earliestPathDelayNs: delays.length ? Math.min(...delays) : 0,
       arrivalSpreadPs: delays.length ? (Math.max(...delays) - Math.min(...delays)) * 1000 : 0,
     };
   }
   return {
     signal,
-    samples: activeHits.length,
+    samples: readoutKind === 'camera' ? cameraHits.filter(hit => !hit.sensorMiss).length : activeHits.length,
     wavelength,
     bandMin,
     bandMax,
@@ -582,6 +699,10 @@ export function detectorReading(elementId) {
     readoutKind,
     outputSignal,
     saturated,
+    sourceFractions,
+    gain,
+    darkOutput,
+    snr,
     profile,
     depositedProfile,
     depositedSignal,
@@ -601,9 +722,10 @@ export function probeAt(x, y, tol = 16) {
   for (const r of lastPaths) {
     for (let i = 0; i < r.pts.length - 1; i++) {
       const dd = distToSegment(p, r.pts[i], r.pts[i + 1]);
-      if (dd < bd) {
+      const intensity = r.segmentIntensities?.[i] ?? r.intensity;
+      if (dd < bd - 1e-9 || (Math.abs(dd - bd) <= 1e-9 && intensity > (best?.intensity ?? -Infinity))) {
         bd = dd;
-        best = { ...r, intensity: r.segmentIntensities?.[i] ?? r.intensity };
+        best = { ...r, intensity };
       }
     }
   }
@@ -663,6 +785,120 @@ function invalidateIncompleteCameraFields() {
     hit.phaseIssue = issue;
   }
 }
+
+const phaseWrap = phase => Math.atan2(Math.sin(phase), Math.cos(phase));
+const quantized = (value, scale) => Math.round(value * scale);
+
+function coherentChildKey(ray, surface, child) {
+  return JSON.stringify([
+    surfaceInteractionKey(surface), ray.coherenceId, ray.sample, Number(ray.wl).toFixed(9),
+    ray.sig, child.tag || 'w',
+  ]);
+}
+
+function polarizationKey(ray) {
+  if (ray.stokes) return ['s', ray.stokes.s1, ray.stokes.s2, ray.stokes.s3]
+    .map(value => Number.isFinite(value) ? Number(value).toFixed(9) : 'x').join(':');
+  return Number.isFinite(ray.pol) ? `p:${Number(ray.pol).toFixed(9)}` : 'unpolarized';
+}
+
+function recordCoherentArrival(ray, hit, children, arrivals) {
+  if (!arrivals || hit.surface.kind !== 'split' || hit.surface.el?.type !== 'bs'
+      || !ray.coherenceId || !Number.isInteger(ray.sample) || !ray.phaseValid
+      || !(ray.intensity > 0) || !(ray.power > 0)) return;
+  const positionKey = `${quantized(hit.p.x, 1e6)}:${quantized(hit.p.y, 1e6)}`;
+  const batchKey = JSON.stringify([
+    surfaceInteractionKey(hit.surface), ray.coherenceId, ray.sample,
+    Number(ray.wl).toFixed(9), positionKey, polarizationKey(ray),
+  ]);
+  const incomingKey = `${quantized(ray.dx, 1e8)}:${quantized(ray.dy, 1e8)}`;
+  for (const child of children) {
+    const intensity = child.intensity !== undefined ? child.intensity : ray.intensity;
+    const power = child.power !== undefined ? child.power
+      : ray.power * (child.intensity !== undefined && ray.intensity > 0
+        ? child.intensity / ray.intensity : 1);
+    if (!(power > 0) || !(intensity > 0)) continue;
+    arrivals.push({
+      batchKey,
+      incomingKey,
+      outputKey: `${quantized(child.d.x, 1e8)}:${quantized(child.d.y, 1e8)}`,
+      childKey: coherentChildKey(ray, hit.surface, child),
+      power,
+      intensity,
+      weightUnit: power / intensity,
+      opl: ray.opl,
+      wavelengthMm: ray.wl * 1e-6,
+      phase: 2 * Math.PI * ray.opl / (ray.wl * 1e-6)
+        + (Number.isFinite(ray.phaseOffset) ? ray.phaseOffset : 0)
+        + (Number.isFinite(child.phaseShift) ? child.phaseShift : 0),
+      fieldGroupCount: Number.isInteger(ray.fieldGroupCount) ? ray.fieldGroupCount : 1,
+    });
+  }
+}
+
+function extendCoherentPlan(arrivals, plan = new Map()) {
+  const next = new Map(plan);
+  const batches = new Map();
+  for (const arrival of arrivals) {
+    if (!batches.has(arrival.batchKey)) batches.set(arrival.batchKey, []);
+    batches.get(arrival.batchKey).push(arrival);
+  }
+  for (const batch of batches.values()) {
+    if (new Set(batch.map(item => item.incomingKey)).size < 2) continue;
+    const outputs = new Map();
+    for (const item of batch) {
+      if (!outputs.has(item.outputKey)) outputs.set(item.outputKey, []);
+      outputs.get(item.outputKey).push(item);
+    }
+    for (const fields of outputs.values()) {
+      if (new Set(fields.map(item => item.incomingKey)).size < 2) continue;
+      const reference = fields[0].phase;
+      let re = 0, im = 0;
+      for (const field of fields) {
+        const relative = phaseWrap(field.phase - reference);
+        const amplitude = Math.sqrt(field.power);
+        re += amplitude * Math.cos(relative);
+        im += amplitude * Math.sin(relative);
+      }
+      const groupedPower = Math.max(0, re * re + im * im);
+      const groupedPhase = reference + Math.atan2(im, re);
+      const representative = [...fields].sort((a, b) => a.childKey.localeCompare(b.childKey))[0];
+      const fieldGroupCount = fields.reduce((sum, field) => sum + field.fieldGroupCount, 0);
+      for (const field of fields) {
+        const keep = field === representative;
+        next.set(field.childKey, {
+          power: keep ? groupedPower : 0,
+          intensity: keep && field.weightUnit > 0 ? groupedPower / field.weightUnit : 0,
+          phaseOffset: keep
+            ? phaseWrap(groupedPhase - 2 * Math.PI * field.opl / field.wavelengthMm)
+            : 0,
+          fieldGroupCount,
+          retainZeroField: keep && groupedPower <= 1e-12,
+          coherentlySuppressed: !keep,
+        });
+      }
+    }
+  }
+  return next;
+}
+
+function coherentPlansEqual(left, right) {
+  if (left.size !== right.size) return false;
+  for (const [key, value] of left) {
+    const other = right.get(key);
+    if (!other || Math.abs(value.power - other.power) > 1e-12
+        || Math.abs(value.intensity - other.intensity) > 1e-10
+        || Math.abs(phaseWrap(value.phaseOffset - other.phaseOffset)) > 1e-10
+        || value.fieldGroupCount !== other.fieldGroupCount
+        || value.retainZeroField !== other.retainZeroField
+        || value.coherentlySuppressed !== other.coherentlySuppressed) return false;
+  }
+  return true;
+}
+// A deliberately selected line can be a thin slice of a broad source and
+// still be the whole point of the setup, so branches flagged keepWeak are
+// held to a far lower floor than the generic negligible-ray cull.
+const MIN_WEAK_INT = 1e-5;
 
 // Two beams count as "different colours" for wave mixing only if they are
 // resolvably apart; the same laser sampled twice must not mix with itself.
@@ -929,7 +1165,11 @@ function fiberEmissionRays(c) {
     wl: c.wl, bw: c.bw || 0, spec: c.spec || null, speckle: false, intensity: Math.min(1, c.intensity * transmission),
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
     pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, sourceId: c.sourceId || null,
+    originId: c.originId || null,
     oplStart: (c.opl || 0) + lengthMm * ng + 2,
+    // The fiber's own chromatic dispersion is not modelled, but dispersion
+    // already accumulated before coupling must survive the relaunch.
+    gddStart: Number.isFinite(c.gdd) ? c.gdd : 0,
   };
   if (cfg.mode === 'focus') {
     const f = Math.max(2, cfg.focal || 20), ap = Math.max(1, cfg.dia || 6);
@@ -1284,6 +1524,21 @@ function interact(ray, hit) {
   switch (k) {
     case 'absorb': return [];
     case 'detector': return [];
+    case 'gdd': {
+      // A zero-thickness proxy for the net second-order spectral phase of a
+      // grating/prism/chirped-mirror compressor. It does not bend the ray or
+      // model a carrier phase; it only adds signed GDD to the running total.
+      const applied = Number.isFinite(Number(data.gddFs2))
+        ? Math.min(1000000, Math.max(-1000000, Number(data.gddFs2))) : 0;
+      const efficiency = Math.min(1, Math.max(0.01, Number(data.efficiency) || 1));
+      const incoming = Number.isFinite(ray.gdd) ? ray.gdd : 0;
+      recordCompressor(s.el?.id, incoming, incoming + applied);
+      return [{
+        d,
+        intensity: ray.intensity * efficiency,
+        gdd: incoming + applied,
+      }];
+    }
     case 'attenuate': {
       // A specimen with no signals yet still reports what illuminates it, so
       // the inspector can offer live emission defaults the moment one is
@@ -1316,6 +1571,27 @@ function interact(ray, hit) {
       if (R < 1) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted, retainWeak: true });
       return out;
     }
+    case 'metalens': {
+      const efficiency = Math.min(1, Math.max(0, Number(data.focusEff) / 100 || 0));
+      const sampled = ray.bw > 0;
+      const samples = wlSamples(ray);
+      return samples.map((sample, i) => {
+        const focalLength = metalensFocalLength(data, sample.wl);
+        recordMetalensHit(s.el?.id, sample.wl, focalLength);
+        return {
+          d: lensBend(d, hit.p, s, focalLength),
+          wl: sample.wl,
+          bw: sampled ? 0 : ray.bw,
+          ...(sampled ? {
+            spec: null,
+            color: wavelengthToColor(sample.wl),
+            spectralCount: samples.length,
+            tag: `w${i}`,
+          } : {}),
+          intensity: ray.intensity * efficiency * (sampled ? sample.weight : 1),
+        };
+      });
+    }
     case 'lens': {
       // transmission efficiency (AR-coating/absorption loss): a straight
       // power/intensity attenuation, no deviation of the focused direction.
@@ -1335,7 +1611,15 @@ function interact(ray, hit) {
         const acceptedSin = Math.min(1, Math.max(0, data.objectiveNA / data.objectiveMediumIndex));
         if (sinAngle > acceptedSin + 1e-9) return [];
       }
-      return [{ d: bent, intensity: ray.intensity * T }];
+      const materialGVD = data.gddMaterial
+        ? glassGVD(data.gddMaterial, ray.wl) : null;
+      const estimatedGdd = Number.isFinite(materialGVD) && Number.isFinite(data.gddThicknessMm)
+        ? materialGVD * Math.max(0, data.gddThicknessMm) : 0;
+      return [{
+        d: bent,
+        intensity: ray.intensity * T,
+        gdd: (Number.isFinite(ray.gdd) ? ray.gdd : 0) + estimatedGdd,
+      }];
     }
     case 'refract': {
       const materialId = s.el?.id || null;
@@ -1344,9 +1628,10 @@ function interact(ray, hit) {
       // its bandwidth so each wavelength refracts by its own n(λ) and the
       // beam actually fans out (e.g. white light through a prism). A fixed
       // user-set index (glass rods) has no dispersion to sample.
-      const dispersive = isDispersiveGlass(data.material) && ray.bw > 0;
+      const materialDispersive = isDispersiveGlass(data.material);
+      const dispersive = materialDispersive && ray.bw > 0;
       const transmitAt = (wl, intensity = ray.intensity, tag, bandwidth = ray.bw) => {
-        const dispersiveIor = isDispersiveGlass(data.material) ? glassIndex(data.material, wl) : data.ior;
+        const dispersiveIor = materialDispersive ? glassIndex(data.material, wl) : data.ior;
         const materialIor = Math.min(2.5, Math.max(1.01, dispersiveIor || 1.52));
         // A broadband source born inside the body initially carries one
         // center-wavelength IOR. Once sampled at the exit, each wavelength
@@ -1377,14 +1662,20 @@ function interact(ray, hit) {
         return {
           d: transmitted, wl, bw: bandwidth, ...specField, ...colorField, tag,
           medium: inside ? null : materialId,
+          mediumMaterial: inside ? null : (materialDispersive ? data.material : null),
           ior: n2,
           intensity: intensity * Math.min(1, Math.max(0, data.transmission ?? 1)),
         };
       };
       if (dispersive) {
         const samples = wlSamples(ray);
+        // Each sample is one slice of a beam that is still physically single
+        // until the colours actually separate. Carrying the sibling count lets
+        // the renderer draw the overlapping region at a share of full opacity
+        // instead of stacking eight saturated colours on the same pixels.
         return samples.map((s, i) => ({
           ...transmitAt(s.wl, ray.intensity * s.weight, `w${i}`, 0),
+          spectralCount: samples.length,
           spectralContinuum: true,
           spectralLo: s.spectralLo,
           spectralHi: s.spectralHi,
@@ -1508,6 +1799,68 @@ function interact(ray, hit) {
         }));
       }
       return [{ d: rotv(d, jitter(ray.sample, sid) * div), speckle: true }];
+    }
+    case 'aotf': {
+      // Selected lines leave along the incoming axis; whatever is left of the
+      // beam is deflected away as the depleted port. A channel narrower than
+      // the beam's band takes only its overlap, so picking 2 nm out of a
+      // supercontinuum really does keep only 2 nm worth of power.
+      // `channels` is already only the lines open at this instant: every one
+      // under multiplexed drive, exactly one under sequential drive.
+      const channels = normalizeAotfChannels(data.channels);
+      const a = (data.deflect || 0) * D2R;
+      const deflected = { x: d.x * Math.cos(a) - d.y * Math.sin(a), y: d.x * Math.sin(a) + d.y * Math.cos(a) };
+      const out = [];
+      let takenFraction = 0;
+
+      channels.forEach((c, i) => {
+        if (!(c.eff > 0)) return;
+        // An open line is fully open: the sequence decides which line, not how
+        // much of it gets through.
+        const pass = c.eff;
+        const withGate = child => {
+          // The selected line is the useful output and is often a thin slice
+          // of a broad source, so it must survive the weak-ray cull that would
+          // otherwise delete exactly the beam the user asked for.
+          child.keepWeak = true;
+          return child;
+        };
+        const band = aotfChannelBand(c);
+
+        if (!ray.bw) {
+          if (ray.wl < band[0] || ray.wl > band[1]) return;
+          takenFraction += pass;
+          out.push(withGate({ d, intensity: ray.intensity * pass, tag: `c${i}` }));
+          return;
+        }
+        if (ray.spec && ray.spec.kind !== 'flat') {
+          const trans = applyTransmission(ray.spec, ray.wl, wl => (wl >= band[0] && wl <= band[1] ? 1 : 0));
+          if (!trans) return;
+          takenFraction += trans.fraction * pass;
+          out.push(withGate({
+            d, wl: trans.wl, bw: trans.bw, spec: trans.spec,
+            intensity: ray.intensity * trans.fraction * pass, tag: `c${i}`,
+          }));
+          return;
+        }
+        const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], band);
+        if (!ix) return;
+        const child = bandChild(ray, d, ix[0], ix[1], `c${i}`);
+        takenFraction += (child.intensity / ray.intensity) * pass;
+        child.intensity *= pass;
+        out.push(withGate(child));
+      });
+
+      if (data.showDepleted) {
+        const left = Math.max(0, 1 - Math.min(1, takenFraction));
+        if (left > 0) {
+          out.push({
+            d: deflected, intensity: ray.intensity * left, tag: 'depleted',
+            wl: ray.wl, bw: ray.bw, spec: ray.spec,
+          });
+        }
+      }
+      return out;
     }
     case 'aom': {
       const out = [];
@@ -1977,22 +2330,44 @@ function interact(ray, hit) {
 
 // trace all rays of one source; returns finished polylines.
 // `couplings` collects light captured by fiber input connectors.
-function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
+function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
   const done = [];
   let retainedWeakBranches = 0;
   const cameraSurfaces = surfaces.filter(surface => surface.kind === 'detector'
     && registry[surface.el?.type]?.readoutKind === 'camera');
   const stack = rays0.map(r => {
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
+    const gdd = Number.isFinite(r.gddStart) ? r.gddStart
+      : Number.isFinite(r.gdd) ? r.gdd : 0;
+    const visualizesDispersion = r.pulse?.transformLimited === true
+      && (r.pulse?.pulseShape || 'gauss') === 'gauss';
     return {
-      ...r, opl, pts: [{ x: r.x, y: r.y }], opls: [opl],
+      ...r, opl, gdd, pts: [{ x: r.x, y: r.y }], opls: [opl],
+      // Sparse local-GDD events exist only for pulses whose duration the app
+      // can honestly derive. `linear` marks propagation through real glass;
+      // a lens or compressor is an instantaneous step at one optical path.
+      gddTrace: visualizesDispersion ? [{ opl, gdd, linear: false }] : null,
       segmentIntensities: [], segmentHistories: [], segmentEvents: [],
       sig: '', depth: 0, last: null,
     };
   });
   const appendPoint = (r, p, geometricLength) => {
+    const length = Math.max(0, geometricLength);
     const ng = Math.min(3, Math.max(1, r.ior || 1));
-    r.opl += Math.max(0, geometricLength) * ng;
+    r.opl += length * ng;
+    if (r.mediumMaterial) {
+      const oplStart = r.opl - length * ng;
+      const gddStart = r.gdd;
+      const materialGVD = glassGVD(r.mediumMaterial, r.wl);
+      if (Number.isFinite(materialGVD)) r.gdd += length * materialGVD;
+      if (r.gddTrace && r.gdd !== gddStart) {
+        const last = r.gddTrace.at(-1);
+        if (!last || last.opl !== oplStart || last.gdd !== gddStart) {
+          r.gddTrace.push({ opl: oplStart, gdd: gddStart, linear: false });
+        }
+        r.gddTrace.push({ opl: r.opl, gdd: r.gdd, linear: true });
+      }
+    }
     r.segmentIntensities.push(r.intensity);
     r.segmentHistories.push(r.sig);
     r.segmentEvents.push(null);
@@ -2007,17 +2382,19 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         break;
       }
       const hit = nearestHit({ x: r.x, y: r.y }, { x: r.dx, y: r.dy }, surfaces, r.last);
-      if (!r.evan) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
+      if (!coherent?.dryRun && !r.evan) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
       const intensityFloor = r.phaseValid ? MIN_COHERENT_INT
         : r.retainWeak ? MIN_RETAINED_POWER_INT
-          : MIN_INT;
-      if (r.intensity < intensityFloor && !LOW_POWER_MEASUREMENT_SURFACES.has(hit?.surface.kind)) {
+          : r.keepWeak ? MIN_WEAK_INT
+            : MIN_INT;
+      if (r.intensity < intensityFloor && !r.retainZeroField
+          && !LOW_POWER_MEASUREMENT_SURFACES.has(hit?.surface.kind)) {
         // A weak branch that directly reaches a detector/sample is cheap and
         // physically material, so record it even below the drawing budget.
         // Absorbed or escaping light cannot affect a downstream camera; a
         // weak branch stopped before another optical interaction makes the
         // coherent source incomplete and therefore forces safe deposition.
-        if (hit && hit.surface.kind !== 'absorb') {
+        if (!r.coherentlySuppressed && hit && hit.surface.kind !== 'absorb') {
           markIncompleteCoherence(r, 'coherent path fell below the bounded trace threshold');
         }
         break;
@@ -2036,7 +2413,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         // centimetres of visible glow, and the light is really there.
         const CAPTURE = r.captureLen || EVAN_LEN * 1.5;
         const captured = hit && hit.t <= CAPTURE
-          && (hit.surface.kind === 'lens' || hit.surface.kind === 'fiberin');
+          && (hit.surface.kind === 'lens' || hit.surface.kind === 'metalens' || hit.surface.kind === 'fiberin');
         if (!captured) {
           const L = hit ? Math.min(hit.t, EVAN_LEN) : EVAN_LEN;
           appendPoint(r, { x: r.x + r.dx * L, y: r.y + r.dy * L }, L);
@@ -2044,7 +2421,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           break;
         }
         r.evan = false; // collected: from here on it behaves like normal light
-        recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
+        if (!coherent?.dryRun) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
       }
       if (!hit) {
         appendPoint(r, { x: r.x + r.dx * MAXLEN, y: r.y + r.dy * MAXLEN }, MAXLEN);
@@ -2060,7 +2437,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         r.phaseValid = false;
         r.phaseIssue = phaseIssue;
       }
-      if (hit.surface.el?.type === 'objective' && hit.surface.el?.id) {
+      if (!coherent?.dryRun && hit.surface.el?.type === 'objective' && hit.surface.el?.id) {
         const objectives = Array.isArray(r.objectives) ? r.objectives : [];
         if (!objectives.some(objective => objective.id === hit.surface.el.id)) {
           r.objectives = [...objectives, {
@@ -2123,13 +2500,20 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
             y: hit.p.y,
             wl: signalWl,
             sourceId: r.pulse?.sourceId,
+            gddFs2: Number.isFinite(r.gdd) ? r.gdd : 0,
+            pulseWidthFs: r.pulse?.pulseWidthFs,
+            stretchedPulseWidthFs: r.pulse?.transformLimited === true
+              && (r.pulse?.pulseShape || 'gauss') === 'gauss'
+              ? gaussianPulseDurationAfterGDD(r.pulse.pulseWidthFs, r.gdd)
+              : null,
+            wavelengthNm: r.wl,
             objectiveNA: r.objectives?.length === 1 && Number.isFinite(r.objectives[0].na)
               ? r.objectives[0].na
               : undefined,
           });
         }
       }
-      if (hit.surface.kind === 'detector') recordDetectorHit(r, hit);
+      if (!coherent?.dryRun && hit.surface.kind === 'detector') recordDetectorHit(r, hit);
       if (hit.surface.kind === 'delay') {
         const extraOpl = Math.min(100000, Math.max(0, hit.surface.data.delayMm || 0));
         if (extraOpl > 0) {
@@ -2150,13 +2534,26 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           couplings.push({
             beam: fb, end: hit.surface.data.end, wl: r.wl, bw: r.bw, spec: r.spec,
             intensity: r.intensity, power: r.power, pol: r.pol, stokes: cloneStokes(r.stokes),
-            pulse: r.pulse, opl: r.opl, sourceId: r.sourceId || null,
+            pulse: r.pulse, opl: r.opl, gdd: r.gdd,
+            sourceId: r.sourceId || null,
+            originId: r.originId || null,
           });
         }
         break; // the connector absorbs the incoming beam either way
       }
       const children = interact(r, hit);
       if (children.length === 0) break;
+      recordCoherentArrival(r, hit, children, coherent?.arrivals);
+      for (const child of children) {
+        const override = coherent?.plan?.get(coherentChildKey(r, hit.surface, child));
+        if (!override) continue;
+        child.intensity = override.intensity;
+        child.power = override.power;
+        child.phaseOffset = override.phaseOffset;
+        child.fieldGroupCount = override.fieldGroupCount;
+        child.retainZeroField = override.retainZeroField;
+        child.coherentlySuppressed = override.coherentlySuppressed;
+      }
       const c0 = children[0];
       const single = children.length === 1 && !c0.tag
         && (c0.wl === undefined || c0.wl === r.wl)
@@ -2178,11 +2575,21 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
         if ('pol' in c0) r.pol = c0.pol;
         if ('stokes' in c0) r.stokes = cloneStokes(c0.stokes);
         if ('medium' in c0) r.medium = c0.medium;
+        if ('mediumMaterial' in c0) r.mediumMaterial = c0.mediumMaterial;
         if ('ior' in c0) r.ior = c0.ior;
-        if (Number.isFinite(c0.phaseShift)) r.phaseOffset = (r.phaseOffset || 0) + c0.phaseShift;
+        if (Number.isFinite(c0.phaseOffset)) r.phaseOffset = c0.phaseOffset;
+        else if (Number.isFinite(c0.phaseShift)) r.phaseOffset = (r.phaseOffset || 0) + c0.phaseShift;
+        if (Number.isInteger(c0.fieldGroupCount)) r.fieldGroupCount = c0.fieldGroupCount;
+        if ('retainZeroField' in c0) r.retainZeroField = Boolean(c0.retainZeroField);
         if (c0.phaseValid === false) {
           r.phaseValid = false;
           r.phaseIssue = c0.phaseIssue || r.phaseIssue || 'carrier phase became unavailable';
+        }
+        if ('gdd' in c0) {
+          if (r.gddTrace && c0.gdd !== r.gdd) {
+            r.gddTrace.push({ opl: r.opl, gdd: c0.gdd, linear: false });
+          }
+          r.gdd = c0.gdd;
         }
         r.last = hit.surface; r.depth++;
         continue;
@@ -2195,6 +2602,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           retainedWeakBranches++;
         }
         const ox = c.origin ? c.origin.x : hit.p.x, oy = c.origin ? c.origin.y : hit.p.y;
+        const childGdd = 'gdd' in c ? c.gdd : r.gdd;
         stack.push({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
           wl: c.wl !== undefined ? c.wl : r.wl,
@@ -2226,10 +2634,24 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits) {
           coherenceId: r.coherenceId || null,
           phaseValid: r.phaseValid === true && c.phaseValid !== false,
           phaseIssue: c.phaseIssue || r.phaseIssue || null,
-          phaseOffset: (Number.isFinite(r.phaseOffset) ? r.phaseOffset : 0)
-            + (Number.isFinite(c.phaseShift) ? c.phaseShift : 0),
+          phaseOffset: Number.isFinite(c.phaseOffset) ? c.phaseOffset
+            : (Number.isFinite(r.phaseOffset) ? r.phaseOffset : 0)
+              + (Number.isFinite(c.phaseShift) ? c.phaseShift : 0),
+          fieldGroupCount: Number.isInteger(c.fieldGroupCount)
+            ? c.fieldGroupCount : (Number.isInteger(r.fieldGroupCount) ? r.fieldGroupCount : 1),
+          retainZeroField: Boolean(c.retainZeroField),
+          coherentlySuppressed: Boolean(c.coherentlySuppressed),
+          // Deliberately not overridable by the child: a specimen's
+          // fluorescence is new light with a new sourceId, but its power is
+          // still a fraction of the laser that drove it.
+          originId: r.originId || null,
           medium: 'medium' in c ? c.medium : r.medium,
+          mediumMaterial: 'mediumMaterial' in c ? c.mediumMaterial : r.mediumMaterial,
+          spectralCount: 'spectralCount' in c ? c.spectralCount : r.spectralCount,
+          keepWeak: 'keepWeak' in c ? c.keepWeak : r.keepWeak,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
+          gdd: childGdd,
+          gddTrace: r.gddTrace ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
           intensity: childIntensity,
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
@@ -2332,10 +2754,12 @@ function assembleDrawables(paths, opts, drawables) {
     if (r.sample === null || r.sample === undefined || r.pts.length < 2) continue;
     if (!bySample.has(r.sample)) bySample.set(r.sample, []);
     for (let j = 0; j < r.pts.length - 1; j++) {
+      const intensity = r.segmentIntensities?.[j] ?? r.intensity;
+      if (!(intensity > 1e-12)) continue;
       bySample.get(r.sample).push({
         ...r,
         pts: [r.pts[j], r.pts[j + 1]],
-        intensity: r.segmentIntensities?.[j] ?? r.intensity,
+        intensity,
         renderHistory: r.segmentHistories?.[j] ?? r.sig,
         renderEvent: r.segmentEvents?.[j] ?? null,
       });
@@ -2359,7 +2783,19 @@ function assembleDrawables(paths, opts, drawables) {
       if (ra.speckle) { pushRay(ra, 0, 0, true); continue; } // grains, no fill
       const rb = nextByHistory.get(ra.renderHistory);
       if (rb && !rb.speckle) {
-        const op = 0.28 * Math.max(0.4, ra.intensity);
+        // A broadband ray split into N spectral samples is still one beam
+        // where those samples coincide. Flooring every sample at the
+        // single-ray minimum made eight translucent colours stack to full
+        // coverage of a red-plus-violet blend, so a white supercontinuum
+        // turned purple the moment it crossed any dispersive glass. Sharing
+        // the floor keeps the overlap near the composite and still lets the
+        // colours show where they genuinely separate.
+        // 1/sqrt(N) rather than 1/N: where the samples coincide (a lens) the
+        // stack is thin enough to read as the mixed light it physically is,
+        // and where they separate (a prism) each colour is still drawn boldly
+        // enough to be a rainbow rather than a wash.
+        const siblings = Math.max(1, ra.spectralCount || 1);
+        const op = 0.28 * Math.max(0.4 / Math.sqrt(siblings), ra.intensity);
         const [A, B] = ra.renderEvent === rb.renderEvent
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
@@ -2393,12 +2829,28 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
     pulseTracks.push({
       pts: r.pts.map(p => ({ x: p.x, y: p.y })),
       opls: [...r.opls],
+      ...(r.gddTrace ? { gddTrace: r.gddTrace.map(event => ({ ...event })) } : {}),
       pulse: { ...r.pulse },
       bw: r.bw || 0,
       color: r.color || fixedColor || wavelengthToColor(r.wl),
       intensity: r.intensity,
     });
   }
+}
+
+function traceWithCoherentGrouping(rays0, surfaces, couplings, writeHits, signalHits) {
+  if (!rays0.some(ray => ray.phaseValid && ray.coherenceId)) {
+    return traceRays(rays0, surfaces, couplings, writeHits, signalHits);
+  }
+  let plan = new Map();
+  for (let pass = 0; pass < MAX_COHERENT_GROUP_PASSES; pass++) {
+    const arrivals = [];
+    traceRays(rays0, surfaces, null, [], [], { plan, arrivals, dryRun: true });
+    const next = extendCoherentPlan(arrivals, plan);
+    if (coherentPlansEqual(plan, next)) break;
+    plan = next;
+  }
+  return traceRays(rays0, surfaces, couplings, writeHits, signalHits, { plan });
 }
 
 // Trace everything. The static drawables remain export-safe while pulseTracks
@@ -2416,6 +2868,8 @@ export function traceScene(elements, beams = []) {
   detectorMisses = new Map();
   incompleteCoherenceIds = new Map();
   objectivePupilHits = new Map();
+  compressorGdd = new Map();
+  metalensHits = new Map();
   gateTransmissionCache = new Map();
   specimenIncident = new Map();
 
@@ -2445,6 +2899,9 @@ export function traceScene(elements, beams = []) {
       repRateMHz: Math.min(1000000, Math.max(0.001, p.repRateMHz || 80)),
       pulseWidthFs: Math.min(1000000000, Math.max(1, p.pulseWidthFs || 100)),
       phaseNs: Math.min(1000000, Math.max(-1000000, p.pulsePhaseNs || 0)),
+      centerWavelengthNm: srcWl,
+      pulseShape: p.pulseShape || 'gauss',
+      transformLimited: p.transformLimited === true,
     } : null;
     const rays0 = local.map(r => {
       const o = toWorld(el, r.x, r.y);
@@ -2462,6 +2919,9 @@ export function traceScene(elements, beams = []) {
       // Point rays cannot reconstruct a field across a finite camera pixel;
       // pulsed, broadband, and generated sources remain power-only.
       const coherenceId = el.type === 'cwlaser' && srcBw === 0 && !pulse && K > 1 ? el.id : null;
+      const initialMaterial = initialBody
+        ? [initialBody.params?.glass, initialBody.params?.material].find(isDispersiveGlass) || null
+        : null;
       return {
         x: o.x, y: o.y, dx: d.x, dy: d.y, wl: srcWl, bw: srcBw, spec: srcSpec, speckle: false,
         spectralContinuum: Boolean(srcSpec || srcBw > 0),
@@ -2471,7 +2931,7 @@ export function traceScene(elements, beams = []) {
         pulse,
         objectives: [],
         evan: r.evan || false, evanLen: r.evanLen,
-        medium: initialBody?.id || null, ior: initialIor,
+        medium: initialBody?.id || null, mediumMaterial: initialMaterial, ior: initialIor,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,
         sampleCount: K,
         sampleGrid: r.sampleGrid === 'edges' ? 'edges' : null,
@@ -2479,14 +2939,21 @@ export function traceScene(elements, beams = []) {
         phaseValid: coherenceId !== null,
         phaseIssue: coherenceId === null ? 'source does not define a reconstructable monochromatic CW field' : null,
         phaseOffset: 0,
+        fieldGroupCount: 1,
         // Which source this light started from, so the spectrometer can
-        // normalize each source's own contribution independently.
+        // normalize each source's own contribution independently. A specimen
+        // relabels sourceId when it emits a signal of its own, so `originId`
+        // additionally records the element that actually put the energy into
+        // the scene, and is never rewritten downstream -- that is the only id
+        // a watt figure can be attributed to.
         sourceId: el.id,
+        originId: el.id,
         writeReference: r.sample === undefined || r.sample === Math.floor((K - 1) / 2),
       };
     });
-    const allPaths = traceRays(rays0, surfaces,
-      collect ? couplings : null, collect ? writeHits : [], collect ? signalHits : []);
+    const allPaths = collect
+      ? traceWithCoherentGrouping(rays0, surfaces, couplings, writeHits, signalHits)
+      : traceRays(rays0, surfaces, null, [], []);
     if (!collect) continue;
     // Rays tagged hidden (a partial mirror's transmitted leak with its
     // "Display transmitted beam" toggle off) are retained by the bounded
@@ -2533,6 +3000,8 @@ export function traceScene(elements, beams = []) {
       detectorMisses = new Map();
       incompleteCoherenceIds = new Map();
       objectivePupilHits = new Map();
+      compressorGdd = new Map();
+      metalensHits = new Map();
       gateTransmissionCache = new Map();
     }
   }
@@ -2573,7 +3042,7 @@ export function traceScene(elements, beams = []) {
     // lens surfaces crossed by the object's own axis ray, ordered by distance
     const hits = [];
     for (const s of surfaces) {
-      if (s.kind !== 'lens') continue;
+      if (s.kind !== 'lens' && s.kind !== 'metalens') continue;
       const e = sub(s.b, s.a);
       const den = u.x * e.y - u.y * e.x;
       if (Math.abs(den) < 1e-9) continue;
@@ -2583,7 +3052,9 @@ export function traceScene(elements, beams = []) {
       if (t > 1 && q >= 0 && q <= 1) hits.push({ t, s });
     }
     hits.sort((a, b) => a.t - b.t);
-    if (!hits.length || hits.some(h => !h.s.data.f)) continue;
+    const imageFocalLength = s => s.kind === 'metalens'
+      ? metalensFocalLength(s.data, pp.wavelength) : s.data.f;
+    if (!hits.length || hits.some(h => !imageFocalLength(h.s))) continue;
 
     // image of any point: trace two independent real rays from it through
     // every lens hit with the same bending physics as live ray tracing
@@ -2602,7 +3073,7 @@ export function traceScene(elements, beams = []) {
           const t = (dp.x * e.y - dp.y * e.x) / den;
           const hitP = add(r.p, mul(r.d, t));
           r.p = hitP;
-          r.d = lensBend(r.d, hitP, s, s.data.f);
+          r.d = lensBend(r.d, hitP, s, imageFocalLength(s));
         }
       }
       const [rA, rB] = rays;

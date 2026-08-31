@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Objective — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/objective/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Objective — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.">
+<meta property="og:description" content="Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/objective/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -75,7 +75,13 @@
         <div class="cat">
           <div class="cat-name">Lenses</div>
           <ul>
-            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="current">Objective</a></li>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="current">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
           </ul>
         </div>
         <div class="cat">
@@ -93,31 +99,49 @@
         <div class="cat">
           <div class="cat-name">Polarization</div>
           <ul>
-            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
           </ul>
         </div>
         <div class="cat">
           <div class="cat-name">Detectors</div>
           <ul>
-            <li><a href="../../wiki/detector/" class="">Photodetector</a></li>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li>
           </ul>
         </div>
         <div class="cat">
           <div class="cat-name">Modulators</div>
           <ul>
-            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
           </ul>
         </div>
     </nav>
     <main class="wiki-article">
       <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#lenses">Lenses</a> / Objective</div>
       <div class="article-head">
-        <div class="article-icon"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-10 L 7,-17 L -21,-17 L -21,17 L 7,17 L 16,10 Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/><line x1="7" y1="-17" x2="7" y2="17" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-17" width="2.4" height="10.50" fill="#2f3e4d"/><rect x="-21" y="6.50" width="2.4" height="10.50" fill="#2f3e4d"/><line x1="16" y1="-10" x2="16" y2="10" stroke="#4a90c4" stroke-width="2"/></svg></div>
+        <div class="article-icon"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-5.5 L 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5 L 16,5.5 Z" fill="#8d98a5" stroke="none"/><path d="M 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/><line x1="7" y1="-12.5" x2="7" y2="12.5" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-12.5" width="2.4" height="8.50" fill="#2f3e4d"/><rect x="-21" y="4.00" width="2.4" height="8.50" fill="#2f3e4d"/></svg></div>
         <div>
           <h1>Objective</h1>
         </div>
       </div>
-      <p class="tagline">Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.</p>
+      <p class="tagline">Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.</p>
       <a class="place-cta" href="../../sketch/?place=objective">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -136,7 +160,7 @@
         aperture <span class="w">NA</span> is the single number that matters most: it
         sets the objective's light-gathering cone and, through diffraction, the finest
         detail it can ever resolve, regardless of magnification:</p>
-      <div class="formula">
+<div class="formula">
       <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo>=</mo><mi>n</mi><mi>sin</mi><mo>⁡</mo><mi>θ</mi></mrow><annotation encoding="application/x-tex">\mathrm{NA} = n\sin\theta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">NA</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">n</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">sin</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span></span></span></span></span></div>
       <div class="caption">Numerical aperture depends on both the accepted half-angle and the refractive index of the objective's designed front medium; NA above 1 therefore requires immersion.</div>
     </div><div class="formula">
@@ -152,7 +176,7 @@
       <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mtext>eff</mtext></msub><mo>≈</mo><mfrac><mi>D</mi><mrow><mn>2</mn><mi>f</mi></mrow></mfrac><mo>≤</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow></mrow><annotation encoding="application/x-tex">\mathrm{NA}_{\text{eff}} \approx \frac{D}{2f} \le \mathrm{NA}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord"><span class="mord mathrm">NA</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">eff</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2408em;vertical-align:-0.8804em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">D</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8804em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≤</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">NA</span></span></span></span></span></span></div>
       <div class="caption">The NA you actually work at when a beam of diameter D underfills the back pupil — the rating is a ceiling, not a guarantee.</div>
     </div>
-      
+
         <p>Modern objectives are almost always <strong>infinity-corrected</strong>: a
         point at the sample (the front focal plane) emits a cone that leaves the back of
         the objective as a <em>collimated</em> beam, which a separate tube lens then
@@ -184,14 +208,23 @@
         the label implies — which is why laser-scanning systems deliberately
         <strong>overfill</strong> the back aperture, accepting the power clipped off at the
         rim in exchange for the full aperture and the tightest spot the objective can make.
-        Working distance, meanwhile, is a separate catalogue dimension bounded by the focal
-        length: the specimen plane sits one focal length from the principal plane, and the
-        glass between the front element and the sample takes up the difference, so working
-        distance is always shorter than EFL.</p>
+        Working distance, meanwhile, is a separate catalogue dimension set by the complete
+        prescription. It is often shorter than EFL in high-power objectives, but there is
+        no universal <span class="w">WD&nbsp;&le;&nbsp;EFL</span> rule for real compound
+        objectives; specialized long-working-distance designs are the obvious exception.</p>
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
         
+        <p>The inspector begins with a starting point grouped by immersion class —
+        <strong>Dry</strong>, <strong>Water</strong>, <strong>Oil</strong>, and
+        <strong>Long working distance</strong> — each offering the magnification and NA
+        pairs people actually buy. They are plausible catalogue-shaped specs, not one
+        manufacturer's prescriptions; choosing one sets EFL, working distance, medium, NA,
+        and front aperture together. The labels carry NA and WD precisely because the two
+        trade off: at a fixed magnification, every step up in NA costs clearance. Exact
+        values remain editable in the collapsed <strong>Advanced parameters</strong>
+        section, and any edit there drops the selector to Custom.</p>
         <p>An objective here is set by three things you would read off a real catalogue —
         <strong>effective focal length (EFL)</strong>, <strong>working distance</strong>,
         and <strong>rated NA</strong> — plus the front aperture that controls how big the
@@ -199,8 +232,9 @@
         as one equivalent lens, which is what "focal length" means on an objective; the
         inspector label spells that out. Magnification is not something you type in. It is <em>reported</em> from the EFL against a 200&nbsp;mm reference
         tube lens, because magnification belongs to the objective plus whichever tube lens
-        you actually place in the sketch, not to the objective alone. A fresh objective is
-        EFL 10&nbsp;mm — 20× on a 200&nbsp;mm tube lens — dry, NA 0.65, 100% transmission.</p>
+        you actually place in the sketch, not to the objective alone. A fresh objective uses
+        the 20× dry starting point: EFL 10&nbsp;mm, WD 1.2&nbsp;mm, NA 0.40, and 100%
+        transmission.</p>
 
         <h3>Where the refracting plane sits, and why</h3>
         <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
@@ -224,10 +258,15 @@
         <p>The BFP is drawn as a labelled marker next to the WD focus, and it is a traced
         conjugate rather than an annotation — put a source at it and the output really does
         come out collimated.</p>
-        <p>Working distance is capped at EFL, and defaults to it. A real objective focuses
-        at or inside its own focal length, with the glass taking up the difference; the cap
-        also keeps the equivalent plane at or behind the front tip, inside the barrel, which
-        is where a real objective's principal plane and pupil sit. Nothing is drawn there —
+        <p>Working distance is <em>not</em> capped at EFL. Real long-working-distance
+        objectives focus well beyond their own focal length — a 100× Plan Apo NIR reaches
+        about 12&nbsp;mm on a 2&nbsp;mm EFL — by putting the equivalent principal plane
+        <em>ahead</em> of the front glass, and the model reproduces that: when WD exceeds
+        EFL the equivalent plane sits in front of the tip, exactly where the real one is.
+        The only bound is a catalogue ceiling of 40&nbsp;mm, or the objective's own EFL if
+        that is longer, so older sketches that recorded WD equal to a long EFL keep their
+        focus exactly where it was. Missing legacy values still fall back to EFL.
+        Nothing is drawn at the equivalent plane —
         an objective is an opaque barrel, not a visible singlet. When a short working
         distance pushes the plane behind the default rear face, only the straight rear
         section of the barrel lengthens; the tapered nose is fixed geometry.</p>
@@ -288,11 +327,15 @@
         no liquid is drawn. Older high-NA sketches that never recorded a medium remain
         explicitly unresolved until one is chosen.</p>
 
-        <h3>Handles and markers</h3>
-        <p>The purple tune control changes EFL and the blue resize handle changes the front
-        aperture. Editing working distance moves the refracting plane without touching EFL or
-        the reported magnification; raising EFL leaves an already-configured working distance
-        alone, while lowering EFL past it carries the working distance down with it. Toggle
+        <h3>Controls and markers</h3>
+        <p>The blue resize handle changes the front aperture. EFL is intentionally an exact
+        Advanced field rather than a free-drag canvas knob, and is bounded to
+        2–60&nbsp;mm: 2&nbsp;mm is a 100× objective, 60&nbsp;mm a 3.3×, and past that an
+        "objective" is simply a lens whose derived barrel and internal planes stop being
+        drawable at any usable zoom. Editing working distance
+        moves the refracting plane without touching EFL or the reported magnification; raising
+        EFL leaves an already-configured working distance alone, while lowering EFL past it
+        carries the working distance down with it. Toggle
         "Show focal points" (the <span class="w">ƒ</span> button) or select the objective to
         see both marked planes: <span class="w">BFP</span> on the tube-lens side and the
         nominal <span class="w">WD focus</span> on the sample side.</p>
@@ -301,7 +344,10 @@
         to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
         power, repetition rate, and pulse duration — see the inspector on a resin
         sample's stage.</p>
-        
+        <p>For pulse reporting, the equivalent plane silently contributes 30&nbsp;mm of
+        N-BK7. This is a class-typical GDD estimate, not a prescription: real objectives
+        can be roughly half to twice that value, and the estimate does not scale with NA,
+        magnification, immersion medium, or barrel geometry.</p>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The 200&nbsp;mm reference tube length is a real, common convention
         (Nikon and Leica both design infinity objectives against 200&nbsp;mm) but not a
         universal one — Olympus uses 180&nbsp;mm and Zeiss 165&nbsp;mm — and OpticalSetup
@@ -309,11 +355,11 @@
         standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
         reference length is used only for effective-focal-length metadata and the
         first-order pupil estimate; it does not define the trace boundary or focus map.
-        Working distance is a saved property bounded only by EFL, not a value predicted by
-        magnification, NA, or immersion medium: a real catalogue pairs them through the
-        internal design, and OpticalSetup deliberately lets you keep a visible working
-        distance on a high-power objective so the sketch stays readable — a real 60&times;
-        oil objective works at a few tenths of a millimetre, which would be invisible here. The equivalent lens plane and the
+        Working distance is a saved property bounded by EFL in this model, not a value
+        predicted by magnification, NA, or immersion medium: a real catalogue pairs them
+        through the internal design and can include long-working-distance prescriptions that
+        violate this simplified cap. The supplied high-power starting points do retain
+        plausible sub-millimetre clearances. The equivalent lens plane and the
         back focal plane it defines are first-order stand-ins for a compound objective's
         principal plane and pupil, not the real internal conjugates: one plane cannot
         reproduce a real objective's aberration correction, field curvature, or the axial
@@ -327,7 +373,10 @@
         vignetting calculation. Dry objectives cap at NA 0.85, the practical ceiling for
         real dry designs rather than the physical <span class="w">n = 1</span> limit. The drawn meniscus does not solve wetting, contact angle, surface tension,
         volume, or gravity; it adds no refracting boundary and does not model cover glass,
-        index mismatch, focal shift, or immersion aberrations.</p></div>
+        index mismatch, focal shift, or immersion aberrations. The fixed 30&nbsp;mm
+        N-BK7 GDD equivalent can be wrong by about a factor of two for a particular
+        objective; detector readouts report the combined path total, while this page
+        identifies which part of that total is only assumed.</p></div>
       </div>
 
       

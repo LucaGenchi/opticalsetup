@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import { cameraProfileFromHits } from '../sketch/js/camera-profile.js';
 import { createElement, registry } from '../sketch/js/elements.js';
-import { detectorReading, traceAll } from '../sketch/js/raytrace.js';
+import { detectorReading, probeAt, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 
 const close = (actual, expected, tolerance = 1e-9) => {
@@ -447,9 +447,10 @@ test('the actual Mach–Zehnder scene has complementary coherent camera outputs'
   close(dark.signal, 0, 2e-9);
   close(bright.signal + dark.signal, 1, 2e-9);
   for (const reading of [bright, dark]) {
-    close(reading.depositedSignal, 0.5, 2e-9);
+    close(reading.depositedSignal, reading.signal, 2e-9);
     assert.equal(reading.profileMode, 'coherent');
     assert.equal(reading.coherentPaths, 2);
+    assert.match(reading.interference.reason, /upstream recombination surface/);
   }
   assert.equal(bright.dark, false);
   close(sum(bright.spectrum.map(sample => sample.power)), 1, 2e-9);
@@ -563,13 +564,46 @@ test('a half-wave path delay swaps the Mach–Zehnder output ports', () => {
   close(dark.signal + bright.signal, 1, 2e-9);
 });
 
-test('the camera switch exposes the conservative Mach–Zehnder baseline', () => {
+test('the detector-local switch does not undo upstream Mach–Zehnder recombination', () => {
   const readings = machZehnder({ interference: false });
-  for (const reading of readings) {
-    close(reading.signal, 0.5, 2e-9);
-    assert.equal(reading.profileMode, 'deposited');
-    assert.equal(reading.interference.reason, 'disabled');
-  }
+  close(readings[0].signal, 1, 2e-9);
+  close(readings[1].signal, 0, 2e-9);
+  readings.forEach(reading => {
+    assert.equal(reading.profileMode, 'coherent');
+    assert.match(reading.interference.reason, /upstream recombination surface/);
+  });
+});
+
+test('the traced and drawn Mach–Zehnder output follows the grouped field power', () => {
+  const fixture = new URL('../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json', import.meta.url);
+  const raw = readFileSync(fixture, 'utf8');
+  const traceAtDelay = delayMm => {
+    const scene = parseSketch(raw, registry);
+    scene.elements.find(element => element.type === 'delayline').params.delayMm = delayMm;
+    const traced = traceScene(scene.elements);
+    const eastDrawables = traced.drawables.filter(drawable => drawable.pts?.some(point =>
+      point.x > 650 && Math.abs(point.y - 400) < 4));
+    const southDrawables = traced.drawables.filter(drawable => drawable.pts?.some(point =>
+      point.y > 450 && Math.abs(point.x - 600) < 4));
+    return {
+      east: probeAt(700, 400, 5)?.intensity,
+      south: probeAt(600, 500, 5)?.intensity,
+      eastDrawables,
+      southDrawables,
+    };
+  };
+
+  const nominal = traceAtDelay(0);
+  close(nominal.east, 1, 2e-9);
+  close(nominal.south, 0, 2e-9);
+  assert.ok(nominal.eastDrawables.length > 0);
+  assert.equal(nominal.southDrawables.length, 0);
+
+  const shifted = traceAtDelay(532e-6 / 2);
+  close(shifted.east, 0, 2e-9);
+  close(shifted.south, 1, 2e-9);
+  assert.equal(shifted.eastDrawables.length, 0);
+  assert.ok(shifted.southDrawables.length > 0);
 });
 
 test('camera spectra preserve same-source continuum routes with different clipping', () => {

@@ -1,0 +1,1129 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "evgazbrh",
+   "type": "pulsedlaser",
+   "x": -127,
+   "y": 175,
+   "rot": 0,
+   "label": "Tunable ps laser source (750 to 950 nm)",
+   "showLabel": true,
+   "params": {
+    "wavelength": 780,
+    "avgPowerW": 1,
+    "beamMode": "beam",
+    "beamWidth": 3,
+    "repRateMHz": 80,
+    "pulsePhaseNs": 0,
+    "pulseWidthFs": 1000,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "bandwidth": 0.895,
+    "pol": 0,
+    "autoColor": false,
+    "color": "#ff6400",
+    "showPulse": true,
+    "temporalMode": "pulsed"
+   }
+  },
+  {
+   "id": "ebgasu4j",
+   "type": "mirror",
+   "x": 0,
+   "y": 175,
+   "rot": 135,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "egs4tfvh",
+   "type": "mirror",
+   "x": 0,
+   "y": 200,
+   "rot": 315,
+   "label": "Mirrors for alignment",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "eg3ksg58",
+   "type": "polarizer",
+   "x": 225,
+   "y": 200,
+   "rot": 0,
+   "label": "Linear polarizer",
+   "showLabel": true,
+   "params": {
+    "pangle": 0,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "eaceg0bp",
+   "type": "hwp",
+   "x": 125,
+   "y": 200,
+   "rot": 0,
+   "label": "Half wave plate",
+   "showLabel": true,
+   "params": {
+    "a": 0,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "epokmnw0",
+   "type": "textlabel",
+   "x": 125,
+   "y": 161,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Power control",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ebq2ycw9",
+   "type": "textlabel",
+   "x": 0,
+   "y": 243,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Alignment",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "e7o5vg6j",
+   "type": "galvo",
+   "x": 725,
+   "y": 200,
+   "rot": 225,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 20,
+    "commandAngle": 0,
+    "scanMode": "static",
+    "scanAmplitude": 1,
+    "scanFrequencyHz": 100,
+    "scanPhaseDeg": 0,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "e9dns7tt",
+   "type": "galvo",
+   "x": 725,
+   "y": 175,
+   "rot": 225,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 20,
+    "commandAngle": 0,
+    "scanMode": "static",
+    "scanAmplitude": 1,
+    "scanFrequencyHz": 100,
+    "scanPhaseDeg": 0,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "eos4tcal",
+   "type": "textlabel",
+   "x": 725,
+   "y": 135,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Scanning mirrors",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "exiqeiuj",
+   "type": "lens",
+   "x": 775,
+   "y": 175,
+   "rot": 0,
+   "label": "Scan lens",
+   "showLabel": true,
+   "params": {
+    "f": 50,
+    "dia": 25.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "ep16mkew",
+   "type": "lens",
+   "x": 925,
+   "y": 175,
+   "rot": 0,
+   "label": "Tube lens",
+   "showLabel": true,
+   "params": {
+    "f": 100,
+    "dia": 25.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "e227dxsg",
+   "type": "dichroic",
+   "x": 975,
+   "y": 175,
+   "rot": 45,
+   "label": "SP700",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "dtype": "shortpass",
+    "cutoff": 700,
+    "center": 550,
+    "band": 50,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "etsvxovm",
+   "type": "objective",
+   "x": 975,
+   "y": 131,
+   "rot": 270,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "efl": 13,
+    "workingDistance": 13,
+    "immersion": "air",
+    "immersionIndex": 1.333,
+    "na": 0.7692307692307693,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 20
+   }
+  },
+  {
+   "id": "e4w5g7rr",
+   "type": "objective",
+   "x": 975,
+   "y": 73,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "efl": 13,
+    "workingDistance": 13,
+    "immersion": "air",
+    "immersionIndex": 1.333,
+    "na": 0.7692307692307693,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 20
+   }
+  },
+  {
+   "id": "eg2w5zcc",
+   "type": "dichroic",
+   "x": 975,
+   "y": 25,
+   "rot": 315,
+   "label": "SP700",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "dtype": "shortpass",
+    "cutoff": 700,
+    "center": 550,
+    "band": 50,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "ex99xumu",
+   "type": "pulsedlaser",
+   "x": -127,
+   "y": 300,
+   "rot": 0,
+   "label": "Fixed beam, ps (1030 nm)",
+   "showLabel": true,
+   "params": {
+    "wavelength": 1030,
+    "avgPowerW": 1,
+    "beamMode": "beam",
+    "beamWidth": 3,
+    "repRateMHz": 80,
+    "pulsePhaseNs": 0,
+    "pulseWidthFs": 1000,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "bandwidth": 1.561,
+    "pol": 0,
+    "autoColor": false,
+    "color": "#800000",
+    "showPulse": true,
+    "temporalMode": "pulsed"
+   }
+  },
+  {
+   "id": "eeeexhf1",
+   "type": "mirror",
+   "x": 0,
+   "y": 300,
+   "rot": 135,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "e8m788rb",
+   "type": "mirror",
+   "x": 0,
+   "y": 325,
+   "rot": 315,
+   "label": "Mirrors for alignment",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "ebij0qw1",
+   "type": "polarizer",
+   "x": 225,
+   "y": 325,
+   "rot": 0,
+   "label": "Linear polarizer",
+   "showLabel": true,
+   "params": {
+    "pangle": 0,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "e5ercpjt",
+   "type": "hwp",
+   "x": 125,
+   "y": 325,
+   "rot": 0,
+   "label": "Half wave plate",
+   "showLabel": true,
+   "params": {
+    "a": 0,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "esvcppzs",
+   "type": "textlabel",
+   "x": 125,
+   "y": 286,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Power control",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ei74sm6r",
+   "type": "textlabel",
+   "x": 0,
+   "y": 368,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Alignment",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ejynv4la",
+   "type": "mirror",
+   "x": 350,
+   "y": 200,
+   "rot": 225,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "edbs8siw",
+   "type": "retroreflector",
+   "x": 362,
+   "y": 124,
+   "rot": 270,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "moveMode": "static",
+    "travel": 50,
+    "freqHz": 0.2,
+    "length": 50.8,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "emlwd6uz",
+   "type": "mirror",
+   "x": 375,
+   "y": 200,
+   "rot": 315,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "emijjycy",
+   "type": "mirror",
+   "x": 600,
+   "y": 325,
+   "rot": 225,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "eapb46vw",
+   "type": "dichroic",
+   "x": 600,
+   "y": 199,
+   "rot": 225,
+   "label": "SP1000",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "dtype": "shortpass",
+    "cutoff": 1000,
+    "center": 550,
+    "band": 50,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "ea3515oz",
+   "type": "textlabel",
+   "x": 575,
+   "y": 125,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Recombination",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "eya41ont",
+   "type": "mirror",
+   "x": 975,
+   "y": 250,
+   "rot": 225,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "eztjovh9",
+   "type": "pmt",
+   "x": 900,
+   "y": 250,
+   "rot": 180,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "aperture": 26,
+    "gain": 10,
+    "saturation": 100
+   }
+  },
+  {
+   "id": "e5ad8bsc",
+   "type": "textlabel",
+   "x": 850,
+   "y": 300,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Epi-detected CARS",
+    "fontSize": 14,
+    "fill": "#ff0000"
+   }
+  },
+  {
+   "id": "ezyfdtcd",
+   "type": "textlabel",
+   "x": 325,
+   "y": 86,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Delay line",
+    "fontSize": 14,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "e966o1em",
+   "type": "pmt",
+   "x": 975,
+   "y": -25,
+   "rot": 270,
+   "label": "CARS channel",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "aperture": 26,
+    "gain": 10,
+    "saturation": 100
+   }
+  },
+  {
+   "id": "eenzabj5",
+   "type": "textlabel",
+   "x": 550,
+   "y": 75,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Forward-detection channels",
+    "fontSize": 14,
+    "fill": "#ff0000"
+   }
+  },
+  {
+   "id": "er20ltdw",
+   "type": "textlabel",
+   "x": -175,
+   "y": -75,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Multimodal Coherent Raman microscope",
+    "fontSize": 28,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "euvczmt4",
+   "type": "textlabel",
+   "x": -175,
+   "y": -50,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Coherent anti-Stokes Raman scattering (CARS)",
+    "fontSize": 20,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "e17so0o1",
+   "type": "stage",
+   "x": 975,
+   "y": 102,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "pzMode": "static",
+    "pzTravelXY": 12,
+    "pzFreqXY": 0.15,
+    "pzTravelZ": 8,
+    "pzFreqZ": 0.1,
+    "pzZSteps": 5,
+    "aperture": 50,
+    "sampleKind": "generic",
+    "specimenType": "nonlinear",
+    "channels": [
+     {
+      "kind": "cars",
+      "wl": 520,
+      "eff": 1,
+      "epi": true,
+      "epiRatio": 0.15,
+      "autoWl": true,
+      "autoColor": true,
+      "color": "#22c55e",
+      "material": "lipid",
+      "fluorophore": "custom",
+      "retardance": 90,
+      "axis": 45,
+      "transferEff": 0.1,
+      "requireOverlap": false
+     },
+     {
+      "kind": "srs",
+      "wl": 410,
+      "eff": 0.1,
+      "epi": false,
+      "epiRatio": 0.15,
+      "autoWl": true,
+      "autoColor": true,
+      "color": "#22c55e",
+      "material": "lipid",
+      "fluorophore": "custom",
+      "retardance": 90,
+      "axis": 45,
+      "transferEff": 0.3,
+      "requireOverlap": false
+     }
+    ],
+    "showSignalSpot": true,
+    "thickness": 6,
+    "voxelPreview": false,
+    "voxelSize": 0.6,
+    "transmitExc": true,
+    "transmission": 0.8,
+    "mode": "none",
+    "fluorWl": 520,
+    "carsWl": 660,
+    "signalEff": 0.1
+   }
+  },
+  {
+   "id": "ex1nikcx",
+   "type": "eom",
+   "x": 375,
+   "y": 325,
+   "rot": 0,
+   "label": "20 MHz modulation",
+   "showLabel": true,
+   "params": {
+    "aperture": 24,
+    "modulate": true,
+    "a": 0,
+    "driveMode": "switching",
+    "switchMode": "flip",
+    "retardance": 90,
+    "retardanceLow": 0,
+    "retardanceHigh": 180,
+    "switchFreqMHz": 20,
+    "switchDuty": 0.5,
+    "switchPhaseNs": 0
+   }
+  },
+  {
+   "id": "ertk38vw",
+   "type": "polarizer",
+   "x": 475,
+   "y": 325,
+   "rot": 0,
+   "label": "Linear polarizer",
+   "showLabel": true,
+   "params": {
+    "pangle": 0,
+    "length": 25.4
+   }
+  },
+  {
+   "id": "eryqxoww",
+   "type": "highlight",
+   "x": 420,
+   "y": 325,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "shape": "rect",
+    "w": 210,
+    "h": 80,
+    "fill": "#ff0000",
+    "opacity": 35
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "eb0ch8om",
+   "type": "textlabel",
+   "x": 300,
+   "y": 275,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "High-frequency intensity modulation",
+    "fontSize": 14,
+    "fill": "#ff0000"
+   }
+  },
+  {
+   "id": "e0ylx3rx",
+   "type": "textlabel",
+   "x": -175,
+   "y": -25,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "Stimulated Raman scattering (SRS), stimulated Raman loss configuration (SRL)",
+    "fontSize": 20,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "ef2uydcv",
+   "type": "detector",
+   "x": 831,
+   "y": 25.000000000000004,
+   "rot": 180,
+   "label": "SRS channel",
+   "showLabel": true,
+   "params": {
+    "aperture": 26
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "ewqehdbt",
+   "type": "display",
+   "x": 675,
+   "y": -25,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "ef2uydcv",
+    "displayScale": 1,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "e7lzvaiw",
+   "type": "filter",
+   "x": 900,
+   "y": 25,
+   "rot": 0,
+   "label": "SP1000",
+   "showLabel": true,
+   "params": {
+    "ftype": "shortpass",
+    "cutoff": 1000,
+    "center": 525,
+    "band": 40,
+    "trans": 0.5,
+    "length": 25.4
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "egy525hq",
+   "type": "bs",
+   "x": 550,
+   "y": 325,
+   "rot": 270,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "e9td4zur",
+   "type": "mirror",
+   "x": 550,
+   "y": 400,
+   "rot": 315,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "e9xabqr6",
+   "type": "detector",
+   "x": 594,
+   "y": 400,
+   "rot": 0,
+   "label": "Intensity modulation",
+   "showLabel": true,
+   "params": {
+    "aperture": 26
+   }
+  },
+  {
+   "id": "e4eyo1co",
+   "type": "display",
+   "x": 737,
+   "y": 341,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "e9xabqr6",
+    "displayScale": 1,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  }
+ ],
+ "beams": [
+  {
+   "id": "b7dfsale",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": 75,
+     "y": 175
+    },
+    {
+     "x": 75,
+     "y": 250
+    },
+    {
+     "x": 275,
+     "y": 250
+    },
+    {
+     "x": 275,
+     "y": 175
+    },
+    {
+     "x": 75,
+     "y": 175
+    }
+   ],
+   "color": "#000000",
+   "width": 2,
+   "dash": true,
+   "arrow": false
+  },
+  {
+   "id": "bywi785x",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": -25,
+     "y": 150
+    },
+    {
+     "x": -25,
+     "y": 225
+    },
+    {
+     "x": 25,
+     "y": 225
+    },
+    {
+     "x": 25,
+     "y": 150
+    },
+    {
+     "x": -25,
+     "y": 150
+    }
+   ],
+   "color": "#000000",
+   "width": 2,
+   "dash": true,
+   "arrow": false
+  },
+  {
+   "id": "bp0cv2cn",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": 700.6467725803627,
+     "y": 149.446134118526
+    },
+    {
+     "x": 700.6467725803627,
+     "y": 224.446134118526
+    },
+    {
+     "x": 750.6467725803627,
+     "y": 224.446134118526
+    },
+    {
+     "x": 750.6467725803627,
+     "y": 149.446134118526
+    },
+    {
+     "x": 700.6467725803627,
+     "y": 149.446134118526
+    }
+   ],
+   "color": "#000000",
+   "width": 2,
+   "dash": true,
+   "arrow": false
+  },
+  {
+   "id": "bcmcwo34",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": 75,
+     "y": 300
+    },
+    {
+     "x": 75,
+     "y": 375
+    },
+    {
+     "x": 275,
+     "y": 375
+    },
+    {
+     "x": 275,
+     "y": 300
+    },
+    {
+     "x": 75,
+     "y": 300
+    }
+   ],
+   "color": "#000000",
+   "width": 2,
+   "dash": true,
+   "arrow": false
+  },
+  {
+   "id": "b6czvb7q",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": -25,
+     "y": 275
+    },
+    {
+     "x": -25,
+     "y": 350
+    },
+    {
+     "x": 25,
+     "y": 350
+    },
+    {
+     "x": 25,
+     "y": 275
+    },
+    {
+     "x": -25,
+     "y": 275
+    }
+   ],
+   "color": "#000000",
+   "width": 2,
+   "dash": true,
+   "arrow": false
+  },
+  {
+   "id": "bugcteec",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": 400,
+     "y": 150
+    },
+    {
+     "x": 400,
+     "y": 175
+    }
+   ],
+   "color": "#e02020",
+   "width": 2,
+   "dash": false,
+   "arrow": true
+  },
+  {
+   "id": "bm5dnjyp",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": 400,
+     "y": 150
+    },
+    {
+     "x": 400,
+     "y": 125
+    }
+   ],
+   "color": "#e02020",
+   "width": 2,
+   "dash": false,
+   "arrow": true
+  },
+  {
+   "id": "bw0cp3wj",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": 325,
+     "y": 100
+    },
+    {
+     "x": 325,
+     "y": 225.14174823675125
+    },
+    {
+     "x": 425,
+     "y": 225.14174823675125
+    },
+    {
+     "x": 425,
+     "y": 100
+    },
+    {
+     "x": 325,
+     "y": 100
+    }
+   ],
+   "color": "#e02020",
+   "width": 2,
+   "dash": true,
+   "arrow": false
+  },
+  {
+   "id": "bs5olm35",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": 575,
+     "y": 150
+    },
+    {
+     "x": 575,
+     "y": 225
+    },
+    {
+     "x": 625,
+     "y": 225
+    },
+    {
+     "x": 625,
+     "y": 150
+    },
+    {
+     "x": 575,
+     "y": 150
+    }
+   ],
+   "color": "#e02020",
+   "width": 2,
+   "dash": true,
+   "arrow": false
+  },
+  {
+   "id": "b6u6up0g",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": 850,
+     "y": 225
+    },
+    {
+     "x": 850,
+     "y": 275
+    },
+    {
+     "x": 950,
+     "y": 275
+    },
+    {
+     "x": 950,
+     "y": 225
+    },
+    {
+     "x": 850,
+     "y": 225
+    }
+   ],
+   "color": "#e02020",
+   "width": 2,
+   "dash": true,
+   "arrow": false
+  },
+  {
+   "id": "bxpbrb5p",
+   "kind": "beam",
+   "pts": [
+    {
+     "x": 550,
+     "y": -125
+    },
+    {
+     "x": 548.9648083316047,
+     "y": 48.303798178590974
+    },
+    {
+     "x": 1048.8273554959671,
+     "y": 48.303798178590974
+    },
+    {
+     "x": 1050,
+     "y": -125
+    },
+    {
+     "x": 550,
+     "y": -125
+    }
+   ],
+   "color": "#e02020",
+   "width": 2,
+   "dash": true,
+   "arrow": false
+  }
+ ]
+}

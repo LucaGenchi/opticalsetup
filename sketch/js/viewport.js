@@ -1,4 +1,4 @@
-// Pure viewport mathematics shared by wheel controls and touch gestures.
+// Pure viewport and pointer-gesture decisions shared by the workbench.
 
 export const VIEW_MIN_ZOOM = 0.15;
 export const VIEW_MAX_ZOOM = 64;
@@ -9,8 +9,26 @@ export const VIEW_MAX_ZOOM = 64;
 export const TABLE_HOLE_PITCH = 25;
 export const FINE_GRID_PITCH = 5;
 export const MICRO_GRID_PITCH = 1;
+export const PRECISION_GRID_PITCH = 0.25;
 export const FINE_GRID_MIN_ZOOM = 2;
 export const MICRO_GRID_MIN_ZOOM = 8;
+export const PRECISION_GRID_MIN_ZOOM = 30;
+export const PRECISION_SNAP_MIN_ZOOM = 10;
+export const PRECISION_SNAP_PITCH = 0.25;
+
+const INSPECTABLE_SELECTION_MODES = new Set(['move', 'movebeam']);
+
+export function shouldOpenInspectorAfterSelectionGesture({
+  mode,
+  changed = false,
+  maxDistancePx = 0,
+  pointerType = 'mouse',
+} = {}) {
+  if (!INSPECTABLE_SELECTION_MODES.has(mode) || changed) return false;
+  // Keep normal click jitter a click while making touch taps forgiving.
+  const threshold = pointerType === 'touch' ? 10 : 4;
+  return Number.isFinite(maxDistancePx) && maxDistancePx < threshold;
+}
 
 export function clampZoom(value, min = VIEW_MIN_ZOOM, max = VIEW_MAX_ZOOM) {
   return Math.min(max, Math.max(min, value));
@@ -18,6 +36,9 @@ export function clampZoom(value, min = VIEW_MIN_ZOOM, max = VIEW_MAX_ZOOM) {
 
 export function gridDetailForZoom(zoom) {
   const z = Number.isFinite(zoom) ? zoom : 1;
+  // Two pitches share the 'micro' level, so callers must draw the returned
+  // `step` rather than the MICRO_GRID_PITCH constant — see canvas.js.
+  if (z >= PRECISION_GRID_MIN_ZOOM) return { step: PRECISION_GRID_PITCH, level: 'micro' };
   if (z >= MICRO_GRID_MIN_ZOOM) return { step: MICRO_GRID_PITCH, level: 'micro' };
   if (z >= FINE_GRID_MIN_ZOOM) return { step: FINE_GRID_PITCH, level: 'fine' };
   return { step: TABLE_HOLE_PITCH, level: 'table' };
@@ -25,7 +46,13 @@ export function gridDetailForZoom(zoom) {
 
 export function snapToGrid(value, zoom) {
   if (!Number.isFinite(value)) return 0;
-  const { step } = gridDetailForZoom(zoom);
+  const z = Number.isFinite(zoom) ? zoom : 1;
+  // Once the user is past 1000%, pointer movement becomes a precision task.
+  // Refine snapping independently of the visible grid so the canvas does not
+  // become visually dense until the deeper 3000% zoom tier.
+  const step = z >= PRECISION_SNAP_MIN_ZOOM
+    ? PRECISION_SNAP_PITCH
+    : gridDetailForZoom(z).step;
   return Math.round(value / step) * step;
 }
 

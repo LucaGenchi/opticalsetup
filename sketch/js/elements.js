@@ -3,13 +3,14 @@
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
 //         surfaces(el)->[{x1,y1,x2,y2,kind,data}], source(el)->[rays],
 //         immersionSource(el)->{x,y}, immersionContact(el)->segment|segments }
-// Surface kinds handled by the tracer: mirror, lens, cmirror, refract,
+// Surface kinds handled by the tracer: mirror, lens, metalens, cmirror, refract,
 // dichroic, filter, split, grating, absorb, transmit (data may change
 // wavelength / deflect).
 
-import { distToSegment, esc, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
+import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
-import { detectorReading, objectivePupilFill, probeAt } from './raytrace.js';
+import { markdownLayout, markdownTextSVG } from './markdown.js';
+import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, probeAt } from './raytrace.js';
 import { fwhmToSigma, spectrumSamples, transformLimitedBandwidthNm } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -18,14 +19,25 @@ import {
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
 import {
-  OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
+  MIN_CEMENT_GAP, MAX_SURFACE_ROWS, PRESET_OPTIONS, normalizeSurfaceTable, surfaceRowsOf, surfaceTableAxialColour,
+  surfaceTableCardinals, surfaceTableSummary, surfaceTableToBodies,
+} from './lensgroup.js';
+
+export { MIN_CEMENT_GAP, MAX_SURFACE_ROWS };
+import {
+  OBJECTIVE_DEFAULT_PRESET, OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT,
+  OBJECTIVE_PRESETS, OBJECTIVE_PRESET_GROUPS, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
+  OBJECTIVE_WD_MAX,
+  applyObjectivePreset,
   objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
   objectiveBarrelHalfHeightAt, objectiveStopX,
   objectiveEffectiveFocalLength, objectiveFrontAperture, objectiveLensPlaneX, objectiveMagnification,
   objectiveMaximumNA, objectiveMaximumWorkingDistance, objectiveMediumIndex, objectiveMediumKey,
-  objectiveNumericalAperture, objectivePupilDiameter, objectivePupilRadius, objectiveWorkingDistance,
+  objectiveNumericalAperture, objectivePresetKey, objectivePupilDiameter, objectivePupilRadius,
+  objectiveWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
+import { normalizeAotfChannels, aotfOpenChannels, aotfSummary } from './aotf.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -61,18 +73,6 @@ function thickLensRadii(params) {
   };
   return { h, R1: clampR(params.r1), R2: clampR(params.r2) };
 }
-
-// The tracer ignores any intersection closer than 0.05 units along a ray, an
-// epsilon that stops a surface re-hitting itself. Two glass bodies in optical
-// contact therefore lose one of their two coincident interfaces, and the ray
-// exits into air instead of crossing into the next glass — a cemented doublet
-// traced that way comes out badly wrong (measured: 275mm against a true
-// 359mm). Holding cemented groups apart by slightly more than that epsilon
-// makes both interfaces real again. The cost is a hair of air where the
-// cement should be: at this separation it shifts a 100mm doublet's focus by
-// about 0.15%, well inside what this qualitative tracer claims anywhere else,
-// and real optical cement is a 10-20um layer of not-quite-glass regardless.
-export const MIN_CEMENT_GAP = 0.06;
 
 // Glass bodies expose per-surface transmission as a percentage, like every
 // other optic's Transmission efficiency; the tracer works in fractions.
@@ -171,6 +171,7 @@ export function thickLensShapeName(params = {}) {
 // coincident interfaces loses one of them and the ray wrongly exits into air.
 // A hand-built cemented doublet therefore comes out silently wrong rather than
 // visibly broken, which is the worst way for a model to fail — so say so.
+// The gap itself is defined in lensgroup.js, the module that has to insert it.
 export const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
 
 function glassBodyWorldPoints(el) {
@@ -267,6 +268,41 @@ function rectAbsorb(w, h) {
     { x1: x, y1: y, x2: -x, y2: y, kind: 'absorb' },
     { x1: -x, y1: y, x2: -x, y2: -y, kind: 'absorb' },
   ];
+}
+
+// ---- PMT gain and dark floor --------------------------------------------
+// Both are stored as plain multipliers and edited as base-10 exponents. A
+// sketch saved before the dark floor existed simply has no `darkInput`, so
+// every reader goes through these and gets the default instead of NaN.
+export const PMT_MAX_GAIN = 1e7;
+const PMT_DARK_MIN_LOG = -8, PMT_DARK_MAX_LOG = -2;
+
+export function pmtGain(params = {}) {
+  const stored = Number(params.gain);
+  if (!Number.isFinite(stored) || stored < 1) return 1e4;
+  return Math.min(PMT_MAX_GAIN, stored);
+}
+
+export function pmtGainFromLog(value) {
+  const exponent = Math.min(7, Math.max(0, Number(value) || 0));
+  // Round to three significant figures so the slider lands on 1e4 and 3.16e4
+  // rather than 10000.000000000002.
+  const raw = 10 ** exponent;
+  const decade = 10 ** Math.floor(Math.log10(raw));
+  return Math.min(PMT_MAX_GAIN, Math.max(1, Math.round(raw / decade * 100) / 100 * decade));
+}
+
+export function pmtDarkInput(params = {}) {
+  const stored = Number(params.darkInput);
+  if (!Number.isFinite(stored) || stored <= 0) return 1e-5;
+  return Math.min(1, stored);
+}
+
+export function pmtDarkFromLog(value) {
+  const exponent = Math.min(PMT_DARK_MAX_LOG, Math.max(PMT_DARK_MIN_LOG, Number(value) || PMT_DARK_MIN_LOG));
+  const raw = 10 ** exponent;
+  const decade = 10 ** Math.floor(Math.log10(raw));
+  return Math.round(raw / decade * 100) / 100 * decade;
 }
 
 // One-sided detector housing: light is measured at the front face and the
@@ -1220,7 +1256,7 @@ function sampleModeParams() {
       return type === 'linear' || type === 'nonlinear';
     } },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
-    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 1, max: 20, step: 0.5, def: 6, appearance: true },
+    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
     { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
@@ -1332,7 +1368,7 @@ function stageSampleColor(params) {
 // How thick the specimen glass is DRAWN. The tracer crosses it as a thin
 // sheet whatever this says, so it is presentation only — it never changes
 // where a ray meets the specimen or what it does there.
-export const sampleThickness = p => Math.min(20, Math.max(1, p?.thickness ?? 6));
+export const sampleThickness = p => Math.min(20, Math.max(0.15, p?.thickness ?? 6));
 
 function signalSpotSVG(el) {
   const hit = el._signalHitLocal;
@@ -1368,6 +1404,83 @@ function lensShape(cx, h, f) {
     ? `M ${cx},${-h} Q ${cx + 9},0 ${cx},${h} Q ${cx - 9},0 ${cx},${-h} Z`
     : `M ${cx - 6},${-h} L ${cx + 6},${-h} Q ${cx},0 ${cx + 6},${h} L ${cx - 6},${h} Q ${cx},0 ${cx - 6},${-h} Z`;
   return `<path d="${d}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.5"/>`;
+}
+
+// Silent centre-thickness estimate for a zero-thickness paraxial singlet.
+// It reuses the same lensmaker geometry as the real thick-lens model:
+// R = |f|(n-1), then adds a typical 2.5 mm edge thickness to the spherical
+// sag. Diameter therefore matters, unlike a focal-length bucket. If an
+// authored focal length would require R smaller than the clear semi-diameter,
+// clamp to the limiting hemisphere rather than produce a non-finite result.
+export function estimatedThinLensThicknessMm(params, wavelengthNm = 587.6) {
+  const diameter = Math.min(500, Math.max(0.1, Number(params?.dia) || 25.4));
+  const halfDiameter = diameter / 2;
+  const index = glassIndex('nbk7', wavelengthNm) ?? 1.5168;
+  const rawRadius = Math.abs(Number(params?.f) || 0) * Math.max(0.01, index - 1);
+  const radius = Math.max(halfDiameter, rawRadius);
+  const sag = radius - Math.sqrt(Math.max(0, radius * radius - halfDiameter * halfDiameter));
+  return Math.max(1.5, sag + 2.5);
+}
+
+// ---- flat metasurface lens ----------------------------------------------
+// OpticalSetup does not propagate carrier phase or solve a meta-atom unit
+// cell. A metalens is therefore a zero-thickness, wavelength-aware paraxial
+// phase-gradient proxy: exact at its configured first-order focus, honest
+// about ordinary diffractive chromaticity, and deliberately silent about PSF,
+// Strehl, fabrication feasibility, and where the unfocused power goes.
+export function metalensFocalLength(params = {}, wavelengthNm = 532) {
+  const nominal = Number(params.f);
+  if (!Number.isFinite(nominal)) return 0;
+  const wavelength = Math.max(1e-6, Number.isFinite(Number(wavelengthNm)) ? Number(wavelengthNm) : 532);
+  if (params.designType === 'achromatic') {
+    const a = Number.isFinite(Number(params.bandMin)) ? Number(params.bandMin) : 450;
+    const b = Number.isFinite(Number(params.bandMax)) ? Number(params.bandMax) : 650;
+    const lo = Math.max(1e-6, Math.min(a, b));
+    const hi = Math.max(lo, Math.max(a, b));
+    if (wavelength >= lo && wavelength <= hi) return nominal;
+    // Anchor the ordinary diffractive law to the nearest corrected edge. The
+    // focal length is continuous at both edges instead of jumping when a
+    // broadband source crosses the idealized correction band.
+    return nominal * (wavelength < lo ? lo : hi) / wavelength;
+  }
+  const designWavelength = Math.max(1e-6,
+    Number.isFinite(Number(params.designWavelength)) ? Number(params.designWavelength) : 532);
+  return nominal * designWavelength / wavelength;
+}
+
+export function metalensNumericalAperture(params = {}) {
+  const diameter = Math.max(0, Number.isFinite(Number(params.dia)) ? Number(params.dia) : 0);
+  const focalLength = Math.abs(Number.isFinite(Number(params.f)) ? Number(params.f) : 0);
+  if (!(diameter > 0) || !(focalLength > 0)) return 0;
+  return Math.sin(Math.atan(diameter / (2 * focalLength)));
+}
+
+function formatMetalensFocal(value) {
+  if (!Number.isFinite(value)) return '—';
+  const abs = Math.abs(value);
+  return `${abs >= 100 ? value.toFixed(0) : abs >= 10 ? value.toFixed(1) : value.toFixed(2)} mm`;
+}
+
+function metalensOpticalReadout(params) {
+  const f = Math.abs(Number(params.f));
+  const diameter = Number(params.dia);
+  if (!(f > 0) || !(diameter > 0)) return 'No optical power';
+  return `NA ${metalensNumericalAperture(params).toFixed(3)} · f/${(f / diameter).toFixed(2)}`;
+}
+
+function metalensIncidentReadout(el) {
+  const reading = el ? metalensReading(el.id) : null;
+  if (!reading?.length) return 'No incident light';
+  const wavelengths = reading.map(sample => sample.wavelengthNm);
+  const focals = reading.map(sample => sample.focalLengthMm);
+  const wl = wavelengths.length === 1
+    ? `${Number(wavelengths[0].toFixed(1))} nm`
+    : `${Number(Math.min(...wavelengths).toFixed(1))}–${Number(Math.max(...wavelengths).toFixed(1))} nm`;
+  const lo = Math.min(...focals), hi = Math.max(...focals);
+  const focus = Math.abs(hi - lo) < 0.005
+    ? formatMetalensFocal((lo + hi) / 2)
+    : `${formatMetalensFocal(lo).replace(' mm', '')}–${formatMetalensFocal(hi)}`;
+  return `${wl} → ${focus}`;
 }
 
 function prismGeometry(el) {
@@ -1833,7 +1946,73 @@ export const registry = {
     svg(el) { return lensShape(0, el.params.dia / 2, el.params.f); },
     surfaces(el) {
       const h = el.params.dia / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'lens', data: { f: el.params.f, transEff: el.params.transEff } }];
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'lens',
+        data: {
+          f: el.params.f, transEff: el.params.transEff,
+          gddMaterial: 'nbk7', gddThicknessMm: estimatedThinLensThicknessMm(el.params),
+        },
+      }];
+    },
+  },
+
+  metalens: {
+    label: 'Metalens', category: 'Lenses', paletteOrder: 2, size: { w: 12, h: 20 },
+    aliases: ['flat lens', 'metasurface lens', 'meta optic', 'meta-optic', 'diffractive lens'],
+    params: [
+      {
+        key: 'designType', label: 'Spectral design', type: 'select', def: 'chromatic',
+        options: [
+          ['chromatic', 'Chromatic (diffractive)'],
+          ['achromatic', 'Idealized achromatic band'],
+        ],
+      },
+      { key: 'f', label: 'Nominal focal length (mm)', type: 'number', min: -3000, max: 3000, step: 1, def: 20, slider: false },
+      {
+        key: 'designWavelength', label: 'Design wavelength (nm)', type: 'number',
+        min: 100, max: 12000, step: 1, def: 532, show: p => p.designType !== 'achromatic',
+      },
+      {
+        key: 'bandMin', label: 'Achromatic minimum (nm)', type: 'number',
+        min: 100, max: 12000, step: 10, def: 450, show: p => p.designType === 'achromatic',
+      },
+      {
+        key: 'bandMax', label: 'Achromatic maximum (nm)', type: 'number',
+        min: 100, max: 12000, step: 10, def: 650, show: p => p.designType === 'achromatic',
+      },
+      { key: 'dia', label: 'Clear aperture', type: 'optsize', def: 12.7 },
+      { key: 'focusEff', label: 'Focusing efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 70 },
+      { key: 'opticalSpec', label: 'Nominal NA · f-number', type: 'readout', readout: p => metalensOpticalReadout(p) },
+      { key: 'incidentFocus', label: 'Incident wavelength → focus', type: 'readout', readout: (_p, el) => metalensIncidentReadout(el) },
+    ],
+    size_: el => ({ w: 12, h: Math.max(1, el.params.dia) + 6 }),
+    svg(el) {
+      const h = Math.max(0.5, el.params.dia / 2);
+      let zones = '';
+      // A meridional view of wrapped phase zones: spacing tightens toward
+      // the rim, unlike the evenly spaced rules of the grating icon.
+      for (let i = 1; i <= 5; i++) {
+        const y = h * Math.sqrt(i / 5);
+        const halfWidth = 1.5 + 2.5 * i / 5;
+        zones += `<line x1="${-halfWidth}" y1="${-y}" x2="${halfWidth}" y2="${-y}"/>`;
+        zones += `<line x1="${-halfWidth}" y1="${y}" x2="${halfWidth}" y2="${y}"/>`;
+      }
+      return `<rect x="-1.5" y="${-h}" width="3" height="${2 * h}" rx="0.8" fill="#c9edf0" stroke="#247d87" stroke-width="1.2"/>`
+        + `<g stroke="#247d87" stroke-width="0.9" stroke-linecap="round">${zones}</g>`;
+    },
+    surfaces(el) {
+      const h = Math.max(0.5, el.params.dia / 2);
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'metalens',
+        data: {
+          designType: el.params.designType,
+          f: el.params.f,
+          designWavelength: el.params.designWavelength,
+          bandMin: el.params.bandMin,
+          bandMax: el.params.bandMax,
+          focusEff: el.params.focusEff,
+        },
+      }];
     },
   },
 
@@ -1844,7 +2023,7 @@ export const registry = {
   // of it for free rather than being painted on. See thickLensCardinals() for
   // the paraxial summary shown in the inspector.
   thicklens: {
-    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 2,
+    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 3,
     aliases: ['real lens', 'spherical lens', 'singlet', 'biconvex', 'plano-convex', 'meniscus', 'aberration'],
     params: [
       { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 60, slider: false },
@@ -1890,8 +2069,137 @@ export const registry = {
     refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
   },
 
+  // The singlet generalised: a surface table describing any number of glass
+  // bodies in a row, which is how real prescriptions are written. Cemented
+  // and air-spaced groups are the same data — glass continuing across an
+  // interface means cemented — so one element covers a plain singlet, an
+  // achromatic doublet and anything else the table can express. Nothing about
+  // the focal length is configured; see lensgroup.js.
+  lensgroup: {
+    label: 'Lens group (surface table)', category: 'Lenses', paletteOrder: 4,
+    aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table'],
+    params: [
+      { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
+      // Edited by the row editor; a preset overrides it while one is selected.
+      { key: 'rows', label: 'Surface table', type: 'surfacetable', def: null },
+      // Canvas-only derived control: the purple knob edits the final radius
+      // without storing a second source of truth. Its setter materializes an
+      // active preset into a custom table on the first drag, exactly like the
+      // row editor does on its first edit.
+      {
+        key: 'lastRadius', label: 'Last surface radius (mm)', type: 'derived', hidden: true,
+        min: -2000, max: 2000, step: 1,
+        get: p => surfaceRowsOf(p).at(-1)?.r ?? 0,
+        set: (p, value) => {
+          const rows = surfaceRowsOf(p).map(row => ({ ...row }));
+          rows.at(-1).r = value;
+          p.rows = normalizeSurfaceTable(rows);
+          p.preset = 'custom';
+        },
+      },
+      { key: 'dia', label: 'Clear aperture', type: 'optsize', def: 25.4 },
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      {
+        key: 'assembly', label: 'Assembly', type: 'readout',
+        readout: p => {
+          const s = surfaceTableSummary(surfaceRowsOf(p));
+          return `${s.name} · ${s.surfaces} surfaces${s.stops ? ` · ${s.stops} stop${s.stops === 1 ? '' : 's'}` : ''}`;
+        },
+      },
+      {
+        key: 'efl', label: 'Focal length at 587.6 nm (mm)', type: 'readout',
+        readout: p => formatFocal(surfaceTableCardinals(surfaceRowsOf(p), 587.6, { diameter: p.dia }).f),
+      },
+      {
+        key: 'bfd', label: 'Back focal distance at 587.6 nm (mm)', type: 'readout',
+        readout: p => formatFocal(surfaceTableCardinals(surfaceRowsOf(p), 587.6, { diameter: p.dia }).bfd),
+      },
+      {
+        key: 'colour', label: 'Axial colour, F to C (mm)', type: 'readout',
+        readout: p => {
+          const c = surfaceTableAxialColour(surfaceRowsOf(p), { diameter: p.dia });
+          const f = surfaceTableCardinals(surfaceRowsOf(p), 587.6, { diameter: p.dia }).f;
+          if (!Number.isFinite(c)) return '—';
+          const ppm = Number.isFinite(f) && f !== 0 ? Math.abs(c / f) * 1e6 : NaN;
+          return `${Number(c.toPrecision(3))}${Number.isFinite(ppm) ? ` · ${ppm < 1000 ? `${ppm.toFixed(0)} ppm` : `${(ppm / 1e4).toFixed(2)}%`} of f` : ''}`;
+        },
+      },
+    ],
+    size_(el) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      return { w: g.span + 6, h: 2 * g.h + 6 };
+    },
+    svg(el) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      // One path per body, so a cemented pair reads as two glasses in contact
+      // rather than one lump, and the cement line stays visible.
+      const bodies = g.bodies.map(body =>
+        `<path d="${boundaryPathData(body.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`).join('');
+      const stops = g.stops.map(stop => {
+        const edge = Math.min(stop.h, stop.aperture / 2);
+        return `<g stroke="#3c4652" stroke-width="2.4" stroke-linecap="square">` +
+          `<line x1="${stop.x}" y1="${-stop.h}" x2="${stop.x}" y2="${-edge}"/>` +
+          `<line x1="${stop.x}" y1="${edge}" x2="${stop.x}" y2="${stop.h}"/></g>`;
+      }).join('');
+      return bodies + stops;
+    },
+    surfaces(el) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      const transmission = surfaceTransmission(el.params);
+      // Every body contributes its own closed boundary. The topology key has
+      // to be unique per body AND per face: the tracer uses it to tell one
+      // interaction from another, and two bodies of one element would
+      // otherwise collide on `face-0`.
+      const refracting = g.bodies.flatMap((body, b) => boundarySegments(body.points).map((segment, i) => ({
+        x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
+        data: {
+          material: body.glass, transmission,
+          topologyKey: `body-${b}-face-${i}`,
+          ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
+        },
+      })));
+      const stops = g.stops.flatMap(stop => {
+        // Same 0.02 mm edge allowance as the objective pupil: a ray exactly
+        // on the configured clear diameter belongs to the opening, not the
+        // metal around it.
+        const edge = Math.min(stop.h, stop.aperture / 2 + 0.02);
+        if (stop.h <= edge + 0.01) return [];
+        return [
+          { x1: stop.x, y1: edge, x2: stop.x, y2: stop.h, kind: 'absorb', data: { topologyKey: `stop-${stop.row}-upper` } },
+          { x1: stop.x, y1: -edge, x2: stop.x, y2: -stop.h, kind: 'absorb', data: { topologyKey: `stop-${stop.row}-lower` } },
+        ];
+      });
+      return [...refracting, ...stops];
+    },
+    hitTest(el, localPoint, tolerance = 4) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      return g.bodies.some(body => {
+        const sampled = sampleBoundary(body.points, { maxAngle: Math.PI / 90 });
+        return pointInBoundary(localPoint, body.points)
+          || sampled.some((a, i) => distToSegment(localPoint, a, sampled[(i + 1) % sampled.length]) <= tolerance);
+      }) || g.stops.some(stop => {
+        const edge = Math.min(stop.h, stop.aperture / 2);
+        return distToSegment(localPoint, { x: stop.x, y: -stop.h }, { x: stop.x, y: -edge }) <= tolerance
+          || distToSegment(localPoint, { x: stop.x, y: edge }, { x: stop.x, y: stop.h }) <= tolerance;
+      });
+    },
+    containsLocal(el, localPoint) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      return g.bodies.some(body => pointInBoundary(localPoint, body.points));
+    },
+    // A source born inside the group takes the index of whichever body holds
+    // it, not the first one in the table.
+    refractiveIndex(el, wavelength = 550, localPoint = null) {
+      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
+      const body = localPoint
+        ? g.bodies.find(b => pointInBoundary(localPoint, b.points)) || g.bodies[0]
+        : g.bodies[0];
+      return body ? (glassIndex(body.glass, wavelength) ?? 1.5) : 1.5;
+    },
+  },
+
   telescope: {
-    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 3, size: { w: 174, h: 62 },
+    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 5, size: { w: 174, h: 62 },
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -1910,8 +2218,22 @@ export const registry = {
       // matched AR coatings, consistent with how `dia` is already shared.
       const p = el.params, s = Math.max(5, p.f1 + p.f2), h = (p.dia || 25.4) / 2;
       return [
-        { x1: -s / 2, y1: -h, x2: -s / 2, y2: h, kind: 'lens', data: { f: p.f1, transEff: p.transEff } },
-        { x1: s / 2, y1: -h, x2: s / 2, y2: h, kind: 'lens', data: { f: p.f2, transEff: p.transEff } },
+        {
+          x1: -s / 2, y1: -h, x2: -s / 2, y2: h, kind: 'lens',
+          data: {
+            f: p.f1, transEff: p.transEff,
+            gddMaterial: 'nbk7',
+            gddThicknessMm: estimatedThinLensThicknessMm({ f: p.f1, dia: p.dia }),
+          },
+        },
+        {
+          x1: s / 2, y1: -h, x2: s / 2, y2: h, kind: 'lens',
+          data: {
+            f: p.f2, transEff: p.transEff,
+            gddMaterial: 'nbk7',
+            gddThicknessMm: estimatedThinLensThicknessMm({ f: p.f2, dia: p.dia }),
+          },
+        },
       ];
     },
   },
@@ -1924,7 +2246,7 @@ export const registry = {
     // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
     // because WD is capped at EFL. It is never drawn — an objective is an
     // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses', paletteOrder: 4, size: { w: 36, h: 40 },
+    label: 'Objective', category: 'Lenses', paletteOrder: 6, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
@@ -1936,48 +2258,20 @@ export const registry = {
     // the barrel is no longer centred on the element origin once it grows
     boxAnchor: el => ({ x: (OBJECTIVE_FRONT_X + objectiveBackX(el.params)) / 2, y: 0 }),
     params: [
-      // EFL is the objective's real optical power and the thing the tracer
-      // uses. Magnification is what it produces once the user's own tube lens
-      // images it, so it is reported rather than set.
-      { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 1, max: 200, step: 0.1, def: 10 },
+      {
+        key: 'objectivePreset', label: 'Objective starting point', type: 'derived-select',
+        def: OBJECTIVE_DEFAULT_PRESET,
+        options: OBJECTIVE_PRESETS.map(preset => [preset.key, preset.label, false, preset.group]),
+        groups: OBJECTIVE_PRESET_GROUPS,
+        customOption: ['custom', 'Custom parameters'],
+        get: objectivePresetKey,
+        set: (params, key) => Object.assign(params, applyObjectivePreset(params, key)),
+        note: 'Plausible catalogue-shaped specs, not one manufacturer\u2019s prescriptions. Raising NA at a fixed magnification costs working distance, exactly as it does on real hardware. Open Advanced parameters for exact values.',
+      },
       {
         key: 'magnification', label: 'Magnification with a 200 mm tube lens (×)', type: 'readout',
         readout: p => `${objectiveMagnification(p).toFixed(1)}×`,
       },
-      // A real objective focuses at or inside its own focal length, so WD
-      // starts equal to EFL and can only be shortened from there.
-      {
-        key: 'workingDistance', label: 'Working distance (mm)', type: 'number',
-        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.1, def: 10,
-      },
-      {
-        key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
-        options: [
-          ['air', OBJECTIVE_MEDIA.air.label],
-          ['water', OBJECTIVE_MEDIA.water.label],
-          ['oil', OBJECTIVE_MEDIA.oil.label],
-          ['custom', OBJECTIVE_MEDIA.custom.label],
-        ],
-        // Accepted only when loading an older high-NA sketch. The inspector
-        // shows it as a disabled current value, never as a new choice.
-        legacyOptions: [['legacy', OBJECTIVE_MEDIA.legacy.label]],
-      },
-      {
-        key: 'immersionIndex', label: 'Medium index (n)', type: 'number', min: 1, max: 2, step: 0.001, def: 1.333,
-        show: p => p.immersion === 'custom',
-      },
-      {
-        key: 'na', label: 'Rated numerical aperture (NA)', type: 'number', min: 0.05,
-        max: p => objectiveMaximumNA(p), step: 0.01, def: OBJECTIVE_NA_DEFAULT,
-      },
-      {
-        key: 'acceptanceHalfAngle', label: 'Object-side half-angle θ', type: 'readout',
-        readout: p => {
-          const angle = objectiveAcceptanceHalfAngleDeg(p);
-          return Number.isFinite(angle) ? `${angle.toFixed(1)}°` : 'Resolve medium';
-        },
-      },
-      { key: 'showAcceptance', label: 'Show acceptance angle', type: 'checkbox', def: false },
       // What the rated NA costs you in practice: the back pupil is a real
       // stop, so a beam wider than 2*f*NA loses its overflow to the barrel.
       {
@@ -2009,10 +2303,48 @@ export const registry = {
             `${(fill.fill * 100).toFixed(0)}% filled, so the spot is ${(rated / effective).toFixed(1)}× wider`;
         },
       },
+      { key: 'objective-advanced', label: 'Advanced parameters', type: 'section', open: false },
+      // EFL is the objective's real optical power and the thing the tracer
+      // uses. Magnification is what it produces once the user's own tube lens
+      // images it, so it is reported rather than set.
+      { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 2, max: 60, step: 0.1, def: 10, slider: false },
+      // A real objective focuses at or inside its own focal length, so WD
+      // starts equal to EFL and can only be shortened from there.
+      {
+        key: 'workingDistance', label: 'Working distance (mm)', type: 'number',
+        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.01, def: 5,
+      },
+      {
+        key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
+        options: [
+          ['air', OBJECTIVE_MEDIA.air.label],
+          ['water', OBJECTIVE_MEDIA.water.label],
+          ['oil', OBJECTIVE_MEDIA.oil.label],
+          ['custom', OBJECTIVE_MEDIA.custom.label],
+        ],
+        // Accepted only when loading an older high-NA sketch. The inspector
+        // shows it as a disabled current value, never as a new choice.
+        legacyOptions: [['legacy', OBJECTIVE_MEDIA.legacy.label]],
+      },
+      {
+        key: 'immersionIndex', label: 'Medium index (n)', type: 'number', min: 1, max: 2, step: 0.001, def: 1.333,
+        show: p => p.immersion === 'custom',
+      },
+      {
+        key: 'na', label: 'Rated numerical aperture (NA)', type: 'number', min: 0.05,
+        max: p => objectiveMaximumNA(p), step: 0.01, def: 0.4,
+      },
+      {
+        key: 'acceptanceHalfAngle', label: 'Object-side half-angle θ', type: 'readout',
+        readout: p => {
+          const angle = objectiveAcceptanceHalfAngleDeg(p);
+          return Number.isFinite(angle) ? `${angle.toFixed(1)}°` : 'Resolve medium';
+        },
+      },
+      { key: 'showAcceptance', label: 'Show acceptance angle', type: 'checkbox', def: false },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
       {
-        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.5, def: 20,
-        appearance: true,
+        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.1, def: 11,
       },
     ],
     svg(el) {
@@ -2024,17 +2356,20 @@ export const registry = {
       // so a long objective still reads as an objective.
       const shoulder = OBJECTIVE_SHOULDER_X;
       const pupilHalf = Math.min(outer - 1, Math.max(0.8, objectivePupilRadius(el.params)));
-      return `<path d="M 16,${-h} L ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer} L 16,${h} Z" fill="#8d98a5" stroke="#4d565f" stroke-width="1.5"/>` +
+      const barrel = `M 16,${-h} L ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer} L 16,${h}`;
+      // The body is filled with no outline, and only the straight rear section
+      // is stroked. Strokes are screen-space: at 100% zoom a 1.5 px contour is
+      // 1.5 mm of world, so an outlined nose swallows the working distance of
+      // any real high-NA objective. Leaving the front face AND both tapers
+      // unstroked is what makes a sub-millimetre clearance readable.
+      return `<path d="${barrel} Z" fill="#8d98a5" stroke="none"/>` +
+        `<path d="M ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer}" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/>` +
         `<line x1="${shoulder}" y1="${-outer}" x2="${shoulder}" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
         // No lens is drawn: an objective is an opaque barrel. What IS visible
         // at the back is the iris the rated NA leaves open — the dark bars
         // are the metal a beam overfilling the pupil is lost to.
         `<rect x="${back}" y="${-outer}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>` +
-        `<rect x="${back}" y="${pupilHalf.toFixed(2)}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>` +
-        // the front tip is a boundary, not a slab of glass: a working distance
-        // shorter than a drawn thickness would otherwise look like it focused
-        // inside solid glass
-        `<line x1="16" y1="${-h}" x2="16" y2="${h}" stroke="${GLASS_S}" stroke-width="2"/>`;
+        `<rect x="${back}" y="${pupilHalf.toFixed(2)}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>`;
     },
     surfaces(el) {
       const lensX = objectiveLensPlaneX(el.params);
@@ -2045,7 +2380,11 @@ export const registry = {
       // follows the barrel at that point so it cannot swallow light that
       // visually passes outside the housing.
       const stopX = objectiveStopX(el.params);
-      const stopOuter = objectiveBarrelHalfHeightAt(el.params, stopX);
+      // The stop is seated in the straight rear section, so its blocking
+      // annulus spans the full barrel radius. Anything inside the housing is
+      // either refracted through the pupil or absorbed by the metal; only
+      // light that genuinely passes outside the barrel goes by untouched.
+      const stopOuter = Math.max(objectiveBarrelHalfHeightAt(el.params, stopX), outer);
       // The stop starts a hair outside the rated pupil, and the clear bore
       // matches it. A beam sized to exactly fill the pupil lands its edge rays
       // right on the boundary, and without this margin the stop — which the
@@ -2076,6 +2415,10 @@ export const registry = {
         data: {
           ...shared, f: shared.effectiveFocalLength, transEff: el.params.transEff,
           pupilRadius: pupil, pupilSpan: [-edge, edge],
+          // Class-typical equivalent glass path. Real objectives vary by
+          // roughly a factor of two; this is a reported estimate only and
+          // never changes the equivalent-lens geometry.
+          gddMaterial: 'nbk7', gddThicknessMm: 30,
         },
       },
       // The metal around the pupil. Overfilling it is normal practice — you do
@@ -2294,6 +2637,7 @@ export const registry = {
     params: [
       { key: 'apex', label: 'Apex angle (°)', type: 'number', min: 10, max: 80, step: 5, def: 60 },
       { key: 'psize', label: 'Size', type: 'optsize', def: 25.4 },
+      { key: 'material', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
     ],
     svg(el) {
       const g = prismGeometry(el);
@@ -2301,7 +2645,7 @@ export const registry = {
     },
     surfaces(el) {
       const { left, top, right } = prismGeometry(el);
-      const data = { material: 'nbk7', transmission: 0.98 };
+      const data = { material: el.params.material, transmission: 0.98 };
       return [
         { x1: left.x, y1: left.y, x2: top.x, y2: top.y, kind: 'refract', data: { ...data, topologyKey: 'edge-0' } },
         { x1: top.x, y1: top.y, x2: right.x, y2: right.y, kind: 'refract', data: { ...data, topologyKey: 'edge-1' } },
@@ -2414,6 +2758,53 @@ export const registry = {
     },
   },
 
+  // The same phase-shaping engine as the SLM, but built the way a metasurface
+  // actually is: a patterned layer on a thin transparent carrier, working in
+  // transmission. The optics are shared deliberately -- a metasurface and an
+  // LCOS panel differ in how the phase is fixed, not in what a phase profile
+  // does to a ray.
+  metasurface: {
+    label: 'Metasurface', category: 'Wavefront Shaping', size: { w: 10, h: 50 },
+    aliases: ['meta-optic', 'metasurface phase plate', 'flat optic', 'nanostructured surface'],
+    snapPt: { x: 0, y: 0 },
+    params: [
+      { key: 'transmissive', label: 'Transmissive', type: 'checkbox', def: true },
+      { key: 'length', label: 'Active size (mm)', type: 'number', min: 4, max: 100, step: 2, def: 30 },
+      { key: 'zeroOrder', label: 'Undiffracted 0th order', type: 'checkbox', def: false },
+      { key: 'zeroFrac', label: '0th-order fraction (0–1)', type: 'number', min: 0.01, max: 0.9, step: 0.01, def: 0.1, show: p => p.zeroOrder },
+      layersParam,
+    ],
+    size_: el => ({ w: 10, h: el.params.length + 8 }),
+    svg(el) {
+      const L = el.params.length / 2;
+      // A thin transparent carrier with the patterned layer sitting on its
+      // input face -- the way these are made, and what tells it apart from
+      // the SLM's opaque panel at a glance.
+      const substrate = `<rect x="-1.4" y="${-L}" width="2.8" height="${2 * L}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="0.9"/>`;
+      const layer = `<rect x="-2.9" y="${-L}" width="1.5" height="${2 * L}" fill="#f2c230" stroke="#a67c06" stroke-width="0.7"/>`;
+      // Meta-atom ticks: dense, and finer than any drawn feature elsewhere,
+      // because subwavelength structure is the whole point of the surface.
+      let atoms = '';
+      for (let y = -L + 1.2; y < L - 0.6; y += 2.2) {
+        atoms += `<line x1="-2.6" y1="${y.toFixed(2)}" x2="-1.7" y2="${y.toFixed(2)}" stroke="#7a5a04" stroke-width="0.5"/>`;
+      }
+      return substrate + layer + atoms;
+    },
+    surfaces(el) {
+      const L = el.params.length / 2;
+      // Reflective mode needs a body behind the surface, exactly as the SLM
+      // does; in transmission the carrier is clear and nothing blocks.
+      const body = el.params.transmissive ? [] : shaperBody(-2.9, 1.4, L, L + 2);
+      return [{
+        x1: 0, y1: -L, x2: 0, y2: L, kind: 'shaper',
+        data: {
+          layers: el.params.layers || [], length: el.params.length,
+          transmissive: el.params.transmissive !== false,
+          zeroOrder: !!el.params.zeroOrder, zeroFrac: el.params.zeroFrac || 0.1,
+        },
+      }, ...body];
+    },
+  },
   dmd: {
     label: 'DMD', category: 'Wavefront Shaping', size: { w: 30, h: 50 },
     snapPt: { x: -9, y: 0 }, // active face
@@ -2498,10 +2889,26 @@ export const registry = {
     snapPt: { x: -25, y: 0 }, // entrance window
     dataPort: { x: 27, y: 0 },
     size_: el => ({ w: 54, h: (el.params.aperture || 26) + 4 }),
+    // Gain and the dark floor both span decades, so each stores a plain
+    // multiplier (unchanged on disk, so old sketches keep their exact values)
+    // and is edited through a base-10 exponent slider — the axis a real PMT
+    // datasheet plots them on, and the only one a 1..10⁷ range is usable at.
     params: [
       { key: 'aperture', label: 'Photocathode height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 26 },
-      { key: 'gain', label: 'Qualitative gain', type: 'number', min: 1, max: 1000, step: 1, def: 10 },
-      { key: 'saturation', label: 'Output saturation', type: 'number', min: 1, max: 10000, step: 10, def: 100 },
+      { key: 'gain', label: 'Electron gain', type: 'number', min: 1, max: PMT_MAX_GAIN, step: 1, def: 1e4, hidden: true },
+      {
+        key: 'gainLog', label: 'Gain (×10ⁿ)', type: 'derived', min: 0, max: 7, step: 0.1,
+        get: p => Math.round(Math.log10(pmtGain(p)) * 10) / 10,
+        set: (p, value) => { p.gain = pmtGainFromLog(value); },
+      },
+      { key: 'gainReadout', label: 'Electron gain', type: 'readout', readout: p => `×${formatSignal(pmtGain(p))}` },
+      { key: 'darkInput', label: 'Equivalent dark input', type: 'number', min: 0, max: 1, step: 1e-9, def: 1e-5, hidden: true },
+      {
+        key: 'darkLog', label: 'Dark floor (10ⁿ a.u.)', type: 'derived', min: -8, max: -2, step: 0.1,
+        get: p => Math.round(Math.log10(pmtDarkInput(p)) * 10) / 10,
+        set: (p, value) => { p.darkInput = pmtDarkFromLog(value); },
+      },
+      { key: 'saturation', label: 'Max output (a.u.)', type: 'number', min: 1, max: 1e7, step: 10, def: 1e4 },
     ],
     svg(el) {
       const h = el.params.aperture || 26;
@@ -2510,7 +2917,9 @@ export const registry = {
         `<text x="2" y="0" ${isFlipped(el) ? 'transform="rotate(180 2 0)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text>` +
         signalLamp(el, 16, -h / 2 + 6);
     },
-    surfaces: el => detectorSurfaces(52, el.params.aperture || 26, 'PMT', { gain: el.params.gain, saturation: el.params.saturation }),
+    surfaces: el => detectorSurfaces(52, el.params.aperture || 26, 'PMT', {
+      gain: pmtGain(el.params), saturation: el.params.saturation, darkInput: pmtDarkInput(el.params),
+    }),
   },
 
   camera: {
@@ -2644,23 +3053,54 @@ export const registry = {
     size_: el => ({ w: 56, h: (el.params.aperture || 26) + 4 }),
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
-      { key: 'center', label: 'Selected wavelength (nm)', type: 'number', min: 150, max: 8000, step: 1, def: 532 },
-      { key: 'band', label: 'Passband width (nm)', type: 'number', min: 0.5, max: 2000, step: 0.5, def: 1 },
-      { key: 'deflect', label: 'Deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 4 },
-      { key: 'rfMHz', label: 'RF frequency (MHz)', type: 'number', min: -10000, max: 10000, step: 1, def: 80 },
-      { key: 'eff', label: 'Selected-order efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.8 },
+      {
+        key: 'channels', label: 'Selected lines', type: 'aotfchannels',
+        def: [{ wl: 532, band: 2, eff: 0.8 }],
+        // Older sketches selected exactly one line through flat center/band/eff
+        // params. Those keys are gone from the schema, so they survive only in
+        // the raw saved object — carry that line across rather than dropping
+        // the author's selection for the default.
+        migrate: (p, raw = {}) => normalizeAotfChannels(Number.isFinite(+raw.center)
+          ? [{ wl: +raw.center, band: +raw.band, eff: +raw.eff }]
+          : null),
+      },
+      {
+        key: 'modMode', label: 'Line drive', type: 'select', def: 'static',
+        options: [
+          ['static', 'Multiplexed — every line at once'],
+          ['cycle', 'Sequential — one line at a time'],
+        ],
+      },
+      {
+        key: 'modFreqHz', label: 'Sequence rate (Hz)', type: 'number', min: 0.1, max: 1000000, step: 10, def: 1000,
+        show: p => p.modMode === 'cycle',
+      },
+      { key: 'showDepleted', label: 'Show depleted beam', type: 'checkbox', def: false },
+      {
+        key: 'deflect', label: 'Depleted-beam deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 6,
+        show: p => p.showDepleted === true,
+      },
     ],
     svg(el) {
       return boxSVG(52, el.params.aperture || 26, '#7fc7c4', '#397b78', 'AOTF', '#153b39', isFlipped(el));
     },
     surfaces(el) {
       const p = el.params, h = (p.aperture || 26) / 2;
-      // Qualitative composition of a narrow spectral selector and its selected
-      // acousto-optic order; this does not imply a calibrated device response.
-      return [
-        { x1: -1, y1: -h, x2: -1, y2: h, kind: 'filter', data: { ftype: 'bandpass', center: p.center, band: p.band } },
-        { x1: 1, y1: -h, x2: 1, y2: h, kind: 'aom', data: { deflect: p.deflect, rfMHz: p.rfMHz, zero: false, eff: p.eff, gate: null } },
-      ];
+      // One surface, not a filter plus a deflector: the selected lines and the
+      // beam depleted of them leave the same face along different paths, and
+      // splitting that across two surfaces would let the second one act on
+      // light the first had already routed away.
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'aotf',
+        data: {
+          // Only the lines open at this instant are handed to the tracer, so a
+          // sequential drive really does show one line at a time and steps to
+          // the next as the animation clock advances.
+          channels: aotfOpenChannels(p, el._animationTimeS || 0),
+          deflect: Number(p.deflect) || 0,
+          showDepleted: p.showDepleted === true,
+        },
+      }];
     },
   },
 
@@ -2683,6 +3123,64 @@ export const registry = {
     surfaces(el) {
       const h = (el.params.aperture || 24) / 2;
       return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'delay', data: { delayMm: el.params.delayMm } }];
+    },
+  },
+
+  pulsecompressor: {
+    label: 'Pulse compressor', category: 'Pulse Timing', size: { w: 52, h: 32 },
+    aliases: ['phase compressor', 'chirp compressor', 'gdd compressor', 'gdd compensator', 'chirped mirrors', 'grating compressor'],
+    size_: el => ({ w: 52, h: (el.params.aperture || 24) + 8 }),
+    params: [
+      {
+        key: 'gddFs2', label: 'Applied GDD (fs²)', type: 'number',
+        min: -1000000, max: 1000000, step: 100, def: -2000,
+      },
+      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
+      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
+      // A compressor set far below what the scene already accumulated looks
+      // like it is doing nothing. Showing what arrives — and what is left —
+      // is what turns "it seems inert" into "it is cancelling 5% of it".
+      {
+        key: 'gddBalance', label: 'GDD in → out', type: 'readout',
+        readout: (p, el) => {
+          const reading = el ? compressorGddReading(el.id) : null;
+          if (!reading) return 'No pulse through it yet';
+          const fmt = v => `${Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs²`;
+          const share = reading.incoming !== 0
+            ? Math.abs((reading.incoming - reading.outgoing) / reading.incoming) * 100 : 0;
+          return `${fmt(reading.incoming)} → ${fmt(reading.outgoing)}` +
+            (reading.incoming !== 0 ? ` · cancels ${share.toFixed(0)}%` : '');
+        },
+      },
+      {
+        key: 'gddToNull', label: 'Setting that would null it', type: 'readout',
+        readout: (p, el) => {
+          const reading = el ? compressorGddReading(el.id) : null;
+          if (!reading) return '—';
+          const need = -(reading.incoming - (Number(p.gddFs2) || 0));
+          return `${Math.round(need).toLocaleString()} fs²`;
+        },
+      },
+    ],
+    svg(el) {
+      const h = (el.params.aperture || 24) / 2;
+      const flipped = isFlipped(el) ? 'transform="rotate(180)"' : '';
+      const sign = Number(el.params.gddFs2) < 0 ? '−' : '+';
+      return `<rect x="-24" y="${-h - 3}" width="48" height="${2 * h + 6}" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/>` +
+        `<g ${flipped} fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round">` +
+        `<path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/>` +
+        `<path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g>` +
+        `<text x="0" y="0" ${flipped} text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">${sign}GDD</text>`;
+    },
+    surfaces(el) {
+      const h = (el.params.aperture || 24) / 2;
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'gdd',
+        data: {
+          gddFs2: el.params.gddFs2,
+          efficiency: Math.min(1, Math.max(0.01, (el.params.transEff || 100) / 100)),
+        },
+      }];
     },
   },
 
@@ -2820,7 +3318,8 @@ export const registry = {
     params: [
       { key: 'rodlen', label: 'Length (mm)', type: 'number', min: 20, max: 300, step: 5, def: 60 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 12.7 },
-      { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.52 },
+      { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ...GLASS_OPTIONS] },
+      { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.52, show: p => p.material === 'constant' },
     ],
     size_: el => ({ w: el.params.rodlen + 4, h: (el.params.dia || 10) + 4 }),
     svg(el) {
@@ -2829,7 +3328,11 @@ export const registry = {
     },
     surfaces(el) {
       const x = el.params.rodlen / 2, y = (el.params.dia || 10) / 2;
-      const data = { ior: el.params.ior || 1.52, transmission: 0.96 };
+      const data = {
+        material: isDispersiveGlass(el.params.material) ? el.params.material : undefined,
+        ior: el.params.ior || 1.52,
+        transmission: 0.96,
+      };
       // All four faces are dielectric boundaries. The tracer tracks whether a
       // ray is inside this rod, so it refracts on entry/exit and reflects when
       // total internal reflection occurs at a side wall.
@@ -2852,7 +3355,7 @@ export const registry = {
     svg(el) {
       const p = el.params;
       const h = (p.aperture || 34) / 2, t = sampleThickness(p);
-      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.2"/>` +
+      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="none"/>` +
         signalSpotSVG(el);
     },
     // Both visible specimen faces are explicit immersion contacts. They are
@@ -2903,7 +3406,7 @@ export const registry = {
       const t = sampleThickness(p);
       return `<path d="M ${-outer},-8 L ${-outer},6 L ${-windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<path d="M ${outer},-8 L ${outer},6 L ${windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="${GLASS_S}" stroke-width="1.2"/>` +
+        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="none"/>` +
         spot +
         (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
     },
@@ -3123,20 +3626,25 @@ export const registry = {
   },
 
   textlabel: {
-    label: 'Text label', category: 'Annotations', size: el => ({ w: Math.max(30, String(el.params.text).length * el.params.fontSize * 0.6), h: el.params.fontSize + 10 }),
+    label: 'Text label', category: 'Annotations', size: el => {
+      const layout = markdownLayout(el.params.text, el.params.fontSize);
+      return { w: layout.width, h: layout.height };
+    },
     // The element position is the box's LEFT edge, not its center (see
     // boxAnchor()), so typing longer text grows the box to the right instead
     // of re-centering it around the drop point every keystroke.
     anchorX: 'left',
+    paramsTitle: 'Text style',
     params: [
-      { key: 'text', label: 'Text', type: 'text', def: 'Label' },
+      { key: 'text', label: 'Text', type: 'text', def: 'Label', canvasEdit: true },
       { key: 'fontSize', label: 'Size (pt)', type: 'number', min: 6, max: 72, step: 1, def: 14 },
       { key: 'fill', label: 'Color', type: 'color', def: '#333333' },
     ],
+    directHint: 'Double-click the text, use Edit text, or press Enter to edit Markdown on the canvas. Blue handles change its base size.',
     noLabel: true,
     svg(el) {
       const p = el.params;
-      return `<text x="0" y="0" text-anchor="start" dominant-baseline="central" font-size="${p.fontSize}" fill="${p.fill}">${esc(p.text)}</text>`;
+      return markdownTextSVG(p.text, { fontSize: p.fontSize, fill: p.fill });
     },
     surfaces: () => [],
   },
@@ -3328,13 +3836,18 @@ const DIRECT = {
   oap: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
+  metalens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
   // Radii are the physics, so the tune knob drives R1 (and the shape
   // follows); resize sets the clear aperture, which is genuinely a size.
   thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
+  lensgroup: { resize: { y: 'dia' }, tune: { key: 'lastRadius', short: 'R last' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
-  // The blue handle changes the physical front opening. The purple control
-  // moves the independently specified specimen focus; neither rewrites M/NA.
-  objective: { resize: { y: 'frontAperture' }, tune: { key: 'efl', short: 'EFL' } },
+  // The blue handle changes the physical front opening.
+  // Objective EFL is an exact optical specification, not a safe free-drag
+  // gesture: its former 1–200 mm tuning knob could make the derived barrel
+  // and internal planes jump by hundreds of millimetres. Presets now handle
+  // ordinary changes and Advanced parameters retain exact EFL entry.
+  objective: { resize: { y: 'frontAperture' } },
   dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
@@ -3349,21 +3862,25 @@ const DIRECT = {
   freeglass: { resize: { uniform: 'scale' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   diffuser: { resize: { y: 'length' }, tune: { key: 'div', short: 'spread' } },
   slm: { resize: { y: 'length' }, tune: { key: 'zeroFrac', short: '0th', when: p => p.zeroOrder } },
+  metasurface: { resize: { y: 'length' }, tune: { key: 'zeroFrac', short: '0th', when: p => p.zeroOrder } },
   dmd: { resize: { y: 'length' }, tune: { key: 'tilt', short: 'tilt' } },
   dm: { resize: { y: 'length' }, tune: { key: 'steer', short: 'steer' } },
   detector: { resize: { y: 'aperture' } },
-  pmt: { resize: { y: 'aperture' }, tune: { key: 'gain', short: 'gain' } },
+  // Tunes the exponent, not the raw multiplier: dragging a 1..10⁷ linear
+  // range would crawl through the first decade and never reach the rest.
+  pmt: { resize: { y: 'aperture' }, tune: { key: 'gainLog', short: 'gain ×10^' } },
   camera: { resize: { y: 'ch' }, tune: { key: 'pixels', short: 'px' } },
   eye: { resize: { uniform: 'diameter' }, tune: { key: 'focus', short: 'f' } },
   display: { resize: { uniform: 'displayScale' } },
   beamdump: { resize: { y: 'aperture' } },
   aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
-  aotf: { resize: { y: 'aperture' }, tune: { key: 'center', short: 'λ select' } },
+  aotf: { resize: { y: 'aperture' } },
   delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL' } },
+  pulsecompressor: { resize: { y: 'aperture' }, tune: { key: 'gddFs2', short: 'GDD' } },
   eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
   crystal: { resize: { y: 'aperture' }, tune: { key: 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
-  glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n' } },
+  glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
   arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
@@ -3413,19 +3930,21 @@ const ELEMENT_HELP = {
   cmirrorx: 'Diverges reflected rays with a paraxial focal-length model.',
   cmirror: 'Focuses reflected rays with a paraxial focal-length model.',
   oap: 'Reflects from segmented parabolic geometry toward the configured focus.',
-  lens: 'Bends rays with a thin-lens, paraxial focal-length model.',
-  lensc: 'Diverges rays with a negative thin-lens focal length.',
-  thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance plus spherical and chromatic aberration emerge from the traced geometry.',
-  telescope: 'Applies two thin lenses separated by their focal lengths.',
-  objective: 'Set the effective focal length (EFL) — the focal length of the whole objective as one equivalent lens — plus a working distance no longer than EFL; magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel.',
+  lens: 'Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
+  lensc: 'Diverges rays with a negative thin-lens focal length. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
+  metalens: 'A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency.',
+  lensgroup: 'Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.',
+  thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
+  telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
+  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
   grating: 'Creates selected diffraction orders using the grating equation.',
-  prism: 'Refracts through all three drawn N-BK7 boundaries with wavelength-dependent dispersion.',
-  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion; overlapping glass bodies are not surface-merged.',
+  prism: 'Refracts through all three drawn boundaries with selectable catalogue-glass dispersion and traced path-length GDD.',
+  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion and traced GDD; overlapping glass bodies are not surface-merged.',
   diffuser: 'Spreads incident light into a configurable angular fan.',
-  glassrod: 'Refracts at every glass-air boundary and supports total internal reflection.',
+  glassrod: 'Refracts at every glass-air boundary and supports total internal reflection. Catalogue materials add traced path-length GDD; constant index keeps legacy behavior.',
   polarizer: 'Applies a linear polarization axis and Malus-law attenuation.',
   hwp: 'Rotates linear polarization around the configured fast axis.',
   qwp: 'Applies quarter-wave retardance, producing linear, elliptical, or circular polarization from the input state.',
@@ -3435,16 +3954,18 @@ const ELEMENT_HELP = {
   beamdump: 'Absorbs incident rays.',
   blocker: 'Absorbs rays but stays hidden in exported figures.',
   slm: 'Reflects by default and can overlay lens-array, grating, steering, or speckle functions.',
+  metasurface: 'A patterned layer on a thin transparent carrier, working in transmission by default. Overlays the same lens-array, grating, steering, and speckle functions as the SLM, with an optional undiffracted zeroth order — but the phase profile is fixed at fabrication rather than programmable.',
   dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
-  pmt: 'Applies configurable qualitative gain and saturation to detected optical signal.',
+  pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
-  aotf: 'Selects a configurable spectral band, then deflects and attenuates the selected acousto-optic order.',
+  aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
+  pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
   crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
@@ -3453,7 +3974,7 @@ const ELEMENT_HELP = {
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
   arrowann: 'Diagram annotation; does not interact with rays.',
   figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
-  textlabel: 'Diagram annotation; does not interact with rays.',
+  textlabel: 'Markdown annotation with headings, lists, emphasis, and code; web and DOI addresses become clickable links. It does not interact with rays.',
   highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
   box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
   gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',
@@ -3461,12 +3982,18 @@ const ELEMENT_HELP = {
 };
 
 const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'gascell', 'window']);
-const SHAPERS = new Set(['slm']);
+const SHAPERS = new Set(['slm', 'metasurface']);
 
 export function getElementMeta(type, params = {}, context = {}) {
   let tier = DIAGRAM_ONLY.has(type) ? 'diagram' : 'simulated';
   let note = '';
-  let description = ELEMENT_HELP[type] || registry[type]?.description || 'Optical workbench component.';
+  // A registry-level override (detector-instruments.js sets one per
+  // instrument) is more specific than this generic fallback table and must
+  // win -- otherwise every Detectors-category tagline outside the live
+  // palette (the wiki build, search strings built from this path) silently
+  // reverts to the generic text the moment a type also happens to appear in
+  // ELEMENT_HELP below.
+  let description = registry[type]?.description || ELEMENT_HELP[type] || 'Optical workbench component.';
   const displayLinkMissing = type === 'display' && params.sensorId
     && context.element && Array.isArray(context.elements)
     && !resolveDisplaySensor(context.element, context.elements);
@@ -3478,6 +4005,12 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Medium and NA set a qualitative angular acceptance guide. The curved immersion bridge is schematic; it does not add refraction, focal shift, wetting, or aberration correction.';
   } else if (type === 'objective') {
     note = 'Dry objectives are capped at NA 0.85, the practical ceiling for real dry designs. NA sets the back-pupil diameter 2fNA, so it changes the focusing cone and what an overfilled beam costs.';
+  } else if (type === 'metalens' && params.designType === 'achromatic') {
+    note = 'The configured band holds one idealized geometric focus. Meta-atom group-delay limits, PSF, Strehl, field angle, fabrication feasibility, and wavelength-dependent efficiency are not solved.';
+  } else if (type === 'metalens') {
+    note = 'Focal length follows f(λ) = f₀λ₀/λ. Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
+  } else if (type === 'pmt') {
+    note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
@@ -3495,7 +4028,11 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Choose a conversion mode to generate an output wavelength.';
   } else if (SHAPERS.has(type) && (!Array.isArray(params.layers) || params.layers.length === 0)) {
     tier = 'configurable';
-    note = 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
+    // An unpatterned shaper is whatever its own default geometry makes it:
+    // a mirror for the SLM, a clear window for a transmissive metasurface.
+    note = params.transmissive
+      ? 'Currently a clear window. Add an optical structure to shape the wavefront.'
+      : 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
   } else if (DIAGRAM_ONLY.has(type)) {
     note = 'This element is intentionally visual and never changes traced rays.';
   } else if (type === 'thicklens' || type === 'freeglass') {
@@ -3600,6 +4137,69 @@ export function getVisualBounds(el, { includeLabel = true } = {}) {
   return { x0, y0, x1, y1 };
 }
 
+// The world direction an element's data port faces, as a unit vector. The
+// port is stored in element-local coordinates, so it has to be rotated with
+// the element before it means anything on the bench.
+export function dataPortDirection(el) {
+  const raw = registry[el?.type]?.dataPort;
+  const port = typeof raw === 'function' ? raw(el) : raw;
+  const angle = (el?.rot || 0) * Math.PI / 180;
+  const x = (port?.x || 0) * Math.cos(angle) - (port?.y || 0) * Math.sin(angle);
+  const y = (port?.x || 0) * Math.sin(angle) + (port?.y || 0) * Math.cos(angle);
+  const length = Math.hypot(x, y);
+  return length > 1e-9 ? { x: x / length, y: y / length } : { x: 1, y: 0 };
+}
+
+// Somewhere to drop `el` that no existing element already occupies. Searches
+// outward from `near`, trying the `prefer` direction first and fanning to
+// either side before widening the ring, so a screen lands on the side the
+// sensor's cable actually leaves from whenever that side is free.
+//
+// Only element boxes count as occupied. Beams are deliberately ignored: a
+// screen is a bench instrument that reads a cable, it does not block light,
+// and refusing every spot a ray crosses would leave nowhere to put it in a
+// busy sketch.
+export function findFreePlacement(el, elements, near, prefer = { x: 1, y: 0 }) {
+  const size = getSize(el);
+  const margin = 14;
+  const occupied = elements
+    .filter(other => other && other.id !== el.id)
+    .map(other => getVisualBounds(other))
+    .filter(Boolean);
+
+  const fits = (x, y) => {
+    const bounds = getVisualBounds({ ...el, x, y });
+    if (!bounds) return false;
+    return !occupied.some(other => bounds.x0 - margin < other.x1 && bounds.x1 + margin > other.x0
+      && bounds.y0 - margin < other.y1 && bounds.y1 + margin > other.y0);
+  };
+
+  const baseAngle = Math.atan2(prefer.y, prefer.x);
+  const fan = [0, 28, -28, 56, -56, 90, -90, 124, -124, 152, -152, 180];
+  // `near` is the sensor's centre and the returned point is the screen's
+  // centre, so the first ring has to clear half the screen before it clears
+  // anything else — plus a gap wide enough to leave the data cable readable.
+  const firstRing = Math.max(size.w, size.h) / 2 + 58;
+  const ringStep = 34, rings = 12;
+  for (let ring = 0; ring < rings; ring++) {
+    const radius = firstRing + ring * ringStep;
+    for (const degrees of fan) {
+      const angle = baseAngle + degrees * Math.PI / 180;
+      const x = near.x + Math.cos(angle) * radius;
+      const y = near.y + Math.sin(angle) * radius;
+      if (fits(x, y)) return { x: Math.round(x), y: Math.round(y) };
+    }
+  }
+  // Every candidate was blocked. Place it beyond the whole search area rather
+  // than on top of something: an overlap the user must untangle is worse than
+  // a screen further out than they expected.
+  const radius = firstRing + rings * ringStep;
+  return {
+    x: Math.round(near.x + Math.cos(baseAngle) * radius),
+    y: Math.round(near.y + Math.sin(baseAngle) * radius),
+  };
+}
+
 // element label, drawn OUTSIDE the rotated group: always upright, positioned
 // around the element's rotated bounding box (labelPos: b/t/l/r)
 export function labelSVG(el) {
@@ -3621,7 +4221,7 @@ export function createElement(type, x = 0, y = 0) {
   const d = registry[type];
   const params = {};
   for (const p of d.params || []) {
-    if (p.type === 'readout' || p.type === 'derived') continue; // computed on demand, never stored
+    if (p.type === 'readout' || p.type === 'derived' || p.type === 'derived-select' || p.type === 'section') continue;
     params[p.key] = Array.isArray(p.def) ? JSON.parse(JSON.stringify(p.def)) : p.def;
   }
   return { id: uid(), type, x, y, rot: 0, label: '', showLabel: false, params };

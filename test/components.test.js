@@ -139,6 +139,8 @@ test('fluorescence collected by a nearby objective propagates to a detector', ()
   const objective = createElement('objective', 154, 0);
   objective.params.efl = 20; // was magnification 10 -> f = 200/10
   objective.params.workingDistance = 20;
+  objective.params.na = 0.65;
+  objective.params.frontAperture = 20;
   const detector = createElement('detector', 320, 0);
   traceAll([laser, sample, objective, detector]);
   const reading = detectorReading(detector.id);
@@ -281,23 +283,92 @@ test('mechanical delay line adds bounded optical path without steering the beam'
   assert.ok(Math.abs(detectorReading(detector.id).pulse.earliestPathDelayNs - baseline) < 1e-9);
 });
 
-test('AOTF selects its passband and deflects only the selected order', () => {
+test('AOTF passes its selected lines straight through and rejects everything else', () => {
   const laser = createElement('cwlaser', 0, 0);
   laser.params.wavelength = 800;
   const aotf = createElement('aotf', 150, 0);
-  aotf.params.center = 800;
-  aotf.params.band = 1;
-  aotf.params.deflect = 4;
-  aotf.params.eff = 0.8;
-  const detectorX = 300, faceX = detectorX - 19;
-  const detector = createElement('detector', detectorX, Math.tan(4 * Math.PI / 180) * (faceX - 151));
+  aotf.params.channels = [{ wl: 800, band: 2, eff: 0.8 }];
+  aotf.params.deflect = 6;
+  const detector = createElement('detector', 300, 0);
 
   traceAll([laser, aotf, detector]);
-  assert.ok(Math.abs(detectorReading(detector.id).signal - 0.8) < 1e-9);
+  assert.ok(Math.abs(detectorReading(detector.id).signal - 0.8) < 1e-9,
+    'the selected line leaves along the incoming axis, not the deflected one');
 
   laser.params.wavelength = 810;
   traceAll([laser, aotf, detector]);
-  assert.equal(detectorReading(detector.id), null);
+  assert.equal(detectorReading(detector.id), null, 'a line outside every passband does not get through');
+});
+
+test('AOTF stacks lines, and cycling shares the period between them', () => {
+  const aotf = createElement('aotf', 150, 0);
+  aotf.params.deflect = 6;
+  const detector = createElement('detector', 300, 0);
+  const lasers = [488, 532, 633].map(wl => {
+    const l = createElement('cwlaser', 0, 0);
+    l.params.wavelength = wl;
+    return l;
+  });
+  const channels = [488, 532, 633].map(wl => ({ wl, band: 4, eff: 0.9 }));
+
+  for (let n = 1; n <= 3; n++) {
+    aotf.params.channels = channels.slice(0, n);
+    aotf.params.modMode = 'static';
+    traceAll([...lasers, aotf, detector]);
+    assert.ok(Math.abs(detectorReading(detector.id).signal - 0.9 * n) < 1e-9,
+      `${n} selected line(s) should pass ${n} x 0.9`);
+  }
+
+  // Cycling opens one line at a time, so a slow detector reads the average.
+  aotf.params.modMode = 'cycle';
+  traceAll([...lasers, aotf, detector]);
+  assert.ok(Math.abs(detectorReading(detector.id).signal - 0.9) < 1e-9,
+    'three lines cycling average to one line open');
+});
+
+test('AOTF conserves energy between the selected lines and the depleted beam', () => {
+  const laser = createElement('sclaser', 0, 0);
+  Object.assign(laser.params, { scMin: 420, scMax: 700, beamMode: 'line' });
+  const aotf = createElement('aotf', 200, 0);
+  aotf.params.deflect = 20;
+  aotf.params.showDepleted = true;
+  const kept = createElement('detector', 520, 0);
+  const dumped = createElement('detector', 500, 116);
+  dumped.rot = 20;
+  dumped.params.aperture = 140;
+
+  for (const band of [20, 60, 140]) {
+    aotf.params.channels = [{ wl: 532, band, eff: 1 }];
+    traceAll([laser, aotf, kept, dumped]);
+    const selected = detectorReading(kept.id)?.signal ?? 0;
+    const depleted = detectorReading(dumped.id)?.signal ?? 0;
+    assert.ok(Math.abs(selected - band / 280) < 1e-9,
+      `a ${band} nm window of a 280 nm source keeps ${band}/280 of the power`);
+    assert.ok(Math.abs(selected + depleted - 1) < 1e-9, 'nothing is created or lost');
+  }
+
+  // Hiding the depleted port removes the drawn beam, not the accounting.
+  aotf.params.showDepleted = false;
+  aotf.params.channels = [{ wl: 532, band: 20, eff: 1 }];
+  traceAll([laser, aotf, kept, dumped]);
+  assert.equal(detectorReading(dumped.id), null, 'the depleted beam is not traced when hidden');
+  assert.ok(Math.abs(detectorReading(kept.id).signal - 20 / 280) < 1e-9, 'the selection is unaffected');
+});
+
+test('a narrow AOTF line survives the weak-ray cull that would delete it', () => {
+  // 0.5 nm out of 280 nm is 0.18% of the beam - far below the generic
+  // negligible-ray floor, and yet the entire point of the element.
+  const laser = createElement('sclaser', 0, 0);
+  Object.assign(laser.params, { scMin: 420, scMax: 700, beamMode: 'line' });
+  const aotf = createElement('aotf', 200, 0);
+  aotf.params.channels = [{ wl: 532, band: 0.5, eff: 0.9 }];
+  const detector = createElement('detector', 400, 0);
+
+  traceAll([laser, aotf, detector]);
+  const reading = detectorReading(detector.id);
+  assert.ok(reading, 'a 0.5 nm selection still reaches the detector');
+  assert.ok(Math.abs(reading.signal - 0.9 * 0.5 / 280) < 1e-9, 'and carries exactly its share of the power');
+  assert.ok(Math.abs(reading.wavelength - 532) < 0.5, 'at the selected wavelength');
 });
 
 test('nonlinear crystal partitions converted and residual pump power', () => {

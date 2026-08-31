@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polarizing beamsplitter — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Separates orthogonal polarization states into two paths. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/pbs/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Polarizing beamsplitter — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Separates orthogonal polarization states into two paths.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/pbs/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="current">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#polarization">Polarization</a> / Polarizing beamsplitter</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#d5e3f0" stroke="#3f6a92" stroke-width="1.6"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#3f6a92" stroke-width="1.6"/><text x="-12.7" y="20.7" text-anchor="start" dominant-baseline="central" font-size="8.5" fill="#3f6a92" font-weight="600" >PBS</text></svg></div>
+        <div>
+          <h1>Polarizing beamsplitter</h1>
+        </div>
+      </div>
+      <p class="tagline">Separates orthogonal polarization states into two paths.</p>
+      <a class="place-cta" href="../../sketch/?place=pbs">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=pbs"
+          title="Interactive Polarizing beamsplitter — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the polarizing beamsplitter to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>An ordinary beamsplitter divides a beam by intensity and does not care how it is
+        polarized. A polarizing beamsplitter divides it by polarization instead: one linear
+        state is transmitted, the orthogonal state is reflected, and — unlike a
+        <a href="../polarizer/">polarizer</a>, which absorbs or dumps what it rejects —
+        both halves leave as usable beams. Nothing is thrown away, which is what makes the
+        device a router rather than a filter.</p>
+        <p>The usual form is a cube: two right-angle prisms cemented along their
+        hypotenuses, with a multilayer dielectric coating sandwiched between them. Light
+        meets that internal interface at 45°, and the layer stack is designed so that the
+        <em>p</em>-polarized component (electric field in the plane of incidence) is
+        transmitted while the <em>s</em>-polarized component is reflected through 90°. The
+        two outputs are therefore linearly polarized and perpendicular to one another.</p>
+        <p>How the incoming power divides follows Malus's law, so the split is set by the
+        input polarization angle rather than by the cube:</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>T</mi><mo>=</mo><msup><mrow><mi>cos</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mi>θ</mi><mo separator="true">,</mo><mspace width="2em"/><mi>R</mi><mo>=</mo><msup><mrow><mi>sin</mi><mo>⁡</mo></mrow><mn>2</mn></msup><mi>θ</mi></mrow><annotation encoding="application/x-tex">T = \cos^{2}\theta, \qquad R = \sin^{2}\theta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.0585em;vertical-align:-0.1944em;"></span><span class="mop"><span class="mop">cos</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0077em;">R</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8719em;"></span><span class="mop"><span class="mop">sin</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8719em;"><span style="top:-3.1208em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span></span></span></span></span></div>
+      <div class="caption">Fraction transmitted and reflected for linearly polarized light at θ to the transmission axis. Unpolarized light averages to 50/50.</div>
+    </div>
+
+        <p>Putting a <a href="../hwp/">half-wave plate</a> in front turns this into a
+        <strong>continuously variable beamsplitter</strong>: rotating the plate rotates the
+        input polarization, sweeping the split from all-transmitted to all-reflected without
+        any absorption anywhere. That pairing is one of the most common two-element
+        combinations on an optical bench, used for power control, for balanced splitting,
+        and for routing a beam between two experiments.</p>
+        <p>Run backwards, the same cube <em>combines</em> two orthogonally polarized beams
+        into one path — the standard way to overlap two lasers with no loss, which no
+        intensity beamsplitter can do.</p>
+        <p>One asymmetry matters in practice. The transmitted port is usually very pure,
+        with extinction ratios of 1000:1 or better, because the coating is good at rejecting
+        <em>s</em>. The reflected port is markedly worse, often nearer 20:1, since some
+        <em>p</em> light leaks into it. If an experiment needs a clean state, take it from
+        the transmitted port, or clean the reflected one up with a polarizer afterwards.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>The cube is drawn with its coated diagonal, and that diagonal is the traced
+        surface. It transmits horizontal polarization along the incoming axis and reflects
+        vertical polarization through 90°, splitting a single incoming ray into two outgoing
+        beams that the tracer follows independently.</p>
+        <p>The division follows Malus's law exactly: linear light at 0° goes fully through,
+        at 90° fully across, at 45° splits half and half, and at 30° divides 75/25.
+        Unpolarized light splits evenly, as it should. Both outputs emerge in
+        <em>pure</em> linear states — horizontal on the transmitted port, vertical on the
+        reflected one — regardless of what arrived, which is what makes a PBS a polarization
+        <em>cleanup</em> element and not merely a splitter. A port receiving less than 2% of
+        the light is dropped rather than drawn as a hairline that suggests a beam nobody
+        could use.</p>
+        <p>Because the cube resolves polarization into two paths, it is also how the sketch
+        makes polarization <em>visible</em>: put one after a
+        <a href="../hwp/">half-wave plate</a> and rotating the plate's axis visibly shifts
+        power from one output arm to the other, with no attenuation anywhere in the path.</p>
+        <p>The cube also handles fast polarization switching properly. A beam alternating
+        between two states pulse by pulse leaves each port as a genuinely gated pulse train,
+        with the two ports complementary — so an
+        <a href="../aom/">electro-optic modulator</a> followed by a PBS produces two real
+        interleaved trains rather than two steady half-power beams.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The cube is ideal. Both ports are perfectly pure, which the
+        reflected port of a real cube is emphatically not — expect nearer 20:1 there — so
+        an experiment whose result depends on reflected-port purity will look better here
+        than on a bench. There is no coating loss, no residual reflection at the entrance
+        and exit faces, and no angular or spectral acceptance: the split is the same at
+        every wavelength and every angle of incidence, whereas a real cube is specified for
+        a band and degrades outside it. The glass path through the cube is not modelled
+        either, so it adds no optical path and no group-delay dispersion to a pulse.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/polarizer/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/><g transform="rotate(0)"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/><path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g></svg>Polarizer</a><a href="../../wiki/hwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#f3e3c3" stroke="#a08340" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#7a6430" >λ/2</text></svg>λ/2 waveplate</a><a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a><a href="../../wiki/isolator/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-23" y="-11" width="46" height="22" rx="11" fill="#6b7280" stroke="#3f4650" stroke-width="1.5"/><path d="M -12,0 L 10,0 M 10,0 L 3,-5 M 10,0 L 3,5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>Optical isolator</a>
+      </div>
+
+      
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/polarizers.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Polarizers</a></li><li><a href="https://www.rp-photonics.com/beam_splitters.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Beam Splitters</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

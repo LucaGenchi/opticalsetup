@@ -338,14 +338,15 @@ test('the open cone uses working distance while a connected cone uses the actual
     'raising EFL leaves an independently configured working distance alone',
   );
 
-  // EFL is the one thing that DOES move working distance, and only downward:
-  // an objective cannot focus further away than its own focal length.
+  // EFL no longer drags working distance around at all. A long-working-distance
+  // design focuses well beyond its own EFL by putting the equivalent principal
+  // plane ahead of the front glass, so the cone stays where the author put it.
   const shorterFocal = cloneElement(dry);
   shorterFocal.params.efl = 2;
-  assert.match(
+  assert.equal(
     conePath(immersionLayerSVG([shorterFocal])),
-    new RegExp(`^M ${(source.x + 2).toFixed(2)},${source.y.toFixed(2)} `),
-    'shortening EFL past the working distance pulls the focus in with it',
+    conePath(drySVG),
+    'shortening EFL past the working distance leaves the focus where it was',
   );
 
   const wet = objective('water');

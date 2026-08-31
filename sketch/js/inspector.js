@@ -1,6 +1,7 @@
 // Right-hand inspector: edit properties of the selected element or manual beam.
 
 import { state, changed, pushUndo, findSelected } from './state.js';
+import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf.js';
 import {
   registry, cameraProfileSVG, cameraReadingState, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
@@ -10,14 +11,21 @@ import {
 } from './elements.js';
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
+import { autocorrelationReading } from './glass.js';
+import { pmtVerdict } from './detector-measurements.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import {
   OBJECTIVE_MEDIA, normalizeObjectiveParams, objectiveMediumKey, objectiveWorkingDistance,
 } from './objective.js';
 import { immersionCouplingStatus } from './immersion.js';
-import { esc } from './util.js';
+import { esc, formatSignal } from './util.js';
 import { WIKI_TYPES } from './wiki-types.js';
+import { GLASS_OPTIONS } from './glass.js';
+import {
+  AIR, MAX_SURFACE_ROWS, ROW_RADIUS_MAX, ROW_THICKNESS_MAX, ROW_THICKNESS_MIN,
+  ROW_STOP_DIAMETER_MIN, normalizeSurfaceTable, nullSurfaceTableAxialColour, surfaceRowsOf,
+} from './lensgroup.js';
 
 let panel;
 let undoArmed = false; // push one undo snapshot per editing session
@@ -59,7 +67,12 @@ function numberField(labelText, attrs, value, param = {}) {
   const min = Number(param.min), max = Number(param.max), step = Number(param.step);
   const negative = Boolean(param.negative);
   const displayValue = negative ? Math.abs(value) : value;
-  const limits = `min="${min}" max="${max}" step="${step}"`;
+  // htmlMin lets a field keep a model floor that is NOT on the step ladder:
+  // the browser bases stepping on the min attribute, so a 0.15 mm floor with a
+  // 0.5 mm step would walk 0.15, 0.65, 1.15. Basing the ladder at 0 gives
+  // 0.15 -> 0.5 -> 1 -> 1.5, and the model floor still clamps on commit.
+  const htmlMin = param.htmlMin ?? min;
+  const limits = `min="${htmlMin}" max="${max}" step="${step}"`;
   const negAttr = negative ? ' data-neg="1"' : '';
   if (!shouldUseSlider(param)) {
     return field(labelText, `${negative ? '<span class="negsign">−</span>' : ''}<input type="number" ${attrs}${negAttr} ${limits} value="${displayValue}">`);
@@ -79,7 +92,7 @@ function numberField(labelText, attrs, value, param = {}) {
 
 function resolvedParam(param, params) {
   const resolve = value => typeof value === 'function' ? value(params) : value;
-  return { ...param, min: resolve(param.min), max: resolve(param.max) };
+  return { ...param, min: resolve(param.min), max: resolve(param.max), htmlMin: resolve(param.htmlMin) };
 }
 
 // Standard-optic size control: the common ½″/1″/2″ picks plus a custom box.
@@ -188,6 +201,32 @@ function cameraAxisHalfSpan(source) {
   const half = (Number.isFinite(height) && height > 0 ? height : 30) / 2;
   return Number.isInteger(half) ? String(half) : half.toFixed(1);
 }
+// An autocorrelator never measures a duration directly: it measures the width
+// of the intensity autocorrelation and you divide out a shape-dependent
+// factor. Reporting the trace, the assumption, and the inferred number
+// separately keeps that honest — and lets a wrong assumption show up as the
+// error it would really be in a lab.
+function autocorrelatorRows(rd, source) {
+  if (!rd.pulse) return `
+      <dt>Autocorrelation</dt><dd>Continuous wave — no pulse to measure</dd>`;
+  if (rd.pulse.mixed) return `
+      <dt>Autocorrelation</dt><dd>Mixed pulse trains — one trace cannot separate them</dd>`;
+  const assumed = source?.params?.assumedShape || 'gauss';
+  const actual = rd.pulse.pulseShape || 'gauss';
+  const derived = Number.isFinite(rd.pulse.stretchedPulseWidthFs)
+    ? rd.pulse.stretchedPulseWidthFs : null;
+  const reading = autocorrelationReading(derived ?? rd.pulse.pulseWidthFs, assumed, actual);
+  if (!reading) return `
+      <dt>Autocorrelation</dt><dd>—</dd>`;
+  const fs = v => `${v < 100 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs`;
+  const shapeName = k => (k === 'sech2' ? 'sech²' : 'Gaussian');
+  const error = reading.inferredPulseWidthFs / reading.truePulseWidthFs;
+  return `
+      <dt>Autocorrelation FWHM</dt><dd>${fs(reading.traceFwhmFs)}</dd>
+      <dt>Inferred duration</dt><dd>${fs(reading.inferredPulseWidthFs)} · assuming ${shapeName(assumed)} (÷${reading.assumedFactor.toFixed(3)})</dd>
+      ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}
+      ${derived === null ? `<dt>Note</dt><dd>Shows the configured duration: a chirped or non-Gaussian input has no derivable stretch</dd>` : ''}`;
+}
 
 function measurementHTML(el) {
   const viaDisplay = el.type === 'display';
@@ -208,8 +247,7 @@ function measurementHTML(el) {
       <div class="measurement-foot">Aim a traced beam at ${viaDisplay ? "the linked sensor's" : "the component's"} front face to see a qualitative reading.</div>
     </div>`;
   }
-  const signal = rd.signal >= 1000 ? '>999 a.u.'
-    : `${rd.signal >= 100 ? Math.round(rd.signal) : rd.signal >= 10 ? rd.signal.toFixed(1) : rd.signal.toFixed(2)} a.u.`;
+  const signal = `${formatSignal(rd.signal)} a.u.`;
   const spectral = Number.isFinite(rd.wavelength) && Number.isFinite(rd.bandMin) && Number.isFinite(rd.bandMax)
     ? (rd.bandMax - rd.bandMin > 2
       ? `${Math.round(rd.bandMin)}–${Math.round(rd.bandMax)} nm`
@@ -219,21 +257,49 @@ function measurementHTML(el) {
   const pulseTrain = rd.pulse?.mixed
     ? `${rd.pulse.sources} source trains · mixed settings`
     : rd.pulse ? `${rd.pulse.sources > 1 ? `${rd.pulse.sources} sources · ` : ''}${rd.pulse.repRateMHz.toLocaleString()} MHz · ${rd.pulse.pulseWidthFs.toLocaleString()} fs` : '';
+  const formatGdd = value => {
+    const display = Math.abs(value) < 0.05 ? 0 : value;
+    return `${Math.abs(display) < 10 ? display.toFixed(1) : Math.round(display).toLocaleString()} fs²`;
+  };
+  const gddRange = rd.pulse?.gddRangeFs2;
+  const variedGdd = Array.isArray(gddRange) && gddRange.length === 2
+    && Math.abs(gddRange[1] - gddRange[0]) > 0.5;
+  const gddText = rd.pulse
+    ? (variedGdd ? `${formatGdd(gddRange[0])} to ${formatGdd(gddRange[1])}` : formatGdd(rd.pulse.gddFs2 || 0))
+    : '';
+  let stretchText = '';
+  if (rd.pulse && !rd.pulse.mixed) {
+    if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
+      const factor = rd.pulse.stretchedPulseWidthFs / rd.pulse.pulseWidthFs;
+      stretchText = factor <= 1.01
+        ? 'Negligible at this pulse duration'
+        : `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}×)`;
+    } else {
+      stretchText = 'Needs a transform-limited Gaussian input';
+    }
+  }
   const pulseRows = rd.pulse ? `
       <dt>Pulse train</dt><dd>${pulseTrain}</dd>
       ${rd.pulse.mixed ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
+      <dt>Accumulated GDD</dt><dd>${gddText}</dd>
+      ${stretchText ? `<dt>Stretched duration</dt><dd>${stretchText}</dd>` : ''}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
   const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color);
   const isCamera = readoutKind === 'camera';
   const cameraState = isCamera ? cameraReadingState(rd) : null;
   const cancelled = cameraState?.kind === 'cancellation';
+  const verdict = pmtVerdict(rd);
   const detectorRows = readoutKind === 'pmt' ? `
-      <dt>Amplified output</dt><dd>${rd.outputSignal.toFixed(2)} a.u.</dd>
-      <dt>PMT state</dt><dd>${rd.saturated ? 'Saturated' : 'Linear range'}</dd>`
+      <dt>Electron gain</dt><dd>×${formatSignal(rd.gain)}</dd>
+      <dt>Amplified output</dt><dd>${formatSignal(rd.outputSignal)} a.u.</dd>
+      <dt>Dark floor out</dt><dd>${rd.darkOutput ? `${formatSignal(rd.darkOutput)} a.u.` : '—'}</dd>
+      <dt>Signal / dark</dt><dd>${Number.isFinite(rd.snr) ? `${formatSignal(rd.snr)}×` : '—'}</dd>
+      <dt>PMT state</dt><dd>${esc(verdict?.label || '—')}</dd>`
     : readoutKind === 'camera' ? `
       ${cancelled ? '' : `<dt>Centroid</dt><dd>${rd.centroid === null ? '—' : `${rd.centroid.toFixed(2)} mm`}</dd>`}
-      <dt>Sensor pixels</dt><dd>${rd.profile?.length || 0}</dd>` : '';
+      <dt>Sensor pixels</dt><dd>${rd.profile?.length || 0}</dd>`
+    : readoutKind === 'autocorrelator' ? autocorrelatorRows(rd, source) : '';
   let cameraProfile = '';
   if (isCamera && rd.profile) {
     const halfSpan = cameraAxisHalfSpan(source);
@@ -282,8 +348,25 @@ function measurementHTML(el) {
     </dl>
     ${cameraProfile}
     ${pulseTimeline}
+    ${verdict ? `<div class="measurement-foot pmt-verdict ${esc(verdict.key)}">${esc(verdict.detail)}</div>` : ''}
     <div class="measurement-foot">${measurementFoot}</div>
   </div>`;
+}
+
+// Every instrument that measures something can drive a detector screen, so
+// each one offers to create and wire up its own. Shown only when this sensor
+// has no screen yet: the common case is wanting one, and a second screen on
+// the same sensor is still available from the screen's own sensor dropdown.
+function screenLinkHTML(el) {
+  if (!registry[el.type]?.readoutKind || state.demoMode) return '';
+  const linked = state.elements.filter(candidate => candidate.type === 'display'
+    && candidate.params.sensorId === el.id);
+  if (linked.length) {
+    return `<div class="hint" data-screen-link="connected">Showing on ${linked.length > 1
+      ? `${linked.length} detector screens`
+      : 'a detector screen'}. Select the screen to move, resize, or switch its input.</div>`;
+  }
+  return `<div class="btnrow screen-link"><button type="button" id="inspConnectScreen">Connect to a detector screen</button></div>`;
 }
 
 export function refreshMeasurements() {
@@ -319,6 +402,62 @@ function layersHTML(layers) {
   });
   if (!layers.length) h += `<div class="hint">Flat surface (plain reflection). Add a structure to shape the wavefront.</div>`;
   if (layers.length < MAX_SHAPER_LAYERS) h += `<button type="button" id="layerAdd" class="layeradd">＋ Add structure</button>`;
+  return h;
+}
+
+function aotfChannelsHTML(channels) {
+  const list = normalizeAotfChannels(channels);
+  let h = `<div class="lsechead">Selected lines — up to ${MAX_AOTF_CHANNELS} RF tones</div>`;
+  list.forEach((c, i) => {
+    h += `<div class="layer"><div class="layerrow">` +
+      `<strong style="flex:1">Line ${i + 1}</strong>` +
+      (list.length > 1
+        ? `<button type="button" class="layerdel" data-acdel="${i}" title="Remove this line" aria-label="Remove line ${i + 1}">✕</button>`
+        : '') +
+      `</div>`;
+    h += field('Wavelength (nm)', `<input type="number" data-aci="${i}" data-ack="wl" min="150" max="8000" step="1" value="${c.wl}">`);
+    h += field('Passband (nm)', `<input type="number" data-aci="${i}" data-ack="band" min="0.1" max="2000" step="0.1" value="${c.band}">`);
+    h += numberField('Efficiency (0–1)', `data-aci="${i}" data-ack="eff"`, c.eff, { min: 0, max: 1, step: 0.05 });
+    h += `</div>`;
+  });
+  if (list.length < MAX_AOTF_CHANNELS) {
+    h += `<button type="button" id="aotfChannelAdd" class="layeradd">＋ Add line</button>`;
+  }
+  return h;
+}
+function surfaceTableHTML(sel) {
+  const rows = normalizeSurfaceTable(surfaceRowsOf(sel.params));
+  const presetActive = sel.params.preset && sel.params.preset !== 'custom';
+  let h = `<div class="surface-table-head"><div><strong>Surface prescription</strong>` +
+    `<span>${rows.length} / ${MAX_SURFACE_ROWS} rows</span></div>` +
+    `<p>R is positive when its centre of curvature lies toward local +x. Thickness is the axial distance to the next surface.</p>` +
+    (presetActive ? `<p class="surface-preset-note">This preset is authoritative. The first row edit makes a custom copy.</p>` : '') +
+    `</div><div class="surface-table" role="group" aria-label="Lens surface prescription">`;
+
+  rows.forEach((row, i) => {
+    const last = i === rows.length - 1;
+    const canRemove = rows.length > 2;
+    h += `<div class="surface-row" data-surface-row="${i}">` +
+      `<div class="surface-row-head"><strong>Surface ${i + 1}</strong><div class="surface-row-actions">` +
+      `<button type="button" data-smove="${i}" data-sdir="-1" ${i === 0 ? 'disabled' : ''} title="Move surface up" aria-label="Move surface ${i + 1} up">↑</button>` +
+      `<button type="button" data-smove="${i}" data-sdir="1" ${last ? 'disabled' : ''} title="Move surface down" aria-label="Move surface ${i + 1} down">↓</button>` +
+      `<button type="button" class="layerdel" data-sdel="${i}" ${canRemove ? '' : 'disabled'} title="Remove this surface" aria-label="Remove surface ${i + 1}">✕</button>` +
+      `</div></div><div class="surface-fields">` +
+      field('Radius R (mm)', `<input type="number" data-si="${i}" data-sk="r" min="${-ROW_RADIUS_MAX}" max="${ROW_RADIUS_MAX}" step="0.1" value="${row.r}">`) +
+      field('To next (mm)', `<input type="number" data-si="${i}" data-sk="thickness" min="${ROW_THICKNESS_MIN}" max="${ROW_THICKNESS_MAX}" step="0.1" value="${row.thickness}" ${last ? 'disabled aria-disabled="true"' : ''}>`) +
+      field('Medium after', `<select data-si="${i}" data-sk="glass" ${last ? 'disabled aria-disabled="true"' : ''}>` +
+        [[AIR, 'Air'], ...GLASS_OPTIONS].map(([value, label]) => `<option value="${value}" ${row.glass === value ? 'selected' : ''}>${esc(label)}</option>`).join('') +
+        `</select>`) +
+      `</div>` +
+      `<label class="surface-stop-toggle"><span><input type="checkbox" data-si="${i}" data-sk="stop" ${row.stop ? 'checked' : ''} ${row.glass !== AIR ? 'disabled' : ''}> Aperture stop after this surface</span>` +
+      (row.glass !== AIR ? `<small>Stops belong in an air space.</small>` : '') + `</label>` +
+      (row.stop ? field('Stop clear Ø (mm)', `<input type="number" data-si="${i}" data-sk="stopDiameter" min="${ROW_STOP_DIAMETER_MIN}" max="${Math.max(ROW_STOP_DIAMETER_MIN, Number(sel.params.dia) || 25.4)}" step="0.5" value="${row.stopDiameter}">`) : '') +
+      `<button type="button" class="surface-null" data-snull="${i}" title="Vary this radius while preserving a finite same-sign focal length">Null F–C colour with R${i + 1}</button>` +
+      `</div>`;
+  });
+  h += `</div>`;
+  if (rows.length < MAX_SURFACE_ROWS) h += `<button type="button" id="surfaceAdd" class="layeradd">＋ Add surface</button>`;
+  h += `<div class="hint">The final row always exits into air; its thickness is unused. An aperture stop blocks outside its clear diameter but does not add refracting power.</div>`;
   return h;
 }
 
@@ -442,6 +581,29 @@ function paramField(p, sel) {
       + options.map(([ov, ol, disabled]) => `<option value="${ov}" ${ov === v ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`).join('')
       + `</select>`);
   }
+  if (p.type === 'derived-select') {
+    const selected = p.get(sel.params);
+    const opt = ([ov, ol, disabled]) =>
+      `<option value="${esc(ov)}" ${ov === selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${esc(ol)}</option>`;
+    const options = [...(p.options || [])];
+    // "Custom" leads: it is the state the element falls into the moment any
+    // exact value is edited, so it reads as a starting point rather than a
+    // failure to match one of the catalogue entries.
+    let body = p.customOption ? opt([...p.customOption, true]) : '';
+    if (p.groups?.length) {
+      for (const group of p.groups) {
+        const inGroup = options.filter(([, , , g]) => g === group);
+        if (!inGroup.length) continue;
+        body += `<optgroup label="${esc(group)}">${inGroup.map(opt).join('')}</optgroup>`;
+      }
+      body += options.filter(([, , , g]) => !p.groups.includes(g)).map(opt).join('');
+    } else {
+      body += options.map(opt).join('');
+    }
+    return `<label class="field preset-field"><span>${esc(p.label)}</span>`
+      + `<select data-p="${p.key}" data-derived-select="1">${body}</select>`
+      + `${p.note ? `<small>${esc(p.note)}</small>` : ''}</label>`;
+  }
   if (p.type === 'sensor') {
     const sensors = state.elements.filter(candidate => candidate.id !== sel.id && registry[candidate.type]?.readoutKind);
     const hasCurrent = sensors.some(candidate => candidate.id === v);
@@ -458,6 +620,8 @@ function paramField(p, sel) {
       + (sensors.length ? '' : `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`);
   }
   if (p.type === 'layers') return layersHTML(Array.isArray(v) ? v : []);
+  if (p.type === 'aotfchannels') return aotfChannelsHTML(v);
+  if (p.type === 'surfacetable') return surfaceTableHTML(sel);
   if (p.type === 'signals') return signalsHTML(sel);
   // A derived quantity, shown in the same box shape as an editable field so
   // it reads as part of the source's settings, but computed from the other
@@ -485,6 +649,20 @@ function refreshReadouts(sel) {
   panel.querySelectorAll('output.readout[data-p]').forEach(output => {
     const spec = readouts.get(output.dataset.p);
     if (spec?.readout) output.textContent = String(spec.readout(sel.params, sel));
+  });
+}
+
+// A preset selector is a view over several stored params. Exact-value edits
+// can leave a preset on any input event, so keep that selector honest in
+// place instead of rebuilding the inspector and stealing focus mid-entry.
+function refreshDerivedSelects(sel) {
+  if (!panel?.querySelectorAll) return;
+  const specs = new Map((registry[sel.type]?.params || [])
+    .filter(spec => spec.type === 'derived-select')
+    .map(spec => [spec.key, spec]));
+  panel.querySelectorAll('select[data-derived-select][data-p]').forEach(select => {
+    const spec = specs.get(select.dataset.p);
+    if (spec?.get) select.value = spec.get(sel.params);
   });
 }
 
@@ -546,7 +724,7 @@ export function renderInspector() {
   if (state.selection.kind === 'element') {
     const def = registry[sel.type];
     const meta = getElementMeta(sel.type, sel.params, { element: sel, elements: state.elements });
-    let h = inspectorHead(def, meta, sel) + measurementHTML(sel);
+    let h = inspectorHead(def, meta, sel) + measurementHTML(sel) + screenLinkHTML(sel);
     const direct = getDirectManipulation(sel);
     if (direct || def.editPoints) {
       const actions = [direct?.resize ? 'blue handles resize the physical component' : '',
@@ -565,6 +743,8 @@ export function renderInspector() {
       let sectionTitle = def.paramsTitle || 'Optical behavior';
       let sectionFields = '';
       let sectionCount = 0;
+      let sectionOpen = true;
+      let objectiveHintInserted = false;
       let voxelHintInserted = false;
       const insertVoxelHint = () => {
         if (voxelHintInserted) return;
@@ -585,38 +765,53 @@ export function renderInspector() {
           sectionFields += `<div class="hint">Aim a compatible ordinary pulsed Laser at this resin sample (500–1064 nm, up to 1 W source power, 10–100 MHz, 50–400 fs) to open the dedicated lithography lab with its settings.</div>`;
         } else {
           const multiple = candidates.length > 1;
-          sectionFields += candidates.map(({ laser, numericalAperture }, index) => {
+          sectionFields += candidates.map(({ laser, numericalAperture, gddFs2, stretchedPulseWidthFs }, index) => {
             const configuredName = String(laser.label || '').trim();
             const name = configuredName || (multiple ? `Laser ${index + 1}` : 'this laser');
             const url = buildTwoPhotonHandoffUrl(laser, undefined, { numericalAperture });
-            return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>`;
+            const gdd = `${Math.abs(gddFs2) < 10 ? gddFs2.toFixed(1) : Math.round(gddFs2).toLocaleString()} fs² GDD`;
+            const duration = Number.isFinite(stretchedPulseWidthFs)
+              ? `${stretchedPulseWidthFs.toFixed(stretchedPulseWidthFs < 100 ? 1 : 0)} fs at the sample`
+              : 'broadening needs a transform-limited Gaussian input';
+            return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>` +
+              `<div class="hint">Traced centre-wavelength path: ${esc(gdd)} · ${esc(duration)}. The handoff keeps the configured source duration; confirm and apply this qualitative broadening in the lab.</div>`;
           }).join('');
-          sectionFields += `<div class="hint">Transfers wavelength, configured source power, repetition rate, pulse duration, and the traced objective NA when one compatible objective is unambiguous. Confirm specimen-plane power and pulse broadening in the destination lab; bandwidth, polarization, scan, and material settings keep that lab's defaults.</div>`;
+          sectionFields += `<div class="hint">Transfers wavelength, configured source power, repetition rate, configured pulse duration, and the traced objective NA when one compatible objective is unambiguous. Bandwidth, polarization, scan, material, and GDD settings keep that lab's defaults.</div>`;
         }
         sectionFields += `</div>`;
       };
       const flushSection = () => {
         if (!sectionFields) return;
         h += inspectorSection(sectionKey, sectionTitle, sectionFields, {
+          open: sectionOpen,
           meta: `${sectionCount} ${sectionCount === 1 ? 'setting' : 'settings'}`,
         });
       };
       for (const p of def.params || []) {
         if (p.hidden) continue;
+        // Text annotations own their body directly on the canvas. The
+        // inspector retains precise style controls without duplicating an
+        // editor in a competing surface.
+        if (p.canvasEdit) continue;
         // Physical-size fields that read as presentation rather than physics
         // are rendered down in Label & appearance instead (see below).
         if (p.appearance) continue;
         if (p.show && !p.show(sel.params)) continue;
         if (p.type === 'section') {
+          if (sel.type === 'objective' && !objectiveHintInserted) {
+            sectionFields += objectiveCouplingHint(sel);
+            objectiveHintInserted = true;
+          }
           flushSection();
           sectionKey = p.key; sectionTitle = p.label; sectionFields = ''; sectionCount = 0;
+          sectionOpen = p.open !== false;
           continue;
         }
         sectionCount++;
         if (p.type === 'heading') { sectionFields += `<div class="lsechead">${esc(p.label)}</div>`; continue; }
         sectionFields += paramField(p, sel);
       }
-      if (sel.type === 'objective') sectionFields += objectiveCouplingHint(sel);
+      if (sel.type === 'objective' && !objectiveHintInserted) sectionFields += objectiveCouplingHint(sel);
       insertVoxelHint();
       flushSection();
     }
@@ -718,6 +913,11 @@ export function renderInspector() {
   if (del) del.addEventListener('click', () => document.dispatchEvent(new CustomEvent('optics:delete')));
   const dup = panel.querySelector('#inspDup');
   if (dup) dup.addEventListener('click', () => document.dispatchEvent(new CustomEvent('optics:duplicate')));
+  const connectScreen = panel.querySelector('#inspConnectScreen');
+  if (connectScreen) connectScreen.addEventListener('click', () => {
+    const s = findSelected();
+    if (s) document.dispatchEvent(new CustomEvent('optics:connectscreen', { detail: { sensorId: s.id } }));
+  });
   const clearVoxels = panel.querySelector('#inspClearVoxels');
   if (clearVoxels) clearVoxels.addEventListener('click', () => {
     const s = findSelected();
@@ -734,6 +934,30 @@ export function renderInspector() {
     changed();
     renderInspector();
   });
+  const aotfAdd = panel.querySelector('#aotfChannelAdd');
+  if (aotfAdd) aotfAdd.addEventListener('click', () => {
+    const s = findSelected();
+    if (!s) return;
+    pushUndo();
+    const list = normalizeAotfChannels(s.params.channels);
+    if (list.length < MAX_AOTF_CHANNELS) list.push(newAotfChannel());
+    s.params.channels = list;
+    changed();
+    renderInspector();
+  });
+  panel.querySelectorAll('[data-acdel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = findSelected();
+      if (!s) return;
+      const list = normalizeAotfChannels(s.params.channels);
+      if (list.length <= 1) return;   // an AOTF with no tone is just a window
+      pushUndo();
+      list.splice(+btn.dataset.acdel, 1);
+      s.params.channels = list;
+      changed();
+      renderInspector();
+    });
+  });
   panel.querySelectorAll('[data-ldel]').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = findSelected();
@@ -742,6 +966,75 @@ export function renderInspector() {
       s.params.layers.splice(+btn.dataset.ldel, 1);
       changed();
       renderInspector();
+    });
+  });
+  // lens-group surface-table structure changes. A preset is copied only at
+  // the moment a row is actually changed, so selecting and inspecting a
+  // preset never mutates saved state.
+  const addSurface = panel.querySelector('#surfaceAdd');
+  if (addSurface) addSurface.addEventListener('click', () => {
+    const s = findSelected();
+    if (!s || s.type !== 'lensgroup') return;
+    const rows = normalizeSurfaceTable(surfaceRowsOf(s.params));
+    if (rows.length >= MAX_SURFACE_ROWS) return;
+    pushUndo();
+    rows.splice(rows.length - 1, 0, {
+      r: 0, thickness: 4, glass: 'nbk7', stop: false, stopDiameter: 12,
+    });
+    s.params.rows = normalizeSurfaceTable(rows);
+    s.params.preset = 'custom';
+    changed();
+    renderInspector();
+  });
+  panel.querySelectorAll('[data-sdel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = findSelected();
+      if (!s || s.type !== 'lensgroup') return;
+      const rows = normalizeSurfaceTable(surfaceRowsOf(s.params));
+      if (rows.length <= 2) return;
+      pushUndo();
+      rows.splice(+btn.dataset.sdel, 1);
+      s.params.rows = normalizeSurfaceTable(rows);
+      s.params.preset = 'custom';
+      changed();
+      renderInspector();
+    });
+  });
+  panel.querySelectorAll('[data-smove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = findSelected();
+      if (!s || s.type !== 'lensgroup') return;
+      const rows = normalizeSurfaceTable(surfaceRowsOf(s.params));
+      const from = +btn.dataset.smove, to = from + Number(btn.dataset.sdir);
+      if (from < 0 || from >= rows.length || to < 0 || to >= rows.length) return;
+      pushUndo();
+      [rows[from], rows[to]] = [rows[to], rows[from]];
+      s.params.rows = normalizeSurfaceTable(rows);
+      s.params.preset = 'custom';
+      changed();
+      renderInspector();
+    });
+  });
+  panel.querySelectorAll('[data-snull]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = findSelected();
+      if (!s || s.type !== 'lensgroup') return;
+      const result = nullSurfaceTableAxialColour(surfaceRowsOf(s.params), +btn.dataset.snull, {
+        diameter: s.params.dia,
+      });
+      const message = result.converged && result.improved
+        ? `Axial colour nulled to ${Number(result.residual.toPrecision(3))} mm at R = ${Number(result.radius.toFixed(4))} mm.`
+        : result.converged
+          ? `Axial colour is already nulled (${Number(result.residual.toPrecision(3))} mm).`
+          : 'No finite same-power axial-colour null was found with this radius.';
+      if (result.converged && result.improved) {
+        pushUndo();
+        s.params.rows = result.rows;
+        s.params.preset = 'custom';
+        changed();
+        renderInspector();
+      }
+      document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message } }));
     });
   });
   // specimen signal-channel add/remove
@@ -870,6 +1163,16 @@ export function applyInput(inp, rebuild = false) {
     if (spec?.set) spec.set(sel.params, val);
     changed();
     refreshReadouts(sel);
+    refreshDerivedSelects(sel);
+    if (rebuild) renderInspector();
+    return;
+  }
+
+  if (inp.dataset.derivedSelect) {
+    const spec = (registry[sel.type]?.params || []).find(p => p.key === pkey);
+    if (spec?.set) spec.set(sel.params, val);
+    changed();
+    refreshReadouts(sel);
     if (rebuild) renderInspector();
     return;
   }
@@ -927,6 +1230,17 @@ export function applyInput(inp, rebuild = false) {
   }
 
   // wavefront-shaper layer fields
+  if (inp.dataset.aci !== undefined) {
+    const list = normalizeAotfChannels(sel.params.channels);
+    const c = list[+inp.dataset.aci];
+    if (c) {
+      c[inp.dataset.ack] = val;
+      sel.params.channels = normalizeAotfChannels(list);
+    }
+    changed();
+    if (rebuild) renderInspector();
+    return;
+  }
   if (inp.dataset.li !== undefined) {
     const layers = sel.params.layers;
     const ly = layers && layers[+inp.dataset.li];
@@ -937,6 +1251,23 @@ export function applyInput(inp, rebuild = false) {
     return;
   }
 
+  // Lens-group surface fields. Read from surfaceRowsOf() first so the first
+  // edit of an authoritative preset copies exactly what is visible, then
+  // switch to custom before storing the edited table.
+  if (inp.dataset.si !== undefined) {
+    if (sel.type !== 'lensgroup') return;
+    const rows = normalizeSurfaceTable(surfaceRowsOf(sel.params));
+    const row = rows[+inp.dataset.si];
+    if (!row) return;
+    row[inp.dataset.sk] = val;
+    sel.params.rows = normalizeSurfaceTable(rows);
+    sel.params.preset = 'custom';
+    changed();
+    refreshReadouts(sel);
+    if (rebuild) renderInspector();
+    return;
+  }
+
   if (key) sel[key] = key === 'rot' ? ((val % 360) + 360) % 360 : val;
   else if (pkey) {
     sel.params[pkey] = val;
@@ -944,7 +1275,10 @@ export function applyInput(inp, rebuild = false) {
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }
   changed();
-  if (pkey) refreshReadouts(sel);
+  if (pkey) {
+    refreshReadouts(sel);
+    refreshDerivedSelects(sel);
+  }
   // While a pulsed laser is transform-limited its bandwidth is derived from
   // the pulse duration, so the field is hidden and nothing needs syncing.
   // Switching TL off reveals it — seed it from the width the pulse actually
@@ -963,7 +1297,7 @@ export function applyInput(inp, rebuild = false) {
   // layer already is; otherwise the panel can describe the previous target.
   if (rebuild && sel.type === 'objective' && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion'].includes(pkey)) { renderInspector(); return; }
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode'].includes(pkey)) { renderInspector(); return; }
   // A readout is derived from the other params, so any committed edit can
   // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
   // peak power or a transform-limited bandwidth from going stale on screen.

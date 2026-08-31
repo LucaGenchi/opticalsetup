@@ -1,40 +1,39 @@
 // Detector catalogue redesign and detector-aware screen panels.
 
 import {
-  createElement, displayDensity, displayRenderScale, getElementMeta, registry, resolveDisplaySensor,
+  OBJ_SHAPES, createElement, displayDensity, displayRenderScale, getElementMeta, registry, resolveDisplaySensor,
   resolvedDisplayView,
 } from './elements.js';
 import { detectorReading } from './raytrace.js';
-import { enhancedReading, objectImageAtCamera } from './detector-measurements.js';
+import { enhancedReading, objectImageAtCamera, pmtVerdict } from './detector-measurements.js';
 import { fwhmToSigma } from './spectrum.js';
 import { scopeTrace } from './pulses.js';
-import { esc, smoothPath, wavelengthToColor } from './util.js';
+import { autocorrelationReading } from './glass.js';
+import { esc, formatSignal, smoothPath, wavelengthToColor } from './util.js';
 
 export const DETECTOR_TYPES = [
-  'camera', 'detector', 'pmt', 'powermeter', 'wavefrontdetector',
-  'polarimeter', 'spectrometer', 'generaldetector',
+  'detector', 'camera', 'pmt', 'powermeter', 'wavefrontdetector',
+  'polarimeter', 'spectrometer', 'autocorrelator', 'generaldetector',
 ];
 
 const DESCRIPTIONS = {
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   detector: 'Measures the relative intensity incident on its active surface.',
-  pmt: 'Measures intensity with qualitative gain and saturation for weak fluorescence, microscopy, and point-source signals.',
-  powermeter: 'Reports incoming optical power when source power is configured, otherwise relative detected power.',
-  wavefrontdetector: 'Reports intensity and classifies the incident beam as collimated, converging, or diverging with a qualitative divergence angle.',
+  pmt: 'Amplifies a faint signal \u2014 fluorescence, microscopy, single-point detection \u2014 into a readable one, and reports whether it clears the tube\u2019s own dark floor.',
+  powermeter: 'Reports absolute optical power by carrying each source\u2019s configured watts through everything that attenuated it on the way here.',
+  wavefrontdetector: 'Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle.',
   polarimeter: 'Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.',
   spectrometer: 'Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.',
   generaldetector: 'Reports intensity, power, beam size, wavefront, polarization and Stokes parameters, wavelength and bandwidth, plus pulse repetition rate and duration.',
+  autocorrelator: 'Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one.',
   display: 'Connects to one detector and shows only the properties that detector measures. The cable carries data and never affects rays.',
 };
 
-function compactNumber(value) {
-  if (!Number.isFinite(value)) return '—';
-  const abs = Math.abs(value);
-  if (abs >= 1000) return value.toExponential(1);
-  if (abs >= 100) return value.toFixed(0);
-  if (abs >= 10) return value.toFixed(1);
-  return value.toFixed(2);
-}
+const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
+
+// Shared with the inspector so a value never reads as "0.00" on one surface
+// and "3.1e-4" on the other.
+const compactNumber = formatSignal;
 
 function flipped(el) {
   const rotation = ((el.rot || 0) % 360 + 360) % 360;
@@ -80,11 +79,11 @@ function instrumentDefinition({ label, code, readoutKind, paletteOrder, width, a
 }
 
 Object.assign(registry.camera, {
-  paletteOrder: 1, sensorFaceX: -22, description: DESCRIPTIONS.camera,
-  aliases: ['beam camera', 'beam profiler', 'image sensor', 'interferogram', 'interference camera', 'beam diameter'],
+  paletteOrder: 2, sensorFaceX: -22, description: DESCRIPTIONS.camera,
+  aliases: ['beam camera', 'beam profiler', 'image sensor', 'intensity profile', 'beam diameter', 'object image'],
 });
 Object.assign(registry.detector, {
-  paletteOrder: 2, sensorFaceX: -19, description: DESCRIPTIONS.detector,
+  paletteOrder: 1, sensorFaceX: -19, description: DESCRIPTIONS.detector,
   aliases: ['photodiode', 'intensity detector', 'light intensity'],
 });
 Object.assign(registry.pmt, {
@@ -126,8 +125,21 @@ registry.spectrometer.params.push(
   ] },
   { key: 'labelPeaks', label: 'Label peaks on the axis', type: 'checkbox', def: true },
 );
+registry.autocorrelator = instrumentDefinition({
+  label: 'Autocorrelator', code: 'AC', readoutKind: 'autocorrelator', paletteOrder: 8, width: 56, accent: '#fca5a5',
+  aliases: ['pulse duration', 'pulse width', 'intensity autocorrelation', 'fwhm', 'chirp', 'pulse measurement'],
+});
+// A real autocorrelator cannot report a duration on its own: it measures the
+// autocorrelation trace and you divide out a factor that depends on the pulse
+// shape you assume. Making that assumption an explicit control is the point —
+// choose the wrong shape and the number is wrong by the ratio of the factors,
+// which is exactly the mistake the instrument invites in a real lab.
+registry.autocorrelator.params.push({
+  key: 'assumedShape', label: 'Assumed pulse shape', type: 'select', def: 'gauss',
+  options: [['gauss', 'Gaussian (÷1.414)'], ['sech2', 'Sech² (÷1.543)']],
+});
 registry.generaldetector = instrumentDefinition({
-  label: 'General detector', code: 'ALL', readoutKind: 'general', paletteOrder: 8, width: 54, accent: '#67e8f9',
+  label: 'General detector', code: 'DET', readoutKind: 'general', paletteOrder: 9, width: 54, accent: '#67e8f9',
   aliases: ['universal detector', 'all properties', 'pulse detector', 'repetition rate', 'pulse duration'],
 });
 registry.display.label = 'Detector screen';
@@ -411,6 +423,49 @@ function peakLabels(peaks, xAt, baseline) {
   }).join('') + `</g>`;
 }
 
+function profile(reading) {
+  const values = reading.profile || [], maximum = Math.max(...values, 1e-9), width = values.length ? 70 / values.length : 0;
+  return values.map((value, index) => {
+    if (!(value > 0)) return '';
+    const height = Math.max(0.6, 20 * value / maximum);
+    return `<rect data-profile-bin="${index}" x="${(-35 + index * width).toFixed(2)}" y="${(11 - height).toFixed(2)}" width="${Math.max(0.3, width - 0.4).toFixed(2)}" height="${height.toFixed(2)}" rx="0.3" fill="${reading.profileColors?.[index] || reading.color}"/>`;
+  }).join('') + `<line x1="-35" y1="11.5" x2="35" y2="11.5" stroke="#294453" stroke-width="0.8"/>`;
+}
+
+function objectGlyph(image) {
+  if (!image) return '';
+  const shape = OBJ_SHAPES[image.shape] || OBJ_SHAPES.arrow, cx = -8, cy = 1;
+  const height = clamp(Math.abs(image.localTipY - image.localBaseY) * 0.9, 7, 20), sign = image.magnification < 0 ? -1 : 1;
+  const point = value => ({ x: cx + value[0] * height, y: cy + value[1] * height * sign });
+  let svg = `<g data-camera-object-image="true"><title>Object image falls on camera</title>`;
+  for (const line of shape.lines || []) svg += `<polyline points="${line.map(item => { const p = point(item); return `${p.x.toFixed(2)},${p.y.toFixed(2)}`; }).join(' ')}" fill="none" stroke="${image.color}" stroke-width="1.25"/>`;
+  for (const polygon of shape.polys || []) svg += `<polygon points="${polygon.map(item => { const p = point(item); return `${p.x.toFixed(2)},${p.y.toFixed(2)}`; }).join(' ')}" fill="${image.color}"/>`;
+  return svg + `</g><text x="-34" y="14" font-size="3.3" font-weight="760" fill="#e2f1f5">OBJECT IMAGE</text>`;
+}
+
+function cameraMap(reading, sensor, elements) {
+  const values = reading.profile || [], columns = Math.min(24, values.length), rows = clamp(Math.round(sensor.params.rows || 12), 6, 16);
+  if (!columns) return '';
+  const grouped = Array.from({ length: columns }, (_, column) => {
+    const start = Math.floor(column * values.length / columns), end = Math.max(start + 1, Math.floor((column + 1) * values.length / columns));
+    const slice = values.slice(start, end), value = slice.reduce((sum, sample) => sum + sample, 0);
+    return { value, index: start, color: reading.profileColors?.[start] || reading.color };
+  });
+  const maximum = Math.max(...grouped.map(item => item.value), 1e-9), x0 = -35, y0 = -11, width = 54, height = 24;
+  let pixels = '';
+  for (let column = 0; column < columns; column++) {
+    const level = grouped[column].value / maximum, sigma = 1.4 + level * rows * 0.19;
+    for (let row = 0; row < rows; row++) {
+      const dy = row - (rows - 1) / 2, intensity = level * Math.exp(-(dy * dy) / (2 * sigma * sigma));
+      if (intensity < 0.035) continue;
+      pixels += `<rect data-camera-pixel="${column}:${row}" x="${(x0 + column * width / columns).toFixed(2)}" y="${(y0 + row * height / rows).toFixed(2)}" width="${Math.max(0.35, width / columns - 0.25).toFixed(2)}" height="${Math.max(0.35, height / rows - 0.25).toFixed(2)}" fill="${grouped[column].color}" opacity="${clamp(0.15 + 0.85 * intensity, 0, 1).toFixed(2)}"/>`;
+    }
+  }
+  return `<rect x="${x0}" y="${y0}" width="${width}" height="${height}" rx="1.5" fill="#031119" stroke="#294453"/>${pixels}${objectGlyph(objectImageAtCamera(sensor, elements))}` +
+    `<text x="22" y="-6" font-size="4" fill="#6d8796">BEAM Ø</text><text x="40" y="1" text-anchor="end" font-size="6" fill="#d9e8ee">${reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(1)} mm` : 'POINT'}</text>` +
+    `<text x="40" y="7" text-anchor="end" font-size="4" fill="#6d8796">INTENSITY</text><text x="40" y="14" text-anchor="end" font-size="6" fill="#d9e8ee">Σw ${compactNumber(reading.signal)}</text>`;
+}
+
 function polarizationGlyph(reading) {
   const text = String(reading.polarization), match = /(?:Linear|Elliptical)\s+(-?[\d.]+)°/.exec(text), rotation = match ? -Number(match[1]) : 0;
   if (/^Linear/.test(text)) return `<g transform="translate(-24 1) rotate(${rotation})" stroke="#e2f1f5" stroke-width="1.5"><line x1="-9" y1="0" x2="9" y2="0"/><path d="M 9,0 L 5,-2.5 M 9,0 L 5,2.5 M -9,0 L -5,-2.5 M -9,0 L -5,2.5"/></g>`;
@@ -430,8 +485,68 @@ function formatPower(watts, signal) {
 function pulseRate(pulse) { return !pulse ? 'CW' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.repRateMHz)} MHz`; }
 function pulseDuration(pulse) { return !pulse ? '—' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.pulseWidthFs)} fs`; }
 
-function panel(sensor, reading, view) {
+// Intensity-autocorrelation trace: what an autocorrelator actually puts on a
+// screen. The horizontal axis is delay, not laboratory time — the instrument
+// scans one arm against the other — and the curve is the self-convolution of
+// the pulse envelope, which is why it is wider than the pulse by a
+// shape-dependent factor and always symmetric about zero delay.
+function autocorrelationPlot(sensor, reading) {
+  if (!reading.pulse || reading.pulse.mixed) return null;
+  const assumed = sensor.params?.assumedShape || 'gauss';
+  const actual = reading.pulse.pulseShape || 'gauss';
+  const arriving = Number.isFinite(reading.pulse.stretchedPulseWidthFs)
+    ? reading.pulse.stretchedPulseWidthFs : reading.pulse.pulseWidthFs;
+  const ac = autocorrelationReading(arriving, assumed, actual);
+  if (!ac) return null;
+
+  const baseline = 8, height = 19;
+  // Show +/- 1.6 trace widths so the wings and the half-maximum are both on
+  // screen whatever the duration.
+  const spanFs = Math.max(1e-6, ac.traceFwhmFs * 1.6);
+  const xAt = fs => -35 + 70 * (fs + spanFs) / (2 * spanFs);
+  const yAt = v => baseline - Math.max(0, Math.min(1, v)) * height;
+  // Gaussian autocorrelation of a Gaussian is Gaussian; sech² is close enough
+  // to sech² for a qualitative screen.
+  const shape = tau => (actual === 'sech2'
+    ? 1 / Math.cosh(1.7627 * tau / (ac.traceFwhmFs / 2)) ** 2
+    : Math.exp(-4 * Math.LN2 * (tau / ac.traceFwhmFs) ** 2));
+
+  const points = [];
+  for (let i = 0; i <= 96; i++) {
+    const tau = -spanFs + (2 * spanFs) * i / 96;
+    points.push(`${xAt(tau).toFixed(2)},${yAt(shape(tau)).toFixed(2)}`);
+  }
+
+  const halfY = yAt(0.5).toFixed(2);
+  const halfLeft = xAt(-ac.traceFwhmFs / 2).toFixed(2);
+  const halfRight = xAt(ac.traceFwhmFs / 2).toFixed(2);
+  const fs = v => (v < 100 ? `${v.toFixed(1)} fs` : `${Math.round(v).toLocaleString()} fs`);
+
+  return `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>` +
+    `<line x1="${xAt(0).toFixed(2)}" y1="${baseline}" x2="${xAt(0).toFixed(2)}" y2="${yAt(1).toFixed(2)}" stroke="#3d5566" stroke-width="0.5" stroke-dasharray="1 1"/>` +
+    `<polyline data-autocorrelation="${points.length}" points="${points.join(' ')}" fill="none" stroke="${reading.color || '#fca5a5'}" stroke-width="1.1"/>` +
+    // the half-maximum chord is the measurement itself, so draw it
+    `<line x1="${halfLeft}" y1="${halfY}" x2="${halfRight}" y2="${halfY}" stroke="#fca5a5" stroke-width="0.6" stroke-dasharray="1.6 1.2" opacity="0.85"/>` +
+    `<text x="${xAt(0).toFixed(2)}" y="${(baseline + 5.4)}" text-anchor="middle" font-size="3.4" fill="#5f7d8e">0 DELAY</text>` +
+    `<text x="-35" y="${(baseline + 5.4)}" font-size="3.4" fill="#5f7d8e">−${esc(fs(spanFs))}</text>` +
+    `<text x="35" y="${(baseline + 5.4)}" text-anchor="end" font-size="3.4" fill="#5f7d8e">+${esc(fs(spanFs))}</text>` +
+    // The curve peaks at centre, so the inferred duration sits in the empty
+    // upper-left corner where the wings are flat, clear of the header line.
+    `<text x="-35" y="-8.2" font-size="6.2" font-weight="780" fill="#ecf7fa">${esc(fs(ac.inferredPulseWidthFs))}</text>` +
+    `<text x="-35" y="-3.4" font-size="3.2" fill="${ac.shapeMismatch ? '#fca5a5' : '#7892a1'}">` +
+    `${ac.shapeMismatch ? `ASSUMES ${assumed === 'sech2' ? 'SECH²' : 'GAUSS'}, SOURCE ${actual === 'sech2' ? 'SECH²' : 'GAUSS'}` : `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)}`}</text>`;
+}
+
+function panel(sensor, reading, elements, view) {
   const name = sensor.label || registry[sensor.type].label;
+  if (sensor.type === 'camera') {
+    if (view === 'detail') return header(name, 'SPATIAL METRICS', reading.pulse) + metrics([
+      ['INTENSITY', `Σw ${compactNumber(reading.signal)}`], ['BEAM Ø', reading.beamDiameter > 0 ? `${reading.beamDiameter.toFixed(2)} mm` : 'POINT'],
+      ['CENTROID', Number.isFinite(reading.centroid) ? `${reading.centroid.toFixed(2)} mm` : '—'], ['MAP', `${reading.profile?.length || 0}×${sensor.params.rows || 12}`],
+    ]);
+    if (view === 'spectrum') return header(name, 'LINE PROFILE', reading.pulse) + profile(reading);
+    return header(name, '2D INTENSITY', reading.pulse) + cameraMap(reading, sensor, elements);
+  }
   if (sensor.type === 'detector') {
     // A pulsed arrival has real temporal structure, so the screen becomes an
     // oscilloscope rather than a single averaged number. CW light keeps the
@@ -441,17 +556,36 @@ function panel(sensor, reading, view) {
     return header(name, 'REL INTENSITY', reading.pulse) +
       `<circle cx="-31" cy="-1" r="2.3" fill="${reading.color}"/><text x="35" y="4" text-anchor="end" font-size="15" font-weight="780" fill="#ecf7fa">${compactNumber(reading.signal)}</text><text x="35" y="12" text-anchor="end" font-size="5" fill="#7892a1">Σw · REL INTENSITY</text>`;
   }
-  if (sensor.type === 'pmt') return header(name, 'LOW-LIGHT INTENSITY', reading.pulse) + metrics([
-    ['INPUT', `Σw ${compactNumber(reading.signal)}`], ['GAIN', `×${compactNumber(sensor.params.gain || 1)}`],
-    ['PMT OUTPUT', `${compactNumber(reading.outputSignal)} a.u.`], ['STATE', reading.saturated ? 'SATURATED' : 'LINEAR'],
-  ]);
+  if (sensor.type === 'autocorrelator') {
+    const plot = autocorrelationPlot(sensor, reading);
+    if (plot) return header(name, 'AUTOCORRELATION', reading.pulse) + plot;
+    return header(name, 'AUTOCORRELATION', reading.pulse) + metrics([
+      ['STATE', reading.pulse?.mixed ? 'MIXED TRAINS' : 'NO PULSE'],
+      ['DURATION', '—'],
+    ]);
+  }
+  if (sensor.type === 'pmt') {
+    const verdict = pmtVerdict(reading);
+    return header(name, 'LOW-LIGHT INTENSITY', reading.pulse) + metrics([
+      ['INPUT', `\u03a3w ${compactNumber(reading.signal)}`], ['GAIN', `\u00d7${compactNumber(reading.gain)}`],
+      ['PMT OUTPUT', `${compactNumber(reading.outputSignal)} a.u.`],
+      ['S / DARK', Number.isFinite(reading.snr) ? `${compactNumber(reading.snr)}\u00d7` : '\u2014'],
+    ]) + `<text x="-36" y="17.5" font-size="4.6" font-weight="700" fill="${verdict?.key === 'linear' ? '#7fd7a6' : '#f0b46a'}">${esc((verdict?.label || '').toUpperCase())}</text>`;
+  }
   if (sensor.type === 'powermeter') {
     const [value, unit] = formatPower(reading.detectedPowerW, reading.signal);
     // The value and its unit sit on one baseline; the old provenance caption
     // ("from configured source power") collided with the unit and is dropped.
+    // A partial attribution does get its own line: the figure is then a floor,
+    // because some of the light that arrived came from a source carrying no
+    // power rating of its own, and silently under-reporting would be worse.
+    const partial = reading.detectedPowerW != null && reading.powerCoversAllArrivals === false
+      ? '<text x="-36" y="17.5" font-size="4.4" font-weight="700" fill="#f0b46a">+ UNRATED SOURCE</text>'
+      : '';
     return header(name, 'OPTICAL POWER', reading.pulse)
       + `<text x="35" y="6" text-anchor="end" font-size="14" font-weight="780" fill="#ecf7fa">${value}</text>`
-      + `<text x="35" y="14" text-anchor="end" font-size="5.2" fill="#86efac">${unit}</text>`;
+      + `<text x="35" y="14" text-anchor="end" font-size="5.2" fill="#86efac">${unit}</text>`
+      + partial;
   }
   if (sensor.type === 'wavefrontdetector') {
     const wave = reading.wavefront, divergence = wave.state === 'COLLIMATED' ? '0.00°' : `${wave.divergenceDeg.toFixed(2)}°`;
@@ -494,15 +628,14 @@ registry.display.svg = function detectorAwareDisplaySVG(display, elements = []) 
   if (display.params.screenOn === false) return base;
   const sensor = resolveDisplaySensor(display, elements);
   if (!sensor || !DETECTOR_TYPES.includes(sensor.type)) return base;
-  // The camera's canonical renderer in elements.js now owns its complete
-  // 1D profile UI. Appending this enhanced overlay used to draw a second,
-  // fabricated 2D pixel map over it and left both readouts in the SVG.
+  // The camera's canonical renderer owns its measured 1D profile. Appending
+  // the legacy enhanced overlay would fabricate a second spatial dimension.
   if (sensor.type === 'camera') return base;
   const reading = enhancedReading(sensor, elements);
   if (!reading) return base;
   const scale = displayRenderScale(display.params.displayScale);
   const view = resolvedDisplayView(display, sensor);
-  const content = panel(sensor, reading, view);
+  const content = panel(sensor, reading, elements, view);
   return base + `<g transform="scale(${scale})" data-detector-readout="${esc(sensor.type)}" data-display-density="${displayDensity(scale)}" pointer-events="none"><rect x="-42.2" y="-28.2" width="84.4" height="45.4" rx="2.5" fill="#061822"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${content}</g></g>`;
 };
 

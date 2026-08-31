@@ -4,6 +4,7 @@ import { distinctPoints, rotPt } from './util.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
 import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
+import { normalizeSurfaceTable } from './lensgroup.js';
 
 // Elements whose boundary refracts and therefore carries per-surface
 // transmission of its own.
@@ -95,6 +96,7 @@ function resolveBound(bound, params, fallback) {
 function normalizeParam(value, spec, params = {}) {
   if (spec.type === 'signals') return normalizeChannels(value);
   if (spec.type === 'layers') return normalizeLayers(value);
+  if (spec.type === 'surfacetable') return value == null ? null : normalizeSurfaceTable(value);
   if (spec.type === 'boundary') return normalizeBoundaryPoints(value, spec.def || []);
   if (spec.type === 'points') return normalizePolygonPoints(value, spec.def || []);
   if (spec.type === 'checkbox') return typeof value === 'boolean' ? value : !!spec.def;
@@ -201,7 +203,7 @@ function normalizeElement(raw, definitions, used) {
       // `readout`/`derived` params have no storage of their own — always
       // computed fresh from other params — so there is nothing to normalize
       // or persist for them.
-      if (spec.type === 'readout' || spec.type === 'derived') continue;
+      if (spec.type === 'readout' || spec.type === 'derived' || spec.type === 'derived-select' || spec.type === 'section') continue;
       // Earlier normalized params override raw input so dependent bounds can
       // safely read the medium/index selected just above the objective's NA.
       params[spec.key] = normalizeParam(rawParams[spec.key], spec, { ...rawParams, ...params });
@@ -214,9 +216,14 @@ function normalizeElement(raw, definitions, used) {
   // `migrate` hook. It runs only when the saved element genuinely lacks the
   // key, deriving a value from whatever the old format did carry — the
   // plain default would otherwise erase that evidence before anyone reads it.
+  //
+  // The hook gets the raw saved params as well as the normalized ones. A key
+  // the schema has since dropped never reaches `params` at all, so a migration
+  // that reads a retired field — the AOTF's old single `center`/`band` pair,
+  // say — can only find it in the raw object.
   for (const spec of def?.params || []) {
-    if (spec.type === 'readout' || spec.type === 'derived') continue;
-    if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params);
+    if (spec.type === 'readout' || spec.type === 'derived' || spec.type === 'derived-select' || spec.type === 'section') continue;
+    if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params, raw.params || {});
   }
   if (raw.type === 'objective') Object.assign(params, normalizeObjectiveParams(params));
   const rot = def?.rotatable === false ? 0 : finite(raw.rot) ? ((raw.rot % 360) + 360) % 360 : 0;

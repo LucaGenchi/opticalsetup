@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement, registry, getVisualBounds, boxAnchor, getElementMeta, getDirectManipulation } from '../sketch/js/elements.js';
+import { linkifyText } from '../sketch/js/util.js';
+import { markdownLayout, parseInlineMarkdown } from '../sketch/js/markdown.js';
 
 // ---------------- text label: left-anchored, grows rightward ----------------
 
@@ -17,6 +19,89 @@ test('a text label anchors its left edge and grows to the right as text is typed
 
   assert.equal(shortBounds.x0, longBounds.x0, 'the left edge must not move as the text grows');
   assert.ok(longBounds.x1 > shortBounds.x1, 'the box should only expand to the right');
+});
+
+test('text labels turn safe web and DOI addresses into SVG hyperlinks', () => {
+  const label = createElement('textlabel', 0, 0);
+  label.params.text = 'Paper: doi:10.1000/182; data: https://example.org/result?a=1&b=2.';
+  const svg = registry.textlabel.svg(label);
+
+  assert.match(svg, /href="https:\/\/doi\.org\/10\.1000\/182"/);
+  assert.match(svg, /href="https:\/\/example\.org\/result\?a=1&amp;b=2"/);
+  assert.match(svg, /data-text-link="true"/);
+  assert.match(svg, /text-decoration="underline"/);
+  assert.match(svg, /<\/a><tspan>\.<\/tspan><\/text><\/g>$/);
+});
+
+test('text labels render a safe, SVG-native Markdown subset', () => {
+  const label = createElement('textlabel', 0, 0);
+  label.params.text = '# Result\n- **Bright** path\n- *Dark* path with `phase` and ~~old~~';
+  const svg = registry.textlabel.svg(label);
+
+  assert.match(svg, /data-markdown="true"/);
+  assert.match(svg, /font-size="21\.00"/);
+  assert.match(svg, />• <\/tspan>/);
+  assert.match(svg, /font-weight="700">Bright<\/tspan>/);
+  assert.match(svg, /font-style="italic">Dark<\/tspan>/);
+  assert.match(svg, /ui-monospace[^>]*>phase<\/tspan>/);
+  assert.match(svg, /text-decoration="line-through">old<\/tspan>/);
+  assert.doesNotMatch(svg, /# Result|\*\*Bright\*\*/);
+});
+
+test('Markdown links are sanitized and raw URLs remain clickable', () => {
+  const tokens = parseInlineMarkdown('[paper](https://example.org/paper) and https://example.org/data');
+  assert.deepEqual(tokens.filter(token => token.href).map(token => token.href), [
+    'https://example.org/paper',
+    'https://example.org/data',
+  ]);
+  assert.deepEqual(parseInlineMarkdown('[unsafe](javascript:alert(1))'), [
+    { text: '[unsafe](javascript:alert(1))', href: null },
+  ]);
+});
+
+test('multiline Markdown expands text bounds vertically and keeps the authored left edge', () => {
+  const oneLine = markdownLayout('One line', 14);
+  const manyLines = markdownLayout('# Heading\nFirst line\nSecond line', 14);
+  assert.ok(manyLines.height > oneLine.height * 2);
+
+  const label = createElement('textlabel', 100, 50);
+  const before = getVisualBounds(label);
+  label.params.text = '# Heading\nFirst line\nSecond line';
+  const after = getVisualBounds(label);
+  assert.ok(Math.abs(before.x0 - after.x0) < 1e-9);
+  assert.ok(after.y1 - after.y0 > before.y1 - before.y0);
+});
+
+test('link detection trims prose punctuation, preserves DOI parentheses, and rejects active schemes', () => {
+  assert.deepEqual(linkifyText('See https://example.org/a).'), [
+    { text: 'See ', href: null },
+    { text: 'https://example.org/a', href: 'https://example.org/a' },
+    { text: ').', href: null },
+  ]);
+  assert.deepEqual(linkifyText('10.1002/(SICI)1234-5678(19990101)1:1<1::AID-ABC>3.0.CO;2-P'), [
+    { text: '10.1002/(SICI)1234-5678(19990101)1:1', href: 'https://doi.org/10.1002/(SICI)1234-5678(19990101)1:1' },
+    { text: '<1::AID-ABC>3.0.CO;2-P', href: null },
+  ]);
+  assert.deepEqual(linkifyText('javascript:alert(1)'), [{ text: 'javascript:alert(1)', href: null }]);
+  assert.deepEqual(linkifyText('notwww.example.org x10.1000/182'), [
+    { text: 'notwww.example.org x10.1000/182', href: null },
+  ]);
+});
+
+test('non-link annotation markup remains escaped', () => {
+  const label = createElement('textlabel', 0, 0);
+  label.params.text = '<script>alert("x")</script>';
+  const svg = registry.textlabel.svg(label);
+  assert.doesNotMatch(svg, /<script>/);
+  assert.match(svg, /&lt;script&gt;alert\(&quot;x&quot;\)&lt;\/script&gt;/);
+});
+
+test('text label help announces automatic web and DOI links', () => {
+  const label = createElement('textlabel');
+  assert.match(getElementMeta('textlabel', label.params).description, /Markdown annotation/i);
+  assert.match(getElementMeta('textlabel', label.params).description, /web and DOI addresses become clickable links/i);
+  assert.equal(registry.textlabel.params.find(param => param.key === 'text').canvasEdit, true);
+  assert.match(registry.textlabel.directHint, /edit Markdown on the canvas/i);
 });
 
 test('boxAnchor is the identity offset for every element type except the left-anchored text label', () => {
@@ -87,4 +172,46 @@ test('the highlight shape renders with the configured fill and opacity, both sha
 test('a highlight can carry a label like any other element', () => {
   const h = createElement('highlight');
   assert.equal(registry.highlight.noLabel, undefined, 'highlight must not opt out of the standard label system');
+});
+
+test('bare DOI detection does not swallow ordinary measurements written on a figure', () => {
+  // "10.<4-9 digits>/<something>" is also what a rate or a ruling density looks
+  // like. Real DOI suffixes are longer and carry a digit or a dot; unit strings
+  // do not, so these must stay inert text.
+  for (const prose of ['grating 10.1000/mm ruling', 'count rate 10.1234/s on the PMT',
+                       'dispersion 10.2500/nm across the band', 'split ratio 10.5000/2',
+                       'divergence 10.1000/mrad']) {
+    assert.deepEqual(linkifyText(prose), [{ text: prose, href: null }],
+      `"${prose}" must not be turned into a DOI link`);
+  }
+
+  // ...while genuine citations, bare or prefixed, still resolve.
+  for (const [doi, href] of [
+    ['10.1364/OE.27.036809', 'https://doi.org/10.1364/OE.27.036809'],
+    ['10.1016/j.optcom.2019.02.021', 'https://doi.org/10.1016/j.optcom.2019.02.021'],
+    ['10.1038/s41566-020-0678-x', 'https://doi.org/10.1038/s41566-020-0678-x'],
+    ['10.1000/182', 'https://doi.org/10.1000/182'],
+  ]) {
+    assert.deepEqual(linkifyText(doi), [{ text: doi, href }], `${doi} should still link`);
+  }
+
+  // An explicitly marked DOI stays permissive — the author has said what it is.
+  assert.deepEqual(linkifyText('doi:10.1000/ab'), [
+    { text: 'doi:10.1000/ab', href: 'https://doi.org/10.1000/ab' },
+  ]);
+});
+
+test('every generated annotation link is an http(s) URL, whatever the authored text', () => {
+  const hostile = [
+    'javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html;base64,PHN2Zz4=',
+    'vbscript:msgbox(1)', 'file:///etc/passwd', 'www.javascript:alert(1)',
+    'doi:10.1000/javascript:alert(1)', 'https://ok.example/a?next=javascript:alert(1)',
+    'http://x.example" onclick="alert(1)', "http://x.example' onload='alert(1)",
+  ];
+  for (const text of hostile) {
+    for (const part of linkifyText(text)) {
+      if (!part.href) continue;
+      assert.match(part.href, /^https?:\/\//i, `"${text}" produced a non-web href: ${part.href}`);
+    }
+  }
 });

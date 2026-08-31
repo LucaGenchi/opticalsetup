@@ -1,12 +1,40 @@
 // Qualitative measurements derived from the ray tracer for detector screens.
 
-import { registry } from './elements.js';
+import { metalensFocalLength, registry } from './elements.js';
 import { detectorReading, probeAt } from './raytrace.js';
 import {
   add, dot, mul, norm, perp, rotPt, sub, toLocal, toWorld, wavelengthToColor,
 } from './util.js';
 
 const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
+
+// What a PMT reading actually means, in the order the answers matter. Both
+// the inspector and the detector screen render this, so the thresholds live
+// here once rather than drifting apart in two places.
+//
+// Saturation is reported first because it invalidates the number: once the
+// output clips, a brighter input reads the same as a dimmer one. Below that,
+// the question is whether the signal clears the tube's own dark floor —
+// which turning the gain up cannot change, since gain multiplies both.
+export const PMT_DETECTION_SNR = 3;
+
+export function pmtVerdict(reading) {
+  if (!reading || reading.readoutKind !== 'pmt') return null;
+  if (reading.saturated) {
+    return { key: 'saturated', label: 'Saturated', detail: 'Output is clipping — lower the gain or attenuate the input.' };
+  }
+  const snr = reading.snr;
+  if (!Number.isFinite(snr)) {
+    return { key: 'linear', label: 'Linear range', detail: 'No dark floor set, so every arriving signal counts as measurable.' };
+  }
+  if (snr < 1) {
+    return { key: 'buried', label: 'Below dark floor', detail: 'The tube\'s own dark current is larger than this signal. More gain amplifies both and will not recover it.' };
+  }
+  if (snr < PMT_DETECTION_SNR) {
+    return { key: 'marginal', label: 'Marginal', detail: 'Only just above the dark floor. Collect more light — gain cannot improve this ratio.' };
+  }
+  return { key: 'linear', label: 'Linear range', detail: 'Comfortably above the dark floor and below saturation.' };
+}
 
 export function sensorFaceX(sensor) {
   const def = registry[sensor?.type];
@@ -101,25 +129,48 @@ function sampleWavefront(sensor, reading) {
   };
 }
 
-function configuredPower(elements) {
-  const sources = elements.filter(element => registry[element?.type]?.source);
-  const powered = sources.filter(source => Number.isFinite(source.params?.avgPowerW));
-  if (!sources.length || !powered.length) return null;
-  return powered.reduce((sum, source) => sum + Math.max(0, source.params.avgPowerW), 0) / sources.length;
+// Absolute power at a detector: for each source that actually reached it,
+// the fraction of that source's emitted power which arrived, times the watts
+// it is configured for. Several sources on one detector simply add up.
+//
+// This replaces an earlier scene-wide mean of every source's power field,
+// which was wrong in both directions: a source whose light never touched this
+// detector still pulled the reading around, and a source type with no power
+// field at all (the point source) counted in the denominator while
+// contributing nothing -- so adding an unrelated point source anywhere in the
+// sketch halved an otherwise correct reading.
+function detectedPower(reading, elements) {
+  const byId = new Map(elements.filter(Boolean).map(element => [element.id, element]));
+  let watts = 0, attributed = 0, total = 0;
+  for (const { sourceId, fraction } of reading.sourceFractions || []) {
+    total += fraction;
+    const source = sourceId ? byId.get(sourceId) : null;
+    const configured = Number(source?.params?.avgPowerW);
+    if (!Number.isFinite(configured)) continue;
+    watts += Math.max(0, configured) * fraction;
+    attributed += fraction;
+  }
+  // Nothing arriving here came from a source carrying a power figure, so
+  // there is no watt value to report -- the screen falls back to relative.
+  if (attributed <= 0) return { watts: null, complete: false };
+  return { watts, complete: attributed >= total - 1e-9 };
 }
 
 export function enhancedReading(sensor, elements = []) {
   const reading = detectorReading(sensor.id);
   if (!reading) return null;
-  const wattsPerRelativeUnit = configuredPower(elements);
+  const power = detectedPower(reading, elements);
   return {
     ...reading,
     beamDiameter: reading.samples > 1 ? Math.max(0, reading.spotSpan) : 0,
     stokes: sampleStokes(sensor, reading),
     wavefront: sampleWavefront(sensor, reading),
     bandwidth: Math.max(0, reading.bandMax - reading.bandMin),
-    detectedPowerW: wattsPerRelativeUnit == null ? null : reading.signal * wattsPerRelativeUnit,
-    powerIsEstimated: wattsPerRelativeUnit != null,
+    detectedPowerW: power.watts,
+    powerIsEstimated: power.watts != null,
+    // False when some of the light that arrived came from a source with no
+    // power field of its own, so the watt figure is a floor, not the total.
+    powerCoversAllArrivals: power.complete,
   };
 }
 
@@ -140,10 +191,11 @@ function worldLenses(elements) {
     let surfaces;
     try { surfaces = def.surfaces(element); } catch (_) { continue; }
     for (const surface of surfaces || []) {
-      if (surface.kind !== 'lens' || !surface.data?.f) continue;
+      if ((surface.kind !== 'lens' && surface.kind !== 'metalens') || !surface.data?.f) continue;
       lenses.push({
         a: toWorld(element, surface.x1, surface.y1),
         b: toWorld(element, surface.x2, surface.y2),
+        kind: surface.kind,
         data: surface.data,
       });
     }
@@ -151,7 +203,7 @@ function worldLenses(elements) {
   return lenses;
 }
 
-function imagePoint(point, forward, up, hits) {
+function imagePoint(point, forward, up, hits, wavelength) {
   const rays = [{ point, direction: forward }, { point, direction: norm(add(forward, up)) }];
   for (const hit of hits) {
     for (const ray of rays) {
@@ -161,7 +213,9 @@ function imagePoint(point, forward, up, hits) {
       const offset = sub(hit.surface.a, ray.point);
       const distance = (offset.x * edge.y - offset.y * edge.x) / denominator;
       ray.point = add(ray.point, mul(ray.direction, distance));
-      ray.direction = lensBend(ray.direction, ray.point, hit.surface, hit.surface.data.f);
+      const focalLength = hit.surface.kind === 'metalens'
+        ? metalensFocalLength(hit.surface.data, wavelength) : hit.surface.data.f;
+      ray.direction = lensBend(ray.direction, ray.point, hit.surface, focalLength);
     }
   }
   const [first, second] = rays;
@@ -195,7 +249,8 @@ export function objectImageAtCamera(camera, elements = []) {
     }
     hits.sort((a, b) => a.distance - b.distance);
     if (!hits.length) continue;
-    const imageBase = imagePoint(base, forward, up, hits), imageTip = imagePoint(tip, forward, up, hits);
+    const imageBase = imagePoint(base, forward, up, hits, params.wavelength);
+    const imageTip = imagePoint(tip, forward, up, hits, params.wavelength);
     if (!imageBase || !imageTip) continue;
     const localBase = toLocal(camera, imageBase.x, imageBase.y);
     const localTip = toLocal(camera, imageTip.x, imageTip.y);

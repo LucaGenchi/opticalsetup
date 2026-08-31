@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acousto-optic tunable filter — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/aotf/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Acousto-optic tunable filter — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/aotf/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="current">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#modulators">Modulators</a> / Acousto-optic tunable filter</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-26" y="-13" width="52" height="26" rx="3" fill="#7fc7c4" stroke="#397b78" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#153b39">AOTF</text></svg></div>
+        <div>
+          <h1>Acousto-optic tunable filter</h1>
+        </div>
+      </div>
+      <p class="tagline">Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.</p>
+      <a class="place-cta" href="../../sketch/?place=aotf">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=aotf"
+          title="Interactive Acousto-optic tunable filter — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the acousto-optic tunable filter to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+
+        <p>An AOTF selects colours electronically. Sound travelling through a crystal
+        compresses and rarefies it, and since the refractive index follows density, an
+        acoustic wave is a moving index grating that light can diffract from. That much it
+        shares with an <a href="../aom/">acousto-optic modulator</a>. The difference — and
+        the whole point of the device — is that an AOTF arranges the interaction so only
+        <em>one wavelength at a time</em> can diffract from a given tone.</p>
+        <p>It does this in a <strong>birefringent</strong> crystal, usually tellurium
+        dioxide, in a geometry where the diffracted light emerges in the orthogonal
+        polarization state. Because the two states have different refractive indices, the
+        momentum-matching condition between the optical and acoustic waves is satisfied at
+        only one optical wavelength per acoustic frequency. An AOM diffracts whatever you
+        send it; an AOTF picks a line out of it.</p>
+        <p>Change the RF drive frequency and you change the line. That is the tuning
+        mechanism, and it is purely electronic — no filter wheel to rotate, no grating to
+        turn. The RF <em>power</em> sets the diffraction efficiency, so the same device
+        controls how much of that line gets through.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>τ</mi><mo>≈</mo><mfrac><mi>D</mi><msub><mi>v</mi><mi>a</mi></msub></mfrac></mrow><annotation encoding="application/x-tex">\tau \approx \frac{D}{v_{a}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.4831em;"></span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.1963em;vertical-align:-0.836em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">a</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">D</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Switching time is the acoustic transit across the beam. In TeO₂ the shear wave travels around 650 m/s, so a 1 mm beam switches in roughly 1.5 µs — against the tens of milliseconds a filter wheel needs.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>P</mi><mtext>line</mtext></msub><mo>≈</mo><msub><mi>P</mi><mtext>in</mtext></msub><mtext> </mtext><mfrac><mrow><mi mathvariant="normal">Δ</mi><mi>λ</mi></mrow><mrow><mi mathvariant="normal">Δ</mi><msub><mi>λ</mi><mtext>source</mtext></msub></mrow></mfrac><mtext> </mtext><mi>η</mi></mrow><annotation encoding="application/x-tex">P_{\text{line}} \approx P_{\text{in}}\,\frac{\Delta\lambda}{\Delta\lambda_{\text{source}}}\,\eta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">line</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2074em;vertical-align:-0.836em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3175em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">in</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">Δ</span><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">source</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">Δ</span><span class="mord mathnormal">λ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">η</span></span></span></span></span></div>
+      <div class="caption">What a narrow selection actually costs: picking 2 nm out of a 280 nm supercontinuum keeps well under 1% of the power, however efficient the diffraction is.</div>
+    </div>
+
+        <h3>Multiplexed and sequential drive</h3>
+        <p>The property that makes AOTFs indispensable is that the crystal does not have to
+        be driven with one tone. Apply <strong>several RF frequencies simultaneously</strong>
+        and each selects its own wavelength, with its own amplitude setting that line's
+        intensity independently. That is <strong>multiplexing</strong>: every selected line
+        is present in the output at the same time. One small crystal thereby replaces a rack
+        of shutters, filters, and attenuators — which is why the laser combiner in a confocal
+        or multiphoton microscope is almost always an AOTF.</p>
+        <p>Driving one tone at a time instead, stepping from line to line, is
+        <strong>sequential</strong> operation. Only one wavelength is present at any instant.
+        Because switching takes microseconds, the sequence can be faster than a pixel dwell,
+        so a scan can step excitation wavelengths line by line or even pixel by pixel and
+        build a separate image per colour — which is exactly what multiplexed drive cannot
+        do, since there every colour arrives at once and the detector cannot tell them
+        apart.</p>
+        <p>Typical passbands are one to a few nanometres — narrow enough to isolate one
+        laser line from its neighbour. The light that is not selected is not absorbed; it
+        simply fails to diffract and continues on, which means a real installation always
+        has somewhere for it to go, usually a <a href="../beamdump/">beam dump</a>.</p>
+        <p>Beyond microscopy, AOTFs appear in hyperspectral and multispectral imaging, Raman
+        instruments, fluorescence spectroscopy, and space-borne instruments where a filter
+        wheel's mass and mechanism are unwelcome.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+
+        <p>The element is built around a list of <strong>selected lines</strong>, one per RF
+        tone, in the same spirit as the <a href="../slm/">SLM's</a> stacked functions. A
+        fresh AOTF has a single line; press <em>Add line</em> to stack more, up to eight.
+        Each line carries its own wavelength, passband, and efficiency, so a weak line and a
+        strong one can be selected together.</p>
+
+        <h3>Where the light goes</h3>
+        <p>The selected lines leave along the <strong>incoming axis</strong>, so the
+        selection stays on the optical axis and the rest of a setup can be built downstream
+        of it in a straight line. Everything not selected — the beam
+        <strong>depleted</strong> of those lines — is deflected to an angle you choose.</p>
+        <p>That depleted beam is <strong>hidden by default</strong>, because in a working
+        instrument it goes straight into a dump and drawing it only clutters the figure.
+        Turn on <em>Show depleted beam</em> while designing and it is traced to wherever it
+        actually goes, so you can confirm nothing downstream is sitting in its path and put
+        a <a href="../beamdump/">beam dump</a> there. Hiding it changes only the drawing:
+        the power accounting is the same either way.</p>
+
+        <h3>Driving the lines</h3>
+        <p><strong>Multiplexed</strong> drive opens every selected line at once, so all of
+        them are in the output together and a spectrometer downstream shows the whole set.
+        <strong>Sequential</strong> drive steps through them one at a time at a rate you set,
+        so exactly one line is present at any instant and the spectrometer shows it change
+        as the sequence advances.</p>
+        <p>The sequence runs on the canvas clock, slowed to a step or two a second — a real
+        driver steps at kilohertz, far too fast to read — in the same illustrative spirit as
+        a scanning galvo or a chopper wheel. Each line is fully open while it is its turn;
+        the sequence chooses <em>which</em> line, not how much of it gets through.</p>
+
+        <h3>What the numbers do</h3>
+        <p>Selection is exact and conserves energy. A 20&nbsp;nm window on a 420–700&nbsp;nm
+        supercontinuum passes 20/280 of the power and the depleted port carries the rest,
+        summing to one. Efficiency multiplies on top, so three multiplexed lines at 0.9
+        selected from three matching laser lines deliver 2.7× a single line's worth. Narrow
+        selections work too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the
+        beam and still traces correctly rather than being discarded as negligible.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p><strong>The geometry is the reverse of a physical device.</strong> In
+        a real AOTF the selected light is the <em>diffracted</em> first order and leaves at
+        an angle, while the remainder passes straight through as the zeroth order. This
+        element draws the opposite assignment — the selection continues along the incoming
+        axis and the remainder is deflected — because it keeps a multi-line selection on the
+        optical axis where the rest of a setup is built. The power accounting is identical
+        either way; only which port is bent differs.</p>
+        <p>The passband is a hard-edged window rather than the sinc²-like response with
+        sidelobes a real crystal produces, and it is set directly rather than following from
+        an acoustic frequency: in a real device one RF tone fixes the selected wavelength,
+        the diffraction angle, and the polarization rotation together through phase
+        matching, so a combination set here need not correspond to any crystal. The
+        polarization rotation itself is not modelled, so the selected light leaves in the
+        state it arrived and cannot be cleaned up with a <a href="../polarizer/">polarizer</a>
+        the way a real one is. There is no relation between RF power and efficiency, no
+        acoustic transit time — lines switch instantly — and no crystal transmission range,
+        so a line can be selected at any wavelength the source provides.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/aom/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-13" width="40" height="26" rx="3" fill="#c9b458" stroke="#8a7a2e" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3616">AOM</text></svg>AOM</a><a href="../../wiki/eom/"><svg viewBox="-30 -30 60 60" aria-hidden="true"><rect x="-22" y="-12" width="44" height="24" rx="3" fill="#b8c9a3" stroke="#66794a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#2f3a20">EOM</text></svg>EOM</a><a href="../../wiki/filter/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#bfe3c9" stroke="#557" stroke-width="1.5"/></svg>Filter</a><a href="../../wiki/sclaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#24233a" stroke="#171629" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.1" fill="#fff">SC LASER</text><g stroke="#c4b5fd" stroke-width="1.1"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="1" height="9" fill="#7c3aed"/><rect x="46.85" y="-4.5" width="1" height="9" fill="#2563eb"/><rect x="47.7" y="-4.5" width="1" height="9" fill="#10b981"/><rect x="48.55" y="-4.5" width="1" height="9" fill="#eab308"/><rect x="49.4" y="-4.5" width="1" height="9" fill="#f97316"/><rect x="50.25" y="-4.5" width="1" height="9" fill="#ef4444"/></svg>Supercontinuum laser</a><a href="../../wiki/beamdump/"><svg viewBox="-19 -19 38 38" aria-hidden="true"><path d="M -10,-11 L 10,-11 L 10,11 L -10,11 Z M -10,-11 L 4,0 L -10,11" fill="#26292e" stroke="#111" stroke-width="1.5"/></svg>Beam dump</a>
+      </div>
+
+
+
+
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/acousto_optic_tunable_filters.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Acousto-optic Tunable Filters</a></li><li><a href="https://www.rp-photonics.com/acousto_optic_modulators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Acousto-optic Modulators</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

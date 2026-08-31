@@ -1,7 +1,9 @@
 // App bootstrap: palette, toolbar, keyboard shortcuts.
 
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave } from './state.js';
-import { registry, categories, createElement, getElementMeta } from './elements.js';
+import {
+  registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement,
+} from './elements.js';
 // Registers the redesigned detector catalogue, the Etalon, and the VIPA
 // element onto `registry`. Imported here, not from pwa.js: service-worker
 // registration is unrelated, and every Node entry point that validates
@@ -45,7 +47,36 @@ function mkDemo(type, x, y, rot = 0, params = {}, extra = {}) {
   return e;
 }
 
+// The two fiber tools are wiki subjects like any component, but they are
+// drawn paths rather than registry types, so the demo/deep-link gates below
+// have to admit them by name.
+const FIBER_DEMOS = new Set(['fiber', 'barefiber']);
+
+// Fibers are drawn paths (state.beams), not registry elements, so their demo
+// scenes return {elements, beams} instead of a bare element array.
+function fiberDemo({ bare }) {
+  const y = 190;
+  return {
+    elements: [
+      mkDemo('cwlaser', 40, y, 0, { beamMode: 'beam', beamWidth: 6 }),
+      mkDemo('lens', 150, y, 0, { f: 30, dia: 20 }),
+    ],
+    beams: [{
+      kind: 'fiber', bare, propagate: true, color: '#e8a800', width: 4,
+      // The entry segment has to line up with the incoming beam: coupling is a
+      // real acceptance-cone test, and a fiber whose first leg leaves at 40 deg
+      // to the source simply refuses the light.
+      pts: [{ x: 180, y }, { x: 250, y }, { x: 330, y: y + 70 }, { x: 420, y: y + 70 }],
+      inputNA: 0.22, groupIndex: 1.468, lossDbPerM: 0.2,
+      out0: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },
+      out1: { mode: 'diverge', na: 0.12, focal: 20, dia: 6 },
+    }],
+  };
+}
+
 const demoScenes = {
+  fiber: () => fiberDemo({ bare: false }),
+  barefiber: () => fiberDemo({ bare: true }),
   mirror: () => [
     mkDemo('cwlaser', 60, 150, 0),
     mkDemo('mirror', 220, 150, 45, { length: 50.8 }),
@@ -150,6 +181,202 @@ const demoScenes = {
     mkDemo('polarizer', 240, 200, 0, { pangle: 90 }),
     mkDemo('detector', 360, 200, 0, {}, { label: 'transmitted power', showLabel: true }),
   ],
+  // A waveplate alone shows nothing: it changes a state, not a path or an
+  // intensity. Each of these pairs the element with a probe reading the state
+  // before it and something that turns the change into a visible result.
+  hwp: () => [
+    mkDemo('cwlaser', 40, 200, 0, { pol: 0 }),
+    mkDemo('polarizer', 120, 200, 0, { pangle: 0 }),
+    mkDemo('hwp', 210, 200, 0, { a: 22.5 }),
+    mkDemo('probe', 280, 200, 0, { prop: 'pol' }, { label: 'rotated 45°', showLabel: true, labelPos: 't' }),
+    mkDemo('polarizer', 350, 200, 0, { pangle: 45 }, { label: 'analyzer at 45°', showLabel: true, labelPos: 'b' }),
+    mkDemo('detector', 460, 200, 0, {}, { label: 'full power through', showLabel: true }),
+  ],
+  qwp: () => [
+    mkDemo('cwlaser', 40, 200, 0, { pol: 0 }),
+    mkDemo('polarizer', 130, 200, 0, { pangle: 0 }),
+    mkDemo('qwp', 230, 200, 0, { a: 45 }),
+    mkDemo('probe', 310, 200, 0, { prop: 'pol' }, { label: 'now circular', showLabel: true, labelPos: 't' }),
+    mkDemo('polarimeter', 430, 200, 0, {}, { label: 'Stokes readout', showLabel: true }),
+  ],
+  pbs: () => [
+    mkDemo('cwlaser', 40, 200, 0, { pol: 0 }),
+    mkDemo('polarizer', 120, 200, 0, { pangle: 0 }),
+    mkDemo('hwp', 200, 200, 0, { a: 22.5 }, { label: 'rotate to split', showLabel: true, labelPos: 't' }),
+    mkDemo('pbs', 320, 200, 0, { size: 25.4 }),
+    mkDemo('detector', 450, 200, 0, {}, { label: 'transmitted (horizontal)', showLabel: true }),
+    mkDemo('detector', 320, 90, 270, {}, { label: 'reflected (vertical)', showLabel: true, labelPos: 't' }),
+  ],
+  isolator: () => [
+    mkDemo('cwlaser', 40, 200, 0, {}),
+    mkDemo('isolator', 190, 200, 0, {}, { label: 'passes forward', showLabel: true, labelPos: 't' }),
+    mkDemo('detector', 300, 200, 0, {}, { label: 'forward beam arrives', showLabel: true }),
+    mkDemo('cwlaser', 560, 300, 180, {}, { label: 'a return beam', showLabel: true, labelPos: 't' }),
+    mkDemo('isolator', 330, 300, 0, {}, { label: 'blocks the reverse', showLabel: true, labelPos: 'b' }),
+    mkDemo('detector', 150, 300, 180, {}, { label: 'nothing gets back', showLabel: true, labelPos: 'l' }),
+  ],
+  // Beam blocks only show what they do when there is a beam to stop and
+  // something on the far side that stops receiving it.
+  beamdump: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
+    mkDemo('bs', 200, 200, 0, { ratio: 0.5 }),
+    mkDemo('detector', 380, 200, 0, {}, { label: 'kept port', showLabel: true }),
+    mkDemo('beamdump', 200, 330, 90, { aperture: 22 }, { label: 'unused port ends here', showLabel: true, labelPos: 'b' }),
+  ],
+  slit: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 30 }),
+    mkDemo('slit', 220, 200, 0, { gap: 8, length: 50.8 }, { label: 'passes 8 mm of a 30 mm beam', showLabel: true, labelPos: 't' }),
+    mkDemo('camera', 400, 200, 0, { ch: 40, pixels: 40 }, { label: 'trimmed beam', showLabel: true }),
+  ],
+  blocker: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
+    mkDemo('bs', 220, 200, 0, { ratio: 0.5 }),
+    mkDemo('detector', 400, 200, 0, {}, { label: 'the branch you want', showLabel: true }),
+    mkDemo('blocker', 220, 320, 0, { w: 40, h: 16 }, { label: 'absorbs, but never drawn in an export', showLabel: true, labelPos: 'b' }),
+  ],
+  // The SLM's point is that the pattern and the leftover specular beam leave
+  // in different directions, so the demo needs a pattern AND the 0th order on.
+  slm: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 8 }),
+    mkDemo('slm', 300, 200, 45, {
+      length: 40, zeroOrder: true, zeroFrac: 0.15,
+      layers: [{ type: 'grating', lines: 600, orders: '1' }],
+    }, { label: 'grating pattern, 15% left undiffracted', showLabel: true, labelPos: 'b' }),
+    // The 45 deg SLM reflects at x=287, not at its element origin, so the dump
+    // sits there rather than under the element's centre.
+    mkDemo('beamdump', 287, 70, 90, { aperture: 30 }, { label: '0th order, dumped', showLabel: true, labelPos: 'r' }),
+  ],
+  // The DMD's whole point is that ON and OFF leave in different directions, so
+  // the demo shows the OFF order and terminates it the way a real setup must.
+  dmd: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 16 }),
+    mkDemo('dmd', 300, 200, 45, { length: 40, tilt: 12, pitch: 8, duty: 0.5, routeOff: true },
+      { label: '±12° mirrors — ON and OFF leave 48° apart', showLabel: true, labelPos: 'b' }),
+    // At 12 deg tilt the ON beam leaves at -66 deg and the OFF at -114 deg, so
+    // they cross y=70 at x=345 and x=232 respectively.
+    mkDemo('detector', 345, 70, 294, { aperture: 40 }, { label: 'ON beam', showLabel: true, labelPos: 'r' }),
+    mkDemo('beamdump', 232, 70, 0, { aperture: 34 }, { label: 'OFF beam, dumped', showLabel: true, labelPos: 'l' }),
+  ],
+  // Defocus only reads as a correction if something measures it, so the demo
+  // folds the beam off a curved DM straight into a wavefront sensor.
+  dm: () => [
+    mkDemo('cwlaser', 60, 200, 0, { beamMode: 'beam', beamWidth: 24 }),
+    mkDemo('dm', 350, 200, 45, { length: 50, f: 180, steer: 0 },
+      { label: 'concave, f = 180 mm', showLabel: true, labelPos: 'b' }),
+    mkDemo('wavefrontdetector', 345, 100, 267, { aperture: 40 },
+      { label: 'reads the corrected wavefront', showLabel: true, labelPos: 'r' }),
+  ],
+  // The AOTF's real job is selecting several lines out of a broad source, so
+  // the demo takes three from a supercontinuum and dumps the remainder.
+  aotf: () => [
+    mkDemo('sclaser', 60, 250, 0, { scMin: 420, scMax: 700, beamMode: 'beam', beamWidth: 10, showPulse: true },
+      { label: 'supercontinuum', showLabel: true, labelPos: 't' }),
+    mkDemo('aotf', 400, 250, 0, {
+      aperture: 26, deflect: 14, showDepleted: true, modMode: 'static', modFreqHz: 1000,
+      channels: [{ wl: 488, band: 4, eff: 0.9 }, { wl: 532, band: 4, eff: 0.9 }, { wl: 633, band: 4, eff: 0.9 }],
+    }, { label: '488 · 532 · 633 nm selected', showLabel: true, labelPos: 't' }),
+    mkDemo('spectrometer', 760, 250, 0, { aperture: 40 }, { label: 'the selected lines', showLabel: true, labelPos: 'r' }),
+    // The 14 deg depleted branch crosses x=700 at y=325, not at the 345 a
+    // quick reading of the geometry suggests.
+    mkDemo('beamdump', 700, 325, 14, { aperture: 44 }, { label: 'depleted beam, dumped', showLabel: true, labelPos: 'b' }),
+  ],
+  // Transmissive by default, so the demo reads left to right: a wide beam in,
+  // a blazed deflection out, and the undiffracted leakage terminated.
+  textlabel: () => [
+    mkDemo('textlabel', 40, 60, 0, {
+      text: '# Beam path notes\n'
+        + 'Annotations are **diagram only** and never touch the traced rays.\n'
+        + '\n'
+        + '- pump *1030 nm*, 200 fs\n'
+        + '- signal *515 nm* after the crystal\n'
+        + '- residual GDD `+1200 fs^2`\n'
+        + '\n'
+        + '> Double-click any label to edit its Markdown on the canvas.\n'
+        + '\n'
+        + 'Plain addresses stay clickable: https://doi.org/10.1364/AO.1.000001',
+      fontSize: 13,
+    }),
+  ],
+  // A real fluorescence detection chain, because that is what the tube is
+  // for: focus the excitation into a slide, block it after the specimen, and
+  // let the PMT amplify what little fluorescence the collection lens picked
+  // up. The signal reaching the photocathode is ~2e-3 of relative weight --
+  // faint enough that a plain photodetector would report it as 0.00.
+  pmt: () => {
+    const tube = mkDemo('pmt', 440, 150, 0, { aperture: 40, gain: 1e5, saturation: 1e6, darkInput: 1e-6 });
+    return [
+      mkDemo('cwlaser', 40, 150, 0, { wavelength: 488, beamMode: 'beam', beamWidth: 12 },
+        { label: '488 nm excitation', showLabel: true, labelPos: 't' }),
+      mkDemo('lens', 150, 150, 0, { f: 60, dia: 25 }, { label: 'focus into the slide', showLabel: true, labelPos: 'b' }),
+      mkDemo('sample', 210, 150, 90, {
+        specimenType: 'linear', transmitExc: true, transmission: 0.9, aperture: 44,
+        channels: [{
+          kind: 'fluor', wl: 520, eff: 0.35, epi: false, epiRatio: 0.15, autoWl: false,
+          autoColor: true, color: '#22c55e', material: 'lipid', fluorophore: 'custom',
+          retardance: 90, axis: 45, transferEff: 0.1, requireOverlap: true,
+        }],
+      }, { label: 'fluorescent slide', showLabel: true, labelPos: 't' }),
+      mkDemo('lens', 285, 150, 0, { f: 55, dia: 50 }, { label: 'collect emission', showLabel: true, labelPos: 'b' }),
+      mkDemo('filter', 345, 150, 0, { ftype: 'longpass', cutoff: 500, length: 50 },
+        { label: 'blocks the excitation', showLabel: true, labelPos: 't' }),
+      tube,
+      mkDemo('display', 440, 272, 0, { sensorId: tube.id, displayScale: 0.55 }),
+    ];
+  },
+  // A calibrated Watts reading, and where it actually comes from: the linked
+  // screen converts relative weight using the laser's own Average power
+  // field (200 mW here), so the 25% ND filter's real attenuation shows up as
+  // a real 50 mW on the display -- not just a smaller relative number.
+  powermeter: () => {
+    const meter = mkDemo('powermeter', 350, 150, 0, { aperture: 30 });
+    return [
+      mkDemo('cwlaser', 40, 150, 0, { beamMode: 'beam', beamWidth: 14, avgPowerW: 0.2 },
+        { label: '200 mW source', showLabel: true, labelPos: 't' }),
+      mkDemo('filter', 200, 150, 0, { ftype: 'nd', trans: 0.25 },
+        { label: '25% ND filter', showLabel: true, labelPos: 't' }),
+      meter,
+      mkDemo('display', 350, 260, 0, { sensorId: meter.id, displayScale: 0.55 }),
+    ];
+  },
+  // The same instrument on three benches, because its whole job is telling
+  // these three apart. One collimated beam, and one lens read twice -- once
+  // before its focus and once after -- which also shows that the reported
+  // cone angle is the same on both sides: the beam narrows and re-expands,
+  // but the cone it belongs to does not change.
+  wavefrontdetector: () => {
+    const flat = mkDemo('wavefrontdetector', 430, 70, 0, { aperture: 46 });
+    const converging = mkDemo('wavefrontdetector', 306, 190, 0, { aperture: 46 });
+    const diverging = mkDemo('wavefrontdetector', 386, 310, 0, { aperture: 46 });
+    return [
+      mkDemo('cwlaser', 40, 70, 0, { beamMode: 'beam', beamWidth: 22 },
+        { label: 'collimated — flat wavefront', showLabel: true, labelPos: 't' }),
+      flat,
+      mkDemo('display', 540, 70, 0, { sensorId: flat.id, displayScale: 0.45 }),
+
+      mkDemo('cwlaser', 40, 190, 0, { beamMode: 'beam', beamWidth: 22 }),
+      mkDemo('lens', 220, 190, 0, { f: 100, dia: 34 },
+        { label: '40 mm before focus', showLabel: true, labelPos: 'b' }),
+      converging,
+      mkDemo('display', 540, 190, 0, { sensorId: converging.id, displayScale: 0.45 }),
+
+      mkDemo('cwlaser', 40, 310, 0, { beamMode: 'beam', beamWidth: 22 }),
+      mkDemo('lens', 220, 310, 0, { f: 100, dia: 34 },
+        { label: '40 mm past the same focus — same cone angle', showLabel: true, labelPos: 'b' }),
+      diverging,
+      mkDemo('display', 540, 310, 0, { sensorId: diverging.id, displayScale: 0.45 }),
+    ];
+  },
+  metasurface: () => [
+    mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
+    mkDemo('metasurface', 300, 200, 0, {
+      transmissive: true, length: 30, zeroOrder: true, zeroFrac: 0.15,
+      layers: [{ type: 'grating', lines: 600, orders: '1' }],
+    }, { label: 'blazed grating profile, 15% leaks undiffracted', showLabel: true, labelPos: 'b' }),
+    // 600 lines/mm sends the first order to 18.6 deg, so over the 260 mm to the
+    // detector the beam drops 87 mm -- centre it there, not on the axis.
+    mkDemo('detector', 560, 288, 19, { aperture: 70 }, { label: 'first order', showLabel: true, labelPos: 'r' }),
+    mkDemo('beamdump', 520, 200, 0, { aperture: 30 }, { label: '0th order, dumped', showLabel: true, labelPos: 't' }),
+  ],
   aom: () => [
     mkDemo('pulsedlaser', 60, 200, 0, {
       repRateMHz: 80, pulseWidthFs: 100,
@@ -160,10 +387,27 @@ const demoScenes = {
     }),
     mkDemo('box', 370, 200, 0, { text: '', w: 10, h: 90, behavior: 'block', fill: '#f2f3f5' }, { label: '1st order (deflected) + 0th order', showLabel: true, labelPos: 'r' }),
   ],
-  detector: () => [
-    mkDemo('cwlaser', 60, 200, 0),
-    mkDemo('detector', 220, 200, 0),
-  ],
+  // Two benches at once, because the interesting thing about this detector
+  // is that the SAME instrument reports a steady beam and a pulse train
+  // differently: a CW arrival is one relative-intensity number, while a
+  // pulsed arrival has real temporal structure and the linked screen becomes
+  // an oscilloscope instead.
+  detector: () => {
+    const cwDetector = mkDemo('detector', 250, 95, 0, { aperture: 30 });
+    const pulsedDetector = mkDemo('detector', 250, 330, 0, { aperture: 30 });
+    return [
+      mkDemo('cwlaser', 60, 95, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 14 },
+        { label: 'CW source — steady beam', showLabel: true, labelPos: 't' }),
+      cwDetector,
+      mkDemo('display', 430, 95, 0, { sensorId: cwDetector.id, displayScale: 0.55 }),
+
+      mkDemo('pulsedlaser', 60, 330, 0,
+        { wavelength: 532, beamMode: 'beam', beamWidth: 14, repRateMHz: 80, pulseWidthFs: 150, showPulse: true },
+        { label: 'Pulsed source — same detector', showLabel: true, labelPos: 't' }),
+      pulsedDetector,
+      mkDemo('display', 430, 330, 0, { sensorId: pulsedDetector.id, displayScale: 0.55 }),
+    ];
+  },
   cmirror: () => [
     mkDemo('cwlaser', 60, 150, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('cmirror', 220, 150, 45, { f: 100, length: 50.8 }),
@@ -1025,9 +1269,30 @@ function bindContextMenu() {
   });
 }
 
+// Create a detector screen already wired to `sensorId` and drop it in the
+// first clear spot on the side its cable leaves from, so connecting a readout
+// is one click instead of place-then-find-the-sensor-in-a-dropdown.
+function connectDetectorScreen(sensorId) {
+  if (state.demoMode) return;
+  const sensor = state.elements.find(el => el.id === sensorId);
+  if (!sensor || !registry[sensor.type]?.readoutKind) return;
+  pushUndo();
+  const screen = createElement('display', sensor.x, sensor.y);
+  screen.params.sensorId = sensor.id;
+  const spot = findFreePlacement(screen, state.elements, sensor, dataPortDirection(sensor));
+  screen.x = spot.x;
+  screen.y = spot.y;
+  state.elements.push(screen);
+  state.selection = { kind: 'element', id: screen.id };
+  changed();
+  renderInspector();
+  showToast(`Detector screen connected to ${sensor.label || registry[sensor.type].label}`);
+}
+
 // inspector panel buttons dispatch these
 document.addEventListener('optics:delete', deleteSelected);
 document.addEventListener('optics:duplicate', duplicateSelected);
+document.addEventListener('optics:connectscreen', e => connectDetectorScreen(e.detail?.sensorId));
 document.addEventListener('optics:clearvoxels', e => clearVoxelPreview(e.detail?.stageId));
 document.addEventListener('optics:toolchange', e => syncToolMode(e.detail));
 document.addEventListener('optics:pulsestate', e => syncPulseControls(e.detail));
@@ -1041,7 +1306,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
-  const isTypeDemo = Boolean(demoType && registry[demoType] && !registry[demoType].hidden);
+  const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
   const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
@@ -1070,10 +1335,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     // to add/move/delete anything. See state.demoMode call sites in this
     // file and canvas.js for what's disabled.
     const build = demoScenes[demoType];
-    const sceneElements = build ? build() : [createElement(demoType, 0, 0)];
+    const built = build ? build() : [createElement(demoType, 0, 0)];
+    const sceneElements = Array.isArray(built) ? built : (built.elements || []);
+    const sceneBeams = Array.isArray(built) ? [] : (built.beams || []);
     state.elements.push(...sceneElements);
-    const hero = sceneElements.find(e => e.type === demoType) || sceneElements[0];
-    state.selection = { kind: 'element', id: hero.id };
+    if (sceneBeams.length) {
+      const parsed = parseSketch(JSON.stringify({ elements: [], beams: sceneBeams }), registry);
+      state.beams.push(...parsed.beams);
+    }
+    // A fiber demo's subject is the drawn path, not one of the elements that
+    // feed it, so select the beam instead.
+    if (state.beams.length && FIBER_DEMOS.has(demoType)) {
+      state.selection = { kind: 'beam', id: state.beams[0].id };
+    } else {
+      const hero = sceneElements.find(e => e.type === demoType) || sceneElements[0];
+      state.selection = { kind: 'element', id: hero.id };
+    }
   } else if (isCommunityDemo) {
     // Community embed: the actual submitted scene, locked the same way as a
     // wiki demo (state.demoMode), but with no single "hero" element — the
@@ -1119,21 +1396,24 @@ window.addEventListener('DOMContentLoaded', async () => {
       replaceScene(sharedScene, { resetHistory: true });
       zoomFit();
     } else if (!loadAutosave(registry)) {
-      // starter scene: CW laser -> lens -> beamsplitter -> two detection arms
+      // Starter scene: the three sources, nothing else. A worked setup here
+      // reads as "this is the thing to study" rather than "this is yours to
+      // build", and it has to be cleared before anyone can start. Three lit
+      // beams show the tracer working and leave the bench empty.
       const mk = (t, x, y, rot = 0, params = {}, label = '') => {
         const e = createElement(t, x, y); e.rot = rot; Object.assign(e.params, params);
         if (label) { e.label = label; e.showLabel = true; }
         return e;
       };
       state.elements.push(
-        mk('cwlaser', 75, 200, 0, { wavelength: 488 }, 'Laser 488 nm'),
-        mk('lens', 275, 200, 0, { f: 150 }, 'f = 150 mm'),
-        mk('bs', 425, 200, 0),
-        mk('mirror', 625, 200, 135),
-        mk('filter', 625, 330, 90, { ftype: 'bandpass', center: 488, band: 20 }),
-        mk('detector', 625, 430, 90, {}, 'PD'),
-        mk('dichroic', 425, 75, 45, { dtype: 'longpass', cutoff: 550 }),
-        mk('pmt', 600, 75, 0, {}, 'PMT'),
+        // Two lines, not one: at 18 pt the single line is 303 mm wide against a
+        // 315 mm canvas on a 375 px phone, so it clipped. Wrapping fits any
+        // width without shrinking the type.
+        mk('textlabel', 60, 84, 0, { text: 'Choose a source', fontSize: 18, fill: '#333333' }),
+        mk('textlabel', 60, 110, 0, { text: 'and start developing', fontSize: 18, fill: '#333333' }),
+        mk('cwlaser', 100, 170, 0, {}),
+        mk('pulsedlaser', 100, 280, 0, {}),
+        mk('sclaser', 100, 390, 0, {}),
       );
     }
   }
@@ -1149,7 +1429,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Deep link from the wiki ("Open in the canvas" on a component page):
     // ?place=<type> arms the placement tool for that component on load.
     const placeType = params.get('place');
-    if (placeType && registry[placeType] && !registry[placeType].hidden) {
+    if (placeType && FIBER_DEMOS.has(placeType)) {
+      startBeamTool(placeType);
+    } else if (placeType && registry[placeType] && !registry[placeType].hidden) {
       startPlacing(placeType);
     }
   }

@@ -19,6 +19,27 @@ function cite(...nums) {
   return `<sup class="cite">[${nums.map(n => `<a href="#ref-${n}">${n}</a>`).join(',')}]</sup>`;
 }
 
+
+// Wiki subjects that are drawing tools rather than registry components. A
+// fiber is a path in state.beams, so it has no registry svg() or metadata to
+// read — it supplies its own icon and tagline here instead.
+export const wikiToolSubjects = [
+  {
+    type: 'fiber',
+    label: 'Optical fiber',
+    tagline: 'Routes light along a drawn path between two connectorized ends, with its own acceptance angle, loss, and output cone.',
+    icon: `<path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="round"/>`
+      + `<g transform="translate(-20 6) rotate(-20)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g>`
+      + `<g transform="translate(20 -6) rotate(160)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g>`,
+  },
+  {
+    type: 'barefiber',
+    label: 'Bare fiber',
+    tagline: 'The same guided path with the connector plugs omitted and flat-cleaved ends, for custom laboratory assemblies.',
+    icon: `<path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="butt"/>`,
+  },
+];
+
 export const wikiEntries = [
   {
     type: 'cwlaser',
@@ -135,18 +156,80 @@ export const wikiEntries = [
         derived readout, never entered.</p>
         <p><em>Show pulse dynamics</em> is a drawing choice only — switching it off leaves
         the beam rendered as a steady CW line while every bit of the pulse physics above
-        keeps running.</p>`,
-      formulas: [],
+        keeps running.</p>
+        <h3>Dispersion and pulse stretching</h3>
+        <p>Every pulsed detector reports accumulated group-delay dispersion (GDD) in
+        fs². Catalogue-glass bodies add their traced distance through the selected
+        Sellmeier material; zero-thickness lenses and objectives add the clearly marked
+        estimates described on their own pages. For a transform-limited Gaussian input,
+        the detector also reports the corresponding broadened duration, and the travelling
+        packet length follows that duration locally: it grows through glass and contracts
+        when a Pulse Compressor cancels the accumulated GDD. GDD remains the
+        primary number because it is additive and meaningful even when a 150&nbsp;fs pulse
+        changes too little to notice.</p>`,
+      formulas: [
+        { tex: '\\tau_{out}=\\tau_{in}\\sqrt{1+\\left(4\\ln 2\\,\\mathrm{GDD}/\\tau_{in}^{2}\\right)^2}', caption: 'Second-order broadening of a transform-limited Gaussian pulse.' },
+      ],
       limitations: `<p>There is no modeled gain medium, cavity, or mode-locking mechanism —
-        repetition rate, duration, and shape are configured directly. Dispersion does not
-        broaden a pulse as it propagates: the duration a source is given is the duration it
-        keeps, so a chirped pulse must be described by turning transform-limited off rather
-        than by sending a short pulse through glass. Divergence and M² are not modeled.</p>`,
+        repetition rate, duration, and shape are configured directly. The duration estimate
+        uses second-order GDD only and is shown only for a transform-limited Gaussian input;
+        pre-existing chirp, third- and higher-order dispersion, self-phase modulation, and
+        material absorption are not inferred. Divergence and M² are not modeled.</p>`,
     },
-    related: ['cwlaser', 'sclaser', 'objective', 'stage'],
+    related: ['cwlaser', 'sclaser', 'pulsecompressor', 'objective', 'stage'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Mode Locking', url: 'https://www.rp-photonics.com/mode_locking.html' },
       { label: 'RP Photonics Encyclopedia — Time–Bandwidth Product', url: 'https://www.rp-photonics.com/time_bandwidth_product.html' },
+    ],
+  },
+
+  {
+    type: 'pulsecompressor',
+    title: 'Pulse Compressor',
+    category: 'Pulse Timing',
+    realWorld: {
+      html: `
+        <p>An ultrashort pulse is shortest when its frequency components arrive with the
+        spectral phase required by its transform limit. Material dispersion makes those
+        components acquire different delays, producing chirp and a longer temporal
+        envelope. A pulse compressor introduces the opposite spectral-phase curvature so
+        the accumulated group-delay dispersion (GDD) approaches zero and the pulse becomes
+        shorter again.</p>
+        <p>Real compressors commonly use diffraction-grating pairs, prism pairs, chirped
+        mirrors, or combinations of them. Their geometry determines not only second-order
+        GDD but also third- and higher-order dispersion, throughput, spatial chirp, and
+        alignment sensitivity. The useful setting therefore compensates the measured
+        upstream dispersion rather than having a universally correct negative value.</p>`,
+      formulas: [
+        { tex: '\\mathrm{GDD}_{out}=\\mathrm{GDD}_{in}+\\mathrm{GDD}_{comp}', caption: 'Second-order compensation is additive; shortest duration occurs near zero net GDD for a transform-limited Gaussian input.' },
+        { tex: '\\tau_{out}=\\tau_{0}\\sqrt{1+\\left(4\\ln 2\\,\\mathrm{GDD}_{out}/\\tau_{0}^{2}\\right)^2}', caption: 'Gaussian pulse duration under the second-order-only model used by OpticalSetup.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Pulse Compressor is a straight-through, zero-thickness GDD element. Set
+        <em>Applied GDD</em> positive or negative; the value is added to every pulsed ray
+        crossing its clear aperture, while transmission efficiency applies the configured
+        loss. A negative setting compresses only when it cancels positive GDD already on
+        the path — placed before any glass, the same negative magnitude broadens a
+        transform-limited pulse instead.</p>
+        <p>For a transform-limited Gaussian source, the travelling packet overlay reads the
+        local accumulated GDD along each traced segment. Its envelope grows continuously
+        through catalogue glass and changes at the compressor, so the same pulse can be
+        watched stretching and then returning toward its input length. The true duration,
+        GDD, and stretch factor remain available numerically at a downstream detector.</p>`,
+      formulas: [],
+      limitations: `<p>This is a lumped second-order phase proxy, not a physical compressor
+        prescription. It does not trace the compressor's internal grating, prism, or
+        chirped-mirror geometry; it does not model carrier phase, third-order dispersion,
+        spatial chirp, pulse-front tilt, nonlinear phase, or an independently authored
+        input chirp. On-screen packet length is a qualitative glyph with an 8× display cap;
+        detector numbers retain the unclamped second-order result.</p>`,
+    },
+    related: ['pulsedlaser', 'glassrod', 'prism', 'detector'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Pulse Compression', url: 'https://www.rp-photonics.com/pulse_compression.html' },
+      { label: 'RP Photonics Encyclopedia — Group Delay Dispersion', url: 'https://www.rp-photonics.com/group_delay_dispersion.html' },
     ],
   },
 
@@ -282,12 +365,86 @@ export const wikiEntries = [
         back focal point, and an object arrow really does form an inverted, magnified, or
         demagnified image at the position the lens equation predicts. What's missing is
         everything paraxial theory leaves out by construction — spherical and chromatic
-        aberration, finite lens thickness, and any behavior for rays far from the axis or
-        at large angles.</p>`,
+        aberration, finite lens geometry, and any behavior for rays far from the axis or
+        at large angles. For pulse reporting only, the lens silently assumes N-BK7 and a
+        centre thickness from spherical sag plus 2.5&nbsp;mm edge thickness. That
+        diameter-aware estimate is typically within about 10% for ordinary plano-convex
+        catalogue singlets; it does not change the traced ray geometry.</p>`,
     },
-    related: ['lensc', 'thicklens', 'telescope', 'objective', 'cmirror'],
+    related: ['lensc', 'metalens', 'thicklens', 'telescope', 'objective', 'cmirror'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Lenses', url: 'https://www.rp-photonics.com/lenses.html' },
+    ],
+  },
+
+  {
+    type: 'metalens',
+    title: 'Metalens',
+    category: 'Lenses',
+    realWorld: {
+      html: `
+        <p>A metalens is a flat optical surface patterned with subwavelength
+        structures. Those meta-atoms impose a position-dependent phase delay instead
+        of relying on the curved entrance and exit faces of a glass lens. An ideal
+        focusing phase profile at design wavelength <span class="w">λ₀</span> is
+        hyperbolic rather than the quadratic profile of the paraxial limit:</p>`,
+      formulas: [
+        { tex: '\\phi(r,\\lambda_0) = -\\frac{2\\pi}{\\lambda_0}\\left(\\sqrt{f_0^2+r^2}-f_0\\right) \\pmod{2\\pi}', caption: 'Ideal phase required to bring a normally incident plane wave to a focus f₀ from radius r.' },
+        { tex: '\\mathrm{NA} = \\sin\\!\\left[\\arctan\\!\\left(\\frac{D}{2|f_0|}\\right)\\right]', caption: 'Geometric numerical aperture in air for clear diameter D and focal length f₀.' },
+      ],
+      html2: `
+        <p>The direction of that colour error is the surprising part, and worth
+        holding on to: a metalens is chromatic the <em>opposite</em> way round from
+        glass. A refractive lens has a higher index in the blue, so blue comes to a
+        focus <em>nearer</em> than red. A diffractive surface has a focal length
+        inversely proportional to wavelength, so <strong>red focuses nearer and blue
+        further away</strong>. Their colour fringes therefore run in opposite
+        directions — which is also why a diffractive surface can be used to cancel
+        the chromatic aberration of a refractive one rather than compounding it.</p>
+        <p>A phase pattern fabricated for one wavelength normally has strong
+        diffractive chromaticity: longer wavelengths focus nearer and shorter
+        wavelengths focus farther away. Achromatic metalenses add engineered group
+        delay, but bandwidth, aperture, NA, polarization response, and efficiency are
+        coupled design constraints rather than independent knobs${cite(1)}. Practical
+        focusing efficiency also sends some incident power into zeroth order, unwanted
+        diffraction orders, reflection, absorption, and scatter${cite(2)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>OpticalSetup treats the patterned surface as a zero-thickness paraxial
+        phase-gradient proxy. In <strong>Chromatic</strong> mode, the nominal focal
+        length <span class="w">f₀</span> is exact at the design wavelength and every
+        sampled wavelength follows the ordinary diffractive scaling:</p>`,
+      formulas: [
+        { tex: 'f(\\lambda) = f_0\\frac{\\lambda_0}{\\lambda}', caption: 'The wavelength-dependent focal length used by the chromatic metalens trace.' },
+        { tex: "u' = u - \\frac{h}{f(\\lambda)}", caption: 'Each sampled wavelength then uses the same paraxial ray-transfer relation as the ideal thin lens.' },
+      ],
+      html2: `
+        <p>A broadband ray is expanded into the same weighted wavelength samples used
+        by prisms and gratings, making axial color visible in the actual traced paths.
+        <strong>Idealized achromatic band</strong> holds <span class="w">f=f₀</span>
+        inside the chosen range and transitions continuously back to diffractive
+        scaling outside it. Focusing efficiency attenuates the focused output by the
+        configured power fraction.</p>`,
+      limitations: `<p>No phase map or electromagnetic field is propagated. The
+        simulator does not design meta-atoms, derive efficiency, show the unfocused
+        zeroth order, validate group-delay feasibility, or calculate polarization
+        conversion, PSF, MTF, Strehl ratio, diffraction-limited spot size, field angle,
+        aberrations, substrate effects, or fabrication tolerances. Achromatic mode is
+        explicitly an idealized system-level behavior, not proof that the selected
+        diameter, NA, bandwidth, and efficiency can be fabricated together.</p>`,
+    },
+    related: ['lens', 'thicklens', 'grating', 'slm', 'objective'],
+    // These two back the cited claims in the prose, so they belong in
+    // `citations` -- that is what emits the #ref anchors the [1]/[2]
+    // superscripts link to. Left only in `resources`, both links were dead.
+    citations: [
+      { label: 'Arbabi et al., “Subwavelength-thick lenses with high numerical apertures and large efficiency,” Nature Communications 6, 7069 (2015)', url: 'https://doi.org/10.1038/ncomms8069' },
+      { label: 'Khorasaninejad et al., “Metalenses at visible wavelengths,” Science 352, 1190–1194 (2016)', url: 'https://doi.org/10.1126/science.aaf6644' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Diffractive Optics', url: 'https://www.rp-photonics.com/diffractive_optics.html' },
+      { label: 'RP Photonics Encyclopedia — Chromatic Aberrations', url: 'https://www.rp-photonics.com/chromatic_aberrations.html' },
     ],
   },
 
@@ -321,10 +478,12 @@ export const wikiEntries = [
         is the only thing that determines converging versus diverging behavior anywhere
         in OpticalSetup.</p>`,
       formulas: [],
-      limitations: `<p>Same caveats as the convex lens: exact paraxial optics with no
-        spherical or chromatic aberration, and no modeled lens thickness.</p>`,
+      limitations: `<p>Same caveats as the convex lens: exact paraxial geometry with no
+        spherical or chromatic aberration. GDD alone uses the same diameter-aware N-BK7
+        sag estimate (roughly a 10% class estimate); the assumed thickness never becomes
+        traced geometry.</p>`,
     },
-    related: ['lens', 'thicklens', 'telescope', 'objective'],
+    related: ['lens', 'metalens', 'thicklens', 'telescope', 'objective'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Lenses', url: 'https://www.rp-photonics.com/lenses.html' },
     ],
@@ -393,16 +552,17 @@ export const wikiEntries = [
         merged.</p>`,
       formulas: [
         {
-          tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}',
-          caption: 'Two-term Cauchy approximation used for the catalogue glasses; A and B reproduce each glass\'s nd and Abbe number.',
+          tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}',
+          caption: 'Three-term Sellmeier curve used for catalogue-glass index and dispersion.',
         },
       ],
       limitations: `<p>This is a 2D meridional geometric trace with spherical or plane
         faces only. It does not model skew rays, diffraction, aspheres, full 3D off-axis
         aberrations, Fresnel/coating behavior, stress birefringence, manufacturing
-        tolerances, or a full Sellmeier dispersion curve. The two-term glass fits are
-        anchored to visible reference lines and become qualitative in the deep UV and
-        infrared; absorption bands are not modeled. Per-surface transmission is a flat
+        tolerances, temperature dependence, or absorption bands. GDD uses the analytic
+        second derivative of the selected Sellmeier curve and the actual traced distance
+        in glass; the material contribution is generally within a few percent where the
+        catalogue curve is valid. Per-surface transmission is a flat
         configured percentage applied at each face, not a Fresnel or coating calculation. Treat axial spherical and visible chromatic behavior as
         meaningful within this model and off-axis behavior as qualitative.</p>`,
     },
@@ -415,6 +575,97 @@ export const wikiEntries = [
     ],
     resources: [
       { label: 'SCHOTT — Optical-glass technical properties', url: 'https://www.schott.com/en-gb/products/optical-glass/technical-details' },
+    ],
+  },
+
+  {
+    type: 'lensgroup',
+    title: 'Lens group (surface table)',
+    category: 'Lenses',
+    realWorld: {
+      html: `
+        <p>A compound lens is specified as an ordered <strong>surface table</strong>.
+        Each row names one refracting surface by its signed radius, gives the axial
+        distance to the next surface, and names the optical medium after it. The
+        convention is compact because the same rows describe both shape and topology:
+        consecutive glass media form neighbouring elements in a cemented group, while
+        an air medium followed by another glass creates a real air space.</p>
+        <p>Achromatic doublets exploit that topology by pairing crown and flint glasses
+        whose dispersion and powers oppose one another. Their net focal power remains
+        useful while the first-order F- and C-line focal shift approaches zero. Published
+        optical-glass catalogues therefore specify both the d-line index and the Abbe
+        number used to compare dispersion${cite(1)}.</p>`,
+      formulas: [
+        {
+          tex: '\\omega^+=\\omega^- - y\\frac{n_2-n_1}{R},\\qquad y^+=y^-+t\\frac{\\omega}{n}',
+          caption: 'Paraxial refraction and transfer in reduced angle ω = nu, applied in surface-table order.',
+        },
+        {
+          tex: '\\frac{\\Phi_1}{V_1}+\\frac{\\Phi_2}{V_2}\\approx 0',
+          caption: 'First-order achromat condition: crown and flint chromatic powers cancel while their ordinary powers add.',
+        },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Each editable row is <strong>radius R · thickness to next · medium
+        after</strong>. Radius uses exactly the thick-singlet convention: for the
+        default left-to-right direction, positive R puts the centre of curvature toward
+        local +x, negative R puts it toward −x, and zero is a plane. The last row always
+        exits into air and has no following thickness.</p>
+        <p>The table is turned into one closed boundary per glass body. Every ray meets
+        the drawn plane or exact circular-arc faces and refracts with the selected
+        glass's wavelength-dependent index. The focal length and back focal distance
+        readouts are a separate paraxial surface-by-surface summary; the tracer never
+        aims rays at them. Longitudinal colour is reported as the difference between the
+        F- and C-line back focal distances, so the supplied singlet and achromat presets
+        can be compared at the same nominal 100&nbsp;mm focal length.</p>
+        <p>Cemented and air-spaced groups are not separate element types. Consecutive
+        glass rows make a cemented interface; an air row makes an authored air gap. A
+        cemented interface is realized as two equal-radius faces separated by
+        0.06&nbsp;mm of air. That tiny gap is deliberate: the tracer ignores a new hit
+        within 0.05&nbsp;mm of the previous one, so coincident glass boundaries would
+        silently lose an interaction and send the ray into the wrong medium. The gap,
+        the outlines, the exact trace, and every cardinal readout all use the same
+        realized prescription.</p>
+        <p>The clear aperture can also change that prescription. If widening it would
+        make two spherical faces cross at the rim, OpticalSetup thickens that body until
+        at least 0.4&nbsp;mm of edge remains and moves every downstream surface with it.
+        The readouts follow the adjusted geometry rather than continuing to quote the
+        impossible typed shape.</p>
+        <p>An air row can carry an aperture stop. Its two absorbing segments block light
+        outside the configured clear diameter without adding power; stopping down a
+        fast group therefore reduces its visible spherical caustic by rejecting the
+        marginal rays. “Null F–C colour” varies the chosen row's radius by deterministic
+        bisection, but accepts a solution only when it keeps a finite focal length with
+        the original sign and comparable power. Any first row edit — including the
+        purple on-canvas last-radius control — copies an active preset into a custom
+        table instead of pretending a preset was edited when it was still authoritative.</p>`,
+      formulas: [
+        {
+          tex: '\\Delta z_{FC}=\\mathrm{BFD}(486.1\\,\\mathrm{nm})-\\mathrm{BFD}(656.3\\,\\mathrm{nm})',
+          caption: 'The axial-colour readout and the quantity the row action nulls.',
+        },
+      ],
+      limitations: `<p>This is a 2D meridional geometric model with spherical or plane
+        faces. On-axis spherical and visible longitudinal chromatic behavior emerge from
+        the geometry and are meaningful within that scope; off-axis behavior is
+        qualitative. The model does not include skew rays, aspheres, diffraction,
+        quantitative coma or astigmatism, field curvature, coatings, Fresnel reflection,
+        cement index, manufacturing tolerances, or a full optical-design merit function.
+        The 0.06&nbsp;mm cement gap is a tracer workaround rather than a physical cement
+        model. Catalogue glasses use two-term visible-band Cauchy fits anchored to nd and
+        Abbe number${cite(1)}, not full Sellmeier curves; deep-UV, infrared, and temporal
+        dispersion claims are outside this element's scope. Per-surface transmission is
+        a configured percentage, not coating physics.</p>`,
+    },
+    related: ['thicklens', 'lens', 'objective', 'prism', 'freeglass'],
+    citations: [
+      { label: 'SCHOTT — Optical-glass collection datasheets', url: 'https://www.schott.com/en-gb/products/optical-glass/-/media/Project/OnEx/Products/O/optical-glass/Downloads/schott-optical-glass-collection-datasheets-english-may2019.pdf' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Achromatic Optics', url: 'https://www.rp-photonics.com/achromatic_optics.html' },
+      { label: 'The Physics Hypertextbook — Spherical lenses', url: 'https://physics.info/lenses/' },
     ],
   },
 
@@ -449,7 +700,9 @@ export const wikiEntries = [
       formulas: [],
       limitations: `<p>Same paraxial-only physics as a single lens, with no eyepiece
         field-of-view limits, eye relief, or exit-pupil modeling — just the afocal
-        geometry and magnification.</p>`,
+        geometry and magnification. Each of the two zero-thickness surfaces contributes
+        the same silent, diameter-aware N-BK7 sag estimate used by a standalone thin lens,
+        typically a roughly 10% class estimate for pulse GDD.</p>`,
     },
     related: ['lens', 'lensc', 'thicklens', 'objective'],
     resources: [
@@ -509,13 +762,22 @@ export const wikiEntries = [
         the label implies — which is why laser-scanning systems deliberately
         <strong>overfill</strong> the back aperture, accepting the power clipped off at the
         rim in exchange for the full aperture and the tightest spot the objective can make.
-        Working distance, meanwhile, is a separate catalogue dimension bounded by the focal
-        length: the specimen plane sits one focal length from the principal plane, and the
-        glass between the front element and the sample takes up the difference, so working
-        distance is always shorter than EFL.</p>`,
+        Working distance, meanwhile, is a separate catalogue dimension set by the complete
+        prescription. It is often shorter than EFL in high-power objectives, but there is
+        no universal <span class="w">WD&nbsp;&le;&nbsp;EFL</span> rule for real compound
+        objectives; specialized long-working-distance designs are the obvious exception.</p>`,
     },
     inOpticalSetup: {
       html: `
+        <p>The inspector begins with a starting point grouped by immersion class —
+        <strong>Dry</strong>, <strong>Water</strong>, <strong>Oil</strong>, and
+        <strong>Long working distance</strong> — each offering the magnification and NA
+        pairs people actually buy. They are plausible catalogue-shaped specs, not one
+        manufacturer's prescriptions; choosing one sets EFL, working distance, medium, NA,
+        and front aperture together. The labels carry NA and WD precisely because the two
+        trade off: at a fixed magnification, every step up in NA costs clearance. Exact
+        values remain editable in the collapsed <strong>Advanced parameters</strong>
+        section, and any edit there drops the selector to Custom.</p>
         <p>An objective here is set by three things you would read off a real catalogue —
         <strong>effective focal length (EFL)</strong>, <strong>working distance</strong>,
         and <strong>rated NA</strong> — plus the front aperture that controls how big the
@@ -523,8 +785,9 @@ export const wikiEntries = [
         as one equivalent lens, which is what "focal length" means on an objective; the
         inspector label spells that out. Magnification is not something you type in. It is <em>reported</em> from the EFL against a 200&nbsp;mm reference
         tube lens, because magnification belongs to the objective plus whichever tube lens
-        you actually place in the sketch, not to the objective alone. A fresh objective is
-        EFL 10&nbsp;mm — 20× on a 200&nbsp;mm tube lens — dry, NA 0.65, 100% transmission.</p>
+        you actually place in the sketch, not to the objective alone. A fresh objective uses
+        the 20× dry starting point: EFL 10&nbsp;mm, WD 1.2&nbsp;mm, NA 0.40, and 100%
+        transmission.</p>
 
         <h3>Where the refracting plane sits, and why</h3>
         <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
@@ -548,10 +811,15 @@ export const wikiEntries = [
         <p>The BFP is drawn as a labelled marker next to the WD focus, and it is a traced
         conjugate rather than an annotation — put a source at it and the output really does
         come out collimated.</p>
-        <p>Working distance is capped at EFL, and defaults to it. A real objective focuses
-        at or inside its own focal length, with the glass taking up the difference; the cap
-        also keeps the equivalent plane at or behind the front tip, inside the barrel, which
-        is where a real objective's principal plane and pupil sit. Nothing is drawn there —
+        <p>Working distance is <em>not</em> capped at EFL. Real long-working-distance
+        objectives focus well beyond their own focal length — a 100× Plan Apo NIR reaches
+        about 12&nbsp;mm on a 2&nbsp;mm EFL — by putting the equivalent principal plane
+        <em>ahead</em> of the front glass, and the model reproduces that: when WD exceeds
+        EFL the equivalent plane sits in front of the tip, exactly where the real one is.
+        The only bound is a catalogue ceiling of 40&nbsp;mm, or the objective's own EFL if
+        that is longer, so older sketches that recorded WD equal to a long EFL keep their
+        focus exactly where it was. Missing legacy values still fall back to EFL.
+        Nothing is drawn at the equivalent plane —
         an objective is an opaque barrel, not a visible singlet. When a short working
         distance pushes the plane behind the default rear face, only the straight rear
         section of the barrel lengthens; the tapered nose is fixed geometry.</p>
@@ -612,11 +880,15 @@ export const wikiEntries = [
         no liquid is drawn. Older high-NA sketches that never recorded a medium remain
         explicitly unresolved until one is chosen.</p>
 
-        <h3>Handles and markers</h3>
-        <p>The purple tune control changes EFL and the blue resize handle changes the front
-        aperture. Editing working distance moves the refracting plane without touching EFL or
-        the reported magnification; raising EFL leaves an already-configured working distance
-        alone, while lowering EFL past it carries the working distance down with it. Toggle
+        <h3>Controls and markers</h3>
+        <p>The blue resize handle changes the front aperture. EFL is intentionally an exact
+        Advanced field rather than a free-drag canvas knob, and is bounded to
+        2–60&nbsp;mm: 2&nbsp;mm is a 100× objective, 60&nbsp;mm a 3.3×, and past that an
+        "objective" is simply a lens whose derived barrel and internal planes stop being
+        drawable at any usable zoom. Editing working distance
+        moves the refracting plane without touching EFL or the reported magnification; raising
+        EFL leaves an already-configured working distance alone, while lowering EFL past it
+        carries the working distance down with it. Toggle
         "Show focal points" (the <span class="w">ƒ</span> button) or select the objective to
         see both marked planes: <span class="w">BFP</span> on the tube-lens side and the
         nominal <span class="w">WD focus</span> on the sample side.</p>
@@ -624,7 +896,11 @@ export const wikiEntries = [
         photocurable-resin sample, its NA is one of the values OpticalSetup can hand off
         to the dedicated Two-Photon Lithography Lab, alongside the laser's wavelength,
         power, repetition rate, and pulse duration — see the inspector on a resin
-        sample's stage.</p>`,
+        sample's stage.</p>
+        <p>For pulse reporting, the equivalent plane silently contributes 30&nbsp;mm of
+        N-BK7. This is a class-typical GDD estimate, not a prescription: real objectives
+        can be roughly half to twice that value, and the estimate does not scale with NA,
+        magnification, immersion medium, or barrel geometry.</p>`,
       formulas: [],
       limitations: `<p>The 200&nbsp;mm reference tube length is a real, common convention
         (Nikon and Leica both design infinity objectives against 200&nbsp;mm) but not a
@@ -633,11 +909,11 @@ export const wikiEntries = [
         standalone <a href="../telescope/">telescope</a> pairs two real lenses; the
         reference length is used only for effective-focal-length metadata and the
         first-order pupil estimate; it does not define the trace boundary or focus map.
-        Working distance is a saved property bounded only by EFL, not a value predicted by
-        magnification, NA, or immersion medium: a real catalogue pairs them through the
-        internal design, and OpticalSetup deliberately lets you keep a visible working
-        distance on a high-power objective so the sketch stays readable — a real 60&times;
-        oil objective works at a few tenths of a millimetre, which would be invisible here. The equivalent lens plane and the
+        Working distance is a saved property bounded by EFL in this model, not a value
+        predicted by magnification, NA, or immersion medium: a real catalogue pairs them
+        through the internal design and can include long-working-distance prescriptions that
+        violate this simplified cap. The supplied high-power starting points do retain
+        plausible sub-millimetre clearances. The equivalent lens plane and the
         back focal plane it defines are first-order stand-ins for a compound objective's
         principal plane and pupil, not the real internal conjugates: one plane cannot
         reproduce a real objective's aberration correction, field curvature, or the axial
@@ -651,7 +927,10 @@ export const wikiEntries = [
         vignetting calculation. Dry objectives cap at NA 0.85, the practical ceiling for
         real dry designs rather than the physical <span class="w">n = 1</span> limit. The drawn meniscus does not solve wetting, contact angle, surface tension,
         volume, or gravity; it adds no refracting boundary and does not model cover glass,
-        index mismatch, focal shift, or immersion aberrations.</p>`,
+        index mismatch, focal shift, or immersion aberrations. The fixed 30&nbsp;mm
+        N-BK7 GDD equivalent can be wrong by about a factor of two for a particular
+        objective; detector readouts report the combined path total, while this page
+        identifies which part of that total is only assumed.</p>`,
     },
     related: ['lens', 'thicklens', 'telescope'],
     resources: [
@@ -661,6 +940,257 @@ export const wikiEntries = [
     ],
   },
 
+  {
+    type: 'fiber',
+    title: 'Optical fiber',
+    category: 'Fibers',
+    realWorld: {
+      html: `
+        <p>An optical fiber guides light along its own length instead of across open
+        space. A cylindrical <strong>core</strong> of slightly higher refractive index is
+        surrounded by a <strong>cladding</strong> of slightly lower index, and light that
+        strikes the boundary at a shallow enough angle is totally internally reflected back
+        into the core. Repeated indefinitely, that confinement carries a beam around bends
+        and over distances that no free-space path could survive, which is why fiber
+        underpins both global telecommunications and a great deal of everyday optics on the
+        bench.</p>
+        <p>Two numbers govern how light gets in. The <strong>numerical aperture</strong>
+        is set by the two indices and defines a cone of acceptance: light arriving within
+        that half-angle couples into the guided mode, and light outside it does not. The
+        <strong>core diameter</strong> then decides how many spatial modes the fiber
+        supports — a large multimode core carries many, while a single-mode core of a few
+        micrometres carries exactly one and therefore preserves a clean wavefront.</p>`,
+      formulas: [
+        { tex: '\\mathrm{NA} = \\sqrt{n_{\\text{core}}^{2} - n_{\\text{clad}}^{2}}', caption: 'Numerical aperture from the index step — it sets both the acceptance cone on the way in and the divergence cone on the way out.' },
+        { tex: '\\theta_{\\max} = \\arcsin\\left(\\frac{\\mathrm{NA}}{n_0}\\right)', caption: 'Half-angle of the acceptance cone in a medium of index n₀ — in air, simply arcsin(NA).' },
+        { tex: 'P(L) = P_0 \\, 10^{-\\alpha L / 10}', caption: 'Attenuation along a fiber of length L for a loss coefficient α in dB per unit length.' },
+        { tex: 't = \\frac{n_g L}{c}', caption: 'Transit time through the fiber — the group index n_g, not the phase index, sets the delay a pulse or an interferometer actually sees.' },
+      ],
+      html2: `
+        <p>What emerges at the far end is not the beam that went in. A fiber scrambles the
+        spatial information it carries, so a multimode fiber illuminated with coherent light
+        produces speckle rather than an image; the output simply diverges into a cone set by
+        the fiber's NA. Light is attenuated along the way, by absorption and by scattering,
+        at a rate conventionally quoted in decibels per kilometre — around 0.2&nbsp;dB/km for
+        silica telecom fiber at 1550&nbsp;nm, which is the wavelength band the material is
+        most transparent to and the reason that band dominates long-haul communication.</p>
+        <p>Fiber also delays light. The group index of silica is close to 1.47, so a pulse
+        travels at roughly two-thirds of its vacuum speed and a fiber path is optically much
+        longer than its physical length — a distinction that matters enormously in
+        interferometry, where the optical path difference is what sets the fringes.</p>
+        <p>A separate and very active line of work turns the fiber's scrambling into
+        something useful. Because the mixing is deterministic, it can be measured and
+        inverted: a wavefront shaped correctly at the input emerges from a multimode fiber
+        as a diffraction-limited focus at a chosen point in the output plane, and scanning
+        that focus turns a hair-thin fiber into a microscope objective. These
+        <strong>lensless endoscopes</strong> image deep inside tissue through a probe no
+        wider than the fiber itself.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>A fiber is drawn rather than placed: pick the tool, click waypoints along the
+        route you want, and double-click to finish. The result is a path, not a component,
+        so it curves smoothly through its waypoints and can be reshaped afterwards by
+        dragging the round handles. Everything optical about it lives on that path.</p>
+        
+        <p>The connectors drawn at each end are the terminated patch cable you would pick
+        up off a bench. For the same component without them — a cleaved or spliced fiber,
+        as used in custom laboratory assemblies — draw a <a href="../barefiber/">bare
+        fiber</a> instead; it behaves identically and differs only in how it renders and in
+        the width of the end face a beam has to hit.</p>
+        <p>A new fiber starts as <strong>diagram only</strong>. Its ends block whatever
+        light reaches them, and nothing comes out — which is the honest depiction of an
+        unconnected cable lying on a table. Tick <strong>Beam propagates</strong> to make it
+        an optical path, and the inspector then exposes the properties that make it one.</p>
+
+        <h3>Getting light in</h3>
+        <p>Coupling is a real test, not an assumption. A ray reaching an end face couples
+        in only if it arrives within the acceptance cone — the <strong>Input NA</strong>,
+        0.22 by default — measured against that end's own axis. A beam that arrives too
+        steeply is simply not accepted, exactly as it would not be on a bench. An
+        <a href="../objective/">objective</a> aimed at a fiber end couples into it the same
+        way, which is how the lensless-endoscope setups in the community gallery are built.</p>
+
+        <h3>What the fiber does to the light</h3>
+        <p>Three saved properties act along the drawn length. <strong>Loss</strong>, in
+        dB/m (0.2 by default), attenuates the light over the path's true geometric length.
+        The <strong>group index</strong> (1.468 by default, fused silica) multiplies that
+        length into optical path, so a fiber arm in an interferometer contributes the delay
+        it really would, and a pulse arrives when it should rather than when a free-space
+        path of the same drawn length would deliver it.</p>
+        <p>Wavelength, spectrum, polarization state, and pulse envelope all survive the
+        journey, as does any group-delay dispersion the light picked up <em>before</em> it
+        coupled in. Speckle does not: light emerges from the far end as a clean cone or
+        focus rather than as the grain a real multimode fiber would impose.</p>
+
+        <h3>Getting light out</h3>
+        <p>Each end carries its own independent output specification, so the two ends can
+        behave differently and coupling works in both directions — light entering end A
+        leaves from B under B's spec, and vice versa. Two styles are available:</p>
+        <ul>
+          <li><strong>Diverging</strong> — the ordinary case. Light leaves the tip as a
+          cone of half-angle arcsin(NA), using that end's output NA (0.12 by default),
+          which is what a real fiber tip does.</li>
+          <li><strong>Focused</strong> — light leaves as a converging fan of a chosen
+          output diameter that comes to a focus a chosen distance ahead. This is not what a
+          plain cleaved fiber does; it is there for <strong>lensless endoscopes</strong> and
+          for the lensed and GRIN-terminated fibers that deliver a focus directly from the
+          fiber tip. It is what lets you sketch a fiber probe that images a sample without
+          drawing an objective in front of it.</li>
+        </ul>`,
+      limitations: `
+        <p>The fiber is modelled as a guided path with an acceptance cone, a loss, and a
+        delay — not as a waveguide. Nothing here computes modes, so single-mode and
+        multimode fibers are not distinguished, and the mode scrambling that dominates a
+        real multimode output is absent: the output is a clean cone or focus, never
+        speckle. Bend loss is not modelled either, so a tightly drawn path costs no more
+        than a straight one, and the loss figure is applied uniformly rather than varying
+        with wavelength. Nine rays are launched from the output end, which sets how finely
+        the emerging cone is sampled.</p>
+        <p>Most significantly, <strong>the fiber's own chromatic dispersion is not
+        modelled</strong>. Dispersion accumulated elsewhere in the setup is carried through
+        correctly, but the fiber itself neither stretches nor compresses a pulse, so a
+        femtosecond pulse emerges from a long fiber exactly as long as it went in. Real
+        fiber is one of the most dispersive elements in any ultrafast setup. Fiber
+        <strong>dispersion</strong> — and <strong>wavelength conversion</strong>, covering
+        the nonlinear behaviour that makes fiber a source as well as a conduit — are both
+        candidates for a future release.</p>`,
+    },
+    related: ['barefiber', 'objective', 'sclaser', 'detector'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Optical Fibers', url: 'https://www.rp-photonics.com/fibers.html' },
+      { label: 'RP Photonics Encyclopedia — Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
+      { label: 'Thorlabs — Optical Fiber Tutorial', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6835' },
+    ],
+  },
+  {
+    type: 'barefiber',
+    title: 'Bare fiber',
+    category: 'Fibers',
+    realWorld: {
+      html: `
+        <p>An optical fiber guides light along its own length instead of across open
+        space. A cylindrical <strong>core</strong> of slightly higher refractive index is
+        surrounded by a <strong>cladding</strong> of slightly lower index, and light that
+        strikes the boundary at a shallow enough angle is totally internally reflected back
+        into the core. Repeated indefinitely, that confinement carries a beam around bends
+        and over distances that no free-space path could survive, which is why fiber
+        underpins both global telecommunications and a great deal of everyday optics on the
+        bench.</p>
+        <p>Two numbers govern how light gets in. The <strong>numerical aperture</strong>
+        is set by the two indices and defines a cone of acceptance: light arriving within
+        that half-angle couples into the guided mode, and light outside it does not. The
+        <strong>core diameter</strong> then decides how many spatial modes the fiber
+        supports — a large multimode core carries many, while a single-mode core of a few
+        micrometres carries exactly one and therefore preserves a clean wavefront.</p>`,
+      formulas: [
+        { tex: '\\mathrm{NA} = \\sqrt{n_{\\text{core}}^{2} - n_{\\text{clad}}^{2}}', caption: 'Numerical aperture from the index step — it sets both the acceptance cone on the way in and the divergence cone on the way out.' },
+        { tex: '\\theta_{\\max} = \\arcsin\\left(\\frac{\\mathrm{NA}}{n_0}\\right)', caption: 'Half-angle of the acceptance cone in a medium of index n₀ — in air, simply arcsin(NA).' },
+        { tex: 'P(L) = P_0 \\, 10^{-\\alpha L / 10}', caption: 'Attenuation along a fiber of length L for a loss coefficient α in dB per unit length.' },
+        { tex: 't = \\frac{n_g L}{c}', caption: 'Transit time through the fiber — the group index n_g, not the phase index, sets the delay a pulse or an interferometer actually sees.' },
+      ],
+      html2: `
+        <p>What emerges at the far end is not the beam that went in. A fiber scrambles the
+        spatial information it carries, so a multimode fiber illuminated with coherent light
+        produces speckle rather than an image; the output simply diverges into a cone set by
+        the fiber's NA. Light is attenuated along the way, by absorption and by scattering,
+        at a rate conventionally quoted in decibels per kilometre — around 0.2&nbsp;dB/km for
+        silica telecom fiber at 1550&nbsp;nm, which is the wavelength band the material is
+        most transparent to and the reason that band dominates long-haul communication.</p>
+        <p>Fiber also delays light. The group index of silica is close to 1.47, so a pulse
+        travels at roughly two-thirds of its vacuum speed and a fiber path is optically much
+        longer than its physical length — a distinction that matters enormously in
+        interferometry, where the optical path difference is what sets the fringes.</p>
+        <p>A separate and very active line of work turns the fiber's scrambling into
+        something useful. Because the mixing is deterministic, it can be measured and
+        inverted: a wavefront shaped correctly at the input emerges from a multimode fiber
+        as a diffraction-limited focus at a chosen point in the output plane, and scanning
+        that focus turns a hair-thin fiber into a microscope objective. These
+        <strong>lensless endoscopes</strong> image deep inside tissue through a probe no
+        wider than the fiber itself — and are typically built from bare, cleaved fiber
+        rather than from connectorized cable.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>A bare fiber is drawn rather than placed: pick the tool, click waypoints along the
+        route you want, and double-click to finish. The result is a path, not a component,
+        so it curves smoothly through its waypoints and can be reshaped afterwards by
+        dragging the round handles. Everything optical about it lives on that path.</p>
+        
+        <p>A bare fiber is the same optical component as the connectorized
+        <a href="../fiber/">optical fiber</a> — identical acceptance cone, loss, delay, and
+        output behaviour — drawn without the connector plugs and with flat-cleaved rather
+        than rounded ends. It is there for the many laboratory setups that are assembled
+        from bare cleaved or spliced fiber rather than from terminated patch cables, where
+        drawing an FC/PC plug would misrepresent the hardware. The one functional
+        difference follows from the geometry: the end face a beam has to hit is narrower,
+        since it is the fiber itself rather than the wider connector body, so aligning a
+        source onto a bare end is correspondingly fussier — as it is on a real bench.</p>
+        <p>A new fiber starts as <strong>diagram only</strong>. Its ends block whatever
+        light reaches them, and nothing comes out — which is the honest depiction of an
+        unconnected cable lying on a table. Tick <strong>Beam propagates</strong> to make it
+        an optical path, and the inspector then exposes the properties that make it one.</p>
+
+        <h3>Getting light in</h3>
+        <p>Coupling is a real test, not an assumption. A ray reaching an end face couples
+        in only if it arrives within the acceptance cone — the <strong>Input NA</strong>,
+        0.22 by default — measured against that end's own axis. A beam that arrives too
+        steeply is simply not accepted, exactly as it would not be on a bench. An
+        <a href="../objective/">objective</a> aimed at a fiber end couples into it the same
+        way, which is how the lensless-endoscope setups in the community gallery are built.</p>
+
+        <h3>What the fiber does to the light</h3>
+        <p>Three saved properties act along the drawn length. <strong>Loss</strong>, in
+        dB/m (0.2 by default), attenuates the light over the path's true geometric length.
+        The <strong>group index</strong> (1.468 by default, fused silica) multiplies that
+        length into optical path, so a fiber arm in an interferometer contributes the delay
+        it really would, and a pulse arrives when it should rather than when a free-space
+        path of the same drawn length would deliver it.</p>
+        <p>Wavelength, spectrum, polarization state, and pulse envelope all survive the
+        journey, as does any group-delay dispersion the light picked up <em>before</em> it
+        coupled in. Speckle does not: light emerges from the far end as a clean cone or
+        focus rather than as the grain a real multimode fiber would impose.</p>
+
+        <h3>Getting light out</h3>
+        <p>Each end carries its own independent output specification, so the two ends can
+        behave differently and coupling works in both directions — light entering end A
+        leaves from B under B's spec, and vice versa. Two styles are available:</p>
+        <ul>
+          <li><strong>Diverging</strong> — the ordinary case. Light leaves the tip as a
+          cone of half-angle arcsin(NA), using that end's output NA (0.12 by default),
+          which is what a real fiber tip does.</li>
+          <li><strong>Focused</strong> — light leaves as a converging fan of a chosen
+          output diameter that comes to a focus a chosen distance ahead. This is not what a
+          plain cleaved fiber does; it is there for <strong>lensless endoscopes</strong> and
+          for the lensed and GRIN-terminated fibers that deliver a focus directly from the
+          fiber tip. It is what lets you sketch a fiber probe that images a sample without
+          drawing an objective in front of it.</li>
+        </ul>`,
+      limitations: `
+        <p>The fiber is modelled as a guided path with an acceptance cone, a loss, and a
+        delay — not as a waveguide. Nothing here computes modes, so single-mode and
+        multimode fibers are not distinguished, and the mode scrambling that dominates a
+        real multimode output is absent: the output is a clean cone or focus, never
+        speckle. Bend loss is not modelled either, so a tightly drawn path costs no more
+        than a straight one, and the loss figure is applied uniformly rather than varying
+        with wavelength. Nine rays are launched from the output end, which sets how finely
+        the emerging cone is sampled.</p>
+        <p>Most significantly, <strong>the fiber's own chromatic dispersion is not
+        modelled</strong>. Dispersion accumulated elsewhere in the setup is carried through
+        correctly, but the fiber itself neither stretches nor compresses a pulse, so a
+        femtosecond pulse emerges from a long fiber exactly as long as it went in. Real
+        fiber is one of the most dispersive elements in any ultrafast setup. Fiber
+        <strong>dispersion</strong> — and <strong>wavelength conversion</strong>, covering
+        the nonlinear behaviour that makes fiber a source as well as a conduit — are both
+        candidates for a future release.</p>`,
+    },
+    related: ['fiber', 'objective', 'sclaser', 'detector'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Optical Fibers', url: 'https://www.rp-photonics.com/fibers.html' },
+      { label: 'RP Photonics Encyclopedia — Numerical Aperture', url: 'https://www.rp-photonics.com/numerical_aperture.html' },
+      { label: 'Thorlabs — Optical Fiber Tutorial', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6835' },
+    ],
+  },
   {
     type: 'prism',
     title: 'Prism',
@@ -686,15 +1216,16 @@ export const wikiEntries = [
         reflection instead of exiting, exactly as a real prism does. For dispersion,
         broadband and supercontinuum beams are sampled at several discrete wavelengths
         across their band, and each sample refracts with its own wavelength-dependent
-        index, so the beam visibly fans into a spectrum. The prism is fixed to the N-BK7
-        catalogue model used elsewhere in the workbench.</p>`,
+        index, so the beam visibly fans into a spectrum. N-BK7, fused silica, N-SF5, and
+        N-SF11 are selectable; existing sketches still default to N-BK7. Pulsed rays add
+        GDD from their actual traced distance inside the selected glass.</p>`,
       formulas: [
-        { tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}', caption: 'The two-term Cauchy approximation used for N-BK7, fitted from its published d-line index and Abbe number.' },
+        { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The selected glass\'s published three-term Sellmeier curve.' },
       ],
-      limitations: `<p>The N-BK7 fit reproduces its d-line index and visible Abbe
-        dispersion, but it is not the manufacturer's full Sellmeier curve and becomes
-        qualitative in the deep UV and infrared. Absorption bands, coatings, and surface
-        quality are not modeled; the fixed per-face transmission is the only loss.</p>`,
+      limitations: `<p>The Sellmeier curves make refractive index and GDD accurate to a
+        few percent over their valid transparent ranges, but absorption bands,
+        temperature, coatings, and surface quality are not modeled; the fixed per-face
+        transmission is the only loss.</p>`,
     },
     related: ['grating', 'glassrod', 'freeglass', 'thicklens', 'dichroic'],
     resources: [
@@ -758,7 +1289,7 @@ export const wikiEntries = [
         only in how fine that mesh is.</p>`,
       formulas: [
         { tex: 'n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2', caption: "Snell's law, applied independently at every straight or curved boundary segment — the only physics a freeform refracting surface needs." },
-        { tex: 'n(\\lambda)=A+\\frac{B}{\\lambda^2}', caption: 'The optional catalogue glasses use the same two-term Cauchy approximation as the thick spherical lens.' },
+        { tex: 'n^2(\\lambda)=1+\\sum_i\\frac{B_i\\lambda^2}{\\lambda^2-C_i}', caption: 'The optional catalogue glasses use the same Sellmeier curves as the thick spherical lens.' },
       ],
     },
     inOpticalSetup: {
@@ -773,9 +1304,10 @@ export const wikiEntries = [
         N-BK7, fused silica, N-SF5, and N-SF11. A broadband beam through a catalogue-glass
         boundary is sampled by wavelength and visibly disperses into a spectrum.</p>`,
       formulas: [],
-      limitations: `<p>The catalogue options reproduce d-line index and visible Abbe
-        dispersion with compact two-term fits, not full Sellmeier curves or absorption
-        bands; per-surface transmission is a flat configured number rather than a computed
+      limitations: `<p>The catalogue options use published Sellmeier curves, so GDD
+        follows the actual traced distance and is generally within a few percent where
+        those curves are valid. Absorption bands and temperature are not modeled;
+        per-surface transmission is a flat configured number rather than a computed
         coating or bulk loss. Circular-arc segments are true 2D arcs, but the whole element
         is still a 2D cross-section — it represents a freeform profile, not a true freeform
         3D surface. Nested or overlapping glass bodies are not surface-merged.</p>`,
@@ -877,13 +1409,15 @@ export const wikiEntries = [
         same-time packet on a vacuum path by exactly the extra delay the formula above
         predicts for the configured index. The rod's fill is deliberately translucent so
         that lag is something you can actually watch happen, rather than a number hidden
-        behind an opaque block.</p>`,
+        behind an opaque block. Choose the legacy constant index or one of the four
+        catalogue Sellmeier glasses. A catalogue material also accumulates GDD from the
+        actual distance each ray travels inside the rod.</p>`,
       formulas: [],
-      limitations: `<p>The refractive index is a single flat number with no wavelength
-        dependence — unlike the <a href="../freeglass/">Freeform glass</a> element's
-        optional catalogue-based Cauchy dispersion, every color slows down by exactly the same
-        amount here, so a broadband or supercontinuum pulse crossing the rod doesn't
-        spread out in time the way real material dispersion would stretch it. There's no
+      limitations: `<p>The default remains a single constant index so every existing
+        saved rod keeps its authored behavior; that mode has no material GDD. Selecting a
+        catalogue glass enables Sellmeier refraction and path-length GDD, generally within
+        a few percent where the curve is valid, but still omits absorption, temperature,
+        coatings, and higher-order pulse effects. There's no
         cylindrical or lensing geometry either: despite the name, this is a rectangular
         slab cross-section with flat ends, not a focusing rod lens.</p>`,
     },
@@ -965,6 +1499,305 @@ export const wikiEntries = [
   },
 
   {
+    type: 'hwp',
+    title: 'Half-wave plate',
+    category: 'Polarization',
+    realWorld: {
+      html: `
+        <p>A waveplate is a slice of birefringent crystal — quartz, magnesium fluoride,
+        calcite — in which the refractive index depends on the direction the light is
+        polarized. Two perpendicular directions in the plate face are special: the
+        <strong>fast axis</strong>, along which light sees the lower index and travels
+        quicker, and the <strong>slow axis</strong> perpendicular to it. Any incoming
+        polarization can be resolved into components along those two axes, and because the
+        components travel at different speeds, one emerges behind the other. Nothing is
+        absorbed; only the relative phase between the two components changes.</p>
+        <p>How much phase separates them is the <strong>retardance</strong>, and it depends
+        on the index difference, the plate thickness, and the wavelength:</p>`,
+      formulas: [
+        { tex: '\\Gamma = \\frac{2\\pi\\,\\Delta n\\,d}{\\lambda}', caption: 'Retardance of a plate of thickness d, for an index difference Δn between the slow and fast axes.' },
+        { tex: 'd = \\frac{\\lambda}{2\\,\\Delta n}', caption: 'The thickness that makes Γ exactly π — half a wave. For quartz at 633 nm, Δn ≈ 0.009, so this is about 35 µm: real plates are either bonded to a substrate or made an odd multiple of this thickness.' },
+        { tex: '\\theta_{\\text{out}} = 2\\alpha - \\theta_{\\text{in}}', caption: 'A half-wave plate mirrors the polarization about its fast axis. Linear light at θ to that axis therefore comes out rotated by 2θ.' },
+      ],
+      html2: `
+        <p>At exactly half a wave, one component is inverted relative to the other, and the
+        effect on linear polarization is a <em>reflection about the fast axis</em>. The
+        practical consequence is the one everybody uses: rotating the plate by some angle
+        rotates the polarization by twice that angle. A plate turned 22.5° rotates the light
+        45°; turned 45°, it rotates it a full 90°. Because it is a phase device rather than
+        an absorbing one, this rotation is lossless — which is exactly why a half-wave plate
+        followed by a polarizer is the standard way to control laser power continuously
+        without touching the laser.</p>
+        <p>On circularly polarized light the same mirror operation reverses the handedness,
+        turning left-circular into right-circular.</p>
+        <p>Retardance depends on wavelength, so a plate is specified for one. Used far from
+        that wavelength it is no longer half-wave and the rotation degrades. A
+        <strong>zero-order</strong> plate is genuinely as thin as the formula demands and is
+        relatively forgiving of wavelength, angle, and temperature; a
+        <strong>multi-order</strong> plate is a thicker, cheaper piece that adds several
+        whole waves on top and is correspondingly fussier. <strong>Achromatic</strong>
+        designs combine two materials so that the retardance stays near half a wave across a
+        broad band.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The plate has one control that matters: the <strong>fast axis</strong> angle, on
+        the purple canvas knob or in the inspector. Polarization is carried through the
+        whole sketch as a Stokes vector, and the plate applies an exact 180° retardance
+        about that axis — geometrically, a rotation of the polarization state on the
+        Poincaré sphere.</p>
+        <p>The behaviour that follows is the real one, not an approximation of it. Linear
+        light at 0° through a plate with its axis at 22.5° comes out at exactly 45°; set the
+        axis to 45° and the same input comes out at 90°. Align the axis with the input
+        polarization, or put it perpendicular, and nothing changes — a half-wave plate does
+        nothing to light already polarized along one of its own axes. Send circular light
+        through and the handedness flips.</p>
+        <p>Two consequences are worth knowing. The plate is <strong>lossless</strong>: it
+        changes the state, never the intensity, so a power-control stage needs the polarizer
+        after it to convert the rotation into attenuation. And <strong>unpolarized light
+        passes through unchanged</strong>, which is correct rather than a shortcut — there
+        is no preferred direction for the plate to act on. Put a
+        <a href="../polarizer/">polarizer</a> before it if you want a defined state to
+        rotate.</p>
+        <p>Polarization modulation survives the plate too: a beam being switched between two
+        states by an <a href="../aom/">electro-optic modulator</a> keeps alternating after
+        the waveplate, with both states rotated together, rather than having the modulation
+        flattened away.</p>`,
+      limitations: `<p>The retardance is exactly half a wave at every wavelength. Nothing
+        here models Δn, the plate thickness, or their dispersion, so there is no distinction
+        between zero-order, multi-order, and achromatic plates, and no degradation when a
+        plate is used away from its design wavelength — in a real setup that is the single
+        most common reason a waveplate underperforms. The plate is also perfectly lossless
+        and perfectly aligned: no Fresnel reflection at the faces, no absorption, no
+        sensitivity to angle of incidence or temperature, and no walk-off between the two
+        rays inside a birefringent crystal. Its optical thickness is not modelled either, so
+        it contributes no group-delay dispersion to a pulse.</p>`,
+    },
+    related: ['qwp', 'polarizer', 'pbs', 'eom'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Waveplates', url: 'https://www.rp-photonics.com/waveplates.html' },
+      { label: 'RP Photonics Encyclopedia — Birefringence', url: 'https://www.rp-photonics.com/birefringence.html' },
+    ],
+  },
+  {
+    type: 'qwp',
+    title: 'Quarter-wave plate',
+    category: 'Polarization',
+    realWorld: {
+      html: `
+        <p>A quarter-wave plate is the same birefringent slice as a
+        <a href="../hwp/">half-wave plate</a>, cut half as thick. It splits the incoming
+        polarization into components along its fast and slow axes and delays one by a
+        quarter of a wave — 90° of phase — relative to the other.</p>
+        <p>That quarter wave is the amount that converts <em>between</em> linear and
+        circular polarization rather than moving light around within either family. Two
+        equal components 90° out of phase trace a circle as they add; the same two
+        components in phase trace a straight line. So the plate's effect depends entirely on
+        how the input is oriented relative to its axes:</p>`,
+      formulas: [
+        { tex: '\\Gamma = \\frac{2\\pi\\,\\Delta n\\,d}{\\lambda} = \\frac{\\pi}{2}', caption: 'Quarter-wave condition — the same retardance expression as any waveplate, set to 90°.' },
+        { tex: 'd = \\frac{\\lambda}{4\\,\\Delta n}', caption: 'The thickness that achieves it: about 18 µm of quartz at 633 nm, which is why true zero-order plates are usually bonded to a thicker window.' },
+      ],
+      html2: `
+        <p>At <strong>45°</strong> to the fast axis, the input splits into two equal
+        components and the plate turns linear light into circular. At <strong>0° or
+        90°</strong>, all the light is already along one axis, there is no second component
+        to delay, and the polarization passes through untouched. At any angle in between the
+        two components are unequal and the result is <strong>elliptical</strong> — the
+        general case, of which linear and circular are the two limits.</p>
+        <p>The conversion runs both ways, and that reversibility is what makes the plate so
+        useful. Circular light entering a quarter-wave plate comes out linear. Pairing one
+        with a polarizer therefore builds a simple optical gate: light passes the polarizer,
+        becomes circular, reflects off something — which reverses the handedness — returns
+        through the plate as linear light rotated 90° from the original, and is rejected by
+        the polarizer it came through. That trick suppresses back-reflections in everything
+        from optical drives to interferometers, and it is the reason quarter-wave plates
+        turn up wherever a beam has to go out and come back along the same path.</p>
+        <p>Circular polarization is also worth having in its own right. It carries no
+        preferred direction in the plane, so it excites molecules regardless of their
+        orientation, and its two handednesses interact differently with chiral matter —
+        the basis of circular dichroism spectroscopy.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Like the half-wave plate, the quarter-wave plate exposes one control, the
+        <strong>fast axis</strong> angle, and applies an exact retardance to the beam's
+        Stokes vector — 90° in this case. It starts at 45°, the angle that produces circular
+        light from a horizontally polarized input.</p>
+        <p>The full range of behaviour is there and can be read off any detector that
+        reports polarization. Linear light at 0° with the axis at 45° comes out fully
+        circular. Rotate the axis to 0° or 90° and the light passes through still linear.
+        Set it to 22.5° and the output is elliptical, with the tilt of the ellipse and the
+        amount of circularity both visible in a <a href="../detector/">polarimeter's</a>
+        Stokes readout. Feed circular light in and linear light comes out.</p>
+        <p>Two quarter-wave plates in series with the same axis are equivalent to one
+        half-wave plate — worth trying, because it makes concrete that retardance simply
+        accumulates.</p>
+        <p>As with any waveplate here, the element is lossless and does nothing at all to
+        unpolarized light, which has no defined phase relationship for the plate to act on.
+        Establish a state with a <a href="../polarizer/">polarizer</a> first.</p>`,
+      limitations: `<p>The retardance is exactly a quarter wave at every wavelength, so
+        there is no wavelength dependence, no distinction between zero-order, multi-order,
+        and achromatic plates, and no degradation away from a design wavelength. The plate
+        is lossless and insensitive to angle of incidence and temperature, there is no
+        walk-off inside the crystal, and it adds no group-delay dispersion to a pulse. The
+        circular light it produces is mathematically perfect; a real plate leaves a small
+        residual ellipticity that matters in sensitive polarimetry.</p>`,
+    },
+    related: ['hwp', 'polarizer', 'pbs', 'isolator'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Waveplates', url: 'https://www.rp-photonics.com/waveplates.html' },
+      { label: 'RP Photonics Encyclopedia — Circular Polarization', url: 'https://www.rp-photonics.com/circular_polarization.html' },
+    ],
+  },
+  {
+    type: 'pbs',
+    title: 'Polarizing beamsplitter',
+    category: 'Polarization',
+    realWorld: {
+      html: `
+        <p>An ordinary beamsplitter divides a beam by intensity and does not care how it is
+        polarized. A polarizing beamsplitter divides it by polarization instead: one linear
+        state is transmitted, the orthogonal state is reflected, and — unlike a
+        <a href="../polarizer/">polarizer</a>, which absorbs or dumps what it rejects —
+        both halves leave as usable beams. Nothing is thrown away, which is what makes the
+        device a router rather than a filter.</p>
+        <p>The usual form is a cube: two right-angle prisms cemented along their
+        hypotenuses, with a multilayer dielectric coating sandwiched between them. Light
+        meets that internal interface at 45°, and the layer stack is designed so that the
+        <em>p</em>-polarized component (electric field in the plane of incidence) is
+        transmitted while the <em>s</em>-polarized component is reflected through 90°. The
+        two outputs are therefore linearly polarized and perpendicular to one another.</p>
+        <p>How the incoming power divides follows Malus's law, so the split is set by the
+        input polarization angle rather than by the cube:</p>`,
+      formulas: [
+        { tex: 'T = \\cos^{2}\\theta, \\qquad R = \\sin^{2}\\theta', caption: 'Fraction transmitted and reflected for linearly polarized light at θ to the transmission axis. Unpolarized light averages to 50/50.' },
+      ],
+      html2: `
+        <p>Putting a <a href="../hwp/">half-wave plate</a> in front turns this into a
+        <strong>continuously variable beamsplitter</strong>: rotating the plate rotates the
+        input polarization, sweeping the split from all-transmitted to all-reflected without
+        any absorption anywhere. That pairing is one of the most common two-element
+        combinations on an optical bench, used for power control, for balanced splitting,
+        and for routing a beam between two experiments.</p>
+        <p>Run backwards, the same cube <em>combines</em> two orthogonally polarized beams
+        into one path — the standard way to overlap two lasers with no loss, which no
+        intensity beamsplitter can do.</p>
+        <p>One asymmetry matters in practice. The transmitted port is usually very pure,
+        with extinction ratios of 1000:1 or better, because the coating is good at rejecting
+        <em>s</em>. The reflected port is markedly worse, often nearer 20:1, since some
+        <em>p</em> light leaks into it. If an experiment needs a clean state, take it from
+        the transmitted port, or clean the reflected one up with a polarizer afterwards.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The cube is drawn with its coated diagonal, and that diagonal is the traced
+        surface. It transmits horizontal polarization along the incoming axis and reflects
+        vertical polarization through 90°, splitting a single incoming ray into two outgoing
+        beams that the tracer follows independently.</p>
+        <p>The division follows Malus's law exactly: linear light at 0° goes fully through,
+        at 90° fully across, at 45° splits half and half, and at 30° divides 75/25.
+        Unpolarized light splits evenly, as it should. Both outputs emerge in
+        <em>pure</em> linear states — horizontal on the transmitted port, vertical on the
+        reflected one — regardless of what arrived, which is what makes a PBS a polarization
+        <em>cleanup</em> element and not merely a splitter. A port receiving less than 2% of
+        the light is dropped rather than drawn as a hairline that suggests a beam nobody
+        could use.</p>
+        <p>Because the cube resolves polarization into two paths, it is also how the sketch
+        makes polarization <em>visible</em>: put one after a
+        <a href="../hwp/">half-wave plate</a> and rotating the plate's axis visibly shifts
+        power from one output arm to the other, with no attenuation anywhere in the path.</p>
+        <p>The cube also handles fast polarization switching properly. A beam alternating
+        between two states pulse by pulse leaves each port as a genuinely gated pulse train,
+        with the two ports complementary — so an
+        <a href="../aom/">electro-optic modulator</a> followed by a PBS produces two real
+        interleaved trains rather than two steady half-power beams.</p>`,
+      limitations: `<p>The cube is ideal. Both ports are perfectly pure, which the
+        reflected port of a real cube is emphatically not — expect nearer 20:1 there — so
+        an experiment whose result depends on reflected-port purity will look better here
+        than on a bench. There is no coating loss, no residual reflection at the entrance
+        and exit faces, and no angular or spectral acceptance: the split is the same at
+        every wavelength and every angle of incidence, whereas a real cube is specified for
+        a band and degrades outside it. The glass path through the cube is not modelled
+        either, so it adds no optical path and no group-delay dispersion to a pulse.</p>`,
+    },
+    related: ['polarizer', 'hwp', 'bs', 'isolator'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Polarizers', url: 'https://www.rp-photonics.com/polarizers.html' },
+      { label: 'RP Photonics Encyclopedia — Beam Splitters', url: 'https://www.rp-photonics.com/beam_splitters.html' },
+    ],
+  },
+  {
+    type: 'isolator',
+    title: 'Optical isolator',
+    category: 'Polarization',
+    realWorld: {
+      html: `
+        <p>An optical isolator is a one-way valve for light: it passes a beam in the forward
+        direction and blocks anything coming back. Lasers need one because they are unusually
+        vulnerable to their own reflected light. A few per cent returning into the cavity can
+        destabilise the output power, broaden the linewidth, drive a diode into mode-hopping,
+        or — with enough power — damage the facet outright. Every optic downstream reflects
+        something, so on any serious laser bench the isolator goes in first.</p>
+        <p>What makes it possible is a genuinely unusual piece of physics. Almost everything
+        in optics is <strong>reciprocal</strong>: reverse the direction of propagation and
+        the light retraces its path exactly. A <a href="../hwp/">waveplate</a> that rotates
+        polarization one way on the way out rotates it back on the way in, so no arrangement
+        of ordinary optics can distinguish forward from backward. The
+        <strong>Faraday effect</strong> can. A magneto-optic material in a strong axial
+        magnetic field rotates polarization by an angle fixed by the field direction, not by
+        the direction the light travels — a beam going the other way is rotated the
+        <em>same</em> absolute way, not back.</p>`,
+      formulas: [
+        { tex: '\\beta = V B d', caption: 'Faraday rotation angle: the Verdet constant of the material times the axial field times the path length. The isolator is built so that β = 45°.' },
+      ],
+      html2: `
+        <p>A standard isolator stacks three parts: an input polarizer, a 45° Faraday
+        rotator, and an output polarizer set 45° from the input one. Forward, light is
+        polarized, rotated 45°, and arrives aligned with the output polarizer — it passes.
+        Backward, light entering the output polarizer is rotated a further 45° <em>in the
+        same absolute sense</em>, reaching the input polarizer at 90° to it, and is
+        rejected. The non-reciprocity is the whole mechanism; without it the return trip
+        would simply undo the outward one.</p>
+        <p>Real devices reach 30–40&nbsp;dB of isolation while costing 1–2&nbsp;dB going
+        forward. Because the Verdet constant and the required rotation both depend on
+        wavelength, an isolator is specified for a particular one, and its performance falls
+        off away from it.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The isolator is modelled as what it does rather than how it does it: a
+        directional gate. Rays travelling along the element's forward direction pass through
+        untouched; rays with any backward component are removed from the trace entirely.
+        Rotating the element sets which way is forward, so an isolator turned 180° blocks
+        the beam it previously passed — the simplest way to see the element working.</p>
+        <p>Its use here is the same as on a bench. Put one right after a laser, aim a mirror
+        or a partially reflecting surface downstream, and the return beam that would
+        otherwise travel back into the source stops at the isolator instead. Because the
+        sketch traces reflections as real rays, that back-propagating beam is genuinely
+        there to be blocked rather than merely implied.</p>
+        <p>Note that despite living in the Polarization category, this element does not
+        touch polarization at all. A beam's Stokes state is identical before and after it.
+        That is a deliberate simplification, and it differs from a real isolator in a way
+        worth knowing about — see below.</p>`,
+      limitations: `<p>The Faraday mechanism is not modelled. There is no rotator and there
+        are no internal polarizers, so the element does not polarize its output the way a
+        real isolator does: light leaves in whatever state it arrived, whereas a real device
+        emits light polarized along its output polarizer regardless of the input. If your
+        setup depends on that, place an explicit <a href="../polarizer/">polarizer</a> after
+        the isolator to represent it. Isolation is also perfect and instantaneous rather than
+        the 30–40&nbsp;dB a real device achieves, forward transmission is lossless rather
+        than costing 1–2&nbsp;dB, and there is no wavelength, temperature, or field
+        dependence — a real isolator works properly only near the wavelength it was built
+        for. Nothing outside the clear aperture is affected.</p>`,
+    },
+    related: ['polarizer', 'qwp', 'pbs', 'cwlaser'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Faraday Isolators', url: 'https://www.rp-photonics.com/faraday_isolators.html' },
+      { label: 'RP Photonics Encyclopedia — Faraday Effect', url: 'https://www.rp-photonics.com/faraday_effect.html' },
+    ],
+  },
+  {
     type: 'aom',
     title: 'Acousto-optic modulator (AOM)',
     category: 'Modulators',
@@ -1003,36 +1836,1236 @@ export const wikiEntries = [
   },
 
   {
+    type: 'beamdump',
+    title: 'Beam dump',
+    category: 'Beam Block',
+    realWorld: {
+      html: `
+        <p>A beam dump ends a beam. Every optical setup produces light that has done its
+        job — the unused port of a beamsplitter, the rejected polarization, the zeroth order
+        off a grating, the beam left over when an experiment is realigned — and all of it
+        has to stop somewhere deliberate. Left alone it lands on a wall, a colleague, or
+        back in the laser.</p>
+        <p>Doing that well is harder than it sounds, because "absorbing" light is really
+        <em>converting it to heat</em> while reflecting as little as possible. The usual
+        design is geometric rather than material: a cone, a wedge, or a stack of angled
+        vanes, anodised matte black, arranged so that any light not absorbed on first
+        contact reflects <em>deeper into</em> the cavity rather than back out. Several
+        bounces at a few per cent reflectivity each leave a negligible fraction escaping.
+        The black surface does the absorbing; the geometry catches what the surface
+        misses.</p>
+
+        <h3>Why high-power dumps need cooling</h3>
+        <p>A dump absorbs essentially the entire beam, so it receives the laser's full
+        average power as heat in a small volume. That is a genuine thermal engineering
+        problem, and it sets how a dump is built:</p>
+        <ul>
+          <li>Up to a few watts, a black-anodised aluminium cone with fins radiates and
+          convects the heat away passively.</li>
+          <li>From tens of watts, passive cooling stops keeping up and the dump needs
+          forced air or a substantial heat sink.</li>
+          <li>At hundreds of watts and above — industrial and materials-processing lasers —
+          dumps are <strong>water-cooled</strong>, with flow interlocks that shut the laser
+          down if circulation fails.</li>
+        </ul>
+        <p>Exceeding a dump's rating is not a small mistake. The anodised layer can burn
+        away, destroying the absorption it was providing and releasing particulates;
+        absorbing glass can crack from thermal shock; and a dump that starts reflecting is
+        worse than no dump at all, because nobody is expecting a beam to come back out of
+        it. Ultrafast lasers add a second constraint: a femtosecond pulse train of modest
+        <em>average</em> power carries enormous <em>peak</em> intensity, and can ablate an
+        absorber that would handle the same average power from a CW source without
+        complaint. Dumps are rated for both.</p>`,
+      formulas: [
+        { tex: 'P_{\\text{abs}} \\approx P_{\\text{in}}', caption: 'The defining property: a dump converts essentially the whole beam to heat, so its thermal load is the full incident power — not a fraction of it.' },
+        { tex: 'R_{\\text{eff}} \\approx R^{N}', caption: 'Why the geometry matters more than the coating: N bounces inside the cavity at surface reflectivity R leave only R^N escaping. Four bounces at 5% reflect back about 6 parts per million.' },
+      ],
+      html2: `
+        <h3>Safety practice around beam blocks</h3>
+        <p>Beam dumps are the most basic piece of laser safety hardware on a bench, and they
+        work only as part of a wider practice:</p>
+        <ul>
+          <li><strong>Terminate every beam, including the ones you did not plan.</strong>
+          An uncoated glass surface reflects about 4% per face at normal incidence, so every
+          window, sample, and filter throws off stray beams. Those are what actually reach
+          people's eyes; the main beam is usually the one everybody is watching.</li>
+          <li><strong>Keep every beam in one horizontal plane, well below seated eye
+          level</strong>, and never raise your eyes to that plane. Most accidents happen
+          when someone bends down to look at something.</li>
+          <li><strong>Remove watches, rings, and badges</strong> before working near an open
+          beam. A polished surface at an unlucky angle is an unplanned mirror.</li>
+          <li><strong>Wear eyewear matched to both wavelength and optical density.</strong>
+          Goggles that block 1064&nbsp;nm may transmit 532&nbsp;nm freely — a real hazard in
+          multi-wavelength setups such as a two-colour Raman microscope, where the pump,
+          Stokes, and generated signal are all different colours.</li>
+          <li><strong>Never look along a beam axis</strong>, even attenuated. Use a viewing
+          card, a fluorescent target, or an IR viewer.</li>
+          <li><strong>Enclose the beam path</strong> where you can, and use interlocks and
+          warning signage where you cannot.</li>
+          <li>For <strong>Class 4</strong> lasers, remember that even <em>diffuse</em>
+          reflections can be hazardous to eyes and skin, and that the beam is a credible
+          ignition source for paper, cloth, and solvents.</li>
+        </ul>
+        <p>None of this is modelled by a ray tracer, and a sketch that looks tidy on screen
+        can still describe a setup that is unsafe to build. Treat a drawing as a plan, not
+        a risk assessment.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The dump is drawn as a closed body whose faces are all absorbing, so any ray that
+        reaches it from any direction stops there and is removed from the trace. Nothing is
+        transmitted, nothing is reflected, and no ray continues past it. The only control is
+        the clear aperture, which sets how large a target it presents.</p>
+        <p>Its practical use here is the same as on a bench: give the unused ports somewhere
+        to end. Put one on the second output of a <a href="../bs/">beamsplitter</a>, on the
+        rejected port of a <a href="../pbs/">polarizing beamsplitter</a>, or on an
+        unwanted diffraction order from a <a href="../grating/">grating</a>, and the figure
+        stops showing a beam wandering off into empty space. It makes a diagram read as a
+        deliberate design rather than an unfinished one, and it is what a reviewer of your
+        figure will look for.</p>
+        <p>Because a dumped ray is removed rather than attenuated, a dump is also a clean
+        way to isolate one branch of a setup while you study another — block one arm of an
+        interferometer and the remaining path is all that is traced.</p>`,
+      limitations: `<p>Absorption is total and perfect: there is no residual reflectivity,
+        no wavelength dependence, and no angular limit, whereas a real dump reflects a small
+        fraction and does so more at grazing incidence. Nothing thermal is modelled at all —
+        no absorbed power, no temperature rise, no damage threshold, and no warning when a
+        sketch dumps a kilowatt into a component that could not survive it. The dump's
+        rating and its cooling requirement are entirely the designer's responsibility, and
+        the section above is the only place this tool addresses them.</p>`,
+    },
+    related: ['blocker', 'slit', 'bs', 'pbs'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Beam Dumps', url: 'https://www.rp-photonics.com/beam_dumps.html' },
+      { label: 'RP Photonics Encyclopedia — Laser Safety', url: 'https://www.rp-photonics.com/laser_safety.html' },
+    ],
+  },
+  {
+    type: 'slit',
+    title: 'Slit',
+    category: 'Beam Block',
+    realWorld: {
+      html: `
+        <p>A slit is an aperture: two opaque jaws with a gap between them. Unlike a
+        <a href="../beamdump/">beam dump</a>, whose job is to stop a beam entirely, a slit
+        stops only part of one — it passes the light within its gap and absorbs everything
+        outside it. That makes it a shaping and selecting element, though the light it
+        rejects still has to be absorbed, and at high power the jaws face the same thermal
+        problem a dump does.</p>
+        <p>Slits do two quite different jobs depending on where they sit. In a plane where
+        the beam is <em>spatially</em> spread out, a slit trims the beam's cross-section —
+        cutting off a tail, defining a sheet of light, or setting the illuminated strip in a
+        line-scan system. In a plane where wavelengths have been spread out by a
+        <a href="../grating/">grating</a> or <a href="../prism/">prism</a>, exactly the same
+        component becomes a <em>wavelength</em> selector: it passes a band and rejects the
+        rest. A monochromator is, in essence, a dispersing element with a slit at each end,
+        and the slit width sets the spectral resolution directly.</p>
+        <p>There is a limit to how far this can be pushed. Narrowing a slit does not narrow
+        the transmitted beam indefinitely, because diffraction sets in: the narrower the
+        aperture, the more the light spreads after it.</p>`,
+      formulas: [
+        { tex: '\\theta \\approx \\frac{\\lambda}{a}', caption: 'Diffraction spreading after a slit of width a — the angular half-width of the central lobe. Below roughly a millimetre for visible light, closing the slit further makes the far-field beam wider, not narrower.' },
+        { tex: '\\Delta\\lambda \\approx \\frac{a}{f}\\,\\frac{d\\lambda}{d\\theta}', caption: 'Spectral bandwidth passed by a slit of width a at the focal plane of a spectrograph of focal length f — the slit width and the dispersion together set the resolution.' },
+      ],
+      html2: `
+        <p>Because a slit rejects most of the light reaching it, it is a lossy component by
+        design, and in a spectrograph the trade-off is explicit: a narrower slit buys
+        resolution at the cost of signal. Choosing the width is choosing where on that curve
+        to sit.</p>
+        <p>The rejected light does not vanish. On a low-power source it simply warms the
+        jaws; on a high-power one the jaws need the same treatment as a beam dump — an
+        absorbing surface that can shed heat, and at high enough power, active cooling. A
+        pair of thin blackened blades that works at milliwatts will not survive tens of
+        watts.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The slit is drawn as two absorbing jaws with a gap between them, and it is traced
+        exactly that way: rays passing through the gap continue completely unchanged, and
+        rays striking either jaw are absorbed and removed. Two controls set it — the
+        <strong>gap</strong>, and the overall optic size that fixes how far the jaws
+        extend.</p>
+        <p>The useful consequence is that a slit here is a genuine spatial filter. Send a
+        wide beam at one and only the central portion survives, so you can define a beam
+        width mid-path, clip the wings off a diverging beam, or take one branch of a fan and
+        discard the rest. Place one after a <a href="../grating/">grating</a> or a
+        <a href="../prism/">prism</a> and it becomes a wavelength selector, because the
+        colours have been separated in space by then and the slit is choosing among
+        positions.</p>
+        <p>The purple canvas knob adjusts the gap directly, which makes the selection easy
+        to explore: widen it until the branch you want passes, then narrow it until only
+        that branch does.</p>`,
+      limitations: `<p><strong>Diffraction is not modelled</strong>, and for a slit that is
+        the significant omission: narrowing the gap here simply passes a narrower bundle of
+        rays, whereas a real slit below about a millimetre starts spreading the light it
+        transmits, and a very narrow one produces a broad diffraction pattern rather than a
+        thin beam. Nothing in this element will ever show that reversal. Transmission
+        through the gap is also perfect and edge effects are absent — no partial
+        transmission at the jaw edges, no scattering off them, and no wavelength dependence.
+        As with the beam dump, the absorbed light produces no heat and carries no damage
+        threshold, so a sketch will happily throw arbitrary power at a pair of thin
+        blades.</p>`,
+    },
+    related: ['beamdump', 'blocker', 'grating', 'prism'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Monochromators', url: 'https://www.rp-photonics.com/monochromators.html' },
+      { label: 'RP Photonics Encyclopedia — Diffraction', url: 'https://www.rp-photonics.com/diffraction.html' },
+    ],
+  },
+  {
+    type: 'blocker',
+    title: 'Invisible blocker',
+    category: 'Beam Block',
+    realWorld: {
+      html: `
+        <p>This element has no laboratory counterpart. It is a figure-making tool: a region
+        that absorbs any ray entering it, drawn on the canvas while you work and then
+        <strong>omitted from exported figures</strong>.</p>
+        <p>The need it answers is a real one, though. A ray tracer follows every branch it
+        generates, including ones that are physically correct but irrelevant to the point a
+        figure is making — a weak back-reflection wandering across the frame, a stray
+        diffraction order, the ghost from a beamsplitter's second surface. On a bench you
+        would put a card in the way and forget about it. The equivalent here is a blocker:
+        it takes the unwanted branch out of the trace without adding a component to the
+        drawing that a reader would have to interpret.</p>
+        <p>The honest framing is that this is a <em>presentation</em> control, not physics.
+        If a stray beam exists in your setup it exists in reality too, and hiding it from a
+        figure is a choice about what the figure is for. Use it to remove distractions from
+        a teaching diagram; do not use it to make a setup look cleaner than it is, and never
+        use it to hide a beam that would need terminating in the real build — see the
+        safety notes on the <a href="../beamdump/">beam dump</a> page.</p>`,
+      formulas: [],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The blocker is a rectangle whose faces all absorb. Any ray reaching it stops
+        there, exactly as with a <a href="../beamdump/">beam dump</a> — the difference is
+        purely in the drawing. It carries <code>hideInExport</code>, so it is visible on the
+        canvas while you compose and absent from SVG and PNG exports. In the exported
+        figure the blocked beam simply ends, with nothing to explain why.</p>
+        <p>Two controls set its width and height, and the blue handles resize it on the
+        canvas, so it can be shaped to catch exactly the branch you want and nothing
+        else.</p>
+        <p>Its bounds are still counted when a figure is fitted for export, so a blocker
+        parked far from the setup will pad the exported crop with empty space even though it
+        is not drawn. Keep it close to the beam it is catching, or use a
+        <a href="../figureframe/">figure frame</a> to define the crop explicitly.</p>`,
+      limitations: `<p>Absorption is perfect and total, like the beam dump's. The single
+        thing to understand about this element is that it changes what a figure
+        <em>shows</em>, not what the setup <em>is</em>: the trace it removes was a real
+        branch of the light, and its absence from the exported drawing is your editorial
+        decision rather than a physical result. A reader of the figure has no way to tell a
+        blocker was used.</p>`,
+    },
+    related: ['beamdump', 'slit', 'figureframe'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Beam Dumps', url: 'https://www.rp-photonics.com/beam_dumps.html' },
+    ],
+  },
+  {
+    type: 'slm',
+    title: 'Spatial light modulator',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A spatial light modulator is a programmable optic. Instead of grinding a surface
+        into a fixed shape, it imposes a phase pattern that software can change frame by
+        frame — so one device can act as a lens, a grating, a corrector for aberrations it
+        measures on the fly, or a hologram that paints an arbitrary intensity pattern in a
+        distant plane.</p>
+
+        <h3>How liquid crystals do it</h3>
+        <p>The working substance is a <strong>nematic liquid crystal</strong>: rod-shaped
+        molecules that share a common orientation — the <em>director</em> — while remaining
+        free to move past one another like a liquid. That orientational order without
+        positional order is what makes the phase useful. Aligned rods are optically
+        <strong>birefringent</strong>: light polarized along the director sees the
+        extraordinary index <span class="w">n<sub>e</sub></span>, light polarized across it
+        sees the ordinary index <span class="w">n<sub>o</sub></span>, and the difference is
+        large — around 0.1 to 0.2, roughly ten times that of a quartz
+        <a href="../hwp/">waveplate</a>.</p>
+        <p>Applying a voltage across a pixel tilts the director toward the field. The index
+        seen by light polarized along the original director slides continuously from
+        <span class="w">n<sub>e</sub></span> toward <span class="w">n<sub>o</sub></span>, so
+        the optical path through that pixel — and therefore the phase of the light leaving
+        it — becomes a smooth function of the applied voltage:</p>`,
+      formulas: [
+        { tex: '\\Gamma(V) = \\frac{2\\pi\\,\\Delta n(V)\\,d}{\\lambda}', caption: 'Phase retardance of one pixel: the voltage-dependent index difference times the liquid-crystal layer thickness. This is the same expression as a waveplate, with Δn now under electrical control.' },
+        { tex: '\\Gamma_{\\text{LCOS}} = 2 \\times \\frac{2\\pi\\,\\Delta n(V)\\,d}{\\lambda}', caption: 'A reflective device doubles it: light crosses the layer on the way in and again on the way out, so half the thickness achieves a full 2π stroke.' },
+      ],
+      html2: `
+        <p>Nearly all phase-only modulators are <strong>LCOS</strong> — liquid crystal on
+        silicon. A CMOS backplane addresses each pixel and carries a mirror beneath it, with
+        the liquid-crystal layer above; light enters, reflects off the pixel mirror, and
+        leaves having crossed the modulating layer twice. Pixels are a few micrometres
+        across, the phase is quantised to 8 bits, and the device is calibrated so that its
+        full drive range corresponds to exactly 2π at one design wavelength.</p>
+        <p>Two consequences follow from the physics and are worth knowing before you design
+        around one. First, <strong>the input must be linearly polarized along the
+        director</strong>: only that component is modulated, so light in the orthogonal
+        state passes through unchanged and dilutes the pattern. Every SLM setup therefore
+        has a <a href="../polarizer/">polarizer</a> in front of it. Second, liquid crystals
+        are <strong>slow</strong> — reorientation takes milliseconds, so refresh rates are
+        tens of hertz, not the megahertz an acousto-optic device reaches.</p>
+
+        <h3>The zero-order problem</h3>
+        <p>An SLM never modulates all the light that lands on it, and the unmodulated
+        fraction leaves along the direction of a plain mirror — the specular, or
+        <strong>zeroth-order</strong>, beam. It sits on the optical axis, undiffracted,
+        while the pattern you asked for is formed around it. Several causes contribute:</p>
+        <ul>
+          <li><strong>Fill factor below 100%.</strong> The gaps between pixels, and the
+          circuitry at their edges, are not modulated. That light reflects with no phase
+          structure at all.</li>
+          <li><strong>Front-surface reflection</strong> from the protective cover glass,
+          which never reaches the liquid crystal.</li>
+          <li><strong>Incomplete 2π stroke.</strong> If the calibration is off, or the
+          device is used away from its design wavelength, the phase never wraps cleanly and
+          a residual unmodulated component survives.</li>
+          <li><strong>Phase quantisation and flicker</strong> from the digital drive
+          scheme.</li>
+        </ul>
+        <p>Together these typically leave a few per cent up to about ten per cent of the
+        incident power in the zeroth order — which, concentrated in a single undiffracted
+        spot, is frequently the <em>brightest</em> feature in the output plane. In
+        holographic optical tweezers it is a trap nobody asked for; in a
+        <a href="../objective/">microscope</a> it is a bright spot at the centre of the
+        field; at high power it can damage a sample outright.</p>
+        <p>The standard remedy is to steer the useful light away from it. Adding a linear
+        phase ramp — a blazed grating — to the displayed hologram deflects the whole pattern
+        off-axis, leaving the zeroth order behind on the axis where it can be removed with a
+        <a href="../beamdump/">beam block</a> at an intermediate focus. Careful
+        per-wavelength calibration of the 2π lookup table reduces the residue at the source,
+        and slightly tilting the device separates the cover-glass reflection from the
+        modulated beam.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The SLM is <strong>reflective</strong> by default, matching an LCOS device, with
+        a <strong>Transmissive</strong> toggle for the less common transmissive kind. Its
+        active size sets how much of a beam it intercepts, and the blue handle resizes it on
+        the canvas.</p>
+        <p>What it does to light is set by a stack of <strong>optical function</strong>
+        layers, applied in order — up to four:</p>
+        <ul>
+          <li><strong>Lens array</strong> — divides the aperture into lenslets of a chosen
+          count and focal length, so one beam becomes several focused spots. Each lenslet is
+          tracked separately, so beams do not blend between them.</li>
+          <li><strong>Grating</strong> — a programmable diffraction grating with a chosen
+          line density and list of orders, which is how a real SLM steers and splits.</li>
+          <li><strong>Beam steer</strong> — a plain angular deflection, the simplest thing a
+          phase ramp does.</li>
+          <li><strong>Speckle / diffuser</strong> — scatters into a cone, standing in for a
+          random phase pattern.</li>
+        </ul>
+
+        <h3>The zeroth order, on a toggle</h3>
+        <p>Because the undiffracted beam is a real and often dominant feature of any SLM
+        setup, it is available here rather than quietly ignored — but it is
+        <strong>off by default</strong>, so a teaching diagram is not cluttered by a stray
+        beam nobody asked about.</p>
+        <p>Turn on <strong>0th-order reflection</strong> and set the fraction (0.1, ten per
+        cent, by default — a realistic figure for a good device) and the element splits its
+        output: that fraction leaves along the plain specular direction, exactly where a
+        mirror would send it, while the patterned light carries the rest. With a grating
+        layer on a device at 45°, you can watch the two separate — the diffracted beam
+        steered by the pattern, the zeroth order going straight on, and the balance between
+        them shifting as you change the fraction.</p>
+        <p>The toggle correctly does nothing on an unpatterned SLM. With no layers
+        configured the device is simply a mirror, and there is no diffracted order for a
+        "zeroth" to be measured against.</p>
+        <p>This makes the standard mitigation something you can actually draw: add a grating
+        layer to steer the useful light off-axis, then put a <a href="../beamdump/">beam
+        dump</a> in the path of the zeroth order and terminate it.</p>`,
+      limitations: `<p>No phase map is computed. The layers are geometric ray operations
+        chosen to stand in for what a hologram does, not a diffraction calculation over a
+        pixel array — so there is no pixel pitch, no fill factor, no 8-bit quantisation, no
+        2π stroke, and no wavelength dependence of Δn. The zeroth-order fraction is a number
+        you set, not one derived from the fill factor and calibration that actually cause it.
+        The polarization requirement is not enforced either: a real device modulates only
+        the component along its director, whereas this one acts on any input state, so a
+        sketch will not warn you about the missing polarizer. Grating orders share the light
+        evenly rather than following a blaze, and the millisecond response and frame rate of
+        a real liquid crystal are not represented at all — the pattern here changes
+        instantly.</p>`,
+    },
+    related: ['dmd', 'dm', 'polarizer', 'grating', 'beamdump'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spatial Light Modulators', url: 'https://www.rp-photonics.com/spatial_light_modulators.html' },
+      { label: 'RP Photonics Encyclopedia — Liquid Crystal Modulators', url: 'https://www.rp-photonics.com/liquid_crystal_modulators.html' },
+    ],
+  },
+  {
+    type: 'metasurface',
+    title: 'Metasurface',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A metasurface is a flat optic that works by pattern rather than by shape.
+        Instead of bending light with a curved glass surface, it carries an array of
+        <strong>meta-atoms</strong> — pillars, fins, or slots smaller than the wavelength —
+        each imposing its own local phase delay on the light passing through. Choose the
+        phase at every point across the aperture and you choose what the surface does.</p>
+        <p>Because the structures are subwavelength, they do not diffract individually; the
+        surface behaves as a continuous phase profile <span class="w">Φ(x)</span>. What
+        steers the light is the <em>gradient</em> of that profile, which generalises
+        Snell's law: a phase that varies along the surface adds momentum to the transmitted
+        beam.</p>`,
+      formulas: [
+        { tex: 'n_t\\sin\\theta_t - n_i\\sin\\theta_i = \\frac{\\lambda_0}{2\\pi}\\frac{d\\Phi}{dx}', caption: "The generalised Snell's law. With no phase gradient this collapses to ordinary refraction; a constant gradient deflects the beam, and a position-dependent one focuses, splits, or scatters it." },
+        { tex: '\\Phi(r) = -\\frac{2\\pi}{\\lambda_0}\\left(\\sqrt{f^2+r^2}-f\\right)', caption: 'The particular profile that focuses. A metasurface carrying this one is a <a href="../metalens/">metalens</a> — the same device, given a lens\\u2019s job.' },
+      ],
+      html2: `
+        <p>What makes the idea powerful is that the profile is arbitrary. The same
+        fabrication process yields a lens, a blazed grating, a beam splitter, a vortex
+        plate carrying orbital angular momentum, a polarisation-selective element that
+        does different things to each state, or a hologram — decided entirely by the
+        pattern. And because the whole optic is a film a fraction of a micrometre thick on
+        a carrier, it replaces components that would otherwise be centimetres of glass,
+        which is why metasurfaces are pursued for phone cameras, endoscopes, AR displays,
+        and satellite instruments.</p>
+        <p>The costs are real. Efficiency is finite, so some light leaves undiffracted in
+        the <strong>zeroth order</strong> along with scatter and reflection. Most designs
+        are strongly chromatic, since the phase is set for one wavelength and every other
+        colour sees the wrong profile. Many are polarisation-sensitive by construction.
+        And the pattern is <strong>fixed at fabrication</strong> — which is the sharp
+        distinction from an <a href="../slm/">SLM</a>, whose liquid crystal lets the same
+        aperture display a new profile thousands of times a second. A metasurface trades
+        that programmability for being thin, passive, fast at the speed of light, and
+        needing no drive electronics.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The metasurface is drawn as what it is: a patterned layer on a thin transparent
+        carrier. It is <strong>transmissive by default</strong>, since that is how these
+        optics are almost always used, with a toggle for the reflective case.</p>
+        <p>It shares its phase engine with the <a href="../slm/">SLM</a> — deliberately,
+        because a phase profile does the same thing to a ray whether liquid crystal or
+        etched silicon put it there. The difference between the two elements is what they
+        represent, not what the light does. So the same stack of <strong>optical
+        functions</strong> applies, up to four, in order:</p>
+        <ul>
+          <li><strong>Lens array</strong> — divides the aperture into lenslets, the
+          multi-focus profile a metasurface array carries.</li>
+          <li><strong>Grating</strong> — a fixed blazed deflector with chosen line density
+          and orders. Verified against the grating equation: 600 lines/mm at 532&nbsp;nm
+          sends the first order to 18.61°, exactly arcsin(λ/d).</li>
+          <li><strong>Beam steer</strong> — the constant phase gradient of the generalised
+          Snell's law above, the simplest metasurface there is.</li>
+          <li><strong>Speckle / diffuser</strong> — a randomised profile.</li>
+        </ul>
+        <p>Layers compose in sequence, so a steer of 5° followed by a 600&nbsp;lines/mm
+        grating puts the output at 23.98° — the two sines adding, as they should.</p>
+        <p>The <strong>undiffracted 0th order</strong> toggle models finite efficiency:
+        turn it on and the chosen fraction leaves along the original path while the
+        patterned light carries the rest, so a design can be drawn with its leakage and a
+        <a href="../beamdump/">beam dump</a> put where the waste goes. It is off by
+        default so a teaching figure stays clean.</p>
+        <p>For the specific case of a focusing metasurface with a wavelength-dependent
+        focal length, use the <a href="../metalens/">metalens</a> instead — it models the
+        diffractive <span class="w">f(λ) = f₀λ₀/λ</span> scaling that this element's
+        geometric layers do not.</p>`,
+      limitations: `<p>No phase map is computed and no field is propagated. The layers are
+        geometric ray operations standing in for what a profile does, so there are no
+        meta-atoms, no subwavelength geometry, no fill factor, and no diffraction
+        calculation — an aperture that would be far too small to work in reality traces
+        exactly like a large one. The steering here is also achromatic where a real
+        metasurface is strongly chromatic: only the grating layer disperses, through the
+        grating equation, while a steer or lens-array layer treats every wavelength alike.
+        Polarisation is untouched, though polarisation sensitivity is a defining property
+        of many real designs, and the zeroth-order fraction is a number you set rather
+        than one derived from the structure. Efficiency, scatter, substrate reflections,
+        and fabrication tolerance are all absent.</p>`,
+    },
+    related: ['slm', 'metalens', 'dmd', 'grating', 'beamdump'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Metasurfaces', url: 'https://www.rp-photonics.com/metasurfaces.html' },
+      { label: 'RP Photonics Encyclopedia — Diffractive Optics', url: 'https://www.rp-photonics.com/diffractive_optics.html' },
+    ],
+  },
+  {
+    type: 'dmd',
+    title: 'Digital micromirror device',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A DMD is an array of hundreds of thousands of aluminium mirrors, each a few
+        micrometres across, sitting on a CMOS memory cell. Every mirror has exactly two
+        stable positions — tilted one way or the other about its diagonal, typically by
+        <strong>±12°</strong> — and is held there electrostatically against mechanical
+        landing posts. Writing a bit to the cell underneath flips it.</p>
+        <p>That makes the device fundamentally different from a
+        <a href="../slm/">liquid-crystal SLM</a>. An SLM is <em>analogue</em> and works on
+        <em>phase</em>: it retards light and can therefore redirect it. A DMD is
+        <em>binary</em> and works on <em>amplitude</em>: each mirror either sends its light
+        toward the target or throws it away. There is no in-between position.</p>
+        <p>Because a mirror tilted by θ deflects a beam by 2θ, the two states send light in
+        directions separated by four times the tilt angle:</p>`,
+      formulas: [
+        { tex: '\\delta = 2\\theta', caption: 'A mirror tilted by θ deflects the reflected beam by 2θ — the reason a small mechanical tilt buys a large optical separation.' },
+        { tex: '\\Delta = 4\\theta', caption: 'Angle between the ON and OFF beams, since the two mirror states tilt opposite ways. At the standard ±12° that is 48°, which is why a DLP projection lens sits well off the illumination axis.' },
+        { tex: 'd\\sin\\theta_m = m\\lambda', caption: 'The mirror array is periodic, so it is also a grating. At roughly 7.6 µm pitch this matters as soon as the illumination is coherent.' },
+      ],
+      html2: `
+        <h3>Grey levels out of a binary device</h3>
+        <p>If each mirror is only ever fully on or fully off, brightness has to come from
+        somewhere else — and it comes from <strong>time</strong>. The mirror is switched on
+        and off thousands of times per frame, and the fraction of the frame it spends in the
+        ON state sets the perceived brightness. The eye, or any detector slower than the
+        switching, integrates the result. Pulse-width modulation in space's place.</p>
+        <p>This is why DMDs are <em>fast</em>. A micromirror flips in microseconds, giving
+        binary frame rates in the tens of kilohertz — three or four orders of magnitude
+        quicker than liquid crystal, which has to physically reorient. It also explains the
+        colour-fringing "rainbow effect" some people see in single-chip DLP projectors,
+        where red, green and blue are displayed sequentially rather than together.</p>
+
+        <h3>What it is good and bad at</h3>
+        <p>Being a mirror rather than a birefringent layer, a DMD is
+        <strong>polarization-insensitive</strong> and <strong>broadband</strong> — aluminium
+        reflects from the ultraviolet well into the infrared, so one device works at any
+        wavelength. It has a high fill factor, around 92%, and tolerates far more optical
+        power than liquid crystal. Those properties took it well beyond projectors: maskless
+        photolithography, structured-illumination microscopy, hyperspectral imaging,
+        single-pixel and compressive-sensing cameras, and patterned optogenetic
+        stimulation.</p>
+        <p>The cost is efficiency. Because it works by discarding light rather than
+        redirecting it, everything in the OFF state is simply thrown away — at 50% duty you
+        lose half the beam, and that light has to be caught by a
+        <a href="../beamdump/">beam dump</a>, which at high power needs to be a real cooled
+        one. A phase SLM steering the same light into the pattern wastes almost none of it.
+        The periodicity is the other complication: with coherent illumination the array
+        behaves as a blazed grating and splits the beam into diffraction orders, so a
+        laser-illuminated DMD needs its geometry chosen so that the wanted order and the
+        blaze direction coincide.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The device is traced as a binary mirror array. Rays are sorted into ON and OFF
+        by where they land, and each state reflects into its own direction — the ON beam
+        deflected one way from the specular direction, the OFF beam the other:</p>
+        <ul>
+          <li><strong>Micromirror tilt</strong> sets the deflection. The ON and OFF beams
+          emerge separated by exactly four times this angle, so the default 12° puts 48°
+          between them, matching a real device.</li>
+          <li><strong>Pattern pitch</strong> and <strong>ON fraction</strong> define the
+          pattern itself as periodic stripes across the aperture — the fraction of each
+          period whose mirrors are ON.</li>
+          <li><strong>Show OFF order</strong> decides whether the discarded beam is drawn.</li>
+        </ul>
+        <p>That last toggle is worth understanding. It is <strong>off by default</strong>,
+        so the rejected light simply stops at the device — which is what a setup with a
+        properly dumped OFF path looks like, and keeps a teaching figure uncluttered. Turn
+        it on and the OFF beam is traced to wherever it actually goes, which is the honest
+        picture while you are designing: you can see the 48° separation, confirm nothing
+        downstream is sitting in that path, and put a <a href="../beamdump/">beam dump</a>
+        there to terminate it.</p>
+        <p>Sweeping the tilt is the quickest way to see the geometry that makes DLP work.
+        At 6° the two beams leave 24° apart and are awkward to separate; at 20° they are
+        80° apart and trivially separable, but the device would be harder to build. The
+        real ±12° is the compromise.</p>`,
+      limitations: `<p><strong>Diffraction is not modelled</strong>, and for a DMD that is
+        the significant omission: a real array is periodic at roughly 7.6&nbsp;µm and acts
+        as a blazed grating, so coherent illumination produces a set of diffraction orders
+        that a laser-based design has to be built around. Here reflection is purely
+        geometric and a single beam produces a single ON beam. The pattern is also
+        periodic stripes measured in millimetres of canvas rather than an addressable array
+        of micromirrors, so it cannot display an image, and there is no time dimension —
+        no pulse-width modulation, no grey levels, no switching time, and no colour
+        sequencing. Fill-factor loss, aluminium reflectivity, absorption, and the damage
+        threshold are all absent, so the ON and OFF beams together carry the full incident
+        power.</p>`,
+    },
+    related: ['slm', 'dm', 'beamdump', 'grating'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spatial Light Modulators', url: 'https://www.rp-photonics.com/spatial_light_modulators.html' },
+      { label: 'Texas Instruments — DLP Technology', url: 'https://www.ti.com/dlp-chip/overview.html' },
+    ],
+  },
+  {
+    type: 'dm',
+    title: 'Deformable mirror',
+    category: 'Wavefront Shaping',
+    realWorld: {
+      html: `
+        <p>A deformable mirror corrects a wavefront by changing its own shape. Light does
+        not always arrive with the flat, well-behaved wavefront that optical design assumes:
+        the atmosphere scrambles starlight, the eye's own cornea and lens distort a view of
+        the retina, and tissue aberrates a focus long before a microscope reaches the depth
+        it was built for. In every case the instrument is fine and the wavefront is not, so
+        the fix is to add the <em>conjugate</em> of the distortion and cancel it.</p>
+        <p>The device is a thin reflective faceplate — a metallised membrane or a polished
+        silicon layer — sitting on an array of actuators that push and pull it. Piezoelectric
+        stacks, electrostatic pads, voice coils, and MEMS all appear, but the principle is
+        the same: drive each actuator and the surface bends locally.</p>
+        <p>Reflection is what makes the mechanics easy. Displacing the surface by
+        <span class="w">h</span> shortens or lengthens the path twice, once on the way in
+        and once on the way out, so a very small movement buys a large optical
+        correction:</p>`,
+      formulas: [
+        { tex: '\\text{OPD} = 2h', caption: 'Optical path difference from a surface displacement h. A quarter-wavelength of mechanical stroke produces half a wavelength of optical correction — which is why deformable mirrors move by micrometres, not millimetres.' },
+        { tex: 'S \\approx \\exp\\!\\left[-\\left(\\frac{2\\pi\\sigma}{\\lambda}\\right)^{2}\\right]', caption: 'Maréchal approximation for Strehl ratio from residual wavefront error σ. Getting σ down to about λ/14 gives S ≈ 0.8 — the usual definition of "diffraction limited", and the target a correction loop aims at.' },
+        { tex: '\\delta = 2\\theta', caption: 'Tilting a mirror by θ deflects the beam by 2θ. Worth remembering when reading this element’s controls — see below.' },
+      ],
+      html2: `
+        <h3>Working in a loop</h3>
+        <p>A deformable mirror is almost never set by hand. It runs closed-loop with a
+        wavefront sensor — usually a Shack–Hartmann, a lenslet array whose spot
+        displacements measure local wavefront slope. The measured wavefront is decomposed
+        into <strong>Zernike modes</strong> — tip, tilt, defocus, astigmatism, coma,
+        spherical aberration, and higher — the actuator commands that best cancel them are
+        computed, and the cycle repeats at hundreds or thousands of hertz, fast enough to
+        keep up with atmospheric turbulence.</p>
+        <p>The low-order modes carry most of the power. Tip and tilt alone account for the
+        largest share of atmospheric distortion, so big telescopes often split the job: a
+        small, fast tip–tilt mirror handles the bulk motion while the deformable mirror,
+        with hundreds or thousands of actuators, takes the higher orders. How well the
+        higher orders can be corrected is set by actuator count and spacing — a mirror
+        cannot reproduce structure finer than its actuator pitch, and the residue left over
+        is called fitting error.</p>
+        <p>Designs trade smoothness against independence. A <strong>continuous
+        facesheet</strong> gives a smooth surface but neighbouring actuators pull on each
+        other, so each has an influence function rather than acting alone. A
+        <strong>segmented</strong> mirror gives independent control at the price of gaps
+        between segments, which diffract. <strong>MEMS</strong> devices are compact and
+        cheap with limited stroke; <strong>bimorph</strong> and <strong>voice-coil</strong>
+        mirrors offer large stroke with fewer actuators.</p>
+        <p>The applications are wherever a wavefront arrives spoiled: ground-based astronomy,
+        adaptive-optics retinal imaging, deep-tissue and two-photon microscopy, laser beam
+        shaping, and free-space optical communication.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>This element models the two lowest-order corrections a deformable mirror makes —
+        the ones that dominate real aberration budgets — as a mirror with an adjustable
+        curvature and an adjustable deflection. Three controls:</p>
+        <ul>
+          <li><strong>Aperture</strong>, the size of the reflective face; the blue handle
+          resizes it.</li>
+          <li><strong>Defocus focal length</strong>, which curves the surface. Positive
+          values make it concave: light reflects converging, and the focus lands that many
+          millimetres in front of the mirror — set 100&nbsp;mm and the beam crosses the axis
+          100&nbsp;mm away, set 200&nbsp;mm and it crosses at 200. Negative values make it
+          convex, so the return beam diverges from a virtual focus behind the surface.
+          Leave it at zero for a flat mirror.</li>
+          <li><strong>Tip / tilt</strong>, on the purple knob, which steers the reflected
+          beam.</li>
+        </ul>
+        <p>Pair one with a <a href="../detector/">wavefront detector</a> and the correction
+        becomes measurable rather than merely drawn: a flat mirror returns a collimated
+        beam, a positive focal length returns a converging one, and a negative focal length
+        a diverging one, with the detector naming the state and reporting the cone
+        angle.</p>
+
+        <h3>One convention to know</h3>
+        <p>The <strong>Tip / tilt</strong> control applies its angle directly to the
+        outgoing beam: set 5° and the reflected beam leaves 5° away from where it would have
+        gone. That is the <em>beam deviation</em>, not the mechanical tilt of the surface —
+        a real mirror tilted by 5° would deflect the beam by 10°. Rotating the whole element
+        on the canvas does behave physically, giving the usual factor of two, so the two
+        routes to a tilt are not equivalent. If you are reasoning about actuator stroke,
+        halve the number.</p>`,
+      limitations: `<p>Only <strong>tip, tilt, and defocus</strong> are modelled — the
+        lowest Zernike orders. There is no astigmatism, coma, spherical aberration, or
+        arbitrary surface shape, which is awkward given that correcting exactly those higher
+        orders is the reason deformable mirrors exist; this element captures what they do
+        first, not what makes them special. Nothing represents the mechanism either: no
+        actuators, no actuator count or pitch, no influence functions or inter-actuator
+        coupling, no stroke limit, and therefore no fitting error. The surface is perfectly
+        smooth, so segment gaps and print-through never diffract, and there is no temporal
+        response — the shape changes instantly rather than over the milliseconds a real
+        mirror needs. Nothing closes the loop: there is no sensor driving the correction, so
+        the shape is one you set by hand rather than one the system finds.</p>`,
+    },
+    related: ['slm', 'dmd', 'cmirror', 'detector'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Adaptive Optics', url: 'https://www.rp-photonics.com/adaptive_optics.html' },
+      { label: 'RP Photonics Encyclopedia — Deformable Mirrors', url: 'https://www.rp-photonics.com/deformable_mirrors.html' },
+    ],
+  },
+  {
+    type: 'aotf',
+    title: 'Acousto-optic tunable filter',
+    category: 'Modulators',
+    realWorld: {
+      html: `
+        <p>An AOTF selects colours electronically. Sound travelling through a crystal
+        compresses and rarefies it, and since the refractive index follows density, an
+        acoustic wave is a moving index grating that light can diffract from. That much it
+        shares with an <a href="../aom/">acousto-optic modulator</a>. The difference — and
+        the whole point of the device — is that an AOTF arranges the interaction so only
+        <em>one wavelength at a time</em> can diffract from a given tone.</p>
+        <p>It does this in a <strong>birefringent</strong> crystal, usually tellurium
+        dioxide, in a geometry where the diffracted light emerges in the orthogonal
+        polarization state. Because the two states have different refractive indices, the
+        momentum-matching condition between the optical and acoustic waves is satisfied at
+        only one optical wavelength per acoustic frequency. An AOM diffracts whatever you
+        send it; an AOTF picks a line out of it.</p>
+        <p>Change the RF drive frequency and you change the line. That is the tuning
+        mechanism, and it is purely electronic — no filter wheel to rotate, no grating to
+        turn. The RF <em>power</em> sets the diffraction efficiency, so the same device
+        controls how much of that line gets through.</p>`,
+      formulas: [
+        { tex: '\\tau \\approx \\frac{D}{v_{a}}', caption: 'Switching time is the acoustic transit across the beam. In TeO₂ the shear wave travels around 650 m/s, so a 1 mm beam switches in roughly 1.5 µs — against the tens of milliseconds a filter wheel needs.' },
+        { tex: 'P_{\\text{line}} \\approx P_{\\text{in}}\\,\\frac{\\Delta\\lambda}{\\Delta\\lambda_{\\text{source}}}\\,\\eta', caption: 'What a narrow selection actually costs: picking 2 nm out of a 280 nm supercontinuum keeps well under 1% of the power, however efficient the diffraction is.' },
+      ],
+      html2: `
+        <h3>Multiplexed and sequential drive</h3>
+        <p>The property that makes AOTFs indispensable is that the crystal does not have to
+        be driven with one tone. Apply <strong>several RF frequencies simultaneously</strong>
+        and each selects its own wavelength, with its own amplitude setting that line's
+        intensity independently. That is <strong>multiplexing</strong>: every selected line
+        is present in the output at the same time. One small crystal thereby replaces a rack
+        of shutters, filters, and attenuators — which is why the laser combiner in a confocal
+        or multiphoton microscope is almost always an AOTF.</p>
+        <p>Driving one tone at a time instead, stepping from line to line, is
+        <strong>sequential</strong> operation. Only one wavelength is present at any instant.
+        Because switching takes microseconds, the sequence can be faster than a pixel dwell,
+        so a scan can step excitation wavelengths line by line or even pixel by pixel and
+        build a separate image per colour — which is exactly what multiplexed drive cannot
+        do, since there every colour arrives at once and the detector cannot tell them
+        apart.</p>
+        <p>Typical passbands are one to a few nanometres — narrow enough to isolate one
+        laser line from its neighbour. The light that is not selected is not absorbed; it
+        simply fails to diffract and continues on, which means a real installation always
+        has somewhere for it to go, usually a <a href="../beamdump/">beam dump</a>.</p>
+        <p>Beyond microscopy, AOTFs appear in hyperspectral and multispectral imaging, Raman
+        instruments, fluorescence spectroscopy, and space-borne instruments where a filter
+        wheel's mass and mechanism are unwelcome.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The element is built around a list of <strong>selected lines</strong>, one per RF
+        tone, in the same spirit as the <a href="../slm/">SLM's</a> stacked functions. A
+        fresh AOTF has a single line; press <em>Add line</em> to stack more, up to eight.
+        Each line carries its own wavelength, passband, and efficiency, so a weak line and a
+        strong one can be selected together.</p>
+
+        <h3>Where the light goes</h3>
+        <p>The selected lines leave along the <strong>incoming axis</strong>, so the
+        selection stays on the optical axis and the rest of a setup can be built downstream
+        of it in a straight line. Everything not selected — the beam
+        <strong>depleted</strong> of those lines — is deflected to an angle you choose.</p>
+        <p>That depleted beam is <strong>hidden by default</strong>, because in a working
+        instrument it goes straight into a dump and drawing it only clutters the figure.
+        Turn on <em>Show depleted beam</em> while designing and it is traced to wherever it
+        actually goes, so you can confirm nothing downstream is sitting in its path and put
+        a <a href="../beamdump/">beam dump</a> there. Hiding it changes only the drawing:
+        the power accounting is the same either way.</p>
+
+        <h3>Driving the lines</h3>
+        <p><strong>Multiplexed</strong> drive opens every selected line at once, so all of
+        them are in the output together and a spectrometer downstream shows the whole set.
+        <strong>Sequential</strong> drive steps through them one at a time at a rate you set,
+        so exactly one line is present at any instant and the spectrometer shows it change
+        as the sequence advances.</p>
+        <p>The sequence runs on the canvas clock, slowed to a step or two a second — a real
+        driver steps at kilohertz, far too fast to read — in the same illustrative spirit as
+        a scanning galvo or a chopper wheel. Each line is fully open while it is its turn;
+        the sequence chooses <em>which</em> line, not how much of it gets through.</p>
+
+        <h3>What the numbers do</h3>
+        <p>Selection is exact and conserves energy. A 20&nbsp;nm window on a 420–700&nbsp;nm
+        supercontinuum passes 20/280 of the power and the depleted port carries the rest,
+        summing to one. Efficiency multiplies on top, so three multiplexed lines at 0.9
+        selected from three matching laser lines deliver 2.7× a single line's worth. Narrow
+        selections work too: a 0.5&nbsp;nm line out of that supercontinuum is 0.18% of the
+        beam and still traces correctly rather than being discarded as negligible.</p>`,
+      limitations: `<p><strong>The geometry is the reverse of a physical device.</strong> In
+        a real AOTF the selected light is the <em>diffracted</em> first order and leaves at
+        an angle, while the remainder passes straight through as the zeroth order. This
+        element draws the opposite assignment — the selection continues along the incoming
+        axis and the remainder is deflected — because it keeps a multi-line selection on the
+        optical axis where the rest of a setup is built. The power accounting is identical
+        either way; only which port is bent differs.</p>
+        <p>The passband is a hard-edged window rather than the sinc²-like response with
+        sidelobes a real crystal produces, and it is set directly rather than following from
+        an acoustic frequency: in a real device one RF tone fixes the selected wavelength,
+        the diffraction angle, and the polarization rotation together through phase
+        matching, so a combination set here need not correspond to any crystal. The
+        polarization rotation itself is not modelled, so the selected light leaves in the
+        state it arrived and cannot be cleaned up with a <a href="../polarizer/">polarizer</a>
+        the way a real one is. There is no relation between RF power and efficiency, no
+        acoustic transit time — lines switch instantly — and no crystal transmission range,
+        so a line can be selected at any wavelength the source provides.</p>`,
+    },
+    related: ['aom', 'eom', 'filter', 'sclaser', 'beamdump'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Acousto-optic Tunable Filters', url: 'https://www.rp-photonics.com/acousto_optic_tunable_filters.html' },
+      { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
+    ],
+  },
+  {
     type: 'detector',
     title: 'Photodetector',
     category: 'Detectors',
     realWorld: {
       html: `
-        <p>A real photodetector converts incident optical power to an electrical
-        photocurrent with some responsivity <span class="w">R</span> (amps per watt),
-        set by the detector's quantum efficiency <span class="w">η</span> — the fraction
-        of incident photons that produce a collected charge carrier:</p>`,
+        <p>A photodetector is a semiconductor <strong>photodiode</strong>: a p-n (or p-i-n)
+        junction that absorbs a photon and, if the photon carries enough energy to cross the
+        material's bandgap, promotes an electron into the conduction band. The junction's
+        built-in field sweeps that electron and the hole it left behind apart before they can
+        recombine, and the result is a photocurrent proportional to the incident optical
+        power. How efficiently that conversion happens is the <strong>quantum efficiency</strong>
+        <span class="w">η</span> — the fraction of incident photons that produce a
+        collected charge carrier — and how much current comes out per watt of light in is
+        the <strong>responsivity</strong> <span class="w">R</span>:</p>`,
       formulas: [
-        { tex: 'R = \\frac{\\eta e}{h\\nu} \\quad [\\text{A/W}]', caption: 'Responsivity of an ideal photodetector at optical frequency ν.' },
+        { tex: 'R = \\frac{\\eta e}{h\\nu} = \\frac{\\eta e \\lambda}{hc} \\quad [\\text{A/W}]', caption: 'Responsivity at optical frequency ν (equivalently, wavelength λ). For a fixed η, R rises with wavelength — a 1550 nm photon carries less energy than a 500 nm one, so the same absorbed photon flux yields more amps per watt at the longer wavelength.' },
       ],
+      html2: `
+        <h3>Sensor material sets the usable colours</h3>
+        <p>η is not a constant — it is a function of wavelength set by the semiconductor's
+        <strong>bandgap</strong>, and it is the reason a detector has to be chosen for the
+        wavelength it needs to see rather than assumed to work everywhere. A photon below the
+        bandgap energy simply cannot promote an electron, however bright the beam: η drops to
+        zero at a sharp cutoff wavelength, not a gentle roll-off.</p>
+        <p><strong>Silicon</strong> is the default choice for anything visible or near-infrared.
+        Its 1.12 eV bandgap gives it a cutoff around 1100&nbsp;nm, and a typical
+        commercial Si photodiode's responsivity climbs from a few tenths of an A/W in the
+        visible to a peak near 0.5–0.6&nbsp;A/W around 900–1000&nbsp;nm, right before that
+        cutoff${cite(1)}. It covers essentially every laser wavelength in this app's own
+        palette below 1064&nbsp;nm.</p>
+        <p><strong>InGaAs</strong> (indium gallium arsenide) is the standard choice once a
+        setup reaches into the <strong>short-wave infrared</strong> — the telecom bands
+        around 1310 and 1550&nbsp;nm, or Er-doped fiber sources. Its smaller ~0.75 eV
+        bandgap pushes the cutoff out to roughly 1.7&nbsp;µm, with peak responsivity around
+        0.9–1.0&nbsp;A/W near 1550&nbsp;nm${cite(1)} — silicon is completely blind out
+        there; those photons simply don't carry enough energy to cross its wider gap.</p>
+        <p><strong>Germanium</strong> was the original short-wave infrared material, and is
+        still around: a smaller ~0.67 eV bandgap stretches its cutoff out to roughly
+        1.8&nbsp;µm, past even InGaAs, with peak responsivity around 0.7–0.8&nbsp;A/W near
+        1.5–1.6&nbsp;µm${cite(1)}. What displaced it from most telecom and low-light work is
+        dark current — the reverse-bias leakage current a photodiode carries with no light at
+        all, which competes directly with a weak real signal. Germanium's is roughly
+        two to three orders of magnitude higher than InGaAs at the same reverse bias and room
+        temperature${cite(1)}, so germanium detectors usually need cooling to be
+        useful for anything faint, while InGaAs does not. It remains a cheaper option where
+        that noise floor doesn't matter. Beyond these three, extended-range InGaAs and HgCdTe
+        push further into the mid-infrared at the cost of even more dark current and, for
+        HgCdTe, mandatory cooling — but silicon, InGaAs, and germanium between them cover the
+        overwhelming majority of laboratory optics.</p>
+        <h3>Frequency response</h3>
+        <p>A photodiode also cannot follow an arbitrarily fast amplitude modulation. Its
+        junction behaves as a capacitor <span class="w">C_j</span> discharging through a load
+        resistance <span class="w">R_L</span>, and that RC time constant — together with how
+        long a photo-generated carrier takes to drift across the depletion region — sets a
+        3 dB electrical bandwidth beyond which the output can no longer track the optical
+        signal:</p>`,
+      formulas2: [
+        { tex: 'f_{3\\text{dB}} \\approx \\frac{1}{2\\pi R_L C_j}', caption: 'A larger sensor area collects more light but adds junction capacitance Cⱼ, so higher sensitivity and higher speed pull in opposite directions — which is why detector datasheets fork into two families that rarely overlap.' },
+      ],
+      html3: `
+        <p>A large-area photodiode built for power metering — like the
+        <a href="../powermeter/">power meter</a> in this palette — trades bandwidth for active
+        area and sensitivity, and is typically limited to the kHz range or slower. A
+        telecom-grade InGaAs photodiode with a 250&nbsp;µm active area, by contrast, is built
+        for the opposite trade and can exceed 10&nbsp;GHz${cite(2)} — fast enough to demodulate
+        a digital data stream, but far too small and insensitive to usefully catch a divergent
+        free-space beam. Choosing a photodetector for a real setup means picking a point on
+        that speed-versus-area curve, not just a material.</p>`,
     },
     inOpticalSetup: {
       html: `
-        <p>The detector reports a <em>qualitative</em> relative signal — the sum of every
-        ray's intensity reaching its front face — plus the spectrum, polarization state,
-        and spot extent of whatever light arrives, all read directly off the traced rays.
-        This is genuinely useful for seeing <em>whether</em> light reaches a detector,
-        roughly how strong it is relative to other configurations, and what its spectral
-        or polarization content is.</p>`,
+        <p>The photodetector reports a <em>qualitative</em> relative signal — the sum of every
+        ray's power reaching its front face, in arbitrary units — plus the wavelength or
+        detected spectral band, polarization state, and spot extent of whatever light
+        arrives, all read directly off the traced rays. If the arriving light is pulsed, it
+        also reports the accumulated <a href="../pulsecompressor/">GDD</a>, optical path
+        delay, and arrival spread, the same as every other instrument in the Detectors
+        category. This is genuinely useful for seeing <em>whether</em> light reaches a given
+        point, roughly how strong it is relative to other configurations, and what its
+        spectral or polarization content is — regardless of what real sensor a lab bench
+        would need there.</p>`,
       formulas: [],
-      limitations: `<p>The reported signal is not calibrated to any real unit — there is
-        no watts-in, amps-out responsivity curve, no dark current, no saturation physics
-        beyond what's explicitly modeled on the PMT variant. Treat the number as relative,
-        not absolute.</p>`,
+      limitations: `<p>The reported signal is not calibrated to any real unit, and there is no
+        concept of sensor material at all: a photodetector in this app reads every wavelength
+        in its traced light with equal weight, whether that light is 405&nbsp;nm (well inside
+        silicon's range) or 1550&nbsp;nm (which silicon cannot detect at all and would need
+        InGaAs). There is no responsivity curve, no bandgap cutoff, and no way to configure or
+        even see which material is assumed. There is also no frequency response of any kind —
+        no bandwidth, no rise time, no 3 dB cutoff — so a beam modulated far beyond what any
+        real photodiode could follow reads at full strength exactly like a steady beam. Dark
+        current, noise-equivalent power, and saturation are likewise not modeled here; the
+        PMT variant is the only detector in this category with any qualitative gain/saturation
+        behavior at all. Treat every reading as relative and instantaneous, never as a
+        prediction of what a specific real sensor would output.</p>`,
     },
-    related: ['pmt', 'camera', 'eye'],
+    related: ['pmt', 'camera', 'powermeter', 'eye'],
+    citations: [
+      { label: 'Thorlabs — Photodiode Tutorial (responsivity vs. wavelength for Si, Ge, and InGaAs detectors)', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=285' },
+      { label: 'RP Photonics Encyclopedia — Photodiodes', url: 'https://www.rp-photonics.com/photodiodes.html' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Photodetectors', url: 'https://www.rp-photonics.com/photodetectors.html' },
+      { label: 'RP Photonics Encyclopedia — Responsivity', url: 'https://www.rp-photonics.com/responsivity.html' },
+    ],
+  },
+
+  {
+    type: 'pmt',
+    title: 'Photomultiplier (PMT)',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>A <a href="../detector/">photodiode</a> turns one absorbed photon into one
+        electron. That is a vanishingly small amount of charge, and once the signal is
+        weak enough, the amplifier reading it contributes more electrical noise than the
+        light contributes current — the measurement stops being about the light at all. A
+        <strong>photomultiplier tube</strong> solves this by amplifying the photoelectron
+        <em>before</em> any electronics touch it.</p>
+        <p>Light lands on a <strong>photocathode</strong>, a thin film in an evacuated glass
+        envelope, and ejects a photoelectron. A strong electric field accelerates it onto a
+        <strong>dynode</strong> — an electrode held at a few hundred volts more positive —
+        hard enough that the impact knocks loose several <em>secondary</em> electrons. Those
+        are accelerated onto the next dynode, and so on down a chain of typically 8 to 12
+        stages before the whole shower is collected at the anode. If each stage yields
+        <span class="w">δ</span> secondary electrons per incident one, the total gain over
+        <span class="w">n</span> stages compounds:</p>`,
+      formulas: [
+        { tex: 'G = \\delta^{\\,n}, \\qquad \\delta \\propto V_{\\text{stage}}^{\\,k}', caption: 'A modest per-stage yield compounds into an enormous total: δ ≈ 4 over 10 dynodes is a gain near 10⁶. Because δ depends on the accelerating voltage, gain is set by the supply voltage — and is steeply sensitive to it, which is why PMT gain is always plotted on a log axis against voltage.' },
+      ],
+      html2: `
+        <p>A single photoelectron therefore arrives at the anode as a pulse of ~10⁶
+        electrons — far above the noise of any reasonable amplifier. This is what makes a PMT
+        able to register <strong>individual photons</strong>, and it is the entire reason the
+        instrument exists.</p>
+
+        <h3>Gain is not sensitivity</h3>
+        <p>The most common misconception about PMTs is that turning up the gain makes the
+        instrument more sensitive. It does not. Gain multiplies everything arriving at the
+        first dynode — the signal and the tube's own noise alike — so the ratio between them
+        is fixed before any amplification happens.</p>
+        <p>That noise has a specific source. The photocathode is warm, so electrons
+        occasionally escape it by thermal energy alone, with no photon involved. Each one is
+        amplified into a full-size output pulse indistinguishable from a real detection. This
+        is <strong>dark current</strong>, and its rate is what a datasheet quotes as
+        <strong>dark counts</strong> per second. Cooling the tube reduces it — which is why
+        photon-counting instruments often run their PMTs cooled — but no amount of gain will,
+        because gain amplifies the dark electrons by exactly the same factor.</p>
+        <p>So the useful figure of merit is the ratio of signal to dark, and the only ways to
+        improve it are to collect more light or to lower the dark rate. Where the gain
+        genuinely matters is in getting the signal clear of the <em>downstream</em>
+        electronics' noise floor — which it does spectacularly well.</p>
+
+        <h3>What it costs</h3>
+        <p>A PMT is not simply a better photodiode. Its photocathode <strong>quantum
+        efficiency</strong> — the fraction of arriving photons that eject a photoelectron at
+        all — is typically only 20–40% at its peak, and falls off sharply outside the band the
+        cathode material was chosen for${cite(1)}. A silicon photodiode reaches 80–90%
+        over a much broader range. The PMT wins not by converting more photons, but by
+        amplifying the few it does convert before anything can bury them.</p>
+        <p>Photocathode material sets the accessible band much as semiconductor bandgap does
+        for a photodiode: bialkali cathodes peak in the blue and are effectively blind past
+        ~650&nbsp;nm, while extended-red and multialkali types reach into the near
+        infrared${cite(1)}. Beyond roughly 900&nbsp;nm there is no practical photocathode at
+        all, which is why near-infrared work returns to semiconductor detectors.</p>
+        <p>Two practical constraints matter on a real bench. Output is linear only up to a
+        maximum anode current; beyond it, space charge in the last dynode stages compresses
+        the response and a brighter input stops reading brighter. And a PMT exposed to room
+        light while powered can be <strong>permanently damaged</strong> — which is why they
+        live in light-tight housings, are interlocked to the room lights in some labs, and are
+        always powered down before anything is opened.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The PMT reads the same relative ray weight every detector in this palette does,
+        then applies an <strong>electron gain</strong> to it. Gain is set as a power of ten,
+        from ×1 to ×10⁷, matching how a real tube's gain-versus-voltage curve is specified.
+        This is the element to reach for when a signal is genuinely faint: specimen
+        fluorescence collected through an objective typically arrives carrying somewhere
+        around 10⁻⁴ to 10⁻³ of relative weight, which a plain photodetector reports as a
+        number too small to compare against anything. A gain of 10⁵ lifts exactly that
+        signal into a readable range.</p>
+
+        <h3>The dark floor, and why gain cannot beat it</h3>
+        <p>The <strong>equivalent dark input</strong> is the tube's own dark current
+        expressed as the light level that would produce the same output — referred to the
+        photocathode, so it sits alongside the signal and is amplified by the same gain. The
+        panel reports both the amplified dark floor and the <strong>signal / dark</strong>
+        ratio, and that ratio is deliberately <em>independent of gain</em>: sweep the gain
+        across every decade it offers and the ratio does not move at all. Lower the dark
+        floor, or collect more light, and it does. That is the single most useful thing this
+        model has to say.</p>
+        <p>The state line answers the questions in the order they matter. <strong>Saturated</strong>
+        comes first, because once the output clips at the configured maximum the number is no
+        longer trustworthy at all — a brighter input reads the same as a dimmer one.
+        Otherwise it reports whether the signal clears the dark floor:
+        <strong>below dark floor</strong> when the tube's own noise is larger than the signal,
+        <strong>marginal</strong> when it is less than three times larger, and
+        <strong>linear range</strong> when it is comfortably measurable.</p>`,
+      formulas: [
+        { tex: '\\text{output} = \\min(\\text{max}, \\; \\Sigma w \\cdot G), \\qquad \\frac{S}{D} = \\frac{\\Sigma w}{d}', caption: 'Amplified output clips at the configured maximum. The signal-to-dark ratio divides the summed ray weight by the equivalent dark input — G cancels, which is exactly the point.' },
+      ],
+      limitations: `<p>Gain here is a plain multiplier on relative ray weight, not a dynode
+        cascade: there is no supply voltage, no stage count, no δ, and no gain drift with
+        voltage or temperature. The dark floor is a fixed threshold you set, not a rate — the
+        tracer is deterministic, so nothing fluctuates, there are no dark <em>counts</em> to
+        integrate, and no shot noise on the signal itself. That means the reported ratio is a
+        clean comparison of two configured levels, not a predicted measurement SNR, and it
+        will never reproduce the √N behaviour that governs how long a real experiment must
+        integrate.</p>
+        <p>Nothing about the photocathode is modelled: no quantum efficiency, no spectral
+        response, and no blindness past the red cutoff — so a PMT here reads 900&nbsp;nm light
+        exactly as readily as 400&nbsp;nm, which no real bialkali tube would. Saturation is a
+        hard clip rather than the gradual space-charge compression of a real tube, there is no
+        afterpulsing, no dead time, no dynode fatigue, and no damage from overexposure.
+        Compare readings between configurations, never as an absolute count rate.</p>`,
+    },
+    related: ['detector', 'camera', 'powermeter', 'sample', 'objective'],
+    citations: [
+      { label: 'Hamamatsu — Photomultiplier Tubes: Basics and Applications (photocathode quantum efficiency and spectral response)', url: 'https://www.hamamatsu.com/content/dam/hamamatsu-photonics/sites/documents/99_SALES_LIBRARY/etd/PMT_handbook_v4E.pdf' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Photomultipliers', url: 'https://www.rp-photonics.com/photomultipliers.html' },
+      { label: 'RP Photonics Encyclopedia — Photon Counting', url: 'https://www.rp-photonics.com/photon_counting.html' },
+    ],
+  },
+
+  {
+    type: 'powermeter',
+    title: 'Power meter',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>A <a href="../detector/">photodetector</a> reports a photocurrent; a power meter
+        reports <strong>watts</strong>. The difference is calibration: a power meter's sensor
+        has a known, measured relationship between what it outputs and the optical power that
+        produced it, so the console can show an absolute number instead of an arbitrary one. Every
+        commercial power meter is really two parts — a sensor head and a console that knows how
+        to read it — and the sensor is where the real design tradeoff lives.</p>
+        <p>A <strong>photodiode sensor</strong> is the same physical device as a plain
+        photodetector, just factory-calibrated: its responsivity <span class="w">R(λ)</span>
+        is measured at each wavelength, so the console can recover power from photocurrent.
+        That calibration is the whole catch — <span class="w">R(λ)</span> is not flat, exactly as
+        on the <a href="../detector/">photodetector page</a>, so the meter has to be told which
+        wavelength it's reading. Set the wrong one and the number is wrong by the ratio of the
+        two responsivities, silently.</p>`,
+      formulas: [
+        { tex: 'P = \\frac{I_{\\text{pd}}}{R(\\lambda)}', caption: 'A photodiode sensor recovers power by dividing the measured photocurrent by the responsivity at the configured wavelength. The reading is only as correct as that wavelength setting.' },
+      ],
+      html2: `
+        <p>A <strong>thermal sensor</strong> — a thermopile, or a pyroelectric detector for
+        single pulses — sidesteps that problem entirely. Incident light is absorbed by a black
+        coating and converted to heat, and the sensor reads the resulting temperature rise (or,
+        for a pyroelectric, the heat pulse from one shot). Absorption into heat is, to good
+        approximation, the same process at every wavelength, so a thermal sensor's calibration
+        holds across a broad spectral range with no wavelength setting to get wrong${cite(1)}.
+        The tradeoff is speed: a thermopile takes seconds to reach thermal equilibrium, against
+        microseconds for a photodiode, and needs more power to produce a measurable temperature
+        rise at all — which is why thermal sensors dominate at higher powers and photodiode
+        sensors dominate at low ones.</p>
+        <p>Either sensor has a hard <strong>damage threshold</strong>. A photodiode sensor can
+        saturate or be burned out by too much continuous power — or, just as easily, by the
+        instantaneous peak power of a pulsed beam whose <em>average</em> power looks perfectly
+        safe. A thermal sensor's coating can be scorched by a tightly focused beam even within
+        its rated average-power range. Every real power meter publishes a maximum power (and
+        often a maximum power <em>density</em>) that the reading itself gives no warning of
+        approaching.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The power meter measures the same relative ray weight every detector in this
+        palette does. On its own — selected in the canvas, read from its inspector panel — that
+        relative number is all it shows, identical to a plain photodetector. The Watts reading
+        appears once it drives a <a href="../display/">detector screen</a> ("Connect to a
+        detector screen" in its inspector does this in one click).</p>
+        <p>That figure is built per source. Every source launches rays whose weights sum to
+        one, and each interaction along the way scales that weight by what it actually
+        transmits — a beamsplitter's ratio, a filter's transmission, an aperture that clips
+        part of the beam, a chopper's duty cycle, a nonlinear crystal's conversion efficiency.
+        The weight that survives to the sensor face is therefore the whole source-to-detector
+        efficiency chain in one number, and multiplying it by that source's
+        <strong>Average power (W)</strong> gives the watts it delivered here. Several sources
+        landing on the same meter simply add:</p>`,
+      formulas: [
+        { tex: 'P_{\\text{det}} = \\sum_{s\\,\\to\\,\\text{det}} \\eta_{s}\\, P_{s}, \\qquad \\eta_{s} = \\!\\!\\sum_{\\text{rays from } s} \\!\\! w_{\\text{ray}}', caption: 'Only sources whose light actually arrives contribute. η is the surviving fraction of that source\'s own emitted power, so a 100 mW laser behind two filters passing 50% and 25% reads 12.5 mW, and a second laser on the same meter adds its own term.' },
+      ],
+      html2: `
+        <p>Attribution follows the light through wavelength changes too. When a specimen
+        fluoresces, the emission is new light at a new colour, but its power is still a
+        fraction of the laser that pumped it — so it is charged to that laser, not to the
+        specimen. In the <a href="../pmt/">PMT</a>'s fluorescence example the meter would read
+        the pump power times the roughly 2&times;10⁻³ that survives excitation focusing,
+        conversion efficiency, collection solid angle, and the emission filter.</p>
+        <p>If some of the light arriving carries no power rating at all — the point source has
+        no Average power field — the screen reports the rated contribution and marks the
+        reading <em>+ unrated source</em>, because that number is then a floor rather than the
+        total. When nothing arriving is rated, it falls back to showing relative weight.</p>`,
+      limitations: `<p>The conversion is wavelength-flat: one watt of 400&nbsp;nm and one watt
+        of 1550&nbsp;nm read identically, so the element behaves like an idealized broadband
+        thermal sensor no matter which real sensor type you have in mind, and there is no way
+        to select one or to get the wavelength-setting error that a real photodiode meter
+        punishes you for. Power is average power only — a pulsed and a CW source of the same
+        average read the same, with no peak-power figure and no notion of a pulsed beam
+        damaging a sensor a CW beam of equal average power would not.</p>
+        <p>There is no damage threshold, no saturation, no noise floor, and no response time,
+        so nothing distinguishes a thermopile's seconds-long settling from a photodiode's
+        microseconds. The watts are exact arithmetic on the traced efficiencies rather than a
+        measurement: they inherit every idealization upstream of them — hard-edged filter
+        passbands, flat per-surface transmission instead of Fresnel losses, no scatter and no
+        absorption that the tracer was not told about — so treat the number as what this
+        idealized bench delivers, not as what a real one would.</p>`,
+    },
+    related: ['detector', 'pmt', 'display', 'cwlaser'],
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Thermal Detectors', url: 'https://www.rp-photonics.com/thermal_detectors.html' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Optical Power Meters', url: 'https://www.rp-photonics.com/optical_power_meters.html' },
+      { label: 'RP Photonics Encyclopedia — Photodiodes', url: 'https://www.rp-photonics.com/photodiodes.html' },
+    ],
+  },
+
+  {
+    type: 'wavefrontdetector',
+    title: 'Wavefront detector',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>Every other detector on this bench answers <em>how much</em> light arrived, and
+        maybe what colour it was. A wavefront sensor answers a different question entirely:
+        <strong>what shape</strong> is the light. A beam's wavefront is the surface joining
+        points of equal phase, and it is always perpendicular to the local direction of
+        travel. A perfectly collimated beam has flat wavefronts; a beam converging to a focus
+        has spherical ones centred on that focus. Real optics never produce either exactly —
+        aberrations, thermal lensing, atmospheric turbulence and mounting stress all leave the
+        wavefront misshapen, and that misshape is what limits how tightly a beam can be
+        focused.</p>
+        <p>You cannot photograph a wavefront. Detectors respond to intensity, and phase
+        information is lost the instant light is absorbed. So every wavefront sensor works
+        indirectly, by converting phase structure into something an intensity detector
+        <em>can</em> see. The <strong>Shack–Hartmann sensor</strong> does it by measuring
+        direction.</p>
+
+        <h3>From Hartmann's mask to Shack's lenslets</h3>
+        <p>The lineage starts with a mask. In 1904 Johannes Hartmann tested telescope optics
+        by covering the aperture with a screen of holes and photographing where each pencil of
+        light landed${cite(1)} — displaced spots meant the rays were not going where a perfect
+        optic would send them. The method worked but wasted almost all the light and gave
+        fuzzy shadow spots that were hard to locate precisely.</p>
+        <p>In the late 1960s Roland Shack and Ben Platt made the change that turned it into an
+        instrument: they replaced each hole with a small <strong>lenslet</strong>${cite(1)}.
+        A hole casts a shadow; a lenslet <em>focuses</em>. The array now uses essentially all
+        the incident light, and each sub-aperture produces a tight, bright spot whose centroid
+        can be located to a small fraction of a pixel. That single substitution is what makes
+        the modern sensor both efficient and precise.</p>
+
+        <h3>What the spots actually measure</h3>
+        <p>Each lenslet samples one small patch of the incoming wavefront. Over a patch that
+        small the wavefront is essentially a tilted plane, and a tilted plane wave focuses to a
+        spot displaced from the lenslet's axis in proportion to that tilt. With lenslet focal
+        length <span class="w">f</span>, a local wavefront slope <span class="w">θ</span>
+        moves the spot by</p>`,
+      formulas: [
+        { tex: '\\Delta x = f\\,\\theta = f\\,\\frac{\\partial W}{\\partial x}', caption: 'Spot displacement measures the local gradient of the wavefront W, not the wavefront itself. Every lenslet returns one slope sample; the surface has to be reconstructed from the whole map of them.' },
+      ],
+      html2: `
+        <p>So a Shack–Hartmann sensor is fundamentally a <strong>gradient</strong> sensor. It
+        returns an array of local slopes, and the wavefront is recovered afterwards by
+        integrating them — either zonally, stitching patch to patch, or modally, by
+        least-squares fitting an orthogonal set such as the <strong>Zernike
+        polynomials</strong>, whose low-order terms are the familiar named aberrations: tilt,
+        defocus, astigmatism, coma, spherical. Reporting a beam as "0.2 waves RMS with 0.15
+        waves of coma" means exactly this fit was performed on the slope map.</p>
+
+        <h3>The tradeoff every design lives with</h3>
+        <p>Two numbers fight each other. <strong>Sensitivity</strong> improves with lenslet
+        focal length, since a longer <span class="w">f</span> converts the same small slope
+        into a larger, more measurable displacement. <strong>Dynamic range</strong> works the
+        other way: a spot must stay inside its own sub-aperture cell to remain attributable to
+        its lenslet, so the largest measurable slope is roughly the lenslet pitch
+        <span class="w">p</span> over twice the focal length${cite(2)}.</p>`,
+      formulas2: [
+        { tex: '\\theta_{\\max} \\approx \\frac{p}{2f}, \\qquad \\delta\\theta_{\\min} \\approx \\frac{\\delta x_{\\text{centroid}}}{f}', caption: 'Longer lenslets measure smaller slopes but tolerate a narrower range of them. Finer spatial sampling means smaller p, which shortens f as well — so resolution, sensitivity and dynamic range cannot all be maximised at once.' },
+      ],
+      html3: `
+        <p>Spatial resolution is a third constraint: the wavefront is only sampled once per
+        lenslet, so structure finer than the pitch is simply averaged away. Conventional
+        refractive arrays sit around a hundred lenslets per square millimetre, which is why
+        classical Shack–Hartmann sensors suit smooth, slowly varying wavefronts and not sharply
+        structured ones. Recent work replaces the refractive lenslets with
+        <a href="../metasurface/">metasurfaces</a>, which set phase by subwavelength structure
+        rather than by curvature and so decouple the packing density from the focal length: a
+        2024 demonstration reached a sampling density of 5963&nbsp;lenslets/mm² with an 8°
+        acceptance angle, and used it for single-shot phase imaging of biological
+        tissue${cite(3)}.</p>
+        <p>One limit is structural rather than technical. Because the instrument measures a
+        gradient, a genuine <strong>discontinuity</strong> in the wavefront is invisible to
+        it${cite(1)} — a step or a branch point has no finite slope to sample, so no amount of
+        sensitivity or sampling density recovers it.</p>
+
+        <h3>Where they are used</h3>
+        <p>In <strong>adaptive optics</strong>, a wavefront sensor and a
+        <a href="../dm/">deformable mirror</a> form a closed loop: the sensor measures the
+        distortion, the mirror applies its negative, and an astronomical telescope recovers
+        near-diffraction-limited imaging through atmospheric turbulence. The same loop
+        sharpens deep imaging in multiphoton microscopy, where the specimen itself is the
+        aberrating medium. In <strong>ophthalmology</strong>, aberrometry of the eye's own
+        wavefront is what makes wavefront-guided LASIK and PRK possible${cite(1)}. And in the
+        laboratory, wavefront sensors characterise laser beam quality and
+        <span class="w">M²</span>, verify collimation, test optical surfaces in transmission or
+        double-pass reflection, and align systems in real time${cite(4)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>OpticalSetup traces rays, and a ray is by definition perpendicular to the
+        wavefront — so ray direction <em>is</em> local wavefront slope, already available
+        without any lenslets. The wavefront detector uses that directly: at its sensor face it
+        takes every arriving ray's height <span class="w">h</span> across the face and its
+        angle <span class="w">θ</span> to the face normal, and least-squares fits a straight
+        line through the resulting <span class="w">θ(h)</span>.</p>
+        <p>That fit is the measurement. Its <em>intercept</em> is the mean tilt of the whole
+        bundle and is discarded, which is why steering the beam in at an angle does not change
+        the reading — a tilted flat wavefront is still flat. Its <em>gradient</em>
+        <span class="w">dθ/dh</span> is the wavefront curvature, and its sign says which way:
+        negative for a converging beam, positive for a diverging one, and a magnitude below
+        0.05° across the beam reports as collimated.</p>`,
+      formulas: [
+        { tex: '\\frac{d\\theta}{dh} = \\frac{1}{R}, \\qquad \\Theta_{\\text{full}} = \\left|\\frac{d\\theta}{dh}\\right| \\cdot D', caption: 'The fitted gradient is the reciprocal of the wavefront radius of curvature R, and multiplying it by the illuminated diameter D gives the full convergence or divergence cone angle — the number the panel reports.' },
+      ],
+      html2: `
+        <p>Both quantities come out exact rather than approximate. A 20&nbsp;mm beam through
+        an <span class="w">f</span>&nbsp;=&nbsp;100&nbsp;mm lens gives a measured full angle of
+        11.43°, against 11.42° from the geometry; and the fitted
+        <span class="w">1/R</span> tracks the signed distance to focus to the tenth of a
+        millimetre — −20.0&nbsp;mm when the sensor face sits 80&nbsp;mm past that lens, +5.0&nbsp;mm
+        when it sits 5&nbsp;mm beyond the focus. The reported cone angle is constant on both
+        sides of the focus, as it should be: the beam narrows and re-expands, but the cone it
+        belongs to does not change.</p>`,
+      limitations: `<p>A straight line through <span class="w">θ(h)</span> has exactly one
+        shape term in it, and that term is <strong>defocus</strong>. Tilt is fitted and thrown
+        away; everything above defocus — astigmatism, coma, spherical aberration, and every
+        higher Zernike — has nowhere to go. Send a deliberately aberrated beam in (a fast
+        singlet with visible spherical aberration, say) and the fan of ray angles is still
+        collapsed to one average slope and reported as a single clean convergence angle. The
+        aberration is precisely the departure from that straight line, and it is exactly what
+        the fit discards. This instrument tells you whether a beam is converging, diverging or
+        collimated, and how hard; it does not tell you whether it is any good.</p>
+        <p>Some of that is structural rather than unimplemented. The tracer is a 2D meridional
+        section with one transverse axis, so astigmatism — different curvature in
+        <span class="w">x</span> and <span class="w">y</span> — is not representable in the
+        first place, and neither is any azimuthal aberration. There is also no sensor:
+        no lenslet array, no spots, no centroiding, no pixel noise, and therefore none of the
+        sensitivity-versus-dynamic-range tradeoff that dominates real instrument design. Every
+        arriving ray is used at full precision, so there is no maximum measurable slope and no
+        minimum detectable one.</p>
+        <p>The reading is geometric throughout: an angle in degrees, never an optical path
+        difference in waves, and with no wavelength dependence at all. There is no RMS or
+        peak-to-valley wavefront error, no Zernike decomposition, and no Strehl ratio. Finally,
+        the fit needs at least two rays at different heights — a single ray, or a source in
+        line mode, has no gradient to measure and reports collimated by default rather than
+        declining to answer.</p>`,
+    },
+    related: ['dm', 'detector', 'camera', 'lens', 'metasurface'],
+    citations: [
+      { label: 'Shack–Hartmann wavefront sensor — Wikipedia (Hartmann’s 1904 mask, Shack and Platt’s lenslet substitution, insensitivity to wavefront discontinuities, ophthalmic and astronomical use)', url: 'https://en.wikipedia.org/wiki/Shack%E2%80%93Hartmann_wavefront_sensor' },
+      { label: 'RP Photonics Encyclopedia — Shack–Hartmann Wavefront Sensors (lenslet geometry, sensitivity and dynamic-range limits)', url: 'https://www.rp-photonics.com/shack_hartmann_wavefront_sensors.html' },
+      { label: 'Go et al., “Meta Shack–Hartmann wavefront sensor with large sampling density and large angular field of view,” Light: Science & Applications 13, 187 (2024)', url: 'https://doi.org/10.1038/s41377-024-01528-9' },
+      { label: 'Axiom Optics — Wavefront sensing applications (optical testing, beam diagnostics and M², adaptive optics, real-time alignment)', url: 'https://www.axiomoptics.com/application/wavefront-sensing-aaplications/' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Adaptive Optics', url: 'https://www.rp-photonics.com/adaptive_optics.html' },
+      { label: 'RP Photonics Encyclopedia — Wavefronts', url: 'https://www.rp-photonics.com/wavefronts.html' },
     ],
   },
 
