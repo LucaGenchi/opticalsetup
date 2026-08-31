@@ -85,6 +85,25 @@ function recordObjectivePupil(elementId, radius, pupilRadius) {
   else seen.beamRadius = Math.max(seen.beamRadius, radius);
 }
 
+// phase-object element id -> the span of its aperture the light actually
+// crossed, as a fraction 0..1. A phase object only writes the part of its
+// profile the beam covers, so this is what decides how many fringes reach the
+// camera -- and a wide plate in a narrow beam writes almost none of them.
+let phasePlateSpans = new Map();
+
+function recordPhasePlateSpan(elementId, u) {
+  if (!elementId || !Number.isFinite(u)) return;
+  const seen = phasePlateSpans.get(elementId);
+  if (!seen) phasePlateSpans.set(elementId, { lo: u, hi: u });
+  else { seen.lo = Math.min(seen.lo, u); seen.hi = Math.max(seen.hi, u); }
+}
+
+export function phasePlateIllumination(elementId) {
+  const seen = phasePlateSpans.get(elementId);
+  if (!seen) return null;
+  return { span: Math.max(0, Math.min(1, seen.hi - seen.lo)) };
+}
+
 // pulse-compressor element id -> the GDD the beam arrives carrying, and what
 // leaves. A compressor whose setting is small next to what a scene already
 // accumulated looks inert; showing both numbers is what makes it obvious that
@@ -2566,6 +2585,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // where this particular ray crossed the aperture -- which is what turns
         // a uniform port into a fringe pattern once the arms recombine.
         const peak = Math.min(20000, Math.max(0, Number(hit.surface.data.opdUm) || 0)) * 1e-3;
+        if (!coherent?.dryRun) recordPhasePlateSpan(hit.surface.el?.id, hit.u);
         const extraOpl = peak * phasePlateOpdFraction(hit.surface.data.profile, hit.u);
         if (extraOpl > 0) {
           r.segmentIntensities.push(r.intensity);
@@ -2944,6 +2964,7 @@ export function traceScene(elements, beams = []) {
   detectorMisses = new Map();
   incompleteCoherenceIds = new Map();
   objectivePupilHits = new Map();
+  phasePlateSpans = new Map();
   compressorGdd = new Map();
   metalensHits = new Map();
   gateTransmissionCache = new Map();
@@ -3080,6 +3101,7 @@ export function traceScene(elements, beams = []) {
       detectorMisses = new Map();
       incompleteCoherenceIds = new Map();
       objectivePupilHits = new Map();
+      phasePlateSpans = new Map();
       compressorGdd = new Map();
       metalensHits = new Map();
       gateTransmissionCache = new Map();

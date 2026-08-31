@@ -10,7 +10,7 @@
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
-import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, probeAt } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
 import {
   fwhmToSigma, linewidthForCoherenceLengthNm, spectrumSamples, transformLimitedBandwidthNm,
 } from './spectrum.js';
@@ -518,6 +518,21 @@ export function cameraReadingState(reading) {
 // Extra optical path a phase object adds at a given height across its
 // aperture, as a fraction of the configured peak. `u` is the normalized
 // crossing point the tracer already computes for every surface hit.
+// How far the recombined port total swings as the reference arm is moved a
+// half wave, for a beam covering `fringes` of this profile. Sampled rather
+// than solved: the profiles are piecewise and the integral is not worth a
+// closed form for a hint string.
+function portSwing(profile, fringes) {
+  const SAMPLES = 128;
+  let bright = 0, dark = 0;
+  for (let i = 0; i < SAMPLES; i++) {
+    const phase = 2 * Math.PI * fringes * phasePlateOpdFraction(profile, (i + 0.5) / SAMPLES);
+    bright += Math.cos(phase / 2) ** 2;
+    dark += Math.cos((phase + Math.PI) / 2) ** 2;
+  }
+  return Math.abs(bright - dark) / SAMPLES;
+}
+
 export function phasePlateOpdFraction(profile, u) {
   const position = Math.min(1, Math.max(0, Number(u)));
   const centred = 2 * position - 1;          // -1 at one edge, +1 at the other
@@ -3166,22 +3181,46 @@ export const registry = {
     aliases: ['phase plate', 'phase mask', 'phase contrast', 'wedge', 'phase step', 'optical path difference'],
     params: [
       {
-        key: 'profile', label: 'Path profile', type: 'select', def: 'ramp',
+        key: 'profile', label: 'Path profile', type: 'select', def: 'bar',
         options: [
+          ['bar', 'Central bar — a phase-contrast test object'],
           ['ramp', 'Wedge — path rises across the aperture'],
           ['step', 'Step — half the aperture retarded'],
-          ['bar', 'Central bar — a phase-contrast test object'],
           ['bump', 'Curved — quadratic, thickest at the centre'],
         ],
       },
-      { key: 'opdUm', label: 'Peak path difference (µm)', type: 'number', min: 0, max: 20, step: 0.05, def: 1.5 },
-      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 12 },
+      // Half a wave at 532 nm. That is the phase-contrast condition -- the
+      // setting that turns the most phase into the most contrast -- and it
+      // keeps the default under one fringe, which is what makes the effect
+      // legible as a whole-port swing rather than a wash.
+      { key: 'opdUm', label: 'Peak path difference (µm)', type: 'number', min: 0, max: 20, step: 0.01, def: 0.27 },
+      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 2, max: 100, step: 1, def: 6 },
       {
-        key: 'phaseFringes', label: 'Fringes across the aperture', type: 'readout',
-        readout: params => {
+        key: 'phaseFringes', label: 'Fringes across the beam', type: 'readout',
+        readout: (params, el) => {
           const opd = Math.max(0, Number(params.opdUm) || 0);
           if (opd <= 0) return 'None — no path difference set';
-          return `${(opd * 1000 / 532).toFixed(2)} at 532 nm`;
+          const acrossAperture = opd * 1000 / 532;
+          // Only the illuminated part of the profile is written onto the
+          // beam, so a wide plate in a narrow beam makes far fewer fringes
+          // than its own peak path difference suggests.
+          const lit = el?.id ? phasePlateIllumination(el.id) : null;
+          const fringes = acrossAperture * (lit ? lit.span : 1);
+          const count = `${fringes.toFixed(2)} at 532 nm`;
+          if (!lit) return `${count} if the beam fills the aperture`;
+          if (fringes < 0.02) return `${count} — too little path to see`;
+          // How much the recombined port total can actually move is a
+          // different question from how many fringes there are, and it is the
+          // one a user watching a single number is really asking. A profile
+          // that spends equal area bright and dark -- a wedge, a half-aperture
+          // step -- averages back to half the light however the reference arm
+          // is set, so its total never budges no matter how strong it is.
+          // Saying that is the difference between a subtle element and an
+          // element that looks broken.
+          if (portSwing(params.profile, fringes) < 0.05) {
+            return `${count} — total stays put, read the profile`;
+          }
+          return count;
         },
       },
     ],
@@ -4118,7 +4157,7 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (type === 'metalens') {
     note = 'Focal length follows f(λ) = f₀λ₀/λ. Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
   } else if (type === 'phaseplate') {
-    note = 'The profile spans the clear aperture, so size the aperture to the beam: a narrow beam through a wide wedge samples almost none of the ramp and just picks up a near-uniform delay. On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes.';
+    note = 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. Keep that near half a fringe and the port total swings; push it past one and the fringes average out, leaving the camera profile as the only readout.';
   } else if (type === 'pmt') {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'eom' && !params.modulate) {

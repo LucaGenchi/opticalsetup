@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, phasePlateOpdFraction } from '../sketch/js/elements.js';
+import { createElement, phasePlateOpdFraction, registry } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
@@ -197,4 +197,66 @@ test('a phase object keeps the arm coherent rather than falling back', () => {
   assert.match(bright.interference.reason, /grouped at an upstream recombination surface/);
   assert.deepEqual(bright.interference.phaseIssues, [],
     'no element in the path may report an unsupported carrier phase');
+});
+
+
+// The defaults are the whole first impression of this element: dropped into a
+// scene untouched, it has to visibly do something. A wedge of several waves is
+// physically fine and looks completely broken, because the bright and dark
+// fringes average back out to half the light whatever the reference arm does.
+test('a phase object straight from the palette moves the reading it is watched by', () => {
+  const scene = parseSketch(MZ);
+  const beamWidth = scene.elements.find(el => el.type === 'cwlaser').params.beamWidth;
+  const plate = createElement('phaseplate', 520, 200);
+  assert.ok(plate.params.aperture <= beamWidth,
+    `default aperture ${plate.params.aperture} mm must not exceed the ${beamWidth} mm default beam`);
+  const fringes = plate.params.opdUm * 1000 / 532;
+  assert.ok(fringes > 0.25 && fringes <= 1,
+    `defaults write ${fringes.toFixed(2)} fringes across the beam; past one the total washes out`);
+
+  scene.elements.push(plate);
+  const cameras = scene.elements.filter(el => el.type === 'camera');
+  const delay = scene.elements.find(el => el.type === 'delayline');
+  const readings = [0, 532e-6 / 2].map(delayMm => {
+    delay.params.delayMm = delayMm;
+    traceAll(scene.elements);
+    return detectorReading(cameras[0].id).signal;
+  });
+  // Half a wave of reference delay has to visibly move the port. A third of
+  // full scale is the most the default bar can give -- it covers a third of
+  // the beam -- and it is unmistakable on the readout.
+  assert.ok(Math.abs(readings[0] - readings[1]) > 0.25,
+    `defaults barely respond to the reference arm: ${readings.map(v => v.toFixed(4)).join(' -> ')}`);
+});
+
+test('the readout says so when the fringes are too fine to move the total', () => {
+  const spec = registry.phaseplate.params.find(p => p.key === 'phaseFringes');
+  const el = createElement('phaseplate', 0, 0);
+  assert.match(spec.readout({ ...el.params, opdUm: 0 }, el), /None/);
+  // Untraced, it can only report what a filled aperture would give.
+  assert.match(spec.readout({ ...el.params, opdUm: 5 }, el), /if the beam fills the aperture/);
+});
+
+test('the readout warns about the profiles whose total genuinely cannot move', () => {
+  const spec = registry.phaseplate.params.find(p => p.key === 'phaseFringes');
+  const scene = parseSketch(MZ);
+  const plate = createElement('phaseplate', 520, 200);
+  scene.elements.push(plate);
+  const say = params => {
+    Object.assign(plate.params, params);
+    traceAll(scene.elements);
+    return spec.readout(plate.params, plate);
+  };
+  // A wedge and a half-aperture step spend equal area bright and dark, so
+  // their port total sits at half the light whatever the reference arm does.
+  assert.match(say({ profile: 'ramp', opdUm: 0.27 }), /total stays put/);
+  assert.match(say({ profile: 'step', opdUm: 0.27 }), /total stays put/);
+  // The default asymmetric bar does move it, and says nothing alarming.
+  assert.doesNotMatch(say({ profile: 'bar', opdUm: 0.27 }), /stays put/);
+  // A wedge steep enough to write many fringes averages out just the same.
+  assert.match(say({ profile: 'ramp', opdUm: 8 }), /total stays put/);
+  // A bar is a single phase step, not a spatial fringe pattern, so a whole
+  // number of waves wraps back to no step at all rather than washing out --
+  // the plate becomes invisible again and the port swings fully.
+  assert.doesNotMatch(say({ profile: 'bar', opdUm: 0.532 }), /stays put/);
 });
