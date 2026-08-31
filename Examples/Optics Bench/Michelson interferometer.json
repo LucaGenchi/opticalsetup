@@ -94,7 +94,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "paths recombine here; phase and fringes are outside this tracer",
+    "text": "the return paths recombine at this output",
     "fontSize": 10,
     "fill": "#555555"
    }

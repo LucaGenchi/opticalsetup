@@ -11,7 +11,7 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "text": "Mach–Zehnder interferometer — two separate paths recombine at a second beamsplitter",
+    "text": "Mach–Zehnder — camera-integrated same-source interference (ΔL swaps the outputs)",
     "fontSize": 14,
     "fill": "#333"
    }
@@ -26,7 +26,7 @@
    "showLabel": true,
    "params": {
     "wavelength": 532,
-    "beamMode": "line",
+    "beamMode": "beam",
     "beamWidth": 6,
     "pol": 0,
     "autoColor": true,
@@ -49,18 +49,15 @@
   },
   {
    "id": "eo7a4heh",
-   "type": "box",
+   "type": "delayline",
    "x": 460,
    "y": 200,
    "rot": 0,
-   "label": "",
-   "showLabel": false,
+   "label": "ΔL arm",
+   "showLabel": true,
    "params": {
-    "text": "Sample",
-    "w": 60,
-    "h": 30,
-    "behavior": "pass",
-    "fill": "#dfe9ff"
+    "delayMm": 0,
+    "aperture": 24
    }
   },
   {
@@ -105,26 +102,60 @@
   },
   {
    "id": "etn24g3r",
-   "type": "detector",
+   "type": "camera",
    "x": 780,
    "y": 400,
    "rot": 0,
-   "label": "output 1",
+   "label": "output camera 1",
    "showLabel": true,
    "params": {
-    "aperture": 26
+    "ch": 30,
+    "pixels": 64,
+    "interference": true
    }
   },
   {
    "id": "eq4a46pm",
-   "type": "detector",
+   "type": "camera",
    "x": 600,
    "y": 560,
    "rot": 90,
-   "label": "output 2",
+   "label": "output camera 2",
    "showLabel": true,
    "params": {
-    "aperture": 26
+    "ch": 30,
+    "pixels": 64,
+    "interference": true
+   }
+  },
+  {
+   "id": "ecohdisp1",
+   "type": "display",
+   "x": 850,
+   "y": 310,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "etn24g3r",
+    "displayScale": 0.45,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "ecohdisp2",
+   "type": "display",
+   "x": 720,
+   "y": 560,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "eq4a46pm",
+    "displayScale": 0.45,
+    "screenOn": true,
+    "displayView": "main"
    }
   }
  ],

@@ -17,7 +17,7 @@ export const DETECTOR_TYPES = [
 ];
 
 const DESCRIPTIONS = {
-  camera: 'Spatially resolves beam intensity, beam diameter, a qualitative 2D intensity map, and an object image formed on the sensor.',
+  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   detector: 'Measures the relative intensity incident on its active surface.',
   pmt: 'Amplifies a faint signal \u2014 fluorescence, microscopy, single-point detection \u2014 into a readable one, and reports whether it clears the tube\u2019s own dark floor.',
   powermeter: 'Reports absolute optical power by carrying each source\u2019s configured watts through everything that attenuated it on the way here.',
@@ -80,13 +80,8 @@ function instrumentDefinition({ label, code, readoutKind, paletteOrder, width, a
 
 Object.assign(registry.camera, {
   paletteOrder: 2, sensorFaceX: -22, description: DESCRIPTIONS.camera,
-  aliases: ['beam camera', 'beam profiler', 'image sensor', '2d intensity map', 'beam diameter', 'object image'],
+  aliases: ['beam camera', 'beam profiler', 'image sensor', 'intensity profile', 'beam diameter', 'object image'],
 });
-registry.camera.params = [
-  { key: 'ch', label: 'Sensor height (mm)', type: 'number', min: 20, max: 150, step: 2, def: 30 },
-  { key: 'pixels', label: 'Horizontal samples', type: 'number', min: 8, max: 64, step: 1, def: 24 },
-  { key: 'rows', label: '2D display rows', type: 'number', min: 6, max: 24, step: 1, def: 12 },
-];
 Object.assign(registry.detector, {
   paletteOrder: 1, sensorFaceX: -19, description: DESCRIPTIONS.detector,
   aliases: ['photodiode', 'intensity detector', 'light intensity'],
@@ -633,6 +628,9 @@ registry.display.svg = function detectorAwareDisplaySVG(display, elements = []) 
   if (display.params.screenOn === false) return base;
   const sensor = resolveDisplaySensor(display, elements);
   if (!sensor || !DETECTOR_TYPES.includes(sensor.type)) return base;
+  // The camera's canonical renderer owns its measured 1D profile. Appending
+  // the legacy enhanced overlay would fabricate a second spatial dimension.
+  if (sensor.type === 'camera') return base;
   const reading = enhancedReading(sensor, elements);
   if (!reading) return base;
   const scale = displayRenderScale(display.params.displayScale);

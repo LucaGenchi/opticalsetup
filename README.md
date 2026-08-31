@@ -75,8 +75,10 @@ figures as SVG or PNG.
   display can be linked to any of them and mirrors the live output directly on the
   canvas. Its information density adapts to its drawn size, while power, sensor-input,
   and view controls live on the instrument itself. PMTs include qualitative
-  gain/saturation; cameras provide a 1D profile whose bin colors show the qualitative
-  wavelength mixture at each position. Scalar readouts use arbitrary relative
+  gain/saturation; cameras conservatively integrate continuous traced ray tubes into
+  finite 1D sensor pixels, and can resolve supported same-source interference without
+  changing the power when the sensor bin count changes. Profile colors show the
+  qualitative wavelength mixture at each position. Scalar readouts use arbitrary relative
   ray-weight units rather than implying a calibrated percentage.
 - **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets
   and multi-element surface tables with aperture stops and emergent axial colour,
@@ -115,10 +117,22 @@ singlets and lens groups use a 2D meridional section with spherical or flat face
 lens-group readouts follow the same aperture-aware realized prescription as the trace,
 including the tracer-safe 0.06 mm air gap used at nominally cemented interfaces. They
 do not model skew rays, aspheres, coatings, cement index, or calibrated off-axis
-aberrations. The app does not model coherent carrier phase, interference,
-diffraction-limited propagation, higher-order pulse dispersion, arbitrary spectral phase,
-input chirp beyond its configured state, or laboratory-specific calibration. The pulse
+aberrations. Outside the bounded coherent cases below, the app does not model carrier
+phase or interference; it also does not model diffraction-limited propagation,
+higher-order pulse dispersion, arbitrary spectral phase, input chirp beyond its configured
+state, or laboratory-specific calibration. The pulse
 compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
+
+Its bounded coherent model applies only to sized monochromatic CW sources and
+explicitly supported ideal surfaces. It carries optical path plus the unitary phase of
+ideal non-polarizing beamsplitters and fully reflective flat mirrors, groups compatible
+fields at a shared recombination surface, and propagates the resulting port intensity
+downstream before drawing or measuring it. Camera pixels additionally integrate any
+remaining same-source cross terms over their finite aperture, with a limit of eight
+overlapping camera-local branches per source and wavelength. Independent sources add
+as intensities. An incomplete trace or a route through an optic whose carrier phase is
+not represented falls back to conservative deposited intensity rather than inventing a
+phase.
 
 The metalens is a zero-thickness paraxial phase-gradient proxy rather than an
 electromagnetic metasurface solver. In chromatic mode its focal length follows the
