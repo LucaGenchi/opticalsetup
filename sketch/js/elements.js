@@ -11,7 +11,9 @@ import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengt
 import { uid } from './util.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, probeAt } from './raytrace.js';
-import { fwhmToSigma, spectrumSamples, transformLimitedBandwidthNm } from './spectrum.js';
+import {
+  fwhmToSigma, linewidthForCoherenceLengthNm, spectrumSamples, transformLimitedBandwidthNm,
+} from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
   pointInBoundary, sampleBoundary,
@@ -513,6 +515,18 @@ export function cameraReadingState(reading) {
 // and fill down to the baseline. Linear interpolation is deliberate here:
 // spline smoothing can overshoot between dark and bright interference pixels
 // and invent extrema the sensor never measured.
+// Extra optical path a phase object adds at a given height across its
+// aperture, as a fraction of the configured peak. `u` is the normalized
+// crossing point the tracer already computes for every surface hit.
+export function phasePlateOpdFraction(profile, u) {
+  const position = Math.min(1, Math.max(0, Number(u)));
+  const centred = 2 * position - 1;          // -1 at one edge, +1 at the other
+  if (profile === 'step') return position < 0.5 ? 0 : 1;
+  if (profile === 'bar') return Math.abs(centred) < 1 / 3 ? 1 : 0;
+  if (profile === 'bump') return 1 - centred * centred;
+  return position;                            // 'ramp'
+}
+
 export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height = 15, scale = null } = {}) {
   if (!Array.isArray(rd?.profile) || !rd.profile.length) return '';
   const values = rd.profile.map(value => Number.isFinite(value) ? Math.max(0, value) : 0);
@@ -1664,6 +1678,24 @@ export const registry = {
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
       ...beamShapeParams(3),
       POL_PARAM,
+      // Temporal coherence, as a length rather than a linewidth, because the
+      // length is what an interferometer actually shows: two arms only make
+      // fringes while their path difference stays inside it. 0 keeps the
+      // idealized source that interferes at any delay.
+      //
+      // This is deliberately a coherence property alone. The ray still
+      // carries zero spectral width, so colour, filters and the spectrometer
+      // are untouched -- see the readout below for the linewidth it implies.
+      { key: 'coherenceLengthMm', label: 'Coherence length (mm)', type: 'number', min: 0, max: 100000, step: 0.01, def: 0 },
+      {
+        key: 'coherenceLinewidth', label: 'Implied linewidth', type: 'readout',
+        readout: params => {
+          const lc = Number(params.coherenceLengthMm);
+          if (!Number.isFinite(lc) || lc <= 0) return 'Ideal — interferes at any path difference';
+          const nm = linewidthForCoherenceLengthNm(lc, params.wavelength);
+          return `${nm < 0.01 ? nm.toExponential(2) : nm.toPrecision(3)} nm`;
+        },
+      },
       P.autoColor, P.color,
       pinnedParam('temporalMode', 'cw'),
     ],
@@ -3123,6 +3155,61 @@ export const registry = {
     },
   },
 
+  // A transparent object that retards one part of the beam more than another.
+  // It never bends a ray -- that is the whole point of a phase object, and
+  // also what lets it work inside the coherent path: recombination matches
+  // arrivals on position and direction, both of which this leaves alone, so
+  // each sampled ray simply arrives with its own optical path and the camera
+  // resolves the resulting fringes across the sensor.
+  phaseplate: {
+    label: 'Phase object', category: 'Wavefront Shaping', size: { w: 14, h: 40 },
+    aliases: ['phase plate', 'phase mask', 'phase contrast', 'wedge', 'phase step', 'optical path difference'],
+    params: [
+      {
+        key: 'profile', label: 'Path profile', type: 'select', def: 'ramp',
+        options: [
+          ['ramp', 'Wedge — path rises across the aperture'],
+          ['step', 'Step — half the aperture retarded'],
+          ['bar', 'Central bar — a phase-contrast test object'],
+          ['bump', 'Curved — quadratic, thickest at the centre'],
+        ],
+      },
+      { key: 'opdUm', label: 'Peak path difference (µm)', type: 'number', min: 0, max: 20, step: 0.05, def: 1.5 },
+      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 12 },
+      {
+        key: 'phaseFringes', label: 'Fringes across the aperture', type: 'readout',
+        readout: params => {
+          const opd = Math.max(0, Number(params.opdUm) || 0);
+          if (opd <= 0) return 'None — no path difference set';
+          return `${(opd * 1000 / 532).toFixed(2)} at 532 nm`;
+        },
+      },
+    ],
+    size_: el => ({ w: 14, h: (el.params.aperture || 30) + 8 }),
+    svg(el) {
+      const h = (el.params.aperture || 30) / 2;
+      const profile = el.params.profile || 'ramp';
+      // The drawn wedge/step/bar shows which part of the beam is retarded.
+      const shape = profile === 'step'
+        ? `M -4,0 L 4,0 L 4,${h} L -4,${h} Z`
+        : profile === 'bar'
+          ? `M -4,${-h / 3} L 4,${-h / 3} L 4,${h / 3} L -4,${h / 3} Z`
+          : profile === 'bump'
+            ? `M -1,${-h} Q 5,0 -1,${h} L -4,${h} L -4,${-h} Z`
+            : `M -4,${-h} L 1,${-h} L 4,${h} L -4,${h} Z`;
+      return `<rect x="-5" y="${-h - 3}" width="10" height="${2 * h + 6}" rx="2" fill="#dbeafe" stroke="#5b7fb5" stroke-width="1.3" opacity="0.55"/>` +
+        `<path d="${shape}" fill="#93b4de" stroke="#41618f" stroke-width="1.1" opacity="0.9"/>` +
+        `<text x="0" y="${h + 1}" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="700" fill="#33507a">φ</text>`;
+    },
+    surfaces(el) {
+      const h = (el.params.aperture || 30) / 2;
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'phaseplate',
+        data: { profile: el.params.profile || 'ramp', opdUm: el.params.opdUm },
+      }];
+    },
+  },
+
   delayline: {
     label: 'Mechanical delay line', category: 'Pulse Timing', size: { w: 40, h: 32 },
     params: [
@@ -3894,6 +3981,7 @@ const DIRECT = {
   beamdump: { resize: { y: 'aperture' } },
   aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
   aotf: { resize: { y: 'aperture' } },
+  phaseplate: { resize: { y: 'aperture' }, tune: { key: 'opdUm', short: 'OPD' } },
   delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL' } },
   pulsecompressor: { resize: { y: 'aperture' }, tune: { key: 'gddFs2', short: 'GDD' } },
   eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
@@ -3972,6 +4060,7 @@ const ELEMENT_HELP = {
   slit: 'Blocks rays outside the configured aperture gap.',
   beamdump: 'Absorbs incident rays.',
   blocker: 'Absorbs rays but stays hidden in exported figures.',
+  phaseplate: 'Retards part of the beam without bending it \u2014 invisible on its own, and the thing an interferometer exists to reveal.',
   slm: 'Reflects by default and can overlay lens-array, grating, steering, or speckle functions.',
   metasurface: 'A patterned layer on a thin transparent carrier, working in transmission by default. Overlays the same lens-array, grating, steering, and speckle functions as the SLM, with an optional undiffracted zeroth order — but the phase profile is fixed at fabrication rather than programmable.',
   dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
@@ -4028,6 +4117,8 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'The configured band holds one idealized geometric focus. Meta-atom group-delay limits, PSF, Strehl, field angle, fabrication feasibility, and wavelength-dependent efficiency are not solved.';
   } else if (type === 'metalens') {
     note = 'Focal length follows f(λ) = f₀λ₀/λ. Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
+  } else if (type === 'phaseplate') {
+    note = 'The profile spans the clear aperture, so size the aperture to the beam: a narrow beam through a wide wedge samples almost none of the ramp and just picks up a near-uniform delay. On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes.';
   } else if (type === 'pmt') {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'eom' && !params.modulate) {

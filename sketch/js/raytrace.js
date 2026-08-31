@@ -4,7 +4,7 @@
 // polygons (beam-mode envelope between the two edge rays).
 
 import {
-  registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS,
+  registry, OBJ_SHAPES, EPI_CAPABLE_KINDS as EPI_KINDS, MIXING_KINDS, phasePlateOpdFraction,
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
@@ -29,7 +29,7 @@ import {
 } from './glass.js';
 import {
   gaussianSpectrum, flatSpectrum, spectrumSamples, spectrumSupport, spectrumWeight,
-  applyTransmission, resolveSourceSpectrum,
+  applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
 
@@ -781,6 +781,9 @@ function carrierPhaseIssue(surface) {
   if (surface.kind === 'detector') return null;
   if (surface.kind === 'split' && type === 'bs') return null;
   if (surface.kind === 'delay' && type === 'delayline') return null;
+  // A phase object only lengthens the optical path, without bending the
+  // ray or splitting it, so the carrier phase through it stays exact.
+  if (surface.kind === 'phaseplate' && type === 'phaseplate') return null;
   if (surface.kind === 'mirror' && type === 'mirror') {
     const reflectivity = Math.min(100, Math.max(0, Number(surface.data.refl ?? 100)));
     return reflectivity >= 100
@@ -846,6 +849,7 @@ function recordCoherentArrival(ray, hit, children, arrivals) {
       intensity,
       weightUnit: power / intensity,
       opl: ray.opl,
+      coherenceLengthMm: ray.coherenceLengthMm || 0,
       wavelengthMm: ray.wl * 1e-6,
       phase: 2 * Math.PI * ray.opl / (ray.wl * 1e-6)
         + (Number.isFinite(ray.phaseOffset) ? ray.phaseOffset : 0)
@@ -879,8 +883,32 @@ function extendCoherentPlan(arrivals, plan = new Map()) {
         re += amplitude * Math.cos(relative);
         im += amplitude * Math.sin(relative);
       }
-      const groupedPower = Math.max(0, re * re + im * im);
+      // Fully coherent result. Its phase is what continues downstream: with
+      // partial coherence the ports move toward each other, so the phase
+      // matters progressively less, and at zero visibility they are equal.
       const groupedPhase = reference + Math.atan2(im, re);
+      // Power is built the way partial coherence actually works, rather than
+      // from the vector sum above: every field contributes its own power
+      // unconditionally, and each *pair* contributes an interference term
+      // scaled by how well those two fields still overlap in time. A pair
+      // whose paths differ by much more than the source's coherence length
+      // simply adds its power and makes no fringe. With an ideal source every
+      // visibility is 1 and this reduces exactly to |sum of amplitudes|^2.
+      let groupedPower = 0;
+      for (const field of fields) groupedPower += Math.max(0, field.power);
+      for (let i = 0; i < fields.length; i++) {
+        for (let j = i + 1; j < fields.length; j++) {
+          const a = fields[i], b = fields[j];
+          // A pair is only as coherent as the shorter of the two envelopes.
+          const lengths = [a.coherenceLengthMm, b.coherenceLengthMm].filter(value => value > 0);
+          const coherenceLengthMm = lengths.length ? Math.min(...lengths) : 0;
+          const visibility = fringeVisibility(a.opl - b.opl, coherenceLengthMm);
+          if (visibility <= 0) continue;
+          groupedPower += 2 * Math.sqrt(Math.max(0, a.power) * Math.max(0, b.power))
+            * Math.cos(phaseWrap(a.phase - b.phase)) * visibility;
+        }
+      }
+      groupedPower = Math.max(0, groupedPower);
       const representative = [...fields].sort((a, b) => a.childKey.localeCompare(b.childKey))[0];
       const fieldGroupCount = fields.reduce((sum, field) => sum + field.fieldGroupCount, 0);
       for (const field of fields) {
@@ -2533,6 +2561,21 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         }
       }
       if (!coherent?.dryRun && hit.surface.kind === 'detector') recordDetectorHit(r, hit);
+      if (hit.surface.kind === 'phaseplate') {
+        // Same bookkeeping as the delay line, except the added path depends on
+        // where this particular ray crossed the aperture -- which is what turns
+        // a uniform port into a fringe pattern once the arms recombine.
+        const peak = Math.min(20000, Math.max(0, Number(hit.surface.data.opdUm) || 0)) * 1e-3;
+        const extraOpl = peak * phasePlateOpdFraction(hit.surface.data.profile, hit.u);
+        if (extraOpl > 0) {
+          r.segmentIntensities.push(r.intensity);
+          r.segmentHistories.push(r.sig);
+          r.segmentEvents.push(interactionKey);
+          r.pts.push({ x: hit.p.x, y: hit.p.y });
+          r.opl += extraOpl;
+          r.opls.push(r.opl);
+        }
+      }
       if (hit.surface.kind === 'delay') {
         const extraOpl = Math.min(100000, Math.max(0, hit.surface.data.delayMm || 0));
         if (extraOpl > 0) {
@@ -2556,6 +2599,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             pulse: r.pulse, opl: r.opl, gdd: r.gdd,
             sourceId: r.sourceId || null,
             originId: r.originId || null,
+            coherenceLengthMm: r.coherenceLengthMm || 0,
           });
         }
         break; // the connector absorbs the incoming beam either way
@@ -2664,6 +2708,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // fluorescence is new light with a new sourceId, but its power is
           // still a fraction of the laser that drove it.
           originId: r.originId || null,
+          // Likewise a property of the emitting source, carried unchanged so
+          // it is still known wherever the arms are eventually recombined.
+          coherenceLengthMm: r.coherenceLengthMm || 0,
           medium: 'medium' in c ? c.medium : r.medium,
           mediumMaterial: 'mediumMaterial' in c ? c.mediumMaterial : r.mediumMaterial,
           spectralCount: 'spectralCount' in c ? c.spectralCount : r.spectralCount,
@@ -2965,6 +3012,10 @@ export function traceScene(elements, beams = []) {
         sampleCount: K,
         sampleGrid: r.sampleGrid === 'edges' ? 'edges' : null,
         coherenceId,
+        // Temporal coherence travels with the light: the envelope depends on
+        // the path difference at the point where the arms are recombined,
+        // which is only known there.
+        coherenceLengthMm: Math.max(0, Number(p.coherenceLengthMm) || 0),
         phaseValid: coherenceId !== null,
         phaseIssue: coherenceId === null ? 'source does not define a reconstructable monochromatic CW field' : null,
         phaseOffset: 0,

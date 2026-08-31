@@ -390,6 +390,30 @@ const demoScenes = {
       mkDemo('display', 520, 250, 0, { sensorId: photodiode.id, displayScale: 0.5 }),
     ];
   },
+  // A phase object is invisible on its own -- it changes no intensity
+  // anywhere. Put one in a single arm of an interferometer and the phase it
+  // wrote becomes a pattern the camera can actually see, which is the whole
+  // idea behind phase-contrast imaging.
+  phaseplate: () => {
+    const bright = mkDemo('camera', 780, 400, 0, { ch: 30, pixels: 32 },
+      { label: 'output camera 1', showLabel: true, labelPos: 'b' });
+    const dark = mkDemo('camera', 600, 560, 90, { ch: 30, pixels: 32 },
+      { label: 'output camera 2', showLabel: true, labelPos: 'b' });
+    return [
+      mkDemo('cwlaser', 100, 200, 0, { beamMode: 'beam', beamWidth: 6 },
+        { label: 'laser', showLabel: true, labelPos: 'b' }),
+      mkDemo('bs', 300, 200, 90, { ratio: 0.5 }, { label: 'BS1', showLabel: true, labelPos: 't' }),
+      mkDemo('phaseplate', 460, 200, 0, { profile: 'bar', opdUm: 0.266, aperture: 6 },
+        { label: 'phase object — half a wave over the middle third', showLabel: true, labelPos: 't' }),
+      mkDemo('mirror', 600, 200, 135, {}, { label: 'M1', showLabel: true, labelPos: 'r' }),
+      mkDemo('mirror', 300, 400, 135, {}, { label: 'M2', showLabel: true, labelPos: 'b' }),
+      mkDemo('bs', 600, 400, 90, { ratio: 0.5 }, { label: 'BS2', showLabel: true, labelPos: 'b' }),
+      bright,
+      mkDemo('display', 850, 300, 0, { sensorId: bright.id, displayScale: 0.5 }),
+      dark,
+      mkDemo('display', 760, 560, 0, { sensorId: dark.id, displayScale: 0.5 }),
+    ];
+  },
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {

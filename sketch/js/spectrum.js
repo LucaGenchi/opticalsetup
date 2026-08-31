@@ -226,3 +226,39 @@ export function resolveSourceSpectrum(type, params = {}) {
   const bw = p.bwMode === 'band' ? Math.max(0, p.bandwidth || 0) : 0;
   return { wl, bw, spec: gaussianSpectrum(wl, bw) };
 }
+
+// ---- temporal coherence -------------------------------------------------
+// Two beams only interfere while their path difference stays inside the
+// source's coherence length. A perfectly monochromatic source has an
+// infinite one and interferes at any delay; every real source has a finite
+// linewidth and therefore a finite envelope, which is the whole mechanism
+// behind optical coherence tomography: the fringe amplitude itself locates
+// the depth at which the two arms match.
+//
+// Coherence length here is the FWHM of that envelope, which for a Gaussian
+// spectrum is the standard axial-resolution figure lc = (2ln2/pi)·lambda^2/dLambda.
+
+// FWHM of the Gaussian visibility envelope, in the same units as the path
+// difference. 0 (or anything non-finite) means an ideal source: no envelope.
+export function fringeVisibility(pathDifference, coherenceLengthMm) {
+  const lc = Number(coherenceLengthMm);
+  if (!Number.isFinite(lc) || lc <= 0) return 1;
+  const delta = Math.abs(Number(pathDifference) || 0);
+  // exp(-4 ln2 (dL/lc)^2): V = 1/2 exactly at dL = lc/2, so lc is the FWHM.
+  return Math.exp(-4 * Math.LN2 * (delta / lc) ** 2);
+}
+
+// The linewidth a given coherence length implies, so a source can report the
+// spectral width its interference behaviour corresponds to.
+export function linewidthForCoherenceLengthNm(coherenceLengthMm, wavelengthNm) {
+  const lc = Number(coherenceLengthMm), wl = Number(wavelengthNm);
+  if (!Number.isFinite(lc) || lc <= 0 || !Number.isFinite(wl) || wl <= 0) return 0;
+  // lambda^2 in nm^2 -> mm^2 is a factor 1e-12; back to nm is 1e6.
+  return (2 * Math.LN2 / Math.PI) * wl * wl * 1e-6 / lc;
+}
+
+export function coherenceLengthForLinewidthMm(linewidthNm, wavelengthNm) {
+  const dl = Number(linewidthNm), wl = Number(wavelengthNm);
+  if (!Number.isFinite(dl) || dl <= 0 || !Number.isFinite(wl) || wl <= 0) return 0;
+  return (2 * Math.LN2 / Math.PI) * wl * wl * 1e-6 / dl;
+}
