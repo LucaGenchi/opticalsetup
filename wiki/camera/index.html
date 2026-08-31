@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camera — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/camera/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Camera — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/camera/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/camera/" class="current">Camera</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul>
+            <li><a href="../../wiki/phaseplate/" class="">Phase object</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#detectors">Detectors</a> / Camera</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></div>
+        <div>
+          <h1>Camera</h1>
+        </div>
+      </div>
+      <p class="tagline">Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.</p>
+      <a class="place-cta" href="../../sketch/?place=camera">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=camera"
+          title="Interactive Camera — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the camera to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>A consumer camera is built to produce a pleasing picture. A scientific camera is
+        built to produce a <em>number</em>: one that is proportional to how many photons
+        arrived at a given place, by a known factor, with a known uncertainty. Everything
+        that distinguishes the sensors below follows from that one change of purpose.</p>
+        <p>The chain is short and every link loses something. Photons land on silicon and a
+        fraction of them free an electron — that fraction is the <em>quantum efficiency</em>.
+        The freed electrons accumulate in a potential well under each pixel for the duration
+        of the exposure. At the end the accumulated charge is converted to a voltage,
+        amplified, and digitised into an integer count. Read that integer back through the
+        chain and you have an estimate of the photon flux, plus everything the chain added
+        on the way.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>S</mi><mtext>ADU</mtext></msub><mo>=</mo><mfrac><mrow><mi>η</mi><mtext> </mtext><msub><mi>N</mi><mi>γ</mi></msub><mo>+</mo><mi>D</mi><mi>t</mi></mrow><mi>g</mi></mfrac><mo>+</mo><mtext>offset</mtext></mrow><annotation encoding="application/x-tex">S_{\text{ADU}} = \frac{\eta\, N_{\gamma} + D t}{g} + \text{offset}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0576em;">S</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0576em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">ADU</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2408em;vertical-align:-0.8804em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">g</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">η</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0556em;">γ</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">D</span><span class="mord mathnormal">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8804em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord text"><span class="mord">offset</span></span></span></span></span></span></div>
+      <div class="caption">What a pixel actually reports: incident photons N_γ scaled by quantum efficiency η, plus dark current D accumulated over exposure t, divided by the gain g in electrons per count.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>σ</mi><mtext>total</mtext></msub><mo>=</mo><msqrt><mrow><munder><munder><mrow><mi>η</mi><msub><mi>N</mi><mi>γ</mi></msub></mrow><mo stretchy="true">⏟</mo></munder><mtext>shot</mtext></munder><mo>+</mo><munder><munder><mrow><mi>D</mi><mi>t</mi></mrow><mo stretchy="true">⏟</mo></munder><mtext>dark</mtext></munder><mo>+</mo><munder><munder><msubsup><mi>σ</mi><mtext>read</mtext><mn>2</mn></msubsup><mo stretchy="true">⏟</mo></munder><mtext>read</mtext></munder></mrow></msqrt></mrow><annotation encoding="application/x-tex">\sigma_{\text{total}} = \sqrt{\underbrace{\eta N_{\gamma}}_{\text{shot}} + \underbrace{D t}_{\text{dark}} + \underbrace{\sigma_{\text{read}}^{2}}_{\text{read}}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">σ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">total</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:3.04em;vertical-align:-1.7842em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.2558em;"><span class="svg-align" style="top:-5em;"><span class="pstrut" style="height:5em;"></span><span class="mord" style="padding-left:1em;"><span class="minner munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6833em;"><span style="top:-1.3798em;"><span class="pstrut" style="height:3em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">shot</span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="minner munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6833em;"><span class="svg-align" style="top:-2.0659em;"><span class="pstrut" style="height:3em;"></span><span class="katex-stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.548em" viewBox="0 0 400000 548" preserveAspectRatio="xMinYMin slice"><path d="M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z"/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.548em" viewBox="0 0 400000 548" preserveAspectRatio="xMidYMin slice"><path d="M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z"/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.548em" viewBox="0 0 400000 548" preserveAspectRatio="xMaxYMin slice"><path d="M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z"/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">η</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0556em;">γ</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9341em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.6202em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="minner munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6833em;"><span style="top:-1.6659em;"><span class="pstrut" style="height:3em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">dark</span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="minner munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6833em;"><span class="svg-align" style="top:-2.352em;"><span class="pstrut" style="height:3em;"></span><span class="katex-stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.548em" viewBox="0 0 400000 548" preserveAspectRatio="xMinYMin slice"><path d="M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z"/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.548em" viewBox="0 0 400000 548" preserveAspectRatio="xMidYMin slice"><path d="M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z"/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.548em" viewBox="0 0 400000 548" preserveAspectRatio="xMaxYMin slice"><path d="M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z"/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">D</span><span class="mord mathnormal">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.648em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.3341em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="minner munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-1.4189em;"><span class="pstrut" style="height:3em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">read</span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="minner munder"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span class="svg-align" style="top:-2.105em;"><span class="pstrut" style="height:3em;"></span><span class="katex-stretchy" style="height:0.548em;min-width:1.6em;"><span class="brace-left" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.548em" viewBox="0 0 400000 548" preserveAspectRatio="xMinYMin slice"><path d="M0 6l6-6h17c12.688 0 19.313.3 20 1 4 4 7.313 8.3 10 13
+ 35.313 51.3 80.813 93.8 136.5 127.5 55.688 33.7 117.188 55.8 184.5 66.5.688
+ 0 2 .3 4 1 18.688 2.7 76 4.3 172 5h399450v120H429l-6-1c-124.688-8-235-61.7
+-331-161C60.687 138.7 32.312 99.3 7 54L0 41V6z"/></svg></span><span class="brace-center" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.548em" viewBox="0 0 400000 548" preserveAspectRatio="xMidYMin slice"><path d="M199572 214
+c100.7 8.3 195.3 44 280 108 55.3 42 101.7 93 139 153l9 14c2.7-4 5.7-8.7 9-14
+ 53.3-86.7 123.7-153 211-199 66.7-36 137.3-56.3 212-62h199568v120H200432c-178.3
+ 11.7-311.7 78.3-403 201-6 8-9.7 12-11 12-.7.7-6.7 1-18 1s-17.3-.3-18-1c-1.3 0
+-5-4-11-12-44.7-59.3-101.3-106.3-170-141s-145.3-54.3-229-60H0V214z"/></svg></span><span class="brace-right" style="height:0.548em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="0.548em" viewBox="0 0 400000 548" preserveAspectRatio="xMaxYMin slice"><path d="M399994 0l6 6v35l-6 11c-56 104-135.3 181.3-238 232-57.3
+ 28.7-117 45-179 50H-300V214h399897c43.3-7 81-15 113-26 100.7-33 179.7-91 237
+-174 2.7-5 6-9 10-13 .7-1 7.3-1 20-1h17z"/></svg></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">σ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-2.453em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">read</span></span></span></span></span><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.247em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.895em;"><span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.5811em;"><span></span></span></span></span></span></span></span><span style="top:-3.2158em;"><span class="pstrut" style="height:5em;"></span><span class="hide-tail" style="min-width:1.02em;height:3.08em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="3.08em" viewBox="0 0 400000 3240" preserveAspectRatio="xMinYMin slice"><path d="M473,2793
+c339.3,-1799.3,509.3,-2700,510,-2702 l0 -0
+c3.3,-7.3,9.3,-11,18,-11 H400000v40H1017.7
+s-90.5,478,-276.2,1466c-185.7,988,-279.5,1483,-281.5,1485c-2,6,-10,9,-24,9
+c-8,0,-12,-0.7,-12,-2c0,-1.3,-5.3,-32,-16,-92c-50.7,-293.3,-119.7,-693.3,-207,-1200
+c0,-1.3,-5.3,8.7,-16,30c-10.7,21.3,-21.3,42.7,-32,64s-16,33,-16,33s-26,-26,-26,-26
+s76,-153,76,-153s77,-151,77,-151c0.7,0.7,35.7,202,105,604c67.3,400.7,102,602.7,104,
+606zM1001 80h400000v40H1017.7z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.7842em;"><span></span></span></span></span></span></span></span></span></span></div>
+      <div class="caption">The three noise sources add in quadrature, in electrons. Shot noise is the photons themselves and cannot be engineered away; the other two are what a camera is designed to minimise.</div>
+    </div>
+
+        <p>Because shot noise grows as the square root of the signal, it dominates in bright
+        light and read noise dominates in dim light. That single fact explains why scientific
+        cameras are specified the way they are, and why the three architectures below
+        divide the work between them.</p>
+        <h3>CCD</h3>
+        <p>A charge-coupled device shifts the charge packet from pixel to pixel across the
+        chip to a single readout node, where one amplifier converts every pixel in
+        turn<sup class="cite">[<a href="#ref-1">1</a>]</sup>. One amplifier for the whole sensor is what makes a CCD so uniform —
+        there is no pixel-to-pixel variation in gain or offset to calibrate, because every
+        pixel is measured by the same electronics. Back-thinned devices, illuminated from
+        the rear so light does not cross the wiring layers, reach a quantum efficiency
+        around 95% near 550&nbsp;nm<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The cost is speed: serialising millions of
+        pixels through one amplifier is slow, and reading faster raises the read noise.</p>
+        <h3>EMCCD</h3>
+        <p>The electron-multiplying CCD, introduced around 2001, attacks read noise by
+        amplifying the signal <em>before</em> it reaches the amplifier. Charge is clocked
+        through a long multiplication register — 536 elements in the e2v CCD97 — where a
+        high voltage gives each transfer a small probability of impact ionisation, so the
+        packet grows geometrically<sup class="cite">[<a href="#ref-1">1</a>]</sup>. With 30 electrons of read noise and a gain of
+        100, the noise referred back to the input is 0.3 electrons.</p>
+        <p>The catch is that multiplication is itself stochastic. Each electron either does
+        or does not multiply at each stage, and that randomness adds a noise contribution of
+        its own — an excess noise factor of √2, conventionally handled by treating the camera
+        as though its quantum efficiency were <em>halved</em><sup class="cite">[<a href="#ref-1">1</a>]</sup><sup class="cite">[<a href="#ref-3">3</a>]</sup>. A 95% QE
+        back-illuminated EMCCD is therefore quoted with an effective QE near 0.48 when it is
+        run at high gain<sup class="cite">[<a href="#ref-3">3</a>]</sup>. It buys the ability to count almost nothing at the price
+        of counting everything else less well.</p>
+        <h3>sCMOS</h3>
+        <p>Scientific CMOS reverses the CCD's arrangement: each pixel carries its own
+        amplifier, and each column its own analogue-to-digital converter, so millions of
+        pixels are converted in parallel rather than in series<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The technology
+        arrived in 2009 from a consortium of Fairchild Imaging, Andor and PCO, combining
+        properties that had not previously coexisted — read noise near one electron,
+        quantum efficiency of 60–70% or more, high frame rate, high resolution and wide
+        dynamic range at once<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+        <p>A current sensor reads about 5 megapixels at 100 frames per second with an
+        effective read noise around one electron and a peak QE of 82%, linear across almost
+        four orders of magnitude<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Read noise is not even uniform: on a measured
+        sCMOS sensor the median is around 0.9&nbsp;electrons, and more than half the pixels
+        contribute either one noise electron or none in a given frame<sup class="cite">[<a href="#ref-2">2</a>]</sup>. The price of
+        per-pixel amplifiers is that every pixel has its own gain, offset and dark current,
+        so a scientific camera ships with a per-pixel calibration applied in firmware —
+        which is a large part of what separates a scientific sensor from the same silicon
+        sold as an industrial one<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
+        <h3>Which one wins</h3>
+        <p>Less obvious than the datasheets suggest. A controlled comparison that put an
+        sCMOS, an EMCCD and an industry-grade CMOS camera on the two arms of one 50/50
+        beamsplitter — so all three saw the same photons frame by frame — found the sCMOS
+        delivering 1.5× to 2.4× the signal-to-noise of the industrial CMOS, but the
+        industrial CMOS <em>slightly outperforming</em> the EMCCD, by 1.2× to 1.4×, at the
+        photon levels of fluorescence fluctuation imaging<sup class="cite">[<a href="#ref-3">3</a>]</sup>. The EMCCD's higher
+        quantum efficiency could not compensate for the excess noise of its multiplication
+        stage. EMCCDs remain the right answer where the photon count really is very low —
+        spinning-disk confocal is the standard example<sup class="cite">[<a href="#ref-1">1</a>]</sup><sup class="cite">[<a href="#ref-3">3</a>]</sup> — while sCMOS
+        wins wherever field of view and speed matter, which is most of super-resolution and
+        light-sheet imaging<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>The same comparison found one thing that no datasheet reports: the industrial
+        camera introduced spurious correlations between neighbouring pixels, which the
+        calibrated scientific sensors did not<sup class="cite">[<a href="#ref-3">3</a>]</sup>. For any method that reads
+        <em>correlations</em> rather than intensities, that is disqualifying regardless of
+        how good the SNR looks.</p>
+        <h3>Full well capacity and bit depth</h3>
+        <p>Two numbers set the range of a scientific camera, and they are routinely
+        confused with each other.</p>
+        <p>The <strong>full well capacity</strong> is a property of the silicon: the maximum
+        number of charge carriers a pixel can hold before it overflows<sup class="cite">[<a href="#ref-2">2</a>]</sup>. Fill it and
+        the pixel saturates — further photons are simply not recorded, and on a CCD the
+        excess charge can spill into neighbours as blooming. It scales with pixel area,
+        which is one of the real reasons EMCCDs use large 16&nbsp;µm pixels where sCMOS uses
+        6.5&nbsp;µm<sup class="cite">[<a href="#ref-1">1</a>]</sup><sup class="cite">[<a href="#ref-3">3</a>]</sup>. Typical sCMOS sensors hold around 30&nbsp;000
+        electrons<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+        <p>Divide that ceiling by the smallest signal the camera can distinguish — its read
+        noise — and you have the <strong>dynamic range</strong>, the ratio of the brightest
+        to the faintest thing measurable in one exposure<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mrow><mi mathvariant="normal">D</mi><mi mathvariant="normal">R</mi></mrow><mo>=</mo><mfrac><msub><mi>N</mi><mtext>well</mtext></msub><msub><mi>σ</mi><mtext>read</mtext></msub></mfrac><mspace width="2em"/><mo>⟹</mo><mspace width="2em"/><msub><mi>N</mi><mtext>bits</mtext></msub><mo>≥</mo><msub><mrow><mi>log</mi><mo>⁡</mo></mrow><mn>2</mn></msub><mrow><mi mathvariant="normal">D</mi><mi mathvariant="normal">R</mi></mrow></mrow><annotation encoding="application/x-tex">\mathrm{DR} = \frac{N_{\text{well}}}{\sigma_{\text{read}}} \qquad\Longrightarrow\qquad N_{\text{bits}} \ge \log_{2}\mathrm{DR}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord"><span class="mord mathrm">DR</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.1963em;vertical-align:-0.836em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">σ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">read</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">well</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">⟹</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">bits</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≥</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.9386em;vertical-align:-0.2441em;"></span><span class="mop"><span class="mop">lo<span style="margin-right:0.0139em;">g</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.207em;"><span style="top:-2.4559em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2441em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">DR</span></span></span></span></span></span></div>
+      <div class="caption">Intra-scene dynamic range, and the number of bits an ADC needs before it stops being the limiting element. Published sCMOS figures run from about 1:5000 to 1:33 000.</div>
+    </div>
+
+        <p><strong>Bit depth</strong> is a property of the electronics, not the silicon: how
+        many discrete levels the converter divides the signal into. It does not create
+        dynamic range, it only decides whether the sensor's own range survives digitisation.
+        The link between the two is the <em>gain</em>, in electrons per count.</p>
+        <p>Take a sensor holding 30&nbsp;000 electrons with 1.1 electrons of read noise —
+        a dynamic range near 27&nbsp;000:1<sup class="cite">[<a href="#ref-2">2</a>]</sup>. Since log₂(27&nbsp;000) ≈ 14.7, a
+        16-bit converter carries it comfortably, at about 0.46 electrons per count. A 12-bit
+        converter has only 4096 levels, so each count is worth about 7.3 electrons: the
+        quantisation step alone is now several times the read noise, and the low-light
+        performance the sensor was built for has been discarded in the last stage of the
+        chain. More bits than the dynamic range justifies is equally pointless — it digitises
+        noise into finer and finer slices without adding information.</p>
+        <p>The engineering difficulty is that a fast converter with many bits is itself
+        noisy. The solution now standard in sCMOS is to stop trying: each column carries
+        <em>two</em> amplifier–converter pairs, one high-gain and low-noise for small
+        signals, one low-gain and high-capacity for large ones, sampling every pixel
+        simultaneously and reconstructing one image from both. Two 11-bit converters used
+        this way contribute less noise than a single faster 16-bit converter would, while
+        the combined output still spans a 16-bit range<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+        <p>One consequence catches people out, and it is a display problem rather than a
+        camera one: 16-bit data has to be squeezed into the 8-bit range of an ordinary
+        monitor before anyone can look at it, so choosing which part of the range to show is
+        a decision the user has to make and can easily make badly<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+        <p>A related trap appears whenever two cameras are compared by swapping them onto
+        the same port. If their pixel sizes differ, they are not seeing the same thing: a
+        signal that filled one 12&nbsp;µm pixel is divided among four 6&nbsp;µm pixels, so
+        the smaller-pixel camera reports a quarter of the signal per pixel and looks less
+        sensitive than it is<sup class="cite">[<a href="#ref-2">2</a>]</sup>. A fair comparison matches the projected pixel size
+        through the optics, which is exactly what the SOFI study did — it set each camera's
+        tube lens so all three landed within 97–102&nbsp;nm at the sample<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
+        <p>Finally, most scientific cameras are monochrome by design, and deliberately so. A
+        colour sensor puts a mosaic of filters over the pixels — the Bayer pattern gives half
+        the pixels to green and a quarter each to red and blue — so each pixel measures only
+        about a third of the spectrum and the missing values are interpolated, a step that
+        introduces artefacts of its own and is usually accompanied by a deliberate blur
+        filter to suppress them<sup class="cite">[<a href="#ref-4">4</a>]</sup>. For quantitative work, the wavelength is selected
+        by a filter in front of an unfiltered sensor instead: every pixel then measures the
+        same band, with no interpolation and no sampling artefacts. It is worth noting that
+        this is also why silicon's response varies so strongly across the spectrum — short
+        wavelengths are absorbed within a fraction of a micrometre of the surface while red
+        and near-infrared light penetrates several micrometres before being absorbed, if it
+        is absorbed at all<sup class="cite">[<a href="#ref-4">4</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>The Camera measures a <strong>one-dimensional intensity profile</strong> across
+        its sensor face. Its two geometric settings are the sensor height and the number of
+        pixels that height is divided into; each ray that lands is deposited into the pixels
+        its ray tube actually covers, rather than being counted at a single point, so a beam
+        that falls between two pixel centres still contributes to both.</p>
+        <p>That is what makes the profile a measurement rather than a histogram of ray
+        arrivals: the number under it is conserved, and a beam clipped by an aperture
+        upstream reports exactly the fraction that survived. The reading is reported as
+        Σw, a fraction of one source's emitted power, and a linked Detector screen draws the
+        profile.</p>
+
+        <p>When the interference option is on, the camera resolves fringes formed by a sized
+        monochromatic CW laser whose routes recombine with a modelled carrier phase — the
+        two ports of an interferometer come out complementary, and a phase object in one arm
+        writes a real pattern across the pixels. Where a route's phase cannot be
+        reconstructed, the camera falls back to depositing intensity conservatively rather
+        than inventing a fringe, and says so in its reading.</p>
+        <p>Profile height can track the reading absolutely, so a port carrying a tenth of
+        the light draws a tenth as tall, or auto-fit to its own peak when only the shape
+        matters.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is a geometric intensity model, not a sensor model. Nothing above
+        about noise, sensitivity or dynamic range is simulated: there is no quantum
+        efficiency, so every ray is detected with equal weight at every wavelength; no read
+        noise, dark current, or shot noise, so repeating an exposure gives an identical
+        answer; and no full well capacity, so a pixel never saturates, never blooms, and
+        responds linearly without limit. There is no bit depth either — readings are
+        continuous numbers, never quantised into counts — which means none of the
+        full-well-versus-gain reasoning above can be demonstrated here.</p>
+        <p>The sensor is one-dimensional, matching the tracer's 2D meridional plane, so
+        there is no second transverse axis and no image in the ordinary sense: a
+        “camera image” here is a line profile, not a picture. It is monochrome with no
+        colour filter array, has no exposure time, no frame rate, and no shutter — global or
+        rolling — so the rolling-shutter distortions and synchronisation problems that
+        dominate real fast imaging cannot appear. Pixels are perfectly uniform, with no
+        per-pixel gain or offset variation, no hot or blinking pixels, and no inter-pixel
+        crosstalk, which is precisely the set of imperfections that separates camera
+        technologies from one another in practice.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/pmt/"><svg viewBox="-33 -33 66 66" aria-hidden="true"><rect x="-25" y="-13" width="50" height="26" rx="13" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><rect x="-27" y="-9" width="4" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><text x="2" y="0"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text><circle cx="16" cy="-7" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photomultiplier (PMT)</a><a href="../../wiki/display/"><svg viewBox="-104 -104 208 208" aria-hidden="true"><g transform="scale(2)" data-display-density="expanded"><rect x="-49" y="-36" width="98" height="72" rx="6" fill="#24313b" stroke="#111b22" stroke-width="1.7"/><path d="M -43,-32 H 43" stroke="#40515d" stroke-width="0.8" opacity="0.7"/><rect x="-43" y="-29" width="86" height="47" rx="3" fill="#061822" stroke="#45606f" stroke-width="1.2"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace"><text x="0" y="-2" text-anchor="middle" font-size="9" font-weight="760" letter-spacing="0.8" fill="#94a3b8">SELECT INPUT</text><text x="0" y="10" text-anchor="middle" font-size="5.4" fill="#607887">Press INPUT to connect</text></g><circle cx="-49" cy="19" r="3.6" fill="#13212a" stroke="#89a2b2" stroke-width="1"/><circle cx="-49" cy="19" r="1.3" fill="#52636f"/><g class="display-control" data-display-action="power" role="button" aria-label="Toggle display power"><title>Power</title><circle class="display-control-face" cx="-40" cy="27" r="4.4" fill="#14232c" stroke="#6ee7b7" stroke-width="1.1"/><path d="M -40,23.8 L -40,27.1 M -42.2,25.2 A 3,3 0 1 0 -37.8,25.2" fill="none" stroke="#6ee7b7" stroke-width="0.9" stroke-linecap="round"/></g><g class="display-control" data-display-action="input" role="button" aria-label="Cycle sensor input"><title>Cycle sensor input</title><rect class="display-control-face" x="-30" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="-18.5" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">INPUT</text></g><g class="display-control" data-display-action="view" role="button" aria-label="Cycle display view"><title>Cycle display view</title><rect class="display-control-face" x="-3.5" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="8" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">VIEW</text></g><circle cx="41" cy="27" r="2.3" fill="#596b76"/><text x="33" y="29" text-anchor="end" font-size="3.6" font-weight="700" letter-spacing="0.35" fill="#708692">QUAL</text></g></svg>Detector screen</a><a href="../../wiki/phaseplate/"><svg viewBox="-13 -13 26 26" aria-hidden="true"><rect x="-5" y="-6" width="10" height="12" rx="2" fill="#dbeafe" stroke="#5b7fb5" stroke-width="1.3" opacity="0.55"/><path d="M -4,-1 L 4,-1 L 4,1 L -4,1 Z" fill="#93b4de" stroke="#41618f" stroke-width="1.1" opacity="0.9"/><text x="0" y="4" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="700" fill="#33507a">φ</text></svg>Phase object</a><a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://doi.org/10.1086/689587" target="_blank" rel="noopener">N. Stuurman and R. D. Vale, “Impact of new camera technologies on discoveries in cell biology,” The Biological Bulletin 231(1), 5–13 (2016)</a></li><li id="ref-2"><a href="https://analyticalscience.wiley.com/content/article-do/scientific-cmos-camera-technology-breeding-ground-new-microscopy-techniques" target="_blank" rel="noopener">G. Holst, “Scientific CMOS camera technology: a breeding ground for new microscopy techniques,” Microscopy and Analysis 28(1), S4–S12 (2014)</a></li><li id="ref-3"><a href="https://doi.org/10.1088/2515-7647/ab36ae" target="_blank" rel="noopener">R. Van den Eynde, A. Sandmeyer, W. Vandenberg, S. Duwé, W. Hübner, T. Huser, P. Dedecker and M. Müller, “Quantitative comparison of camera technologies for cost-effective super-resolution optical fluctuation imaging (SOFI),” Journal of Physics: Photonics 1, 044001 (2019)</a></li><li id="ref-4"><a href="https://doi.org/10.2352/CIC.2002.10.1.art00064" target="_blank" rel="noopener">R. F. Lyon and P. M. Hubel, “Eyeing the camera: into the next century,” Proc. IS&amp;amp;T/SID 10th Color Imaging Conference, 349–355 (2002)</a></li>
+      </ol>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://andor.oxinst.com/learning/view/article/dual-amplifier-dynamic-range" target="_blank" rel="noopener">Andor / Oxford Instruments — Dual Amplifier Dynamic Range (how the split-gain sCMOS readout works)</a></li><li><a href="https://camera.hamamatsu.com/jp/en/learns_more/technical_guides.html" target="_blank" rel="noopener">Hamamatsu — Photon counting and camera noise fundamentals</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

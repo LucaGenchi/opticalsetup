@@ -3148,6 +3148,202 @@ export const wikiEntries = [
   },
 
   {
+    type: 'camera',
+    title: 'Camera',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>A consumer camera is built to produce a pleasing picture. A scientific camera is
+        built to produce a <em>number</em>: one that is proportional to how many photons
+        arrived at a given place, by a known factor, with a known uncertainty. Everything
+        that distinguishes the sensors below follows from that one change of purpose.</p>
+        <p>The chain is short and every link loses something. Photons land on silicon and a
+        fraction of them free an electron — that fraction is the <em>quantum efficiency</em>.
+        The freed electrons accumulate in a potential well under each pixel for the duration
+        of the exposure. At the end the accumulated charge is converted to a voltage,
+        amplified, and digitised into an integer count. Read that integer back through the
+        chain and you have an estimate of the photon flux, plus everything the chain added
+        on the way.</p>`,
+      formulas: [
+        { tex: 'S_{\\text{ADU}} = \\frac{\\eta\\, N_{\\gamma} + D t}{g} + \\text{offset}', caption: 'What a pixel actually reports: incident photons N_γ scaled by quantum efficiency η, plus dark current D accumulated over exposure t, divided by the gain g in electrons per count.' },
+        { tex: '\\sigma_{\\text{total}} = \\sqrt{\\underbrace{\\eta N_{\\gamma}}_{\\text{shot}} + \\underbrace{D t}_{\\text{dark}} + \\underbrace{\\sigma_{\\text{read}}^{2}}_{\\text{read}}}', caption: 'The three noise sources add in quadrature, in electrons. Shot noise is the photons themselves and cannot be engineered away; the other two are what a camera is designed to minimise.' },
+      ],
+      html2: `
+        <p>Because shot noise grows as the square root of the signal, it dominates in bright
+        light and read noise dominates in dim light. That single fact explains why scientific
+        cameras are specified the way they are, and why the three architectures below
+        divide the work between them.</p>
+        <h3>CCD</h3>
+        <p>A charge-coupled device shifts the charge packet from pixel to pixel across the
+        chip to a single readout node, where one amplifier converts every pixel in
+        turn${cite(1)}. One amplifier for the whole sensor is what makes a CCD so uniform —
+        there is no pixel-to-pixel variation in gain or offset to calibrate, because every
+        pixel is measured by the same electronics. Back-thinned devices, illuminated from
+        the rear so light does not cross the wiring layers, reach a quantum efficiency
+        around 95% near 550&nbsp;nm${cite(1)}. The cost is speed: serialising millions of
+        pixels through one amplifier is slow, and reading faster raises the read noise.</p>
+        <h3>EMCCD</h3>
+        <p>The electron-multiplying CCD, introduced around 2001, attacks read noise by
+        amplifying the signal <em>before</em> it reaches the amplifier. Charge is clocked
+        through a long multiplication register — 536 elements in the e2v CCD97 — where a
+        high voltage gives each transfer a small probability of impact ionisation, so the
+        packet grows geometrically${cite(1)}. With 30 electrons of read noise and a gain of
+        100, the noise referred back to the input is 0.3 electrons.</p>
+        <p>The catch is that multiplication is itself stochastic. Each electron either does
+        or does not multiply at each stage, and that randomness adds a noise contribution of
+        its own — an excess noise factor of √2, conventionally handled by treating the camera
+        as though its quantum efficiency were <em>halved</em>${cite(1)}${cite(3)}. A 95% QE
+        back-illuminated EMCCD is therefore quoted with an effective QE near 0.48 when it is
+        run at high gain${cite(3)}. It buys the ability to count almost nothing at the price
+        of counting everything else less well.</p>
+        <h3>sCMOS</h3>
+        <p>Scientific CMOS reverses the CCD's arrangement: each pixel carries its own
+        amplifier, and each column its own analogue-to-digital converter, so millions of
+        pixels are converted in parallel rather than in series${cite(1)}. The technology
+        arrived in 2009 from a consortium of Fairchild Imaging, Andor and PCO, combining
+        properties that had not previously coexisted — read noise near one electron,
+        quantum efficiency of 60–70% or more, high frame rate, high resolution and wide
+        dynamic range at once${cite(2)}.</p>
+        <p>A current sensor reads about 5 megapixels at 100 frames per second with an
+        effective read noise around one electron and a peak QE of 82%, linear across almost
+        four orders of magnitude${cite(1)}. Read noise is not even uniform: on a measured
+        sCMOS sensor the median is around 0.9&nbsp;electrons, and more than half the pixels
+        contribute either one noise electron or none in a given frame${cite(2)}. The price of
+        per-pixel amplifiers is that every pixel has its own gain, offset and dark current,
+        so a scientific camera ships with a per-pixel calibration applied in firmware —
+        which is a large part of what separates a scientific sensor from the same silicon
+        sold as an industrial one${cite(3)}.</p>
+        <h3>Which one wins</h3>
+        <p>Less obvious than the datasheets suggest. A controlled comparison that put an
+        sCMOS, an EMCCD and an industry-grade CMOS camera on the two arms of one 50/50
+        beamsplitter — so all three saw the same photons frame by frame — found the sCMOS
+        delivering 1.5× to 2.4× the signal-to-noise of the industrial CMOS, but the
+        industrial CMOS <em>slightly outperforming</em> the EMCCD, by 1.2× to 1.4×, at the
+        photon levels of fluorescence fluctuation imaging${cite(3)}. The EMCCD's higher
+        quantum efficiency could not compensate for the excess noise of its multiplication
+        stage. EMCCDs remain the right answer where the photon count really is very low —
+        spinning-disk confocal is the standard example${cite(1)}${cite(3)} — while sCMOS
+        wins wherever field of view and speed matter, which is most of super-resolution and
+        light-sheet imaging${cite(1)}.</p>
+        <p>The same comparison found one thing that no datasheet reports: the industrial
+        camera introduced spurious correlations between neighbouring pixels, which the
+        calibrated scientific sensors did not${cite(3)}. For any method that reads
+        <em>correlations</em> rather than intensities, that is disqualifying regardless of
+        how good the SNR looks.</p>
+        <h3>Full well capacity and bit depth</h3>
+        <p>Two numbers set the range of a scientific camera, and they are routinely
+        confused with each other.</p>
+        <p>The <strong>full well capacity</strong> is a property of the silicon: the maximum
+        number of charge carriers a pixel can hold before it overflows${cite(2)}. Fill it and
+        the pixel saturates — further photons are simply not recorded, and on a CCD the
+        excess charge can spill into neighbours as blooming. It scales with pixel area,
+        which is one of the real reasons EMCCDs use large 16&nbsp;µm pixels where sCMOS uses
+        6.5&nbsp;µm${cite(1)}${cite(3)}. Typical sCMOS sensors hold around 30&nbsp;000
+        electrons${cite(2)}.</p>
+        <p>Divide that ceiling by the smallest signal the camera can distinguish — its read
+        noise — and you have the <strong>dynamic range</strong>, the ratio of the brightest
+        to the faintest thing measurable in one exposure${cite(2)}.</p>`,
+      formulas2: [
+        { tex: '\\mathrm{DR} = \\frac{N_{\\text{well}}}{\\sigma_{\\text{read}}} \\qquad\\Longrightarrow\\qquad N_{\\text{bits}} \\ge \\log_{2}\\mathrm{DR}', caption: 'Intra-scene dynamic range, and the number of bits an ADC needs before it stops being the limiting element. Published sCMOS figures run from about 1:5000 to 1:33 000.' },
+      ],
+      html3: `
+        <p><strong>Bit depth</strong> is a property of the electronics, not the silicon: how
+        many discrete levels the converter divides the signal into. It does not create
+        dynamic range, it only decides whether the sensor's own range survives digitisation.
+        The link between the two is the <em>gain</em>, in electrons per count.</p>
+        <p>Take a sensor holding 30&nbsp;000 electrons with 1.1 electrons of read noise —
+        a dynamic range near 27&nbsp;000:1${cite(2)}. Since log₂(27&nbsp;000) ≈ 14.7, a
+        16-bit converter carries it comfortably, at about 0.46 electrons per count. A 12-bit
+        converter has only 4096 levels, so each count is worth about 7.3 electrons: the
+        quantisation step alone is now several times the read noise, and the low-light
+        performance the sensor was built for has been discarded in the last stage of the
+        chain. More bits than the dynamic range justifies is equally pointless — it digitises
+        noise into finer and finer slices without adding information.</p>
+        <p>The engineering difficulty is that a fast converter with many bits is itself
+        noisy. The solution now standard in sCMOS is to stop trying: each column carries
+        <em>two</em> amplifier–converter pairs, one high-gain and low-noise for small
+        signals, one low-gain and high-capacity for large ones, sampling every pixel
+        simultaneously and reconstructing one image from both. Two 11-bit converters used
+        this way contribute less noise than a single faster 16-bit converter would, while
+        the combined output still spans a 16-bit range${cite(2)}.</p>
+        <p>One consequence catches people out, and it is a display problem rather than a
+        camera one: 16-bit data has to be squeezed into the 8-bit range of an ordinary
+        monitor before anyone can look at it, so choosing which part of the range to show is
+        a decision the user has to make and can easily make badly${cite(2)}.</p>
+        <p>A related trap appears whenever two cameras are compared by swapping them onto
+        the same port. If their pixel sizes differ, they are not seeing the same thing: a
+        signal that filled one 12&nbsp;µm pixel is divided among four 6&nbsp;µm pixels, so
+        the smaller-pixel camera reports a quarter of the signal per pixel and looks less
+        sensitive than it is${cite(2)}. A fair comparison matches the projected pixel size
+        through the optics, which is exactly what the SOFI study did — it set each camera's
+        tube lens so all three landed within 97–102&nbsp;nm at the sample${cite(3)}.</p>
+        <p>Finally, most scientific cameras are monochrome by design, and deliberately so. A
+        colour sensor puts a mosaic of filters over the pixels — the Bayer pattern gives half
+        the pixels to green and a quarter each to red and blue — so each pixel measures only
+        about a third of the spectrum and the missing values are interpolated, a step that
+        introduces artefacts of its own and is usually accompanied by a deliberate blur
+        filter to suppress them${cite(4)}. For quantitative work, the wavelength is selected
+        by a filter in front of an unfiltered sensor instead: every pixel then measures the
+        same band, with no interpolation and no sampling artefacts. It is worth noting that
+        this is also why silicon's response varies so strongly across the spectrum — short
+        wavelengths are absorbed within a fraction of a micrometre of the surface while red
+        and near-infrared light penetrates several micrometres before being absorbed, if it
+        is absorbed at all${cite(4)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Camera measures a <strong>one-dimensional intensity profile</strong> across
+        its sensor face. Its two geometric settings are the sensor height and the number of
+        pixels that height is divided into; each ray that lands is deposited into the pixels
+        its ray tube actually covers, rather than being counted at a single point, so a beam
+        that falls between two pixel centres still contributes to both.</p>
+        <p>That is what makes the profile a measurement rather than a histogram of ray
+        arrivals: the number under it is conserved, and a beam clipped by an aperture
+        upstream reports exactly the fraction that survived. The reading is reported as
+        Σw, a fraction of one source's emitted power, and a linked Detector screen draws the
+        profile.</p>`,
+      formulas: [],
+      html2: `
+        <p>When the interference option is on, the camera resolves fringes formed by a sized
+        monochromatic CW laser whose routes recombine with a modelled carrier phase — the
+        two ports of an interferometer come out complementary, and a phase object in one arm
+        writes a real pattern across the pixels. Where a route's phase cannot be
+        reconstructed, the camera falls back to depositing intensity conservatively rather
+        than inventing a fringe, and says so in its reading.</p>
+        <p>Profile height can track the reading absolutely, so a port carrying a tenth of
+        the light draws a tenth as tall, or auto-fit to its own peak when only the shape
+        matters.</p>`,
+      limitations: `<p>This is a geometric intensity model, not a sensor model. Nothing above
+        about noise, sensitivity or dynamic range is simulated: there is no quantum
+        efficiency, so every ray is detected with equal weight at every wavelength; no read
+        noise, dark current, or shot noise, so repeating an exposure gives an identical
+        answer; and no full well capacity, so a pixel never saturates, never blooms, and
+        responds linearly without limit. There is no bit depth either — readings are
+        continuous numbers, never quantised into counts — which means none of the
+        full-well-versus-gain reasoning above can be demonstrated here.</p>
+        <p>The sensor is one-dimensional, matching the tracer's 2D meridional plane, so
+        there is no second transverse axis and no image in the ordinary sense: a
+        “camera image” here is a line profile, not a picture. It is monochrome with no
+        colour filter array, has no exposure time, no frame rate, and no shutter — global or
+        rolling — so the rolling-shutter distortions and synchronisation problems that
+        dominate real fast imaging cannot appear. Pixels are perfectly uniform, with no
+        per-pixel gain or offset variation, no hot or blinking pixels, and no inter-pixel
+        crosstalk, which is precisely the set of imperfections that separates camera
+        technologies from one another in practice.</p>`,
+    },
+    related: ['detector', 'pmt', 'display', 'phaseplate', 'bs'],
+    citations: [
+      { label: 'N. Stuurman and R. D. Vale, “Impact of new camera technologies on discoveries in cell biology,” The Biological Bulletin 231(1), 5–13 (2016)', url: 'https://doi.org/10.1086/689587' },
+      { label: 'G. Holst, “Scientific CMOS camera technology: a breeding ground for new microscopy techniques,” Microscopy and Analysis 28(1), S4–S12 (2014)', url: 'https://analyticalscience.wiley.com/content/article-do/scientific-cmos-camera-technology-breeding-ground-new-microscopy-techniques' },
+      { label: 'R. Van den Eynde, A. Sandmeyer, W. Vandenberg, S. Duwé, W. Hübner, T. Huser, P. Dedecker and M. Müller, “Quantitative comparison of camera technologies for cost-effective super-resolution optical fluctuation imaging (SOFI),” Journal of Physics: Photonics 1, 044001 (2019)', url: 'https://doi.org/10.1088/2515-7647/ab36ae' },
+      { label: 'R. F. Lyon and P. M. Hubel, “Eyeing the camera: into the next century,” Proc. IS&amp;T/SID 10th Color Imaging Conference, 349–355 (2002)', url: 'https://doi.org/10.2352/CIC.2002.10.1.art00064' },
+    ],
+    resources: [
+      { label: 'Andor / Oxford Instruments — Dual Amplifier Dynamic Range (how the split-gain sCMOS readout works)', url: 'https://andor.oxinst.com/learning/view/article/dual-amplifier-dynamic-range' },
+      { label: 'Hamamatsu — Photon counting and camera noise fundamentals', url: 'https://camera.hamamatsu.com/jp/en/learns_more/technical_guides.html' },
+    ],
+  },
+  {
     type: 'phaseplate',
     title: 'Phase object',
     category: 'Specimens',
