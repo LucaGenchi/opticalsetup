@@ -429,13 +429,11 @@ function shortSpectrum(rd) {
     : `λ${Math.round(rd.wavelength)} nm`;
 }
 
-function compactNumber(value) {
-  if (!Number.isFinite(value)) return '—';
-  if (value >= 1000) return '>999';
-  if (value >= 100) return Math.round(value).toString();
-  if (value >= 10) return value.toFixed(1);
-  return value.toFixed(2);
-}
+// The display panels share the detector formatter rather than keeping a
+// second, coarser one: a coherently near-cancelled port carries a real
+// 1.4e-4, and printing that as "0.00" beside a beam that is still drawn is
+// exactly the contradiction the interference work set out to remove.
+const compactNumber = formatSignal;
 
 function shortPolarization(polarization = '') {
   return String(polarization)
@@ -515,10 +513,21 @@ export function cameraReadingState(reading) {
 // and fill down to the baseline. Linear interpolation is deliberate here:
 // spline smoothing can overshoot between dark and bright interference pixels
 // and invent extrema the sensor never measured.
-export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height = 15 } = {}) {
+export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height = 15, scale = null } = {}) {
   if (!Array.isArray(rd?.profile) || !rd.profile.length) return '';
   const values = rd.profile.map(value => Number.isFinite(value) ? Math.max(0, value) : 0);
   const maximum = Math.max(...values, 1e-9);
+  // Auto-fit always fills the box, so shape is readable but magnitude is
+  // invisible. Absolute keeps the same shape and scales the whole curve by
+  // the total reading, so half the light really does draw half as tall.
+  // A reading above one full source's worth clamps rather than overflowing.
+  // A genuinely zero reading must draw flat, but a reading with no signal
+  // field at all has no absolute reference to scale against -- fall back to
+  // auto-fit there rather than silently collapsing the curve to the axis.
+  const hasTotal = Number.isFinite(rd.signal);
+  const requested = (scale || rd.profileScale) === 'fit' ? 'fit' : 'absolute';
+  const mode = requested === 'absolute' && hasTotal ? 'absolute' : 'fit';
+  const heightScale = mode === 'fit' ? 1 : Math.min(1, Math.max(0, rd.signal));
   const safeX = Number.isFinite(x) ? x : -35;
   const safeWidth = Number.isFinite(width) && width > 0 ? width : 70;
   const safeBaseline = Number.isFinite(baseline) ? baseline : 5;
@@ -526,7 +535,7 @@ export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height
   const binWidth = safeWidth / values.length;
   const points = values.map((value, index) => ({
     x: safeX + (index + 0.5) * binWidth,
-    y: safeBaseline - safeHeight * value / maximum,
+    y: safeBaseline - safeHeight * heightScale * value / maximum,
   }));
   const curve = [
     { x: safeX, y: points[0].y },
@@ -538,8 +547,8 @@ export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height
   const fillPath = `M ${safeX.toFixed(2)},${safeBaseline.toFixed(2)} L ${curvePoints} ` +
     `L ${(safeX + safeWidth).toFixed(2)},${safeBaseline.toFixed(2)} Z`;
   const color = /^#[0-9a-f]{6}$/i.test(rd.color || '') ? rd.color : '#d8e7ee';
-  const mode = rd.profileMode === 'coherent' ? 'coherent' : 'intensity';
-  return `<g data-camera-profile="${mode}" data-camera-profile-pixels="${values.length}">` +
+  const profileKind = rd.profileMode === 'coherent' ? 'coherent' : 'intensity';
+  return `<g data-camera-profile="${profileKind}" data-camera-profile-pixels="${values.length}" data-camera-profile-scale="${mode}">` +
     `<path data-camera-profile-fill d="${fillPath}" fill="${color}" opacity="0.22"/>` +
     `<path data-camera-profile-curve d="${curvePath}" fill="none" stroke="${color}" stroke-width="1.35" stroke-linejoin="round"/>` +
     `<line x1="${safeX.toFixed(2)}" y1="${safeBaseline.toFixed(2)}" x2="${(safeX + safeWidth).toFixed(2)}" y2="${safeBaseline.toFixed(2)}" stroke="#294453" stroke-width="0.8"/>` +
@@ -2931,6 +2940,15 @@ export const registry = {
       { key: 'ch', label: 'Sensor height (mm)', type: 'number', min: 20, max: 150, step: 2, def: 30 },
       { key: 'pixels', label: 'Sensor pixels (1D)', type: 'number', min: 8, max: 64, step: 1, def: 24 },
       { key: 'interference', label: 'Coherent interference', type: 'checkbox', def: true },
+      // Auto-fit shows the profile's shape whatever its magnitude, which
+      // hides the magnitude entirely: a port carrying 1% of the light draws
+      // the same curve as one carrying all of it. Absolute scales the curve
+      // by the total reading instead, so a weak port looks weak -- the whole
+      // point when two ports are meant to be compared against each other.
+      {
+        key: 'profileScale', label: 'Profile height', type: 'select', def: 'absolute',
+        options: [['absolute', 'Absolute — height tracks the reading'], ['fit', 'Auto-fit — normalize to this profile\u2019s peak']],
+      },
     ],
     svg(el) {
       const h = el.params.ch || 30;
@@ -2941,6 +2959,7 @@ export const registry = {
     surfaces: el => detectorSurfaces(44, el.params.ch || 30, 'Camera sensor', {
       pixels: el.params.pixels,
       interference: el.params.interference !== false,
+      profileScale: el.params.profileScale === 'fit' ? 'fit' : 'absolute',
     }),
   },
 

@@ -469,6 +469,7 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     saturation: surface.data.saturation,
     darkInput: surface.data.darkInput,
     pixels: surface.data.pixels,
+    profileScale: surface.data.profileScale,
     interference: surface.data.interference !== false,
     pathDelayNs: Number.isFinite(oplMm) ? oplMm / C_MM_PER_NS : 0,
     gddFs2: Number.isFinite(ray.gdd) ? ray.gdd : 0,
@@ -721,6 +722,7 @@ export function detectorReading(elementId) {
     darkOutput,
     snr,
     profile,
+    profileScale: activeHits[0]?.profileScale === 'fit' ? 'fit' : 'absolute',
     depositedProfile,
     depositedSignal,
     profileColors,
@@ -2812,7 +2814,17 @@ function assembleDrawables(paths, opts, drawables) {
         // and where they separate (a prism) each colour is still drawn boldly
         // enough to be a rainbow rather than a wash.
         const siblings = Math.max(1, ra.spectralCount || 1);
-        const op = 0.28 * Math.max(0.4 / Math.sqrt(siblings), ra.intensity);
+        // The floor keeps a dim-but-real beam visible instead of fading it to
+        // nothing. It was sized for the 2%-100% band, because MIN_INT used to
+        // terminate anything weaker before it could be drawn at all. Coherent
+        // cancellation now produces genuine sub-percent ports, and holding
+        // those at 40% brightness draws a nearly extinguished arm as if it
+        // were live -- the contradiction between figure and readout that this
+        // work exists to remove. Fade the floor away below the old threshold:
+        // at and above MIN_INT every previously drawable beam is untouched.
+        const visibilityFloor = (0.4 / Math.sqrt(siblings))
+          * Math.min(1, Math.max(0, ra.intensity) / MIN_INT);
+        const op = 0.28 * Math.max(visibilityFloor, ra.intensity);
         const [A, B] = ra.renderEvent === rb.renderEvent
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
