@@ -344,25 +344,54 @@ function spectrumPlot(reading, sensor, baseline = 8) {
       + visible.map(stemFor).join('') + `</g>` + ticks + marks;
   }
 
-  const points = band.map(sample => ({ x: xAt(sample.wavelength), y: baseline - yFor(sample.height) }));
-  // the fill traces the same curve but pinned to the baseline at both ends,
-  // so it reads as a filled lineshape rather than a floating ribbon
-  const fillPoints = [{ x: points[0].x, y: baseline }, ...points, { x: points[points.length - 1].x, y: baseline }];
-  const clipId = `specClip${esc(sensor?.id || 'x')}`, gradientId = `specGrad${esc(sensor?.id || 'x')}`;
-  // The gradient spans the band's own extent, so its colours stay tied to the
-  // wavelengths underneath them even when discrete lines sit outside it.
-  const bandLo = band[0].wavelength, bandHi = band[band.length - 1].wavelength;
-  const bandSpan = Math.max(1e-6, bandHi - bandLo);
-  const stops = band.map(sample => {
-    const offset = ((sample.wavelength - bandLo) / bandSpan * 100).toFixed(1);
-    return `<stop offset="${offset}%" stop-color="${sample.color || wavelengthToColor(sample.wavelength)}"/>`;
-  }).join('');
+  // One curve per connected band. A source can arrive carrying several bands
+  // that do not touch -- an AOTF selecting three lines out of one
+  // supercontinuum is the standard case -- and a single curve drawn through
+  // all of them paints a spectrum across the gaps the AOTF is specifically
+  // there to block. Each band gets its own path and its own gradient.
+  const bandGroups = [];
+  for (const sample of band) {
+    const key = sample.bandId || sample.sourceId || '';
+    const open = bandGroups[bandGroups.length - 1];
+    if (open && open.key === key) open.samples.push(sample);
+    else bandGroups.push({ key, samples: [sample] });
+  }
+  const clipId = `specClip${esc(sensor?.id || 'x')}`;
+  const drawn = bandGroups.map((group, index) => {
+    const gradientId = `specGrad${esc(sensor?.id || 'x')}b${index}`;
+    const points = group.samples.map(sample =>
+      ({ x: xAt(sample.wavelength), y: baseline - yFor(sample.height) }));
+    // A band reduced to a single sample has no curve to draw; a stem carries
+    // it instead, so a very narrow band is never silently dropped.
+    if (points.length < 2) {
+      return { defs: '', body: `<g data-spectrum-band-segment="${group.samples.length}">${stemFor(group.samples[0])}</g>` };
+    }
+    // the fill traces the same curve but pinned to the baseline at both ends,
+    // so it reads as a filled lineshape rather than a floating ribbon
+    const fillPoints = [{ x: points[0].x, y: baseline }, ...points, { x: points[points.length - 1].x, y: baseline }];
+    // The gradient spans this band's own extent, so its colours stay tied to
+    // the wavelengths underneath them even when other bands or discrete lines
+    // sit outside it.
+    const bandLo = group.samples[0].wavelength;
+    const bandHi = group.samples[group.samples.length - 1].wavelength;
+    const bandSpan = Math.max(1e-6, bandHi - bandLo);
+    const stops = group.samples.map(sample => {
+      const offset = ((sample.wavelength - bandLo) / bandSpan * 100).toFixed(1);
+      return `<stop offset="${offset}%" stop-color="${sample.color || wavelengthToColor(sample.wavelength)}"/>`;
+    }).join('');
+    return {
+      defs: `<linearGradient id="${gradientId}" x1="${xAt(bandLo).toFixed(2)}" y1="0" x2="${xAt(bandHi).toFixed(2)}" y2="0" gradientUnits="userSpaceOnUse">${stops}</linearGradient>`,
+      body: `<g data-spectrum-band-segment="${group.samples.length}">`
+        + `<path d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.35" stroke="none"/>`
+        + `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.4" stroke-linecap="round"/>`
+        + `</g>`,
+    };
+  });
   return `<defs><clipPath id="${clipId}"><rect x="-35" y="${(baseline - 17).toFixed(2)}" width="70" height="17.5"/></clipPath>` +
-    `<linearGradient id="${gradientId}" x1="${xAt(bandLo).toFixed(2)}" y1="0" x2="${xAt(bandHi).toFixed(2)}" y2="0" gradientUnits="userSpaceOnUse">${stops}</linearGradient></defs>` +
+    drawn.map(entry => entry.defs).join('') + `</defs>` +
     axis + yLabel +
-    `<g clip-path="url(#${clipId})">` +
-    `<path data-spectrum-points="${band.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.35" stroke="none"/>` +
-    `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.4" stroke-linecap="round"/>` +
+    `<g clip-path="url(#${clipId})" data-spectrum-points="${band.length}">` +
+    drawn.map(entry => entry.body).join('') +
     (lines.length ? `<g data-spectrum-lines="${lines.length}">${lines.map(stemFor).join('')}</g>` : '') +
     `</g>` + ticks + marks;
 }
