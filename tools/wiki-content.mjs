@@ -2822,6 +2822,87 @@ export const wikiEntries = [
   },
 
   {
+    type: 'powermeter',
+    title: 'Power meter',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>A <a href="../detector/">photodetector</a> reports a photocurrent; a power meter
+        reports <strong>watts</strong>. The difference is calibration: a power meter's sensor
+        has a known, measured relationship between what it outputs and the optical power that
+        produced it, so the console can show an absolute number instead of an arbitrary one. Every
+        commercial power meter is really two parts — a sensor head and a console that knows how
+        to read it — and the sensor is where the real design tradeoff lives.</p>
+        <p>A <strong>photodiode sensor</strong> is the same physical device as a plain
+        photodetector, just factory-calibrated: its responsivity <span class="w">R(λ)</span>
+        is measured at each wavelength, so the console can recover power from photocurrent.
+        That calibration is the whole catch — <span class="w">R(λ)</span> is not flat, exactly as
+        on the <a href="../detector/">photodetector page</a>, so the meter has to be told which
+        wavelength it's reading. Set the wrong one and the number is wrong by the ratio of the
+        two responsivities, silently.</p>`,
+      formulas: [
+        { tex: 'P = \\frac{I_{\\text{pd}}}{R(\\lambda)}', caption: 'A photodiode sensor recovers power by dividing the measured photocurrent by the responsivity at the configured wavelength. The reading is only as correct as that wavelength setting.' },
+      ],
+      html2: `
+        <p>A <strong>thermal sensor</strong> — a thermopile, or a pyroelectric detector for
+        single pulses — sidesteps that problem entirely. Incident light is absorbed by a black
+        coating and converted to heat, and the sensor reads the resulting temperature rise (or,
+        for a pyroelectric, the heat pulse from one shot). Absorption into heat is, to good
+        approximation, the same process at every wavelength, so a thermal sensor's calibration
+        holds across a broad spectral range with no wavelength setting to get wrong${cite(1)}.
+        The tradeoff is speed: a thermopile takes seconds to reach thermal equilibrium, against
+        microseconds for a photodiode, and needs more power to produce a measurable temperature
+        rise at all — which is why thermal sensors dominate at higher powers and photodiode
+        sensors dominate at low ones.</p>
+        <p>Either sensor has a hard <strong>damage threshold</strong>. A photodiode sensor can
+        saturate or be burned out by too much continuous power — or, just as easily, by the
+        instantaneous peak power of a pulsed beam whose <em>average</em> power looks perfectly
+        safe. A thermal sensor's coating can be scorched by a tightly focused beam even within
+        its rated average-power range. Every real power meter publishes a maximum power (and
+        often a maximum power <em>density</em>) that the reading itself gives no warning of
+        approaching.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The power meter measures the same relative ray weight every detector in this
+        palette does. On its own — selected in the canvas, read from its inspector panel — that
+        relative number is all it shows, identical to a plain photodetector. The Watts reading
+        appears only once it drives a <a href="../display/">detector screen</a> ("Connect to a
+        detector screen" in its inspector does this in one click): the screen converts relative
+        weight to power using the <strong>Average power (W)</strong> field already set on
+        whichever source(s) are in the scene, so a source configured for 100&nbsp;mW and a
+        power meter reading half the relative weight of a fully-open beam shows 50&nbsp;mW.</p>`,
+      formulas: [
+        { tex: '\\hat P_{\\text{det}} = w_{\\text{rel}} \\cdot \\overline{P_{\\text{src}}}, \\qquad \\overline{P_{\\text{src}}} = \\frac{1}{N}\\sum_{i=1}^{N} P_{\\text{src},i}', caption: 'The calibration reference is the mean configured source power, averaged over every source element in the scene — N is the total source count, not just the ones whose light reaches this detector.' },
+      ],
+      limitations: `<p>That averaging is worth understanding exactly, because it can read low
+        for a reason that has nothing to do with the optics. The reference power is the mean of
+        every source's Average power field <em>in the whole scene</em> — sources whose light
+        never reaches this particular meter still count, and a source type with no power field at
+        all (the point source) contributes zero to the sum while still counting toward
+        <span class="w">N</span>. A single 100&nbsp;mW laser aimed straight at a power meter reads
+        100&nbsp;mW; add an unrelated point source anywhere else in the sketch and, with nothing
+        about the beam path changed, the same meter now reads 50&nbsp;mW — half the true value —
+        because the estimate no longer knows which source it should be calibrated against.</p>
+        <p>Beyond that: the conversion is a single flat factor with no wavelength dependence at
+        all, so it behaves like an idealized thermal sensor regardless of what the element
+        actually represents, and there is no way to select or see which sensor type is assumed.
+        There is no damage threshold, no saturation, and no response-time difference between a
+        thermal sensor's seconds-long settling and a photodiode's microsecond response — a
+        pulsed and a CW source of the same average power read identically. Treat the Watts
+        figure as a scaled version of the relative signal, not a calibrated measurement.</p>`,
+    },
+    related: ['detector', 'pmt', 'display', 'cwlaser'],
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Thermal Detectors', url: 'https://www.rp-photonics.com/thermal_detectors.html' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Optical Power Meters', url: 'https://www.rp-photonics.com/optical_power_meters.html' },
+      { label: 'RP Photonics Encyclopedia — Photodiodes', url: 'https://www.rp-photonics.com/photodiodes.html' },
+    ],
+  },
+
+  {
     type: 'dichroic',
     title: 'Dichroic mirror',
     category: 'Filters & Splitters',

@@ -323,6 +323,21 @@ const demoScenes = {
       mkDemo('display', 440, 272, 0, { sensorId: tube.id, displayScale: 0.55 }),
     ];
   },
+  // A calibrated Watts reading, and where it actually comes from: the linked
+  // screen converts relative weight using the laser's own Average power
+  // field (200 mW here), so the 25% ND filter's real attenuation shows up as
+  // a real 50 mW on the display -- not just a smaller relative number.
+  powermeter: () => {
+    const meter = mkDemo('powermeter', 350, 150, 0, { aperture: 30 });
+    return [
+      mkDemo('cwlaser', 40, 150, 0, { beamMode: 'beam', beamWidth: 14, avgPowerW: 0.2 },
+        { label: '200 mW source', showLabel: true, labelPos: 't' }),
+      mkDemo('filter', 200, 150, 0, { ftype: 'nd', trans: 0.25 },
+        { label: '25% ND filter', showLabel: true, labelPos: 't' }),
+      meter,
+      mkDemo('display', 350, 260, 0, { sensorId: meter.id, displayScale: 0.55 }),
+    ];
+  },
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {

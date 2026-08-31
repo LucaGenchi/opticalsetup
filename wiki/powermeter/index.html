@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power meter — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Reports incoming optical power when source power is configured, otherwise relative detected power. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/powermeter/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Power meter — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Reports incoming optical power when source power is configured, otherwise relative detected power.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/powermeter/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="current">Power meter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#detectors">Detectors</a> / Power meter</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#86efac" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">PWR</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></div>
+        <div>
+          <h1>Power meter</h1>
+        </div>
+      </div>
+      <p class="tagline">Reports incoming optical power when source power is configured, otherwise relative detected power.</p>
+      <a class="place-cta" href="../../sketch/?place=powermeter">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=powermeter"
+          title="Interactive Power meter — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the power meter to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>A <a href="../detector/">photodetector</a> reports a photocurrent; a power meter
+        reports <strong>watts</strong>. The difference is calibration: a power meter's sensor
+        has a known, measured relationship between what it outputs and the optical power that
+        produced it, so the console can show an absolute number instead of an arbitrary one. Every
+        commercial power meter is really two parts — a sensor head and a console that knows how
+        to read it — and the sensor is where the real design tradeoff lives.</p>
+        <p>A <strong>photodiode sensor</strong> is the same physical device as a plain
+        photodetector, just factory-calibrated: its responsivity <span class="w">R(λ)</span>
+        is measured at each wavelength, so the console can recover power from photocurrent.
+        That calibration is the whole catch — <span class="w">R(λ)</span> is not flat, exactly as
+        on the <a href="../detector/">photodetector page</a>, so the meter has to be told which
+        wavelength it's reading. Set the wrong one and the number is wrong by the ratio of the
+        two responsivities, silently.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>P</mi><mo>=</mo><mfrac><msub><mi>I</mi><mtext>pd</mtext></msub><mrow><mi>R</mi><mo stretchy="false">(</mo><mi>λ</mi><mo stretchy="false">)</mo></mrow></mfrac></mrow><annotation encoding="application/x-tex">P = \frac{I_{\text{pd}}}{R(\lambda)}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2963em;vertical-align:-0.936em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0077em;">R</span><span class="mopen">(</span><span class="mord mathnormal">λ</span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">pd</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.936em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">A photodiode sensor recovers power by dividing the measured photocurrent by the responsivity at the configured wavelength. The reading is only as correct as that wavelength setting.</div>
+    </div>
+
+        <p>A <strong>thermal sensor</strong> — a thermopile, or a pyroelectric detector for
+        single pulses — sidesteps that problem entirely. Incident light is absorbed by a black
+        coating and converted to heat, and the sensor reads the resulting temperature rise (or,
+        for a pyroelectric, the heat pulse from one shot). Absorption into heat is, to good
+        approximation, the same process at every wavelength, so a thermal sensor's calibration
+        holds across a broad spectral range with no wavelength setting to get wrong<sup class="cite">[<a href="#ref-1">1</a>]</sup>.
+        The tradeoff is speed: a thermopile takes seconds to reach thermal equilibrium, against
+        microseconds for a photodiode, and needs more power to produce a measurable temperature
+        rise at all — which is why thermal sensors dominate at higher powers and photodiode
+        sensors dominate at low ones.</p>
+        <p>Either sensor has a hard <strong>damage threshold</strong>. A photodiode sensor can
+        saturate or be burned out by too much continuous power — or, just as easily, by the
+        instantaneous peak power of a pulsed beam whose <em>average</em> power looks perfectly
+        safe. A thermal sensor's coating can be scorched by a tightly focused beam even within
+        its rated average-power range. Every real power meter publishes a maximum power (and
+        often a maximum power <em>density</em>) that the reading itself gives no warning of
+        approaching.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>The power meter measures the same relative ray weight every detector in this
+        palette does. On its own — selected in the canvas, read from its inspector panel — that
+        relative number is all it shows, identical to a plain photodetector. The Watts reading
+        appears only once it drives a <a href="../display/">detector screen</a> ("Connect to a
+        detector screen" in its inspector does this in one click): the screen converts relative
+        weight to power using the <strong>Average power (W)</strong> field already set on
+        whichever source(s) are in the scene, so a source configured for 100&nbsp;mW and a
+        power meter reading half the relative weight of a fully-open beam shows 50&nbsp;mW.</p>
+        <div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mover accent="true"><mi>P</mi><mo>^</mo></mover><mtext>det</mtext></msub><mo>=</mo><msub><mi>w</mi><mtext>rel</mtext></msub><mo>⋅</mo><mover accent="true"><msub><mi>P</mi><mtext>src</mtext></msub><mo stretchy="true">‾</mo></mover><mo separator="true">,</mo><mspace width="2em"/><mover accent="true"><msub><mi>P</mi><mtext>src</mtext></msub><mo stretchy="true">‾</mo></mover><mo>=</mo><mfrac><mn>1</mn><mi>N</mi></mfrac><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><msub><mi>P</mi><mrow><mtext>src</mtext><mo separator="true">,</mo><mi>i</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\hat P_{\text{det}} = w_{\text{rel}} \cdot \overline{P_{\text{src}}}, \qquad \overline{P_{\text{src}}} = \frac{1}{N}\sum_{i=1}^{N} P_{\text{src},i}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1.0968em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord katex-accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.9468em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span></span><span style="top:-3.2523em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.1667em;"><span class="mord">^</span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">det</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.5945em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">rel</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.0778em;vertical-align:-0.1944em;"></span><span class="mord katex-overline"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8833em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">src</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.8033em;"><span class="pstrut" style="height:3em;"></span><span class="overline-line" style="border-bottom-width:0.04em;"></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord katex-overline"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8833em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">src</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.8033em;"><span class="pstrut" style="height:3em;"></span><span class="overline-line" style="border-bottom-width:0.04em;"></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:3.106em;vertical-align:-1.2777em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.8283em;"><span style="top:-1.8723em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mrel mtight">=</span><span class="mord mtight">1</span></span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span><span style="top:-4.3em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.109em;">N</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.2777em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">src</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span></span></div>
+      <div class="caption">The calibration reference is the mean configured source power, averaged over every source element in the scene — N is the total source count, not just the ones whose light reaches this detector.</div>
+    </div>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>That averaging is worth understanding exactly, because it can read low
+        for a reason that has nothing to do with the optics. The reference power is the mean of
+        every source's Average power field <em>in the whole scene</em> — sources whose light
+        never reaches this particular meter still count, and a source type with no power field at
+        all (the point source) contributes zero to the sum while still counting toward
+        <span class="w">N</span>. A single 100&nbsp;mW laser aimed straight at a power meter reads
+        100&nbsp;mW; add an unrelated point source anywhere else in the sketch and, with nothing
+        about the beam path changed, the same meter now reads 50&nbsp;mW — half the true value —
+        because the estimate no longer knows which source it should be calibrated against.</p>
+        <p>Beyond that: the conversion is a single flat factor with no wavelength dependence at
+        all, so it behaves like an idealized thermal sensor regardless of what the element
+        actually represents, and there is no way to select or see which sensor type is assumed.
+        There is no damage threshold, no saturation, and no response-time difference between a
+        thermal sensor's seconds-long settling and a photodiode's microsecond response — a
+        pulsed and a CW source of the same average power read identically. Treat the Watts
+        figure as a scaled version of the relative signal, not a calibrated measurement.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/pmt/"><svg viewBox="-33 -33 66 66" aria-hidden="true"><rect x="-25" y="-13" width="50" height="26" rx="13" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><rect x="-27" y="-9" width="4" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><text x="2" y="0"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text><circle cx="16" cy="-7" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photomultiplier (PMT)</a><a href="../../wiki/display/"><svg viewBox="-104 -104 208 208" aria-hidden="true"><g transform="scale(2)" data-display-density="expanded"><rect x="-49" y="-36" width="98" height="72" rx="6" fill="#24313b" stroke="#111b22" stroke-width="1.7"/><path d="M -43,-32 H 43" stroke="#40515d" stroke-width="0.8" opacity="0.7"/><rect x="-43" y="-29" width="86" height="47" rx="3" fill="#061822" stroke="#45606f" stroke-width="1.2"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace"><text x="0" y="-2" text-anchor="middle" font-size="9" font-weight="760" letter-spacing="0.8" fill="#94a3b8">SELECT INPUT</text><text x="0" y="10" text-anchor="middle" font-size="5.4" fill="#607887">Press INPUT to connect</text></g><circle cx="-49" cy="19" r="3.6" fill="#13212a" stroke="#89a2b2" stroke-width="1"/><circle cx="-49" cy="19" r="1.3" fill="#52636f"/><g class="display-control" data-display-action="power" role="button" aria-label="Toggle display power"><title>Power</title><circle class="display-control-face" cx="-40" cy="27" r="4.4" fill="#14232c" stroke="#6ee7b7" stroke-width="1.1"/><path d="M -40,23.8 L -40,27.1 M -42.2,25.2 A 3,3 0 1 0 -37.8,25.2" fill="none" stroke="#6ee7b7" stroke-width="0.9" stroke-linecap="round"/></g><g class="display-control" data-display-action="input" role="button" aria-label="Cycle sensor input"><title>Cycle sensor input</title><rect class="display-control-face" x="-30" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="-18.5" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">INPUT</text></g><g class="display-control" data-display-action="view" role="button" aria-label="Cycle display view"><title>Cycle display view</title><rect class="display-control-face" x="-3.5" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="8" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">VIEW</text></g><circle cx="41" cy="27" r="2.3" fill="#596b76"/><text x="33" y="29" text-anchor="end" font-size="3.6" font-weight="700" letter-spacing="0.35" fill="#708692">QUAL</text></g></svg>Detector screen</a><a href="../../wiki/cwlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>CW Laser</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/thermal_detectors.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Thermal Detectors</a></li>
+      </ol>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/optical_power_meters.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Optical Power Meters</a></li><li><a href="https://www.rp-photonics.com/photodiodes.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Photodiodes</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>
