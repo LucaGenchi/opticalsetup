@@ -338,6 +338,34 @@ const demoScenes = {
       mkDemo('display', 350, 260, 0, { sensorId: meter.id, displayScale: 0.55 }),
     ];
   },
+  // The same instrument on three benches, because its whole job is telling
+  // these three apart. One collimated beam, and one lens read twice -- once
+  // before its focus and once after -- which also shows that the reported
+  // cone angle is the same on both sides: the beam narrows and re-expands,
+  // but the cone it belongs to does not change.
+  wavefrontdetector: () => {
+    const flat = mkDemo('wavefrontdetector', 430, 70, 0, { aperture: 46 });
+    const converging = mkDemo('wavefrontdetector', 306, 190, 0, { aperture: 46 });
+    const diverging = mkDemo('wavefrontdetector', 386, 310, 0, { aperture: 46 });
+    return [
+      mkDemo('cwlaser', 40, 70, 0, { beamMode: 'beam', beamWidth: 22 },
+        { label: 'collimated — flat wavefront', showLabel: true, labelPos: 't' }),
+      flat,
+      mkDemo('display', 540, 70, 0, { sensorId: flat.id, displayScale: 0.45 }),
+
+      mkDemo('cwlaser', 40, 190, 0, { beamMode: 'beam', beamWidth: 22 }),
+      mkDemo('lens', 220, 190, 0, { f: 100, dia: 34 },
+        { label: '40 mm before focus', showLabel: true, labelPos: 'b' }),
+      converging,
+      mkDemo('display', 540, 190, 0, { sensorId: converging.id, displayScale: 0.45 }),
+
+      mkDemo('cwlaser', 40, 310, 0, { beamMode: 'beam', beamWidth: 22 }),
+      mkDemo('lens', 220, 310, 0, { f: 100, dia: 34 },
+        { label: '40 mm past the same focus — same cone angle', showLabel: true, labelPos: 'b' }),
+      diverging,
+      mkDemo('display', 540, 310, 0, { sensorId: diverging.id, displayScale: 0.45 }),
+    ];
+  },
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {

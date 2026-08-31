@@ -2917,6 +2917,159 @@ export const wikiEntries = [
   },
 
   {
+    type: 'wavefrontdetector',
+    title: 'Wavefront detector',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>Every other detector on this bench answers <em>how much</em> light arrived, and
+        maybe what colour it was. A wavefront sensor answers a different question entirely:
+        <strong>what shape</strong> is the light. A beam's wavefront is the surface joining
+        points of equal phase, and it is always perpendicular to the local direction of
+        travel. A perfectly collimated beam has flat wavefronts; a beam converging to a focus
+        has spherical ones centred on that focus. Real optics never produce either exactly —
+        aberrations, thermal lensing, atmospheric turbulence and mounting stress all leave the
+        wavefront misshapen, and that misshape is what limits how tightly a beam can be
+        focused.</p>
+        <p>You cannot photograph a wavefront. Detectors respond to intensity, and phase
+        information is lost the instant light is absorbed. So every wavefront sensor works
+        indirectly, by converting phase structure into something an intensity detector
+        <em>can</em> see. The <strong>Shack–Hartmann sensor</strong> does it by measuring
+        direction.</p>
+
+        <h3>From Hartmann's mask to Shack's lenslets</h3>
+        <p>The lineage starts with a mask. In 1904 Johannes Hartmann tested telescope optics
+        by covering the aperture with a screen of holes and photographing where each pencil of
+        light landed${cite(1)} — displaced spots meant the rays were not going where a perfect
+        optic would send them. The method worked but wasted almost all the light and gave
+        fuzzy shadow spots that were hard to locate precisely.</p>
+        <p>In the late 1960s Roland Shack and Ben Platt made the change that turned it into an
+        instrument: they replaced each hole with a small <strong>lenslet</strong>${cite(1)}.
+        A hole casts a shadow; a lenslet <em>focuses</em>. The array now uses essentially all
+        the incident light, and each sub-aperture produces a tight, bright spot whose centroid
+        can be located to a small fraction of a pixel. That single substitution is what makes
+        the modern sensor both efficient and precise.</p>
+
+        <h3>What the spots actually measure</h3>
+        <p>Each lenslet samples one small patch of the incoming wavefront. Over a patch that
+        small the wavefront is essentially a tilted plane, and a tilted plane wave focuses to a
+        spot displaced from the lenslet's axis in proportion to that tilt. With lenslet focal
+        length <span class="w">f</span>, a local wavefront slope <span class="w">θ</span>
+        moves the spot by</p>`,
+      formulas: [
+        { tex: '\\Delta x = f\\,\\theta = f\\,\\frac{\\partial W}{\\partial x}', caption: 'Spot displacement measures the local gradient of the wavefront W, not the wavefront itself. Every lenslet returns one slope sample; the surface has to be reconstructed from the whole map of them.' },
+      ],
+      html2: `
+        <p>So a Shack–Hartmann sensor is fundamentally a <strong>gradient</strong> sensor. It
+        returns an array of local slopes, and the wavefront is recovered afterwards by
+        integrating them — either zonally, stitching patch to patch, or modally, by
+        least-squares fitting an orthogonal set such as the <strong>Zernike
+        polynomials</strong>, whose low-order terms are the familiar named aberrations: tilt,
+        defocus, astigmatism, coma, spherical. Reporting a beam as "0.2 waves RMS with 0.15
+        waves of coma" means exactly this fit was performed on the slope map.</p>
+
+        <h3>The tradeoff every design lives with</h3>
+        <p>Two numbers fight each other. <strong>Sensitivity</strong> improves with lenslet
+        focal length, since a longer <span class="w">f</span> converts the same small slope
+        into a larger, more measurable displacement. <strong>Dynamic range</strong> works the
+        other way: a spot must stay inside its own sub-aperture cell to remain attributable to
+        its lenslet, so the largest measurable slope is roughly the lenslet pitch
+        <span class="w">p</span> over twice the focal length${cite(2)}.</p>`,
+      formulas2: [
+        { tex: '\\theta_{\\max} \\approx \\frac{p}{2f}, \\qquad \\delta\\theta_{\\min} \\approx \\frac{\\delta x_{\\text{centroid}}}{f}', caption: 'Longer lenslets measure smaller slopes but tolerate a narrower range of them. Finer spatial sampling means smaller p, which shortens f as well — so resolution, sensitivity and dynamic range cannot all be maximised at once.' },
+      ],
+      html3: `
+        <p>Spatial resolution is a third constraint: the wavefront is only sampled once per
+        lenslet, so structure finer than the pitch is simply averaged away. Conventional
+        refractive arrays sit around a hundred lenslets per square millimetre, which is why
+        classical Shack–Hartmann sensors suit smooth, slowly varying wavefronts and not sharply
+        structured ones. Recent work replaces the refractive lenslets with
+        <a href="../metasurface/">metasurfaces</a>, which set phase by subwavelength structure
+        rather than by curvature and so decouple the packing density from the focal length: a
+        2024 demonstration reached a sampling density of 5963&nbsp;lenslets/mm² with an 8°
+        acceptance angle, and used it for single-shot phase imaging of biological
+        tissue${cite(3)}.</p>
+        <p>One limit is structural rather than technical. Because the instrument measures a
+        gradient, a genuine <strong>discontinuity</strong> in the wavefront is invisible to
+        it${cite(1)} — a step or a branch point has no finite slope to sample, so no amount of
+        sensitivity or sampling density recovers it.</p>
+
+        <h3>Where they are used</h3>
+        <p>In <strong>adaptive optics</strong>, a wavefront sensor and a
+        <a href="../dm/">deformable mirror</a> form a closed loop: the sensor measures the
+        distortion, the mirror applies its negative, and an astronomical telescope recovers
+        near-diffraction-limited imaging through atmospheric turbulence. The same loop
+        sharpens deep imaging in multiphoton microscopy, where the specimen itself is the
+        aberrating medium. In <strong>ophthalmology</strong>, aberrometry of the eye's own
+        wavefront is what makes wavefront-guided LASIK and PRK possible${cite(1)}. And in the
+        laboratory, wavefront sensors characterise laser beam quality and
+        <span class="w">M²</span>, verify collimation, test optical surfaces in transmission or
+        double-pass reflection, and align systems in real time${cite(4)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>OpticalSetup traces rays, and a ray is by definition perpendicular to the
+        wavefront — so ray direction <em>is</em> local wavefront slope, already available
+        without any lenslets. The wavefront detector uses that directly: at its sensor face it
+        takes every arriving ray's height <span class="w">h</span> across the face and its
+        angle <span class="w">θ</span> to the face normal, and least-squares fits a straight
+        line through the resulting <span class="w">θ(h)</span>.</p>
+        <p>That fit is the measurement. Its <em>intercept</em> is the mean tilt of the whole
+        bundle and is discarded, which is why steering the beam in at an angle does not change
+        the reading — a tilted flat wavefront is still flat. Its <em>gradient</em>
+        <span class="w">dθ/dh</span> is the wavefront curvature, and its sign says which way:
+        negative for a converging beam, positive for a diverging one, and a magnitude below
+        0.05° across the beam reports as collimated.</p>`,
+      formulas: [
+        { tex: '\\frac{d\\theta}{dh} = \\frac{1}{R}, \\qquad \\Theta_{\\text{full}} = \\left|\\frac{d\\theta}{dh}\\right| \\cdot D', caption: 'The fitted gradient is the reciprocal of the wavefront radius of curvature R, and multiplying it by the illuminated diameter D gives the full convergence or divergence cone angle — the number the panel reports.' },
+      ],
+      html2: `
+        <p>Both quantities come out exact rather than approximate. A 20&nbsp;mm beam through
+        an <span class="w">f</span>&nbsp;=&nbsp;100&nbsp;mm lens gives a measured full angle of
+        11.43°, against 11.42° from the geometry; and the fitted
+        <span class="w">1/R</span> tracks the signed distance to focus to the tenth of a
+        millimetre — −20.0&nbsp;mm when the sensor face sits 80&nbsp;mm past that lens, +5.0&nbsp;mm
+        when it sits 5&nbsp;mm beyond the focus. The reported cone angle is constant on both
+        sides of the focus, as it should be: the beam narrows and re-expands, but the cone it
+        belongs to does not change.</p>`,
+      limitations: `<p>A straight line through <span class="w">θ(h)</span> has exactly one
+        shape term in it, and that term is <strong>defocus</strong>. Tilt is fitted and thrown
+        away; everything above defocus — astigmatism, coma, spherical aberration, and every
+        higher Zernike — has nowhere to go. Send a deliberately aberrated beam in (a fast
+        singlet with visible spherical aberration, say) and the fan of ray angles is still
+        collapsed to one average slope and reported as a single clean convergence angle. The
+        aberration is precisely the departure from that straight line, and it is exactly what
+        the fit discards. This instrument tells you whether a beam is converging, diverging or
+        collimated, and how hard; it does not tell you whether it is any good.</p>
+        <p>Some of that is structural rather than unimplemented. The tracer is a 2D meridional
+        section with one transverse axis, so astigmatism — different curvature in
+        <span class="w">x</span> and <span class="w">y</span> — is not representable in the
+        first place, and neither is any azimuthal aberration. There is also no sensor:
+        no lenslet array, no spots, no centroiding, no pixel noise, and therefore none of the
+        sensitivity-versus-dynamic-range tradeoff that dominates real instrument design. Every
+        arriving ray is used at full precision, so there is no maximum measurable slope and no
+        minimum detectable one.</p>
+        <p>The reading is geometric throughout: an angle in degrees, never an optical path
+        difference in waves, and with no wavelength dependence at all. There is no RMS or
+        peak-to-valley wavefront error, no Zernike decomposition, and no Strehl ratio. Finally,
+        the fit needs at least two rays at different heights — a single ray, or a source in
+        line mode, has no gradient to measure and reports collimated by default rather than
+        declining to answer.</p>`,
+    },
+    related: ['dm', 'detector', 'camera', 'lens', 'metasurface'],
+    citations: [
+      { label: 'Shack–Hartmann wavefront sensor — Wikipedia (Hartmann’s 1904 mask, Shack and Platt’s lenslet substitution, insensitivity to wavefront discontinuities, ophthalmic and astronomical use)', url: 'https://en.wikipedia.org/wiki/Shack%E2%80%93Hartmann_wavefront_sensor' },
+      { label: 'RP Photonics Encyclopedia — Shack–Hartmann Wavefront Sensors (lenslet geometry, sensitivity and dynamic-range limits)', url: 'https://www.rp-photonics.com/shack_hartmann_wavefront_sensors.html' },
+      { label: 'Go et al., “Meta Shack–Hartmann wavefront sensor with large sampling density and large angular field of view,” Light: Science & Applications 13, 187 (2024)', url: 'https://doi.org/10.1038/s41377-024-01528-9' },
+      { label: 'Axiom Optics — Wavefront sensing applications (optical testing, beam diagnostics and M², adaptive optics, real-time alignment)', url: 'https://www.axiomoptics.com/application/wavefront-sensing-aaplications/' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Adaptive Optics', url: 'https://www.rp-photonics.com/adaptive_optics.html' },
+      { label: 'RP Photonics Encyclopedia — Wavefronts', url: 'https://www.rp-photonics.com/wavefronts.html' },
+    ],
+  },
+
+  {
     type: 'dichroic',
     title: 'Dichroic mirror',
     category: 'Filters & Splitters',

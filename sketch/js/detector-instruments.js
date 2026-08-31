@@ -21,7 +21,7 @@ const DESCRIPTIONS = {
   detector: 'Measures the relative intensity incident on its active surface.',
   pmt: 'Amplifies a faint signal \u2014 fluorescence, microscopy, single-point detection \u2014 into a readable one, and reports whether it clears the tube\u2019s own dark floor.',
   powermeter: 'Reports absolute optical power by carrying each source\u2019s configured watts through everything that attenuated it on the way here.',
-  wavefrontdetector: 'Reports intensity and classifies the incident beam as collimated, converging, or diverging with a qualitative divergence angle.',
+  wavefrontdetector: 'Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle.',
   polarimeter: 'Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.',
   spectrometer: 'Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.',
   generaldetector: 'Reports intensity, power, beam size, wavefront, polarization and Stokes parameters, wavelength and bandwidth, plus pulse repetition rate and duration.',

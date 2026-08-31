@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wavefront detector — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/wavefrontdetector/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Wavefront detector — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/wavefrontdetector/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="current">Wavefront detector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#detectors">Detectors</a> / Wavefront detector</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-33 -33 66 66" aria-hidden="true"><rect x="-26" y="-15" width="52" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-27.7" y="-11" width="3.4" height="22" rx="1" fill="#c4b5fd" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">WF</text><circle cx="18" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></div>
+        <div>
+          <h1>Wavefront detector</h1>
+        </div>
+      </div>
+      <p class="tagline">Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle.</p>
+      <a class="place-cta" href="../../sketch/?place=wavefrontdetector">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=wavefrontdetector"
+          title="Interactive Wavefront detector — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the wavefront detector to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>Every other detector on this bench answers <em>how much</em> light arrived, and
+        maybe what colour it was. A wavefront sensor answers a different question entirely:
+        <strong>what shape</strong> is the light. A beam's wavefront is the surface joining
+        points of equal phase, and it is always perpendicular to the local direction of
+        travel. A perfectly collimated beam has flat wavefronts; a beam converging to a focus
+        has spherical ones centred on that focus. Real optics never produce either exactly —
+        aberrations, thermal lensing, atmospheric turbulence and mounting stress all leave the
+        wavefront misshapen, and that misshape is what limits how tightly a beam can be
+        focused.</p>
+        <p>You cannot photograph a wavefront. Detectors respond to intensity, and phase
+        information is lost the instant light is absorbed. So every wavefront sensor works
+        indirectly, by converting phase structure into something an intensity detector
+        <em>can</em> see. The <strong>Shack–Hartmann sensor</strong> does it by measuring
+        direction.</p>
+
+        <h3>From Hartmann's mask to Shack's lenslets</h3>
+        <p>The lineage starts with a mask. In 1904 Johannes Hartmann tested telescope optics
+        by covering the aperture with a screen of holes and photographing where each pencil of
+        light landed<sup class="cite">[<a href="#ref-1">1</a>]</sup> — displaced spots meant the rays were not going where a perfect
+        optic would send them. The method worked but wasted almost all the light and gave
+        fuzzy shadow spots that were hard to locate precisely.</p>
+        <p>In the late 1960s Roland Shack and Ben Platt made the change that turned it into an
+        instrument: they replaced each hole with a small <strong>lenslet</strong><sup class="cite">[<a href="#ref-1">1</a>]</sup>.
+        A hole casts a shadow; a lenslet <em>focuses</em>. The array now uses essentially all
+        the incident light, and each sub-aperture produces a tight, bright spot whose centroid
+        can be located to a small fraction of a pixel. That single substitution is what makes
+        the modern sensor both efficient and precise.</p>
+
+        <h3>What the spots actually measure</h3>
+        <p>Each lenslet samples one small patch of the incoming wavefront. Over a patch that
+        small the wavefront is essentially a tilted plane, and a tilted plane wave focuses to a
+        spot displaced from the lenslet's axis in proportion to that tilt. With lenslet focal
+        length <span class="w">f</span>, a local wavefront slope <span class="w">θ</span>
+        moves the spot by</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">Δ</mi><mi>x</mi><mo>=</mo><mi>f</mi><mtext> </mtext><mi>θ</mi><mo>=</mo><mi>f</mi><mtext> </mtext><mfrac><mrow><mi mathvariant="normal">∂</mi><mi>W</mi></mrow><mrow><mi mathvariant="normal">∂</mi><mi>x</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">\Delta x = f\,\theta = f\,\frac{\partial W}{\partial x}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord">Δ</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0574em;vertical-align:-0.686em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord" style="margin-right:0.0556em;">∂</span><span class="mord mathnormal">x</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord" style="margin-right:0.0556em;">∂</span><span class="mord mathnormal" style="margin-right:0.1389em;">W</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Spot displacement measures the local gradient of the wavefront W, not the wavefront itself. Every lenslet returns one slope sample; the surface has to be reconstructed from the whole map of them.</div>
+    </div>
+
+        <p>So a Shack–Hartmann sensor is fundamentally a <strong>gradient</strong> sensor. It
+        returns an array of local slopes, and the wavefront is recovered afterwards by
+        integrating them — either zonally, stitching patch to patch, or modally, by
+        least-squares fitting an orthogonal set such as the <strong>Zernike
+        polynomials</strong>, whose low-order terms are the familiar named aberrations: tilt,
+        defocus, astigmatism, coma, spherical. Reporting a beam as "0.2 waves RMS with 0.15
+        waves of coma" means exactly this fit was performed on the slope map.</p>
+
+        <h3>The tradeoff every design lives with</h3>
+        <p>Two numbers fight each other. <strong>Sensitivity</strong> improves with lenslet
+        focal length, since a longer <span class="w">f</span> converts the same small slope
+        into a larger, more measurable displacement. <strong>Dynamic range</strong> works the
+        other way: a spot must stay inside its own sub-aperture cell to remain attributable to
+        its lenslet, so the largest measurable slope is roughly the lenslet pitch
+        <span class="w">p</span> over twice the focal length<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>θ</mi><mi>max</mi><mo>⁡</mo></msub><mo>≈</mo><mfrac><mi>p</mi><mrow><mn>2</mn><mi>f</mi></mrow></mfrac><mo separator="true">,</mo><mspace width="2em"/><mi>δ</mi><msub><mi>θ</mi><mi>min</mi><mo>⁡</mo></msub><mo>≈</mo><mfrac><mrow><mi>δ</mi><msub><mi>x</mi><mtext>centroid</mtext></msub></mrow><mi>f</mi></mfrac></mrow><annotation encoding="application/x-tex">\theta_{\max} \approx \frac{p}{2f}, \qquad \delta\theta_{\min} \approx \frac{\delta x_{\text{centroid}}}{f}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mop mtight"><span class="mtight">m</span><span class="mtight">a</span><span class="mtight">x</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.988em;vertical-align:-0.8804em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">p</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8804em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0379em;">δ</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3175em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mop mtight"><span class="mtight">m</span><span class="mtight">i</span><span class="mtight">n</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2519em;vertical-align:-0.8804em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0379em;">δ</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">centroid</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8804em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Longer lenslets measure smaller slopes but tolerate a narrower range of them. Finer spatial sampling means smaller p, which shortens f as well — so resolution, sensitivity and dynamic range cannot all be maximised at once.</div>
+    </div>
+
+        <p>Spatial resolution is a third constraint: the wavefront is only sampled once per
+        lenslet, so structure finer than the pitch is simply averaged away. Conventional
+        refractive arrays sit around a hundred lenslets per square millimetre, which is why
+        classical Shack–Hartmann sensors suit smooth, slowly varying wavefronts and not sharply
+        structured ones. Recent work replaces the refractive lenslets with
+        <a href="../metasurface/">metasurfaces</a>, which set phase by subwavelength structure
+        rather than by curvature and so decouple the packing density from the focal length: a
+        2024 demonstration reached a sampling density of 5963&nbsp;lenslets/mm² with an 8°
+        acceptance angle, and used it for single-shot phase imaging of biological
+        tissue<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
+        <p>One limit is structural rather than technical. Because the instrument measures a
+        gradient, a genuine <strong>discontinuity</strong> in the wavefront is invisible to
+        it<sup class="cite">[<a href="#ref-1">1</a>]</sup> — a step or a branch point has no finite slope to sample, so no amount of
+        sensitivity or sampling density recovers it.</p>
+
+        <h3>Where they are used</h3>
+        <p>In <strong>adaptive optics</strong>, a wavefront sensor and a
+        <a href="../dm/">deformable mirror</a> form a closed loop: the sensor measures the
+        distortion, the mirror applies its negative, and an astronomical telescope recovers
+        near-diffraction-limited imaging through atmospheric turbulence. The same loop
+        sharpens deep imaging in multiphoton microscopy, where the specimen itself is the
+        aberrating medium. In <strong>ophthalmology</strong>, aberrometry of the eye's own
+        wavefront is what makes wavefront-guided LASIK and PRK possible<sup class="cite">[<a href="#ref-1">1</a>]</sup>. And in the
+        laboratory, wavefront sensors characterise laser beam quality and
+        <span class="w">M²</span>, verify collimation, test optical surfaces in transmission or
+        double-pass reflection, and align systems in real time<sup class="cite">[<a href="#ref-4">4</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>OpticalSetup traces rays, and a ray is by definition perpendicular to the
+        wavefront — so ray direction <em>is</em> local wavefront slope, already available
+        without any lenslets. The wavefront detector uses that directly: at its sensor face it
+        takes every arriving ray's height <span class="w">h</span> across the face and its
+        angle <span class="w">θ</span> to the face normal, and least-squares fits a straight
+        line through the resulting <span class="w">θ(h)</span>.</p>
+        <p>That fit is the measurement. Its <em>intercept</em> is the mean tilt of the whole
+        bundle and is discarded, which is why steering the beam in at an angle does not change
+        the reading — a tilted flat wavefront is still flat. Its <em>gradient</em>
+        <span class="w">dθ/dh</span> is the wavefront curvature, and its sign says which way:
+        negative for a converging beam, positive for a diverging one, and a magnitude below
+        0.05° across the beam reports as collimated.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mrow><mi>d</mi><mi>θ</mi></mrow><mrow><mi>d</mi><mi>h</mi></mrow></mfrac><mo>=</mo><mfrac><mn>1</mn><mi>R</mi></mfrac><mo separator="true">,</mo><mspace width="2em"/><msub><mi mathvariant="normal">Θ</mi><mtext>full</mtext></msub><mo>=</mo><mrow><mo fence="true">∣</mo><mfrac><mrow><mi>d</mi><mi>θ</mi></mrow><mrow><mi>d</mi><mi>h</mi></mrow></mfrac><mo fence="true">∣</mo></mrow><mo>⋅</mo><mi>D</mi></mrow><annotation encoding="application/x-tex">\frac{d\theta}{dh} = \frac{1}{R}, \qquad \Theta_{\text{full}} = \left|\frac{d\theta}{dh}\right| \cdot D</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:2.0574em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="mord mathnormal">h</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0074em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0077em;">R</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord">Θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">full</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.4em;vertical-align:-0.95em;"></span><span class="minner"><span class="mopen"><span class="delimsizing mult"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.45em;"><span style="top:-3.45em;"><span class="pstrut" style="height:4.4em;"></span><span style="width:0.333em;height:2.4em;"><svg xmlns="http://www.w3.org/2000/svg" width="0.333em" height="2.4em" viewBox="0 0 333 2400"><path d="M145 15 v585 v1200 v585 c2.667,10,9.667,15,21,15
+c10,0,16.667,-5,20,-15 v-585 v-1200 v-585 c-2.667,-10,-9.667,-15,-21,-15
+c-10,0,-16.667,5,-20,15z M188 15 H145 v585 v1200 v585 h43z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.95em;"><span></span></span></span></span></span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="mord mathnormal">h</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">d</span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mclose"><span class="delimsizing mult"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.45em;"><span style="top:-3.45em;"><span class="pstrut" style="height:4.4em;"></span><span style="width:0.333em;height:2.4em;"><svg xmlns="http://www.w3.org/2000/svg" width="0.333em" height="2.4em" viewBox="0 0 333 2400"><path d="M145 15 v585 v1200 v585 c2.667,10,9.667,15,21,15
+c10,0,16.667,-5,20,-15 v-585 v-1200 v-585 c-2.667,-10,-9.667,-15,-21,-15
+c-10,0,-16.667,5,-20,15z M188 15 H145 v585 v1200 v585 h43z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.95em;"><span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">D</span></span></span></span></span></div>
+      <div class="caption">The fitted gradient is the reciprocal of the wavefront radius of curvature R, and multiplying it by the illuminated diameter D gives the full convergence or divergence cone angle — the number the panel reports.</div>
+    </div>
+
+        <p>Both quantities come out exact rather than approximate. A 20&nbsp;mm beam through
+        an <span class="w">f</span>&nbsp;=&nbsp;100&nbsp;mm lens gives a measured full angle of
+        11.43°, against 11.42° from the geometry; and the fitted
+        <span class="w">1/R</span> tracks the signed distance to focus to the tenth of a
+        millimetre — −20.0&nbsp;mm when the sensor face sits 80&nbsp;mm past that lens, +5.0&nbsp;mm
+        when it sits 5&nbsp;mm beyond the focus. The reported cone angle is constant on both
+        sides of the focus, as it should be: the beam narrows and re-expands, but the cone it
+        belongs to does not change.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>A straight line through <span class="w">θ(h)</span> has exactly one
+        shape term in it, and that term is <strong>defocus</strong>. Tilt is fitted and thrown
+        away; everything above defocus — astigmatism, coma, spherical aberration, and every
+        higher Zernike — has nowhere to go. Send a deliberately aberrated beam in (a fast
+        singlet with visible spherical aberration, say) and the fan of ray angles is still
+        collapsed to one average slope and reported as a single clean convergence angle. The
+        aberration is precisely the departure from that straight line, and it is exactly what
+        the fit discards. This instrument tells you whether a beam is converging, diverging or
+        collimated, and how hard; it does not tell you whether it is any good.</p>
+        <p>Some of that is structural rather than unimplemented. The tracer is a 2D meridional
+        section with one transverse axis, so astigmatism — different curvature in
+        <span class="w">x</span> and <span class="w">y</span> — is not representable in the
+        first place, and neither is any azimuthal aberration. There is also no sensor:
+        no lenslet array, no spots, no centroiding, no pixel noise, and therefore none of the
+        sensitivity-versus-dynamic-range tradeoff that dominates real instrument design. Every
+        arriving ray is used at full precision, so there is no maximum measurable slope and no
+        minimum detectable one.</p>
+        <p>The reading is geometric throughout: an angle in degrees, never an optical path
+        difference in waves, and with no wavelength dependence at all. There is no RMS or
+        peak-to-valley wavefront error, no Zernike decomposition, and no Strehl ratio. Finally,
+        the fit needs at least two rays at different heights — a single ray, or a source in
+        line mode, has no gradient to measure and reports collimated by default rather than
+        declining to answer.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/dm/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="8" y="-25" width="4" height="50" fill="#4d565f"/><rect x="4" y="-23" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-16" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-9" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-2" width="4" height="4" fill="#8d98a5"/><rect x="4" y="5" width="4" height="4" fill="#8d98a5"/><rect x="4" y="12" width="4" height="4" fill="#8d98a5"/><rect x="4" y="19" width="4" height="4" fill="#8d98a5"/><path d="M 0,-25 Q 3,-18.75 0,-12.5 Q -3,-6.25 0,0 Q 3,6.25 0,12.5 Q -3,18.75 0,25" fill="none" stroke="#444" stroke-width="2.5"/></svg>Deformable mirror</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/camera/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Camera</a><a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Convex lens</a><a href="../../wiki/metasurface/"><svg viewBox="-25 -25 50 50" aria-hidden="true"><rect x="-1.4" y="-15" width="2.8" height="30" fill="#c9e4f5" stroke="#4a90c4" stroke-width="0.9"/><rect x="-2.9" y="-15" width="1.5" height="30" fill="#f2c230" stroke="#a67c06" stroke-width="0.7"/><line x1="-2.6" y1="-13.80" x2="-1.7" y2="-13.80" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-11.60" x2="-1.7" y2="-11.60" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-9.40" x2="-1.7" y2="-9.40" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-7.20" x2="-1.7" y2="-7.20" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-5.00" x2="-1.7" y2="-5.00" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-2.80" x2="-1.7" y2="-2.80" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-0.60" x2="-1.7" y2="-0.60" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="1.60" x2="-1.7" y2="1.60" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="3.80" x2="-1.7" y2="3.80" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="6.00" x2="-1.7" y2="6.00" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="8.20" x2="-1.7" y2="8.20" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="10.40" x2="-1.7" y2="10.40" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="12.60" x2="-1.7" y2="12.60" stroke="#7a5a04" stroke-width="0.5"/></svg>Metasurface</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://en.wikipedia.org/wiki/Shack%E2%80%93Hartmann_wavefront_sensor" target="_blank" rel="noopener">Shack–Hartmann wavefront sensor — Wikipedia (Hartmann’s 1904 mask, Shack and Platt’s lenslet substitution, insensitivity to wavefront discontinuities, ophthalmic and astronomical use)</a></li><li id="ref-2"><a href="https://www.rp-photonics.com/shack_hartmann_wavefront_sensors.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Shack–Hartmann Wavefront Sensors (lenslet geometry, sensitivity and dynamic-range limits)</a></li><li id="ref-3"><a href="https://doi.org/10.1038/s41377-024-01528-9" target="_blank" rel="noopener">Go et al., “Meta Shack–Hartmann wavefront sensor with large sampling density and large angular field of view,” Light: Science &amp; Applications 13, 187 (2024)</a></li><li id="ref-4"><a href="https://www.axiomoptics.com/application/wavefront-sensing-aaplications/" target="_blank" rel="noopener">Axiom Optics — Wavefront sensing applications (optical testing, beam diagnostics and M², adaptive optics, real-time alignment)</a></li>
+      </ol>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/adaptive_optics.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Adaptive Optics</a></li><li><a href="https://www.rp-photonics.com/wavefronts.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Wavefronts</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>
