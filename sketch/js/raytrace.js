@@ -626,7 +626,15 @@ export function detectorReading(elementId) {
     polarization = coherentCameraPolarization(cameraResult, polarizationHits)
       || 'Not resolved for camera mix';
   }
-  if (dark) polarization = 'No detected field';
+  if (dark) {
+    polarization = 'No detected field';
+    // A coherently cancelled port has no field, so it has no polarization
+    // state either. Leaving the vector populated would let a reading say
+    // "No detected field" while still handing downstream surfaces a
+    // confident DoP of 1.0 -- the same label-versus-numbers split that the
+    // polarimeter's own Stokes readout was fixed for.
+    normalizedStokes = null;
+  }
   const pulsed = activeHits.filter(h => h.pulse);
   let pulse = null;
   if (pulsed.length) {
