@@ -262,6 +262,13 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .palette-group[open] > summary::before { transform: rotate(90deg) translateX(-1px); }
 .group-count { margin-left: auto; font-size: 9px; font-weight: 600; color: var(--muted); }
 .catlist { display: flex; flex-direction: column; padding-bottom: 8px; }
+.palette-subgroup { padding: 2px 0 5px; }
+.palette-subgroup + .palette-subgroup { margin-top: 3px; border-top: 1px solid var(--border); }
+.palette-subgroup[hidden] { display: none; }
+.palette-subgroup-label {
+  padding: 5px 7px 4px; color: var(--muted); font-size: 9px; font-weight: 700;
+  letter-spacing: .35px; text-transform: uppercase;
+}
 .palitem {
   width: 100%;
   min-width: 0;

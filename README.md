@@ -41,7 +41,7 @@ figures as SVG or PNG.
   dichroics, filters, beamsplitters,
   polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
   diffusers, wavefront shapers (SLM, DMD, deformable mirror) with composable
-  optical functions, modulators (AOM/AOTF/EOM/chopper), mechanical pulse-delay lines,
+  optical functions, modulators (AOM/AOD/AOTF/EOM/chopper), mechanical pulse-delay lines,
   a signed-GDD pulse compressor,
   nonlinear crystals (SHG, THG,
   supercontinuum, OPO), fibers with per-end output specs, detectors, a focusing
@@ -129,6 +129,14 @@ and returns continuously to diffractive behavior outside it. Focusing efficiency
 user-set power fraction. The model does not derive efficiency, nanopillar geometry,
 group-delay feasibility, polarization conversion, PSF, MTF, Strehl ratio, diffraction-
 limited spot size, field angle, aberrations, or fabrication tolerances.
+
+The AOM, AOD, and AOTF are separate user-facing tools built around a shared
+qualitative acousto-optic interaction. The AOD couples RF frequency to a calibrated
+angular scan range, scales that deflection with wavelength, applies the matching
+optical frequency shift, and can animate triangle or sawtooth scans. Its centre
+angle and scan range are user-supplied device specifications; the model does not
+derive them from a crystal cut, acoustic velocity, transducer geometry, RF power,
+or Bragg-efficiency curve.
 
 Paraxial image markers do not account
 for downstream clipping. Animated pulse packets are qualitative playback aids. SVG
