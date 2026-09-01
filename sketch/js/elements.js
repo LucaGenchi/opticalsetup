@@ -4393,6 +4393,25 @@ export const categories = [
   'Lab elements',
 ];
 
+// The order the palette lists a category in: ungrouped components first, so
+// one belonging to no family reads as its own thing rather than as a stray
+// member of the subsection above it, then each named family in turn. Shared
+// with the wiki builder so its index cannot drift out of step with the
+// library it is documenting.
+export function paletteOrderedTypes(category) {
+  const entries = Object.entries(registry)
+    .filter(([, def]) => def.category === category && !def.hidden)
+    .sort((a, b) => (a[1].paletteOrder ?? 100) - (b[1].paletteOrder ?? 100));
+  const grouped = new Map();
+  const ungrouped = [];
+  for (const [type, def] of entries) {
+    if (!def.paletteGroup) { ungrouped.push(type); continue; }
+    if (!grouped.has(def.paletteGroup)) grouped.set(def.paletteGroup, []);
+    grouped.get(def.paletteGroup).push(type);
+  }
+  return [...ungrouped, ...[...grouped.values()].flat()];
+}
+
 export function getSize(el) {
   const d = registry[el.type];
   if (d.size_ && typeof d.size_ === 'function') return d.size_(el);

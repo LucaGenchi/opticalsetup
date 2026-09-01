@@ -3855,6 +3855,137 @@ export const wikiEntries = [
     ],
   },
   {
+    type: 'spectrometer',
+    title: 'Spectrometer',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>A spectrometer answers one question: how is this light's power distributed
+        across wavelength? That is enough to characterise a laser or an LED, to check the
+        channels of a wavelength-division-multiplexed link and their signal-to-noise
+        ratios, to measure a component's transmission by comparing spectra taken with and
+        without it, and to read the wavelength-dependent gain and noise figure of a fibre
+        amplifier${cite(1)}.</p>
+        <p>What is worth knowing is that instruments answering that one question are built
+        on several quite different principles, and the principle decides what the
+        instrument is good at${cite(1)}.</p>
+        <h3>Spectrograph</h3>
+        <p>A grating disperses the light and a detector array — a photodiode array, or a
+        linear CCD — catches all the wavelengths at once. Nothing moves, so acquisition is
+        fast, and the resolution is set by the detector rather than by the optics. The
+        costs are that spatially resolving detectors exist only for limited spectral
+        regions, poorly into the infrared, and that stray light inside the instrument caps
+        the dynamic range${cite(1)}. This is the compact instrument most people mean by
+        "a spectrometer", and the pattern behind the small, inexpensive designs that put a
+        grating and a scanning reflector in a package a few centimetres
+        across${cite(3)}.</p>
+        <h3>Scanning monochromator</h3>
+        <p>Rather than catching every wavelength at once, send the light through a tunable
+        bandpass filter and measure the transmitted power with a single detector, sweeping
+        the filter across the range of interest${cite(1)}. The filter is a grating
+        monochromator — Czerny–Turner, typically — turned by a precise motor, and the
+        resolution is set by its slit width and grating.</p>
+        <p>This is how high-performance instruments are built, and the reason is dynamic
+        range. One monochromator manages perhaps 30&nbsp;dB, because strong light at one
+        wavelength scatters inside it and lifts the reading everywhere else. Two in series,
+        held on the same wavelength, reach beyond 70&nbsp;dB${cite(1)}. The price is time:
+        a sweep takes longer for finer resolution, and longer again for more sensitivity.</p>
+        <h3>Fourier transform</h3>
+        <p>A Michelson interferometer measures something else entirely — the output power
+        against arm-length difference — and Fourier transforms it${cite(1)}. Monochromatic
+        light gives a sinusoid whose period is the wavelength, which is how a wavemeter
+        works. Here the resolution is set by how far the arm was scanned, not by any slit:
+        the wavenumber resolution is simply the inverse of the path-difference range, so a
+        15&nbsp;mm scan gives about 10&nbsp;GHz, roughly 0.03&nbsp;nm at 1&nbsp;µm${cite(1)}.</p>
+        <p>Its weakness is instructive. A strong line does not produce a perfectly clean
+        sinusoid, and the noise on it transforms into a background spread across the whole
+        spectrum — so sensitivity to a weak line gets <em>worse</em> when a strong one is
+        present, and no amount of extra scan range fixes it. Dynamic range lands around
+        30–40&nbsp;dB${cite(1)}.</p>
+        <h3>Acousto-optic</h3>
+        <p>A diffraction grating is not the only way to disperse light. A Bragg cell driven
+        by a surface acoustic wave diffracts each optical frequency to its own angle, and
+        integrated-optic spectrum analysers were built on exactly that — a guided wave
+        interacting with a surface acoustic wave on a single chip${cite(5)}. The same
+        interaction, run as a filter rather than as a disperser, is the
+        <a href="../aotf/">AOTF</a>.</p>`,
+      formulas: [
+        { tex: '\\text{PSD}(\\lambda) = \\frac{P_{\\text{measured}}}{\\text{RBW}}', caption: 'Power spectral density is the measured power divided by the resolution bandwidth the instrument was set to. It is the honest vertical axis, and the one that lets a narrow line and a broad band be compared.' },
+      ],
+      html2: `
+        <p>That division is subtler than it looks, and it is the single most common way of
+        misreading a spectrum. An analyser's vertical axis often shows measured power, not
+        power spectral density${cite(1)}. Converting between them means dividing by the
+        resolution bandwidth — but the calibration is usually done for quasi-monochromatic
+        light, and when the bandwidth is quoted as a full width at half maximum, how well
+        power-divided-by-bandwidth matches the true density depends on the shape of the
+        instrument's filter${cite(1)}. Log scales in dBm are common precisely because the
+        interesting range spans orders of magnitude.</p>
+        <p>One warning from the same source is worth repeating: a spectrum analyser is not
+        the instrument to measure optical power with. Coupling efficiencies in the delivery
+        path are rarely known well enough. Use a <a href="../powermeter/">power
+        meter</a>${cite(1)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Spectrometer reports the centre wavelength, the detected range, the
+        bandwidth, and a plotted spectrum of everything reaching its face. Wire it to a
+        <a href="../display/">Detector screen</a> to see the spectrum drawn.</p>
+        <p>Its vertical axis offers exactly the choice above. <strong>Spectral density</strong>
+        is the honest one — power per nanometre, so a band's height does not depend on how
+        finely it happened to be sampled. It carries the consequence that makes real
+        instruments awkward too: a laser line has no width of its own, so it is spread over
+        a nominal 0.1&nbsp;nm to give it a height at all, and it then towers over any
+        continuum beside it. That is what a real spectrometer shows, and it is useless when
+        the point is to see a weak Raman line next to its own pump — so
+        <strong>relative</strong> mode scales each source to its own peak instead.</p>
+        <p>Two behaviours are worth knowing because they were built deliberately.
+        <strong>Bands that do not touch stay apart.</strong> One source can arrive carrying
+        several disjoint bands — an <a href="../aotf/">AOTF</a> selecting three lines out of
+        a supercontinuum is the standard case — and each is measured and drawn on its own,
+        rather than being summarised across the gaps between them into a single smear.
+        Overlapping passbands are one band, correctly, and the grid inside it is fine enough
+        to keep whatever structure it has: several narrow lines cutting a pulsed laser's
+        envelope come back as separate peaks whose heights still trace that envelope.</p>
+        <p>And <strong>the axis is sized from the measurement</strong>, spanning whatever
+        clears a thousandth of each feature's own peak. Per feature, not against one global
+        maximum — otherwise a line's towering density would push a perfectly real broadband
+        source off the plot for the crime of sharing a detector with a laser. A manual range
+        is available when a fixed window is wanted.</p>`,
+      formulas: [],
+      limitations: `<p>This is not an instrument, it is a readout. There is no
+        monochromator, no slit, and so no resolution bandwidth: a real spectrometer shows
+        the true spectrum convolved with its own filter function, and reports something
+        broader than reality for anything narrower than that filter. Here the modelled
+        spectrum is reported directly. Nothing sets a sweep time, and there is no
+        distinction between a spectrograph, a scanning instrument and a Fourier-transform
+        one — all of which would answer differently.</p>
+        <p>There is no dynamic range and no noise floor. Stray light does not exist, so the
+        30&nbsp;dB that limits a single monochromator and the 30–40&nbsp;dB that limits a
+        Fourier-transform instrument have no counterpart, and a weak line beside a strong one
+        is read as easily as if it were alone — which is precisely the measurement real
+        instruments find hardest. There is no logarithmic or dBm scale.</p>
+        <p>The plotted samples are a display budget, not a physical resolution, and
+        wavelengths are keyed to 0.1&nbsp;nm, so two lines closer together than that are
+        reported as one. Readings are fractions of a source's emitted power rather than
+        absolute values in watts; for power, use the <a href="../powermeter/">power
+        meter</a>, which is the advice for real instruments too.</p>`,
+    },
+    related: ['detector', 'display', 'aotf', 'grating', 'powermeter'],
+    citations: [
+      { label: '“Optical Spectrum Analyzers,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/optical_spectrum_analyzers.html' },
+      { label: 'Optical spectrum analyzer — ScienceDirect Topics (engineering overview)', url: 'https://www.sciencedirect.com/topics/engineering/optical-spectrum-analyzer' },
+      { label: 'J. A. Moon et al., “Optical spectrum analyzer,” US patent 7,253,897 B2, Cidra Corp (granted 2007) — a compact dual-pass grating analyser with a pivoting reflector and reference mirrors', url: 'https://patents.google.com/patent/US7253897B2/en' },
+      { label: 'Review article, Review of Scientific Instruments 94(8), 081501 (2023)', url: 'https://pubs.aip.org/aip/rsi/article/94/8/081501/2905189' },
+      { label: 'M. Barnoski, B.-U. Chen, T. Joseph, J. Lee and O. Ramer, “Integrated-optic spectrum analyzer,” IEEE Transactions on Circuits and Systems 26(12), 1113–1124 (1979) — a Bragg analyser built from a guided wave and a surface acoustic wave', url: 'https://ieeexplore.ieee.org/abstract/document/1084599' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spectrometers', url: 'https://www.rp-photonics.com/spectrometers.html' },
+      { label: 'RP Photonics Encyclopedia — Wavemeters', url: 'https://www.rp-photonics.com/wavemeters.html' },
+    ],
+  },
+
+  {
     type: 'polarimeter',
     title: 'Polarimeter',
     category: 'Detectors',

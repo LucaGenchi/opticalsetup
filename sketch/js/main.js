@@ -593,7 +593,8 @@ function buildPalette() {
       // A subsection names a family that belongs together -- the acousto-optic
       // trio, say. Everything else in the category is just the category, and
       // is listed plainly: labelling the remainder "Other" would file the EOM
-      // and the chopper under a heading that describes neither.
+      // and the chopper under a heading that describes neither. The sequence
+      // itself comes from paletteOrderedTypes, which the wiki index shares.
       const sections = new Map();
       const ungrouped = [];
       for (const entry of entries) {
@@ -602,9 +603,6 @@ function buildPalette() {
         if (!sections.has(section)) sections.set(section, []);
         sections.get(section).push(entry);
       }
-      // Ungrouped first, so an element belonging to none of the families is
-      // read as its own thing rather than as a stray member of whichever
-      // subsection it happens to sit under.
       for (const [type, def] of ungrouped) h += renderRegistryItem(type, def, cat);
       for (const [section, sectionEntries] of sections) {
         h += `<div class="palette-subgroup" data-subgroup="${esc(section)}">
