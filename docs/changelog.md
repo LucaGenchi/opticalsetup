@@ -8,7 +8,7 @@ request history is the record.
 
 ## 2026-09-01 — Spectrometer and AOTF
 
-[#86](https://github.com/LucaGenchi/opticalsetup/pull/86)
+[#87](https://github.com/LucaGenchi/opticalsetup/pull/87)
 
 The spectrometer read several narrow lines as one smeared rainbow, and the
 AOTF that produced them passed a rectangle. Both fixed, along with the plot
