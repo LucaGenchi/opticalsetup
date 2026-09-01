@@ -43,6 +43,7 @@ import {
   normalizeAotfPassband, AOTF_BAND_MIN, AOTF_BAND_MAX, AOTF_BAND_DEFAULT,
 } from './aotf.js';
 import { aodScanPosition, aodAccessTimeUs, aodMaxScanRateKHz } from './acousto-optic.js';
+import { phaseModulatorOpdMm, phaseModulatorPeakOpdMm } from './electro-optic.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -3268,6 +3269,58 @@ export const registry = {
     },
   },
 
+  // A Pockels cell driven as a pure phase modulator: the whole beam, one
+  // optical path, moved by a voltage.
+  phasemodulator: {
+    label: 'Phase modulator', category: 'Modulators',
+    paletteGroup: 'Electro-optic', paletteOrder: 4, size: { w: 40, h: 28 },
+    aliases: ['electro-optic phase modulator', 'EOM phase', 'pockels cell', 'phase shifter',
+      'mach-zehnder modulator', 'sideband', 'pound-drever-hall', 'PDH'],
+    size_: el => ({ w: 40, h: (el.params.aperture || 12) + 4 }),
+    params: [
+      { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 2, max: 100, step: 1, def: 12 },
+      { key: 'designWavelength', label: 'Design wavelength (nm)', type: 'number', min: 200, max: 12000, step: 1, def: 532 },
+      // Quoted the way a modulator is chosen: how much phase a full drive
+      // writes. Half a wave is the usual specification.
+      { key: 'depthDeg', label: 'Drive depth (° at design λ)', type: 'number', min: -1440, max: 1440, step: 5, def: 180 },
+      {
+        key: 'driveMode', label: 'Drive', type: 'select', def: 'static',
+        options: [
+          ['static', 'Static — hold the phase'],
+          ['sine', 'Sine'],
+          ['square', 'Square'],
+        ],
+      },
+      { key: 'freqMHz', label: 'Drive frequency (MHz)', type: 'number', min: 0.000001, max: 40000, step: 0.001, def: 1, show: p => p.driveMode !== 'static' },
+      { key: 'phaseDeg', label: 'Drive phase (°)', type: 'number', min: -360, max: 360, step: 5, def: 0, show: p => p.driveMode !== 'static' },
+      {
+        key: 'pmOpd', label: 'Path written', type: 'readout',
+        readout: params => {
+          const peak = phaseModulatorPeakOpdMm(params) * 1e6;   // nm
+          if (!(Math.abs(peak) > 1e-9)) return 'None — no drive set';
+          const design = Math.max(1, Number(params.designWavelength) || 532);
+          return `${peak.toFixed(1)} nm peak · ${(Math.abs(peak) / design).toFixed(3)} waves at ${design} nm`;
+        },
+      },
+    ],
+    svg(el) {
+      const h = el.params.aperture || 12;
+      const driven = el.params.driveMode !== 'static';
+      return boxSVG(34, h, '#c9b3d8', '#6b4f85', 'φ~', '#33224a', isFlipped(el)) +
+        `<path d="M -20,${-h / 2 - 4} h 4 v -3 h 4 v 3 h 4" fill="none" stroke="#6b4f85" stroke-width="1.1" stroke-linecap="round"/>` +
+        (driven ? `<path d="M -7,${h / 2 + 5} q 3.5,-4 7,0 q 3.5,4 7,0" fill="none" stroke="#6b4f85" stroke-width="1.2" stroke-linecap="round"/>` : '');
+    },
+    surfaces(el) {
+      const p = el.params;
+      const timeSeconds = Number.isFinite(el._simulationTimeNs) ? el._simulationTimeNs / 1e9 : 0;
+      const h = (p.aperture || 12) / 2;
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'phasemod',
+        data: { opdMm: phaseModulatorOpdMm(p, timeSeconds) },
+      }];
+    },
+  },
+
   // A transparent object that retards one part of the beam more than another.
   // It never bends a ray -- that is the whole point of a phase object, and
   // also what lets it work inside the coherent path: recombination matches
@@ -4118,6 +4171,7 @@ const DIRECT = {
   beamdump: { resize: { y: 'aperture' } },
   aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
   aod: { resize: { y: 'aperture' }, tune: { key: 'centerDeflect', short: 'angle' } },
+  phasemodulator: { resize: { y: 'aperture' }, tune: { key: 'depthDeg', short: 'depth' } },
   aotf: { resize: { y: 'aperture' } },
   phaseplate: { resize: { y: 'aperture' }, tune: { key: 'opdUm', short: 'OPD' } },
   delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL' } },
@@ -4209,6 +4263,7 @@ const ELEMENT_HELP = {
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
+  phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',
   aod: 'Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.',
   aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',

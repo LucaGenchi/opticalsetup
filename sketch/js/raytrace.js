@@ -875,6 +875,9 @@ function carrierPhaseIssue(surface) {
   // A phase object only lengthens the optical path, without bending the
   // ray or splitting it, so the carrier phase through it stays exact.
   if (surface.kind === 'phaseplate' && type === 'phaseplate') return null;
+  // A phase modulator does the same, uniformly across the beam and driven by
+  // a voltage: still no bending, no splitting, so the carrier stays exact.
+  if (surface.kind === 'phasemod' && type === 'phasemodulator') return null;
   if (surface.kind === 'mirror' && type === 'mirror') {
     const reflectivity = Math.min(100, Math.max(0, Number(surface.data.refl ?? 100)));
     return reflectivity >= 100
@@ -2697,6 +2700,22 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           r.segmentEvents.push(interactionKey);
           r.pts.push({ x: hit.p.x, y: hit.p.y });
           r.opl += extraOpl;
+          r.opls.push(r.opl);
+        }
+      }
+      if (hit.surface.kind === 'phasemod') {
+        // Uniform across the aperture, unlike the phase object: every ray
+        // takes the same added path, so on its own the beam is unchanged and
+        // only a reference arm can reveal it.
+        const extraOpl = Number(hit.surface.data.opdMm) || 0;
+        if (Math.abs(extraOpl) > 0) {
+          r.segmentIntensities.push(r.intensity);
+          r.segmentHistories.push(r.sig);
+          r.segmentEvents.push(interactionKey);
+          r.pts.push({ x: hit.p.x, y: hit.p.y });
+          // A negative drive shortens the path; keep the total non-negative so
+          // downstream arrival-time bookkeeping stays sane.
+          r.opl = Math.max(0, r.opl + extraOpl);
           r.opls.push(r.opl);
         }
       }

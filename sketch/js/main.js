@@ -415,6 +415,26 @@ const demoScenes = {
       mkDemo('display', 760, 560, 0, { sensorId: dark.id, displayScale: 0.5 }),
     ];
   },
+  // The Mach-Zehnder modulator: phase driven in one arm, read out as
+  // intensity at the output. Alone the modulator does nothing at all, which
+  // is why it needs the second arm to be seen.
+  phasemodulator: () => {
+    const bright = mkDemo('camera', 780, 400, 0, { ch: 30, pixels: 24 },
+      { label: 'output', showLabel: true, labelPos: 'b' });
+    return [
+      mkDemo('cwlaser', 100, 200, 0, { beamMode: 'beam', beamWidth: 8 },
+        { label: 'laser', showLabel: true, labelPos: 'b' }),
+      mkDemo('bs', 300, 200, 90, { ratio: 0.5 }, { label: 'BS1', showLabel: true, labelPos: 't' }),
+      mkDemo('phasemodulator', 460, 200, 0,
+        { depthDeg: 180, driveMode: 'sine', freqMHz: 1, aperture: 12 },
+        { label: 'phase modulator — half a wave, driven at 1 MHz', showLabel: true, labelPos: 't' }),
+      mkDemo('mirror', 600, 200, 135, {}, { label: 'M1', showLabel: true, labelPos: 'r' }),
+      mkDemo('mirror', 300, 400, 135, {}, { label: 'M2', showLabel: true, labelPos: 'b' }),
+      mkDemo('bs', 600, 400, 90, { ratio: 0.5 }, { label: 'BS2', showLabel: true, labelPos: 'b' }),
+      bright,
+      mkDemo('display', 850, 300, 0, { sensorId: bright.id, displayScale: 0.5 }),
+    ];
+  },
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {
