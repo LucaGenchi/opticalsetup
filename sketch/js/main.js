@@ -476,6 +476,15 @@ const demoScenes = {
     mkDemo('galvo', 220, 200, 45, { scanMode: 'sine', scanAmplitude: 8, scanFrequencyHz: 0.4 }),
     mkDemo('box', 220, 60, 0, { text: '', w: 200, h: 2, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — the reflected beam sweeps back and forth', showLabel: true, labelPos: 't' }),
   ],
+  aod: () => [
+    mkDemo('cwlaser', 40, 200, 0, { wavelength: 532, beamMode: 'line' }),
+    mkDemo('aod', 220, 200, 0, {
+      designWavelength: 532, centerRfMHz: 80, bandwidthMHz: 40,
+      centerDeflect: 8, scanRange: 12, scanMode: 'triangle', scanFreqKHz: 10,
+      zero: false,
+    }, { label: '10 kHz frequency scan', showLabel: true, labelPos: 'b' }),
+    mkDemo('box', 420, 230, 0, { text: '', w: 3, h: 100, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — no moving mirror', showLabel: true, labelPos: 'r' }),
+  ],
   retroreflector: () => [
     mkDemo('cwlaser', 60, 145, 0),
     mkDemo('retroreflector', 260, 160, 0, {
@@ -504,6 +513,22 @@ function buildPalette() {
     </div>
   </div><div id="paletteGroups">`;
   let total = 0;
+  const renderRegistryItem = (type, def, cat) => {
+    const el = createElement(type);
+    const sz = typeof def.size === 'function' ? def.size(el) : (def.size_ ? def.size_(el) : def.size);
+    const vb = Math.max(sz.w, sz.h) + 12;
+    const meta = getElementMeta(type, el.params);
+    const parameterSearch = (def.params || []).flatMap(param => [
+      param.label,
+      ...(param.options || []).flatMap(option => option),
+    ]).join(' ');
+    const search = `${def.label} ${cat} ${def.paletteGroup || ''} ${meta.status} ${meta.description} ${(def.aliases || []).join(' ')} ${parameterSearch}`.toLowerCase();
+    total++;
+    return `<button type="button" class="palitem" data-type="${type}" data-search="${esc(search)}" title="${esc(meta.description)}">
+      <svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}">${def.svg(el)}</svg>
+      <span class="pal-copy"><span class="pal-label">${esc(def.label)}</span><span class="pal-desc">${esc(meta.description)}</span></span>
+      <i class="cap-dot ${meta.tier}" title="${esc(meta.status)}" aria-label="${esc(meta.status)}"></i></button>`;
+  };
   const initiallyOpen = new Set(['Sources', 'Mirrors', 'Lenses']);
   for (const cat of categories) {
     const entries = Object.entries(registry).filter(([, def]) => def.category === cat && !def.hidden)
@@ -545,21 +570,21 @@ function buildPalette() {
         total++;
       }
     }
-    for (const [type, def] of entries) {
-      const el = createElement(type);
-      const sz = typeof def.size === 'function' ? def.size(el) : (def.size_ ? def.size_(el) : def.size);
-      const vb = Math.max(sz.w, sz.h) + 12;
-      const meta = getElementMeta(type, el.params);
-      const parameterSearch = (def.params || []).flatMap(param => [
-        param.label,
-        ...(param.options || []).flatMap(option => option),
-      ]).join(' ');
-      const search = `${def.label} ${cat} ${meta.status} ${meta.description} ${(def.aliases || []).join(' ')} ${parameterSearch}`.toLowerCase();
-      h += `<button type="button" class="palitem" data-type="${type}" data-search="${esc(search)}" title="${esc(meta.description)}">
-        <svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}">${def.svg(el)}</svg>
-        <span class="pal-copy"><span class="pal-label">${esc(def.label)}</span><span class="pal-desc">${esc(meta.description)}</span></span>
-        <i class="cap-dot ${meta.tier}" title="${esc(meta.status)}" aria-label="${esc(meta.status)}"></i></button>`;
-      total++;
+    if (entries.some(([, def]) => def.paletteGroup)) {
+      const sections = new Map();
+      for (const entry of entries) {
+        const section = entry[1].paletteGroup || 'Other';
+        if (!sections.has(section)) sections.set(section, []);
+        sections.get(section).push(entry);
+      }
+      for (const [section, sectionEntries] of sections) {
+        h += `<div class="palette-subgroup" data-subgroup="${esc(section)}">
+          <div class="palette-subgroup-label">${esc(section)}</div>`;
+        for (const [type, def] of sectionEntries) h += renderRegistryItem(type, def, cat);
+        h += `</div>`;
+      }
+    } else {
+      for (const [type, def] of entries) h += renderRegistryItem(type, def, cat);
     }
     h += `</div></details>`;
   }
@@ -593,6 +618,9 @@ function buildPalette() {
         if (match) { visible++; groupVisible++; }
       });
       group.hidden = groupVisible === 0;
+      group.querySelectorAll('.palette-subgroup').forEach(section => {
+        section.hidden = ![...section.querySelectorAll('.palitem')].some(item => !item.hidden);
+      });
       if (q && groupVisible) group.open = true;
     });
     $('libraryCount').textContent = q ? `${visible} of ${total}` : `${total} components`;

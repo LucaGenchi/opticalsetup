@@ -85,6 +85,8 @@ export function elementDriveHz(el) {
       return p.modulate ? Math.max(0.1, p.frequencyHz || 1000) : null;
     case 'aom':
       return p.modulate && p.modFreqMHz > 0 ? p.modFreqMHz * 1e6 : null;
+    case 'aod':
+      return p.scanMode && p.scanMode !== 'static' && p.scanFreqKHz > 0 ? p.scanFreqKHz * 1e3 : null;
     case 'eom':
       return p.modulate && p.driveMode === 'switching' && p.switchFreqMHz > 0 ? p.switchFreqMHz * 1e6 : null;
     case 'stage':
@@ -105,6 +107,7 @@ const MOTION_LABELS = {
   galvo: 'galvo scanning',
   chopper: 'the chopper',
   aom: 'AOM modulation',
+  aod: 'AOD scanning',
   eom: 'EOM switching',
   stage: 'the piezo stage',
   retroreflector: 'the delay line',

@@ -1907,9 +1907,70 @@ export const wikiEntries = [
         is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency
         shift is first-principles physics.</p>`,
     },
-    related: ['aotf', 'eom', 'chopper', 'delayline'],
+    related: ['aod', 'aotf', 'eom', 'chopper'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
+    ],
+  },
+
+  {
+    type: 'aod',
+    title: 'Acousto-optic deflector (AOD)',
+    category: 'Modulators',
+    realWorld: {
+      html: `
+        <p>An AOD is an electronically steered diffraction grating. An RF-driven
+        piezoelectric transducer launches sound through an acousto-optic medium; the
+        traveling refractive-index grating diffracts the incident beam. Changing the RF
+        frequency changes the acoustic wavelength and therefore the direction of the
+        first diffracted order, without moving a mirror.</p>
+        <p>This is the same basic interaction used by an <a href="../aom/">AOM</a>.
+        The distinction is the job and the optimization: an AOM normally holds frequency
+        near one operating point and varies RF power to control intensity, while an AOD
+        is designed for a useful RF bandwidth and varies frequency to address many beam
+        directions. Two cells mounted on orthogonal axes provide two-dimensional
+        steering, and several simultaneous RF tones can create several spots.</p>`,
+      formulas: [
+        { tex: '\\theta \\approx \\frac{\\lambda f_{RF}}{v_a}', caption: 'Small-angle deflection: optical wavelength λ and RF frequency fRF set the angle through acoustic velocity vₐ.' },
+        { tex: '\\Delta\\theta \\approx \\frac{\\lambda\\,\\Delta f}{v_a}', caption: 'The usable RF bandwidth Δf becomes the total angular scan range.' },
+        { tex: 'f_{\\text{out}} = f_{\\text{in}} \\pm f_{RF}', caption: 'Steering and optical frequency shift occur together in the diffracted order.' },
+      ],
+      html2: `
+        <p>The number of resolvable spots is finite: a wider illuminated aperture narrows
+        each diffracted spot, while the acoustic bandwidth sets the total field that can
+        be addressed. Switching also waits for the new acoustic wave to cross the optical
+        beam, so response time scales approximately as beam diameter divided by acoustic
+        velocity.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The AOD couples its instantaneous <strong>drive frequency</strong> to both the
+        outgoing angle and optical frequency shift. At the design wavelength, the centre
+        RF frequency produces the centre deflection; moving across the configured RF
+        bandwidth moves linearly across the configured total scan angle. Other optical
+        wavelengths scale to different angles, so broadband inputs show the angular
+        dispersion inherent to acousto-optic steering.</p>
+        <p>Static drive lets you choose one address directly. Triangle and sawtooth drive
+        sweep the complete RF bandwidth at the requested scan rate on the same simulated
+        clock as pulse trains and other modulators. The purple canvas control tunes the
+        static RF frequency, or the scan's centre frequency while scanning. The optional
+        zeroth order carries the undiffracted remainder and should normally be dumped.</p>`,
+      formulas: [
+        { tex: '\\theta(\\lambda,f)=s\\,\\frac{\\lambda}{\\lambda_0}\\left[\\theta_0+\\frac{f-f_0}{\\Delta f}\\,\\Delta\\theta\\right]', caption: 'OpticalSetup interpolation: order sign s, design wavelength λ₀, centre point (f₀, θ₀), bandwidth Δf, and total scan angle Δθ.' },
+      ],
+      limitations: `<p>The centre angle and scan range are calibrated specifications you
+        supply, not results derived from a crystal cut, acoustic mode, transducer geometry,
+        or interaction length. Efficiency is constant everywhere inside a hard-edged RF
+        bandwidth and zero outside it; a real device has a frequency-dependent diffraction
+        curve and alignment-dependent usable range. RF power, finite acoustic transit time,
+        access-time settling, spot size, resolvable-point count, chirp, and pulsed-beam
+        dispersion are not modelled. One element scans one axis; place two rotated AODs to
+        sketch a two-axis system. Multi-tone multi-spot drive is not yet represented.</p>`,
+    },
+    related: ['aom', 'aotf', 'galvo', 'beamdump'],
+    resources: [
+      { label: 'AA Opto-Electronic — High Resolution Deflectors', url: 'https://aaoptoelectronic.com/ao-devices/high-resolution-deflectors/' },
+      { label: 'RP Photonics Encyclopedia — Acousto-optic Deflectors', url: 'https://www.rp-photonics.com/acousto_optic_deflectors.html' },
     ],
   },
 
@@ -2676,7 +2737,7 @@ export const wikiEntries = [
         acoustic transit time — lines switch instantly — and no crystal transmission range,
         so a line can be selected at any wavelength the source provides.</p>`,
     },
-    related: ['aom', 'eom', 'filter', 'sclaser', 'beamdump'],
+    related: ['aom', 'aod', 'eom', 'filter', 'beamdump'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Acousto-optic Tunable Filters', url: 'https://www.rp-photonics.com/acousto_optic_tunable_filters.html' },
       { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
