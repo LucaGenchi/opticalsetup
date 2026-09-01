@@ -2005,8 +2005,9 @@ export const wikiEntries = [
       limitations: `<p>This element is the polarisation modulator alone. The phase
         modulator is a separate component — see
         <a href="../phasemodulator/">Phase modulator</a> — and the amplitude modulator is
-        built rather than provided: a polariser after this one, or a phase modulator in one
-        arm of an interferometer.</p>
+        built rather than provided: a polariser after this one, which works with any source,
+        or a phase modulator in one arm of an interferometer, which needs a sized
+        monochromatic CW laser for the arms to interfere at all.</p>
         <p>Nothing here is a voltage. Retardance is set in degrees directly, so there is no
         half-wave voltage, no drive amplitude, and no relation between the two — which also
         means the linearity of the Pockels effect, the whole basis of the device, is
@@ -2105,9 +2106,21 @@ export const wikiEntries = [
         <p>In one arm of an interferometer it becomes the amplitude modulator above,
         following cos²(Δφ/2) exactly: half a wave takes the output from full to nothing,
         and the light that leaves one port arrives at the other, so the two always sum to
-        the input.</p>`,
+        the input.</p>
+        <p>That holds only where the tracer can reconstruct a coherent field, which means
+        a <strong>CW laser in <em>Beam with size</em> mode with no bandwidth</strong> — the
+        one source whose samples carry a recoverable phase. Drive the same interferometer
+        with a pulsed or supercontinuum source, or with a CW laser in <em>Simple line</em>
+        mode, and the two arms are added as intensities instead: both ports sit at half the
+        light and the modulator changes nothing, whatever it is set to. The reading says so
+        rather than leaving it to be inferred — it reports insufficient coherent overlap.</p>`,
       formulas: [],
-      limitations: `<p>Sidebands are not modelled, and could not usefully be: a 1 GHz
+      limitations: `<p>The interferometric behaviour above needs a sized monochromatic CW
+        laser. That is not a property of this element but of what the tracer can reconstruct
+        a phase through, and it applies to every interference effect in the app; it is
+        repeated here because it decides whether this component appears to do anything at
+        all.</p>
+        <p>Sidebands are not modelled, and could not usefully be: a 1 GHz
         drive at 532 nm puts them 9×10⁻⁴ nm from the carrier, and at 1 MHz it is 9×10⁻⁷ nm,
         against a spectrometer that resolves 0.1 nm. Everything the sidebands are used for
         — Pound–Drever–Hall locking, comb generation, anything reading the modulation in

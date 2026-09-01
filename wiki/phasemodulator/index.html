@@ -231,7 +231,19 @@
         following cos²(Δφ/2) exactly: half a wave takes the output from full to nothing,
         and the light that leaves one port arrives at the other, so the two always sum to
         the input.</p>
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Sidebands are not modelled, and could not usefully be: a 1 GHz
+        <p>That holds only where the tracer can reconstruct a coherent field, which means
+        a <strong>CW laser in <em>Beam with size</em> mode with no bandwidth</strong> — the
+        one source whose samples carry a recoverable phase. Drive the same interferometer
+        with a pulsed or supercontinuum source, or with a CW laser in <em>Simple line</em>
+        mode, and the two arms are added as intensities instead: both ports sit at half the
+        light and the modulator changes nothing, whatever it is set to. The reading says so
+        rather than leaving it to be inferred — it reports insufficient coherent overlap.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The interferometric behaviour above needs a sized monochromatic CW
+        laser. That is not a property of this element but of what the tracer can reconstruct
+        a phase through, and it applies to every interference effect in the app; it is
+        repeated here because it decides whether this component appears to do anything at
+        all.</p>
+        <p>Sidebands are not modelled, and could not usefully be: a 1 GHz
         drive at 532 nm puts them 9×10⁻⁴ nm from the carrier, and at 1 MHz it is 9×10⁻⁷ nm,
         against a spectrometer that resolves 0.1 nm. Everything the sidebands are used for
         — Pound–Drever–Hall locking, comb generation, anything reading the modulation in

@@ -109,3 +109,63 @@ test('it sits with the electro-optic family in the palette', () => {
   assert.equal(registry.phasemodulator.paletteGroup, 'Electro-optic');
   assert.ok(registry.phasemodulator.paletteOrder > registry.eom.paletteOrder);
 });
+
+
+test('the interferometric behaviour needs a source the tracer can phase, and says so', () => {
+  // Coherent recombination is only reconstructed for a sized monochromatic CW
+  // laser. With any other source the two arms are added as intensities, so
+  // both ports sit at half the light and the modulator does nothing at all --
+  // which the wiki has to state, or the element looks broken on a bench that
+  // happens to use a pulsed source.
+  const withSource = mutate => {
+    const readings = [0, 90, 180].map(depthDeg => {
+      const scene = parseSketch(MZ);
+      mutate(scene);
+      const modulator = createElement('phasemodulator', 520, 200);
+      Object.assign(modulator.params, { depthDeg, aperture: 12 });
+      scene.elements.push(modulator);
+      traceAll(scene.elements);
+      const camera = scene.elements.filter(el => el.type === 'camera')[0];
+      return detectorReading(camera.id);
+    });
+    return {
+      signals: readings.map(r => (r ? r.signal : 0)),
+      applied: readings[1]?.interference?.applied === true,
+    };
+  };
+
+  // The one source that works: full swing.
+  const sized = withSource(() => {});
+  assert.equal(sized.applied, true);
+  assert.ok(Math.abs(sized.signals[0] - 1) < 1e-4);
+  assert.ok(Math.abs(sized.signals[2] - 0) < 1e-4);
+
+  // And the ones that do not: flat at half, at every drive.
+  const cases = {
+    'a CW laser in Simple line mode': scene => {
+      scene.elements.find(el => el.type === 'cwlaser').params.beamMode = 'line';
+    },
+    'a CW laser with bandwidth': scene => {
+      const laser = scene.elements.find(el => el.type === 'cwlaser');
+      laser.params.bwMode = 'band';
+      laser.params.bandwidth = 5;
+    },
+    'a pulsed laser': scene => {
+      const index = scene.elements.findIndex(el => el.type === 'cwlaser');
+      const laser = scene.elements[index];
+      const pulsed = createElement('pulsedlaser', laser.x, laser.y);
+      Object.assign(pulsed.params, {
+        beamMode: 'beam', beamWidth: laser.params.beamWidth, wavelength: 532, pulseWidthFs: 200,
+      });
+      scene.elements[index] = pulsed;
+    },
+  };
+  for (const [label, mutate] of Object.entries(cases)) {
+    const { signals, applied } = withSource(mutate);
+    assert.equal(applied, false, `${label} should not reconstruct a coherent field`);
+    for (const [index, signal] of signals.entries()) {
+      assert.ok(Math.abs(signal - 0.5) < 1e-9,
+        `with ${label}, drive ${[0, 90, 180][index]}° gave ${signal.toFixed(4)}, not a flat half`);
+    }
+  }
+});
