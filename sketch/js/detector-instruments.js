@@ -378,7 +378,11 @@ function spectrumPlot(reading, sensor, baseline = 8) {
   const peaks = choosePeaks(visible, lines0, band0, sensor, xAt);
   const tick = (wl, anchor) => {
     const x = xAt(wl);
-    const crowded = peaks.some(peak => Math.abs(xAt(peak.wavelength) - x) < 6);
+    // Both captions are four digits wide at this font size, so they collide
+    // well before their anchors do -- and an end tick is anchored inward
+    // while a peak caption is centred, which brings them closer still. Sized
+    // to the text rather than to a nominal gap.
+    const crowded = peaks.some(peak => Math.abs(xAt(peak.wavelength) - x) < 9);
     return `<line x1="${x.toFixed(2)}" y1="${baseline}" x2="${x.toFixed(2)}" y2="${baseline + 1.4}" stroke="#3d5566" stroke-width="0.6"/>` +
       (crowded ? '' : `<text x="${x.toFixed(2)}" y="${baseline + 5.8}" text-anchor="${anchor}" font-size="3.6" fill="#5f7d8e">${Math.round(wl)}</text>`);
   };

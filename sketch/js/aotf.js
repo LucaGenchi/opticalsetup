@@ -34,8 +34,40 @@ export function normalizeAotfChannels(raw) {
 
 export const newAotfChannel = () => normalizeAotfChannel({ wl: 633, band: 2, eff: 0.8 });
 
-// Passband of one channel, as [lo, hi] in nm.
+// Passband of one channel, as [lo, hi] in nm: the width at which it is half
+// open. This is the number the user sets and the number the UI reports; the
+// transmission below is what the tracer actually applies.
 export const aotfChannelBand = c => [c.wl - c.band / 2, c.wl + c.band / 2];
+
+// An acousto-optic passband is not a rectangle. Diffraction efficiency peaks
+// where the acoustic and optical waves are phase matched and falls away
+// smoothly on either side, so a channel set to 2 nm does not pass 2 nm of
+// spectrum flat and nothing beyond it -- it passes its centre strongly, its
+// edges at half strength, and its wings weakly. A Lorentzian is the standard
+// simple stand-in for that shape, with `band` as its full width at half
+// maximum.
+//
+// The wings are cut where transmission falls to a hundredth of the peak.
+// A Lorentzian never actually reaches zero, and a channel whose passband ran
+// on forever would overlap every other channel on the device -- leaving the
+// spectrometer to summarise all of them as one band, which is exactly the
+// smearing the separate-band handling exists to avoid. Truncating also keeps
+// the transmitted power finite and the profile's support meaningful.
+const WING_FLOOR = 1e-2;
+export const aotfWingHalfWidth = band =>
+  Math.max(1e-9, band / 2) * Math.sqrt(1 / WING_FLOOR - 1);
+
+// T(wavelength) -> 0..1 for one open channel, peaking at 1 on line centre.
+export function aotfChannelTransmission(c) {
+  const halfWidth = Math.max(1e-9, c.band / 2);
+  const cutoff = aotfWingHalfWidth(c.band);
+  return wl => {
+    const detune = wl - c.wl;
+    if (Math.abs(detune) > cutoff) return 0;
+    const x = detune / halfWidth;
+    return 1 / (1 + x * x);
+  };
+}
 
 // Sequential drive steps through the lines one at a time, so at any instant
 // exactly one is open — that is what the trace shows. A real RF driver steps

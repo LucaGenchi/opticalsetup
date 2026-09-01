@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement, registry } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
+import { aotfWingHalfWidth } from '../sketch/js/aotf.js';
 
 // A supercontinuum whose light an AOTF has cut into several narrow, widely
 // separated lines -- the one arrangement where a single source arrives
@@ -44,18 +45,37 @@ test('separately selected lines are measured at their own widths, not the gap be
   }
 });
 
-test('every selected line is reported near where it was actually selected', () => {
+test('the light is where it was selected, and stops where the passband does', () => {
   const { reading } = aotfScene({ channels: LINES });
   const measured = peaks(reading);
+  const reach = aotfWingHalfWidth(LINES[0].band);
   for (const line of LINES) {
     const found = measured.find(sample => Math.abs(sample.wavelength - line.wl) <= line.band);
     assert.ok(found, `nothing measured within ${line.band} nm of the ${line.wl} nm line`);
   }
-  // And nothing is reported from the empty stretches between them.
-  const between = measured.filter(sample =>
-    LINES.every(line => Math.abs(sample.wavelength - line.wl) > line.band));
-  assert.deepEqual(between.map(s => s.wavelength.toFixed(1)), [],
-    'light reported at wavelengths the AOTF did not select');
+  // A Lorentzian passband has wings, so light does appear either side of each
+  // line -- but it is truncated, so nothing survives beyond the wings' reach.
+  const stray = measured.filter(sample =>
+    LINES.every(line => Math.abs(sample.wavelength - line.wl) > reach + 0.5));
+  assert.deepEqual(stray.map(sample => sample.wavelength.toFixed(1)), [],
+    'light reported outside every channel\u2019s passband');
+});
+
+test('each channel peaks on the wavelength it was tuned to', () => {
+  const { reading } = aotfScene({ channels: LINES });
+  const measured = peaks(reading).slice().sort((a, b) => a.wavelength - b.wavelength);
+  const density = measured.map(sample => sample.power / (sample.widthNm || 1));
+  for (const line of LINES) {
+    // The brightest sample within a channel's reach is the channel's centre.
+    let best = -1, bestDensity = -Infinity;
+    measured.forEach((sample, index) => {
+      if (Math.abs(sample.wavelength - line.wl) > line.band * 3) return;
+      if (density[index] > bestDensity) { bestDensity = density[index]; best = index; }
+    });
+    assert.ok(best >= 0, `no samples near the ${line.wl} nm channel`);
+    assert.ok(Math.abs(measured[best].wavelength - line.wl) < line.band / 2,
+      `the ${line.wl} nm channel peaks at ${measured[best].wavelength.toFixed(2)} nm`);
+  }
 });
 
 test('the plot does not paint a band across a gap that carries no light', () => {
@@ -77,16 +97,19 @@ test('a line measures the same whether or not others were selected beside it', (
   // The same 550 nm line, selected alone and selected alongside two others.
   // How finely the display samples it may differ -- the plot has a fixed
   // sample budget to share out -- but the line it reports must not.
+  const reach = aotfWingHalfWidth(LINES[1].band);
   const alone = peaks(aotfScene({ channels: [LINES[1]] }).reading);
   const withNeighbours = peaks(aotfScene({ channels: LINES }).reading)
-    .filter(sample => Math.abs(sample.wavelength - 550) <= 2);
+    .filter(sample => Math.abs(sample.wavelength - 550) <= reach);
   const extentOf = list => {
     const wavelengths = list.map(sample => sample.wavelength);
     const half = Math.max(...list.map(sample => (sample.widthNm || 0) / 2));
     return (Math.max(...wavelengths) + half) - (Math.min(...wavelengths) - half);
   };
   const powerOf = list => list.reduce((sum, sample) => sum + sample.power, 0);
-  assert.ok(Math.abs(extentOf(alone) - extentOf(withNeighbours)) < 0.3,
+  // Within a bin: the two are sampled at different densities, because the
+  // display budget is shared out among however many bands there are.
+  assert.ok(Math.abs(extentOf(alone) - extentOf(withNeighbours)) < 1,
     `the 550 nm line spans ${extentOf(alone).toFixed(2)} nm alone but `
     + `${extentOf(withNeighbours).toFixed(2)} nm with neighbours present`);
   // And the light in it is the same light.
@@ -145,8 +168,8 @@ function drawnSegments(svg) {
 test('the window keeps every selected line rather than cropping to the brightest', () => {
   const { scene, spectrometer, reading } = aotfScene({ channels: LINES });
   const svg = screenOf(scene, spectrometer);
-  const measured = peaks(reading).length;
-  assert.equal(drawnBandSamples(svg), measured,
+  const bandSamples = reading.spectrum.filter(sample => sample.continuum).length;
+  assert.equal(drawnBandSamples(svg), bandSamples,
     'every measured sample must survive the plotted window');
   assert.equal(drawnSegments(svg).length, LINES.length,
     'one drawn band per selected line');
@@ -175,10 +198,13 @@ test('a broadband source beside a laser line keeps both on the axis', () => {
   assert.match(svg, /data-spectrum-lines="1"/, 'and the line is still drawn');
 });
 
-test('a Gaussian envelope sampled by many narrow lines keeps all of them', () => {
+test('a Gaussian envelope sliced by an AOTF keeps every slice and its shape', () => {
   // The case this is really for: a pulsed laser's own spectrum cut into
-  // slices by an AOTF. Every slice has to stay on the plot, and their
-  // heights have to still trace the envelope they were cut from.
+  // slices by an AOTF. The slices here sit 8-12 nm apart with passbands only
+  // 1.5 nm wide, so their Lorentzian wings overlap and the spectrometer
+  // rightly reports one connected band -- no wavelength across the range is
+  // fully blocked. What matters is that the band still resolves every slice,
+  // and that their heights still trace the envelope they were cut from.
   const source = createElement('pulsedlaser', 0, 0);
   Object.assign(source.params, { beamMode: 'beam', beamWidth: 6, wavelength: 800, pulseWidthFs: 20 });
   const aotf = createElement('aotf', 200, 0);
@@ -188,40 +214,47 @@ test('a Gaussian envelope sampled by many narrow lines keeps all of them', () =>
   const scene = [source, aotf, spectrometer];
   traceAll(scene);
   const svg = screenOf(scene, spectrometer);
-  assert.equal(drawnSegments(svg).length, centres.length,
-    'every slice of the envelope must be drawn');
-
   const reading = detectorReading(spectrometer.id);
-  const byBand = new Map();
-  for (const sample of reading.spectrum.filter(s => s.power > 1e-12)) {
-    const key = sample.bandId || String(sample.wavelength);
-    const entry = byBand.get(key) || { power: 0, wl: sample.wavelength };
-    entry.power += sample.power;
-    byBand.set(key, entry);
-  }
-  const bands = [...byBand.values()].sort((a, b) => a.wl - b.wl);
-  assert.equal(bands.length, centres.length, 'one measured band per selected slice');
-  // The envelope survives the sampling: power climbs to the centre slice and
-  // falls away again, which is the Gaussian the AOTF cut its slices from.
-  const middle = Math.floor(bands.length / 2);
+  const samples = reading.spectrum
+    .filter(sample => sample.power > 1e-15)
+    .sort((a, b) => a.wavelength - b.wavelength);
+  const density = samples.map(sample => sample.power / (sample.widthNm || 1));
+
+  // Nothing measured may be cropped by the window.
+  assert.equal(drawnBandSamples(svg),
+    reading.spectrum.filter(sample => sample.continuum).length,
+    'the window must keep the whole envelope');
+
+  // Every channel shows up as a local maximum at the wavelength it was tuned
+  // to. Sampled too coarsely, the peaks wash into one smooth blob instead.
+  const heights = centres.map(centre => {
+    let best = -1, bestDensity = -Infinity;
+    samples.forEach((sample, index) => {
+      if (Math.abs(sample.wavelength - centre) > 2) return;
+      if (density[index] > bestDensity) { bestDensity = density[index]; best = index; }
+    });
+    assert.ok(best > 0 && best < samples.length - 1,
+      `the ${centre} nm slice is not resolved`);
+    assert.ok(density[best] > density[best - 1] && density[best] >= density[best + 1],
+      `the ${centre} nm slice is not a peak -- the sampling has smoothed it away`);
+    return bestDensity;
+  });
+
+  // And the peaks trace the Gaussian: climbing to the centre slice, falling
+  // after it, and symmetric about it.
+  const middle = Math.floor(centres.length / 2);
   for (let i = 1; i <= middle; i++) {
-    assert.ok(bands[i].power > bands[i - 1].power,
-      `climbing to the centre: ${bands[i].wl.toFixed(0)} nm should carry more than `
-      + `${bands[i - 1].wl.toFixed(0)} nm`);
+    assert.ok(heights[i] > heights[i - 1],
+      `the ${centres[i]} nm slice should stand taller than ${centres[i - 1]} nm`);
   }
-  for (let i = middle; i < bands.length - 1; i++) {
-    assert.ok(bands[i + 1].power < bands[i].power,
-      `falling away from the centre: ${bands[i + 1].wl.toFixed(0)} nm should carry less than `
-      + `${bands[i].wl.toFixed(0)} nm`);
+  for (let i = middle; i < centres.length - 1; i++) {
+    assert.ok(heights[i + 1] < heights[i],
+      `the ${centres[i + 1]} nm slice should stand shorter than ${centres[i]} nm`);
   }
-  // A Gaussian is symmetric, and slices placed symmetrically about its centre
-  // must come back carrying the same power.
   for (let i = 0; i < middle; i++) {
-    const left = bands[i].power, right = bands[bands.length - 1 - i].power;
-    assert.ok(Math.abs(left - right) / left < 0.02,
-      `${bands[i].wl.toFixed(0)} and ${bands[bands.length - 1 - i].wl.toFixed(0)} nm `
-      + 'sit symmetrically about the centre but carry different power');
+    const left = heights[i], right = heights[centres.length - 1 - i];
+    assert.ok(Math.abs(left - right) / left < 0.06,
+      `${centres[i]} and ${centres[centres.length - 1 - i]} nm sit symmetrically `
+      + 'about the centre but come back at different heights');
   }
-  // The peak of the envelope is the slice at the laser's own centre.
-  assert.ok(Math.abs(bands[middle].wl - 800) < 2, 'the tallest slice is the one at 800 nm');
 });

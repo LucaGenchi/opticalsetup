@@ -12,7 +12,7 @@ import {
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
-import { normalizeAotfChannels, aotfChannelBand } from './aotf.js';
+import { normalizeAotfChannels, aotfChannelBand, aotfChannelTransmission } from './aotf.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -28,7 +28,7 @@ import {
   gaussianPulseDurationAfterGDD, glassGVD, glassIndex, isDispersiveGlass,
 } from './glass.js';
 import {
-  gaussianSpectrum, flatSpectrum, spectrumSamples, spectrumSupport, spectrumWeight,
+  gaussianSpectrum, flatSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
@@ -213,6 +213,9 @@ function detectorConvergence(hits) {
 }
 
 const MAX_SPECTRUM_SAMPLES = 24;
+// Bands are drawn as a curve rather than as stems, so they can afford far
+// more points than the line budget without the plot becoming unreadable.
+const MAX_BAND_SAMPLES = 384;
 
 // Reduce a broadband profile to a bounded number of samples by merging
 // neighbours. Grouping only ever merges adjacent wavelengths, so a bucket
@@ -285,7 +288,12 @@ function bucketizeSpectrum(samples) {
     list.push(sample);
     byBand.set(key, list);
   }
-  const perBandLimit = Math.max(6, Math.floor(MAX_SPECTRUM_SAMPLES / Math.max(1, byBand.size)));
+  // Discrete peaks and a sampled curve want different budgets. A dozen
+  // stems is already a crowded plot, but a curve needs enough points to
+  // keep whatever structure the band actually has -- several overlapping
+  // passbands read as one band, and summarising it down to a couple of
+  // dozen points would smooth its peaks back into a blob.
+  const perBandLimit = Math.max(12, Math.floor(MAX_BAND_SAMPLES / Math.max(1, byBand.size)));
   const keptBand = [...byBand.values()].flatMap(list => bucketize(list, perBandLimit));
   const keptLines = lines.length <= MAX_SPECTRUM_SAMPLES
     ? lines
@@ -358,13 +366,38 @@ function detectorSpectrum(hits) {
     }
     if (Number.isFinite(hit.wl)) addSample(samples, hit.wl, hit.power, false, hit.sourceId, null);
   }
+  // Every connected band across every source, collected before any is
+  // sampled: they share one display budget, and a band cannot choose how
+  // finely to sample itself until it knows how many others it is sharing
+  // with. Choosing the grid to fit the budget rather than summarising down
+  // to it afterwards is what keeps peak heights honest -- merging finished
+  // samples at a fractional stride averages some peaks with their
+  // neighbours and leaves others alone, which tilts an envelope that should
+  // be symmetric.
+  const allClusters = [];
   for (const [sourceId, allComponents] of bands) {
-    const clusters = clusterBySupport(allComponents);
-    for (let clusterIndex = 0; clusterIndex < clusters.length; clusterIndex++) {
-    const { lo, hi, components } = clusters[clusterIndex];
-    const bandId = `${sourceId || ''}#${clusterIndex}`;
+    clusterBySupport(allComponents).forEach((cluster, clusterIndex) => {
+      allClusters.push({ ...cluster, sourceId, bandId: `${sourceId || ''}#${clusterIndex}` });
+    });
+  }
+  const perBandGrid = Math.max(48, Math.floor(MAX_BAND_SAMPLES / Math.max(1, allClusters.length)));
+
+  {
+    for (const { lo, hi, components, sourceId, bandId } of allClusters) {
     if (!(hi > lo)) continue;
-    const count = 48;
+    // The grid has to resolve the narrowest thing inside the cluster, not
+    // just span its ends. Overlapping passbands -- several AOTF channels
+    // whose wings touch, say -- are one connected band carrying fine
+    // structure, and a grid sized only to the cluster's width would average
+    // that structure away and report a smooth blob where there are peaks.
+    const finest = Math.min(...components.map(component => {
+      const stats = spectrumStats(component.spec);
+      const [componentLo, componentHi] = spectrumSupport(component.spec);
+      const width = stats?.fwhm > 0 ? stats.fwhm : (componentHi - componentLo);
+      return width > 0 ? width : hi - lo;
+    }));
+    const count = Math.max(48, Math.min(perBandGrid,
+      Math.ceil((hi - lo) / Math.max(1e-9, finest / 6)) + 1));
     const step = (hi - lo) / (count - 1);
     const powers = Array(count).fill(0);
     let targetPower = 0;
@@ -1929,30 +1962,29 @@ function interact(ray, hit) {
           child.keepWeak = true;
           return child;
         };
-        const band = aotfChannelBand(c);
+        const transmission = aotfChannelTransmission(c);
 
         if (!ray.bw) {
-          if (ray.wl < band[0] || ray.wl > band[1]) return;
-          takenFraction += pass;
-          out.push(withGate({ d, intensity: ray.intensity * pass, tag: `c${i}` }));
+          // A single wavelength is simply attenuated by how far it sits from
+          // line centre, instead of passing whole or not at all.
+          const t = transmission(ray.wl);
+          if (!(t > 0)) return;
+          takenFraction += pass * t;
+          out.push(withGate({ d, intensity: ray.intensity * pass * t, tag: `c${i}` }));
           return;
         }
-        if (ray.spec && ray.spec.kind !== 'flat') {
-          const trans = applyTransmission(ray.spec, ray.wl, wl => (wl >= band[0] && wl <= band[1] ? 1 : 0));
-          if (!trans) return;
-          takenFraction += trans.fraction * pass;
-          out.push(withGate({
-            d, wl: trans.wl, bw: trans.bw, spec: trans.spec,
-            intensity: ray.intensity * trans.fraction * pass, tag: `c${i}`,
-          }));
-          return;
-        }
-        const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], band);
-        if (!ix) return;
-        const child = bandChild(ray, d, ix[0], ix[1], `c${i}`);
-        takenFraction += (child.intensity / ray.intensity) * pass;
-        child.intensity *= pass;
-        out.push(withGate(child));
+        // Everything with a spectrum goes the same way, flat sources
+        // included: a Lorentzian passband reshapes a profile rather than
+        // cutting a slice out of it, so a flat band leaves peaked, not flat.
+        const incident = ray.spec
+          || flatSpectrum(ray.wl - ray.bw / 2, ray.wl + ray.bw / 2);
+        const trans = applyTransmission(incident, ray.wl, transmission);
+        if (!trans) return;
+        takenFraction += trans.fraction * pass;
+        out.push(withGate({
+          d, wl: trans.wl, bw: trans.bw, spec: trans.spec,
+          intensity: ray.intensity * trans.fraction * pass, tag: `c${i}`,
+        }));
       });
 
       if (data.showDepleted) {
