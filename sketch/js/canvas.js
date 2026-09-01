@@ -321,7 +321,7 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
+    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();

@@ -2035,7 +2035,24 @@ function interact(ray, hit) {
           out.push({
             d: { x: d.x * c - d.y * sn, y: d.x * sn + d.y * c },
             wl: shiftedWl,
-            ...(isAod ? { bw: 0, spec: null, spectralCount: samples.length } : {}),
+            // An AOD sends every wavelength to its own angle, so each child
+            // really is one narrow slice travelling on its own. They are
+            // quadrature nodes across a continuous spectrum all the same, and
+            // have to say so: without the continuum flags a broadband source
+            // comes out the far side as a handful of invented laser lines,
+            // which is exactly what wlSamples warns against and what any
+            // spectrometer downstream would then report.
+            ...(isAod ? {
+              bw: 0,
+              spec: null,
+              spectralCount: samples.length,
+              spectralContinuum: ray.bw > 0,
+              spectralLo: sample.spectralLo,
+              spectralHi: sample.spectralHi,
+              spectralWidthNm: Number.isFinite(sample.spectralHi) && Number.isFinite(sample.spectralLo)
+                ? sample.spectralHi - sample.spectralLo
+                : null,
+            } : {}),
             intensity: ray.intensity * efficiency * sample.weight * (ray.pulse ? 1 : averageTransmission),
             tag: isAod && samples.length > 1 ? `d1w${index}` : 'd1', pulse,
           });

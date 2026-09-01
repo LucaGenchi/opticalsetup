@@ -571,9 +571,15 @@ function buildPalette() {
       }
     }
     if (entries.some(([, def]) => def.paletteGroup)) {
+      // A subsection names a family that belongs together -- the acousto-optic
+      // trio, say. Everything else in the category is just the category, and
+      // is listed plainly: labelling the remainder "Other" would file the EOM
+      // and the chopper under a heading that describes neither.
       const sections = new Map();
+      const ungrouped = [];
       for (const entry of entries) {
-        const section = entry[1].paletteGroup || 'Other';
+        const section = entry[1].paletteGroup;
+        if (!section) { ungrouped.push(entry); continue; }
         if (!sections.has(section)) sections.set(section, []);
         sections.get(section).push(entry);
       }
@@ -583,6 +589,7 @@ function buildPalette() {
         for (const [type, def] of sectionEntries) h += renderRegistryItem(type, def, cat);
         h += `</div>`;
       }
+      for (const [type, def] of ungrouped) h += renderRegistryItem(type, def, cat);
     } else {
       for (const [type, def] of entries) h += renderRegistryItem(type, def, cat);
     }
