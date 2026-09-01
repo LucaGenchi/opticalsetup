@@ -193,14 +193,80 @@ function spectrumLabel(reading) {
 // the underlying spec is sampled over, exactly like the beam probe's own
 // spectrum card — a spectrometer additionally lets the user pin an explicit
 // manual range instead of tracking the live signal.
+// Everything down to a thousandth of the tallest feature is worth plotting:
+// deep enough into a Gaussian's tail to show its shape, shallow enough that
+// numerical dust cannot stretch the axis across the whole spectrum.
+const DISPLAY_FLOOR = 1e-3;
+
+// A single laser line has no width to fill an axis with, so a window is held
+// open around it -- otherwise the plot would be a single stem with no scale
+// to read it against.
+const MIN_SPAN_NM = 10;
+
 function spectrumRange(reading, sensor) {
   const manual = sensor?.params?.rangeMode === 'manual';
   const rangeMin = sensor?.params?.rangeMin, rangeMax = sensor?.params?.rangeMax;
   if (manual && Number.isFinite(rangeMin) && Number.isFinite(rangeMax) && rangeMax > rangeMin) {
     return [rangeMin, rangeMax];
   }
-  const sigma = fwhmToSigma(reading.bandwidth || 0);
-  return [reading.wavelength - 2 * sigma - 5, reading.wavelength + 2 * sigma + 5];
+  // Sized from the measurement itself rather than from a centroid and a
+  // width. A centroid is meaningless once light arrives in several separate
+  // bands -- it lands in a gap -- and treating the whole detected span as
+  // though it were a single lineshape's FWHM widened the axis to nearly twice
+  // the light it contained, which left every real feature small and the plot
+  // mostly empty. The window is now exactly what clears the display floor,
+  // so a wide envelope sampled by narrow lines keeps all of its lines and a
+  // lone band fills the frame.
+  const samples = reading.spectrum?.length
+    ? reading.spectrum
+    : [{ wavelength: reading.wavelength, power: reading.signal, continuum: false }];
+  const heights = spectralHeights(samples, sensor);
+
+  // Each measured feature -- one connected band, or one discrete line -- is
+  // followed down to a thousandth of ITS OWN peak, not of the tallest thing
+  // on the plot. A discrete line concentrates its whole power into the
+  // nominal 0.1 nm it is drawn over, so on a density axis it stands orders
+  // of magnitude above any continuum beside it; measuring every feature
+  // against that one peak would drop a perfectly real broadband source off
+  // the axis for the crime of sharing a detector with a laser.
+  const features = new Map();
+  samples.forEach((sample, index) => {
+    if (!Number.isFinite(sample.wavelength)) return;
+    const key = sample.continuum ? `band:${sample.bandId || sample.sourceId || ''}` : `line:${index}`;
+    const feature = features.get(key) || { peak: 0, power: 0, members: [] };
+    feature.members.push({ sample, height: heights[index] });
+    feature.peak = Math.max(feature.peak, heights[index]);
+    feature.power += Math.max(0, Number(sample.power) || 0);
+    features.set(key, feature);
+  });
+  const totalPower = [...features.values()].reduce((sum, feature) => sum + feature.power, 0);
+
+  let lo = Infinity, hi = -Infinity;
+  for (const feature of features.values()) {
+    // A feature carrying essentially none of the detected light is numerical
+    // dust; letting it into the window would stretch the axis over nothing.
+    if (totalPower > 0 && !(feature.power >= totalPower * DISPLAY_FLOOR)) continue;
+    for (const { sample, height } of feature.members) {
+      if (feature.peak > 0 && !(height >= feature.peak * DISPLAY_FLOOR)) continue;
+      const half = Math.max(0, Number(sample.widthNm) || 0) / 2;
+      lo = Math.min(lo, sample.wavelength - half);
+      hi = Math.max(hi, sample.wavelength + half);
+    }
+  }
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) {
+    const centre = Number.isFinite(reading.wavelength) ? reading.wavelength : 550;
+    return [centre - MIN_SPAN_NM / 2, centre + MIN_SPAN_NM / 2];
+  }
+  // A little air at both ends so a peak sitting at the edge of the detected
+  // range is not drawn flat against the frame.
+  const pad = Math.max(0.4, (hi - lo) * 0.05);
+  lo -= pad;
+  hi += pad;
+  if (hi - lo < MIN_SPAN_NM) {
+    const centre = (lo + hi) / 2;
+    return [centre - MIN_SPAN_NM / 2, centre + MIN_SPAN_NM / 2];
+  }
+  return [lo, hi];
 }
 
 const formatTimeNs = ns => (ns <= 0 ? '0 ns'
@@ -312,7 +378,11 @@ function spectrumPlot(reading, sensor, baseline = 8) {
   const peaks = choosePeaks(visible, lines0, band0, sensor, xAt);
   const tick = (wl, anchor) => {
     const x = xAt(wl);
-    const crowded = peaks.some(peak => Math.abs(xAt(peak.wavelength) - x) < 6);
+    // Both captions are four digits wide at this font size, so they collide
+    // well before their anchors do -- and an end tick is anchored inward
+    // while a peak caption is centred, which brings them closer still. Sized
+    // to the text rather than to a nominal gap.
+    const crowded = peaks.some(peak => Math.abs(xAt(peak.wavelength) - x) < 9);
     return `<line x1="${x.toFixed(2)}" y1="${baseline}" x2="${x.toFixed(2)}" y2="${baseline + 1.4}" stroke="#3d5566" stroke-width="0.6"/>` +
       (crowded ? '' : `<text x="${x.toFixed(2)}" y="${baseline + 5.8}" text-anchor="${anchor}" font-size="3.6" fill="#5f7d8e">${Math.round(wl)}</text>`);
   };
@@ -344,25 +414,54 @@ function spectrumPlot(reading, sensor, baseline = 8) {
       + visible.map(stemFor).join('') + `</g>` + ticks + marks;
   }
 
-  const points = band.map(sample => ({ x: xAt(sample.wavelength), y: baseline - yFor(sample.height) }));
-  // the fill traces the same curve but pinned to the baseline at both ends,
-  // so it reads as a filled lineshape rather than a floating ribbon
-  const fillPoints = [{ x: points[0].x, y: baseline }, ...points, { x: points[points.length - 1].x, y: baseline }];
-  const clipId = `specClip${esc(sensor?.id || 'x')}`, gradientId = `specGrad${esc(sensor?.id || 'x')}`;
-  // The gradient spans the band's own extent, so its colours stay tied to the
-  // wavelengths underneath them even when discrete lines sit outside it.
-  const bandLo = band[0].wavelength, bandHi = band[band.length - 1].wavelength;
-  const bandSpan = Math.max(1e-6, bandHi - bandLo);
-  const stops = band.map(sample => {
-    const offset = ((sample.wavelength - bandLo) / bandSpan * 100).toFixed(1);
-    return `<stop offset="${offset}%" stop-color="${sample.color || wavelengthToColor(sample.wavelength)}"/>`;
-  }).join('');
+  // One curve per connected band. A source can arrive carrying several bands
+  // that do not touch -- an AOTF selecting three lines out of one
+  // supercontinuum is the standard case -- and a single curve drawn through
+  // all of them paints a spectrum across the gaps the AOTF is specifically
+  // there to block. Each band gets its own path and its own gradient.
+  const bandGroups = [];
+  for (const sample of band) {
+    const key = sample.bandId || sample.sourceId || '';
+    const open = bandGroups[bandGroups.length - 1];
+    if (open && open.key === key) open.samples.push(sample);
+    else bandGroups.push({ key, samples: [sample] });
+  }
+  const clipId = `specClip${esc(sensor?.id || 'x')}`;
+  const drawn = bandGroups.map((group, index) => {
+    const gradientId = `specGrad${esc(sensor?.id || 'x')}b${index}`;
+    const points = group.samples.map(sample =>
+      ({ x: xAt(sample.wavelength), y: baseline - yFor(sample.height) }));
+    // A band reduced to a single sample has no curve to draw; a stem carries
+    // it instead, so a very narrow band is never silently dropped.
+    if (points.length < 2) {
+      return { defs: '', body: `<g data-spectrum-band-segment="${group.samples.length}">${stemFor(group.samples[0])}</g>` };
+    }
+    // the fill traces the same curve but pinned to the baseline at both ends,
+    // so it reads as a filled lineshape rather than a floating ribbon
+    const fillPoints = [{ x: points[0].x, y: baseline }, ...points, { x: points[points.length - 1].x, y: baseline }];
+    // The gradient spans this band's own extent, so its colours stay tied to
+    // the wavelengths underneath them even when other bands or discrete lines
+    // sit outside it.
+    const bandLo = group.samples[0].wavelength;
+    const bandHi = group.samples[group.samples.length - 1].wavelength;
+    const bandSpan = Math.max(1e-6, bandHi - bandLo);
+    const stops = group.samples.map(sample => {
+      const offset = ((sample.wavelength - bandLo) / bandSpan * 100).toFixed(1);
+      return `<stop offset="${offset}%" stop-color="${sample.color || wavelengthToColor(sample.wavelength)}"/>`;
+    }).join('');
+    return {
+      defs: `<linearGradient id="${gradientId}" x1="${xAt(bandLo).toFixed(2)}" y1="0" x2="${xAt(bandHi).toFixed(2)}" y2="0" gradientUnits="userSpaceOnUse">${stops}</linearGradient>`,
+      body: `<g data-spectrum-band-segment="${group.samples.length}">`
+        + `<path d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.35" stroke="none"/>`
+        + `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.4" stroke-linecap="round"/>`
+        + `</g>`,
+    };
+  });
   return `<defs><clipPath id="${clipId}"><rect x="-35" y="${(baseline - 17).toFixed(2)}" width="70" height="17.5"/></clipPath>` +
-    `<linearGradient id="${gradientId}" x1="${xAt(bandLo).toFixed(2)}" y1="0" x2="${xAt(bandHi).toFixed(2)}" y2="0" gradientUnits="userSpaceOnUse">${stops}</linearGradient></defs>` +
+    drawn.map(entry => entry.defs).join('') + `</defs>` +
     axis + yLabel +
-    `<g clip-path="url(#${clipId})">` +
-    `<path data-spectrum-points="${band.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.35" stroke="none"/>` +
-    `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.4" stroke-linecap="round"/>` +
+    `<g clip-path="url(#${clipId})" data-spectrum-points="${band.length}">` +
+    drawn.map(entry => entry.body).join('') +
     (lines.length ? `<g data-spectrum-lines="${lines.length}">${lines.map(stemFor).join('')}</g>` : '') +
     `</g>` + ticks + marks;
 }

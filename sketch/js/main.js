@@ -273,7 +273,8 @@ const demoScenes = {
       { label: 'supercontinuum', showLabel: true, labelPos: 't' }),
     mkDemo('aotf', 400, 250, 0, {
       aperture: 26, deflect: 14, showDepleted: true, modMode: 'static', modFreqHz: 1000,
-      channels: [{ wl: 488, band: 4, eff: 0.9 }, { wl: 532, band: 4, eff: 0.9 }, { wl: 633, band: 4, eff: 0.9 }],
+      passband: 4,
+      channels: [{ wl: 488, eff: 0.9 }, { wl: 532, eff: 0.9 }, { wl: 633, eff: 0.9 }],
     }, { label: '488 · 532 · 633 nm selected', showLabel: true, labelPos: 't' }),
     mkDemo('spectrometer', 760, 250, 0, { aperture: 40 }, { label: 'the selected lines', showLabel: true, labelPos: 'r' }),
     // The 14 deg depleted branch crosses x=700 at y=325, not at the 345 a

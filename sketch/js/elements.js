@@ -39,7 +39,10 @@ import {
   objectiveWorkingDistance,
 } from './objective.js';
 import { pulseOverlap } from './pulses.js';
-import { normalizeAotfChannels, aotfOpenChannels, aotfSummary } from './aotf.js';
+import {
+  normalizeAotfChannels, aotfOpenChannels, aotfSummary, legacyAotfPassband,
+  normalizeAotfPassband, AOTF_BAND_MIN, AOTF_BAND_MAX, AOTF_BAND_DEFAULT,
+} from './aotf.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -3124,15 +3127,26 @@ export const registry = {
     size_: el => ({ w: 56, h: (el.params.aperture || 26) + 4 }),
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
+      // The passband is set by the crystal and its interaction length, so it
+      // belongs to the device rather than to any one RF tone: every selected
+      // line is filtered through the same width.
+      {
+        key: 'passband', label: 'Passband FWHM (nm)', type: 'number',
+        min: AOTF_BAND_MIN, max: AOTF_BAND_MAX, step: 0.1, def: AOTF_BAND_DEFAULT,
+        // Sketches written before this was a device property recorded a width
+        // on every channel, and older ones still a single flat center/band
+        // pair. Recover the device's width from whichever the file carries.
+        migrate: (p, raw = {}) => legacyAotfPassband(raw.channels, raw.band),
+      },
       {
         key: 'channels', label: 'Selected lines', type: 'aotfchannels',
-        def: [{ wl: 532, band: 2, eff: 0.8 }],
+        def: [{ wl: 532, eff: 0.8 }],
         // Older sketches selected exactly one line through flat center/band/eff
         // params. Those keys are gone from the schema, so they survive only in
         // the raw saved object — carry that line across rather than dropping
         // the author's selection for the default.
         migrate: (p, raw = {}) => normalizeAotfChannels(Number.isFinite(+raw.center)
-          ? [{ wl: +raw.center, band: +raw.band, eff: +raw.eff }]
+          ? [{ wl: +raw.center, eff: +raw.eff }]
           : null),
       },
       {
@@ -3168,6 +3182,7 @@ export const registry = {
           // sequential drive really does show one line at a time and steps to
           // the next as the animation clock advances.
           channels: aotfOpenChannels(p, el._animationTimeS || 0),
+          passband: normalizeAotfPassband(p.passband),
           deflect: Number(p.deflect) || 0,
           showDepleted: p.showDepleted === true,
         },

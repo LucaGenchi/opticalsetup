@@ -5,6 +5,7 @@ import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from 
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
 import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
 import { normalizeSurfaceTable } from './lensgroup.js';
+import { normalizeAotfChannels } from './aotf.js';
 
 // Elements whose boundary refracts and therefore carries per-surface
 // transmission of its own.
@@ -226,6 +227,10 @@ function normalizeElement(raw, definitions, used) {
     if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params, raw.params || {});
   }
   if (raw.type === 'objective') Object.assign(params, normalizeObjectiveParams(params));
+  // Channels used to carry a width each. The migration above has already
+  // taken the device's passband from them; normalizing here drops the retired
+  // key rather than carrying it forward into every future save of the file.
+  if (raw.type === 'aotf') params.channels = normalizeAotfChannels(params.channels);
   const rot = def?.rotatable === false ? 0 : finite(raw.rot) ? ((raw.rot % 360) + 360) % 360 : 0;
   let x = raw.x, y = raw.y;
   // Keep editable polygon bounds centered on the element transform. This makes
