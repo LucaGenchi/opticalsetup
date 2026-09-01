@@ -12,7 +12,9 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import katex from 'katex';
-import { registry, categories, createElement, getSize, getElementMeta } from '../sketch/js/elements.js';
+import {
+  registry, categories, createElement, getSize, getElementMeta, paletteOrderedTypes,
+} from '../sketch/js/elements.js';
 // Some registry entries (etalon, vipa, and the detector-instruments variants)
 // register themselves as a side effect of import rather than living in
 // elements.js's static object literal — mirror main.js's imports so every
@@ -98,6 +100,16 @@ function header(base) {
   </header>`;
 }
 
+// The index lists a category in the same sequence the component library does,
+// so someone reading the wiki beside the app finds things in the same place.
+// Subjects the palette does not carry -- the fiber drawing tools -- keep their
+// authored order and follow the registry components in their category.
+function inPaletteOrder(entries, category) {
+  const rank = new Map(paletteOrderedTypes(category).map((type, index) => [type, index]));
+  return [...entries].sort((a, b) =>
+    (rank.has(a.type) ? rank.get(a.type) : Infinity) - (rank.has(b.type) ? rank.get(b.type) : Infinity));
+}
+
 function sidebar(entries, currentType, base) {
   const byCategory = new Map();
   for (const e of entries) {
@@ -112,7 +124,7 @@ function sidebar(entries, currentType, base) {
         <div class="cat">
           <div class="cat-name">${esc(cat)}</div>
           <ul>
-            ${byCategory.get(cat).map(e => `<li><a href="${base}/wiki/${e.type}/" class="${e.type === currentType ? 'current' : ''}">${esc(e.title)}</a></li>`).join('')}
+            ${inPaletteOrder(byCategory.get(cat), cat).map(e => `<li><a href="${base}/wiki/${e.type}/" class="${e.type === currentType ? 'current' : ''}">${esc(e.title)}</a></li>`).join('')}
           </ul>
         </div>`).join('')}
     </nav>`;
@@ -284,7 +296,7 @@ ${header(base)}
         <div class="hub-group" id="${cat.toLowerCase().replace(/[^a-z0-9]+/g, '-')}">
           <h2>${esc(cat)}</h2>
           <div class="hub-grid">
-            ${byCategory.get(cat).map(e => {
+            ${inPaletteOrder(byCategory.get(cat), cat).map(e => {
     return `<a class="hub-card" href="${base}/wiki/${e.type}/">
                 <span class="ic">${iconSVG(e.type)}</span>
                 <span class="info"><span class="name">${esc(e.title)}</span><span class="desc">${esc(taglineOf(e))}</span></span>
