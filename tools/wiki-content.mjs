@@ -1907,8 +1907,148 @@ export const wikiEntries = [
         is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency
         shift is first-principles physics.</p>`,
     },
-    related: ['aotf', 'eom', 'chopper', 'delayline'],
+    related: ['aod', 'aotf', 'eom', 'chopper'],
     resources: [
+      { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
+    ],
+  },
+
+  {
+    type: 'aod',
+    title: 'Acousto-optic deflector (AOD)',
+    category: 'Modulators',
+    realWorld: {
+      html: `
+        <p>An acousto-optic deflector steers a laser beam by changing a frequency. A
+        piezoelectric transducer bonded to a transparent crystal launches a sound wave
+        through it; the travelling compression makes a moving grating of refractive
+        index, and light crossing that grating is diffracted. Change the drive
+        frequency and the acoustic wavelength changes with it, so the diffracted beam
+        leaves at a different angle — a scanner with nothing in it that moves${cite(1)}.</p>
+        <p>It is the same interaction an <a href="../aom/">AOM</a> uses. The difference
+        is entirely in the drive: a modulator is run at a fixed frequency and varying
+        power, to switch a beam on and off, while a deflector is run at constant power
+        and varying frequency, to point it${cite(1)}. The deflection angle follows from
+        the Bragg condition, and for an isotropic medium it is</p>`,
+      formulas: [
+        { tex: '\\theta = \\frac{\\lambda f}{v}', caption: 'Deflection angle: λ the vacuum wavelength, f the acoustic drive frequency, v the speed of sound in the crystal. It is also just the ratio of the optical to the acoustic wavelength, the latter typically 10–100 µm.' },
+      ],
+      html2: `
+        <p>Three things follow from that one expression, and between them they explain
+        every specification on an AOD datasheet.</p>
+        <p><strong>The angles are small.</strong> Sound is slow and its wavelength is
+        enormous next to light's, so the ratio is tiny. A 1064 nm beam in fused silica —
+        sound speed 5.9 km/s — driven at 100 MHz deflects by 18 mrad, about one
+        degree${cite(1)}. The usable range of a real deflector is "rather small — a few
+        degrees"${cite(1)}, with published devices quoting scan angles from roughly 5 to
+        60 mrad${cite(2)}. Anyone needing more puts a telescope after it, which trades
+        beam width for angle.</p>
+        <p><strong>Slow crystals are better.</strong> Since the angle goes as 1/v, a
+        material with a slow sound wave gives more deflection for the same frequency
+        range. This is why the standard choice for the visible and near infrared is
+        tellurium dioxide driven on its slow shear mode, where sound travels at about
+        620 m/s — roughly a tenth of the speed in fused silica${cite(1)}${cite(2)}. Fused
+        silica is used in the ultraviolet and germanium in the mid infrared, in each case
+        because the crystal has to be transparent before anything else matters${cite(1)}.</p>
+        <p><strong>The scan is chromatic.</strong> The angle is proportional to
+        wavelength, so two colours entering together leave at different angles. That is
+        a nuisance for a broadband beam and the whole point of an
+        <a href="../aotf/">AOTF</a>, which uses the same physics to select colours
+        rather than to steer them.</p>
+        <h3>Resolvable spots</h3>
+        <p>The number that actually matters when choosing a deflector is usually not the
+        scan angle but how many distinguishable directions fit inside it${cite(1)}. A
+        beam cannot be pointed more precisely than its own divergence, so the resolution
+        is the scan range divided by that divergence — equivalently, the time the sound
+        takes to cross the beam multiplied by the frequency range it is driven
+        over${cite(1)}.</p>`,
+      formulas2: [
+        { tex: 'N = \\frac{\\Delta\\theta}{\\theta_{\\text{div}}} = \\tau\\,\\Delta f', caption: 'Resolvable spots: the aperture time τ — how long sound takes to cross the beam — times the RF bandwidth. Around 1.5 µs per mm of beam in TeO₂, so a 5 mm beam and a 40 MHz bandwidth give roughly 300 spots.' },
+      ],
+      html3: `
+        <p>That product is why a deflector wants a wide, well-collimated beam: widening
+        it lengthens the aperture time and buys resolution. It is also why resolution and
+        speed pull against each other. The device cannot settle faster than sound crosses
+        the beam, so the same choice that gives many spots makes each jump slower, and a
+        crystal chosen for its slow sound wave is slow in both senses${cite(1)}.</p>
+        <p>Two deflectors mounted at right angles steer in two dimensions${cite(1)}. Because
+        the beam can be sent to any angle in the range as fast as it can be sent to the
+        neighbouring one, an AOD pair can address points in an arbitrary order rather than
+        rastering through them — the basis of random-access scanning in multiphoton
+        microscopy, where the interesting neurons are visited and the space between them
+        is not.</p>
+        <h3>What a datasheet reports</h3>
+        <p>Diffraction efficiency is typically 50–80%, sometimes near 90%, and lower at
+        longer wavelengths${cite(1)}. It is polarisation dependent, and it peaks at the
+        centre of the frequency range and falls away toward both ends — which is why it
+        should be checked at the edges of the scan and not only in the middle${cite(1)}.
+        Some devices compensate by raising the drive power at the extremes, and
+        beam-steered designs use a phased array of electrodes to swing the acoustic wave
+        direction and hold efficiency across a wider scan${cite(1)}.</p>
+        <p>The undiffracted zero order carries whatever was not deflected. It does not
+        move with the drive and is normally dumped${cite(1)}.</p>
+        <p>One effect is worth knowing because it is invisible: the diffracted beam comes
+        away shifted in optical frequency by exactly the drive frequency, since it has
+        scattered from a moving grating. For a deflector this is "usually irrelevant"${cite(1)}
+        — 80 MHz on a 532 nm beam is a shift of 7.6×10⁻⁵ nm — but it is the same effect
+        an AOM is bought for.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The deflector is specified the way you would choose one: by the angles. Set
+        the <strong>centre deflection</strong> and, for a scan, the <strong>total scan
+        angle</strong> swept around it. The drive frequency behind those angles is left
+        implicit — reading θ = λf/v forwards, a scan linear in frequency is linear in
+        angle, so the angles are the honest parameterisation and the crystal never has
+        to be named.</p>
+        <p>The defaults are a real device: 4° of centre deflection and 2° of scan is what
+        a TeO₂ slow-shear deflector gives at 532 nm on an 80 MHz drive across a 40 MHz
+        bandwidth. The wavelength scaling is kept, referenced to the design wavelength, so
+        a beam at twice that wavelength deflects twice as far and a broadband beam fans
+        out — which is the chromatic behaviour a real deflector has.</p>
+        <p>Four drives are available. <em>Static</em> holds one angle. <em>Triangle</em>
+        sweeps and retraces, <em>sawtooth</em> sweeps and flies back, and <em>random
+        step</em> addresses one angle per step in an unpredictable order and holds it
+        until the next — the random-access mode, rather than a sweep. The scan runs on the
+        shared simulation clock at the rate set in kilohertz, so it stays phase-locked to
+        pulses and to any other modulator on the bench.</p>
+        <p>The scan rate is bounded by the same physics that sets the resolution. The
+        inspector reports the <strong>access time</strong> for the aperture in use, taken
+        as 1.5&nbsp;µs per millimetre for TeO₂ slow shear, and the rate that implies: a
+        20&nbsp;mm aperture takes 30&nbsp;µs to fill and so cannot be re-pointed faster
+        than about 33&nbsp;kHz, which is why catalogue random-access cycle rates sit
+        between roughly 40 and 170&nbsp;kHz${cite(2)} rather than in the megahertz. Ask for
+        more and the readout says the crystal cannot settle that fast.</p>`,
+      formulas: [],
+      limitations: `<p>The angles are configured, not derived. Nothing here knows a
+        crystal, an acoustic velocity, or an RF bandwidth, so a combination set on this
+        element need not correspond to any device that could be built — and the ceilings
+        allowed are deliberately looser than reality so an illustrative sketch stays
+        readable. Real deflectors reach a few degrees at most.</p>
+        <p>Diffraction efficiency is a flat user-set fraction across the whole scan. A
+        real one peaks at the centre frequency and falls away toward both ends, which is
+        the specification that most often decides whether a device is usable, and it is
+        polarisation dependent, which is not modelled either. There is no relation
+        between drive power and efficiency.</p>
+        <p>The optical frequency shift is not applied. It is real, but at 7.6×10⁻⁵ nm for
+        80 MHz at 532 nm it is more than a thousand times finer than the finest wavelength
+        difference anything in this workbench resolves; the <a href="../aom/">AOM</a>,
+        which exists for that shift, still carries it.</p>
+        <p>Access time is reported but not enforced: the beam jumps instantly between
+        angles, with no settling and no transient while the acoustic wave refills the
+        aperture. The number of resolvable spots — arguably the figure that decides a real
+        deflector's worth — is not computed at all, and neither is the cylindrical lensing
+        a fast scan produces when different parts of the beam see different acoustic
+        frequencies at once. Multi-tone drive, which addresses several
+        angles at once, is not available: one drive, one deflected beam.</p>`,
+    },
+    related: ['aom', 'aotf', 'galvo', 'slm'],
+    citations: [
+      { label: '“Acousto-optic Deflectors,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/acousto_optic_deflectors.html' },
+      { label: 'Gooch & Housego — Acousto-optic deflectors: product specifications for TeO₂ and fused-silica devices', url: 'https://gandh.com/products/acousto-optics/deflectors' },
+    ],
+    resources: [
+      { label: 'AA Opto-Electronic — High Resolution Deflectors', url: 'https://aaoptoelectronic.com/ao-devices/high-resolution-deflectors/' },
       { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
     ],
   },
@@ -2676,7 +2816,7 @@ export const wikiEntries = [
         acoustic transit time — lines switch instantly — and no crystal transmission range,
         so a line can be selected at any wavelength the source provides.</p>`,
     },
-    related: ['aom', 'eom', 'filter', 'sclaser', 'beamdump'],
+    related: ['aom', 'aod', 'eom', 'filter', 'beamdump'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Acousto-optic Tunable Filters', url: 'https://www.rp-photonics.com/acousto_optic_tunable_filters.html' },
       { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },

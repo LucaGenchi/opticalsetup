@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acousto-optic deflector (AOD) — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/aod/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Acousto-optic deflector (AOD) — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/aod/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="current">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul>
+            <li><a href="../../wiki/phaseplate/" class="">Phase object</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#modulators">Modulators</a> / Acousto-optic deflector (AOD)</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-5" width="40" height="10" rx="3" fill="#d7bd68" stroke="#8a6f24" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3012">AOD</text></svg></div>
+        <div>
+          <h1>Acousto-optic deflector (AOD)</h1>
+        </div>
+      </div>
+      <p class="tagline">Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.</p>
+      <a class="place-cta" href="../../sketch/?place=aod">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=aod"
+          title="Interactive Acousto-optic deflector (AOD) — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the acousto-optic deflector (aod) to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>An acousto-optic deflector steers a laser beam by changing a frequency. A
+        piezoelectric transducer bonded to a transparent crystal launches a sound wave
+        through it; the travelling compression makes a moving grating of refractive
+        index, and light crossing that grating is diffracted. Change the drive
+        frequency and the acoustic wavelength changes with it, so the diffracted beam
+        leaves at a different angle — a scanner with nothing in it that moves<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>It is the same interaction an <a href="../aom/">AOM</a> uses. The difference
+        is entirely in the drive: a modulator is run at a fixed frequency and varying
+        power, to switch a beam on and off, while a deflector is run at constant power
+        and varying frequency, to point it<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The deflection angle follows from
+        the Bragg condition, and for an isotropic medium it is</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>θ</mi><mo>=</mo><mfrac><mrow><mi>λ</mi><mi>f</mi></mrow><mi>v</mi></mfrac></mrow><annotation encoding="application/x-tex">\theta = \frac{\lambda f}{v}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0574em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">v</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">λ</span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Deflection angle: λ the vacuum wavelength, f the acoustic drive frequency, v the speed of sound in the crystal. It is also just the ratio of the optical to the acoustic wavelength, the latter typically 10–100 µm.</div>
+    </div>
+
+        <p>Three things follow from that one expression, and between them they explain
+        every specification on an AOD datasheet.</p>
+        <p><strong>The angles are small.</strong> Sound is slow and its wavelength is
+        enormous next to light's, so the ratio is tiny. A 1064 nm beam in fused silica —
+        sound speed 5.9 km/s — driven at 100 MHz deflects by 18 mrad, about one
+        degree<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The usable range of a real deflector is "rather small — a few
+        degrees"<sup class="cite">[<a href="#ref-1">1</a>]</sup>, with published devices quoting scan angles from roughly 5 to
+        60 mrad<sup class="cite">[<a href="#ref-2">2</a>]</sup>. Anyone needing more puts a telescope after it, which trades
+        beam width for angle.</p>
+        <p><strong>Slow crystals are better.</strong> Since the angle goes as 1/v, a
+        material with a slow sound wave gives more deflection for the same frequency
+        range. This is why the standard choice for the visible and near infrared is
+        tellurium dioxide driven on its slow shear mode, where sound travels at about
+        620 m/s — roughly a tenth of the speed in fused silica<sup class="cite">[<a href="#ref-1">1</a>]</sup><sup class="cite">[<a href="#ref-2">2</a>]</sup>. Fused
+        silica is used in the ultraviolet and germanium in the mid infrared, in each case
+        because the crystal has to be transparent before anything else matters<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p><strong>The scan is chromatic.</strong> The angle is proportional to
+        wavelength, so two colours entering together leave at different angles. That is
+        a nuisance for a broadband beam and the whole point of an
+        <a href="../aotf/">AOTF</a>, which uses the same physics to select colours
+        rather than to steer them.</p>
+        <h3>Resolvable spots</h3>
+        <p>The number that actually matters when choosing a deflector is usually not the
+        scan angle but how many distinguishable directions fit inside it<sup class="cite">[<a href="#ref-1">1</a>]</sup>. A
+        beam cannot be pointed more precisely than its own divergence, so the resolution
+        is the scan range divided by that divergence — equivalently, the time the sound
+        takes to cross the beam multiplied by the frequency range it is driven
+        over<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>N</mi><mo>=</mo><mfrac><mrow><mi mathvariant="normal">Δ</mi><mi>θ</mi></mrow><msub><mi>θ</mi><mtext>div</mtext></msub></mfrac><mo>=</mo><mi>τ</mi><mtext> </mtext><mi mathvariant="normal">Δ</mi><mi>f</mi></mrow><annotation encoding="application/x-tex">N = \frac{\Delta\theta}{\theta_{\text{div}}} = \tau\,\Delta f</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2074em;vertical-align:-0.836em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">div</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">Δ</span><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span></span></span></div>
+      <div class="caption">Resolvable spots: the aperture time τ — how long sound takes to cross the beam — times the RF bandwidth. Around 1.5 µs per mm of beam in TeO₂, so a 5 mm beam and a 40 MHz bandwidth give roughly 300 spots.</div>
+    </div>
+
+        <p>That product is why a deflector wants a wide, well-collimated beam: widening
+        it lengthens the aperture time and buys resolution. It is also why resolution and
+        speed pull against each other. The device cannot settle faster than sound crosses
+        the beam, so the same choice that gives many spots makes each jump slower, and a
+        crystal chosen for its slow sound wave is slow in both senses<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>Two deflectors mounted at right angles steer in two dimensions<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Because
+        the beam can be sent to any angle in the range as fast as it can be sent to the
+        neighbouring one, an AOD pair can address points in an arbitrary order rather than
+        rastering through them — the basis of random-access scanning in multiphoton
+        microscopy, where the interesting neurons are visited and the space between them
+        is not.</p>
+        <h3>What a datasheet reports</h3>
+        <p>Diffraction efficiency is typically 50–80%, sometimes near 90%, and lower at
+        longer wavelengths<sup class="cite">[<a href="#ref-1">1</a>]</sup>. It is polarisation dependent, and it peaks at the
+        centre of the frequency range and falls away toward both ends — which is why it
+        should be checked at the edges of the scan and not only in the middle<sup class="cite">[<a href="#ref-1">1</a>]</sup>.
+        Some devices compensate by raising the drive power at the extremes, and
+        beam-steered designs use a phased array of electrodes to swing the acoustic wave
+        direction and hold efficiency across a wider scan<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>The undiffracted zero order carries whatever was not deflected. It does not
+        move with the drive and is normally dumped<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>One effect is worth knowing because it is invisible: the diffracted beam comes
+        away shifted in optical frequency by exactly the drive frequency, since it has
+        scattered from a moving grating. For a deflector this is "usually irrelevant"<sup class="cite">[<a href="#ref-1">1</a>]</sup>
+        — 80 MHz on a 532 nm beam is a shift of 7.6×10⁻⁵ nm — but it is the same effect
+        an AOM is bought for.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>The deflector is specified the way you would choose one: by the angles. Set
+        the <strong>centre deflection</strong> and, for a scan, the <strong>total scan
+        angle</strong> swept around it. The drive frequency behind those angles is left
+        implicit — reading θ = λf/v forwards, a scan linear in frequency is linear in
+        angle, so the angles are the honest parameterisation and the crystal never has
+        to be named.</p>
+        <p>The defaults are a real device: 4° of centre deflection and 2° of scan is what
+        a TeO₂ slow-shear deflector gives at 532 nm on an 80 MHz drive across a 40 MHz
+        bandwidth. The wavelength scaling is kept, referenced to the design wavelength, so
+        a beam at twice that wavelength deflects twice as far and a broadband beam fans
+        out — which is the chromatic behaviour a real deflector has.</p>
+        <p>Four drives are available. <em>Static</em> holds one angle. <em>Triangle</em>
+        sweeps and retraces, <em>sawtooth</em> sweeps and flies back, and <em>random
+        step</em> addresses one angle per step in an unpredictable order and holds it
+        until the next — the random-access mode, rather than a sweep. The scan runs on the
+        shared simulation clock at the rate set in kilohertz, so it stays phase-locked to
+        pulses and to any other modulator on the bench.</p>
+        <p>The scan rate is bounded by the same physics that sets the resolution. The
+        inspector reports the <strong>access time</strong> for the aperture in use, taken
+        as 1.5&nbsp;µs per millimetre for TeO₂ slow shear, and the rate that implies: a
+        20&nbsp;mm aperture takes 30&nbsp;µs to fill and so cannot be re-pointed faster
+        than about 33&nbsp;kHz, which is why catalogue random-access cycle rates sit
+        between roughly 40 and 170&nbsp;kHz<sup class="cite">[<a href="#ref-2">2</a>]</sup> rather than in the megahertz. Ask for
+        more and the readout says the crystal cannot settle that fast.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The angles are configured, not derived. Nothing here knows a
+        crystal, an acoustic velocity, or an RF bandwidth, so a combination set on this
+        element need not correspond to any device that could be built — and the ceilings
+        allowed are deliberately looser than reality so an illustrative sketch stays
+        readable. Real deflectors reach a few degrees at most.</p>
+        <p>Diffraction efficiency is a flat user-set fraction across the whole scan. A
+        real one peaks at the centre frequency and falls away toward both ends, which is
+        the specification that most often decides whether a device is usable, and it is
+        polarisation dependent, which is not modelled either. There is no relation
+        between drive power and efficiency.</p>
+        <p>The optical frequency shift is not applied. It is real, but at 7.6×10⁻⁵ nm for
+        80 MHz at 532 nm it is more than a thousand times finer than the finest wavelength
+        difference anything in this workbench resolves; the <a href="../aom/">AOM</a>,
+        which exists for that shift, still carries it.</p>
+        <p>Access time is reported but not enforced: the beam jumps instantly between
+        angles, with no settling and no transient while the acoustic wave refills the
+        aperture. The number of resolvable spots — arguably the figure that decides a real
+        deflector's worth — is not computed at all, and neither is the cylindrical lensing
+        a fast scan produces when different parts of the beam see different acoustic
+        frequencies at once. Multi-tone drive, which addresses several
+        angles at once, is not available: one drive, one deflected beam.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/aom/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-13" width="40" height="26" rx="3" fill="#c9b458" stroke="#8a7a2e" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3616">AOM</text></svg>AOM</a><a href="../../wiki/aotf/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-26" y="-13" width="52" height="26" rx="3" fill="#7fc7c4" stroke="#397b78" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#153b39">AOTF</text></svg>AOTF</a><a href="../../wiki/galvo/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><circle r="4.5" fill="#777" stroke="#444" stroke-width="1.2"/><g transform="rotate(0)"><line x1="0" y1="-10" x2="0" y2="10" stroke="#444" stroke-width="3"/></g><path d="M -9,-13 A 15 15 0 0 1 9,-13" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/><path d="M -9,13 A 15 15 0 0 0 9,13" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/></svg>Galvo mirror</a><a href="../../wiki/slm/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/><line x1="-11" y1="-18" x2="-7" y2="-18" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-13" x2="-7" y2="-13" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-8" x2="-7" y2="-8" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-3" x2="-7" y2="-3" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="2" x2="-7" y2="2" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="7" x2="-7" y2="7" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="12" x2="-7" y2="12" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="17" x2="-7" y2="17" stroke="#4ac0b0" stroke-width="2.5"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">SLM</text></svg>SLM</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/acousto_optic_deflectors.html" target="_blank" rel="noopener">“Acousto-optic Deflectors,” RP Photonics Encyclopedia</a></li><li id="ref-2"><a href="https://gandh.com/products/acousto-optics/deflectors" target="_blank" rel="noopener">Gooch &amp; Housego — Acousto-optic deflectors: product specifications for TeO₂ and fused-silica devices</a></li>
+      </ol>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://aaoptoelectronic.com/ao-devices/high-resolution-deflectors/" target="_blank" rel="noopener">AA Opto-Electronic — High Resolution Deflectors</a></li><li><a href="https://www.rp-photonics.com/acousto_optic_modulators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Acousto-optic Modulators</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

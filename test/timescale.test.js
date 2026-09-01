@@ -88,7 +88,7 @@ test('a galvo defaults to a realistic 100 Hz line-scan rate and reaches kHz', ()
   assert.ok(spec.max >= 1000, 'the fastest point-scanning applications reach kHz');
 });
 
-test('galvo, chopper and AOM each raise the scale to keep their own motion watchable', () => {
+test('galvo, chopper, AOM and AOD each raise the scale to keep their own motion watchable', () => {
   const galvo = createElement('galvo', 0, 0);
   galvo.params.scanMode = 'sine';
   galvo.params.scanFrequencyHz = 1;
@@ -103,6 +103,11 @@ test('galvo, chopper and AOM each raise the scale to keep their own motion watch
   aom.params.modulate = true;
   aom.params.modFreqMHz = 1;
   assert.equal(scaleOf([aom]), 1e3, '1 MHz AOM modulation cycles once per second at 1 µs/s');
+
+  const aod = createElement('aod', 0, 0);
+  aod.params.scanMode = 'triangle';
+  aod.params.scanFreqKHz = 10;
+  assert.equal(scaleOf([aod]), 1e5, '10 kHz AOD scanning cycles once per second at 100 µs/s');
 
   const eom = createElement('eom', 0, 0);
   eom.params.modulate = true;

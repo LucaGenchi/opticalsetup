@@ -13,6 +13,7 @@ import {
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
+import { acoustoOpticShiftedWavelength, aodDeflectionDeg } from './acousto-optic.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -1999,13 +2000,18 @@ function interact(ray, hit) {
       }
       return out;
     }
-    case 'aom': {
+    case 'aom':
+    case 'aod': {
       const out = [];
-      const a = data.deflect * D2R, c = Math.cos(a), sn = Math.sin(a);
+      const isAod = hit.surface.kind === 'aod';
+      // A deflector is steered by angle here, so there is no drive frequency
+      // to shift the optical carrier with; a modulator still has one.
+      const driveMHz = isAod ? 0 : (Number(data.rfMHz) || 0);
       const duty = data.gate ? Math.min(0.99, Math.max(0.01, data.gate.duty ?? 0.5)) : 1;
       const shape = data.gate?.shape === 'sine' ? 'sine' : 'square';
       const depth = Math.min(1, Math.max(0, data.gate?.depth ?? 1));
       const averageTransmission = data.gate ? (shape === 'sine' ? 1 - depth / 2 : duty) : 1;
+      const efficiency = Math.min(1, Math.max(0, Number(data.eff) || 0));
       let pulse = ray.pulse;
       if (data.gate && ray.pulse) {
         pulse = {
@@ -2016,22 +2022,49 @@ function interact(ray, hit) {
           }],
         };
       }
-      const C_NM_PER_S = 2.99792458e17;
-      const opticalHz = C_NM_PER_S / ray.wl;
-      const shiftedHz = Math.max(1, opticalHz + (data.rfMHz || 0) * 1e6);
-      const shiftedWl = C_NM_PER_S / shiftedHz;
-      out.push({
-        d: { x: d.x * c - d.y * sn, y: d.x * sn + d.y * c },
-        wl: shiftedWl, intensity: ray.intensity * data.eff * (ray.pulse ? 1 : averageTransmission), tag: 'd1', pulse,
-      });
+      if (efficiency > 0) {
+        const samples = isAod ? wlSamples(ray) : [{ wl: ray.wl, weight: 1 }];
+        samples.forEach((sample, index) => {
+          const deflection = isAod
+            ? aodDeflectionDeg(data, sample.wl, data.position)
+            : Number(data.deflect) || 0;
+          const a = deflection * D2R, c = Math.cos(a), sn = Math.sin(a);
+          const order = isAod ? data.order : 1;
+          const shiftedWl = acoustoOpticShiftedWavelength(sample.wl, driveMHz, order);
+          out.push({
+            d: { x: d.x * c - d.y * sn, y: d.x * sn + d.y * c },
+            wl: shiftedWl,
+            // An AOD sends every wavelength to its own angle, so each child
+            // really is one narrow slice travelling on its own. They are
+            // quadrature nodes across a continuous spectrum all the same, and
+            // have to say so: without the continuum flags a broadband source
+            // comes out the far side as a handful of invented laser lines,
+            // which is exactly what wlSamples warns against and what any
+            // spectrometer downstream would then report.
+            ...(isAod ? {
+              bw: 0,
+              spec: null,
+              spectralCount: samples.length,
+              spectralContinuum: ray.bw > 0,
+              spectralLo: sample.spectralLo,
+              spectralHi: sample.spectralHi,
+              spectralWidthNm: Number.isFinite(sample.spectralHi) && Number.isFinite(sample.spectralLo)
+                ? sample.spectralHi - sample.spectralLo
+                : null,
+            } : {}),
+            intensity: ray.intensity * efficiency * sample.weight * (ray.pulse ? 1 : averageTransmission),
+            tag: isAod && samples.length > 1 ? `d1w${index}` : 'd1', pulse,
+          });
+        });
+      }
       if (data.zero) {
         if (data.gate && ray.pulse) {
           // Residual zero order exists while RF is on; the diffracted fraction
           // returns to zero order while RF is off. Together the instantaneous
           // first + zero order remains energy-bounded.
-          out.push({ d, intensity: ray.intensity * (1 - data.eff), tag: 'd0r' });
+          out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'd0r' });
           out.push({
-            d, intensity: ray.intensity * data.eff, tag: 'd0off',
+            d, intensity: ray.intensity * efficiency, tag: 'd0off',
             pulse: {
               ...ray.pulse,
               gates: [...(ray.pulse.gates || []), {
@@ -2041,7 +2074,7 @@ function interact(ray, hit) {
             },
           });
         } else {
-          out.push({ d, intensity: ray.intensity * (1 - data.eff * averageTransmission), tag: 'd0' });
+          out.push({ d, intensity: ray.intensity * (1 - efficiency * averageTransmission), tag: 'd0' });
         }
       }
       return out;
