@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electro-optic modulator (EOM) — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/eom/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Electro-optic modulator (EOM) — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/eom/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/eom/" class="current">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul>
+            <li><a href="../../wiki/phaseplate/" class="">Phase object</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#modulators">Modulators</a> / Electro-optic modulator (EOM)</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-30 -30 60 60" aria-hidden="true"><rect x="-22" y="-12" width="44" height="24" rx="3" fill="#b8c9a3" stroke="#66794a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#2f3a20">EOM</text></svg></div>
+        <div>
+          <h1>Electro-optic modulator (EOM)</h1>
+        </div>
+      </div>
+      <p class="tagline">Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.</p>
+      <a class="place-cta" href="../../sketch/?place=eom">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=eom"
+          title="Interactive Electro-optic modulator (EOM) — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the electro-optic modulator (eom) to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>An electro-optic modulator controls light with a voltage. Almost all of them
+        work through the <em>Pockels effect</em>: in a crystal without inversion symmetry,
+        an applied electric field changes the refractive index in proportion to the field
+        strength<sup class="cite">[<a href="#ref-1">1</a>]</sup><sup class="cite">[<a href="#ref-3">3</a>]</sup>. Put a few hundred volts across a centimetre of lithium
+        niobate and the optical path through it changes by a fraction of a wavelength —
+        with no moving part, and in nanoseconds.</p>
+        <p>The quantity that describes a device is the voltage needed to shift the phase by
+        π, the <strong>half-wave voltage</strong>. For a bulk Pockels cell it is hundreds
+        or thousands of volts, which is why these devices come with high-voltage drivers;
+        a waveguide modulator, where the electrodes sit micrometres apart rather than
+        millimetres, needs far less and switches far faster<sup class="cite">[<a href="#ref-1">1</a>]</sup><sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">Δ</mi><mi>n</mi><mo>∝</mo><mi>E</mi><mspace width="2em"/><mo>⟹</mo><mspace width="2em"/><mi mathvariant="normal">Δ</mi><mi>φ</mi><mo>=</mo><mi>π</mi><mtext> </mtext><mfrac><mi>V</mi><msub><mi>V</mi><mi>π</mi></msub></mfrac></mrow><annotation encoding="application/x-tex">\Delta n \propto E \qquad\Longrightarrow\qquad \Delta\varphi = \pi\,\frac{V}{V_\pi}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord">Δ</span><span class="mord mathnormal">n</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∝</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.7073em;vertical-align:-0.024em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">E</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">⟹</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.8778em;vertical-align:-0.1944em;"></span><span class="mord">Δ</span><span class="mord mathnormal">φ</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.1963em;vertical-align:-0.836em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">π</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.2222em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0359em;">π</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.2222em;">V</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">The Pockels effect is linear in the applied field, so the phase shift is linear in the voltage. Vπ, the half-wave voltage, is the whole specification in one number.</div>
+    </div>
+
+        <p>What makes the family confusing is that one physical device — a crystal with
+        electrodes on it — becomes three quite different instruments depending on how the
+        light is sent through it and what is placed after it.</p>
+        <h3>Phase modulator</h3>
+        <p>The simplest arrangement, and the one everything else is built from: the input
+        polarisation is aligned to one of the crystal's optical axes, so the polarisation
+        state is untouched and only the phase moves<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Drive it sinusoidally and the
+        output is not one frequency but a comb — the carrier plus sidebands at every
+        multiple of the drive frequency, with amplitudes given by Bessel
+        functions<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msup><mi>e</mi><mrow><mi>i</mi><mi>β</mi><mi>sin</mi><mo>⁡</mo><mi mathvariant="normal">Ω</mi><mi>t</mi></mrow></msup><mo>=</mo><munderover><mo>∑</mo><mrow><mi>n</mi><mo>=</mo><mo>−</mo><mi mathvariant="normal">∞</mi></mrow><mi mathvariant="normal">∞</mi></munderover><msub><mi>J</mi><mi>n</mi></msub><mo stretchy="false">(</mo><mi>β</mi><mo stretchy="false">)</mo><mtext> </mtext><msup><mi>e</mi><mrow><mi>i</mi><mi>n</mi><mi mathvariant="normal">Ω</mi><mi>t</mi></mrow></msup></mrow><annotation encoding="application/x-tex">e^{i\beta\sin\Omega t} = \sum_{n=-\infty}^{\infty} J_n(\beta)\, e^{in\Omega t}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8991em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8991em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mord mathnormal mtight" style="margin-right:0.0528em;">β</span><span class="mspace mtight" style="margin-right:0.1952em;"></span><span class="mop mtight"><span class="mtight">s</span><span class="mtight">i</span><span class="mtight">n</span></span><span class="mspace mtight" style="margin-right:0.1952em;"></span><span class="mord mtight">Ω</span><span class="mord mathnormal mtight">t</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.9597em;vertical-align:-1.3083em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.6514em;"><span style="top:-1.9em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">n</span><span class="mrel mtight">=</span><span class="mord mtight">−</span><span class="mord mtight">∞</span></span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span><span style="top:-4.3em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">∞</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.3083em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0962em;">J</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0962em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.0528em;">β</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">in</span><span class="mord mtight">Ω</span><span class="mord mathnormal mtight">t</span></span></span></span></span></span></span></span></span></span></span></span></span></div>
+      <div class="caption">The Jacobi–Anger expansion: phase modulation of depth β puts sidebands at ω ± nΩ with amplitude Jₙ(β). Drive hard enough and dozens of them appear, which is how a modulator becomes a comb generator.</div>
+    </div>
+
+        <p>Those sidebands are the point of the device in laser stabilisation: the
+        Pound–Drever–Hall technique locks a laser to a cavity by asking how the sidebands
+        it wrote come back<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Worth noting what a phase modulator is <em>not</em>
+        good for: it cannot produce a sustained frequency shift, since that would need a
+        phase ramp increasing without limit<sup class="cite">[<a href="#ref-1">1</a>]</sup>. An <a href="../aom/">AOM</a> does that
+        instead.</p>
+        <h3>Polarisation modulator</h3>
+        <p>Orient the crystal so the two polarisation axes see different index changes, and
+        the cell becomes a <strong>voltage-controlled waveplate</strong><sup class="cite">[<a href="#ref-1">1</a>]</sup><sup class="cite">[<a href="#ref-2">2</a>]</sup>.
+        Linear light entering at 45° to the axes leaves elliptical in general; at exactly a
+        half wave of relative retardance it leaves linear again, rotated by 90°. Drive it
+        randomly and it is a polarisation scrambler.</p>
+        <h3>Amplitude modulator</h3>
+        <p>Two routes, and they belong to different worlds. Put a polariser after a
+        polarisation modulator and the polarisation swing becomes an intensity swing — the
+        classic bulk arrangement, and the basis of Q-switches, cavity dumpers and pulse
+        pickers<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Or put a phase modulator in one arm of a Mach–Zehnder
+        interferometer, so the two arms interfere constructively or destructively according
+        to the drive<sup class="cite">[<a href="#ref-1">1</a>]</sup><sup class="cite">[<a href="#ref-2">2</a>]</sup>. The interferometric route is what integrated optics
+        uses, because on a chip the phase stability that arrangement demands is far easier
+        to hold than on a bench — and it is the workhorse of optical
+        telecommunications.</p>
+        <h3>Beyond the Pockels effect</h3>
+        <p>Kerr cells use the quadratic electro-optic effect and are uncommon<sup class="cite">[<a href="#ref-1">1</a>]</sup>.
+        Electro-absorption modulators change absorption rather than index, through the
+        Franz–Keldysh effect or the quantum-confined Stark effect in a semiconductor, and
+        so are not electro-optic in the same sense at all<sup class="cite">[<a href="#ref-1">1</a>]</sup><sup class="cite">[<a href="#ref-2">2</a>]</sup>. Plasmonic
+        modulators, exploiting surface plasmon polaritons at metal surfaces, are extremely
+        fast at low energy<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>Materials matter, and the trade-offs are specific: KD*P gives excellent optical
+        quality and high extinction over large apertures, which makes it the standard for
+        Q-switches, but it is hygroscopic and rings piezoelectrically, limiting the
+        repetition rate. BBO handles high average power and switches faster. Lithium
+        niobate dominates waveguide devices for its large electro-optic
+        coefficients<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Devices intended for stability often use two matched cells
+        in an athermal pairing that cancels the temperature drift of the relative phase, or
+        four crystals to cancel walk-off as well<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>This element is the <strong>polarisation modulator</strong> of the three: a
+        Pockels cell used as a voltage-controlled waveplate. It applies a retardance
+        between the two axes of a crystal whose orientation you set, either as a fixed
+        value or switching between two states as a square wave on the shared simulation
+        clock.</p>
+        <p>The default switching mode flips between orthogonal linear polarisations, which
+        is the half-wave switch a Pockels cell is usually bought for and needs no
+        crystal-axis reasoning at all. Put a <a href="../polarizer/">polariser</a> or a
+        <a href="../pbs/">polarising beamsplitter</a> after it and that becomes real
+        intensity modulation — the bulk amplitude modulator above, built the way it is built
+        on a bench. With a pulsed source, individual pulses are routed by whichever state
+        they meet, so a photodetector on a screen shows the modulated train and the element
+        works as a pulse picker.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>One of the three types is modelled. There is no phase-modulator
+        mode: the element always acts on polarisation, so it cannot be used for the
+        sideband generation, cavity locking or interferometric amplitude modulation that
+        make up most of what electro-optic modulators are used for. Building a Mach–Zehnder
+        modulator here is therefore not possible — the interferometer is, but the driven
+        phase in one arm is not.</p>
+        <p>Nothing here is a voltage. Retardance is set in degrees directly, so there is no
+        half-wave voltage, no drive amplitude, and no relation between the two — which also
+        means the linearity of the Pockels effect, the whole basis of the device, is
+        assumed rather than shown. The crystal is ideal and achromatic: a retardance set
+        here applies equally at 405 nm and 1550 nm, where a real cell is calibrated for one
+        wavelength and scales roughly as 1/λ. No material is chosen, so none of the
+        material trade-offs appear.</p>
+        <p>Switching is instantaneous and perfectly square. Rise time, driver bandwidth,
+        piezoelectric ringing, thermal drift of the operating point, and the residual
+        static birefringence a real cell has at zero volts are all absent, as is any
+        insertion loss. Resonant and travelling-wave designs, which is how real devices
+        reach gigahertz, have no counterpart.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/polarizer/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/><g transform="rotate(0)"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/><path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g></svg>Polarizer</a><a href="../../wiki/pbs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#d5e3f0" stroke="#3f6a92" stroke-width="1.6"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#3f6a92" stroke-width="1.6"/><text x="-12.7" y="20.7" text-anchor="start" dominant-baseline="central" font-size="8.5" fill="#3f6a92" font-weight="600" >PBS</text></svg>Polarizing BS</a><a href="../../wiki/qwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" >λ/4</text></svg>λ/4 waveplate</a><a href="../../wiki/hwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#f3e3c3" stroke="#a08340" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#7a6430" >λ/2</text></svg>λ/2 waveplate</a><a href="../../wiki/aom/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-13" width="40" height="26" rx="3" fill="#c9b458" stroke="#8a7a2e" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3616">AOM</text></svg>AOM</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/electro_optic_modulators.html" target="_blank" rel="noopener">“Electro-optic Modulators,” RP Photonics Encyclopedia (DOI 10.61835/7rv)</a></li><li id="ref-2"><a href="https://en.wikipedia.org/wiki/Electro-optic_modulator" target="_blank" rel="noopener">Electro-optic modulator — Wikipedia</a></li><li id="ref-3"><a href="https://www.accessengineeringlibrary.com/browse/handbook-of-optics-volume-v-atmospheric-optics-modulators-fiber-optics-x-ray-and-neutron-optics-third-edition" target="_blank" rel="noopener">T. A. Maldonado, “Electro-Optic Modulators,” ch. 13 in M. Bass (ed.), Handbook of Optics, Vol. 2, McGraw-Hill (1995) — the standard reference treatment: crystal optics and the index ellipsoid, the electro-optic effect, and modulator devices</a></li>
+      </ol>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/pockels_cells.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Pockels Cells</a></li><li><a href="https://technav.ieee.org/topic/electrooptic-modulators/" target="_blank" rel="noopener">IEEE TechNav — Electrooptic Modulators</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

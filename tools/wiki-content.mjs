@@ -1914,6 +1914,126 @@ export const wikiEntries = [
   },
 
   {
+    type: 'eom',
+    title: 'Electro-optic modulator (EOM)',
+    category: 'Modulators',
+    realWorld: {
+      html: `
+        <p>An electro-optic modulator controls light with a voltage. Almost all of them
+        work through the <em>Pockels effect</em>: in a crystal without inversion symmetry,
+        an applied electric field changes the refractive index in proportion to the field
+        strength${cite(1)}${cite(3)}. Put a few hundred volts across a centimetre of lithium
+        niobate and the optical path through it changes by a fraction of a wavelength —
+        with no moving part, and in nanoseconds.</p>
+        <p>The quantity that describes a device is the voltage needed to shift the phase by
+        π, the <strong>half-wave voltage</strong>. For a bulk Pockels cell it is hundreds
+        or thousands of volts, which is why these devices come with high-voltage drivers;
+        a waveguide modulator, where the electrodes sit micrometres apart rather than
+        millimetres, needs far less and switches far faster${cite(1)}${cite(2)}.</p>`,
+      formulas: [
+        { tex: '\\Delta n \\propto E \\qquad\\Longrightarrow\\qquad \\Delta\\varphi = \\pi\\,\\frac{V}{V_\\pi}', caption: 'The Pockels effect is linear in the applied field, so the phase shift is linear in the voltage. Vπ, the half-wave voltage, is the whole specification in one number.' },
+      ],
+      html2: `
+        <p>What makes the family confusing is that one physical device — a crystal with
+        electrodes on it — becomes three quite different instruments depending on how the
+        light is sent through it and what is placed after it.</p>
+        <h3>Phase modulator</h3>
+        <p>The simplest arrangement, and the one everything else is built from: the input
+        polarisation is aligned to one of the crystal's optical axes, so the polarisation
+        state is untouched and only the phase moves${cite(1)}. Drive it sinusoidally and the
+        output is not one frequency but a comb — the carrier plus sidebands at every
+        multiple of the drive frequency, with amplitudes given by Bessel
+        functions${cite(2)}.</p>`,
+      formulas2: [
+        { tex: 'e^{i\\beta\\sin\\Omega t} = \\sum_{n=-\\infty}^{\\infty} J_n(\\beta)\\, e^{in\\Omega t}', caption: 'The Jacobi–Anger expansion: phase modulation of depth β puts sidebands at ω ± nΩ with amplitude Jₙ(β). Drive hard enough and dozens of them appear, which is how a modulator becomes a comb generator.' },
+      ],
+      html3: `
+        <p>Those sidebands are the point of the device in laser stabilisation: the
+        Pound–Drever–Hall technique locks a laser to a cavity by asking how the sidebands
+        it wrote come back${cite(1)}. Worth noting what a phase modulator is <em>not</em>
+        good for: it cannot produce a sustained frequency shift, since that would need a
+        phase ramp increasing without limit${cite(1)}. An <a href="../aom/">AOM</a> does that
+        instead.</p>
+        <h3>Polarisation modulator</h3>
+        <p>Orient the crystal so the two polarisation axes see different index changes, and
+        the cell becomes a <strong>voltage-controlled waveplate</strong>${cite(1)}${cite(2)}.
+        Linear light entering at 45° to the axes leaves elliptical in general; at exactly a
+        half wave of relative retardance it leaves linear again, rotated by 90°. Drive it
+        randomly and it is a polarisation scrambler.</p>
+        <h3>Amplitude modulator</h3>
+        <p>Two routes, and they belong to different worlds. Put a polariser after a
+        polarisation modulator and the polarisation swing becomes an intensity swing — the
+        classic bulk arrangement, and the basis of Q-switches, cavity dumpers and pulse
+        pickers${cite(1)}. Or put a phase modulator in one arm of a Mach–Zehnder
+        interferometer, so the two arms interfere constructively or destructively according
+        to the drive${cite(1)}${cite(2)}. The interferometric route is what integrated optics
+        uses, because on a chip the phase stability that arrangement demands is far easier
+        to hold than on a bench — and it is the workhorse of optical
+        telecommunications.</p>
+        <h3>Beyond the Pockels effect</h3>
+        <p>Kerr cells use the quadratic electro-optic effect and are uncommon${cite(1)}.
+        Electro-absorption modulators change absorption rather than index, through the
+        Franz–Keldysh effect or the quantum-confined Stark effect in a semiconductor, and
+        so are not electro-optic in the same sense at all${cite(1)}${cite(2)}. Plasmonic
+        modulators, exploiting surface plasmon polaritons at metal surfaces, are extremely
+        fast at low energy${cite(1)}.</p>
+        <p>Materials matter, and the trade-offs are specific: KD*P gives excellent optical
+        quality and high extinction over large apertures, which makes it the standard for
+        Q-switches, but it is hygroscopic and rings piezoelectrically, limiting the
+        repetition rate. BBO handles high average power and switches faster. Lithium
+        niobate dominates waveguide devices for its large electro-optic
+        coefficients${cite(1)}. Devices intended for stability often use two matched cells
+        in an athermal pairing that cancels the temperature drift of the relative phase, or
+        four crystals to cancel walk-off as well${cite(1)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>This element is the <strong>polarisation modulator</strong> of the three: a
+        Pockels cell used as a voltage-controlled waveplate. It applies a retardance
+        between the two axes of a crystal whose orientation you set, either as a fixed
+        value or switching between two states as a square wave on the shared simulation
+        clock.</p>
+        <p>The default switching mode flips between orthogonal linear polarisations, which
+        is the half-wave switch a Pockels cell is usually bought for and needs no
+        crystal-axis reasoning at all. Put a <a href="../polarizer/">polariser</a> or a
+        <a href="../pbs/">polarising beamsplitter</a> after it and that becomes real
+        intensity modulation — the bulk amplitude modulator above, built the way it is built
+        on a bench. With a pulsed source, individual pulses are routed by whichever state
+        they meet, so a photodetector on a screen shows the modulated train and the element
+        works as a pulse picker.</p>`,
+      formulas: [],
+      limitations: `<p>One of the three types is modelled. There is no phase-modulator
+        mode: the element always acts on polarisation, so it cannot be used for the
+        sideband generation, cavity locking or interferometric amplitude modulation that
+        make up most of what electro-optic modulators are used for. Building a Mach–Zehnder
+        modulator here is therefore not possible — the interferometer is, but the driven
+        phase in one arm is not.</p>
+        <p>Nothing here is a voltage. Retardance is set in degrees directly, so there is no
+        half-wave voltage, no drive amplitude, and no relation between the two — which also
+        means the linearity of the Pockels effect, the whole basis of the device, is
+        assumed rather than shown. The crystal is ideal and achromatic: a retardance set
+        here applies equally at 405 nm and 1550 nm, where a real cell is calibrated for one
+        wavelength and scales roughly as 1/λ. No material is chosen, so none of the
+        material trade-offs appear.</p>
+        <p>Switching is instantaneous and perfectly square. Rise time, driver bandwidth,
+        piezoelectric ringing, thermal drift of the operating point, and the residual
+        static birefringence a real cell has at zero volts are all absent, as is any
+        insertion loss. Resonant and travelling-wave designs, which is how real devices
+        reach gigahertz, have no counterpart.</p>`,
+    },
+    related: ['polarizer', 'pbs', 'qwp', 'hwp', 'aom'],
+    citations: [
+      { label: '“Electro-optic Modulators,” RP Photonics Encyclopedia (DOI 10.61835/7rv)', url: 'https://www.rp-photonics.com/electro_optic_modulators.html' },
+      { label: 'Electro-optic modulator — Wikipedia', url: 'https://en.wikipedia.org/wiki/Electro-optic_modulator' },
+      { label: 'T. A. Maldonado, “Electro-Optic Modulators,” ch. 13 in M. Bass (ed.), Handbook of Optics, Vol. 2, McGraw-Hill (1995) — the standard reference treatment: crystal optics and the index ellipsoid, the electro-optic effect, and modulator devices', url: 'https://www.accessengineeringlibrary.com/browse/handbook-of-optics-volume-v-atmospheric-optics-modulators-fiber-optics-x-ray-and-neutron-optics-third-edition' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Pockels Cells', url: 'https://www.rp-photonics.com/pockels_cells.html' },
+      { label: 'IEEE TechNav — Electrooptic Modulators', url: 'https://technav.ieee.org/topic/electrooptic-modulators/' },
+    ],
+  },
+
+  {
     type: 'aod',
     title: 'Acousto-optic deflector (AOD)',
     category: 'Modulators',
