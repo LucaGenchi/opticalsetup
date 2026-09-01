@@ -546,17 +546,30 @@ test('the probe card stays upright and clear of the beam however the probe is ro
 
 // ---------------- spectrometer: default padded range + manual override ----------------
 
-test('a spectrometer defaults to the ±2σ (FWHM) + 5 nm range, extremes and centre labeled', () => {
+// The plotted window, read back off the axis labels the display draws.
+function axisRange(svg) {
+  const ticks = [...svg.matchAll(/>(\d{3,4})</g)].map(match => Number(match[1]));
+  return [Math.min(...ticks), Math.max(...ticks)];
+}
+
+test('the automatic range shows the whole measured profile, not a window that clips it', () => {
   const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
-  laser.params.bandwidth = 40; // FWHM 40 -> sigma ~16.99 -> padded [~493, ~571]
+  laser.params.bandwidth = 40;
   const spectrometer = createElement('spectrometer', 300, 0);
   assert.equal(spectrometer.params.rangeMode, 'auto');
   const svg = screenFor(spectrometer, [laser, spectrometer]);
-  assert.match(svg, />493</);
-  assert.match(svg, />532</);
-  assert.match(svg, />571</);
+  const [lo, hi] = axisRange(svg);
+  // A 40 nm FWHM line is traced out to three standard deviations, so real
+  // signal reaches 532 ± 51 nm. The axis has to contain all of it: sizing the
+  // window from a centroid and a nominal width used to cut the last 10 nm off
+  // each tail, hiding measured light rather than displaying it.
+  assert.ok(lo <= 482, `axis starts at ${lo} nm, inside the measured profile`);
+  assert.ok(hi >= 582, `axis ends at ${hi} nm, inside the measured profile`);
+  // And it stays snug around the data rather than padding out to twice its width.
+  assert.ok(hi - lo < 140, `axis spans ${hi - lo} nm for ~102 nm of light`);
+  assert.match(svg, />532</, 'the centre is still labelled');
 });
 
 test('a spectrometer\'s manual range overrides the auto-computed one and clips out-of-range samples', () => {
@@ -591,6 +604,7 @@ test('an invalid manual range (max <= min) falls back to the automatic range', (
   spectrometer.params.rangeMin = 600;
   spectrometer.params.rangeMax = 600; // invalid: not > min
   const svg = screenFor(spectrometer, [laser, spectrometer]);
-  assert.match(svg, />493</, 'should fall back to the automatic lower bound');
-  assert.match(svg, />571</, 'should fall back to the automatic upper bound');
+  const [lo, hi] = axisRange(svg);
+  assert.ok(lo <= 482 && hi >= 582,
+    `should fall back to the automatic range, got [${lo}, ${hi}]`);
 });
