@@ -582,13 +582,16 @@ function buildPalette() {
         if (!sections.has(section)) sections.set(section, []);
         sections.get(section).push(entry);
       }
+      // Ungrouped first, so an element belonging to none of the families is
+      // read as its own thing rather than as a stray member of whichever
+      // subsection it happens to sit under.
+      for (const [type, def] of ungrouped) h += renderRegistryItem(type, def, cat);
       for (const [section, sectionEntries] of sections) {
         h += `<div class="palette-subgroup" data-subgroup="${esc(section)}">
           <div class="palette-subgroup-label">${esc(section)}</div>`;
         for (const [type, def] of sectionEntries) h += renderRegistryItem(type, def, cat);
         h += `</div>`;
       }
-      for (const [type, def] of ungrouped) h += renderRegistryItem(type, def, cat);
     } else {
       for (const [type, def] of entries) h += renderRegistryItem(type, def, cat);
     }

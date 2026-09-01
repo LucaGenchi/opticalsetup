@@ -250,3 +250,18 @@ test('the scan rate ceiling is the one sound imposes', () => {
   assert.doesNotMatch(readout({ aperture: 10, scanFreqKHz: 10 }), /outruns/);
   assert.match(readout({ aperture: 10, scanFreqKHz: 150 }), /outruns/);
 });
+
+
+test('the Modulators palette separates the families it actually has', () => {
+  // Three kinds of modulator sit in this category and they work by entirely
+  // different physics. The chopper belongs to neither family, so it is listed
+  // on its own rather than under whichever heading happens to precede it.
+  assert.equal(registry.chopper.paletteGroup, undefined);
+  assert.equal(registry.eom.paletteGroup, 'Electro-optic');
+  for (const type of ['aom', 'aod', 'aotf']) {
+    assert.equal(registry[type].paletteGroup, 'Acousto-optic');
+  }
+  // Acousto-optic before electro-optic, by palette order.
+  const orderOf = type => registry[type].paletteOrder ?? 100;
+  assert.ok(Math.max(orderOf('aom'), orderOf('aod'), orderOf('aotf')) < orderOf('eom'));
+});

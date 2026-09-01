@@ -3440,7 +3440,7 @@ export const registry = {
   // modulation depth but doesn't synchronize with a pulsed source's own
   // repetition rate.
   eom: {
-    label: 'EOM', category: 'Modulators', size: { w: 48, h: 28 },
+    label: 'EOM', category: 'Modulators', paletteGroup: 'Electro-optic', paletteOrder: 3, size: { w: 48, h: 28 },
     size_: el => ({ w: 48, h: (el.params.aperture || 24) + 4 }),
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
