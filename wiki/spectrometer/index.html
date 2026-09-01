@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spectrometer — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/spectrometer/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Spectrometer — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/spectrometer/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="current">Spectrometer</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul>
+            <li><a href="../../wiki/phaseplate/" class="">Phase object</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#detectors">Detectors</a> / Spectrometer</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-27" y="-15" width="54" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-28.7" y="-11" width="3.4" height="22" rx="1" fill="#fde68a" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">SPEC</text><circle cx="19" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></div>
+        <div>
+          <h1>Spectrometer</h1>
+        </div>
+      </div>
+      <p class="tagline">Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.</p>
+      <a class="place-cta" href="../../sketch/?place=spectrometer">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=spectrometer"
+          title="Interactive Spectrometer — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the spectrometer to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>A spectrometer answers one question: how is this light's power distributed
+        across wavelength? That is enough to characterise a laser or an LED, to check the
+        channels of a wavelength-division-multiplexed link and their signal-to-noise
+        ratios, to measure a component's transmission by comparing spectra taken with and
+        without it, and to read the wavelength-dependent gain and noise figure of a fibre
+        amplifier<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>What is worth knowing is that instruments answering that one question are built
+        on several quite different principles, and the principle decides what the
+        instrument is good at<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <h3>Spectrograph</h3>
+        <p>A grating disperses the light and a detector array — a photodiode array, or a
+        linear CCD — catches all the wavelengths at once. Nothing moves, so acquisition is
+        fast, and the resolution is set by the detector rather than by the optics. The
+        costs are that spatially resolving detectors exist only for limited spectral
+        regions, poorly into the infrared, and that stray light inside the instrument caps
+        the dynamic range<sup class="cite">[<a href="#ref-1">1</a>]</sup>. This is the compact instrument most people mean by
+        "a spectrometer", and the pattern behind the small, inexpensive designs that put a
+        grating and a scanning reflector in a package a few centimetres
+        across<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
+        <h3>Scanning monochromator</h3>
+        <p>Rather than catching every wavelength at once, send the light through a tunable
+        bandpass filter and measure the transmitted power with a single detector, sweeping
+        the filter across the range of interest<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The filter is a grating
+        monochromator — Czerny–Turner, typically — turned by a precise motor, and the
+        resolution is set by its slit width and grating.</p>
+        <p>This is how high-performance instruments are built, and the reason is dynamic
+        range. One monochromator manages perhaps 30&nbsp;dB, because strong light at one
+        wavelength scatters inside it and lifts the reading everywhere else. Two in series,
+        held on the same wavelength, reach beyond 70&nbsp;dB<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The price is time:
+        a sweep takes longer for finer resolution, and longer again for more sensitivity.</p>
+        <h3>Fourier transform</h3>
+        <p>A Michelson interferometer measures something else entirely — the output power
+        against arm-length difference — and Fourier transforms it<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Monochromatic
+        light gives a sinusoid whose period is the wavelength, which is how a wavemeter
+        works. Here the resolution is set by how far the arm was scanned, not by any slit:
+        the wavenumber resolution is simply the inverse of the path-difference range, so a
+        15&nbsp;mm scan gives about 10&nbsp;GHz, roughly 0.03&nbsp;nm at 1&nbsp;µm<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>Its weakness is instructive. A strong line does not produce a perfectly clean
+        sinusoid, and the noise on it transforms into a background spread across the whole
+        spectrum — so sensitivity to a weak line gets <em>worse</em> when a strong one is
+        present, and no amount of extra scan range fixes it. Dynamic range lands around
+        30–40&nbsp;dB<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <h3>Acousto-optic</h3>
+        <p>A diffraction grating is not the only way to disperse light. A Bragg cell driven
+        by a surface acoustic wave diffracts each optical frequency to its own angle, and
+        integrated-optic spectrum analysers were built on exactly that — a guided wave
+        interacting with a surface acoustic wave on a single chip<sup class="cite">[<a href="#ref-5">5</a>]</sup>. The same
+        interaction, run as a filter rather than as a disperser, is the
+        <a href="../aotf/">AOTF</a>.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mtext>PSD</mtext><mo stretchy="false">(</mo><mi>λ</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><msub><mi>P</mi><mtext>measured</mtext></msub><mtext>RBW</mtext></mfrac></mrow><annotation encoding="application/x-tex">\text{PSD}(\lambda) = \frac{P_{\text{measured}}}{\text{RBW}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">PSD</span></span><span class="mopen">(</span><span class="mord mathnormal">λ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord text"><span class="mord">RBW</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">measured</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Power spectral density is the measured power divided by the resolution bandwidth the instrument was set to. It is the honest vertical axis, and the one that lets a narrow line and a broad band be compared.</div>
+    </div>
+
+        <p>That division is subtler than it looks, and it is the single most common way of
+        misreading a spectrum. An analyser's vertical axis often shows measured power, not
+        power spectral density<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Converting between them means dividing by the
+        resolution bandwidth — but the calibration is usually done for quasi-monochromatic
+        light, and when the bandwidth is quoted as a full width at half maximum, how well
+        power-divided-by-bandwidth matches the true density depends on the shape of the
+        instrument's filter<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Log scales in dBm are common precisely because the
+        interesting range spans orders of magnitude.</p>
+        <p>One warning from the same source is worth repeating: a spectrum analyser is not
+        the instrument to measure optical power with. Coupling efficiencies in the delivery
+        path are rarely known well enough. Use a <a href="../powermeter/">power
+        meter</a><sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>The Spectrometer reports the centre wavelength, the detected range, the
+        bandwidth, and a plotted spectrum of everything reaching its face. Wire it to a
+        <a href="../display/">Detector screen</a> to see the spectrum drawn.</p>
+        <p>Its vertical axis offers exactly the choice above. <strong>Spectral density</strong>
+        is the honest one — power per nanometre, so a band's height does not depend on how
+        finely it happened to be sampled. It carries the consequence that makes real
+        instruments awkward too: a laser line has no width of its own, so it is spread over
+        a nominal 0.1&nbsp;nm to give it a height at all, and it then towers over any
+        continuum beside it. That is what a real spectrometer shows, and it is useless when
+        the point is to see a weak Raman line next to its own pump — so
+        <strong>relative</strong> mode scales each source to its own peak instead.</p>
+        <p>Two behaviours are worth knowing because they were built deliberately.
+        <strong>Bands that do not touch stay apart.</strong> One source can arrive carrying
+        several disjoint bands — an <a href="../aotf/">AOTF</a> selecting three lines out of
+        a supercontinuum is the standard case — and each is measured and drawn on its own,
+        rather than being summarised across the gaps between them into a single smear.
+        Overlapping passbands are one band, correctly, and the grid inside it is fine enough
+        to keep whatever structure it has: several narrow lines cutting a pulsed laser's
+        envelope come back as separate peaks whose heights still trace that envelope.</p>
+        <p>And <strong>the axis is sized from the measurement</strong>, spanning whatever
+        clears a thousandth of each feature's own peak. Per feature, not against one global
+        maximum — otherwise a line's towering density would push a perfectly real broadband
+        source off the plot for the crime of sharing a detector with a laser. A manual range
+        is available when a fixed window is wanted.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is not an instrument, it is a readout. There is no
+        monochromator, no slit, and so no resolution bandwidth: a real spectrometer shows
+        the true spectrum convolved with its own filter function, and reports something
+        broader than reality for anything narrower than that filter. Here the modelled
+        spectrum is reported directly. Nothing sets a sweep time, and there is no
+        distinction between a spectrograph, a scanning instrument and a Fourier-transform
+        one — all of which would answer differently.</p>
+        <p>There is no dynamic range and no noise floor. Stray light does not exist, so the
+        30&nbsp;dB that limits a single monochromator and the 30–40&nbsp;dB that limits a
+        Fourier-transform instrument have no counterpart, and a weak line beside a strong one
+        is read as easily as if it were alone — which is precisely the measurement real
+        instruments find hardest. There is no logarithmic or dBm scale.</p>
+        <p>The plotted samples are a display budget, not a physical resolution, and
+        wavelengths are keyed to 0.1&nbsp;nm, so two lines closer together than that are
+        reported as one. Readings are fractions of a source's emitted power rather than
+        absolute values in watts; for power, use the <a href="../powermeter/">power
+        meter</a>, which is the advice for real instruments too.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/display/"><svg viewBox="-104 -104 208 208" aria-hidden="true"><g transform="scale(2)" data-display-density="expanded"><rect x="-49" y="-36" width="98" height="72" rx="6" fill="#24313b" stroke="#111b22" stroke-width="1.7"/><path d="M -43,-32 H 43" stroke="#40515d" stroke-width="0.8" opacity="0.7"/><rect x="-43" y="-29" width="86" height="47" rx="3" fill="#061822" stroke="#45606f" stroke-width="1.2"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace"><text x="0" y="-2" text-anchor="middle" font-size="9" font-weight="760" letter-spacing="0.8" fill="#94a3b8">SELECT INPUT</text><text x="0" y="10" text-anchor="middle" font-size="5.4" fill="#607887">Press INPUT to connect</text></g><circle cx="-49" cy="19" r="3.6" fill="#13212a" stroke="#89a2b2" stroke-width="1"/><circle cx="-49" cy="19" r="1.3" fill="#52636f"/><g class="display-control" data-display-action="power" role="button" aria-label="Toggle display power"><title>Power</title><circle class="display-control-face" cx="-40" cy="27" r="4.4" fill="#14232c" stroke="#6ee7b7" stroke-width="1.1"/><path d="M -40,23.8 L -40,27.1 M -42.2,25.2 A 3,3 0 1 0 -37.8,25.2" fill="none" stroke="#6ee7b7" stroke-width="0.9" stroke-linecap="round"/></g><g class="display-control" data-display-action="input" role="button" aria-label="Cycle sensor input"><title>Cycle sensor input</title><rect class="display-control-face" x="-30" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="-18.5" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">INPUT</text></g><g class="display-control" data-display-action="view" role="button" aria-label="Cycle display view"><title>Cycle display view</title><rect class="display-control-face" x="-3.5" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="8" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">VIEW</text></g><circle cx="41" cy="27" r="2.3" fill="#596b76"/><text x="33" y="29" text-anchor="end" font-size="3.6" font-weight="700" letter-spacing="0.35" fill="#708692">QUAL</text></g></svg>Detector screen</a><a href="../../wiki/aotf/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-26" y="-13" width="52" height="26" rx="3" fill="#7fc7c4" stroke="#397b78" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#153b39">AOTF</text></svg>AOTF</a><a href="../../wiki/grating/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg>Diffraction grating</a><a href="../../wiki/powermeter/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#86efac" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">PWR</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Power meter</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/optical_spectrum_analyzers.html" target="_blank" rel="noopener">“Optical Spectrum Analyzers,” RP Photonics Encyclopedia</a></li><li id="ref-2"><a href="https://www.sciencedirect.com/topics/engineering/optical-spectrum-analyzer" target="_blank" rel="noopener">Optical spectrum analyzer — ScienceDirect Topics (engineering overview)</a></li><li id="ref-3"><a href="https://patents.google.com/patent/US7253897B2/en" target="_blank" rel="noopener">J. A. Moon et al., “Optical spectrum analyzer,” US patent 7,253,897 B2, Cidra Corp (granted 2007) — a compact dual-pass grating analyser with a pivoting reflector and reference mirrors</a></li><li id="ref-4"><a href="https://pubs.aip.org/aip/rsi/article/94/8/081501/2905189" target="_blank" rel="noopener">Review article, Review of Scientific Instruments 94(8), 081501 (2023)</a></li><li id="ref-5"><a href="https://ieeexplore.ieee.org/abstract/document/1084599" target="_blank" rel="noopener">M. Barnoski, B.-U. Chen, T. Joseph, J. Lee and O. Ramer, “Integrated-optic spectrum analyzer,” IEEE Transactions on Circuits and Systems 26(12), 1113–1124 (1979) — a Bragg analyser built from a guided wave and a surface acoustic wave</a></li>
+      </ol>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/spectrometers.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Spectrometers</a></li><li><a href="https://www.rp-photonics.com/wavemeters.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Wavemeters</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>
