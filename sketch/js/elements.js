@@ -42,7 +42,7 @@ import {
   normalizeAotfChannels, aotfOpenChannels, aotfSummary, legacyAotfPassband,
   normalizeAotfPassband, AOTF_BAND_MIN, AOTF_BAND_MAX, AOTF_BAND_DEFAULT,
 } from './aotf.js';
-import { aodDriveFrequencyMHz, aodDriveInBand } from './acousto-optic.js';
+import { aodScanPosition } from './acousto-optic.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -3125,47 +3125,56 @@ export const registry = {
   aod: {
     label: 'AOD', category: 'Modulators', paletteGroup: 'Acousto-optic', paletteOrder: 1, size: { w: 44, h: 30 },
     aliases: ['acousto-optic deflector', 'acousto optic deflector', 'beam scanner', 'non-mechanical scanner'],
-    size_: el => ({ w: 44, h: (el.params.aperture || 26) + 4 }),
+    size_: el => ({ w: 44, h: (el.params.aperture || 10) + 4 }),
     params: [
-      { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
+      { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 2, max: 100, step: 1, def: 10 },
       { key: 'designWavelength', label: 'Design wavelength (nm)', type: 'number', min: 200, max: 12000, step: 1, def: 532 },
-      { key: 'centerRfMHz', label: 'Center RF frequency (MHz)', type: 'number', min: 0.1, max: 3000, step: 1, def: 80 },
-      { key: 'bandwidthMHz', label: 'RF bandwidth (MHz)', type: 'number', min: 0.1, max: 2000, step: 1, def: 40 },
-      { key: 'centerDeflect', label: 'Center deflection (°)', type: 'number', min: 0, max: 45, step: 0.1, def: 4 },
-      { key: 'scanRange', label: 'Total scan angle (°)', type: 'number', min: 0, max: 45, step: 0.1, def: 4 },
+      // theta = lambda f / v puts real deflections in the single degrees: a
+      // TeO2 slow-shear deflector, the usual choice for the visible and near
+      // infrared, gives 3.9 deg at 532 nm on an 80 MHz drive, and the same
+      // device sweeps about 2 deg across a 40 MHz bandwidth. Fused silica in
+      // the ultraviolet manages a few tenths of a degree. The maxima here are
+      // deliberately looser than any real device so an illustrative sketch
+      // can still be read at a glance, but the defaults are a real deflector.
+      { key: 'centerDeflect', label: 'Centre deflection (°)', type: 'number', min: 0, max: 30, step: 0.1, def: 4 },
+      { key: 'scanRange', label: 'Total scan angle (°)', type: 'number', min: 0, max: 15, step: 0.1, def: 2, show: p => p.scanMode && p.scanMode !== 'static' },
       {
         key: 'order', label: 'Diffraction order', type: 'select', def: '1',
         options: [['1', '+1'], ['-1', '−1']],
       },
       {
-        key: 'scanMode', label: 'Frequency drive', type: 'select', def: 'static',
-        options: [['static', 'Static frequency'], ['triangle', 'Triangle scan'], ['sawtooth', 'Sawtooth scan']],
+        key: 'scanMode', label: 'Scan drive', type: 'select', def: 'static',
+        options: [
+          ['static', 'Static — hold one angle'],
+          ['triangle', 'Triangle — sweep and retrace'],
+          ['sawtooth', 'Sawtooth — sweep and fly back'],
+          ['random', 'Random step — address spots in any order'],
+        ],
       },
-      { key: 'rfMHz', label: 'Drive frequency (MHz)', type: 'number', min: 0, max: 3000, step: 0.1, def: 80, show: p => p.scanMode === 'static' },
-      { key: 'scanFreqKHz', label: 'Scan rate (kHz)', type: 'number', min: 0.001, max: 10000, step: 1, def: 10, show: p => p.scanMode !== 'static' },
-      { key: 'scanPhaseDeg', label: 'Scan phase (°)', type: 'number', min: -360, max: 360, step: 5, def: 0, show: p => p.scanMode !== 'static' },
+      { key: 'scanFreqKHz', label: 'Scan rate (kHz)', type: 'number', min: 0.001, max: 1000, step: 1, def: 10, show: p => p.scanMode && p.scanMode !== 'static' },
+      { key: 'scanPhaseDeg', label: 'Scan phase (°)', type: 'number', min: -360, max: 360, step: 5, def: 0, show: p => p.scanMode === 'triangle' || p.scanMode === 'sawtooth' },
       { key: 'zero', label: 'Keep 0th order', type: 'checkbox', def: true },
-      { key: 'eff', label: 'Efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.8 },
+      // Real deflectors run 50-80%, occasionally 90%, and always less at the
+      // edges of the scan than at its centre.
+      { key: 'eff', label: 'Efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.7 },
     ],
     svg(el) {
       const active = el.params.scanMode !== 'static';
-      const scanIndicatorY = -(el.params.aperture || 26) / 2 + 5;
-      return boxSVG(40, el.params.aperture || 26, '#d7bd68', '#8a6f24', 'AOD', '#3d3012', isFlipped(el)) +
+      const scanIndicatorY = -(el.params.aperture || 10) / 2 + 5;
+      return boxSVG(40, el.params.aperture || 10, '#d7bd68', '#8a6f24', 'AOD', '#3d3012', isFlipped(el)) +
         (active ? `<path d="M -8,${scanIndicatorY} H 8 M 5,${scanIndicatorY - 3} l 3,3 l -3,3" fill="none" stroke="#684f0f" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>` : '');
     },
     surfaces(el) {
       const p = el.params;
       const timeSeconds = Number.isFinite(el._simulationTimeNs) ? el._simulationTimeNs / 1e9 : 0;
       return [{
-        x1: 0, y1: -(p.aperture || 26) / 2, x2: 0, y2: (p.aperture || 26) / 2, kind: 'aod',
+        x1: 0, y1: -(p.aperture || 10) / 2, x2: 0, y2: (p.aperture || 10) / 2, kind: 'aod',
         data: {
           designWavelength: p.designWavelength,
-          centerRfMHz: p.centerRfMHz,
-          bandwidthMHz: p.bandwidthMHz,
           centerDeflect: p.centerDeflect,
           scanRange: p.scanRange,
           order: p.order,
-          rfMHz: aodDriveFrequencyMHz(p, timeSeconds),
+          position: aodScanPosition(p, timeSeconds),
           zero: p.zero,
           eff: p.eff,
         },
@@ -4090,7 +4099,7 @@ const DIRECT = {
   display: { resize: { uniform: 'displayScale' } },
   beamdump: { resize: { y: 'aperture' } },
   aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
-  aod: { resize: { y: 'aperture' }, tune: { key: p => p.scanMode === 'static' ? 'rfMHz' : 'centerRfMHz', short: 'RF' } },
+  aod: { resize: { y: 'aperture' }, tune: { key: 'centerDeflect', short: 'angle' } },
   aotf: { resize: { y: 'aperture' } },
   phaseplate: { resize: { y: 'aperture' }, tune: { key: 'opdUm', short: 'OPD' } },
   delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL' } },
@@ -4182,7 +4191,7 @@ const ELEMENT_HELP = {
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
   aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
-  aod: 'Steers first-order light by coupling RF frequency to deflection angle, with wavelength-dependent scanning, optical frequency shift, and an optional zero order.',
+  aod: 'Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.',
   aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
   delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
@@ -4233,8 +4242,8 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. A wedge near half a fringe swings the port total hardest; at a whole fringe the written phases cancel and the total stops moving while the profile still shows the pattern, which is when the readout says so.';
   } else if (type === 'pmt') {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
-  } else if (type === 'aod' && params.scanMode === 'static' && !aodDriveInBand(params, params.rfMHz)) {
-    note = 'The static drive is outside the configured RF bandwidth, so no first-order beam is diffracted; enable the zero order to see the undiffracted input.';
+  } else if (type === 'aod') {
+    note = 'Deflection is set directly in degrees, not derived from a crystal and an acoustic velocity, so the angles here need not belong to any real device \u2014 a real deflector reaches a few degrees at most. Efficiency is flat across the scan, where a real one falls away toward both ends, and the optical frequency shift a deflector applies is not carried: at 80 MHz it moves 532 nm by 7.6\u00d710\u207b\u2075 nm, far below anything this workbench resolves.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';

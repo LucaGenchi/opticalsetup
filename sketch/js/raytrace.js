@@ -13,9 +13,7 @@ import {
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
-import {
-  acoustoOpticShiftedWavelength, aodDeflectionDeg, aodDriveInBand,
-} from './acousto-optic.js';
+import { acoustoOpticShiftedWavelength, aodDeflectionDeg } from './acousto-optic.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -2006,13 +2004,14 @@ function interact(ray, hit) {
     case 'aod': {
       const out = [];
       const isAod = hit.surface.kind === 'aod';
-      const driveMHz = Number(data.rfMHz) || 0;
-      const active = !isAod || aodDriveInBand(data, driveMHz);
+      // A deflector is steered by angle here, so there is no drive frequency
+      // to shift the optical carrier with; a modulator still has one.
+      const driveMHz = isAod ? 0 : (Number(data.rfMHz) || 0);
       const duty = data.gate ? Math.min(0.99, Math.max(0.01, data.gate.duty ?? 0.5)) : 1;
       const shape = data.gate?.shape === 'sine' ? 'sine' : 'square';
       const depth = Math.min(1, Math.max(0, data.gate?.depth ?? 1));
       const averageTransmission = data.gate ? (shape === 'sine' ? 1 - depth / 2 : duty) : 1;
-      const efficiency = active ? Math.min(1, Math.max(0, Number(data.eff) || 0)) : 0;
+      const efficiency = Math.min(1, Math.max(0, Number(data.eff) || 0));
       let pulse = ray.pulse;
       if (data.gate && ray.pulse) {
         pulse = {
@@ -2027,7 +2026,7 @@ function interact(ray, hit) {
         const samples = isAod ? wlSamples(ray) : [{ wl: ray.wl, weight: 1 }];
         samples.forEach((sample, index) => {
           const deflection = isAod
-            ? aodDeflectionDeg(data, sample.wl, driveMHz)
+            ? aodDeflectionDeg(data, sample.wl, data.position)
             : Number(data.deflect) || 0;
           const a = deflection * D2R, c = Math.cos(a), sn = Math.sin(a);
           const order = isAod ? data.order : 1;

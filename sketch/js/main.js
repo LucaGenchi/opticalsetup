@@ -479,10 +479,9 @@ const demoScenes = {
   aod: () => [
     mkDemo('cwlaser', 40, 200, 0, { wavelength: 532, beamMode: 'line' }),
     mkDemo('aod', 220, 200, 0, {
-      designWavelength: 532, centerRfMHz: 80, bandwidthMHz: 40,
-      centerDeflect: 8, scanRange: 12, scanMode: 'triangle', scanFreqKHz: 10,
-      zero: false,
-    }, { label: '10 kHz frequency scan', showLabel: true, labelPos: 'b' }),
+      designWavelength: 532, centerDeflect: 8, scanRange: 10,
+      scanMode: 'triangle', scanFreqKHz: 10, zero: false,
+    }, { label: '10 kHz scan — angles exaggerated to be visible', showLabel: true, labelPos: 'b' }),
     mkDemo('box', 420, 230, 0, { text: '', w: 3, h: 100, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — no moving mirror', showLabel: true, labelPos: 'r' }),
   ],
   retroreflector: () => [

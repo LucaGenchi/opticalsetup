@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  acoustoOpticShiftedWavelength, aodDeflectionDeg, aodDriveFrequencyMHz, aodDriveInBand,
+  acoustoOpticShiftedWavelength, aodDeflectionDeg, aodScanPosition,
 } from '../sketch/js/acousto-optic.js';
 import { createElement, getElementMeta, registry } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
@@ -19,40 +19,104 @@ test('AOM, AOD, and AOTF share the acousto-optic palette subgroup', () => {
   }
 });
 
-test('AOD frequency is coupled to angle and scales with optical wavelength', () => {
-  const params = {
-    centerRfMHz: 80, bandwidthMHz: 40, centerDeflect: 4, scanRange: 4,
-    designWavelength: 532, order: 1, scanMode: 'static', rfMHz: 80,
-  };
-
-  closeTo(aodDeflectionDeg(params, 532, 60), 2);
-  closeTo(aodDeflectionDeg(params, 532, 80), 4);
-  closeTo(aodDeflectionDeg(params, 532, 100), 6);
-  closeTo(aodDeflectionDeg(params, 1064, 80), 8);
-  closeTo(aodDeflectionDeg({ ...params, order: -1 }, 532, 100), -6);
+test('AOD deflection is set in degrees and scales with optical wavelength', () => {
+  // theta = lambda f / v is linear in both, so reading it forwards from the
+  // angles: the scan is linear in position, and a beam at twice the design
+  // wavelength deflects twice as far.
+  const params = { centerDeflect: 4, scanRange: 2, designWavelength: 532, order: 1 };
+  closeTo(aodDeflectionDeg(params, 532, -0.5), 3);
+  closeTo(aodDeflectionDeg(params, 532, 0), 4);
+  closeTo(aodDeflectionDeg(params, 532, 0.5), 5);
+  closeTo(aodDeflectionDeg(params, 1064, 0), 8);
+  closeTo(aodDeflectionDeg(params, 266, 0), 2);
+  closeTo(aodDeflectionDeg({ ...params, order: -1 }, 532, 0.5), -5);
+  // A position beyond the scan is clamped rather than extrapolated.
+  closeTo(aodDeflectionDeg(params, 532, 4), 5);
 });
 
-test('AOD triangle and sawtooth scans stay inside their RF bandwidth', () => {
-  const params = { centerRfMHz: 80, bandwidthMHz: 40, scanMode: 'triangle', scanFreqKHz: 0.001 };
-  closeTo(aodDriveFrequencyMHz(params, 0), 60);
-  closeTo(aodDriveFrequencyMHz(params, 0.25), 80);
-  closeTo(aodDriveFrequencyMHz(params, 0.5), 100);
-  closeTo(aodDriveFrequencyMHz(params, 1), 60);
-
-  params.scanMode = 'sawtooth';
-  closeTo(aodDriveFrequencyMHz(params, 0), 60);
-  closeTo(aodDriveFrequencyMHz(params, 0.5), 80);
-  assert.ok(aodDriveInBand(params, aodDriveFrequencyMHz(params, 0.999999)));
+test('the defaults describe a deflector that could exist', () => {
+  // theta = lambda f / v for TeO2 slow shear (v = 620 m/s), the standard
+  // visible and near-infrared deflector material: 532 nm on an 80 MHz drive
+  // gives 3.9 deg, and a 40 MHz bandwidth sweeps about 2 deg of that.
+  const aod = createElement('aod', 0, 0);
+  const teo2 = (wl, f) => 532e-9 * 0 + wl * 1e-9 * f * 1e6 / 620 * 180 / Math.PI;
+  assert.ok(Math.abs(aod.params.centerDeflect - teo2(532, 80)) < 0.2,
+    `centre default ${aod.params.centerDeflect} deg vs ${teo2(532, 80).toFixed(2)} for a real TeO2 device`);
+  assert.ok(Math.abs(aod.params.scanRange - teo2(532, 40)) < 0.2,
+    `scan default ${aod.params.scanRange} deg vs ${teo2(532, 40).toFixed(2)} across a 40 MHz band`);
+  // Real deflectors reach a few degrees, never tens of them.
+  const spec = key => registry.aod.params.find(p => p.key === key);
+  assert.ok(spec('centerDeflect').max <= 30, 'the centre deflection ceiling stays plausible');
+  assert.ok(spec('scanRange').max <= 15, 'the scan angle ceiling stays plausible');
+  // Diffraction efficiency runs 50-80%, sometimes 90%.
+  assert.ok(aod.params.eff >= 0.5 && aod.params.eff <= 0.9);
 });
 
-test('AOD trace steers and frequency-shifts the efficient first order', () => {
+test('every scan drive stays inside the scan angle it was given', () => {
+  const base = { centerDeflect: 4, scanRange: 2, designWavelength: 532, order: 1, scanFreqKHz: 1 };
+  const period = 1 / (base.scanFreqKHz * 1e3);
+  for (const scanMode of ['triangle', 'sawtooth', 'random']) {
+    const params = { ...base, scanMode };
+    // A sweep covers its whole range within one period; random addressing
+    // needs many steps before it has visited both ends, so give each drive a
+    // window that suits it rather than aliasing the sweeps across hundreds of
+    // periods.
+    const window = scanMode === 'random' ? 400 * period : period;
+    let lowest = Infinity, highest = -Infinity;
+    for (let step = 0; step < 400; step++) {
+      const where = aodScanPosition(params, (step + 0.5) / 400 * window);
+      lowest = Math.min(lowest, where);
+      highest = Math.max(highest, where);
+    }
+    assert.ok(lowest >= -0.5 - 1e-9 && highest <= 0.5 + 1e-9,
+      `${scanMode} left its scan range: ${lowest} to ${highest}`);
+    assert.ok(highest - lowest > 0.7, `${scanMode} barely moved: ${highest - lowest}`);
+  }
+  // A static drive sits at the centre and does not move at all.
+  assert.equal(aodScanPosition({ ...base, scanMode: 'static' }, 0), 0);
+  assert.equal(aodScanPosition({ ...base, scanMode: 'static' }, 1), 0);
+});
+
+test('triangle retraces and sawtooth flies back', () => {
+  const params = { scanMode: 'triangle', scanFreqKHz: 0.001 };
+  closeTo(aodScanPosition(params, 0), -0.5);
+  closeTo(aodScanPosition(params, 0.25), 0);
+  closeTo(aodScanPosition(params, 0.5), 0.5);
+  closeTo(aodScanPosition(params, 0.75), 0);
+  closeTo(aodScanPosition(params, 1), -0.5);
+
+  const saw = { scanMode: 'sawtooth', scanFreqKHz: 0.001 };
+  closeTo(aodScanPosition(saw, 0), -0.5);
+  closeTo(aodScanPosition(saw, 0.5), 0);
+  assert.ok(aodScanPosition(saw, 0.999) > 0.49, 'runs to the top before flying back');
+});
+
+test('random addressing holds each spot, then jumps somewhere unpredictable', () => {
+  const params = { scanMode: 'random', scanFreqKHz: 1 };  // one spot per millisecond
+  // Held for the whole step: a real random-access deflector settles and dwells.
+  const early = aodScanPosition(params, 0.0002);
+  closeTo(aodScanPosition(params, 0.0008), early);
+  // And redrawing the same instant twice must give the same angle, or the
+  // beam would flicker at the frame rate instead of at the scan rate.
+  closeTo(aodScanPosition(params, 0.0002), early);
+  // The next step goes elsewhere.
+  assert.notEqual(aodScanPosition(params, 0.0012), early);
+  // Over many steps it covers the range without marching through it in order.
+  const visited = Array.from({ length: 200 }, (_, i) => aodScanPosition(params, (i + 0.5) / 1000));
+  assert.ok(Math.max(...visited) > 0.4 && Math.min(...visited) < -0.4, 'reaches both ends');
+  const ascending = visited.filter((v, i) => i > 0 && v > visited[i - 1]).length;
+  assert.ok(ascending > 60 && ascending < 140,
+    `a sweep would step one way; random addressing should not (${ascending}/199 ascending)`);
+});
+
+test('AOD trace steers the efficient first order', () => {
   const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.wavelength = 532;
 
   const aod = createElement('aod', 150, 0);
   aod.params.zero = false;
-  aod.params.rfMHz = 80;
+  aod.params.centerDeflect = 4;
   aod.params.eff = 0.8;
 
   const detectorX = 300;
@@ -64,7 +128,9 @@ test('AOD trace steers and frequency-shifts the efficient first order', () => {
   const reading = detectorReading(detector.id);
   assert.ok(reading);
   closeTo(reading.signal, 0.8);
-  closeTo(reading.wavelength, acoustoOpticShiftedWavelength(532, 80, 1), 1e-8);
+  // A deflector does shift the optical carrier, but by far less than anything
+  // here can show, so the wavelength is carried through untouched.
+  closeTo(reading.wavelength, 532, 1e-9);
 });
 
 test('a broadband beam leaves an AOD as a wavelength-dependent angular fan', () => {
@@ -88,31 +154,12 @@ test('a broadband beam leaves an AOD as a wavelength-dependent angular fan', () 
     'different wavelengths should leave at visibly different angles');
 });
 
-test('an out-of-band AOD drive suppresses diffraction and returns all power to the zero order', () => {
-  const laser = createElement('cwlaser', 0, 0);
-  laser.params.beamMode = 'line';
-  const aod = createElement('aod', 150, 0);
-  aod.params.centerRfMHz = 80;
-  aod.params.bandwidthMHz = 40;
-  aod.params.rfMHz = 120;
-  aod.params.zero = true;
-  assert.match(getElementMeta('aod', aod.params).note, /outside the configured RF bandwidth/);
-
-  const zeroOrder = createElement('detector', 300, 0);
-  traceAll([laser, aod, zeroOrder]);
-  closeTo(detectorReading(zeroOrder.id).signal, 1);
-
-  aod.params.zero = false;
-  traceAll([laser, aod, zeroOrder]);
-  assert.equal(detectorReading(zeroOrder.id), null);
-});
-
-test('AOD animated surfaces derive their instantaneous drive from simulated time', () => {
+test('AOD animated surfaces derive their scan position from simulated time', () => {
   const aod = createElement('aod');
   aod.params.scanMode = 'triangle';
   aod.params.scanFreqKHz = 0.001;
-  aod._simulationTimeNs = 500e6;
-  closeTo(registry.aod.surfaces(aod)[0].data.rfMHz, 100);
+  aod._simulationTimeNs = 500e6;   // half a period of a 1 Hz sweep
+  closeTo(registry.aod.surfaces(aod)[0].data.position, 0.5);
 });
 
 // ---------------- review findings ----------------

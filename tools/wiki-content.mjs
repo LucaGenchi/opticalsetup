@@ -1919,58 +1919,129 @@ export const wikiEntries = [
     category: 'Modulators',
     realWorld: {
       html: `
-        <p>An AOD is an electronically steered diffraction grating. An RF-driven
-        piezoelectric transducer launches sound through an acousto-optic medium; the
-        traveling refractive-index grating diffracts the incident beam. Changing the RF
-        frequency changes the acoustic wavelength and therefore the direction of the
-        first diffracted order, without moving a mirror.</p>
-        <p>This is the same basic interaction used by an <a href="../aom/">AOM</a>.
-        The distinction is the job and the optimization: an AOM normally holds frequency
-        near one operating point and varies RF power to control intensity, while an AOD
-        is designed for a useful RF bandwidth and varies frequency to address many beam
-        directions. Two cells mounted on orthogonal axes provide two-dimensional
-        steering, and several simultaneous RF tones can create several spots.</p>`,
+        <p>An acousto-optic deflector steers a laser beam by changing a frequency. A
+        piezoelectric transducer bonded to a transparent crystal launches a sound wave
+        through it; the travelling compression makes a moving grating of refractive
+        index, and light crossing that grating is diffracted. Change the drive
+        frequency and the acoustic wavelength changes with it, so the diffracted beam
+        leaves at a different angle — a scanner with nothing in it that moves${cite(1)}.</p>
+        <p>It is the same interaction an <a href="../aom/">AOM</a> uses. The difference
+        is entirely in the drive: a modulator is run at a fixed frequency and varying
+        power, to switch a beam on and off, while a deflector is run at constant power
+        and varying frequency, to point it${cite(1)}. The deflection angle follows from
+        the Bragg condition, and for an isotropic medium it is</p>`,
       formulas: [
-        { tex: '\\theta \\approx \\frac{\\lambda f_{RF}}{v_a}', caption: 'Small-angle deflection: optical wavelength λ and RF frequency fRF set the angle through acoustic velocity vₐ.' },
-        { tex: '\\Delta\\theta \\approx \\frac{\\lambda\\,\\Delta f}{v_a}', caption: 'The usable RF bandwidth Δf becomes the total angular scan range.' },
-        { tex: 'f_{\\text{out}} = f_{\\text{in}} \\pm f_{RF}', caption: 'Steering and optical frequency shift occur together in the diffracted order.' },
+        { tex: '\\theta = \\frac{\\lambda f}{v}', caption: 'Deflection angle: λ the vacuum wavelength, f the acoustic drive frequency, v the speed of sound in the crystal. It is also just the ratio of the optical to the acoustic wavelength, the latter typically 10–100 µm.' },
       ],
       html2: `
-        <p>The number of resolvable spots is finite: a wider illuminated aperture narrows
-        each diffracted spot, while the acoustic bandwidth sets the total field that can
-        be addressed. Switching also waits for the new acoustic wave to cross the optical
-        beam, so response time scales approximately as beam diameter divided by acoustic
-        velocity.</p>`,
+        <p>Three things follow from that one expression, and between them they explain
+        every specification on an AOD datasheet.</p>
+        <p><strong>The angles are small.</strong> Sound is slow and its wavelength is
+        enormous next to light's, so the ratio is tiny. A 1064 nm beam in fused silica —
+        sound speed 5.9 km/s — driven at 100 MHz deflects by 18 mrad, about one
+        degree${cite(1)}. The usable range of a real deflector is "rather small — a few
+        degrees"${cite(1)}, with published devices quoting scan angles from roughly 5 to
+        60 mrad${cite(2)}. Anyone needing more puts a telescope after it, which trades
+        beam width for angle.</p>
+        <p><strong>Slow crystals are better.</strong> Since the angle goes as 1/v, a
+        material with a slow sound wave gives more deflection for the same frequency
+        range. This is why the standard choice for the visible and near infrared is
+        tellurium dioxide driven on its slow shear mode, where sound travels at about
+        620 m/s — roughly a tenth of the speed in fused silica${cite(1)}${cite(2)}. Fused
+        silica is used in the ultraviolet and germanium in the mid infrared, in each case
+        because the crystal has to be transparent before anything else matters${cite(1)}.</p>
+        <p><strong>The scan is chromatic.</strong> The angle is proportional to
+        wavelength, so two colours entering together leave at different angles. That is
+        a nuisance for a broadband beam and the whole point of an
+        <a href="../aotf/">AOTF</a>, which uses the same physics to select colours
+        rather than to steer them.</p>
+        <h3>Resolvable spots</h3>
+        <p>The number that actually matters when choosing a deflector is usually not the
+        scan angle but how many distinguishable directions fit inside it${cite(1)}. A
+        beam cannot be pointed more precisely than its own divergence, so the resolution
+        is the scan range divided by that divergence — equivalently, the time the sound
+        takes to cross the beam multiplied by the frequency range it is driven
+        over${cite(1)}.</p>`,
+      formulas2: [
+        { tex: 'N = \\frac{\\Delta\\theta}{\\theta_{\\text{div}}} = \\tau\\,\\Delta f', caption: 'Resolvable spots: the aperture time τ — how long sound takes to cross the beam — times the RF bandwidth. Around 1.5 µs per mm of beam in TeO₂, so a 5 mm beam and a 40 MHz bandwidth give roughly 300 spots.' },
+      ],
+      html3: `
+        <p>That product is why a deflector wants a wide, well-collimated beam: widening
+        it lengthens the aperture time and buys resolution. It is also why resolution and
+        speed pull against each other. The device cannot settle faster than sound crosses
+        the beam, so the same choice that gives many spots makes each jump slower, and a
+        crystal chosen for its slow sound wave is slow in both senses${cite(1)}.</p>
+        <p>Two deflectors mounted at right angles steer in two dimensions${cite(1)}. Because
+        the beam can be sent to any angle in the range as fast as it can be sent to the
+        neighbouring one, an AOD pair can address points in an arbitrary order rather than
+        rastering through them — the basis of random-access scanning in multiphoton
+        microscopy, where the interesting neurons are visited and the space between them
+        is not.</p>
+        <h3>What a datasheet reports</h3>
+        <p>Diffraction efficiency is typically 50–80%, sometimes near 90%, and lower at
+        longer wavelengths${cite(1)}. It is polarisation dependent, and it peaks at the
+        centre of the frequency range and falls away toward both ends — which is why it
+        should be checked at the edges of the scan and not only in the middle${cite(1)}.
+        Some devices compensate by raising the drive power at the extremes, and
+        beam-steered designs use a phased array of electrodes to swing the acoustic wave
+        direction and hold efficiency across a wider scan${cite(1)}.</p>
+        <p>The undiffracted zero order carries whatever was not deflected. It does not
+        move with the drive and is normally dumped${cite(1)}.</p>
+        <p>One effect is worth knowing because it is invisible: the diffracted beam comes
+        away shifted in optical frequency by exactly the drive frequency, since it has
+        scattered from a moving grating. For a deflector this is "usually irrelevant"${cite(1)}
+        — 80 MHz on a 532 nm beam is a shift of 7.6×10⁻⁵ nm — but it is the same effect
+        an AOM is bought for.</p>`,
     },
     inOpticalSetup: {
       html: `
-        <p>The AOD couples its instantaneous <strong>drive frequency</strong> to both the
-        outgoing angle and optical frequency shift. At the design wavelength, the centre
-        RF frequency produces the centre deflection; moving across the configured RF
-        bandwidth moves linearly across the configured total scan angle. Other optical
-        wavelengths scale to different angles, so broadband inputs show the angular
-        dispersion inherent to acousto-optic steering.</p>
-        <p>Static drive lets you choose one address directly. Triangle and sawtooth drive
-        sweep the complete RF bandwidth at the requested scan rate on the same simulated
-        clock as pulse trains and other modulators. The purple canvas control tunes the
-        static RF frequency, or the scan's centre frequency while scanning. The optional
-        zeroth order carries the undiffracted remainder and should normally be dumped.</p>`,
-      formulas: [
-        { tex: '\\theta(\\lambda,f)=s\\,\\frac{\\lambda}{\\lambda_0}\\left[\\theta_0+\\frac{f-f_0}{\\Delta f}\\,\\Delta\\theta\\right]', caption: 'OpticalSetup interpolation: order sign s, design wavelength λ₀, centre point (f₀, θ₀), bandwidth Δf, and total scan angle Δθ.' },
-      ],
-      limitations: `<p>The centre angle and scan range are calibrated specifications you
-        supply, not results derived from a crystal cut, acoustic mode, transducer geometry,
-        or interaction length. Efficiency is constant everywhere inside a hard-edged RF
-        bandwidth and zero outside it; a real device has a frequency-dependent diffraction
-        curve and alignment-dependent usable range. RF power, finite acoustic transit time,
-        access-time settling, spot size, resolvable-point count, chirp, and pulsed-beam
-        dispersion are not modelled. One element scans one axis; place two rotated AODs to
-        sketch a two-axis system. Multi-tone multi-spot drive is not yet represented.</p>`,
+        <p>The deflector is specified the way you would choose one: by the angles. Set
+        the <strong>centre deflection</strong> and, for a scan, the <strong>total scan
+        angle</strong> swept around it. The drive frequency behind those angles is left
+        implicit — reading θ = λf/v forwards, a scan linear in frequency is linear in
+        angle, so the angles are the honest parameterisation and the crystal never has
+        to be named.</p>
+        <p>The defaults are a real device: 4° of centre deflection and 2° of scan is what
+        a TeO₂ slow-shear deflector gives at 532 nm on an 80 MHz drive across a 40 MHz
+        bandwidth. The wavelength scaling is kept, referenced to the design wavelength, so
+        a beam at twice that wavelength deflects twice as far and a broadband beam fans
+        out — which is the chromatic behaviour a real deflector has.</p>
+        <p>Four drives are available. <em>Static</em> holds one angle. <em>Triangle</em>
+        sweeps and retraces, <em>sawtooth</em> sweeps and flies back, and <em>random
+        step</em> addresses one angle per step in an unpredictable order and holds it
+        until the next — the random-access mode, rather than a sweep. The scan runs on the
+        shared simulation clock at the rate set in kilohertz, so it stays phase-locked to
+        pulses and to any other modulator on the bench.</p>`,
+      formulas: [],
+      limitations: `<p>The angles are configured, not derived. Nothing here knows a
+        crystal, an acoustic velocity, or an RF bandwidth, so a combination set on this
+        element need not correspond to any device that could be built — and the ceilings
+        allowed are deliberately looser than reality so an illustrative sketch stays
+        readable. Real deflectors reach a few degrees at most.</p>
+        <p>Diffraction efficiency is a flat user-set fraction across the whole scan. A
+        real one peaks at the centre frequency and falls away toward both ends, which is
+        the specification that most often decides whether a device is usable, and it is
+        polarisation dependent, which is not modelled either. There is no relation
+        between drive power and efficiency.</p>
+        <p>The optical frequency shift is not applied. It is real, but at 7.6×10⁻⁵ nm for
+        80 MHz at 532 nm it is more than a thousand times finer than the finest wavelength
+        difference anything in this workbench resolves; the <a href="../aom/">AOM</a>,
+        which exists for that shift, still carries it.</p>
+        <p>Nothing models the finite time sound takes to cross the beam. Access time,
+        settling, and the number of resolvable spots — the figures that decide a real
+        deflector's worth — have no counterpart here, and neither does the transient
+        cylindrical lensing a fast scan produces when different parts of the beam see
+        different acoustic frequencies at once. Multi-tone drive, which addresses several
+        angles at once, is not available: one drive, one deflected beam.</p>`,
     },
-    related: ['aom', 'aotf', 'galvo', 'beamdump'],
+    related: ['aom', 'aotf', 'galvo', 'slm'],
+    citations: [
+      { label: '“Acousto-optic Deflectors,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/acousto_optic_deflectors.html' },
+      { label: 'Gooch & Housego — Acousto-optic deflectors: product specifications for TeO₂ and fused-silica devices', url: 'https://gandh.com/products/acousto-optics/deflectors' },
+    ],
     resources: [
       { label: 'AA Opto-Electronic — High Resolution Deflectors', url: 'https://aaoptoelectronic.com/ao-devices/high-resolution-deflectors/' },
-      { label: 'RP Photonics Encyclopedia — Acousto-optic Deflectors', url: 'https://www.rp-photonics.com/acousto_optic_deflectors.html' },
+      { label: 'RP Photonics Encyclopedia — Acousto-optic Modulators', url: 'https://www.rp-photonics.com/acousto_optic_modulators.html' },
     ],
   },
 
