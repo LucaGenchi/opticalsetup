@@ -2614,9 +2614,17 @@ export const wikiEntries = [
       html: `
         <p>The element is built around a list of <strong>selected lines</strong>, one per RF
         tone, in the same spirit as the <a href="../slm/">SLM's</a> stacked functions. A
-        fresh AOTF has a single line; press <em>Add line</em> to stack more, up to eight.
-        Each line carries its own wavelength, passband, and efficiency, so a weak line and a
-        strong one can be selected together.</p>
+        fresh AOTF has a single line; press <em>Add line</em> to stack more, up to sixteen.
+        Each line carries its own wavelength and efficiency, so a weak line and a strong one
+        can be selected together, while the passband is a property of the device and is
+        shared by all of them — as it is in a real crystal, where the resolution follows
+        from the interaction length rather than from which tone is applied.</p>
+        <p>That passband is a sinc², the phase-matching response of the acousto-optic
+        interaction itself. The width set in the inspector is its full width at half
+        maximum; either side of the central lobe it passes through true zeros, with
+        sidelobes at 4.7% and 1.7% of the peak between them. Those sidelobes are the
+        device's real rejection floor: a line sitting in the first one still gets a few
+        percent through, which no rectangular passband would ever show.</p>
 
         <h3>Where the light goes</h3>
         <p>The selected lines leave along the <strong>incoming axis</strong>, so the
@@ -2655,11 +2663,13 @@ export const wikiEntries = [
         axis and the remainder is deflected — because it keeps a multi-line selection on the
         optical axis where the rest of a setup is built. The power accounting is identical
         either way; only which port is bent differs.</p>
-        <p>The passband is a hard-edged window rather than the sinc²-like response with
-        sidelobes a real crystal produces, and it is set directly rather than following from
-        an acoustic frequency: in a real device one RF tone fixes the selected wavelength,
-        the diffraction angle, and the polarization rotation together through phase
-        matching, so a combination set here need not correspond to any crystal. The
+        <p>The passband is set directly rather than following from an acoustic frequency:
+        in a real device one RF tone fixes the selected wavelength, the diffraction angle,
+        and the polarization rotation together through phase matching, so a combination set
+        here need not correspond to any crystal. Its <em>shape</em> is modelled — the
+        sinc² below — but its sidelobes are truncated at the third zero rather than
+        continuing to fall away forever, so the deepest rejection a real device gives out
+        in the far wings is not reproduced. The
         polarization rotation itself is not modelled, so the selected light leaves in the
         state it arrived and cannot be cleaned up with a <a href="../polarizer/">polarizer</a>
         the way a real one is. There is no relation between RF power and efficiency, no

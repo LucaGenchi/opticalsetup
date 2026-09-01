@@ -12,7 +12,7 @@ import {
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
-import { normalizeAotfChannels, aotfChannelBand, aotfChannelTransmission } from './aotf.js';
+import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -1945,6 +1945,7 @@ function interact(ray, hit) {
       // `channels` is already only the lines open at this instant: every one
       // under multiplexed drive, exactly one under sequential drive.
       const channels = normalizeAotfChannels(data.channels);
+      const passband = normalizeAotfPassband(data.passband);
       const a = (data.deflect || 0) * D2R;
       const deflected = { x: d.x * Math.cos(a) - d.y * Math.sin(a), y: d.x * Math.sin(a) + d.y * Math.cos(a) };
       const out = [];
@@ -1962,7 +1963,7 @@ function interact(ray, hit) {
           child.keepWeak = true;
           return child;
         };
-        const transmission = aotfChannelTransmission(c);
+        const transmission = aotfChannelTransmission(c, passband);
 
         if (!ray.bw) {
           // A single wavelength is simply attenuated by how far it sits from

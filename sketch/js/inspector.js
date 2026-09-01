@@ -407,7 +407,8 @@ function layersHTML(layers) {
 
 function aotfChannelsHTML(channels) {
   const list = normalizeAotfChannels(channels);
-  let h = `<div class="lsechead">Selected lines — up to ${MAX_AOTF_CHANNELS} RF tones</div>`;
+  let h = `<div class="lsechead">Selected lines — up to ${MAX_AOTF_CHANNELS} RF tones,`
+    + ` each filtered through the shared passband above</div>`;
   list.forEach((c, i) => {
     h += `<div class="layer"><div class="layerrow">` +
       `<strong style="flex:1">Line ${i + 1}</strong>` +
@@ -416,7 +417,6 @@ function aotfChannelsHTML(channels) {
         : '') +
       `</div>`;
     h += field('Wavelength (nm)', `<input type="number" data-aci="${i}" data-ack="wl" min="150" max="8000" step="1" value="${c.wl}">`);
-    h += field('Passband (nm)', `<input type="number" data-aci="${i}" data-ack="band" min="0.1" max="2000" step="0.1" value="${c.band}">`);
     h += numberField('Efficiency (0–1)', `data-aci="${i}" data-ack="eff"`, c.eff, { min: 0, max: 1, step: 0.05 });
     h += `</div>`;
   });

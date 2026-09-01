@@ -5,7 +5,7 @@
 // the model here — a list of channels, either all passing together (static,
 // the multi-tone case) or taking turns (cycling, the time-multiplexed case).
 
-export const MAX_AOTF_CHANNELS = 8;
+export const MAX_AOTF_CHANNELS = 16;
 
 export const AOTF_WL_MIN = 150;
 export const AOTF_WL_MAX = 8000;
@@ -15,13 +15,32 @@ export const AOTF_BAND_MAX = 2000;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const finite = v => Number.isFinite(v);
 
+export const AOTF_BAND_DEFAULT = 2;
+
 export function normalizeAotfChannel(raw) {
   const c = raw && typeof raw === 'object' ? raw : {};
   return {
     wl: clamp(finite(+c.wl) ? +c.wl : 532, AOTF_WL_MIN, AOTF_WL_MAX),
-    band: clamp(finite(+c.band) ? +c.band : 2, AOTF_BAND_MIN, AOTF_BAND_MAX),
     eff: clamp(finite(+c.eff) ? +c.eff : 0.8, 0, 1),
   };
+}
+
+// The passband is a property of the crystal and its interaction length, not
+// of the RF tone applied to it, so every channel on one device shares it.
+export const normalizeAotfPassband = raw =>
+  clamp(finite(+raw) ? +raw : AOTF_BAND_DEFAULT, AOTF_BAND_MIN, AOTF_BAND_MAX);
+
+// Sketches written before the passband became a device property carried one
+// width per channel. Recover the device's width from what they recorded:
+// the widths were almost always equal, and the widest is the safest reading
+// when they are not, since it is the only one guaranteed to still pass every
+// line the author had selected.
+export function legacyAotfPassband(rawChannels, rawBand) {
+  const widths = (Array.isArray(rawChannels) ? rawChannels : [])
+    .map(c => +(c || {}).band)
+    .filter(finite);
+  if (finite(+rawBand)) widths.push(+rawBand);
+  return widths.length ? normalizeAotfPassband(Math.max(...widths)) : AOTF_BAND_DEFAULT;
 }
 
 export function normalizeAotfChannels(raw) {
@@ -32,40 +51,50 @@ export function normalizeAotfChannels(raw) {
   return out.length ? out : [normalizeAotfChannel(null)];
 }
 
-export const newAotfChannel = () => normalizeAotfChannel({ wl: 633, band: 2, eff: 0.8 });
+export const newAotfChannel = () => normalizeAotfChannel({ wl: 633, eff: 0.8 });
 
 // Passband of one channel, as [lo, hi] in nm: the width at which it is half
 // open. This is the number the user sets and the number the UI reports; the
 // transmission below is what the tracer actually applies.
-export const aotfChannelBand = c => [c.wl - c.band / 2, c.wl + c.band / 2];
+export const aotfChannelBand = (c, passband) => {
+  const width = normalizeAotfPassband(passband);
+  return [c.wl - width / 2, c.wl + width / 2];
+};
 
-// An acousto-optic passband is not a rectangle. Diffraction efficiency peaks
-// where the acoustic and optical waves are phase matched and falls away
-// smoothly on either side, so a channel set to 2 nm does not pass 2 nm of
-// spectrum flat and nothing beyond it -- it passes its centre strongly, its
-// edges at half strength, and its wings weakly. A Lorentzian is the standard
-// simple stand-in for that shape, with `band` as its full width at half
-// maximum.
+// An acousto-optic passband is not a rectangle. The crystal diffracts light
+// into the selected order only where the acoustic and optical waves stay
+// phase matched along the interaction length, and the efficiency of that
+// mismatch is a sinc squared: a strong central lobe, true zeros either side
+// of it, and a series of decaying sidelobes. That sidelobe structure is
+// characteristic of the device and is what limits how well an AOTF rejects a
+// line sitting close to the one it is tuned to.
 //
-// The wings are cut where transmission falls to a hundredth of the peak.
-// A Lorentzian never actually reaches zero, and a channel whose passband ran
-// on forever would overlap every other channel on the device -- leaving the
-// spectrometer to summarise all of them as one band, which is exactly the
-// smearing the separate-band handling exists to avoid. Truncating also keeps
-// the transmitted power finite and the profile's support meaningful.
-const WING_FLOOR = 1e-2;
-export const aotfWingHalfWidth = band =>
-  Math.max(1e-9, band / 2) * Math.sqrt(1 / WING_FLOOR - 1);
+// sinc(x) = sin(pi x)/(pi x) falls to half power at x = 0.442946, so scaling
+// the detuning by SINC_HALF/(passband/2) makes the configured passband the
+// full width at half maximum. Zeros then land every 1.129 passbands.
+const SINC_HALF = 0.44294647068945237;
+
+// Cut at the third zero. sinc squared never reaches zero for good, but it
+// does touch it at every zero crossing, so truncating exactly there ends the
+// passband continuously instead of stepping it off a sidelobe -- and a
+// channel whose wings ran on forever would overlap every other channel on
+// the device, leaving the spectrometer to summarise all of them as one band.
+const SINC_ZEROS_KEPT = 3;
+export const aotfWingHalfWidth = passband =>
+  SINC_ZEROS_KEPT / SINC_HALF * normalizeAotfPassband(passband) / 2;
 
 // T(wavelength) -> 0..1 for one open channel, peaking at 1 on line centre.
-export function aotfChannelTransmission(c) {
-  const halfWidth = Math.max(1e-9, c.band / 2);
-  const cutoff = aotfWingHalfWidth(c.band);
+export function aotfChannelTransmission(c, passband) {
+  const width = normalizeAotfPassband(passband);
+  const scale = SINC_HALF / (width / 2);
+  const cutoff = aotfWingHalfWidth(width);
   return wl => {
     const detune = wl - c.wl;
     if (Math.abs(detune) > cutoff) return 0;
-    const x = detune / halfWidth;
-    return 1 / (1 + x * x);
+    const x = detune * scale;
+    if (Math.abs(x) < 1e-9) return 1;
+    const s = Math.sin(Math.PI * x) / (Math.PI * x);
+    return s * s;
   };
 }
 
@@ -94,9 +123,11 @@ export function aotfOpenChannels(params = {}, seconds = 0) {
 
 export function aotfSummary(params = {}) {
   const channels = normalizeAotfChannels(params.channels);
+  const width = normalizeAotfPassband(params.passband);
   const lines = channels.map(c => `${c.wl.toFixed(0)} nm`).join(', ');
   const drive = params.modMode === 'cycle' && channels.length > 1
     ? `sequential at ${params.modFreqHz ?? 1000} Hz`
     : 'multiplexed';
-  return `${channels.length} line${channels.length === 1 ? '' : 's'} — ${lines} · ${drive}`;
+  return `${channels.length} line${channels.length === 1 ? '' : 's'} — ${lines}`
+    + ` · ${width} nm FWHM · ${drive}`;
 }

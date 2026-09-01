@@ -9,10 +9,13 @@ import { aotfWingHalfWidth } from '../sketch/js/aotf.js';
 // A supercontinuum whose light an AOTF has cut into several narrow, widely
 // separated lines -- the one arrangement where a single source arrives
 // carrying more than one disjoint band.
-function aotfScene({ channels, extra = [] } = {}) {
+const PASSBAND = 2;
+
+function aotfScene({ channels, passband = PASSBAND, extra = [] } = {}) {
   const source = createElement('sclaser', 0, 0);
   Object.assign(source.params, { beamMode: 'beam', beamWidth: 6, bandLo: 450, bandHi: 700 });
   const aotf = createElement('aotf', 180, 0);
+  aotf.params.passband = passband;
   aotf.params.channels = channels;
   const spectrometer = createElement('spectrometer', 460, 0);
   const scene = [source, aotf, ...extra, spectrometer];
@@ -21,9 +24,9 @@ function aotfScene({ channels, extra = [] } = {}) {
 }
 
 const LINES = [
-  { wl: 470, band: 2, eff: 0.8 },
-  { wl: 550, band: 2, eff: 0.8 },
-  { wl: 660, band: 2, eff: 0.8 },
+  { wl: 470, eff: 0.8 },
+  { wl: 550, eff: 0.8 },
+  { wl: 660, eff: 0.8 },
 ];
 
 function peaks(reading) {
@@ -48,13 +51,14 @@ test('separately selected lines are measured at their own widths, not the gap be
 test('the light is where it was selected, and stops where the passband does', () => {
   const { reading } = aotfScene({ channels: LINES });
   const measured = peaks(reading);
-  const reach = aotfWingHalfWidth(LINES[0].band);
+  const reach = aotfWingHalfWidth(PASSBAND);
   for (const line of LINES) {
-    const found = measured.find(sample => Math.abs(sample.wavelength - line.wl) <= line.band);
-    assert.ok(found, `nothing measured within ${line.band} nm of the ${line.wl} nm line`);
+    const found = measured.find(sample => Math.abs(sample.wavelength - line.wl) <= PASSBAND);
+    assert.ok(found, `nothing measured within ${PASSBAND} nm of the ${line.wl} nm line`);
   }
-  // A Lorentzian passband has wings, so light does appear either side of each
-  // line -- but it is truncated, so nothing survives beyond the wings' reach.
+  // A sinc squared passband has sidelobes, so light does appear either side
+  // of each line -- but it is truncated at a zero, so nothing survives past
+  // the last one.
   const stray = measured.filter(sample =>
     LINES.every(line => Math.abs(sample.wavelength - line.wl) > reach + 0.5));
   assert.deepEqual(stray.map(sample => sample.wavelength.toFixed(1)), [],
@@ -69,11 +73,11 @@ test('each channel peaks on the wavelength it was tuned to', () => {
     // The brightest sample within a channel's reach is the channel's centre.
     let best = -1, bestDensity = -Infinity;
     measured.forEach((sample, index) => {
-      if (Math.abs(sample.wavelength - line.wl) > line.band * 3) return;
+      if (Math.abs(sample.wavelength - line.wl) > PASSBAND * 3) return;
       if (density[index] > bestDensity) { bestDensity = density[index]; best = index; }
     });
     assert.ok(best >= 0, `no samples near the ${line.wl} nm channel`);
-    assert.ok(Math.abs(measured[best].wavelength - line.wl) < line.band / 2,
+    assert.ok(Math.abs(measured[best].wavelength - line.wl) < PASSBAND / 2,
       `the ${line.wl} nm channel peaks at ${measured[best].wavelength.toFixed(2)} nm`);
   }
 });
@@ -97,7 +101,7 @@ test('a line measures the same whether or not others were selected beside it', (
   // The same 550 nm line, selected alone and selected alongside two others.
   // How finely the display samples it may differ -- the plot has a fixed
   // sample budget to share out -- but the line it reports must not.
-  const reach = aotfWingHalfWidth(LINES[1].band);
+  const reach = aotfWingHalfWidth(PASSBAND);
   const alone = peaks(aotfScene({ channels: [LINES[1]] }).reading);
   const withNeighbours = peaks(aotfScene({ channels: LINES }).reading)
     .filter(sample => Math.abs(sample.wavelength - 550) <= reach);
@@ -209,7 +213,8 @@ test('a Gaussian envelope sliced by an AOTF keeps every slice and its shape', ()
   Object.assign(source.params, { beamMode: 'beam', beamWidth: 6, wavelength: 800, pulseWidthFs: 20 });
   const aotf = createElement('aotf', 200, 0);
   const centres = [770, 782, 792, 800, 808, 818, 830];
-  aotf.params.channels = centres.map(wl => ({ wl, band: 1.5, eff: 0.9 }));
+  aotf.params.passband = 1.5;
+  aotf.params.channels = centres.map(wl => ({ wl, eff: 0.9 }));
   const spectrometer = createElement('spectrometer', 460, 0);
   const scene = [source, aotf, spectrometer];
   traceAll(scene);
@@ -257,4 +262,52 @@ test('a Gaussian envelope sliced by an AOTF keeps every slice and its shape', ()
       `${centres[i]} and ${centres[centres.length - 1 - i]} nm sit symmetrically `
       + 'about the centre but come back at different heights');
   }
+});
+
+
+test('the passband is one property of the device, shared by every channel', () => {
+  // A real AOTF's resolution is set by its crystal and interaction length,
+  // not by which RF tones happen to be applied, so widening it has to widen
+  // every selected line at once.
+  const narrow = aotfScene({ channels: LINES, passband: 1 }).reading;
+  const wide = aotfScene({ channels: LINES, passband: 6 }).reading;
+  const totalOf = reading => peaks(reading).reduce((sum, s) => sum + s.power, 0);
+  assert.ok(totalOf(wide) > 4 * totalOf(narrow),
+    'a six-fold wider passband should pass roughly six times the light');
+
+  const widthNear = (reading, wl) => {
+    const near = peaks(reading).filter(s => Math.abs(s.wavelength - wl) < aotfWingHalfWidth(6));
+    const ws = near.map(s => s.wavelength);
+    return Math.max(...ws) - Math.min(...ws);
+  };
+  for (const line of LINES) {
+    assert.ok(widthNear(wide, line.wl) > 3 * widthNear(narrow, line.wl),
+      `the ${line.wl} nm line did not widen with the device passband`);
+  }
+});
+
+test('the sinc squared passband has the sidelobes a real AOTF has', () => {
+  // The rejection floor of an acousto-optic filter is set by its sidelobes,
+  // not by an edge: a line sitting in the first sidelobe of a neighbouring
+  // channel still gets a few percent through. That is a real limitation of
+  // the device and it should be visible here.
+  const aotf = createElement('aotf', 200, 0);
+  const detector = createElement('detector', 400, 0);
+  const at = wl => {
+    const laser = createElement('cwlaser', 0, 0);
+    Object.assign(laser.params, { wavelength: wl, beamMode: 'line' });
+    aotf.params.passband = 4;
+    aotf.params.channels = [{ wl: 532, eff: 1 }];
+    traceAll([laser, aotf, detector]);
+    return detectorReading(detector.id)?.signal ?? 0;
+  };
+  // Zeros land every 1.1288 passbands; sidelobe peaks between them.
+  const zero = 4 / 0.44294647068945237 / 2;
+  assert.ok(at(532 + zero) < 1e-6, `the first zero at +${zero.toFixed(2)} nm is a real zero`);
+  assert.ok(at(532 + 2 * zero) < 1e-6, 'and so is the second');
+  const firstLobe = at(532 + 1.4303 / 0.44294647068945237 * 2);
+  assert.ok(firstLobe > 0.04 && firstLobe < 0.055,
+    `the first sidelobe should carry about 4.7%, got ${(firstLobe * 100).toFixed(2)}%`);
+  // Truncated at the third zero, so beyond that nothing.
+  assert.equal(at(532 + 3.5 * zero), 0, 'the passband ends at the third zero');
 });

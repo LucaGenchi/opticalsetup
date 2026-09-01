@@ -287,7 +287,7 @@ test('AOTF passes its selected lines straight through and rejects everything els
   const laser = createElement('cwlaser', 0, 0);
   laser.params.wavelength = 800;
   const aotf = createElement('aotf', 150, 0);
-  aotf.params.channels = [{ wl: 800, band: 2, eff: 0.8 }];
+  aotf.params.channels = [{ wl: 800, eff: 0.8 }];
   aotf.params.deflect = 6;
   const detector = createElement('detector', 300, 0);
 
@@ -309,7 +309,7 @@ test('AOTF stacks lines, and cycling shares the period between them', () => {
     l.params.wavelength = wl;
     return l;
   });
-  const channels = [488, 532, 633].map(wl => ({ wl, band: 4, eff: 0.9 }));
+  const channels = [488, 532, 633].map(wl => ({ wl, eff: 0.9 }));
 
   for (let n = 1; n <= 3; n++) {
     aotf.params.channels = channels.slice(0, n);
@@ -337,30 +337,31 @@ test('AOTF conserves energy between the selected lines and the depleted beam', (
   dumped.rot = 20;
   dumped.params.aperture = 140;
 
-  // The passband is a Lorentzian of the given full width at half maximum, so
-  // what it keeps is not its stated width: integrating 1/(1+x²) over the line
-  // gives an effective width of pi/2 times the FWHM, less whatever the wings
-  // lose to truncation. The invariant worth asserting is that the selection
-  // grows with the width, stays under what an equally wide flat-top would
-  // take at the wings' expense, and always adds up.
+  // The passband is a sinc squared of the given full width at half maximum,
+  // so what it keeps is not its stated width: the central lobe is narrower
+  // than the FWHM box at its shoulders and wider at its foot, and the
+  // sidelobes add a little more. It works out at about 1.09 times the flat
+  // equivalent. The invariants worth asserting are that the selection grows
+  // with the width, stays close to but above the flat window, and adds up.
   let previous = 0;
   for (const band of [20, 60, 140]) {
-    aotf.params.channels = [{ wl: 532, band, eff: 1 }];
+    aotf.params.passband = band;
+    aotf.params.channels = [{ wl: 532, eff: 1 }];
     traceAll([laser, aotf, kept, dumped]);
     const selected = detectorReading(kept.id)?.signal ?? 0;
     const depleted = detectorReading(dumped.id)?.signal ?? 0;
     assert.ok(selected > previous, `a ${band} nm line keeps more than a narrower one`);
     assert.ok(selected > band / 280,
-      `a Lorentzian ${band} nm line keeps more than a flat ${band} nm window would`);
-    assert.ok(selected < Math.PI / 2 * band / 280 + 1e-9,
-      `and no more than its untruncated effective width, pi/2 x ${band} nm`);
+      `a sinc\u00b2 ${band} nm line keeps more than a flat ${band} nm window would`);
+    assert.ok(selected < 1.15 * band / 280,
+      `and not much more: its effective width is about 1.09 x ${band} nm`);
     assert.ok(Math.abs(selected + depleted - 1) < 1e-9, 'nothing is created or lost');
     previous = selected;
   }
 
   // Hiding the depleted port removes the drawn beam, not the accounting.
   aotf.params.showDepleted = false;
-  aotf.params.channels = [{ wl: 532, band: 20, eff: 1 }];
+  aotf.params.channels = [{ wl: 532, eff: 1 }];
   traceAll([laser, aotf, kept, dumped]);
   const hiddenPort = detectorReading(kept.id).signal;
   assert.equal(detectorReading(dumped.id), null, 'the depleted beam is not traced when hidden');
@@ -378,16 +379,21 @@ test('an AOTF channel is half open exactly at the width it was set to', () => {
   const at = wl => {
     const laser = createElement('cwlaser', 0, 0);
     Object.assign(laser.params, { wavelength: wl, beamMode: 'line' });
-    aotf.params.channels = [{ wl: 532, band: 4, eff: 1 }];
+    aotf.params.passband = 4;
+    aotf.params.channels = [{ wl: 532, eff: 1 }];
     traceAll([laser, aotf, detector]);
     return detectorReading(detector.id)?.signal ?? 0;
   };
   assert.ok(Math.abs(at(532) - 1) < 1e-9, 'fully open on line centre');
   assert.ok(Math.abs(at(534) - 0.5) < 1e-9, 'half open half a width above centre');
   assert.ok(Math.abs(at(530) - 0.5) < 1e-9, 'and half a width below it');
-  // A Lorentzian falls away smoothly rather than switching off at an edge.
-  assert.ok(at(536) > 0.15 && at(536) < 0.25, 'the wings still carry light');
-  assert.equal(at(600), 0, 'but not without limit');
+  // A sinc squared falls away through true zeros rather than switching off
+  // at an edge: 4.51 nm from centre is the first of them, and beyond it the
+  // sidelobes carry a few percent each.
+  assert.ok(at(532 + 4.515) < 1e-6, 'the first zero really is a zero');
+  assert.ok(at(532 + 6.46) > 0.03 && at(532 + 6.46) < 0.06,
+    'the first sidelobe carries about 4.7% \u2014 the AOTF\u2019s own rejection floor');
+  assert.equal(at(600), 0, 'and the passband is truncated, not endless');
 });
 
 test('a narrow AOTF line survives the weak-ray cull that would delete it', () => {
@@ -396,17 +402,18 @@ test('a narrow AOTF line survives the weak-ray cull that would delete it', () =>
   const laser = createElement('sclaser', 0, 0);
   Object.assign(laser.params, { scMin: 420, scMax: 700, beamMode: 'line' });
   const aotf = createElement('aotf', 200, 0);
-  aotf.params.channels = [{ wl: 532, band: 0.5, eff: 0.9 }];
+  aotf.params.passband = 0.5;
+  aotf.params.channels = [{ wl: 532, eff: 0.9 }];
   const detector = createElement('detector', 400, 0);
 
   traceAll([laser, aotf, detector]);
   const reading = detectorReading(detector.id);
   assert.ok(reading, 'a 0.5 nm selection still reaches the detector');
-  // A Lorentzian of 0.5 nm FWHM collects rather more than a flat 0.5 nm slice,
-  // because its wings reach past the half-maximum points -- but still a tiny
-  // fraction of the source, which is the point of the test.
-  assert.ok(reading.signal > 0.9 * 0.5 / 280 && reading.signal < 0.9 * 1.6 * 0.5 / 280,
-    `a 0.5 nm selection carries about its Lorentzian share, got ${reading.signal.toExponential(3)}`);
+  // A sinc squared of 0.5 nm FWHM collects a little more than a flat 0.5 nm
+  // slice -- about 1.09 times -- but still a tiny fraction of the source,
+  // which is the point of the test.
+  assert.ok(reading.signal > 0.9 * 0.5 / 280 && reading.signal < 0.9 * 1.2 * 0.5 / 280,
+    `a 0.5 nm selection carries about its share, got ${reading.signal.toExponential(3)}`);
   assert.ok(Math.abs(reading.wavelength - 532) < 0.5, 'at the selected wavelength');
 });
 
