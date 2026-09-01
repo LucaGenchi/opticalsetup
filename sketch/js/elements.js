@@ -42,7 +42,7 @@ import {
   normalizeAotfChannels, aotfOpenChannels, aotfSummary, legacyAotfPassband,
   normalizeAotfPassband, AOTF_BAND_MIN, AOTF_BAND_MAX, AOTF_BAND_DEFAULT,
 } from './aotf.js';
-import { aodScanPosition } from './acousto-optic.js';
+import { aodScanPosition, aodAccessTimeUs, aodMaxScanRateKHz } from './acousto-optic.js';
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -3151,7 +3151,25 @@ export const registry = {
           ['random', 'Random step — address spots in any order'],
         ],
       },
-      { key: 'scanFreqKHz', label: 'Scan rate (kHz)', type: 'number', min: 0.001, max: 1000, step: 1, def: 10, show: p => p.scanMode && p.scanMode !== 'static' },
+      // Published random-access cycle rates run 40-170 kHz, set by how long
+      // sound takes to cross the aperture. 200 is a generous ceiling on that.
+      { key: 'scanFreqKHz', label: 'Scan rate (kHz)', type: 'number', min: 0.001, max: 200, step: 1, def: 10, show: p => p.scanMode && p.scanMode !== 'static' },
+      {
+        key: 'aodAccess', label: 'Access time', type: 'readout',
+        show: p => p.scanMode && p.scanMode !== 'static',
+        readout: params => {
+          const access = aodAccessTimeUs(params.aperture);
+          const ceiling = aodMaxScanRateKHz(params.aperture);
+          const rate = Math.max(0, Number(params.scanFreqKHz) || 0);
+          const summary = `${access.toFixed(1)} µs — up to ${ceiling.toFixed(0)} kHz`;
+          // Sound has to cross the whole aperture before the beam has finished
+          // moving, so asking for steps faster than that is asking for a scan
+          // the crystal cannot settle into.
+          return rate > ceiling
+            ? `${summary} · ${rate} kHz outruns it`
+            : summary;
+        },
+      },
       { key: 'scanPhaseDeg', label: 'Scan phase (°)', type: 'number', min: -360, max: 360, step: 5, def: 0, show: p => p.scanMode === 'triangle' || p.scanMode === 'sawtooth' },
       { key: 'zero', label: 'Keep 0th order', type: 'checkbox', def: true },
       // Real deflectors run 50-80%, occasionally 90%, and always less at the

@@ -2011,7 +2011,14 @@ export const wikiEntries = [
         step</em> addresses one angle per step in an unpredictable order and holds it
         until the next — the random-access mode, rather than a sweep. The scan runs on the
         shared simulation clock at the rate set in kilohertz, so it stays phase-locked to
-        pulses and to any other modulator on the bench.</p>`,
+        pulses and to any other modulator on the bench.</p>
+        <p>The scan rate is bounded by the same physics that sets the resolution. The
+        inspector reports the <strong>access time</strong> for the aperture in use, taken
+        as 1.5&nbsp;µs per millimetre for TeO₂ slow shear, and the rate that implies: a
+        20&nbsp;mm aperture takes 30&nbsp;µs to fill and so cannot be re-pointed faster
+        than about 33&nbsp;kHz, which is why catalogue random-access cycle rates sit
+        between roughly 40 and 170&nbsp;kHz${cite(2)} rather than in the megahertz. Ask for
+        more and the readout says the crystal cannot settle that fast.</p>`,
       formulas: [],
       limitations: `<p>The angles are configured, not derived. Nothing here knows a
         crystal, an acoustic velocity, or an RF bandwidth, so a combination set on this
@@ -2027,11 +2034,12 @@ export const wikiEntries = [
         80 MHz at 532 nm it is more than a thousand times finer than the finest wavelength
         difference anything in this workbench resolves; the <a href="../aom/">AOM</a>,
         which exists for that shift, still carries it.</p>
-        <p>Nothing models the finite time sound takes to cross the beam. Access time,
-        settling, and the number of resolvable spots — the figures that decide a real
-        deflector's worth — have no counterpart here, and neither does the transient
-        cylindrical lensing a fast scan produces when different parts of the beam see
-        different acoustic frequencies at once. Multi-tone drive, which addresses several
+        <p>Access time is reported but not enforced: the beam jumps instantly between
+        angles, with no settling and no transient while the acoustic wave refills the
+        aperture. The number of resolvable spots — arguably the figure that decides a real
+        deflector's worth — is not computed at all, and neither is the cylindrical lensing
+        a fast scan produces when different parts of the beam see different acoustic
+        frequencies at once. Multi-tone drive, which addresses several
         angles at once, is not available: one drive, one deflected beam.</p>`,
     },
     related: ['aom', 'aotf', 'galvo', 'slm'],

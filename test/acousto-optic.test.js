@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   acoustoOpticShiftedWavelength, aodDeflectionDeg, aodScanPosition,
+  aodAccessTimeUs, aodMaxScanRateKHz,
 } from '../sketch/js/acousto-optic.js';
 import { createElement, getElementMeta, registry } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
@@ -221,4 +222,31 @@ test('a scanning AOD actually moves the beam as the simulation clock advances', 
   assert.ok(Math.abs(angleAt(25000) - 8) < 1e-6, 'passes the centre deflection');
   assert.ok(Math.abs(angleAt(50000) - 14) < 1e-6, 'reaches the top of the scan');
   assert.ok(Math.abs(angleAt(100000) - 2) < 1e-6, 'and returns');
+});
+
+
+test('the scan rate ceiling is the one sound imposes', () => {
+  // Access time is about 1.5 us per mm of aperture in TeO2 slow shear. A
+  // catalogue device with a 20 mm aperture is quoted at 30 us, which is the
+  // figure this reproduces -- and it is why published random-access cycle
+  // rates sit around 40-170 kHz rather than in the megahertz.
+  closeTo(aodAccessTimeUs(20), 30);
+  closeTo(aodAccessTimeUs(5), 7.5);
+  for (const aperture of [5, 10, 20]) {
+    const rate = aodMaxScanRateKHz(aperture);
+    assert.ok(rate > 20 && rate < 200,
+      `a ${aperture} mm aperture implies ${rate.toFixed(0)} kHz, outside the published band`);
+  }
+  // Bigger aperture, more resolvable spots, slower scan: the trade-off is
+  // the same slow sound wave seen from both ends.
+  assert.ok(aodMaxScanRateKHz(20) < aodMaxScanRateKHz(5));
+
+  const spec = registry.aod.params.find(p => p.key === 'scanFreqKHz');
+  assert.ok(spec.max <= 200, `a ${spec.max} kHz ceiling is faster than any real deflector`);
+
+  // The readout says when the requested rate outruns the crystal.
+  const readout = registry.aod.params.find(p => p.key === 'aodAccess').readout;
+  assert.match(readout({ aperture: 10, scanFreqKHz: 10 }), /15\.0 µs/);
+  assert.doesNotMatch(readout({ aperture: 10, scanFreqKHz: 10 }), /outruns/);
+  assert.match(readout({ aperture: 10, scanFreqKHz: 150 }), /outruns/);
 });

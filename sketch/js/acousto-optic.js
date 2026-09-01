@@ -77,3 +77,20 @@ export function aodDeflectionDeg(params = {}, wavelengthNm = 532, position = aod
   const designAngle = centre + where * scanRange;
   return clamp(order * designAngle * wavelength / designWavelength, -89, 89);
 }
+
+// How long sound takes to cross the beam, and so how quickly the deflector
+// can be pointed somewhere new. In TeO2 slow shear the figure is about
+// 1.5 microseconds per millimetre of aperture, which is what holds published
+// random-access cycle rates to roughly 40-170 kHz: the same slow sound wave
+// that buys the deflection angle is what makes settling slow.
+export const AOD_ACCESS_US_PER_MM = 1.5;
+
+export const aodAccessTimeUs = apertureMm =>
+  AOD_ACCESS_US_PER_MM * Math.max(0, finite(apertureMm, 10));
+
+// The fastest the beam can be re-pointed before the next step arrives while
+// the previous one is still crossing the aperture.
+export function aodMaxScanRateKHz(apertureMm) {
+  const access = aodAccessTimeUs(apertureMm);
+  return access > 0 ? 1e3 / access : Infinity;
+}
