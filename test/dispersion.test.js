@@ -8,6 +8,7 @@ import {
   gaussianPulseDurationAfterGDD, glassAbbe, glassGVD, glassIndex,
   glassWavelengthRange, isWavelengthInGlassRange, autocorrelationReading,
   crossCorrelationReading, crossCorrelationPair, correlationShapeValue,
+  bestScopeSpanPs, crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS, DEFAULT_SCOPE_SPAN_PS,
 } from '../sketch/js/glass.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import '../sketch/js/detector-instruments.js';
@@ -302,6 +303,10 @@ test('an autocorrelator on a detector screen draws its trace and the duration', 
   Object.assign(rod.params, { material: 'nsf11', rodlen: 100, dia: 20 });
   const meter = createElement('autocorrelator', 430, 0);
   meter.params.aperture = 34;
+  // 100 mm of N-SF11 stretches this to ~731 fs, a 1034 fs autocorrelation --
+  // wider than the ±0.5 ps default window, so the scene picks its own span,
+  // exactly as the bundled chirping example does.
+  meter.params.timeSpanPs = 1;
   const screen = createElement('display', 560, 0);
   screen.params.sensorId = meter.id;
   screen.params.screenOn = true;
@@ -329,6 +334,62 @@ test('an autocorrelator on a detector screen draws its trace and the duration', 
   const cwSvg = reg.display.svg(screen, cwScene);
   assert.doesNotMatch(cwSvg, /data-autocorrelation=/, 'no trace without a pulse');
   assert.match(cwSvg, /NO PULSE/);
+});
+
+test('an autocorrelation too wide for the window says so instead of clipping', () => {
+  const laser = createElement('pulsedlaser', 60, 0);
+  Object.assign(laser.params, {
+    beamMode: 'line', pulseWidthFs: 2000, wavelength: 800,
+    transformLimited: true, pulseShape: 'gauss', bandwidth: 0,
+  });
+  const meter = createElement('autocorrelator', 430, 0);
+  Object.assign(meter.params, { aperture: 34, timeSpanPs: 0.5 });
+  const screen = createElement('display', 560, 0);
+  Object.assign(screen.params, { sensorId: meter.id, screenOn: true });
+  const scene = [laser, meter, screen];
+  traceAll(scene, []);
+
+  // a 2000 fs pulse gives a 2828 fs trace: its half-maximum chord alone is
+  // wider than a ±0.5 ps window, so drawing it would be a lie
+  const svg = reg.display.svg(screen, scene);
+  assert.doesNotMatch(svg, /data-autocorrelation=/);
+  assert.match(svg, /WIDER THAN SPAN/);
+  assert.match(svg, /WIDEN THE TIME SPAN/);
+
+  // and at a window that holds it, the trace comes back
+  meter.params.timeSpanPs = 5;
+  traceAll(scene, []);
+  assert.match(reg.display.svg(screen, scene), /data-autocorrelation=/);
+});
+
+test('the autocorrelation axis is the chosen window, not one sized from the pulse', () => {
+  const bench = (pulseFs, timeSpanPs) => {
+    const laser = createElement('pulsedlaser', 60, 0);
+    Object.assign(laser.params, {
+      beamMode: 'line', pulseWidthFs: pulseFs, wavelength: 800,
+      transformLimited: true, pulseShape: 'gauss', bandwidth: 0,
+    });
+    const meter = createElement('autocorrelator', 430, 0);
+    Object.assign(meter.params, { aperture: 34, timeSpanPs });
+    const screen = createElement('display', 560, 0);
+    Object.assign(screen.params, { sensorId: meter.id, screenOn: true });
+    const scene = [laser, meter, screen];
+    traceAll(scene, []);
+    return reg.display.svg(screen, scene);
+  };
+  // the whole point: two very different durations on one window must LOOK
+  // different, not be normalized to the same apparent width
+  const short = bench(150, 1), long = bench(700, 1);
+  for (const svg of [short, long]) assert.match(svg, /−1 ps/);
+  const widthOf = svg => {
+    const pts = /data-autocorrelation="\d+" points="([^"]+)"/.exec(svg)[1].split(' ')
+      .map(p => p.split(',').map(Number));
+    const peak = Math.min(...pts.map(p => p[1]));
+    const half = pts.filter(p => p[1] <= (peak + 8) / 2);
+    return half.at(-1)[0] - half[0][0];
+  };
+  assert.ok(widthOf(long) > widthOf(short) * 3,
+    'a 700 fs pulse must draw visibly wider than a 150 fs one on the same axis');
 });
 
 // ---------------- cross-correlator ----------------
@@ -449,7 +510,7 @@ test('mixed shapes are flagged rather than silently averaged', () => {
 
 test('crossCorrelationPair refuses anything that is not exactly two trains', () => {
   assert.equal(crossCorrelationPair({}).reason, 'NO PULSE');
-  assert.equal(crossCorrelationPair({ pulse: { trains: [{}] } }).reason, 'NEEDS A SECOND SOURCE');
+  assert.equal(crossCorrelationPair({ pulse: { trains: [{}] } }).reason, 'ONLY ONE BEAM PRESENT');
   assert.match(crossCorrelationPair({ pulse: { trains: [{}, {}, {}] } }).reason, /EXACTLY 2/);
   const pair = crossCorrelationPair({ pulse: { trains: [
     { pulseWidthFs: 150, phaseNs: 0, pathDelayNs: 1, repRateMHz: 80 },
@@ -480,6 +541,31 @@ test('the sum-frequency colour is built from what arrives, not from the emitters
   assert.equal(Math.round(reading.wavelength), 400, 'the doubled light is what arrives');
   assert.ok(Math.abs(reading.pulse.trains[0].centerWavelengthNm - 400) < 1,
     `the train must follow it, got ${reading.pulse.trains[0].centerWavelengthNm}`);
+});
+
+test('switching to cross-correlation picks a span that frames the arms as they are', () => {
+  assert.deepEqual(CROSS_SCOPE_SPANS_PS, [0.5, 1, 5, 10, 25]);
+  assert.equal(DEFAULT_SCOPE_SPAN_PS, 0.5);
+  assert.equal(crossScopeHalfSpanFs({}), 500, 'and ±0.5 ps is where both modes start');
+
+  // 150 fs pulses give a 212 fs trace; the span has to hold the separation
+  const trace = 212, pulse = 150;
+  assert.equal(bestScopeSpanPs(trace, 0, pulse), 0.5, 'merged pair needs the narrowest window');
+  assert.equal(bestScopeSpanPs(trace, 3000, pulse), 5, 'a 3 ps delay wants ±5 ps');
+  assert.equal(bestScopeSpanPs(trace, 1330, pulse), 1);
+  assert.equal(bestScopeSpanPs(trace, 12000, pulse), 10);
+  // and it never returns something too narrow to hold what it was given
+  for (const sep of [0, 400, 3000, 9000, 40000]) {
+    const ps = bestScopeSpanPs(trace, sep, pulse);
+    assert.ok(ps * 1000 >= Math.abs(sep) / 2 || ps === 25,
+      `±${ps} ps cannot hold peaks ${sep / 2} fs out`);
+  }
+  // an unreachable mismatch saturates at the widest rather than failing
+  assert.equal(bestScopeSpanPs(trace, 1e6, pulse), 25);
+});
+
+test('one beam in cross mode names the problem', () => {
+  assert.equal(crossCorrelationPair({ pulse: { trains: [{}] } }).reason, 'ONLY ONE BEAM PRESENT');
 });
 
 test('a cross-correlator on a screen finds two real sources and reports the mismatch', () => {
@@ -615,7 +701,7 @@ test('one source in cross mode says so instead of plotting an autocorrelation', 
   traceAll(scene, []);
   const svg = reg.display.svg(screen, scene);
   assert.doesNotMatch(svg, /data-cross-correlation=/, 'no trace from one arm');
-  assert.match(svg, /SECOND SOURCE/);
+  assert.match(svg, /ONLY ONE BEAM PRESENT/);
 });
 
 test('switching modes does not disturb the autocorrelation readout', () => {

@@ -13,6 +13,7 @@ import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHits
 import { pulseTransmissionAt } from './pulses.js';
 import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
+  bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS,
 } from './glass.js';
 import { pmtVerdict } from './detector-measurements.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
@@ -211,11 +212,31 @@ function cameraAxisHalfSpan(source) {
 // Cross-correlation mode reports the mismatch rather than a duration: what you
 // want on screen while hunting time zero is how far off you are and which way,
 // not how long either pulse is.
+// Switching measurement mode picks the timebase once, so the display is
+// useful the instant the mode changes rather than showing a window that
+// happens to suit the other mode. From then on the setting is the user's:
+// re-ranging on every frame would rescale the axis under the pulses exactly
+// as they approach, hiding the motion the scope exists to show.
+function applyScopeSpanForMode(sel) {
+  if ((sel.params.measurementMode || 'auto') !== 'cross') {
+    sel.params.timeSpanPs = DEFAULT_SCOPE_SPAN_PS;
+    return;
+  }
+  const rd = detectorReading(sel.id);
+  const { arms } = crossCorrelationPair(rd || {});
+  const cc = arms ? crossCorrelationReading(arms[0], arms[1]) : null;
+  // With one beam there is no separation to frame, so the narrowest window is
+  // the honest starting point -- the screen says why it is empty.
+  sel.params.timeSpanPs = cc && cc.synchronized
+    ? bestScopeSpanPs(cc.traceFwhmFs, cc.offsetFs, Math.max(...cc.widths))
+    : DEFAULT_SCOPE_SPAN_PS;
+}
+
 function crossCorrelatorRows(rd, source) {
   const { arms, reason } = crossCorrelationPair({ pulse: rd.pulse });
   if (!arms) return `
       <dt>Cross-correlation</dt><dd>${reason === 'NO PULSE' ? 'Continuous wave — no pulse to correlate'
-    : reason === 'NEEDS A SECOND SOURCE' ? 'Only one pulse train arrives — a cross-correlation needs two'
+    : reason === 'ONLY ONE BEAM PRESENT' ? 'Only one pulse train arrives — a cross-correlation needs two'
       : 'More than two trains arrive — a cross-correlation is between exactly two'}</dd>`;
   const cc = crossCorrelationReading(arms[0], arms[1]);
   if (!cc) return `
@@ -1310,6 +1331,7 @@ export function applyInput(inp, rebuild = false) {
   else if (pkey) {
     sel.params[pkey] = val;
     if (pkey === 'specimenType') applySpecimenTypePreset(sel);
+    if (sel.type === 'autocorrelator' && pkey === 'measurementMode') applyScopeSpanForMode(sel);
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }
   changed();
@@ -1335,7 +1357,7 @@ export function applyInput(inp, rebuild = false) {
   // layer already is; otherwise the panel can describe the previous target.
   if (rebuild && sel.type === 'objective' && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode'].includes(pkey)) { renderInspector(); return; }
+  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode', 'measurementMode'].includes(pkey)) { renderInspector(); return; }
   // A readout is derived from the other params, so any committed edit can
   // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
   // peak power or a transform-limited bandwidth from going stale on screen.

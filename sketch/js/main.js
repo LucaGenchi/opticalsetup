@@ -489,36 +489,36 @@ const demoScenes = {
 
   // Cross-correlation, and the reason anyone builds one: two synchronized
   // sources combined onto one path, with arms that are not the same length.
-  // A shortpass dichroic transmits the 800 nm pump straight through and folds
-  // the 1030 nm Stokes in from above, so both land on one face -- which is
-  // what the instrument needs, since its two "arms" are two sources sharing a
-  // detector rather than two ports it scans internally. The trace peaks off
-  // zero because the Stokes arm is longer; tune the delay line in the pump arm
-  // until the peak slides onto the 0 DELAY marker and the overlap reads 100%.
-  // That hunt is what finding time zero means, and it is the step every
-  // coherent-Raman bench starts with.
+  // A shortpass dichroic passes the 790 nm arm straight through and folds the
+  // 1030 nm arm in from above, so both land on one face -- which is what the
+  // instrument needs, since its two "arms" are two sources sharing a detector
+  // rather than two ports it scans internally.
+  //
+  // Time zero is at exactly 100.000 mm, and the delay line sweeps 99.8 to
+  // 100.2 either side of it: +/-667 fs, so the two pulses walk through each
+  // other and back every ten seconds while the sum-frequency peak flares up
+  // between them at the crossing. That crossing is what finding time zero
+  // looks like, and here it happens on its own.
   crosscorrelator: () => {
-    const meter = mkDemo('autocorrelator', 640, 250, 0,
+    const meter = mkDemo('autocorrelator', 428, 275, 0,
       { aperture: 30, measurementMode: 'cross', timeSpanPs: 1 },
-      { label: 'cross-correlator', showLabel: true, labelPos: 't' });
+      { label: 'cross-correlator', showLabel: true, labelPos: 'b' });
     return [
-      mkDemo('pulsedlaser', 60, 250, 0,
-        { wavelength: 800, pulseWidthFs: 150, repRateMHz: 80, beamMode: 'beam', beamWidth: 5 },
-        { label: '800 nm pump · 150 fs', showLabel: true, labelPos: 'b' }),
-      mkDemo('pulsedlaser', 470, 40, 90,
-        { wavelength: 1030, pulseWidthFs: 150, repRateMHz: 80, beamMode: 'beam', beamWidth: 5 },
-        { label: '1030 nm Stokes · 150 fs', showLabel: true, labelPos: 'l' }),
-      // 200.00 mm is exact time zero for this geometry, so the scene opens
-      // 0.06 mm short of it: the peak sits visibly off the marker at -200 fs
-      // and 8% overlap, and typing a round 200 lands it.
-      mkDemo('delayline', 470, 150, 90,
-        { moveMode: 'static', delayMm: 199.94, aperture: 20 },
-        { label: 'tune to 200 mm for time zero', showLabel: true, labelPos: 'l' }),
-      mkDemo('dichroic', 470, 250, -45,
-        { dtype: 'shortpass', cutoff: 900, length: 25.4 },
-        { label: 'combines the two arms', showLabel: true, labelPos: 'r' }),
+      mkDemo('pulsedlaser', 198, 275, 0,
+        { wavelength: 790, pulseWidthFs: 150, repRateMHz: 80, bandwidth: 5,
+          beamMode: 'beam', beamWidth: 3 },
+        { label: '790 nm', showLabel: true, labelPos: 't' }),
+      mkDemo('pulsedlaser', 198, 175, 0,
+        { wavelength: 1030, pulseWidthFs: 150, repRateMHz: 80, bandwidth: 5,
+          beamMode: 'beam', beamWidth: 3 },
+        { label: '1030 nm', showLabel: true, labelPos: 't' }),
+      mkDemo('delayline', 300, 275, 0,
+        { moveMode: 'linear', delayMm: 99, delayMinMm: 99.8, delayMaxMm: 100.2, freqHz: 0.1, aperture: 24 },
+        { label: 'Delay line', showLabel: true, labelPos: 'b' }),
+      mkDemo('mirror', 350, 175, 135, { length: 25.4 }),
+      mkDemo('dichroic', 350, 275, 135, { dtype: 'shortpass', cutoff: 1000, length: 25.4 }),
       meter,
-      mkDemo('display', 470, 400, 0, { sensorId: meter.id, displayScale: 1.1 }),
+      mkDemo('display', 650, 200, 0, { sensorId: meter.id, displayScale: 1.5 }),
     ];
   },
 

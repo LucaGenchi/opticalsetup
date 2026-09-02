@@ -138,6 +138,9 @@ a:hover { text-decoration: underline; }
 }
 .embed-frame { width: 100%; height: 100%; border: 0; display: block; }
 .embed-caption { color: var(--muted); font-size: 12.5px; margin-top: 8px; max-width: none; }
+/* A second bench under the first, for a component whose other mode needs a
+   scene of its own -- the cross-correlator cannot be shown with one beam. */
+.extra-demo-head { font-size: 15px; font-weight: 650; margin: 26px 0 10px; }
 
 .resource-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .resource-list a {

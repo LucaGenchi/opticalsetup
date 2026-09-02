@@ -227,6 +227,14 @@ ${header(base)}
           loading="lazy"></iframe>
       </div>
       <p class="embed-caption">Click the ${esc(entry.title).toLowerCase()} to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+${(entry.extraDemos || []).map(extra => `
+      <h3 class="extra-demo-head">${esc(extra.heading)}</h3>
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="${base}/sketch/?demo=${esc(extra.demo)}"
+          title="${esc(extra.heading)}"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">${extra.caption}</p>`).join('')}
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
       ${proseSectionHTML(entry.realWorld, `${entry.type} realWorld`)}

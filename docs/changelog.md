@@ -6,6 +6,62 @@ request that carries the full reasoning and the exact diff.
 This file starts in September 2026. For anything before that, the pull
 request history is the record.
 
+## 2026-09-03 — Autocorrelator, cross-correlation, and finding time zero
+
+[#90](https://github.com/LucaGenchi/opticalsetup/pull/90)
+
+The autocorrelator gained a wiki page, a second measurement mode, and a
+scope-style display for the one job an autocorrelator cannot do alone.
+
+- **The wiki page.** Intensity and interferometric geometries, scanning versus
+  single-shot, two-photon detectors, high dynamic range and third-order
+  variants, and where FROG and SPIDER take over. Two sections answer specific
+  questions: why the trace is wider than the pulse, and how a cross-correlator
+  finds time zero — worked through for coherent Raman, including the two things
+  that make it more than alignment. The overlap that matters is at the
+  objective focus, not on the bench; and under spectral focusing the delay
+  tunes the Raman shift, so time zero sets the origin of the spectroscopic
+  axis.
+- **Why "wider" needed care.** The exact universal statement is about second
+  moments — self-correlation doubles the variance, so the rms width grows by
+  √2 for any envelope — while the FWHM ratio everyone quotes is shape-dependent.
+  A rectangular pulse gives a ratio of exactly 1, which is in the page as the
+  counterexample that makes the point.
+- **Cross-correlation mode.** No new tracing was needed: the arriving light was
+  already grouped per source with its own arrival, duration and dispersion. The
+  mode reports the timing mismatch, the overlap, and the sum-frequency
+  wavelength; refuses trains whose repetition rates differ, since without a
+  fixed phase there is nothing stable to average; and measures against the
+  nearest pulse of the other train, because arms can only ever be nulled modulo
+  the repetition period.
+- **A scope, not a plot.** The display is a laboratory arrival-time axis: two
+  pulses at their own arrival times, sliding together as an arm is tuned, with
+  the sum-frequency peak lighting up between them at the crossing. The axis
+  changes meaning between the two modes — scan delay for an autocorrelation,
+  arrival time for a cross-correlation — and says which it is showing.
+- **The timebase is a knob.** ±0.5, ±1, ±5, ±10 or ±25 ps, in both modes, and
+  it holds still. A window that re-ranged itself would rescale the axis under
+  the pulses exactly as they approached, so they would never appear to travel —
+  and it would draw every duration at the same apparent width, so the three
+  traces of the chirping example would look identical and only their labels
+  would differ. Switching mode picks a framing once (a 3 ps mismatch selects
+  ±5 ps); after that it is yours.
+- **Five bugs fixed on the way.** The sech² curve scaled its argument twice
+  over and fell to half maximum at a quarter of its own trace width, missing
+  the chord drawn across it. The inspector crashed outright in cross mode — a
+  one-argument call into a two-argument body. The sum-frequency colour was read
+  from source metadata, which survives wavelength conversion, so a doubled beam
+  named the emitter's colour instead of the arriving one. The sech²
+  cross-correlation broke the short-reference limit by 9%, the same figure the
+  component exists to teach. And the delay line stepped in 100 nm, finer than a
+  real stage resolves; it is 1 µm now.
+- **Two benches**, both on the wiki page: one autocorrelator on a
+  transform-limited 150 fs pulse, and a two-colour cross-correlator whose delay
+  line sweeps through time zero and back every ten seconds.
+
+Seven review findings from @bertona88's Codex, each verified against the
+tracer or against numerics before being acted on.
+
 ## 2026-09-01 — Acousto-optic deflector
 
 [#86](https://github.com/LucaGenchi/opticalsetup/pull/86) — by @bertona88, with review fixes

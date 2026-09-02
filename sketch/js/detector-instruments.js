@@ -10,7 +10,7 @@ import { fwhmToSigma } from './spectrum.js';
 import { scopeTrace } from './pulses.js';
 import {
   autocorrelationReading, crossCorrelationReading, correlationShapeValue, crossCorrelationPair,
-  crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS,
+  crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS, DEFAULT_SCOPE_SPAN_PS,
 } from './glass.js';
 import { esc, formatSignal, smoothPath, wavelengthToColor } from './util.js';
 
@@ -150,14 +150,15 @@ registry.autocorrelator.params.push({
   key: 'measurementMode', label: 'Measurement mode', type: 'select', def: 'auto',
   options: [['auto', 'Autocorrelation (one source)'], ['cross', 'Cross-correlation (two sources)']],
 });
-// The scope timebase, and a knob rather than an automatic. A window that
-// resized itself would rescale the axis under the pulses as they approach,
-// hiding the motion the display exists to show; on a real scope you pick a
-// timebase and watch the traces walk across it.
+// The scope timebase, and a knob rather than an automatic -- in both modes. A
+// window that resized itself would rescale the axis under the pulses as they
+// approach, hiding the motion the display exists to show; on a real scope you
+// pick a timebase and watch the traces walk across it. Switching mode picks a
+// sensible setting once (see applyScopeSpanForMode in inspector.js), and from
+// then on it is yours.
 registry.autocorrelator.params.push({
-  key: 'timeSpanPs', label: 'Time span', type: 'select', def: 25,
+  key: 'timeSpanPs', label: 'Time span', type: 'select', def: DEFAULT_SCOPE_SPAN_PS,
   options: CROSS_SCOPE_SPANS_PS.map(ps => [ps, `±${ps} ps`]),
-  show: p => (p.measurementMode || 'auto') === 'cross',
 });
 registry.generaldetector = instrumentDefinition({
   label: 'General detector', code: 'DET', readoutKind: 'general', paletteOrder: 9, width: 54, accent: '#67e8f9',
@@ -716,11 +717,20 @@ function autocorrelationPlot(sensor, reading) {
     ? reading.pulse.stretchedPulseWidthFs : reading.pulse.pulseWidthFs;
   const ac = autocorrelationReading(arriving, assumed, actual);
   if (!ac) return null;
+  const fsLabel = v => (v < 1000 ? `${Math.round(v)} FS` : `${(v / 1000).toFixed(2)} PS`);
 
   const baseline = 8, height = 19;
-  // Show +/- 1.6 trace widths so the wings and the half-maximum are both on
-  // screen whatever the duration.
-  const spanFs = Math.max(1e-6, ac.traceFwhmFs * 1.6);
+  // The same fixed timebase the cross-correlation scope uses. An
+  // autocorrelation that re-ranged itself would draw every duration at the
+  // same apparent width, so three traces of 150, 731 and 150 fs would look
+  // identical and only their labels would differ -- which defeats the
+  // comparison such a scene exists to make.
+  const spanFs = crossScopeHalfSpanFs(sensor.params);
+  // Centred on zero, so the trace fits while its half-maximum chord does.
+  if (ac.traceFwhmFs / 2 > spanFs) {
+    return { note: `AUTOCORRELATION ${fsLabel(ac.traceFwhmFs)} WIDER THAN SPAN ±${spanFs / 1000} ps`
+      + '|WIDEN THE TIME SPAN' };
+  }
   const xAt = fs => -35 + 70 * (fs + spanFs) / (2 * spanFs);
   const yAt = v => baseline - Math.max(0, Math.min(1, v)) * height;
   // Gaussian autocorrelation of a Gaussian is Gaussian; sech² is close enough
@@ -730,9 +740,10 @@ function autocorrelationPlot(sensor, reading) {
   // curve fell to half maximum at a quarter of the trace width.
   const shape = tau => correlationShapeValue(tau, ac.traceFwhmFs, actual);
 
+  const steps = Math.max(96, Math.min(600, Math.ceil((2 * spanFs) / Math.max(1e-9, ac.traceFwhmFs / 10))));
   const points = [];
-  for (let i = 0; i <= 96; i++) {
-    const tau = -spanFs + (2 * spanFs) * i / 96;
+  for (let i = 0; i <= steps; i++) {
+    const tau = -spanFs + (2 * spanFs) * i / steps;
     points.push(`${xAt(tau).toFixed(2)},${yAt(shape(tau)).toFixed(2)}`);
   }
 
@@ -747,8 +758,8 @@ function autocorrelationPlot(sensor, reading) {
     // the half-maximum chord is the measurement itself, so draw it
     `<line x1="${halfLeft}" y1="${halfY}" x2="${halfRight}" y2="${halfY}" stroke="#fca5a5" stroke-width="0.6" stroke-dasharray="1.6 1.2" opacity="0.85"/>` +
     `<text x="${xAt(0).toFixed(2)}" y="${(baseline + 5.4)}" text-anchor="middle" font-size="3.4" fill="#5f7d8e">0 DELAY</text>` +
-    `<text x="-35" y="${(baseline + 5.4)}" font-size="3.4" fill="#5f7d8e">−${esc(fs(spanFs))}</text>` +
-    `<text x="35" y="${(baseline + 5.4)}" text-anchor="end" font-size="3.4" fill="#5f7d8e">+${esc(fs(spanFs))}</text>` +
+    `<text x="-35" y="${(baseline + 5.4)}" font-size="3.4" fill="#5f7d8e">−${spanFs / 1000} ps</text>` +
+    `<text x="35" y="${(baseline + 5.4)}" text-anchor="end" font-size="3.4" fill="#5f7d8e">+${spanFs / 1000} ps</text>` +
     // The curve peaks at centre, so the inferred duration sits in the empty
     // upper-left corner where the wings are flat, clear of the header line.
     `<text x="-35" y="-8.2" font-size="6.2" font-weight="780" fill="#ecf7fa">${esc(fs(ac.inferredPulseWidthFs))}</text>` +
@@ -784,6 +795,11 @@ function panel(sensor, reading, elements, view) {
   }
   if (sensor.type === 'autocorrelator') {
     const plot = autocorrelationPlot(sensor, reading);
+    if (plot && plot.note) {
+      const [state, hint] = String(plot.note).split('|');
+      return header(name, 'AUTOCORRELATION', reading.pulse)
+        + metrics(hint ? [['STATE', state], ['', hint]] : [['STATE', state]]);
+    }
     if (plot) return header(name, 'AUTOCORRELATION', reading.pulse) + plot;
     return header(name, 'AUTOCORRELATION', reading.pulse) + metrics([
       ['STATE', reading.pulse?.mixed ? 'MIXED TRAINS' : 'NO PULSE'],
