@@ -192,11 +192,19 @@
         duration. The overlap has shrunk, but it has not vanished — the trailing part of one
         copy is still sitting on the leading part of the other, so a real signal is still
         produced. Only when the delay exceeds roughly the pulse length does the product
-        finally go to zero. The measured curve therefore stays above half maximum for
-        <em>longer</em> than the pulse itself does, and the autocorrelation is inescapably
-        broader than the thing it is measuring. This is not an instrumental defect that
-        better optics would remove; it is a property of the operation.</p>
-        <p>How much broader depends on the shape of the envelope. For a Gaussian pulse the
+        finally go to zero. The curve cannot collapse to something narrower than the pulse,
+        and this is not an instrumental defect that better optics would remove; it is a
+        property of the operation.</p>
+        <p>Made exact, the statement is about second moments: correlating a function with
+        itself <strong>doubles the variance</strong>, so the root-mean-square width of the
+        trace is larger than the pulse's by exactly &radic;2 &mdash; for every envelope,
+        with no assumption at all. Full width at half maximum, which is what an instrument
+        actually reads off, is the shape-dependent one. It is worth knowing that the
+        broadening can vanish entirely under that measure: a rectangular pulse of width
+        <em>T</em> has a triangular autocorrelation whose FWHM is also <em>T</em>, even
+        though its rms width has still grown by &radic;2. For the smooth envelopes real
+        mode-locked lasers produce, the trace is genuinely wider.</p>
+        <p>How much wider depends on the shape of the envelope. For a Gaussian pulse the
         autocorrelation is itself Gaussian and about <strong>1.41 times</strong> wider —
         exactly &radic;2, because Gaussian widths add in quadrature and
         &radic;(&tau;&sup2;&nbsp;+&nbsp;&tau;&sup2;)&nbsp;=&nbsp;&radic;2&nbsp;&tau;<sup class="cite">[<a href="#ref-1">1</a>]</sup>. For a sech² pulse, the shape most
@@ -247,7 +255,11 @@ M834 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         <h3>Interferometric autocorrelation</h3>
         <p>Send the two copies collinearly instead — same path, same polarization — and they
         interfere before the crystal sees them. The recorded signal then resolves the
-        optical fringes, oscillating with a period of half the optical wavelength<sup class="cite">[<a href="#ref-1">1</a>]</sup>:</p>
+        optical fringes: successive constructive peaks are one optical period apart on the
+        delay axis, which in a double-pass arm is reached by moving the mirror only half a
+        wavelength, since the mirror changes the path twice over<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Plots are
+        labelled in both coordinates, so it is worth checking which one an axis
+        means:</p>
 <div class="formula">
       <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>I</mi><mrow><mi mathvariant="normal">i</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">c</mi></mrow></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><mo>∫</mo><mo fence="true" stretchy="true" minsize="1.2em" maxsize="1.2em">(</mo><mi>E</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>+</mo><mi>E</mi><mo stretchy="false">(</mo><mi>t</mi><mo>+</mo><mi>τ</mi><mo stretchy="false">)</mo><msup><mo fence="true" stretchy="true" minsize="1.2em" maxsize="1.2em">)</mo><mn>4</mn></msup><mtext> </mtext><mi mathvariant="normal">d</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">I_{\mathrm{iac}}(\tau)=\int \bigl(E(t)+E(t+\tau)\bigr)^{4}\,\mathrm{d}t</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3175em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">iac</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2222em;vertical-align:-0.8622em;"></span><span class="mop op-symbol large-op" style="margin-right:0.4445em;position:relative;top:-0.0011em;">∫</span><span class="mopen"><span class="delimsizing size1">(</span></span><span class="mord mathnormal" style="margin-right:0.0576em;">E</span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">E</span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.404em;vertical-align:-0.35em;"></span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mclose">)</span><span class="mclose"><span class="mclose"><span class="delimsizing size1">)</span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:1.054em;"><span style="top:-3.3029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">4</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathrm">d</span><span class="mord mathnormal">t</span></span></span></span></span></div>
       <div class="caption">The interferometric (fringe-resolved) autocorrelation. Because the fields add before being squared twice, perfect constructive interference gives four times the intensity and sixteen times the second-harmonic signal — against a background of twice that from one arm alone.</div>

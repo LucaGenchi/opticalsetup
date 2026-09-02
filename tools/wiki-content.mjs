@@ -4178,11 +4178,19 @@ export const wikiEntries = [
         duration. The overlap has shrunk, but it has not vanished — the trailing part of one
         copy is still sitting on the leading part of the other, so a real signal is still
         produced. Only when the delay exceeds roughly the pulse length does the product
-        finally go to zero. The measured curve therefore stays above half maximum for
-        <em>longer</em> than the pulse itself does, and the autocorrelation is inescapably
-        broader than the thing it is measuring. This is not an instrumental defect that
-        better optics would remove; it is a property of the operation.</p>
-        <p>How much broader depends on the shape of the envelope. For a Gaussian pulse the
+        finally go to zero. The curve cannot collapse to something narrower than the pulse,
+        and this is not an instrumental defect that better optics would remove; it is a
+        property of the operation.</p>
+        <p>Made exact, the statement is about second moments: correlating a function with
+        itself <strong>doubles the variance</strong>, so the root-mean-square width of the
+        trace is larger than the pulse's by exactly &radic;2 &mdash; for every envelope,
+        with no assumption at all. Full width at half maximum, which is what an instrument
+        actually reads off, is the shape-dependent one. It is worth knowing that the
+        broadening can vanish entirely under that measure: a rectangular pulse of width
+        <em>T</em> has a triangular autocorrelation whose FWHM is also <em>T</em>, even
+        though its rms width has still grown by &radic;2. For the smooth envelopes real
+        mode-locked lasers produce, the trace is genuinely wider.</p>
+        <p>How much wider depends on the shape of the envelope. For a Gaussian pulse the
         autocorrelation is itself Gaussian and about <strong>1.41 times</strong> wider —
         exactly &radic;2, because Gaussian widths add in quadrature and
         &radic;(&tau;&sup2;&nbsp;+&nbsp;&tau;&sup2;)&nbsp;=&nbsp;&radic;2&nbsp;&tau;${cite(1)}. For a sech² pulse, the shape most
@@ -4221,7 +4229,11 @@ export const wikiEntries = [
         <h3>Interferometric autocorrelation</h3>
         <p>Send the two copies collinearly instead — same path, same polarization — and they
         interfere before the crystal sees them. The recorded signal then resolves the
-        optical fringes, oscillating with a period of half the optical wavelength${cite(1)}:</p>`,
+        optical fringes: successive constructive peaks are one optical period apart on the
+        delay axis, which in a double-pass arm is reached by moving the mirror only half a
+        wavelength, since the mirror changes the path twice over${cite(1)}. Plots are
+        labelled in both coordinates, so it is worth checking which one an axis
+        means:</p>`,
       formulas3: [
         { tex: 'I_{\\mathrm{iac}}(\\tau)=\\int \\bigl(E(t)+E(t+\\tau)\\bigr)^{4}\\,\\mathrm{d}t', caption: 'The interferometric (fringe-resolved) autocorrelation. Because the fields add before being squared twice, perfect constructive interference gives four times the intensity and sixteen times the second-harmonic signal — against a background of twice that from one arm alone.' },
       ],
