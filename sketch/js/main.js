@@ -463,6 +463,25 @@ const demoScenes = {
     ];
   },
 
+  // A transform-limited 150 fs Gaussian straight into the instrument, wired to
+  // a screen so the trace is visible rather than just the number. The trace
+  // reads 212 fs -- 150 x sqrt(2) -- and the instrument divides that back down
+  // by the shape it is told to assume. Switching Assumed pulse shape to sech2
+  // divides by 1.543 instead and the reading moves to 137 fs: the 9% error is
+  // the whole point of the component, and it is one click away here.
+  autocorrelator: () => {
+    const meter = mkDemo('autocorrelator', 470, 200, 0, { aperture: 30, assumedShape: 'gauss' },
+      { label: 'autocorrelator', showLabel: true, labelPos: 't' });
+    return [
+      mkDemo('pulsedlaser', 120, 200, 0,
+        { wavelength: 800, pulseWidthFs: 150, repRateMHz: 80, pulseShape: 'gauss',
+          transformLimited: true, beamMode: 'beam', beamWidth: 6 },
+        { label: '800 nm, 150 fs, transform-limited', showLabel: true, labelPos: 'b' }),
+      meter,
+      mkDemo('display', 350, 380, 0, { sensorId: meter.id, displayScale: 1.1 }),
+    ];
+  },
+
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {

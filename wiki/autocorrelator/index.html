@@ -382,20 +382,27 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         reading changes — a Gaussian assumption on a sech² source reads about 9% long, and
         the inspector says so explicitly, naming the true duration beside the inferred one.
         That disagreement is the lesson the component exists to teach.</p>
-        <p>The reading is taken from the pulse that <em>arrives</em>, not the one that was
-        emitted. Put a <a href="../glassrod/">glass rod</a> in the path and the autocorrelator
-        measures the stretched duration; add a <a href="../pulsecompressor/">pulse
-        compressor</a> with the opposite group delay dispersion and it measures the pulse
-        recovering. The bundled <em>Ultrashort pulse chirping</em> example is built around
-        exactly that comparison, with three autocorrelators reading the same pulse under
-        three different dispersion conditions.</p>
+        <p>For a transform-limited Gaussian source, the reading is taken from the pulse that
+        <em>arrives</em> rather than the one that was emitted. Put a
+        <a href="../glassrod/">glass rod</a> in the path and the autocorrelator measures the
+        stretched duration; add a <a href="../pulsecompressor/">pulse compressor</a> with the
+        opposite group delay dispersion and it measures the pulse recovering. The bundled
+        <em>Ultrashort pulse chirping</em> example is built around exactly that comparison,
+        with three autocorrelators reading the same pulse under three different dispersion
+        conditions.</p>
+        <p>That qualification is not decoration. The broadening is computed from a closed-form
+        Gaussian result, so it is only derived when the source is both transform-limited and
+        Gaussian. Switch the source to sech&sup2;, or clear its transform-limited box, and no
+        stretched duration exists to report: the instrument falls back to the duration
+        configured on the source, and the inspector says so in as many words rather than
+        letting a dispersion measurement be read out of a number that never moved.</p>
         <p>Wired to a Detector screen, it draws the trace: delay on
         the horizontal axis rather than laboratory time, the curve symmetric about zero delay
         as a real autocorrelation always is, the half-maximum chord that <em>is</em> the
         measurement marked across it, and the inferred duration printed above. A continuous-wave
-        source produces no trace and says so; two different pulse trains arriving together
-        produce no trace either, and say that instead of averaging them into a meaningless
-        number.</p>
+        source produces no trace and says so; and pulse trains whose <em>timing</em> disagrees —
+        different repetition rate, duration, or phase — are reported as mixed rather than
+        averaged into a meaningless number.</p>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>No scan is simulated. The trace is drawn from the arriving duration
         and the assumed shape rather than being accumulated by stepping a delay line through
         a nonlinear crystal, so there is no scan time, no delay-line travel limit setting a
@@ -411,11 +418,16 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         shapes other than Gaussian and sech² are not available, and since the modelled
         envelope is symmetric, the asymmetry that a real autocorrelation famously hides is
         not there to be hidden.</p>
+        <p>Mixing is detected by timing settings only. Two sources agreeing in repetition rate,
+        pulse duration, and phase are treated as one train even when their shapes, path delays,
+        or accumulated dispersion differ, in which case the trace is drawn from the first of
+        them and the averaged group delay dispersion. That is a real gap: two genuinely
+        different pulses can be measured as one.</p>
         <p>It is an autocorrelator only. Two beams cannot be cross-correlated against each
-        other: a single instrument sees the sum of what reaches its face, and if that is more
-        than one pulse train it declines to report rather than mixing them. Finding time zero
-        between two arms, as described above, is therefore something the component describes
-        but does not perform.</p></div>
+        other, because a single instrument sees the sum of what reaches its face rather than
+        two arms it could delay against one another. Finding time zero between two beams, as
+        described above, is therefore something the component describes but does not
+        perform.</p></div>
       </div>
 
       
