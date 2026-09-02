@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { createElement, registry } from '../sketch/js/elements.js';
+import {
+  createElement, registry, delayLineDelayAt, delayLineSweepSpanMm,
+} from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
@@ -11,6 +13,9 @@ import {
 } from '../sketch/js/electro-optic.js';
 
 const MZ = readFileSync('Examples/Optics Bench/Mach–Zehnder interferometer.json', 'utf8');
+
+const closeToMm = (actual, expected) =>
+  assert.ok(Math.abs(actual - expected) < 1e-12, `${actual} mm should be ${expected} mm`);
 
 // The modulator dropped into one arm of the bundled interferometer.
 function inOneArm(params, simulationTimeNs = null) {
@@ -168,4 +173,55 @@ test('the interferometric behaviour needs a source the tracer can phase, and say
         `with ${label}, drive ${[0, 90, 180][index]}° gave ${signal.toFixed(4)}, not a flat half`);
     }
   }
+});
+
+// ---------------- swept delay line ----------------
+
+test('a swept delay line retraces between its two ends', () => {
+  const params = { moveMode: 'linear', delayMinMm: 0, delayMaxMm: 0.001, freqHz: 1 };
+  // A carriage cannot fly back, so the sweep is a triangle: out and home again
+  // over one period, starting at the near end.
+  closeToMm(delayLineDelayAt(params, 0), 0);
+  closeToMm(delayLineDelayAt(params, 0.25), 0.0005);
+  closeToMm(delayLineDelayAt(params, 0.5), 0.001);
+  closeToMm(delayLineDelayAt(params, 0.75), 0.0005);
+  closeToMm(delayLineDelayAt(params, 1), 0);
+  // It never leaves the range it was given.
+  for (let step = 0; step < 200; step++) {
+    const delay = delayLineDelayAt(params, step / 97);
+    assert.ok(delay >= -1e-12 && delay <= 0.001 + 1e-12, `sweep left its range at ${delay}`);
+  }
+  assert.equal(delayLineSweepSpanMm(params), 0.001);
+});
+
+test('a static delay line is untouched by the sweep controls', () => {
+  // The default is static, and the existing parameter still drives it.
+  const element = createElement('delayline', 0, 0);
+  assert.equal(element.params.moveMode, 'static');
+  assert.equal(delayLineDelayAt(element.params, 0), element.params.delayMm);
+  assert.equal(delayLineDelayAt(element.params, 12.34), element.params.delayMm);
+  // Even with sweep values set, static mode ignores them.
+  const held = { moveMode: 'static', delayMm: 42, delayMinMm: 0, delayMaxMm: 5, freqHz: 3 };
+  assert.equal(delayLineDelayAt(held, 0.7), 42);
+});
+
+test('a swept delay line moves the fringes it is sitting in', () => {
+  // The point of the feature: in one arm of an interferometer the sweep walks
+  // the output through its fringes instead of holding one point on them.
+  const scene = parseSketch(MZ);
+  const delay = scene.elements.find(el => el.type === 'delayline');
+  Object.assign(delay.params, {
+    moveMode: 'linear', delayMinMm: 0, delayMaxMm: 532e-6, freqHz: 1,
+  });
+  const camera = scene.elements.filter(el => el.type === 'camera')[0];
+  const at = seconds => {
+    const animated = scene.elements.map(el =>
+      (el.type === 'delayline' ? { ...el, _animationTimeS: seconds } : el));
+    traceAll(animated);
+    return detectorReading(camera.id).signal;
+  };
+  // Half a period walks a full wavelength: bright, dark, bright.
+  assert.ok(Math.abs(at(0) - 1) < 1e-4, 'starts at the near end, fully bright');
+  assert.ok(Math.abs(at(0.25) - 0) < 1e-4, 'half a wave in, fully dark');
+  assert.ok(Math.abs(at(0.5) - 1) < 1e-4, 'a full wave, bright again');
 });

@@ -1360,6 +1360,30 @@ function syncZOffset(timeSeconds, freqXY, travelZ, steps) {
 // [0, travel], starting at 0 (the placed position, the shortest path) and
 // moving only in the positive-x direction — away from the mouth, which
 // always lengthens the round-trip optical path, never shortens it.
+// How far a swept delay line travels between its two ends.
+export function delayLineSweepSpanMm(params = {}) {
+  const lo = Math.max(0, Number(params.delayMinMm) || 0);
+  const hi = Math.max(0, Number(params.delayMaxMm) || 0);
+  return hi - lo;
+}
+
+// The optical path the delay line is adding right now. A stage sweeps and
+// retraces -- a carriage cannot fly back instantly -- so the motion is a
+// triangle between the two ends, on the same illustrative wall clock the
+// retroreflector and the piezo stage use. Real stages move at hertz, which is
+// exactly what that clock shows.
+export function delayLineDelayAt(params = {}, timeSeconds = 0) {
+  if ((params.moveMode || 'static') !== 'linear') {
+    return Math.max(0, Number(params.delayMm) || 0);
+  }
+  const lo = Math.max(0, Number(params.delayMinMm) || 0);
+  const span = delayLineSweepSpanMm(params);
+  if (!(span > 0)) return lo;
+  const freq = Math.min(10, Math.max(0.01, Number(params.freqHz) || 1));
+  // triangleWave is centred on zero, so shift it onto [lo, lo + span].
+  return lo + span / 2 + triangleWave(timeSeconds, freq, span);
+}
+
 export function retroOffsetAt(params = {}, timeSeconds = 0) {
   if (params.moveMode !== 'linear' || !Number.isFinite(timeSeconds)) return { x: 0, y: 0 };
   const travel = Math.min(200, Math.max(0, params.travel ?? 50));
@@ -3403,7 +3427,28 @@ export const registry = {
   delayline: {
     label: 'Mechanical delay line', category: 'Pulse Timing', size: { w: 40, h: 32 },
     params: [
-      { key: 'delayMm', label: 'Extra optical path (mm)', type: 'number', min: 0, max: 100000, step: 0.0001, def: 100 },
+      {
+        key: 'moveMode', label: 'Motion', type: 'select', def: 'static',
+        options: [['static', 'Static — hold one delay'], ['linear', 'Periodic sweep']],
+      },
+      { key: 'delayMm', label: 'Extra optical path (mm)', type: 'number', min: 0, max: 100000, step: 0.0001, def: 100, show: p => (p.moveMode || 'static') === 'static' },
+      // A swept stage retraces rather than flying back -- the carriage has to
+      // come home the way it went out. Defaults span a couple of wavelengths
+      // at 532 nm, which is the range that reads as moving fringes rather than
+      // as a blur; a stage really does dither over microns for lock-in work.
+      { key: 'delayMinMm', label: 'Sweep from (mm)', type: 'number', min: 0, max: 100000, step: 0.0001, def: 0, show: p => p.moveMode === 'linear' },
+      { key: 'delayMaxMm', label: 'Sweep to (mm)', type: 'number', min: 0, max: 100000, step: 0.0001, def: 0.001, show: p => p.moveMode === 'linear' },
+      { key: 'freqHz', label: 'Sweep frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 1, show: p => p.moveMode === 'linear' },
+      {
+        key: 'delaySweepReadout', label: 'Sweep spans', type: 'readout',
+        show: p => p.moveMode === 'linear',
+        readout: params => {
+          const span = Math.abs(delayLineSweepSpanMm(params));
+          if (!(span > 0)) return 'Nothing — the two ends are equal';
+          const waves = span * 1e6 / 532;
+          return `${(span * 1e3).toFixed(2)} µm · ${waves.toFixed(1)} waves at 532 nm`;
+        },
+      },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
     ],
     size_: el => ({ w: 40, h: (el.params.aperture || 24) + 8 }),
@@ -3418,7 +3463,10 @@ export const registry = {
     },
     surfaces(el) {
       const h = (el.params.aperture || 24) / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'delay', data: { delayMm: el.params.delayMm } }];
+      return [{
+        x1: 0, y1: -h, x2: 0, y2: h, kind: 'delay',
+        data: { delayMm: delayLineDelayAt(el.params, el._animationTimeS || 0) },
+      }];
     },
   },
 
@@ -4174,7 +4222,7 @@ const DIRECT = {
   phasemodulator: { resize: { y: 'aperture' }, tune: { key: 'depthDeg', short: 'depth' } },
   aotf: { resize: { y: 'aperture' } },
   phaseplate: { resize: { y: 'aperture' }, tune: { key: 'opdUm', short: 'OPD' } },
-  delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL' } },
+  delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'ΔL', when: p => (p.moveMode || 'static') === 'static' } },
   pulsecompressor: { resize: { y: 'aperture' }, tune: { key: 'gddFs2', short: 'GDD' } },
   eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
@@ -4266,7 +4314,7 @@ const ELEMENT_HELP = {
   phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',
   aod: 'Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.',
   aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
-  delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis.',
+  delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis; the stage can hold one delay or sweep between two.',
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',

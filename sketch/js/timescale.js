@@ -91,6 +91,8 @@ export function elementDriveHz(el) {
       return p.driveMode && p.driveMode !== 'static' && p.freqMHz > 0 ? p.freqMHz * 1e6 : null;
     case 'eom':
       return p.modulate && p.driveMode === 'switching' && p.switchFreqMHz > 0 ? p.switchFreqMHz * 1e6 : null;
+    case 'delayline':
+      return p.moveMode === 'linear' && p.freqHz > 0 ? p.freqHz : null;
     case 'stage':
       if (!p.pzMode || p.pzMode === 'static') return null;
       // the slower of the two active axes governs what you need to watch
@@ -110,6 +112,7 @@ const MOTION_LABELS = {
   chopper: 'the chopper',
   aom: 'AOM modulation',
   aod: 'AOD scanning',
+  delayline: 'the delay-line sweep',
   phasemodulator: 'phase modulation',
   eom: 'EOM switching',
   stage: 'the piezo stage',
@@ -120,7 +123,7 @@ const MOTION_LABELS = {
 // canvas.js's galvoAnimationSeconds()/setMechanicsMode() — so no numeric
 // scale can make them "correct." Their presence recommends the dedicated
 // Mechanics mode outright, in place of a numeric pick.
-const ILLUSTRATIVE_ONLY_TYPES = new Set(['stage', 'retroreflector']);
+const ILLUSTRATIVE_ONLY_TYPES = new Set(['stage', 'retroreflector', 'delayline']);
 
 // Pick the scale that keeps the slowest moving thing on the table watchable.
 // Returns either a numeric scale or the Mechanics mode, plus what drove the
