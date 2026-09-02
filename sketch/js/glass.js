@@ -213,7 +213,7 @@ export function correlationShapeValue(delayFs, traceFwhmFs, shape = 'gauss') {
 export function crossCorrelationPair(reading) {
   const trains = Array.isArray(reading?.pulse?.trains) ? reading.pulse.trains : [];
   if (!reading?.pulse) return { reason: 'NO PULSE' };
-  if (trains.length < 2) return { reason: 'NEEDS A SECOND SOURCE' };
+  if (trains.length < 2) return { reason: 'ONLY ONE BEAM PRESENT' };
   if (trains.length > 2) return { reason: `${trains.length} TRAINS — NEEDS EXACTLY 2` };
   const arm = train => ({
     pulseWidthFs: Number.isFinite(train.stretchedPulseWidthFs)
@@ -231,7 +231,8 @@ export function crossCorrelationPair(reading) {
 // silently rescaled itself would hide the very motion the display exists to
 // show -- two pulses walking toward each other keep the same apparent speed
 // only if the axis holds still.
-export const CROSS_SCOPE_SPANS_PS = [1, 5, 10, 25];
+export const CROSS_SCOPE_SPANS_PS = [0.5, 1, 5, 10, 25];
+export const DEFAULT_SCOPE_SPAN_PS = 0.5;
 
 export function crossScopeHalfSpanFs(params) {
   const chosen = Number(params?.timeSpanPs);
@@ -244,7 +245,23 @@ export function crossScopeHalfSpanFs(params) {
     return CROSS_SCOPE_SPANS_PS.reduce((best, ps) => (Math.abs(ps - half) < Math.abs(best - half) ? ps : best),
       CROSS_SCOPE_SPANS_PS[0]) * 1000;
   }
-  return 25000;
+  return DEFAULT_SCOPE_SPAN_PS * 1000;
+}
+
+// The timebase that shows a given pair best: the narrowest setting that still
+// holds both pulses with air around them. Picked once, when the mode is
+// switched -- not continuously, because a window that re-ranged itself while
+// the pulses moved would hide the very motion the display exists to show.
+export function bestScopeSpanPs(traceFwhmFs, separationFs, widestPulseFs = 0) {
+  // Peaks sit either side of the origin, so each is half the separation out;
+  // a quarter more than that keeps them clear of the edge. The second term
+  // stops a merged pair from being crushed into a single pixel.
+  const needed = Math.max(
+    Math.abs(Number(separationFs) || 0) / 2 * 1.25,
+    Math.max(Number(traceFwhmFs) || 0, Number(widestPulseFs) || 0) * 2,
+  );
+  return CROSS_SCOPE_SPANS_PS.find(ps => ps * 1000 >= needed)
+    ?? CROSS_SCOPE_SPANS_PS[CROSS_SCOPE_SPANS_PS.length - 1];
 }
 
 // A cross-correlation differs from an autocorrelation in the two ways that

@@ -1,267 +1,270 @@
 {
-  "app": "optics2d",
-  "version": 1,
-  "elements": [
-    {
-      "id": "e1",
-      "type": "textlabel",
-      "x": 40,
-      "y": 40,
-      "rot": 0,
-      "params": {
-        "text": "Ultrashort pulse chirping \u2014 the same 150 fs pulse, measured three ways",
-        "fontSize": 18,
-        "fill": "#333333"
-      }
-    },
-    {
-      "id": "e2",
-      "type": "textlabel",
-      "x": 40,
-      "y": 70,
-      "rot": 0,
-      "params": {
-        "text": "532 nm \u00b7 transform-limited Gaussian \u00b7 autocorrelator on each arm",
-        "fontSize": 13,
-        "fill": "#666666"
-      }
-    },
-    {
-      "id": "e3",
-      "type": "textlabel",
-      "x": 40,
-      "y": 130,
-      "rot": 0,
-      "params": {
-        "text": "1 \u2014 REFERENCE: nothing in the beam. 150 fs in, 150 fs measured.",
-        "fontSize": 14,
-        "fill": "#276aa2"
-      }
-    },
-    {
-      "id": "e4",
-      "type": "pulsedlaser",
-      "x": 100,
-      "y": 195,
-      "rot": 0,
-      "params": {
-        "wavelength": 532,
-        "beamMode": "line",
-        "pulseWidthFs": 150,
-        "transformLimited": true,
-        "pulseShape": "gauss",
-        "bandwidth": 0,
-        "repRateMHz": 80,
-        "avgPowerW": 0.1,
-        "showPulse": true
-      },
-      "label": "150 fs \u00b7 532 nm",
-      "showLabel": true,
-      "labelPos": "t"
-    },
-    {
-      "id": "e5",
-      "type": "autocorrelator",
-      "x": 470,
-      "y": 195,
-      "rot": 0,
-      "params": {
-        "aperture": 34,
-        "assumedShape": "gauss"
-      },
-      "label": "autocorrelator",
-      "showLabel": true,
-      "labelPos": "b"
-    },
-    {
-      "id": "e6",
-      "type": "display",
-      "x": 790,
-      "y": 195,
-      "rot": 0,
-      "params": {
-        "sensorId": "e5",
-        "displayScale": 1.7,
-        "screenOn": true,
-        "displayView": "main"
-      }
-    },
-    {
-      "id": "e7",
-      "type": "textlabel",
-      "x": 40,
-      "y": 345,
-      "rot": 0,
-      "params": {
-        "text": "2 \u2014 CHIRPED: 100 mm of N-SF11 adds +38 680 fs\u00b2. The pulse stretches to 731 fs.",
-        "fontSize": 14,
-        "fill": "#8f2d2d"
-      }
-    },
-    {
-      "id": "e8",
-      "type": "pulsedlaser",
-      "x": 100,
-      "y": 410,
-      "rot": 0,
-      "params": {
-        "wavelength": 532,
-        "beamMode": "line",
-        "pulseWidthFs": 150,
-        "transformLimited": true,
-        "pulseShape": "gauss",
-        "bandwidth": 0,
-        "repRateMHz": 80,
-        "avgPowerW": 0.1,
-        "showPulse": true
-      }
-    },
-    {
-      "id": "e9",
-      "type": "glassrod",
-      "x": 320,
-      "y": 410,
-      "rot": 0,
-      "params": {
-        "material": "nsf11",
-        "rodlen": 100,
-        "dia": 20,
-        "ior": 1.52
-      },
-      "label": "N-SF11 \u00b7 100 mm",
-      "showLabel": true,
-      "labelPos": "b"
-    },
-    {
-      "id": "e10",
-      "type": "autocorrelator",
-      "x": 470,
-      "y": 410,
-      "rot": 0,
-      "params": {
-        "aperture": 34,
-        "assumedShape": "gauss"
-      }
-    },
-    {
-      "id": "e11",
-      "type": "display",
-      "x": 790,
-      "y": 410,
-      "rot": 0,
-      "params": {
-        "sensorId": "e10",
-        "displayScale": 1.7,
-        "screenOn": true,
-        "displayView": "main"
-      }
-    },
-    {
-      "id": "e12",
-      "type": "textlabel",
-      "x": 40,
-      "y": 560,
-      "rot": 0,
-      "params": {
-        "text": "3 \u2014 RECOMPRESSED: a compressor at \u221238 680 fs\u00b2 cancels it. Back to 150 fs.",
-        "fontSize": 14,
-        "fill": "#1f7a4d"
-      }
-    },
-    {
-      "id": "e13",
-      "type": "pulsedlaser",
-      "x": 100,
-      "y": 625,
-      "rot": 0,
-      "params": {
-        "wavelength": 532,
-        "beamMode": "line",
-        "pulseWidthFs": 150,
-        "transformLimited": true,
-        "pulseShape": "gauss",
-        "bandwidth": 0,
-        "repRateMHz": 80,
-        "avgPowerW": 0.1,
-        "showPulse": true
-      }
-    },
-    {
-      "id": "e14",
-      "type": "glassrod",
-      "x": 300,
-      "y": 625,
-      "rot": 0,
-      "params": {
-        "material": "nsf11",
-        "rodlen": 100,
-        "dia": 20,
-        "ior": 1.52
-      }
-    },
-    {
-      "id": "e15",
-      "type": "pulsecompressor",
-      "x": 420,
-      "y": 625,
-      "rot": 0,
-      "params": {
-        "gddFs2": -38680,
-        "aperture": 24,
-        "transEff": 100
-      },
-      "label": "\u221238 680 fs\u00b2",
-      "showLabel": true,
-      "labelPos": "b"
-    },
-    {
-      "id": "e16",
-      "type": "autocorrelator",
-      "x": 500,
-      "y": 625,
-      "rot": 0,
-      "params": {
-        "aperture": 34,
-        "assumedShape": "gauss"
-      }
-    },
-    {
-      "id": "e17",
-      "type": "display",
-      "x": 790,
-      "y": 625,
-      "rot": 0,
-      "params": {
-        "sensorId": "e16",
-        "displayScale": 1.7,
-        "screenOn": true,
-        "displayView": "main"
-      }
-    },
-    {
-      "id": "e18",
-      "type": "textlabel",
-      "x": 40,
-      "y": 745,
-      "rot": 0,
-      "params": {
-        "text": "Each screen shows the intensity autocorrelation: delay on the x-axis, the half-maximum",
-        "fontSize": 12,
-        "fill": "#666666"
-      }
-    },
-    {
-      "id": "e19",
-      "type": "textlabel",
-      "x": 40,
-      "y": 767,
-      "rot": 0,
-      "params": {
-        "text": "chord that is the measurement, and the duration inferred by dividing out the shape factor.",
-        "fontSize": 12,
-        "fill": "#666666"
-      }
-    }
-  ],
-  "beams": []
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "e1",
+   "type": "textlabel",
+   "x": 40,
+   "y": 40,
+   "rot": 0,
+   "params": {
+    "text": "Ultrashort pulse chirping — the same 150 fs pulse, measured three ways",
+    "fontSize": 18,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "e2",
+   "type": "textlabel",
+   "x": 40,
+   "y": 70,
+   "rot": 0,
+   "params": {
+    "text": "532 nm · transform-limited Gaussian · autocorrelator on each arm",
+    "fontSize": 13,
+    "fill": "#666666"
+   }
+  },
+  {
+   "id": "e3",
+   "type": "textlabel",
+   "x": 40,
+   "y": 130,
+   "rot": 0,
+   "params": {
+    "text": "1 — REFERENCE: nothing in the beam. 150 fs in, 150 fs measured.",
+    "fontSize": 14,
+    "fill": "#276aa2"
+   }
+  },
+  {
+   "id": "e4",
+   "type": "pulsedlaser",
+   "x": 100,
+   "y": 195,
+   "rot": 0,
+   "params": {
+    "wavelength": 532,
+    "beamMode": "line",
+    "pulseWidthFs": 150,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "bandwidth": 0,
+    "repRateMHz": 80,
+    "avgPowerW": 0.1,
+    "showPulse": true
+   },
+   "label": "150 fs · 532 nm",
+   "showLabel": true,
+   "labelPos": "t"
+  },
+  {
+   "id": "e5",
+   "type": "autocorrelator",
+   "x": 470,
+   "y": 195,
+   "rot": 0,
+   "params": {
+    "aperture": 34,
+    "assumedShape": "gauss",
+    "timeSpanPs": 1
+   },
+   "label": "autocorrelator",
+   "showLabel": true,
+   "labelPos": "b"
+  },
+  {
+   "id": "e6",
+   "type": "display",
+   "x": 790,
+   "y": 195,
+   "rot": 0,
+   "params": {
+    "sensorId": "e5",
+    "displayScale": 1.7,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "e7",
+   "type": "textlabel",
+   "x": 40,
+   "y": 345,
+   "rot": 0,
+   "params": {
+    "text": "2 — CHIRPED: 100 mm of N-SF11 adds +38 680 fs². The pulse stretches to 731 fs.",
+    "fontSize": 14,
+    "fill": "#8f2d2d"
+   }
+  },
+  {
+   "id": "e8",
+   "type": "pulsedlaser",
+   "x": 100,
+   "y": 410,
+   "rot": 0,
+   "params": {
+    "wavelength": 532,
+    "beamMode": "line",
+    "pulseWidthFs": 150,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "bandwidth": 0,
+    "repRateMHz": 80,
+    "avgPowerW": 0.1,
+    "showPulse": true
+   }
+  },
+  {
+   "id": "e9",
+   "type": "glassrod",
+   "x": 320,
+   "y": 410,
+   "rot": 0,
+   "params": {
+    "material": "nsf11",
+    "rodlen": 100,
+    "dia": 20,
+    "ior": 1.52
+   },
+   "label": "N-SF11 · 100 mm",
+   "showLabel": true,
+   "labelPos": "b"
+  },
+  {
+   "id": "e10",
+   "type": "autocorrelator",
+   "x": 470,
+   "y": 410,
+   "rot": 0,
+   "params": {
+    "aperture": 34,
+    "assumedShape": "gauss",
+    "timeSpanPs": 1
+   }
+  },
+  {
+   "id": "e11",
+   "type": "display",
+   "x": 790,
+   "y": 410,
+   "rot": 0,
+   "params": {
+    "sensorId": "e10",
+    "displayScale": 1.7,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "e12",
+   "type": "textlabel",
+   "x": 40,
+   "y": 560,
+   "rot": 0,
+   "params": {
+    "text": "3 — RECOMPRESSED: a compressor at −38 680 fs² cancels it. Back to 150 fs.",
+    "fontSize": 14,
+    "fill": "#1f7a4d"
+   }
+  },
+  {
+   "id": "e13",
+   "type": "pulsedlaser",
+   "x": 100,
+   "y": 625,
+   "rot": 0,
+   "params": {
+    "wavelength": 532,
+    "beamMode": "line",
+    "pulseWidthFs": 150,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "bandwidth": 0,
+    "repRateMHz": 80,
+    "avgPowerW": 0.1,
+    "showPulse": true
+   }
+  },
+  {
+   "id": "e14",
+   "type": "glassrod",
+   "x": 300,
+   "y": 625,
+   "rot": 0,
+   "params": {
+    "material": "nsf11",
+    "rodlen": 100,
+    "dia": 20,
+    "ior": 1.52
+   }
+  },
+  {
+   "id": "e15",
+   "type": "pulsecompressor",
+   "x": 420,
+   "y": 625,
+   "rot": 0,
+   "params": {
+    "gddFs2": -38680,
+    "aperture": 24,
+    "transEff": 100
+   },
+   "label": "−38 680 fs²",
+   "showLabel": true,
+   "labelPos": "b"
+  },
+  {
+   "id": "e16",
+   "type": "autocorrelator",
+   "x": 500,
+   "y": 625,
+   "rot": 0,
+   "params": {
+    "aperture": 34,
+    "assumedShape": "gauss",
+    "timeSpanPs": 1
+   }
+  },
+  {
+   "id": "e17",
+   "type": "display",
+   "x": 790,
+   "y": 625,
+   "rot": 0,
+   "params": {
+    "sensorId": "e16",
+    "displayScale": 1.7,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "e18",
+   "type": "textlabel",
+   "x": 40,
+   "y": 745,
+   "rot": 0,
+   "params": {
+    "text": "Each screen shows the intensity autocorrelation: delay on the x-axis, the half-maximum",
+    "fontSize": 12,
+    "fill": "#666666"
+   }
+  },
+  {
+   "id": "e19",
+   "type": "textlabel",
+   "x": 40,
+   "y": 767,
+   "rot": 0,
+   "params": {
+    "text": "chord that is the measurement, and the duration inferred by dividing out the shape factor.",
+    "fontSize": 12,
+    "fill": "#666666"
+   }
+  }
+ ],
+ "beams": []
 }

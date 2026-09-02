@@ -4349,6 +4349,10 @@ export const wikiEntries = [
         <p>The Autocorrelator reports the pulse duration of whatever pulse train reaches its
         face — and reports it the way a real instrument does, as a trace width with an
         assumption divided out, rather than as a number read off the source.</p>
+        <p><strong>Time span</strong> sets the horizontal axis in both modes &mdash; &plusmn;0.5,
+        &plusmn;1, &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps &mdash; and it is a setting rather
+        than an automatic, so two traces of different duration on the same span look as different
+        as they are. A trace too wide for the window is reported rather than clipped.</p>
         <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
         (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
         instrument works out for itself, because in a laboratory it is not something the
@@ -4388,20 +4392,26 @@ export const wikiEntries = [
         converge. Bring the pulses together and watch the middle peak light up &mdash; that is
         the whole procedure, and it is what a real cross-correlator detects. At the meeting
         point the readout says <strong>TIME ZERO</strong> and the overlap reads 100%.</p>
-        <p>The window is a <strong>timebase you choose</strong> &mdash; &plusmn;1, &plusmn;5,
-        &plusmn;10 or &plusmn;25&nbsp;ps &mdash; and it does not move. That is deliberate, and it
-        matters more than it sounds: a window that resized itself to fit would rescale the axis
-        under the pulses exactly as they approached, so they would never appear to travel. Fixing
-        the axis is what lets you watch them walk. It is the same reason a real oscilloscope makes
-        the timebase a knob rather than an automatic.</p>
+        <p>Switching to cross-correlation also picks a sensible <strong>time span</strong> once,
+        framing whatever separation the arms currently have &mdash; a 3&nbsp;ps mismatch selects
+        &plusmn;5&nbsp;ps, a merged pair selects &plusmn;0.5&nbsp;ps. After that the setting is
+        yours, and it does not move again. That combination is deliberate: re-ranging on every
+        frame would rescale the axis under the pulses exactly as they approached, so they would
+        never appear to travel, and fixing the axis is what lets you watch them walk. It is the
+        same reason a real oscilloscope makes the timebase a knob rather than an automatic, and
+        the same reason it is worth setting once for you rather than leaving you to find the
+        pulses in an arbitrary window.</p>
         <p>Pick a wide span to find the pulses, then narrow it as they close. When they sit beyond
         the window the screen stops drawing and reports the gap instead &mdash; how far apart they
         are, and how many millimetres to take out of which arm, since a delay line is set in
-        millimetres rather than femtoseconds.
-        <a href="../../sketch/?demo=crosscorrelator">Open the two-arm bench</a> and try it: on its
-        &plusmn;1&nbsp;ps timebase the scene opens 0.06&nbsp;mm short of zero, and setting the delay
-        line to 200&nbsp;mm merges the pulses. Take it to 190&nbsp;mm and they walk apart off the
-        edges; widen the span to &plusmn;25&nbsp;ps and they come back into view.</p>
+        millimetres rather than femtoseconds. With only one beam arriving there is nothing to
+        correlate, and it says <strong>only one beam present</strong> rather than quietly showing
+        an empty axis.</p>
+        <p>The bench below the autocorrelation example does the whole thing on its own: time zero
+        sits at 100.000&nbsp;mm and the delay line sweeps &plusmn;0.2&nbsp;mm either side of it, so
+        the pulses walk through each other and back every ten seconds while the sum-frequency peak
+        flares up at the crossing. Stop the sweep and hunt it by hand to see how sharp the merge
+        is &mdash; a hundredth of a millimetre either way is 33&nbsp;fs.</p>
         <p>Beside the plot the inspector carries the numbers the screen has no room for,
         including the autocorrelation each arm would give <em>on its own</em>. Those widths
         deliberately stay off the plot: on an arrival-time axis what physically sits at each
@@ -4459,6 +4469,14 @@ export const wikiEntries = [
         where the delay tunes the Raman shift rather than merely switching the signal on, is
         described above but not modelled.</p>`,
     },
+    extraDemos: [{
+      demo: 'crosscorrelator',
+      heading: 'The same instrument in cross-correlation mode',
+      caption: 'Two synchronized sources — 790&nbsp;nm and 1030&nbsp;nm — combined on a dichroic and read by one cross-correlator. '
+        + 'The delay line sweeps through time zero at 100.000&nbsp;mm and back, so the two pulses walk across each other every ten '
+        + 'seconds while the sum-frequency peak flares up between them at the crossing. Click the delay line to stop the sweep and '
+        + 'hunt time zero by hand.',
+    }],
     related: ['pulsedlaser', 'glassrod', 'pulsecompressor', 'detector', 'spectrometer'],
     citations: [
       { label: 'R. Paschotta, “Autocorrelators,” RP Photonics Encyclopedia; doi:10.61835/y7n', url: 'https://www.rp-photonics.com/autocorrelators.html' },
