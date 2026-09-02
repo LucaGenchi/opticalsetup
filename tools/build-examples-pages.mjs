@@ -26,7 +26,7 @@
 // validation below throws otherwise, catching a typo'd `match` or a
 // renamed/removed example file instead of silently shipping a stale page).
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { registry, createElement, getSize } from '../sketch/js/elements.js';
@@ -111,7 +111,36 @@ function referencesBlock(citations) {
       </ol>`;
 }
 
-function pageHTML(entry, manifestEntry) {
+// Every embed is the same fixed height by default, which suits a scene that is
+// wider than it is tall and squashes one that is not: a three-setup comparison
+// stacked vertically fits to a fifth of full size, at which its annotations are
+// a few pixels tall. Give the frame the shape of the scene instead, bounded so
+// no page ends up scrolling past its own diagram.
+const EMBED_WIDTH = 760;
+const EMBED_MIN_H = 440;
+const EMBED_MAX_H = 900;
+// Below this the annotations stop being readable: a 13 px label drawn at a
+// fifth of full size is under 3 px tall.
+const MIN_LEGIBLE_ZOOM = 0.4;
+
+function embedHeightFor(scene) {
+  const points = (scene?.elements || []).filter(el => Number.isFinite(el.x) && Number.isFinite(el.y));
+  if (points.length < 2) return EMBED_MIN_H;
+  const xs = points.map(el => el.x), ys = points.map(el => el.y);
+  const width = Math.max(...xs) - Math.min(...xs) + 200;
+  const height = Math.max(...ys) - Math.min(...ys) + 200;
+  if (!(width > 0) || !(height > 0)) return EMBED_MIN_H;
+  // zoomFit takes the smaller of the two ratios, so a scene taller than the
+  // frame's shape is the one that gets shrunk. Leave every embed at the
+  // standard height unless that would squash its scene below legibility, and
+  // then give it only the height it needs.
+  const zoomAtDefault = Math.min(EMBED_WIDTH / width, EMBED_MIN_H / height);
+  if (zoomAtDefault >= MIN_LEGIBLE_ZOOM) return EMBED_MIN_H;
+  const needed = Math.min(MIN_LEGIBLE_ZOOM, EMBED_WIDTH / width) * height;
+  return Math.round(Math.min(EMBED_MAX_H, Math.max(EMBED_MIN_H, needed)));
+}
+
+function pageHTML(entry, manifestEntry, scene) {
   const base = '../..';
   // Only link a related component if it both still exists in the registry
   // and has a built wiki page — same discipline as the wiki's own
@@ -145,7 +174,7 @@ ${header(base)}
 
       <a class="place-cta" href="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}">Open in the canvas →</a>
 
-      <div class="embed-wrap">
+      <div class="embed-wrap" style="height: ${embedHeightFor(scene)}px;">
         <iframe class="embed-frame" src="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}"
           title="${esc(entry.title)} — click any component to see its live specs"
           loading="lazy"></iframe>
@@ -256,7 +285,19 @@ async function main() {
   for (const { entry, manifestEntry } of pairs) {
     const pageDir = join(OUT_DIR, manifestEntry.slug);
     await mkdir(pageDir, { recursive: true });
-    await writeFile(join(pageDir, 'index.html'), pageHTML(entry, manifestEntry), 'utf-8');
+    // The scene itself decides how tall its embed needs to be.
+    let scene = null;
+    try {
+      // manifestEntry.path is URL-encoded and relative to sketch/.
+      const relative = decodeURIComponent(manifestEntry.path).replace(/^\.\.\//, '');
+      scene = JSON.parse(await readFile(join(ROOT, relative), 'utf-8'));
+    } catch (err) {
+      // A missing scene is a broken build, not a cosmetic detail: the page
+      // would silently get a default-shaped embed for a scene that needs
+      // another shape.
+      throw new Error(`Could not read the scene for "${manifestEntry.slug}": ${err.message}`);
+    }
+    await writeFile(join(pageDir, 'index.html'), pageHTML(entry, manifestEntry, scene), 'utf-8');
   }
   await writeFile(join(OUT_DIR, 'index.html'), hubHTML(pairs), 'utf-8');
 
