@@ -1360,10 +1360,20 @@ function syncZOffset(timeSeconds, freqXY, travelZ, steps) {
 // [0, travel], starting at 0 (the placed position, the shortest path) and
 // moving only in the positive-x direction — away from the mouth, which
 // always lengthens the round-trip optical path, never shortens it.
-// How far a swept delay line travels between its two ends.
+// The two ends of a swept delay line, ordered. The controls are bounded
+// independently, so nothing stops "from" being set beyond "to" -- and a stage
+// asked to travel between two points does not care which was named first.
+// Ordering them here is what keeps a reversed pair a working sweep rather
+// than a frozen one that still advertises its span.
+export function delayLineSweepRangeMm(params = {}) {
+  const a = Math.max(0, Number(params.delayMinMm) || 0);
+  const b = Math.max(0, Number(params.delayMaxMm) || 0);
+  return [Math.min(a, b), Math.max(a, b)];
+}
+
+// How far it travels between them. Never negative.
 export function delayLineSweepSpanMm(params = {}) {
-  const lo = Math.max(0, Number(params.delayMinMm) || 0);
-  const hi = Math.max(0, Number(params.delayMaxMm) || 0);
+  const [lo, hi] = delayLineSweepRangeMm(params);
   return hi - lo;
 }
 
@@ -1376,8 +1386,8 @@ export function delayLineDelayAt(params = {}, timeSeconds = 0) {
   if ((params.moveMode || 'static') !== 'linear') {
     return Math.max(0, Number(params.delayMm) || 0);
   }
-  const lo = Math.max(0, Number(params.delayMinMm) || 0);
-  const span = delayLineSweepSpanMm(params);
+  const [lo, hi] = delayLineSweepRangeMm(params);
+  const span = hi - lo;
   if (!(span > 0)) return lo;
   const freq = Math.min(10, Math.max(0.01, Number(params.freqHz) || 1));
   // triangleWave is centred on zero, so shift it onto [lo, lo + span].
@@ -3443,8 +3453,8 @@ export const registry = {
         key: 'delaySweepReadout', label: 'Sweep spans', type: 'readout',
         show: p => p.moveMode === 'linear',
         readout: params => {
-          const span = Math.abs(delayLineSweepSpanMm(params));
-          if (!(span > 0)) return 'Nothing — the two ends are equal';
+          const span = delayLineSweepSpanMm(params);
+          if (!(span > 0)) return 'Nothing — the two ends are the same';
           const waves = span * 1e6 / 532;
           return `${(span * 1e3).toFixed(2)} µm · ${waves.toFixed(1)} waves at 532 nm`;
         },

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  createElement, registry, delayLineDelayAt, delayLineSweepSpanMm,
+  createElement, registry, delayLineDelayAt, delayLineSweepSpanMm, delayLineSweepRangeMm,
 } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
@@ -224,4 +224,35 @@ test('a swept delay line moves the fringes it is sitting in', () => {
   assert.ok(Math.abs(at(0) - 1) < 1e-4, 'starts at the near end, fully bright');
   assert.ok(Math.abs(at(0.25) - 0) < 1e-4, 'half a wave in, fully dark');
   assert.ok(Math.abs(at(0.5) - 1) < 1e-4, 'a full wave, bright again');
+});
+
+
+test('a delay-line sweep works whichever end was typed first', () => {
+  // The two controls are bounded independently, so nothing stops "from" being
+  // set beyond "to". A stage asked to travel between two points does not care
+  // which was named first, and previously this produced a negative span: the
+  // sweep froze at its starting value while the readout, taking an absolute
+  // value of its own, went on advertising the travel.
+  const forward = { moveMode: 'linear', delayMinMm: 0, delayMaxMm: 0.001, freqHz: 1 };
+  const reversed = { moveMode: 'linear', delayMinMm: 0.001, delayMaxMm: 0, freqHz: 1 };
+
+  assert.equal(delayLineSweepSpanMm(reversed), delayLineSweepSpanMm(forward));
+  assert.ok(delayLineSweepSpanMm(reversed) > 0, 'a reversed pair still spans something');
+  assert.deepEqual(delayLineSweepRangeMm(reversed), delayLineSweepRangeMm(forward));
+  for (const t of [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1]) {
+    closeToMm(delayLineDelayAt(reversed, t), delayLineDelayAt(forward, t));
+  }
+  // It really moves, rather than holding one end.
+  const visited = new Set(Array.from({ length: 20 }, (_, i) =>
+    delayLineDelayAt(reversed, i / 20).toFixed(9)));
+  assert.ok(visited.size > 5, 'a reversed sweep must not be frozen');
+
+  // Equal ends are the one case that legitimately holds still, and the
+  // readout has to say so rather than claim a span.
+  const held = { moveMode: 'linear', delayMinMm: 0.001, delayMaxMm: 0.001, freqHz: 1 };
+  assert.equal(delayLineSweepSpanMm(held), 0);
+  closeToMm(delayLineDelayAt(held, 0.37), 0.001);
+  const readout = registry.delayline.params.find(p => p.key === 'delaySweepReadout').readout;
+  assert.match(readout(held), /Nothing/);
+  assert.match(readout(reversed), /1\.00 µm/);
 });
