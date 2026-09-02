@@ -14,6 +14,7 @@ const PRECACHE_PATHS = [
   "./icons/apple-touch-icon.png",
   "./js/acousto-optic.js",
   "./js/aotf.js",
+  "./js/electro-optic.js",
   "./js/camera-profile.js",
   "./js/canvas.js",
   "./js/community-data.js",

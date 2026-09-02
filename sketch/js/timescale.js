@@ -87,6 +87,8 @@ export function elementDriveHz(el) {
       return p.modulate && p.modFreqMHz > 0 ? p.modFreqMHz * 1e6 : null;
     case 'aod':
       return p.scanMode && p.scanMode !== 'static' && p.scanFreqKHz > 0 ? p.scanFreqKHz * 1e3 : null;
+    case 'phasemodulator':
+      return p.driveMode && p.driveMode !== 'static' && p.freqMHz > 0 ? p.freqMHz * 1e6 : null;
     case 'eom':
       return p.modulate && p.driveMode === 'switching' && p.switchFreqMHz > 0 ? p.switchFreqMHz * 1e6 : null;
     case 'stage':
@@ -108,6 +110,7 @@ const MOTION_LABELS = {
   chopper: 'the chopper',
   aom: 'AOM modulation',
   aod: 'AOD scanning',
+  phasemodulator: 'phase modulation',
   eom: 'EOM switching',
   stage: 'the piezo stage',
   retroreflector: 'the delay line',

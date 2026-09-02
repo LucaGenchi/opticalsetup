@@ -2002,12 +2002,12 @@ export const wikiEntries = [
         they meet, so a photodetector on a screen shows the modulated train and the element
         works as a pulse picker.</p>`,
       formulas: [],
-      limitations: `<p>One of the three types is modelled. There is no phase-modulator
-        mode: the element always acts on polarisation, so it cannot be used for the
-        sideband generation, cavity locking or interferometric amplitude modulation that
-        make up most of what electro-optic modulators are used for. Building a Mach–Zehnder
-        modulator here is therefore not possible — the interferometer is, but the driven
-        phase in one arm is not.</p>
+      limitations: `<p>This element is the polarisation modulator alone. The phase
+        modulator is a separate component — see
+        <a href="../phasemodulator/">Phase modulator</a> — and the amplitude modulator is
+        built rather than provided: a polariser after this one, which works with any source,
+        or a phase modulator in one arm of an interferometer, which needs a sized
+        monochromatic CW laser for the arms to interfere at all.</p>
         <p>Nothing here is a voltage. Retardance is set in degrees directly, so there is no
         half-wave voltage, no drive amplitude, and no relation between the two — which also
         means the linearity of the Pockels effect, the whole basis of the device, is
@@ -2021,7 +2021,7 @@ export const wikiEntries = [
         insertion loss. Resonant and travelling-wave designs, which is how real devices
         reach gigahertz, have no counterpart.</p>`,
     },
-    related: ['polarizer', 'pbs', 'qwp', 'hwp', 'aom'],
+    related: ['phasemodulator', 'polarizer', 'pbs', 'qwp', 'aom'],
     citations: [
       { label: '“Electro-optic Modulators,” RP Photonics Encyclopedia (DOI 10.61835/7rv)', url: 'https://www.rp-photonics.com/electro_optic_modulators.html' },
       { label: 'Electro-optic modulator — Wikipedia', url: 'https://en.wikipedia.org/wiki/Electro-optic_modulator' },
@@ -2030,6 +2030,119 @@ export const wikiEntries = [
     resources: [
       { label: 'RP Photonics Encyclopedia — Pockels Cells', url: 'https://www.rp-photonics.com/pockels_cells.html' },
       { label: 'IEEE TechNav — Electrooptic Modulators', url: 'https://technav.ieee.org/topic/electrooptic-modulators/' },
+    ],
+  },
+
+  {
+    type: 'phasemodulator',
+    title: 'Phase modulator',
+    category: 'Modulators',
+    realWorld: {
+      html: `
+        <p>A phase modulator is the simplest electro-optic device there is: a Pockels
+        cell with the input polarisation aligned to one of the crystal's optical axes, so
+        the polarisation state is untouched and the voltage moves only the
+        phase${cite(1)}. Nothing about the beam changes that a detector can see. It is the
+        component every other electro-optic modulator is built from, and on its own it is
+        completely invisible.</p>
+        <p>What the crystal actually fixes is the optical path: the Pockels effect changes
+        the refractive index in proportion to the applied field, so a given drive writes
+        the same Δn·L at every wavelength. The <em>phase</em> that corresponds to therefore
+        scales as 1/λ, which is why a modulator is specified together with a
+        wavelength — a device that is half-wave at 532 nm is quarter-wave at
+        1064 nm${cite(1)}${cite(3)}.</p>`,
+      formulas: [
+        { tex: '\\Delta\\varphi = \\frac{2\\pi}{\\lambda}\\,\\Delta n\\,L = \\pi\\,\\frac{V}{V_\\pi}', caption: 'The path written is fixed by the crystal and the voltage; the phase follows from it and the wavelength. Vπ, the half-wave voltage, is hundreds to thousands of volts for a bulk cell, far less for a waveguide.' },
+      ],
+      html2: `
+        <p>Drive it sinusoidally and the output spectrum is no longer one frequency. A
+        phase varying as β sin Ωt produces the carrier plus a pair of sidebands at every
+        multiple of the drive frequency, with amplitudes given by Bessel
+        functions${cite(2)}. Drive hard enough — a resonant modulator can reach large depth
+        at modest voltage — and dozens of sidebands appear, which is how a modulator
+        becomes a comb generator${cite(1)}.</p>`,
+      formulas2: [
+        { tex: 'e^{i\\beta\\sin\\Omega t} = \\sum_{n=-\\infty}^{\\infty} J_n(\\beta)\\,e^{in\\Omega t}', caption: 'The Jacobi–Anger expansion: modulation depth β sets how the light is divided among the carrier and the sidebands at ω ± nΩ.' },
+      ],
+      html3: `
+        <p>Those sidebands are what the device is usually bought for. Pound–Drever–Hall
+        laser stabilisation writes them deliberately and asks how they come back from a
+        cavity, deriving from that an error signal that says which way the laser has
+        drifted${cite(1)}. It is worth being clear about what a phase modulator cannot do:
+        it cannot produce a sustained frequency shift, because that would require a phase
+        ramp increasing without bound${cite(1)}. An <a href="../aom/">AOM</a> shifts
+        frequency; a phase modulator only wobbles it.</p>
+        <h3>Making it visible</h3>
+        <p>Since phase alone is undetectable, a phase modulator is put to work by letting
+        it interfere with something. Place it in one arm of a Mach–Zehnder interferometer
+        and the two arms recombine constructively or destructively according to the drive,
+        so the phase becomes power at the output${cite(1)}${cite(2)}. That is the
+        <strong>Mach–Zehnder modulator</strong>, and its transfer function is the
+        interferometer's own.</p>`,
+      formulas3: [
+        { tex: 'P_{\\text{out}} = P_{\\text{in}}\\cos^{2}\\!\\left(\\frac{\\Delta\\varphi}{2}\\right)', caption: 'Half a wave of drive takes the output from fully bright to fully dark. The light is not absorbed — it leaves by the other port.' },
+      ],
+      html4: `
+        <p>Almost all high-speed optical telecommunications runs on this arrangement, built
+        as a waveguide interferometer on lithium niobate or silicon. On a chip the phase
+        stability the layout demands is far easier to hold than on a bench, the electrodes
+        sit micrometres apart so the drive voltage is low, and travelling-wave electrodes
+        matched to the optical velocity push the bandwidth into the tens of
+        gigahertz${cite(1)}${cite(2)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The modulator writes one optical path across the whole beam — uniform, unlike
+        the <a href="../phaseplate/">phase object</a>, which varies its path across the
+        aperture. It does not touch polarisation, intensity, or direction, so on its own it
+        does nothing measurable at all: put a detector after it and the reading is exactly
+        what it was.</p>
+        <p>The drive is set as the phase it writes at full deflection, in degrees at a
+        design wavelength, which is how a device is chosen — half-wave, quarter-wave. That
+        is converted to the fixed optical path the crystal really applies, so a modulator
+        set to half a wave at 532 nm writes a quarter wave at 1064 nm, as a real one does.
+        Hold it static, or drive it with a sine or square wave on the shared simulation
+        clock.</p>
+        <p>In one arm of an interferometer it becomes the amplitude modulator above,
+        following cos²(Δφ/2) exactly: half a wave takes the output from full to nothing,
+        and the light that leaves one port arrives at the other, so the two always sum to
+        the input.</p>
+        <p>That holds only where the tracer can reconstruct a coherent field, which means
+        a <strong>CW laser in <em>Beam with size</em> mode with no bandwidth</strong> — the
+        one source whose samples carry a recoverable phase. Drive the same interferometer
+        with a pulsed or supercontinuum source, or with a CW laser in <em>Simple line</em>
+        mode, and the two arms are added as intensities instead: both ports sit at half the
+        light and the modulator changes nothing, whatever it is set to. The reading says so
+        rather than leaving it to be inferred — it reports insufficient coherent overlap.</p>`,
+      formulas: [],
+      limitations: `<p>The interferometric behaviour above needs a sized monochromatic CW
+        laser. That is not a property of this element but of what the tracer can reconstruct
+        a phase through, and it applies to every interference effect in the app; it is
+        repeated here because it decides whether this component appears to do anything at
+        all.</p>
+        <p>Sidebands are not modelled, and could not usefully be: a 1 GHz
+        drive at 532 nm puts them 9×10⁻⁴ nm from the carrier, and at 1 MHz it is 9×10⁻⁷ nm,
+        against a spectrometer that resolves 0.1 nm. Everything the sidebands are used for
+        — Pound–Drever–Hall locking, comb generation, anything reading the modulation in
+        the spectrum rather than in time — is therefore out of reach. What is modelled is
+        the phase itself, and what interference makes of it.</p>
+        <p>Nothing here is a voltage. The drive is set as a phase directly, so there is no
+        half-wave voltage, no drive amplitude, no crystal and no material — which means the
+        linearity of the Pockels effect is assumed rather than shown. The modulator is
+        ideal: no insertion loss, no residual static birefringence, no thermal drift of the
+        operating point, and a square drive that switches instantaneously with no driver
+        bandwidth behind it. Resonant and travelling-wave designs, which is how real
+        devices reach gigahertz, have no counterpart.</p>`,
+    },
+    related: ['eom', 'phaseplate', 'bs', 'camera', 'aom'],
+    citations: [
+      { label: '“Electro-optic Modulators,” RP Photonics Encyclopedia (DOI 10.61835/7rv)', url: 'https://www.rp-photonics.com/electro_optic_modulators.html' },
+      { label: 'Electro-optic modulator — Wikipedia', url: 'https://en.wikipedia.org/wiki/Electro-optic_modulator' },
+      { label: 'T. A. Maldonado, “Electro-Optic Modulators,” ch. 13 in M. Bass (ed.), Handbook of Optics, Vol. 2, McGraw-Hill (1995)', url: 'https://www.accessengineeringlibrary.com/browse/handbook-of-optics-volume-v-atmospheric-optics-modulators-fiber-optics-x-ray-and-neutron-optics-third-edition' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Phase Modulators', url: 'https://www.rp-photonics.com/phase_modulators.html' },
+      { label: 'RP Photonics Encyclopedia — Pound–Drever–Hall Technique', url: 'https://www.rp-photonics.com/pound_drever_hall_technique.html' },
     ],
   },
 

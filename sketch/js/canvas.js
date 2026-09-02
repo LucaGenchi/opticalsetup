@@ -233,13 +233,16 @@ function animatedChopper(el) {
 }
 
 function animatedOpticalElements() {
-  if (!hasGalvoMotion() && !hasAodScan() && !hasStageMotion() && !hasRetroMotion() && !hasAotfSequence()) return state.elements;
+  if (!hasGalvoMotion() && !hasAodScan() && !hasPhaseModulation() && !hasStageMotion() && !hasRetroMotion() && !hasAotfSequence()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
+      return { ...el, _simulationTimeNs: simulatedTimeNs() };
+    }
+    if (el.type === 'phasemodulator' && el.params.driveMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
     if (el.type === 'stage') return animatedStageElement(el);
@@ -256,6 +259,9 @@ function animatedVisualElements() {
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
+      return { ...el, _simulationTimeNs: simulatedTimeNs() };
+    }
+    if (el.type === 'phasemodulator' && el.params.driveMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
     if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
@@ -276,6 +282,7 @@ function renderImmersion() {
 function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'aod' && el.params.scanMode !== 'static')
+    || (el.type === 'phasemodulator' && el.params.driveMode !== 'static')
     || (el.type === 'chopper' && el.params.modulate)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
     || (el.type === 'retroreflector' && el.params.moveMode === 'linear'))
@@ -296,6 +303,10 @@ function hasGalvoMotion() {
 
 function hasAodScan() {
   return state.elements.some(el => el.type === 'aod' && el.params.scanMode !== 'static');
+}
+
+function hasPhaseModulation() {
+  return state.elements.some(el => el.type === 'phasemodulator' && el.params.driveMode !== 'static');
 }
 
 function hasStageMotion() {
@@ -321,7 +332,7 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
+    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();
