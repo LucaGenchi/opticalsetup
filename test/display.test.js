@@ -25,7 +25,7 @@ function inspectorHTMLFor(sensor, elements) {
 }
 
 function machZehnderScene() {
-  const fixture = new URL('../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json', import.meta.url);
+  const fixture = new URL('./fixtures/mach-zehnder.json', import.meta.url);
   return parseSketch(readFileSync(fixture, 'utf8'), registry);
 }
 

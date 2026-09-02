@@ -5,7 +5,7 @@ import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
-  displayActionUpdate,
+  displayActionUpdate, delayLineSweepSpanMm,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
@@ -233,7 +233,8 @@ function animatedChopper(el) {
 }
 
 function animatedOpticalElements() {
-  if (!hasGalvoMotion() && !hasAodScan() && !hasPhaseModulation() && !hasStageMotion() && !hasRetroMotion() && !hasAotfSequence()) return state.elements;
+  if (!hasGalvoMotion() && !hasAodScan() && !hasPhaseModulation() && !hasStageMotion()
+    && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
@@ -244,6 +245,9 @@ function animatedOpticalElements() {
     }
     if (el.type === 'phasemodulator' && el.params.driveMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
+    }
+    if (el.type === 'delayline' && el.params.moveMode === 'linear') {
+      return { ...el, _animationTimeS: motionTimeSeconds };
     }
     if (el.type === 'stage') return animatedStageElement(el);
     if (el.type === 'retroreflector') return animatedRetroElement(el);
@@ -264,6 +268,9 @@ function animatedVisualElements() {
     if (el.type === 'phasemodulator' && el.params.driveMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
+    if (el.type === 'delayline' && el.params.moveMode === 'linear') {
+      return { ...el, _animationTimeS: motionTimeSeconds };
+    }
     if (!reduceMotion && el.type === 'chopper' && el.params.modulate) return animatedChopper(el);
     if (el.type === 'stage') return stageWithSignalSpot(el);
     if (el.type === 'sample') return withSignalSpot(el);
@@ -283,6 +290,8 @@ function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'aod' && el.params.scanMode !== 'static')
     || (el.type === 'phasemodulator' && el.params.driveMode !== 'static')
+    || (el.type === 'delayline' && el.params.moveMode === 'linear'
+      && delayLineSweepSpanMm(el.params) > 0)
     || (el.type === 'chopper' && el.params.modulate)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
     || (el.type === 'retroreflector' && el.params.moveMode === 'linear'))
@@ -313,6 +322,12 @@ function hasStageMotion() {
   return state.elements.some(el => el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static');
 }
 
+function hasDelaySweep() {
+  return state.elements.some(el => el.type === 'delayline'
+    && el.params.moveMode === 'linear'
+    && delayLineSweepSpanMm(el.params) > 0);
+}
+
 function hasRetroMotion() {
   return state.elements.some(el => el.type === 'retroreflector' && el.params.moveMode === 'linear');
 }
@@ -332,7 +347,7 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
+    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();

@@ -313,7 +313,7 @@ export const exampleEntries = [
   {
     match: 'Mach–Zehnder interferometer',
     title: 'Mach–Zehnder interferometer',
-    tagline: 'Two beamsplitters, two fully separate arms, two output ports — the workhorse interferometer behind flow visualization, quantum-eraser experiments, and on-chip optical modulators.',
+    tagline: 'Two beamsplitters, two fully separate arms, two output ports — shown three ways: a mechanical delay, a driven phase modulator, and a phase object that turns the layout into a phase-contrast imager.',
     html: `
       <p>Where a Michelson interferometer sends both arms back through the
       same beamsplitter, a Mach–Zehnder interferometer uses two: the first
@@ -336,55 +336,35 @@ export const exampleEntries = [
       telecommunications hardware${cite(2)}.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
-      <p>This example places one laser and two beamsplitters at the corners of
-      the classic Mach–Zehnder diamond, with a mirror folding each of the two
-      separate arms, recombining at the second beamsplitter onto two cameras.
-      Both arms are genuinely separate ray paths through the scene — move a
-      mirror on one arm and only that arm's traced path changes, exactly as
-      it would on a real bench. The two linked screens show complementary
-      camera outputs: equal arms make one port bright and the other dark.
-      Entering half a wavelength in the ΔL arm (0.000266&nbsp;mm at
-      532&nbsp;nm) swaps them, and a full wavelength brings them back — the
-      ports trade the light between them without ever losing any, which is the
-      first thing to check about any interferometer.</p>
-      <p>Three things are worth trying on top of that, because each turns the
-      layout into a different instrument.</p>
-      <p><strong>Sweep the delay line continuously.</strong> The readings trace
-      out the cosine fringe, and every intermediate setting splits the light
-      between the ports. This is the interferometer as a comparator: a
-      displacement of a fraction of a wavelength in one arm is read off as a
-      change in brightness, which is how these layouts measure distance,
-      vibration, and refractive index.</p>
-      <p><strong>Give the laser a coherence length.</strong> The source defaults
-      to zero, meaning idealised — it interferes at any arm mismatch. Set it to
-      a real value, say 0.5&nbsp;mm, and the fringes now survive only while the
-      arms are matched to within roughly that distance${cite(3)}; push the
-      delay line to 5&nbsp;mm and the ports settle to a flat half each,
-      because the two waves no longer arrive with a predictable phase relation.
-      That fading is not a defect — it is the measurement. It is what makes an
-      interferometer a ruler for optical path, and with a deliberately broadband
-      source it is the origin of the axial sectioning in optical coherence
-      tomography${cite(3)}.</p>
-      <p><strong>Drop a phase object into one arm.</strong> Straight from the
-      palette it is a central bar of half a wave, and it is invisible on its own
-      — put a detector after it and nothing changes. Here it turns the ports
-      into 0.67 and 0.33, and its shape appears in the camera's intensity
-      profile. That is phase contrast: an object that absorbs nothing made
-      visible purely by the path it adds. Raise its path difference to a full
-      wave, 0.532&nbsp;µm, and the object disappears completely — a wave
-      recombines exactly as it started — which is the reason instruments are
-      built around the half-wave condition rather than the strongest one
-      available.</p>
-      <p>Switching the profile to a wedge is worth doing next, because it shows
-      that how the path is distributed matters as much as how much there is. At
-      half a fringe across the beam a wedge swings the ports harder than
-      anything else here, between 0.19 and 0.81. Take it to exactly one whole
-      fringe and the totals stop moving altogether, while the camera profile
-      draws a complete fringe — bright at both edges of the beam, dark through
-      the middle. The phases written across the beam now cancel when averaged,
-      so the pattern is entirely real and the single number reporting it is
-      blind to it. The inspector says <em>total stays
-      put, read the profile</em> whenever that is the case.</p>`,
+      <p>One layout, two ways to put phase into an arm. Each row is the same
+      Mach–Zehnder diamond — a laser, two beamsplitters, a mirror folding each
+      of the two separate arms — recombining onto two cameras with their own
+      screens. Both arms are genuinely separate ray paths: move a mirror on
+      one and only that arm's traced path changes, exactly as on a bench.</p>
+      <p>The invariant to watch in both is that the ports are complementary.
+      Whatever leaves one arrives at the other, and they always sum to the
+      input — the light is redirected, never absorbed.</p>
+      <p><strong>Row 1, a delay line.</strong> Lengthen one arm mechanically.
+      Equal arms make one port bright and the other dark; half a wavelength
+      (0.000266&nbsp;mm at 532&nbsp;nm) swaps them, and a full wavelength brings
+      them back. It ships set to <em>Periodic sweep</em>, walking a micrometre
+      back and forth at 0.1&nbsp;Hz, so the two screens trade the light
+      continuously rather than sitting on one point of the fringe. That is the
+      interferometer as a ruler for optical path.</p>
+      <p><strong>Row 2, a phase object.</strong> A half-wave bar across part of
+      the beam. The arms now disagree by different amounts at different heights,
+      so the output is not a level but a <em>pattern</em>, and the split follows
+      how much of the beam the bar actually covers. That is phase contrast — and
+      the object absorbs nothing: put a detector after it on its own and the
+      reading is unchanged.</p>
+      <p>A third way to drive an arm is the
+      <a href="../../wiki/phasemodulator/">phase modulator</a>, which does the
+      same swap from a voltage and at megahertz rather than by moving a stage.
+      Its own page carries that setup.</p>
+      <p>Worth trying on both rows: give the laser a coherence length. It
+      defaults to zero, meaning idealised, and interferes at any arm mismatch.
+      Set a real value and sweep the delay further, and the fringes fade out
+      where the arms are mismatched by more than that distance.</p>`,
     limitations: `<p>The tracer combines only phase-valid routes from this
       sized monochromatic CW laser. Optical path, 100%-reflective flat-mirror phase,
       and a unitary non-polarizing beamsplitter phase are represented. Compatible

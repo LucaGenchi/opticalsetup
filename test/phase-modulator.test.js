@@ -2,15 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { createElement, registry } from '../sketch/js/elements.js';
+import {
+  createElement, registry, delayLineDelayAt, delayLineSweepSpanMm, delayLineSweepRangeMm,
+} from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
+import { elementDriveHz, recommendedTimeScale } from '../sketch/js/timescale.js';
 import {
   phaseModulatorDrive, phaseModulatorOpdMm, phaseModulatorPeakOpdMm,
 } from '../sketch/js/electro-optic.js';
 
-const MZ = readFileSync('Examples/Optics Bench/Mach–Zehnder interferometer.json', 'utf8');
+const MZ = readFileSync('test/fixtures/mach-zehnder.json', 'utf8');
+
+const closeToMm = (actual, expected) =>
+  assert.ok(Math.abs(actual - expected) < 1e-12, `${actual} mm should be ${expected} mm`);
 
 // The modulator dropped into one arm of the bundled interferometer.
 function inOneArm(params, simulationTimeNs = null) {
@@ -168,4 +174,106 @@ test('the interferometric behaviour needs a source the tracer can phase, and say
         `with ${label}, drive ${[0, 90, 180][index]}° gave ${signal.toFixed(4)}, not a flat half`);
     }
   }
+});
+
+// ---------------- swept delay line ----------------
+
+test('a swept delay line retraces between its two ends', () => {
+  const params = { moveMode: 'linear', delayMinMm: 0, delayMaxMm: 0.001, freqHz: 1 };
+  // A carriage cannot fly back, so the sweep is a triangle: out and home again
+  // over one period, starting at the near end.
+  closeToMm(delayLineDelayAt(params, 0), 0);
+  closeToMm(delayLineDelayAt(params, 0.25), 0.0005);
+  closeToMm(delayLineDelayAt(params, 0.5), 0.001);
+  closeToMm(delayLineDelayAt(params, 0.75), 0.0005);
+  closeToMm(delayLineDelayAt(params, 1), 0);
+  // It never leaves the range it was given.
+  for (let step = 0; step < 200; step++) {
+    const delay = delayLineDelayAt(params, step / 97);
+    assert.ok(delay >= -1e-12 && delay <= 0.001 + 1e-12, `sweep left its range at ${delay}`);
+  }
+  assert.equal(delayLineSweepSpanMm(params), 0.001);
+});
+
+test('a static delay line is untouched by the sweep controls', () => {
+  // The default is static, and the existing parameter still drives it.
+  const element = createElement('delayline', 0, 0);
+  assert.equal(element.params.moveMode, 'static');
+  assert.equal(delayLineDelayAt(element.params, 0), element.params.delayMm);
+  assert.equal(delayLineDelayAt(element.params, 12.34), element.params.delayMm);
+  // Even with sweep values set, static mode ignores them.
+  const held = { moveMode: 'static', delayMm: 42, delayMinMm: 0, delayMaxMm: 5, freqHz: 3 };
+  assert.equal(delayLineDelayAt(held, 0.7), 42);
+});
+
+test('a swept delay line moves the fringes it is sitting in', () => {
+  // The point of the feature: in one arm of an interferometer the sweep walks
+  // the output through its fringes instead of holding one point on them.
+  const scene = parseSketch(MZ);
+  const delay = scene.elements.find(el => el.type === 'delayline');
+  Object.assign(delay.params, {
+    moveMode: 'linear', delayMinMm: 0, delayMaxMm: 532e-6, freqHz: 1,
+  });
+  const camera = scene.elements.filter(el => el.type === 'camera')[0];
+  const at = seconds => {
+    const animated = scene.elements.map(el =>
+      (el.type === 'delayline' ? { ...el, _animationTimeS: seconds } : el));
+    traceAll(animated);
+    return detectorReading(camera.id).signal;
+  };
+  // Half a period walks a full wavelength: bright, dark, bright.
+  assert.ok(Math.abs(at(0) - 1) < 1e-4, 'starts at the near end, fully bright');
+  assert.ok(Math.abs(at(0.25) - 0) < 1e-4, 'half a wave in, fully dark');
+  assert.ok(Math.abs(at(0.5) - 1) < 1e-4, 'a full wave, bright again');
+});
+
+
+test('a delay-line sweep works whichever end was typed first', () => {
+  // The two controls are bounded independently, so nothing stops "from" being
+  // set beyond "to". A stage asked to travel between two points does not care
+  // which was named first, and previously this produced a negative span: the
+  // sweep froze at its starting value while the readout, taking an absolute
+  // value of its own, went on advertising the travel.
+  const forward = { moveMode: 'linear', delayMinMm: 0, delayMaxMm: 0.001, freqHz: 1 };
+  const reversed = { moveMode: 'linear', delayMinMm: 0.001, delayMaxMm: 0, freqHz: 1 };
+
+  assert.equal(delayLineSweepSpanMm(reversed), delayLineSweepSpanMm(forward));
+  assert.ok(delayLineSweepSpanMm(reversed) > 0, 'a reversed pair still spans something');
+  assert.deepEqual(delayLineSweepRangeMm(reversed), delayLineSweepRangeMm(forward));
+  for (const t of [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1]) {
+    closeToMm(delayLineDelayAt(reversed, t), delayLineDelayAt(forward, t));
+  }
+  // It really moves, rather than holding one end.
+  const visited = new Set(Array.from({ length: 20 }, (_, i) =>
+    delayLineDelayAt(reversed, i / 20).toFixed(9)));
+  assert.ok(visited.size > 5, 'a reversed sweep must not be frozen');
+
+  // Equal ends are the one case that legitimately holds still, and the
+  // readout has to say so rather than claim a span.
+  const held = { moveMode: 'linear', delayMinMm: 0.001, delayMaxMm: 0.001, freqHz: 1 };
+  assert.equal(delayLineSweepSpanMm(held), 0);
+  closeToMm(delayLineDelayAt(held, 0.37), 0.001);
+  const readout = registry.delayline.params.find(p => p.key === 'delaySweepReadout').readout;
+  assert.match(readout(held), /Nothing/);
+  assert.match(readout(reversed), /1\.00 µm/);
+});
+
+test('a delay line with equal endpoints is not reported as moving', () => {
+  // Equal endpoints are a supported way of holding still. Reporting a drive
+  // for one would put the whole scene into Mechanics mode and suppress the
+  // pulse packet layer on behalf of a stage that is not going anywhere, and
+  // would have the canvas re-tracing it thirty times a second for nothing.
+  const held = { type: 'delayline', params: { moveMode: 'linear', delayMinMm: 0.001, delayMaxMm: 0.001, freqHz: 1 } };
+  const moving = { type: 'delayline', params: { moveMode: 'linear', delayMinMm: 0, delayMaxMm: 0.001, freqHz: 1 } };
+  const still = { type: 'delayline', params: { moveMode: 'static', delayMm: 100 } };
+
+  assert.equal(elementDriveHz(held), null, 'equal endpoints are not a drive');
+  assert.equal(elementDriveHz(still), null);
+  assert.equal(elementDriveHz(moving), 1);
+  // And a reversed pair is a real sweep, so it does report one.
+  assert.equal(elementDriveHz({ type: 'delayline', params: { moveMode: 'linear', delayMinMm: 0.001, delayMaxMm: 0, freqHz: 1 } }), 1);
+
+  // Nothing standing still should drag the whole scene into Mechanics mode.
+  assert.equal(recommendedTimeScale([held]).mechanics, false);
+  assert.equal(recommendedTimeScale([moving]).mechanics, true);
 });

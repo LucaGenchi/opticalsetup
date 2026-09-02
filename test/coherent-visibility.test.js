@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 const LAMBDA_MM = 532e-6;
 
 function machZehnder() {
-  const parsed = parseSketch(readFileSync('Examples/Optics Bench/Mach–Zehnder interferometer.json', 'utf8'));
+  const parsed = parseSketch(readFileSync('test/fixtures/mach-zehnder.json', 'utf8'));
   return {
     elements: parsed.elements,
     beams: parsed.beams || [],
