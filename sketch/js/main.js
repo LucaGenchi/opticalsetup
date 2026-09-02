@@ -51,6 +51,11 @@ function mkDemo(type, x, y, rot = 0, params = {}, extra = {}) {
 // drawn paths rather than registry types, so the demo/deep-link gates below
 // have to admit them by name.
 const FIBER_DEMOS = new Set(['fiber', 'barefiber']);
+// Demo scenes that are not a single component. The autocorrelator's
+// cross-correlation mode only means anything with two sources and two arms, so
+// it needs a scene of its own rather than the one-source embed the component
+// page carries.
+const SCENE_DEMOS = new Set(['crosscorrelator']);
 
 // Fibers are drawn paths (state.beams), not registry elements, so their demo
 // scenes return {elements, beams} instead of a bare element array.
@@ -460,6 +465,60 @@ const demoScenes = {
         { label: '920 nm, 150 fs', showLabel: true, labelPos: 'b' }),
       meter,
       mkDemo('display', 420, 380, 0, { sensorId: meter.id, displayScale: 1.1 }),
+    ];
+  },
+
+  // A transform-limited 150 fs Gaussian straight into the instrument, wired to
+  // a screen so the trace is visible rather than just the number. The trace
+  // reads 212 fs -- 150 x sqrt(2) -- and the instrument divides that back down
+  // by the shape it is told to assume. Switching Assumed pulse shape to sech2
+  // divides by 1.543 instead and the reading moves to 137 fs: the 9% error is
+  // the whole point of the component, and it is one click away here.
+  autocorrelator: () => {
+    const meter = mkDemo('autocorrelator', 470, 200, 0, { aperture: 30, assumedShape: 'gauss' },
+      { label: 'autocorrelator', showLabel: true, labelPos: 't' });
+    return [
+      mkDemo('pulsedlaser', 120, 200, 0,
+        { wavelength: 800, pulseWidthFs: 150, repRateMHz: 80, pulseShape: 'gauss',
+          transformLimited: true, beamMode: 'beam', beamWidth: 6 },
+        { label: '800 nm, 150 fs, transform-limited', showLabel: true, labelPos: 'b' }),
+      meter,
+      mkDemo('display', 350, 380, 0, { sensorId: meter.id, displayScale: 1.1 }),
+    ];
+  },
+
+  // Cross-correlation, and the reason anyone builds one: two synchronized
+  // sources combined onto one path, with arms that are not the same length.
+  // A shortpass dichroic transmits the 800 nm pump straight through and folds
+  // the 1030 nm Stokes in from above, so both land on one face -- which is
+  // what the instrument needs, since its two "arms" are two sources sharing a
+  // detector rather than two ports it scans internally. The trace peaks off
+  // zero because the Stokes arm is longer; tune the delay line in the pump arm
+  // until the peak slides onto the 0 DELAY marker and the overlap reads 100%.
+  // That hunt is what finding time zero means, and it is the step every
+  // coherent-Raman bench starts with.
+  crosscorrelator: () => {
+    const meter = mkDemo('autocorrelator', 640, 250, 0,
+      { aperture: 30, measurementMode: 'cross', timeSpanPs: 1 },
+      { label: 'cross-correlator', showLabel: true, labelPos: 't' });
+    return [
+      mkDemo('pulsedlaser', 60, 250, 0,
+        { wavelength: 800, pulseWidthFs: 150, repRateMHz: 80, beamMode: 'beam', beamWidth: 5 },
+        { label: '800 nm pump · 150 fs', showLabel: true, labelPos: 'b' }),
+      mkDemo('pulsedlaser', 470, 40, 90,
+        { wavelength: 1030, pulseWidthFs: 150, repRateMHz: 80, beamMode: 'beam', beamWidth: 5 },
+        { label: '1030 nm Stokes · 150 fs', showLabel: true, labelPos: 'l' }),
+      // 200.00 mm is exact time zero for this geometry, so the scene opens
+      // 0.06 mm short of it: the peak sits visibly off the marker at -200 fs
+      // and 8% overlap, and typing a round 200 lands it.
+      mkDemo('delayline', 470, 150, 90,
+        { moveMode: 'static', delayMm: 199.94, aperture: 20 },
+        { label: 'tune to 200 mm for time zero', showLabel: true, labelPos: 'l' }),
+      mkDemo('dichroic', 470, 250, -45,
+        { dtype: 'shortpass', cutoff: 900, length: 25.4 },
+        { label: 'combines the two arms', showLabel: true, labelPos: 'r' }),
+      meter,
+      mkDemo('display', 470, 400, 0, { sensorId: meter.id, displayScale: 1.1 }),
     ];
   },
 
@@ -1438,7 +1497,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
-  const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || (registry[demoType] && !registry[demoType].hidden)));
+  const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
+    || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
   const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;

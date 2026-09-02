@@ -11,7 +11,9 @@ import {
 } from './elements.js';
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
-import { autocorrelationReading } from './glass.js';
+import {
+  autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
+} from './glass.js';
 import { pmtVerdict } from './detector-measurements.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
@@ -206,7 +208,43 @@ function cameraAxisHalfSpan(source) {
 // factor. Reporting the trace, the assumption, and the inferred number
 // separately keeps that honest — and lets a wrong assumption show up as the
 // error it would really be in a lab.
+// Cross-correlation mode reports the mismatch rather than a duration: what you
+// want on screen while hunting time zero is how far off you are and which way,
+// not how long either pulse is.
+function crossCorrelatorRows(rd, source) {
+  const { arms, reason } = crossCorrelationPair({ pulse: rd.pulse });
+  if (!arms) return `
+      <dt>Cross-correlation</dt><dd>${reason === 'NO PULSE' ? 'Continuous wave — no pulse to correlate'
+    : reason === 'NEEDS A SECOND SOURCE' ? 'Only one pulse train arrives — a cross-correlation needs two'
+      : 'More than two trains arrive — a cross-correlation is between exactly two'}</dd>`;
+  const cc = crossCorrelationReading(arms[0], arms[1]);
+  if (!cc) return `
+      <dt>Cross-correlation</dt><dd>—</dd>`;
+  if (!cc.synchronized) return `
+      <dt>Cross-correlation</dt><dd>Repetition rates differ — the trains drift and no stable trace forms</dd>`;
+  const fs = v => `${Math.abs(v) < 100 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs`;
+  const shapeName = k => (k === 'sech2' ? 'sech²' : 'Gaussian');
+  const atZero = Math.abs(cc.offsetFs) < cc.traceFwhmFs * 0.02;
+  const halfSpanFs = crossScopeHalfSpanFs(source?.params);
+  const mm = Math.abs(cc.offsetFs) * 1e-15 * 299.792458 * 1e9;
+  // The autocorrelation each arm would give on its own belongs here rather
+  // than on the screen: the scope axis is arrival time, where what physically
+  // sits at each peak is the pulse, not its autocorrelation.
+  const soloAc = i => fs(cc.widths[i] * (cc.shapes[i] === 'sech2' ? 1.543 : Math.SQRT2));
+  return `
+      <dt>Timing mismatch</dt><dd>${atZero ? 'At time zero'
+    : `${cc.offsetFs > 0 ? '+' : '−'}${fs(Math.abs(cc.offsetFs))} · ${mm < 0.01 ? `${(mm * 1000).toFixed(1)} µm` : `${mm.toFixed(3)} mm`} of path`}</dd>
+      ${Math.abs(cc.offsetFs) / 2 > halfSpanFs ? `<dt>Off screen</dt><dd>The pulses sit beyond the ±${(halfSpanFs / 1000)} ps window — widen the time span to see them</dd>` : ''}
+      <dt>Overlap</dt><dd>${(cc.overlap * 100).toFixed(1)}% of peak</dd>
+      <dt>Cross-correlation FWHM</dt><dd>${fs(cc.traceFwhmFs)} · from ${fs(cc.widths[0])} and ${fs(cc.widths[1])}</dd>
+      <dt>Each arm alone</dt><dd>${soloAc(0)} and ${soloAc(1)} — what an autocorrelation of each would read</dd>
+      ${cc.sumFrequencyNm ? `<dt>Sum-frequency</dt><dd>${cc.sumFrequencyNm.toFixed(1)} nm — the signal only this pair can make</dd>` : ''}
+      ${cc.shapeMismatch ? `<dt>Shape mismatch</dt><dd>${shapeName(cc.shapes[0])} against ${shapeName(cc.shapes[1])} — the trace width is approximate</dd>` : ''}
+      ${cc.periodFs && Math.abs(cc.rawOffsetFs) > cc.periodFs / 2 ? `<dt>Note</dt><dd>Measured against the nearest pulse of the other train: arms can only be nulled modulo the ${fs(cc.periodFs)} period</dd>` : ''}`;
+}
+
 function autocorrelatorRows(rd, source) {
+  if ((source?.params?.measurementMode || 'auto') === 'cross') return crossCorrelatorRows(rd, source);
   if (!rd.pulse) return `
       <dt>Autocorrelation</dt><dd>Continuous wave — no pulse to measure</dd>`;
   if (rd.pulse.mixed) return `

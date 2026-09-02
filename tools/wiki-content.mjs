@@ -4140,6 +4140,339 @@ export const wikiEntries = [
       { label: 'RP Photonics Encyclopedia — Polarization of Light', url: 'https://www.rp-photonics.com/polarization_of_light.html' },
     ],
   },
+  {
+    type: 'autocorrelator',
+    title: 'Autocorrelator',
+    category: 'Detectors',
+    realWorld: {
+      html: `
+        <p>A femtosecond pulse cannot be timed by anything electronic. The fastest
+        photodiodes and sampling oscilloscopes reach a few picoseconds; a 100&nbsp;fs pulse
+        is two orders of magnitude shorter than that, and no detector exists whose response
+        is short enough to resolve it${cite(1)}. The way out is to stop looking for a faster
+        clock and instead use the pulse to measure itself.</p>
+        <p>That is what an autocorrelator does. A beam splitter makes two copies of the
+        incoming pulse; one travels through a variable delay line; the two are then brought
+        together in a medium with a &chi;<sup>(2)</sup> nonlinearity — typically a thin
+        second-harmonic crystal — where they mix only while they physically overlap in
+        time${cite(1)}. Sum-frequency light appears at a new, shorter wavelength, and its
+        power depends on how much of the two envelopes coincide. Sweep the delay, record
+        that power, and the resulting curve — the autocorrelation trace — is about as wide as the
+        pulse is long. Nothing in the detection chain needs to be fast: the photodiode only
+        has to read an <em>average</em> power for each delay setting, because a mode-locked
+        laser supplies a regular train of nominally identical pulses${cite(1)}.</p>
+        <h3>Intensity autocorrelation</h3>
+        <p>In the standard arrangement the two copies cross at a small angle in the crystal,
+        so the sum-frequency beam leaves along its own direction, between the two inputs.
+        Because that beam only exists where the pulses overlap, the signal falls to zero at
+        large delay: the measurement is <strong>background-free</strong>${cite(1)}, and this
+        non-collinear geometry is what gives an intensity autocorrelator its high dynamic
+        range${cite(2)}. The trace it records is</p>`,
+      formulas: [
+        { tex: 'I_{\\mathrm{ac}}(\\tau)=\\int_{-\\infty}^{\\infty} P(t)\\,P(t+\\tau)\\,\\mathrm{d}t', caption: 'The intensity autocorrelation: the optical power of the pulse multiplied by a delayed copy of itself, integrated over time, as a function of the delay τ set by the moving arm.' },
+      ],
+      html2: `
+        <h3>Why the trace is always wider than the pulse</h3>
+        <p>Look at that integral at zero delay: the two copies sit exactly on top of one
+        another and the product is maximal. Now shift by a delay smaller than the pulse
+        duration. The overlap has shrunk, but it has not vanished — the trailing part of one
+        copy is still sitting on the leading part of the other, so a real signal is still
+        produced. Only when the delay exceeds roughly the pulse length does the product
+        finally go to zero. The curve cannot collapse to something narrower than the pulse,
+        and this is not an instrumental defect that better optics would remove; it is a
+        property of the operation.</p>
+        <p>Made exact, the statement is about second moments: correlating a function with
+        itself <strong>doubles the variance</strong>, so the root-mean-square width of the
+        trace is larger than the pulse's by exactly &radic;2 &mdash; for every envelope,
+        with no assumption at all. Full width at half maximum, which is what an instrument
+        actually reads off, is the shape-dependent one. It is worth knowing that the
+        broadening can vanish entirely under that measure: a rectangular pulse of width
+        <em>T</em> has a triangular autocorrelation whose FWHM is also <em>T</em>, even
+        though its rms width has still grown by &radic;2. For the smooth envelopes real
+        mode-locked lasers produce, the trace is genuinely wider.</p>
+        <p>How much wider depends on the shape of the envelope. For a Gaussian pulse the
+        autocorrelation is itself Gaussian and about <strong>1.41 times</strong> wider —
+        exactly &radic;2, because Gaussian widths add in quadrature and
+        &radic;(&tau;&sup2;&nbsp;+&nbsp;&tau;&sup2;)&nbsp;=&nbsp;&radic;2&nbsp;&tau;${cite(1)}. For a sech² pulse, the shape most
+        mode-locked oscillators actually produce, the pulse duration is about
+        <strong>0.65 times</strong> the width of the trace${cite(1)} — a factor of roughly
+        1.543 the other way. So the instrument never reports a duration directly. It reports
+        a trace width, and someone must divide out a <em>deconvolution factor</em>:</p>`,
+      formulas2: [
+        { tex: '\\tau_{\\mathrm{p}}=\\frac{\\Delta\\tau_{\\mathrm{ac}}}{k},\\qquad k_{\\mathrm{Gauss}}=\\sqrt{2}\\approx 1.414,\\qquad k_{\\mathrm{sech}^2}\\approx 1.543', caption: 'The pulse duration is the measured autocorrelation FWHM divided by a factor that depends entirely on the pulse shape you assume it has.' },
+      ],
+      html3: `
+        <p>And there is the catch that defines the technique. The factor depends on a shape
+        the measurement itself cannot establish. Gaussian and sech² traces do not look
+        dramatically different, so fitting one to the data is a sanity check rather than a
+        proof${cite(1)}. Yet the two factors differ by 9%, so assuming the wrong one puts
+        the answer out by 9% before any other error is counted — and for genuinely odd pulse
+        shapes, by far more. A quoted "150&nbsp;fs, assuming sech²" is an honest reading;
+        a quoted "150&nbsp;fs" is an incomplete one.</p>
+        <h3>What an autocorrelation cannot tell you</h3>
+        <p>The deeper limitation is structural: <strong>the autocorrelation trace is always
+        symmetric about zero delay, even when the pulse is not</strong>${cite(1)}. Swapping
+        <em>t</em>&nbsp;&rarr;&nbsp;&minus;<em>t</em> in the integral leaves it unchanged, so a pulse with a steep rise and a slow
+        decay produces exactly the same trace as its mirror image. The direction of time is
+        simply not in the data${cite(2)}. Neither is the phase: an intensity autocorrelation
+        responds only to optical power, so it carries no information about chirp, and
+        different pulses can yield indistinguishable traces${cite(1,3)}. Usefully, the
+        symmetry works as a diagnostic in reverse — an <em>asymmetric</em> trace means a
+        misaligned autocorrelator, not an asymmetric pulse${cite(1)}.</p>
+        <p>Noise makes this worse in a specific and notorious way. When a laser is not
+        mode-locking cleanly, each pulse in the train differs from the last, and the
+        averaged trace can show a narrow spike sitting on a much broader pedestal. Taking
+        that spike as the pulse duration is wrong: it is a <strong>coherent
+        artifact</strong>, and in such a situation the trace conveys very little about the
+        real pulse${cite(1,5)}. A distorted train can look like a beautifully short
+        pulse.</p>
+        <h3>Interferometric autocorrelation</h3>
+        <p>Send the two copies collinearly instead — same path, same polarization — and they
+        interfere before the crystal sees them. The recorded signal then resolves the
+        optical fringes: successive constructive peaks are one optical period apart on the
+        delay axis, which in a double-pass arm is reached by moving the mirror only half a
+        wavelength, since the mirror changes the path twice over${cite(1)}. Plots are
+        labelled in both coordinates, so it is worth checking which one an axis
+        means:</p>`,
+      formulas3: [
+        { tex: 'I_{\\mathrm{iac}}(\\tau)=\\int \\bigl(E(t)+E(t+\\tau)\\bigr)^{4}\\,\\mathrm{d}t', caption: 'The interferometric (fringe-resolved) autocorrelation. Because the fields add before being squared twice, perfect constructive interference gives four times the intensity and sixteen times the second-harmonic signal — against a background of twice that from one arm alone.' },
+      ],
+      html4: `
+        <p>That arithmetic gives the technique its built-in alignment check: a properly
+        aligned interferometric autocorrelator always produces a trace whose peak is exactly
+        <strong>eight times</strong> its wings${cite(1)}. If the fringes are averaged out,
+        as they are for longer pulses, the ratio becomes 3:1 rather than 4:1, because the
+        oscillation is not sinusoidal${cite(1)}. Unlike the intensity version, this trace
+        <em>is</em> sensitive to chirp — although a chirped pulse's duration is
+        underestimated if one simply reads off the width, and post-processing methods such as
+        MOSAIC exist to make the chirp legible${cite(1)}. The collinear geometry avoids the
+        geometric smearing that a crossing angle causes, which is why interferometric designs
+        dominate at the few-femtosecond end${cite(1,2)}.</p>
+        <h3>Practical variants</h3>
+        <p><strong>Scanning versus single-shot.</strong> Most traces are built from many
+        pulses, one or more per delay setting, which quietly assumes the train is regular —
+        fine for a mode-locked oscillator, unreliable for a low-repetition-rate amplifier.
+        A single-shot autocorrelator instead focuses with a <em>cylindrical</em> lens so that
+        position across the crystal maps to delay, and reads the whole trace off a camera
+        from one pulse${cite(1)}. Scanning units suit stable high-rate trains; single-shot
+        units are what a 10&nbsp;Hz or 1&nbsp;kHz amplifier needs, and the only way to see
+        shot-to-shot fluctuation${cite(1)}.</p>
+        <p><strong>Two-photon detectors.</strong> A photodiode with a band gap too large to
+        absorb the light linearly still responds through two-photon absorption, which is
+        itself the required nonlinearity — so the crystal disappears entirely, and with it
+        the phase-matching alignment${cite(1)}. LEDs run backwards as detectors work
+        too${cite(1)}. These are the compact, nearly alignment-free instruments, at the cost
+        of sensitivity: quoted as the product of average and peak power, a TPA head reaches
+        around 10<sup>&minus;2</sup>&nbsp;W&sup2; where a photomultiplier-based unit reaches
+        10<sup>&minus;6</sup>&nbsp;W&sup2;${cite(2)}.</p>
+        <p><strong>Dynamic range.</strong> Weak pedestals and satellite pulses — a
+        speciality of mode-locked fiber lasers — need far more range than a standard trace
+        offers. Type-II phase matching, two-frequency chopping with lock-in detection, and
+        photomultiplier detection push background-free measurements to 80 or even
+        100&nbsp;dB${cite(1)}. A third-order autocorrelator, mixing the light with its own
+        second harmonic, breaks the symmetry altogether and can distinguish a pre-pulse from
+        a post-pulse — at much lower sensitivity${cite(1)}.</p>
+        <p><strong>When to stop autocorrelating.</strong> Below about 10&nbsp;fs the
+        phase-matching bandwidth of even a very thin crystal becomes the limit, and
+        frequency-resolved optical gating (FROG) and spectral phase interferometry (SPIDER)
+        are both more accurate and able to return the phase the autocorrelation discards
+        ${cite(1,3,6)}. FROG is in one sense just an autocorrelator that spectrally resolves
+        its output — spectrum versus delay instead of energy versus delay — and that one
+        extra axis is enough to lift the ambiguity${cite(2)}.</p>
+        <h3>Cross-correlation: two different pulses</h3>
+        <p>Nothing in the layout requires the two arms to carry copies of the same pulse.
+        Feed the nonlinear crystal from two <em>different</em> beams and the same delay scan
+        measures their <strong>cross-correlation</strong>:</p>`,
+      formulas4: [
+        { tex: 'I_{\\mathrm{cc}}(\\tau)=\\int_{-\\infty}^{\\infty} I_1(t)\\,I_2(t+\\tau)\\,\\mathrm{d}t,\\qquad \\Delta\\tau_{\\mathrm{cc}}=\\sqrt{\\tau_1^{2}+\\tau_2^{2}}\\ \\ (\\text{Gaussians})', caption: 'The cross-correlation of two pulses, and — for Gaussian envelopes — the width of the resulting trace, which adds the two durations in quadrature.' },
+      ],
+      html5: `
+        <p>Two things change, and both are improvements. First, the trace is no longer
+        forced to be symmetric, so an asymmetric pulse now shows its asymmetry and the
+        direction of time survives the measurement. Second, if one of the two pulses is
+        already known and much shorter than the other, it acts as a fast optical gate:
+        <em>I</em><sub>1</sub> approaches a delta function, the integral collapses to <em>I</em><sub>2</sub>(&tau;), and the
+        trace <em>is</em> the unknown envelope, sampled directly rather than
+        deconvolved${cite(1)}. This is why a characterized reference pulse is worth so much,
+        and why the quadrature relation above matters — with &tau;<sub>1</sub>&nbsp;&#8810;&nbsp;&tau;<sub>2</sub> the
+        measured width is just &tau;<sub>2</sub>.</p>
+        <h3>Finding time zero for multi-beam overlap</h3>
+        <p>The most common use of a cross-correlation in a working laboratory is not
+        measuring a duration at all. It is answering a blunter question: <em>when do these
+        two beams actually arrive at the same place at the same time?</em></p>
+        <p>Any experiment driven by two or more synchronized pulses has this problem. The
+        beams travel different paths — different numbers of mirrors, different lengths of
+        glass, an optical parametric oscillator in one arm and none in the other — and a
+        single millimetre of path difference is 3.3&nbsp;ps of timing error, which for
+        100&nbsp;fs pulses means no overlap whatsoever. Spatial alignment can be judged by
+        eye or on a camera; temporal alignment cannot be seen at all. Worse, the search space
+        is large and the signal is exactly zero everywhere outside it, so scanning blind is
+        hopeless without a signal that appears the moment the pulses coincide.</p>
+        <p>The cross-correlation provides exactly that. Combine the two beams on a dichroic
+        mirror, focus them into a thin nonlinear crystal, and scan one arm's delay while
+        watching for sum-frequency light. Because 1/&lambda;<sub>SF</sub>&nbsp;=&nbsp;1/&lambda;<sub>1</sub>&nbsp;+&nbsp;1/&lambda;<sub>2</sub>, that light appears at a wavelength lying between the two
+        second harmonics — a colour that <strong>only</strong> exists when both beams are
+        present together, which makes it unmistakable. The delay-stage position that
+        maximises it is <strong>time zero</strong>, and the width of the peak around it tells
+        you how much timing slop the experiment can tolerate${cite(4)}.</p>
+        <p>Coherent Raman microscopy is the textbook case. In coherent anti-Stokes Raman
+        scattering (CARS), a pump photon and a Stokes photon drive a molecular vibration
+        whose frequency is their difference, and a third photon probes it — so the signal
+        exists only where and when both beams overlap in the focal volume${cite(4)}. The
+        pump typically comes from a femtosecond oscillator and the Stokes from an optical
+        parametric oscillator pumped by it: synchronized by construction, but arriving at the
+        sample at quite different times until a delay line is set. The standard procedure is
+        to focus the combined beams into a type-I BBO crystal and maximise the
+        sum-frequency signal${cite(4)}.</p>
+        <p>Two subtleties make this more than an alignment step. The overlap that matters is
+        at the <em>focus of the objective</em>, not at the entrance to the microscope, and a
+        high-NA objective is a substantial piece of glass — so a measurement made on the
+        bench with an external autocorrelator does not describe the pulses that actually
+        reach the sample${cite(4)}. And when the pulses are deliberately chirped for
+        <em>spectral focusing</em> — stretched so that their instantaneous frequency
+        difference stays constant across the overlap — the delay no longer merely switches
+        the signal on. It <em>tunes the Raman shift</em>. Time zero then defines the origin
+        of the spectroscopic axis, and getting it wrong shifts every measured vibrational
+        frequency${cite(4)}.</p>
+        <p>A neat consequence, exploited by Piazza and co-workers, is that the delay line
+        already present in every such microscope is enough to characterize both pulses
+        without any autocorrelator at all. Scanning it while recording two different
+        nonlinear signals from a sample — the sum-frequency signal, which mixes one pump
+        photon with one Stokes photon, and the non-resonant four-wave-mixing signal, which
+        takes two pump photons and one Stokes photon — gives two cross-correlation widths
+        that depend differently on the two durations. Two equations, two unknowns: both
+        durations fall out, and tracking how the centre wavelength of each signal drifts with
+        delay yields each pulse's chirp as well${cite(4)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The Autocorrelator reports the pulse duration of whatever pulse train reaches its
+        face — and reports it the way a real instrument does, as a trace width with an
+        assumption divided out, rather than as a number read off the source.</p>
+        <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
+        (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
+        instrument works out for itself, because in a laboratory it is not something the
+        instrument <em>can</em> work out for itself. Set it to the wrong shape and the
+        reading changes — a Gaussian assumption on a sech² source reads about 9% long, and
+        the inspector says so explicitly, naming the true duration beside the inferred one.
+        That disagreement is the lesson the component exists to teach.</p>
+        <p>For a transform-limited Gaussian source, the reading is taken from the pulse that
+        <em>arrives</em> rather than the one that was emitted. Put a
+        <a href="../glassrod/">glass rod</a> in the path and the autocorrelator measures the
+        stretched duration; add a <a href="../pulsecompressor/">pulse compressor</a> with the
+        opposite group delay dispersion and it measures the pulse recovering. The bundled
+        <em>Ultrashort pulse chirping</em> example is built around exactly that comparison,
+        with three autocorrelators reading the same pulse under three different dispersion
+        conditions.</p>
+        <p>That qualification is not decoration. The broadening is computed from a closed-form
+        Gaussian result, so it is only derived when the source is both transform-limited and
+        Gaussian. Switch the source to sech&sup2;, or clear its transform-limited box, and no
+        stretched duration exists to report: the instrument falls back to the duration
+        configured on the source, and the inspector says so in as many words rather than
+        letting a dispersion measurement be read out of a number that never moved.</p>
+        <h3>Cross-correlation mode</h3>
+        <p><strong>Measurement mode</strong> switches the same box between correlating one
+        source against itself and correlating <em>two</em> sources against each other. In
+        cross-correlation mode the assumed-shape control disappears, because the instrument
+        is no longer inferring a duration &mdash; it is reporting a timing relationship.</p>
+        <p>The screen also changes what it is plotting, and the change is worth stating
+        carefully. An autocorrelation is a <strong>scan-delay</strong> plot: the instrument
+        sweeps one arm against the other and the peak sits at zero by construction. A
+        cross-correlation screen here is a <strong>laboratory arrival-time</strong> plot
+        instead &mdash; the view you get on a scope while walking a delay line, and the reason
+        the two peaks move. The axis is labelled so the two cannot be confused.</p>
+        <p>On it are the two pulses, each at its own arrival time, each drawn at
+        <em>constant height</em>: a beam's own second harmonic does not care where the other
+        beam is. What grows between them is the <strong>sum-frequency signal</strong>, which
+        exists only where the two overlap, so it appears at the midpoint and rises as the arms
+        converge. Bring the pulses together and watch the middle peak light up &mdash; that is
+        the whole procedure, and it is what a real cross-correlator detects. At the meeting
+        point the readout says <strong>TIME ZERO</strong> and the overlap reads 100%.</p>
+        <p>The window is a <strong>timebase you choose</strong> &mdash; &plusmn;1, &plusmn;5,
+        &plusmn;10 or &plusmn;25&nbsp;ps &mdash; and it does not move. That is deliberate, and it
+        matters more than it sounds: a window that resized itself to fit would rescale the axis
+        under the pulses exactly as they approached, so they would never appear to travel. Fixing
+        the axis is what lets you watch them walk. It is the same reason a real oscilloscope makes
+        the timebase a knob rather than an automatic.</p>
+        <p>Pick a wide span to find the pulses, then narrow it as they close. When they sit beyond
+        the window the screen stops drawing and reports the gap instead &mdash; how far apart they
+        are, and how many millimetres to take out of which arm, since a delay line is set in
+        millimetres rather than femtoseconds.
+        <a href="../../sketch/?demo=crosscorrelator">Open the two-arm bench</a> and try it: on its
+        &plusmn;1&nbsp;ps timebase the scene opens 0.06&nbsp;mm short of zero, and setting the delay
+        line to 200&nbsp;mm merges the pulses. Take it to 190&nbsp;mm and they walk apart off the
+        edges; widen the span to &plusmn;25&nbsp;ps and they come back into view.</p>
+        <p>Beside the plot the inspector carries the numbers the screen has no room for,
+        including the autocorrelation each arm would give <em>on its own</em>. Those widths
+        deliberately stay off the plot: on an arrival-time axis what physically sits at each
+        peak is the pulse, not its autocorrelation.</p>
+        <p>Two details are modelled because leaving them out would teach the wrong lesson.
+        Trains with different repetition rates are reported as <strong>unsynchronised</strong>
+        rather than given a trace, since without a fixed phase relationship there is nothing
+        stable to average up. And the mismatch is measured against the <em>nearest</em> pulse
+        of the other train, not the nominally corresponding one: pulses repeat, so arms can
+        only ever be nulled modulo the repetition period, and an arm 12.5&nbsp;ns long at
+        80&nbsp;MHz is perfectly overlapped rather than hopelessly late.</p>
+        <p>Wired to a Detector screen, it draws the trace: delay on
+        the horizontal axis rather than laboratory time, the curve symmetric about zero delay
+        as a real autocorrelation always is, the half-maximum chord that <em>is</em> the
+        measurement marked across it, and the inferred duration printed above. A continuous-wave
+        source produces no trace and says so; and pulse trains whose <em>timing</em> disagrees —
+        different repetition rate, duration, or phase — are reported as mixed rather than
+        averaged into a meaningless number.</p>`,
+      formulas: [],
+      limitations: `<p>No scan is simulated. The trace is drawn from the arriving duration
+        and the assumed shape rather than being accumulated by stepping a delay line through
+        a nonlinear crystal, so there is no scan time, no delay-line travel limit setting a
+        maximum measurable duration, and no acquisition noise. Everything downstream of that
+        choice follows: no crystal, no phase matching, no group velocity mismatch, and
+        therefore none of the difficulties that dominate real measurements below about
+        20&nbsp;fs.</p>
+        <p>Only the intensity autocorrelation is modelled. There is no interferometric mode,
+        so the fringes, the diagnostic 8:1 peak-to-background ratio, and the chirp sensitivity
+        that comes with a collinear geometry have no counterpart here. There is no dynamic
+        range and no noise floor, so pedestals, satellite pulses, and the coherent artifact
+        cannot appear — the trace is always the clean curve of a well-behaved pulse. Pulse
+        shapes other than Gaussian and sech² are not available, and since the modelled
+        envelope is symmetric, the asymmetry that a real autocorrelation famously hides is
+        not there to be hidden.</p>
+        <p>Mixing is detected by timing settings only. Two sources agreeing in repetition rate,
+        pulse duration, and phase are treated as one train even when their shapes, path delays,
+        or accumulated dispersion differ, in which case the trace is drawn from the first of
+        them and the averaged group delay dispersion. That is a real gap: two genuinely
+        different pulses can be measured as one.</p>
+        <p>Cross-correlation is between exactly two arriving trains. One is not enough and
+        three cannot be reduced to a single pair, and both cases say so rather than picking
+        two. The two arms are two sources whose light lands on one detector face, not two
+        ports the instrument delays against each other, so the delay is whatever the scene
+        builds rather than something the box scans internally &mdash; which is why nulling
+        the mismatch is a job for a <a href="../glassrod/">path</a> or a delay line rather
+        than a control on the instrument.</p>
+        <p>The trace width uses the exact result that variance adds under correlation, and is
+        scaled so that both limiting cases come out right: two matched pulses reproduce their
+        own autocorrelation factor, and a reference much shorter than the pulse returns the
+        pulse's own width, since a short enough gate samples the envelope directly. Between
+        those limits it is an interpolation, within a couple of percent of a numerically
+        integrated sech&sup2; correlation. Mixed shapes &mdash; a Gaussian against a
+        sech&sup2; &mdash; have no closed form at all, and are flagged as approximate. Chirp is not carried into the width:
+        the arriving durations are used as they stand, so matched-chirp spectral focusing,
+        where the delay tunes the Raman shift rather than merely switching the signal on, is
+        described above but not modelled.</p>`,
+    },
+    related: ['pulsedlaser', 'glassrod', 'pulsecompressor', 'detector', 'spectrometer'],
+    citations: [
+      { label: 'R. Paschotta, “Autocorrelators,” RP Photonics Encyclopedia; doi:10.61835/y7n', url: 'https://www.rp-photonics.com/autocorrelators.html' },
+      { label: '“Ultrashort laser pulse characterisation: Optical autocorrelators,” MEETOPTICS Academy', url: 'https://www.meetoptics.com/academy/autocorrelators' },
+      { label: 'D. J. Kane, “Ultrafast Laser Techniques: Pulse Characterization Techniques,” in Encyclopedia of Modern Optics, Elsevier (2005), pp. 227–239; doi:10.1016/B0-12-369395-0/00842-3', url: 'https://www.sciencedirect.com/science/article/pii/B0123693950008423' },
+      { label: 'V. Piazza, G. de Vito, E. Farrokhtakin, G. Ciofani and V. Mattoli, “Femtosecond-laser-pulse characterization and optimization for CARS microscopy,” PLoS ONE 11(5), e0156371 (2016)', url: 'https://doi.org/10.1371/journal.pone.0156371' },
+      { label: 'R. A. Fisher and J. A. Fleck Jr., “On the phase characteristics and compression of picosecond pulses,” Appl. Phys. Lett. 15, 287 (1969) — the origin of the coherent-artifact warning', url: 'https://doi.org/10.1063/1.1653002' },
+      { label: 'D. J. Kane and R. Trebino, “Characterization of arbitrary femtosecond pulses using frequency-resolved optical gating,” IEEE J. Quantum Electron. 29(2), 571–579 (1993)', url: 'https://doi.org/10.1109/3.199311' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Pulse Characterization', url: 'https://www.rp-photonics.com/pulse_characterization.html' },
+      { label: 'RP Photonics Encyclopedia — Pulse Duration', url: 'https://www.rp-photonics.com/pulse_duration.html' },
+    ],
+  },
 
   {
     type: 'dichroic',

@@ -8,7 +8,10 @@ import { detectorReading } from './raytrace.js';
 import { enhancedReading, objectImageAtCamera, pmtVerdict } from './detector-measurements.js';
 import { fwhmToSigma } from './spectrum.js';
 import { scopeTrace } from './pulses.js';
-import { autocorrelationReading } from './glass.js';
+import {
+  autocorrelationReading, crossCorrelationReading, correlationShapeValue, crossCorrelationPair,
+  crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS,
+} from './glass.js';
 import { esc, formatSignal, smoothPath, wavelengthToColor } from './util.js';
 
 export const DETECTOR_TYPES = [
@@ -137,6 +140,24 @@ registry.autocorrelator = instrumentDefinition({
 registry.autocorrelator.params.push({
   key: 'assumedShape', label: 'Assumed pulse shape', type: 'select', def: 'gauss',
   options: [['gauss', 'Gaussian (÷1.414)'], ['sech2', 'Sech² (÷1.543)']],
+  show: p => (p.measurementMode || 'auto') === 'auto',
+});
+// The same box, correlating two different arms instead of one against itself.
+// The trace is then no longer centred on zero: it peaks at whatever timing
+// mismatch the arms actually have, which is what makes it the instrument you
+// use to find time zero rather than to read a duration.
+registry.autocorrelator.params.push({
+  key: 'measurementMode', label: 'Measurement mode', type: 'select', def: 'auto',
+  options: [['auto', 'Autocorrelation (one source)'], ['cross', 'Cross-correlation (two sources)']],
+});
+// The scope timebase, and a knob rather than an automatic. A window that
+// resized itself would rescale the axis under the pulses as they approach,
+// hiding the motion the display exists to show; on a real scope you pick a
+// timebase and watch the traces walk across it.
+registry.autocorrelator.params.push({
+  key: 'timeSpanPs', label: 'Time span', type: 'select', def: 25,
+  options: CROSS_SCOPE_SPANS_PS.map(ps => [ps, `±${ps} ps`]),
+  show: p => (p.measurementMode || 'auto') === 'cross',
 });
 registry.generaldetector = instrumentDefinition({
   label: 'General detector', code: 'DET', readoutKind: 'general', paletteOrder: 9, width: 54, accent: '#67e8f9',
@@ -268,6 +289,9 @@ function spectrumRange(reading, sensor) {
   }
   return [lo, hi];
 }
+
+// Path-to-time conversion, matching raytrace.js's own constant.
+const C_MM_PER_NS = 299.792458;
 
 const formatTimeNs = ns => (ns <= 0 ? '0 ns'
   : ns >= 1e6 ? `${(ns / 1e6).toFixed(ns < 1e7 ? 1 : 0)} ms`
@@ -588,6 +612,97 @@ function formatPower(watts, signal) {
 function pulseRate(pulse) { return !pulse ? 'CW' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.repRateMHz)} MHz`; }
 function pulseDuration(pulse) { return !pulse ? '—' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.pulseWidthFs)} fs`; }
 
+// The cross-correlation screen, built to behave like the scope you actually
+// watch while hunting time zero. The axis here is LABORATORY ARRIVAL TIME, not
+// the scan delay of the autocorrelation display above: two pulses sit at their
+// own arrival times and slide together as an arm is tuned. Both peaks keep a
+// constant height, because each beam's own second harmonic does not care about
+// the relative delay -- what grows between them is the sum-frequency signal,
+// which exists only where the two overlap. Bring them together, watch the
+// middle peak light up, and that is time zero.
+//
+// The origin is the midpoint of the two arrivals, so the display stays
+// symmetric and both peaks remain visible however far apart they are, up to
+// the instrument's scan range.
+function crossCorrelationScope(sensor, reading) {
+  const { arms, reason } = crossCorrelationPair(reading);
+  if (!arms) return { note: reason };
+  const cc = crossCorrelationReading(arms[0], arms[1]);
+  if (!cc) return { note: 'NO PULSE' };
+  if (!cc.synchronized) return { note: 'UNSYNCHRONIZED — RATES DIFFER' };
+
+  const halfSpanFs = crossScopeHalfSpanFs(sensor.params);
+  const sep = cc.offsetFs;
+  const t = v => (Math.abs(v) >= 1000
+    ? `${(v / 1000).toFixed(Math.abs(v) >= 10000 ? 0 : 1)} ps`
+    : `${v.toFixed(Math.abs(v) < 10 ? 1 : 0)} fs`);
+
+  // The pulses sit either side of the origin, so both leave the window at the
+  // same moment. A flat line would say nothing about how far off they are, so
+  // say the number instead -- and say it in millimetres of path as well, since
+  // that is the unit of the control you are about to turn.
+  // The chosen window is an exact setting, so label it exactly -- "25 ps",
+  // not the general formatter's rounding of 25000 fs.
+  const spanLabel = `${halfSpanFs / 1000} ps`;
+  if (Math.abs(sep) / 2 > halfSpanFs) {
+    const mm = Math.abs(sep) * 1e-15 * C_MM_PER_NS * 1e9;
+    return { note: `RELATIVE DELAY ${t(Math.abs(sep))} > SPAN ±${spanLabel}`
+      + `|SHORTEN THE ${sep > 0 ? 'SECOND' : 'FIRST'} ARM BY ${mm < 10 ? mm.toFixed(2) : mm.toFixed(1)} MM` };
+  }
+
+  const baseline = 8, height = 19;
+  const xAt = fs => -35 + 70 * (fs + halfSpanFs) / (2 * halfSpanFs);
+  const yAt = v => baseline - Math.max(0, Math.min(1, v)) * height;
+
+  // Sampling follows the window, not the features: at a wide timebase a 150 fs
+  // pulse is a spike a fraction of a pixel across, so the curve is drawn on a
+  // grid fine enough to keep it from vanishing between samples.
+  const narrowest = Math.min(arms[0].pulseWidthFs, arms[1].pulseWidthFs, cc.traceFwhmFs);
+  const steps = Math.max(72, Math.min(600, Math.ceil((2 * halfSpanFs) / Math.max(1e-9, narrowest / 8))));
+  const curve = (centreFs, fwhmFs, shape, amplitude) => {
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const tau = -halfSpanFs + (2 * halfSpanFs) * i / steps;
+      pts.push(`${xAt(tau).toFixed(2)},${yAt(amplitude * correlationShapeValue(tau - centreFs, fwhmFs, shape)).toFixed(2)}`);
+    }
+    return pts;
+  };
+
+  // Each arm's own envelope, at its own arrival, at constant height. The two
+  // are tinted apart rather than by wavelength: both arms of a real bench are
+  // often in the infrared, where wavelengthToColor returns the same red twice.
+  const armTint = ['#7dd3fc', '#fcd34d'];
+  const armSvg = arms.map((armInfo, index) => {
+    const centre = index === 0 ? -sep / 2 : sep / 2;
+    const pts = curve(centre, armInfo.pulseWidthFs, armInfo.pulseShape, 0.7);
+    const label = Number.isFinite(armInfo.centerWavelengthNm)
+      ? `<text x="${xAt(centre).toFixed(2)}" y="${(baseline + 9.4)}" text-anchor="middle" font-size="3" fill="${armTint[index]}">${Math.round(armInfo.centerWavelengthNm)} NM</text>`
+      : '';
+    return `<polyline data-arrival-envelope="${index}" points="${pts.join(' ')}" fill="none" stroke="${armTint[index]}" stroke-width="0.9" opacity="0.9"/>` + label;
+  }).join('');
+
+  // The sum-frequency signal sits midway between the arrivals -- at the origin,
+  // by construction -- and its height is the overlap. This is the peak that
+  // lights up when the arms meet, and the one a real cross-correlator detects.
+  const sfg = cc.overlap > 0.002
+    ? `<polyline data-cross-correlation="${steps + 1}" points="${curve(0, cc.traceFwhmFs, cc.traceShape, cc.overlap).join(' ')}" fill="none" stroke="${reading.color || '#fca5a5'}" stroke-width="1.3"/>`
+    : '';
+
+  const atZero = Math.abs(sep) < cc.traceFwhmFs * 0.02;
+  const zeroX = xAt(0).toFixed(2);
+
+  return { svg: `<line x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>` +
+    `<line x1="${zeroX}" y1="${baseline}" x2="${zeroX}" y2="${yAt(1).toFixed(2)}" stroke="#3d5566" stroke-width="0.5" stroke-dasharray="1 1"/>` +
+    armSvg + sfg +
+    `<text x="${zeroX}" y="${(baseline + 5.4)}" text-anchor="middle" font-size="3.4" fill="#5f7d8e">0</text>` +
+    `<text x="-35" y="${(baseline + 5.4)}" font-size="3.4" fill="#5f7d8e">−${esc(spanLabel)}</text>` +
+    `<text x="35" y="${(baseline + 5.4)}" text-anchor="end" font-size="3.4" fill="#5f7d8e">+${esc(spanLabel)}</text>` +
+    `<text x="-35" y="-8.2" font-size="6.2" font-weight="780" fill="${atZero ? '#86efac' : '#ecf7fa'}">` +
+    `${atZero ? 'TIME ZERO' : esc(`${sep > 0 ? '+' : '−'}${t(Math.abs(sep))}`)}</text>` +
+    `<text x="-35" y="-3.4" font-size="3.2" fill="#7892a1">ARRIVAL TIME · OVERLAP ${(cc.overlap * 100).toFixed(0)}%` +
+    `${cc.sumFrequencyNm ? ` · SFG ${cc.sumFrequencyNm.toFixed(0)} NM` : ''}</text>` };
+}
+
 // Intensity-autocorrelation trace: what an autocorrelator actually puts on a
 // screen. The horizontal axis is delay, not laboratory time — the instrument
 // scans one arm against the other — and the curve is the self-convolution of
@@ -609,10 +724,11 @@ function autocorrelationPlot(sensor, reading) {
   const xAt = fs => -35 + 70 * (fs + spanFs) / (2 * spanFs);
   const yAt = v => baseline - Math.max(0, Math.min(1, v)) * height;
   // Gaussian autocorrelation of a Gaussian is Gaussian; sech² is close enough
-  // to sech² for a qualitative screen.
-  const shape = tau => (actual === 'sech2'
-    ? 1 / Math.cosh(1.7627 * tau / (ac.traceFwhmFs / 2)) ** 2
-    : Math.exp(-4 * Math.LN2 * (tau / ac.traceFwhmFs) ** 2));
+  // to sech² for a qualitative screen. Shared with the cross-correlation so the
+  // curve and the half-maximum chord drawn across it cannot disagree -- they
+  // did for sech² sources, where the argument was scaled twice over and the
+  // curve fell to half maximum at a quarter of the trace width.
+  const shape = tau => correlationShapeValue(tau, ac.traceFwhmFs, actual);
 
   const points = [];
   for (let i = 0; i <= 96; i++) {
@@ -658,6 +774,13 @@ function panel(sensor, reading, elements, view) {
     if (scope) return header(name, 'OSCILLOSCOPE', reading.pulse) + scope;
     return header(name, 'REL INTENSITY', reading.pulse) +
       `<circle cx="-31" cy="-1" r="2.3" fill="${reading.color}"/><text x="35" y="4" text-anchor="end" font-size="15" font-weight="780" fill="#ecf7fa">${compactNumber(reading.signal)}</text><text x="35" y="12" text-anchor="end" font-size="5" fill="#7892a1">Σw · REL INTENSITY</text>`;
+  }
+  if (sensor.type === 'autocorrelator' && (sensor.params?.measurementMode || 'auto') === 'cross') {
+    const { svg, note } = crossCorrelationScope(sensor, reading);
+    if (svg) return header(name, 'CROSS-CORRELATION', reading.pulse) + svg;
+    const [state, hint] = String(note).split('|');
+    return header(name, 'CROSS-CORRELATION', reading.pulse)
+      + metrics(hint ? [['STATE', state], ['', hint]] : [['STATE', state]]);
   }
   if (sensor.type === 'autocorrelator') {
     const plot = autocorrelationPlot(sensor, reading);

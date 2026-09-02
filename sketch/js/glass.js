@@ -165,6 +165,12 @@ export function gaussianPulseDurationAfterGDD(pulseWidthFs, gddFs2) {
 // wrong one is the classic way to misreport a duration.
 export const AUTOCORRELATION_FACTORS = { gauss: Math.SQRT2, sech2: 1.543 };
 
+// Where a sech^2 profile falls to half its peak, in units of its own FWHM:
+// 2*arccosh(sqrt 2) = 1.762747174039086. Used to draw correlation curves; the
+// 1.543 deconvolution factor above stays at its published rounding because
+// that is the number a real instrument's manual quotes.
+const SECH2_HALF = 2 * Math.acosh(Math.SQRT2);
+
 // What an autocorrelator actually sees, and what it would report. `assumed`
 // is the shape the instrument is set to; `actual` is the shape the pulse
 // really has, so a mismatch can be shown rather than silently absorbed.
@@ -181,5 +187,136 @@ export function autocorrelationReading(pulseWidthFs, assumed = 'gauss', actual =
     assumedFactor,
     actualFactor,
     shapeMismatch: assumed !== actual,
+  };
+}
+
+// The normalized shape of a correlation trace at a given delay from its peak.
+// Shared by the reading and the screen so the overlap figure and the drawn
+// curve can never disagree about what the trace actually looks like.
+export function correlationShapeValue(delayFs, traceFwhmFs, shape = 'gauss') {
+  const width = Number(traceFwhmFs), tau = Number(delayFs);
+  if (!(width > 0) || !Number.isFinite(tau)) return 0;
+  // sech^2 reaches half maximum at 2*arccosh(sqrt 2) in its own argument, so
+  // the argument is SECH2_HALF*tau/FWHM -- not twice that, which would put the
+  // half-maximum at a quarter width. The constant is solved rather than typed
+  // as its usual 1.7627 rounding, so the curve meets the half-maximum chord
+  // exactly instead of 17 ppm away from it.
+  if (shape === 'sech2') return (1 / Math.cosh(SECH2_HALF * tau / width)) ** 2;
+  return Math.exp(-4 * Math.LN2 * (tau / width) ** 2);
+}
+
+// Selecting the two arms for a cross-correlation. `trains` is keyed on source
+// id, so two sources always give two entries even when the aggregate `mixed`
+// flag stays false because their timing settings happen to agree. Arrival is
+// emission phase plus propagation delay: both are real contributions to when a
+// pulse turns up, and only their difference matters here.
+export function crossCorrelationPair(reading) {
+  const trains = Array.isArray(reading?.pulse?.trains) ? reading.pulse.trains : [];
+  if (!reading?.pulse) return { reason: 'NO PULSE' };
+  if (trains.length < 2) return { reason: 'NEEDS A SECOND SOURCE' };
+  if (trains.length > 2) return { reason: `${trains.length} TRAINS — NEEDS EXACTLY 2` };
+  const arm = train => ({
+    pulseWidthFs: Number.isFinite(train.stretchedPulseWidthFs)
+      ? train.stretchedPulseWidthFs : train.pulseWidthFs,
+    pulseShape: train.pulseShape || 'gauss',
+    repRateMHz: train.repRateMHz,
+    centerWavelengthNm: train.centerWavelengthNm,
+    arrivalFs: ((Number(train.phaseNs) || 0) + (Number(train.pathDelayNs) || 0)) * 1e6,
+  });
+  return { arms: [arm(trains[0]), arm(trains[1])] };
+}
+
+// The scope's horizontal window. Fixed by the user rather than sized from the
+// measurement: an oscilloscope's timebase is a knob you turn, and a window that
+// silently rescaled itself would hide the very motion the display exists to
+// show -- two pulses walking toward each other keep the same apparent speed
+// only if the axis holds still.
+export const CROSS_SCOPE_SPANS_PS = [1, 5, 10, 25];
+
+export function crossScopeHalfSpanFs(params) {
+  const chosen = Number(params?.timeSpanPs);
+  if (CROSS_SCOPE_SPANS_PS.includes(chosen)) return chosen * 1000;
+  // Scenes saved against the earlier auto-ranging build carried a full-width
+  // scan range instead; half of it is the same window.
+  const legacy = Number(params?.scanRangePs);
+  if (legacy > 0) {
+    const half = legacy / 2;
+    return CROSS_SCOPE_SPANS_PS.reduce((best, ps) => (Math.abs(ps - half) < Math.abs(best - half) ? ps : best),
+      CROSS_SCOPE_SPANS_PS[0]) * 1000;
+  }
+  return 25000;
+}
+
+// A cross-correlation differs from an autocorrelation in the two ways that
+// make it useful. It is not forced to be symmetric, and it is not centred on
+// zero: the peak sits at whatever timing mismatch the two arms really have,
+// which is exactly why the measurement is what finds time zero.
+//
+// Width: variance adds exactly under correlation whatever the envelopes, so
+// the two widths combine in quadrature. Converting that variance back into a
+// FWHM needs the trace's own shape constant, which is only well defined when
+// both pulses have the same shape -- and the scaling below is built so that
+// two identical pulses reproduce the known autocorrelation factor exactly
+// (1.414 for Gaussian, 1.543 for sech2) rather than defaulting to quadrature
+// and being 9% wrong for sech2, which is the very error this instrument
+// exists to teach. Mixed shapes have no closed form; the geometric mean of
+// the two constants is used and the result is flagged as approximate.
+//
+// `a` and `b` are { pulseWidthFs, pulseShape, arrivalFs, repRateMHz,
+// centerWavelengthNm }.
+export function crossCorrelationReading(a, b) {
+  const t1 = Number(a?.pulseWidthFs), t2 = Number(b?.pulseWidthFs);
+  if (!(t1 > 0) || !(t2 > 0)) return null;
+  const shapeOf = t => (AUTOCORRELATION_FACTORS[t?.pulseShape] ? t.pulseShape : 'gauss');
+  const s1 = shapeOf(a), s2 = shapeOf(b);
+  const k1 = AUTOCORRELATION_FACTORS[s1], k2 = AUTOCORRELATION_FACTORS[s2];
+  const shapeMismatch = s1 !== s2;
+  const k = shapeMismatch ? Math.sqrt(k1 * k2) : k1;
+  // The shape correction has to fade out as the durations diverge. Applying
+  // k/sqrt(2) flat would break the limit the instrument is most used for: with
+  // a reference much shorter than the pulse, the correlation must reproduce
+  // the pulse's own envelope, so the trace width must converge on the pulse
+  // width -- and a flat sech^2 correction overshoots it by 9%. This weight is
+  // 1 for equal durations and falls to 0 as either dominates, so both limits
+  // come out exact. Against a numerical sech^2 correlation it is within 2%
+  // everywhere between them; Gaussians are unaffected, since k/sqrt(2) is 1.
+  const overlapWeight = (2 * t1 * t2) / (t1 * t1 + t2 * t2);
+  const traceFwhmFs = Math.hypot(t1, t2) * (1 + (k / Math.SQRT2 - 1) * overlapWeight);
+
+  const rep1 = Number(a?.repRateMHz), rep2 = Number(b?.repRateMHz);
+  // Without a common repetition rate the two trains drift against each other
+  // and no stable trace exists to average up, however well the arms happen to
+  // be matched at one instant.
+  const synchronized = rep1 > 0 && rep2 > 0 && Math.abs(rep1 - rep2) <= 1e-9 * Math.max(rep1, rep2);
+  const periodFs = synchronized ? 1e9 / rep1 : null;
+
+  const rawOffsetFs = (Number(b?.arrivalFs) || 0) - (Number(a?.arrivalFs) || 0);
+  // Pulses repeat, so a mismatch of more than half a period is really a
+  // smaller mismatch against the neighbouring pulse of the other train. That
+  // is not a modelling convenience: it is why a synchronized system can only
+  // ever be nulled modulo its own period.
+  const offsetFs = periodFs
+    ? rawOffsetFs - periodFs * Math.round(rawOffsetFs / periodFs)
+    : rawOffsetFs;
+
+  const l1 = Number(a?.centerWavelengthNm), l2 = Number(b?.centerWavelengthNm);
+  const sumFrequencyNm = l1 > 0 && l2 > 0 ? (l1 * l2) / (l1 + l2) : null;
+
+  return {
+    traceFwhmFs,
+    traceShape: shapeMismatch ? 'gauss' : s1,
+    offsetFs,
+    rawOffsetFs,
+    periodFs,
+    synchronized,
+    shapeMismatch,
+    // 1.0 when the two pulses land together; this is the number you maximize
+    // when hunting for time zero on a real bench.
+    overlap: synchronized
+      ? correlationShapeValue(offsetFs, traceFwhmFs, shapeMismatch ? 'gauss' : s1)
+      : 0,
+    widths: [t1, t2],
+    shapes: [s1, s2],
+    sumFrequencyNm,
   };
 }

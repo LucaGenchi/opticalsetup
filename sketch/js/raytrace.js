@@ -751,6 +751,15 @@ export function detectorReading(elementId) {
         ? centerHits.reduce((sum, h) => sum + h[key] * Math.max(0, h.power || 0), 0) / weight
         : centerHits[0]?.[key] || 0;
       const gddFs2 = weighted('gddFs2');
+      // The colour a cross-correlation mixes is the one that ARRIVES. Source
+      // metadata survives wavelength conversion unchanged -- an SHG crystal
+      // rewrites ray.wl but not pulse.centerWavelengthNm -- so a sum-frequency
+      // readout built on it would name the emitters' colours rather than the
+      // light actually incident on the face.
+      const arrivingWeight = sourceHits.reduce((sum, h) => sum + Math.max(0, h.power || 0), 0);
+      const arrivingCenterNm = arrivingWeight > 0
+        ? sourceHits.reduce((sum, h) => sum + h.wl * Math.max(0, h.power || 0), 0) / arrivingWeight
+        : sourceHits[0]?.wl;
       const canBroaden = p.transformLimited === true && (p.pulseShape || 'gauss') === 'gauss';
       return {
         repRateMHz: p.repRateMHz,
@@ -762,6 +771,11 @@ export function detectorReading(elementId) {
         stretchedPulseWidthFs: canBroaden
           ? gaussianPulseDurationAfterGDD(p.pulseWidthFs, gddFs2)
           : null,
+        // A cross-correlation is between two specific trains, so it needs each
+        // one's own shape and colour rather than the aggregate's -- the whole
+        // point is that the two arms differ.
+        pulseShape: p.pulseShape || 'gauss',
+        centerWavelengthNm: Number.isFinite(arrivingCenterNm) ? arrivingCenterNm : centerWavelength,
       };
     });
     const sources = new Set(pulsed.map(h => h.pulse.sourceId).filter(Boolean));
