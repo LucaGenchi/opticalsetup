@@ -360,6 +360,46 @@ test('unequal durations add in quadrature, and a short reference samples the lon
     `expected ~2000 fs, got ${gated.traceFwhmFs}`);
 });
 
+test('the short-reference limit holds for sech² too, not just for Gaussians', () => {
+  // A flat k/sqrt(2) correction satisfies the equal-duration case and then
+  // overshoots this one by 9%, which is exactly the size of error this whole
+  // component exists to make visible. Both limits have to hold at once.
+  const gated = crossCorrelationReading(
+    arm({ pulseWidthFs: 5, pulseShape: 'sech2' }),
+    arm({ pulseWidthFs: 2000, pulseShape: 'sech2' }));
+  assert.ok(Math.abs(gated.traceFwhmFs - 2000) / 2000 < 0.005,
+    `a 5 fs sech² reference must sample the 2000 fs pulse, got ${gated.traceFwhmFs}`);
+
+  // and the equal-duration case must still reproduce the autocorrelation
+  const equal = crossCorrelationReading(
+    arm({ pulseShape: 'sech2' }), arm({ pulseShape: 'sech2' }));
+  assert.ok(Math.abs(equal.traceFwhmFs - autocorrelationReading(150, 'sech2', 'sech2').traceFwhmFs) < 1e-9);
+
+  // in between, the model tracks a numerically integrated sech² correlation
+  const SECH2_HALF = 2 * Math.acosh(Math.SQRT2);
+  const sech2 = (t, fw) => (1 / Math.cosh(SECH2_HALF * t / fw)) ** 2;
+  const numericFwhm = (t1, t2) => {
+    const W = Math.max(t1, t2) * 12, N = 20001, dt = (2 * W) / (N - 1);
+    const val = tau => {
+      let sum = 0;
+      for (let i = 0; i < N; i++) { const t = -W + i * dt; sum += sech2(t, t1) * sech2(t + tau, t2); }
+      return sum * dt;
+    };
+    const peak = val(0);
+    let lo = 0, hi = Math.max(t1, t2) * 4;
+    for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (val(m) > peak / 2) lo = m; else hi = m; }
+    return lo + hi;
+  };
+  for (const [t1, t2] of [[150, 300], [150, 600], [150, 2000]]) {
+    const model = crossCorrelationReading(
+      arm({ pulseWidthFs: t1, pulseShape: 'sech2' }),
+      arm({ pulseWidthFs: t2, pulseShape: 'sech2' })).traceFwhmFs;
+    const truth = numericFwhm(t1, t2);
+    assert.ok(Math.abs(model / truth - 1) < 0.025,
+      `${t1}x${t2}: model ${model.toFixed(1)} vs numeric ${truth.toFixed(1)}`);
+  }
+});
+
 test('the trace peaks at the real timing mismatch, and overlap falls away from it', () => {
   const aligned = crossCorrelationReading(arm(), arm());
   assert.equal(aligned.offsetFs, 0);
@@ -418,6 +458,28 @@ test('crossCorrelationPair refuses anything that is not exactly two trains', () 
   // emission phase and propagation both decide when a pulse turns up
   assert.ok(Math.abs(pair.arms[0].arrivalFs - 1e6) < 1e-6);
   assert.ok(Math.abs(pair.arms[1].arrivalFs - 1.001e6) < 1e-6);
+});
+
+test('the sum-frequency colour is built from what arrives, not from the emitters', () => {
+  // An SHG crystal rewrites the ray wavelength but leaves the source's own
+  // centre metadata alone, so a readout built on that metadata would name the
+  // colour that entered the bench rather than the one hitting the face.
+  const laser = createElement('pulsedlaser', 60, 0);
+  Object.assign(laser.params, {
+    wavelength: 800, beamMode: 'line', pulseWidthFs: 150, repRateMHz: 80,
+    transformLimited: true, pulseShape: 'gauss', bandwidth: 0,
+  });
+  const crystal = createElement('crystal', 200, 0);
+  Object.assign(crystal.params, { convert: 'shg', efficiency: 0.9, transmitPump: false });
+  const meter = createElement('autocorrelator', 430, 0);
+  Object.assign(meter.params, { aperture: 34, measurementMode: 'cross' });
+
+  const scene = [laser, crystal, meter];
+  traceAll(scene, []);
+  const reading = detectorReading(meter.id);
+  assert.equal(Math.round(reading.wavelength), 400, 'the doubled light is what arrives');
+  assert.ok(Math.abs(reading.pulse.trains[0].centerWavelengthNm - 400) < 1,
+    `the train must follow it, got ${reading.pulse.trains[0].centerWavelengthNm}`);
 });
 
 test('a cross-correlator on a screen finds two real sources and reports the mismatch', () => {

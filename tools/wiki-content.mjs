@@ -4428,10 +4428,13 @@ export const wikiEntries = [
         builds rather than something the box scans internally &mdash; which is why nulling
         the mismatch is a job for a <a href="../glassrod/">path</a> or a delay line rather
         than a control on the instrument.</p>
-        <p>The trace width uses the exact result that variance adds under correlation, so it
-        reduces to the correct autocorrelation factor when the two pulses match. Mixed shapes
-        &mdash; a Gaussian against a sech&sup2; &mdash; have no closed form, and the value
-        shown is an interpolation flagged as approximate. Chirp is not carried into the width:
+        <p>The trace width uses the exact result that variance adds under correlation, and is
+        scaled so that both limiting cases come out right: two matched pulses reproduce their
+        own autocorrelation factor, and a reference much shorter than the pulse returns the
+        pulse's own width, since a short enough gate samples the envelope directly. Between
+        those limits it is an interpolation, within a couple of percent of a numerically
+        integrated sech&sup2; correlation. Mixed shapes &mdash; a Gaussian against a
+        sech&sup2; &mdash; have no closed form at all, and are flagged as approximate. Chirp is not carried into the width:
         the arriving durations are used as they stand, so matched-chirp spectral focusing,
         where the delay tunes the Raman shift rather than merely switching the signal on, is
         described above but not modelled.</p>`,
