@@ -4375,17 +4375,32 @@ export const wikiEntries = [
         source against itself and correlating <em>two</em> sources against each other. In
         cross-correlation mode the assumed-shape control disappears, because the instrument
         is no longer inferring a duration &mdash; it is reporting a timing relationship.</p>
-        <p>The trace is then <em>not</em> centred. Zero delay is drawn as a fixed landmark and
-        the curve peaks wherever the two arms actually meet, so the gap between the peak and
-        that marker is the timing error, in femtoseconds and in microns of path. Beside it the
-        instrument reports the <strong>overlap</strong> as a percentage of the peak &mdash;
-        the number you maximise on a bench &mdash; and the sum-frequency wavelength, the
-        colour that exists only when both beams are present. Lengthen one arm, or dial the
-        delay line, and the peak slides toward the marker until the readout says
-        <strong>TIME ZERO</strong>. That hunt is the whole procedure described above, performed
-        rather than described &mdash;
-        <a href="../../sketch/?demo=crosscorrelator">open the two-arm bench</a> and try it: the
-        scene opens 0.06&nbsp;mm short, and setting the delay line to 200&nbsp;mm lands it.</p>
+        <p>The screen also changes what it is plotting, and the change is worth stating
+        carefully. An autocorrelation is a <strong>scan-delay</strong> plot: the instrument
+        sweeps one arm against the other and the peak sits at zero by construction. A
+        cross-correlation screen here is a <strong>laboratory arrival-time</strong> plot
+        instead &mdash; the view you get on a scope while walking a delay line, and the reason
+        the two peaks move. The axis is labelled so the two cannot be confused.</p>
+        <p>On it are the two pulses, each at its own arrival time, each drawn at
+        <em>constant height</em>: a beam's own second harmonic does not care where the other
+        beam is. What grows between them is the <strong>sum-frequency signal</strong>, which
+        exists only where the two overlap, so it appears at the midpoint and rises as the arms
+        converge. Bring the pulses together and watch the middle peak light up &mdash; that is
+        the whole procedure, and it is what a real cross-correlator detects. At the meeting
+        point the readout says <strong>TIME ZERO</strong> and the overlap reads 100%.</p>
+        <p>The window sizes itself to hold both peaks with air around them, and it stops at the
+        instrument's <strong>scan range</strong>, 50&nbsp;ps by default. That limit is real: a
+        cross-correlator can only reach as far as its delay line travels. Beyond it the screen
+        stops drawing and reports the gap instead &mdash; how far apart the pulses are, and how
+        many millimetres to take out of which arm, since a delay line is set in millimetres
+        rather than femtoseconds.
+        <a href="../../sketch/?demo=crosscorrelator">Open the two-arm bench</a> and try it: the
+        scene opens 0.06&nbsp;mm short of zero, and setting the delay line to 200&nbsp;mm lands
+        it. Take it to 180&nbsp;mm and the pulses go out of reach.</p>
+        <p>Beside the plot the inspector carries the numbers the screen has no room for,
+        including the autocorrelation each arm would give <em>on its own</em>. Those widths
+        deliberately stay off the plot: on an arrival-time axis what physically sits at each
+        peak is the pulse, not its autocorrelation.</p>
         <p>Two details are modelled because leaving them out would teach the wrong lesson.
         Trains with different repetition rates are reported as <strong>unsynchronised</strong>
         rather than given a trace, since without a fixed phase relationship there is nothing

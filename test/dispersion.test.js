@@ -505,15 +505,87 @@ test('a cross-correlator on a screen finds two real sources and reports the mism
   const svg = reg.display.svg(screen, scene);
 
   assert.match(svg, /CROSS-CORRELATION/, 'the screen labels the mode');
-  assert.match(svg, /data-cross-correlation="\d+"/, 'and plots a sampled trace');
-  assert.match(svg, /0 DELAY/, 'zero delay is drawn as a landmark, not as the centre');
+  assert.match(svg, /ARRIVAL TIME/, 'and says which axis it is showing');
+  assert.match(svg, /data-arrival-envelope="0"/, 'one envelope per arm');
+  assert.match(svg, /data-arrival-envelope="1"/);
   assert.match(svg, /OVERLAP/, 'with the figure you maximize while hunting');
+  assert.match(svg, /800 NM/, 'each peak names its own colour');
+  assert.match(svg, /1,?030 NM/);
 
   const trains = detectorReading(meter.id).pulse.trains;
   assert.equal(trains.length, 2, 'two sources give two trains even with equal timing settings');
   const cc = crossCorrelationReading(...crossCorrelationPair({ pulse: { trains } }).arms);
   assert.ok(Math.abs(Math.abs(cc.offsetFs) - 300) < 1, `expected ~300 fs, got ${cc.offsetFs}`);
   assert.ok(Math.abs(cc.sumFrequencyNm - (800 * 1030) / 1830) < 1);
+});
+
+// A two-arm bench, parameterized by how far apart the arms are, so the scope's
+// behaviour can be walked from merged to out of reach.
+function crossBench(separationFs, scanRangePs = 50) {
+  const mk = (y, wl, phaseNs) => {
+    const laser = createElement('pulsedlaser', 60, y);
+    Object.assign(laser.params, {
+      wavelength: wl, beamMode: 'line', pulseWidthFs: 150, repRateMHz: 80,
+      transformLimited: true, pulseShape: 'gauss', bandwidth: 0,
+      pulsePhaseNs: phaseNs,
+    });
+    return laser;
+  };
+  const meter = createElement('autocorrelator', 430, 0);
+  Object.assign(meter.params, { aperture: 34, measurementMode: 'cross', scanRangePs });
+  const screen = createElement('display', 560, 0);
+  Object.assign(screen.params, { sensorId: meter.id, screenOn: true });
+  const scene = [mk(0, 800, 0), mk(0, 1030, separationFs / 1e6), meter, screen];
+  traceAll(scene, []);
+  return { svg: reg.display.svg(screen, scene), meter };
+}
+
+test('the two arrivals slide together and the sum-frequency peak lights up between them', () => {
+  // far apart: both envelopes drawn, nothing in the middle
+  const apart = crossBench(3000).svg;
+  assert.match(apart, /data-arrival-envelope="0"/);
+  assert.doesNotMatch(apart, /data-cross-correlation=/,
+    '3 ps apart, 150 fs pulses make no sum-frequency signal at all');
+  assert.match(apart, /OVERLAP 0%/);
+
+  // closing in: the middle peak appears
+  const near = crossBench(200).svg;
+  assert.match(near, /data-cross-correlation=/, 'overlapping arms produce the SFG peak');
+
+  // merged: time zero
+  const merged = crossBench(0).svg;
+  assert.match(merged, /TIME ZERO/);
+  assert.match(merged, /OVERLAP 100%/);
+  assert.match(merged, /data-cross-correlation=/);
+});
+
+test('beyond the scan range the screen says how far out of reach the pulse is', () => {
+  // 60 ps apart with a 50 ps range: unreachable, and the number matters
+  const { svg } = crossBench(60000, 50);
+  assert.doesNotMatch(svg, /data-arrival-envelope=/, 'nothing is drawn that cannot be reached');
+  assert.match(svg, /RELATIVE DELAY/);
+  assert.match(svg, /60 ps/, 'the actual separation, not just "out of range"');
+  assert.match(svg, /RANGE 50 ps/);
+  // and the correction quoted in the unit of the control you turn
+  assert.match(svg, /SHORTEN THE SECOND ARM BY 18\.0 MM/);
+
+  // widening the instrument's range brings the same bench back on screen
+  const wider = crossBench(60000, 200).svg;
+  assert.match(wider, /data-arrival-envelope="0"/, 'a longer delay line reaches it');
+  assert.doesNotMatch(wider, /RELATIVE DELAY/);
+});
+
+test('the plotted window never exceeds the scan range, and never crushes a merged pair', () => {
+  // merged: the window must open out to show the pulses, not collapse onto them
+  const merged = crossBench(0).svg;
+  const mergedSpan = Number(/−(\d+) fs/.exec(merged)?.[1]);
+  assert.ok(mergedSpan > 150 && mergedSpan < 2000,
+    `a merged 150 fs pair wants a few hundred fs of window, got ${mergedSpan}`);
+
+  // at the very edge of range the window is capped, not stretched past it
+  const edge = crossBench(49000, 50).svg;
+  const edgeHalfSpan = Number(/−(\d+(?:\.\d+)?) ps/.exec(edge)?.[1]);
+  assert.ok(edgeHalfSpan <= 25.001, `half-span ${edgeHalfSpan} ps must not exceed range/2`);
 });
 
 test('one source in cross mode says so instead of plotting an autocorrelation', () => {
