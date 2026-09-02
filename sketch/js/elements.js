@@ -3441,13 +3441,13 @@ export const registry = {
         key: 'moveMode', label: 'Motion', type: 'select', def: 'static',
         options: [['static', 'Static — hold one delay'], ['linear', 'Periodic sweep']],
       },
-      { key: 'delayMm', label: 'Extra optical path (mm)', type: 'number', min: 0, max: 100000, step: 0.0001, def: 100, show: p => (p.moveMode || 'static') === 'static' },
+      { key: 'delayMm', label: 'Extra optical path (mm)', type: 'number', min: 0, max: 100000, step: 0.001, def: 100, show: p => (p.moveMode || 'static') === 'static' },
       // A swept stage retraces rather than flying back -- the carriage has to
       // come home the way it went out. Defaults span a couple of wavelengths
       // at 532 nm, which is the range that reads as moving fringes rather than
       // as a blur; a stage really does dither over microns for lock-in work.
-      { key: 'delayMinMm', label: 'Sweep from (mm)', type: 'number', min: 0, max: 100000, step: 0.0001, def: 0, show: p => p.moveMode === 'linear' },
-      { key: 'delayMaxMm', label: 'Sweep to (mm)', type: 'number', min: 0, max: 100000, step: 0.0001, def: 0.001, show: p => p.moveMode === 'linear' },
+      { key: 'delayMinMm', label: 'Sweep from (mm)', type: 'number', min: 0, max: 100000, step: 0.001, def: 0, show: p => p.moveMode === 'linear' },
+      { key: 'delayMaxMm', label: 'Sweep to (mm)', type: 'number', min: 0, max: 100000, step: 0.001, def: 0.001, show: p => p.moveMode === 'linear' },
       { key: 'freqHz', label: 'Sweep frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 1, show: p => p.moveMode === 'linear' },
       {
         key: 'delaySweepReadout', label: 'Sweep spans', type: 'readout',
