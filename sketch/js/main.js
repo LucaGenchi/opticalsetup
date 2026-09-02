@@ -499,7 +499,7 @@ const demoScenes = {
   // coherent-Raman bench starts with.
   crosscorrelator: () => {
     const meter = mkDemo('autocorrelator', 640, 250, 0,
-      { aperture: 30, measurementMode: 'cross' },
+      { aperture: 30, measurementMode: 'cross', timeSpanPs: 1 },
       { label: 'cross-correlator', showLabel: true, labelPos: 't' });
     return [
       mkDemo('pulsedlaser', 60, 250, 0,

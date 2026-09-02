@@ -226,6 +226,27 @@ export function crossCorrelationPair(reading) {
   return { arms: [arm(trains[0]), arm(trains[1])] };
 }
 
+// The scope's horizontal window. Fixed by the user rather than sized from the
+// measurement: an oscilloscope's timebase is a knob you turn, and a window that
+// silently rescaled itself would hide the very motion the display exists to
+// show -- two pulses walking toward each other keep the same apparent speed
+// only if the axis holds still.
+export const CROSS_SCOPE_SPANS_PS = [1, 5, 10, 25];
+
+export function crossScopeHalfSpanFs(params) {
+  const chosen = Number(params?.timeSpanPs);
+  if (CROSS_SCOPE_SPANS_PS.includes(chosen)) return chosen * 1000;
+  // Scenes saved against the earlier auto-ranging build carried a full-width
+  // scan range instead; half of it is the same window.
+  const legacy = Number(params?.scanRangePs);
+  if (legacy > 0) {
+    const half = legacy / 2;
+    return CROSS_SCOPE_SPANS_PS.reduce((best, ps) => (Math.abs(ps - half) < Math.abs(best - half) ? ps : best),
+      CROSS_SCOPE_SPANS_PS[0]) * 1000;
+  }
+  return 25000;
+}
+
 // A cross-correlation differs from an autocorrelation in the two ways that
 // make it useful. It is not forced to be symmetric, and it is not centred on
 // zero: the peak sits at whatever timing mismatch the two arms really have,

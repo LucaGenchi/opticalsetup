@@ -521,7 +521,7 @@ test('a cross-correlator on a screen finds two real sources and reports the mism
 
 // A two-arm bench, parameterized by how far apart the arms are, so the scope's
 // behaviour can be walked from merged to out of reach.
-function crossBench(separationFs, scanRangePs = 50) {
+function crossBench(separationFs, timeSpanPs = 25) {
   const mk = (y, wl, phaseNs) => {
     const laser = createElement('pulsedlaser', 60, y);
     Object.assign(laser.params, {
@@ -532,7 +532,7 @@ function crossBench(separationFs, scanRangePs = 50) {
     return laser;
   };
   const meter = createElement('autocorrelator', 430, 0);
-  Object.assign(meter.params, { aperture: 34, measurementMode: 'cross', scanRangePs });
+  Object.assign(meter.params, { aperture: 34, measurementMode: 'cross', timeSpanPs });
   const screen = createElement('display', 560, 0);
   Object.assign(screen.params, { sensorId: meter.id, screenOn: true });
   const scene = [mk(0, 800, 0), mk(0, 1030, separationFs / 1e6), meter, screen];
@@ -542,50 +542,66 @@ function crossBench(separationFs, scanRangePs = 50) {
 
 test('the two arrivals slide together and the sum-frequency peak lights up between them', () => {
   // far apart: both envelopes drawn, nothing in the middle
-  const apart = crossBench(3000).svg;
+  const apart = crossBench(3000, 5).svg;
   assert.match(apart, /data-arrival-envelope="0"/);
   assert.doesNotMatch(apart, /data-cross-correlation=/,
     '3 ps apart, 150 fs pulses make no sum-frequency signal at all');
   assert.match(apart, /OVERLAP 0%/);
 
   // closing in: the middle peak appears
-  const near = crossBench(200).svg;
+  const near = crossBench(200, 5).svg;
   assert.match(near, /data-cross-correlation=/, 'overlapping arms produce the SFG peak');
 
   // merged: time zero
-  const merged = crossBench(0).svg;
+  const merged = crossBench(0, 5).svg;
   assert.match(merged, /TIME ZERO/);
   assert.match(merged, /OVERLAP 100%/);
   assert.match(merged, /data-cross-correlation=/);
 });
 
-test('beyond the scan range the screen says how far out of reach the pulse is', () => {
-  // 60 ps apart with a 50 ps range: unreachable, and the number matters
-  const { svg } = crossBench(60000, 50);
-  assert.doesNotMatch(svg, /data-arrival-envelope=/, 'nothing is drawn that cannot be reached');
-  assert.match(svg, /RELATIVE DELAY/);
-  assert.match(svg, /60 ps/, 'the actual separation, not just "out of range"');
-  assert.match(svg, /RANGE 50 ps/);
-  // and the correction quoted in the unit of the control you turn
-  assert.match(svg, /SHORTEN THE SECOND ARM BY 18\.0 MM/);
-
-  // widening the instrument's range brings the same bench back on screen
-  const wider = crossBench(60000, 200).svg;
-  assert.match(wider, /data-arrival-envelope="0"/, 'a longer delay line reaches it');
-  assert.doesNotMatch(wider, /RELATIVE DELAY/);
+test('the window is the one the user chose, and never resizes itself', () => {
+  // the same bench at every timebase reports that timebase and no other
+  for (const ps of [1, 5, 10, 25]) {
+    const svg = crossBench(0, ps).svg;
+    assert.match(svg, new RegExp(`−${ps} ps`), `±${ps} ps window must be labelled as such`);
+    assert.match(svg, new RegExp(`\\+${ps} ps`));
+  }
+  // and moving the pulses does not change it, which is the whole point:
+  // a window that rescaled itself would hide the motion it exists to show
+  const still = [0, 500, 3000].map(sep => /−(\d+) ps/.exec(crossBench(sep, 5).svg)?.[1]);
+  assert.deepEqual(still, ['5', '5', '5']);
 });
 
-test('the plotted window never exceeds the scan range, and never crushes a merged pair', () => {
-  // merged: the window must open out to show the pulses, not collapse onto them
-  const merged = crossBench(0).svg;
-  const mergedSpan = Number(/−(\d+) fs/.exec(merged)?.[1]);
-  assert.ok(mergedSpan > 150 && mergedSpan < 2000,
-    `a merged 150 fs pair wants a few hundred fs of window, got ${mergedSpan}`);
+test('pulses beyond the chosen window are reported, not drawn', () => {
+  // 30 ps apart puts each pulse 15 ps either side of the origin: outside a
+  // ±5 ps window, comfortably inside a ±25 ps one
+  const { svg } = crossBench(30000, 5);
+  assert.doesNotMatch(svg, /data-arrival-envelope=/, 'nothing is drawn that is not on screen');
+  assert.match(svg, /RELATIVE DELAY/);
+  assert.match(svg, /30 ps/, 'the actual separation, not just "off screen"');
+  assert.match(svg, /SPAN ±5 ps/);
+  // and the correction quoted in the unit of the control you turn
+  assert.match(svg, /SHORTEN THE SECOND ARM BY 8\.99 MM/);
 
-  // at the very edge of range the window is capped, not stretched past it
-  const edge = crossBench(49000, 50).svg;
-  const edgeHalfSpan = Number(/−(\d+(?:\.\d+)?) ps/.exec(edge)?.[1]);
-  assert.ok(edgeHalfSpan <= 25.001, `half-span ${edgeHalfSpan} ps must not exceed range/2`);
+  // widening the timebase brings the same bench back on screen
+  const wider = crossBench(30000, 25).svg;
+  assert.match(wider, /data-arrival-envelope="0"/, 'a wider window reaches them');
+  assert.doesNotMatch(wider, /RELATIVE DELAY/);
+
+  // but the widest window still cannot hold an arbitrarily large mismatch,
+  // and says so rather than pretending
+  assert.match(crossBench(60000, 25).svg, /RELATIVE DELAY/);
+});
+
+test('a narrow pulse stays visible on a wide timebase', () => {
+  // a 150 fs pulse is 0.3% of a +/-25 ps window: sampled on a fixed coarse
+  // grid it would fall between samples and vanish entirely
+  const svg = crossBench(0, 25).svg;
+  const pts = /data-arrival-envelope="0" points="([^"]+)"/.exec(svg)?.[1] || '';
+  const ys = pts.split(' ').map(p => Number(p.split(',')[1]));
+  assert.ok(ys.length > 200, `needs a fine grid at this timebase, got ${ys.length} samples`);
+  assert.ok(Math.max(...ys) - Math.min(...ys) > 10,
+    'the pulse must actually rise off the baseline, not be sampled away');
 });
 
 test('one source in cross mode says so instead of plotting an autocorrelation', () => {

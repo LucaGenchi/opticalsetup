@@ -10,6 +10,7 @@ import { fwhmToSigma } from './spectrum.js';
 import { scopeTrace } from './pulses.js';
 import {
   autocorrelationReading, crossCorrelationReading, correlationShapeValue, crossCorrelationPair,
+  crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS,
 } from './glass.js';
 import { esc, formatSignal, smoothPath, wavelengthToColor } from './util.js';
 
@@ -149,12 +150,13 @@ registry.autocorrelator.params.push({
   key: 'measurementMode', label: 'Measurement mode', type: 'select', def: 'auto',
   options: [['auto', 'Autocorrelation (one source)'], ['cross', 'Cross-correlation (two sources)']],
 });
-// A real cross-correlator can only reach as far as its delay line travels, so
-// the window is a property of the instrument rather than a constant. Beyond it
-// the screen reports how far out of reach the other pulse is instead of
-// drawing a flat line.
+// The scope timebase, and a knob rather than an automatic. A window that
+// resized itself would rescale the axis under the pulses as they approach,
+// hiding the motion the display exists to show; on a real scope you pick a
+// timebase and watch the traces walk across it.
 registry.autocorrelator.params.push({
-  key: 'scanRangePs', label: 'Scan range (ps)', type: 'number', min: 0.1, max: 10000, step: 1, def: 50,
+  key: 'timeSpanPs', label: 'Time span', type: 'select', def: 25,
+  options: CROSS_SCOPE_SPANS_PS.map(ps => [ps, `±${ps} ps`]),
   show: p => (p.measurementMode || 'auto') === 'cross',
 });
 registry.generaldetector = instrumentDefinition({
@@ -629,36 +631,38 @@ function crossCorrelationScope(sensor, reading) {
   if (!cc) return { note: 'NO PULSE' };
   if (!cc.synchronized) return { note: 'UNSYNCHRONIZED — RATES DIFFER' };
 
-  const rangeFs = Math.max(1, Number(sensor.params?.scanRangePs) || 50) * 1000;
+  const halfSpanFs = crossScopeHalfSpanFs(sensor.params);
   const sep = cc.offsetFs;
   const t = v => (Math.abs(v) >= 1000
     ? `${(v / 1000).toFixed(Math.abs(v) >= 10000 ? 0 : 1)} ps`
     : `${v.toFixed(Math.abs(v) < 10 ? 1 : 0)} fs`);
 
-  // Past the scan range a real instrument simply has no travel left to reach
-  // the other pulse, and showing a flat line would say nothing about how far
-  // off it is. Say the number instead.
-  if (Math.abs(sep) > rangeFs) {
-    // Quote the correction in millimetres of path, because that is the unit of
-    // the control you are about to turn -- a delay line is set in mm, not fs.
+  // The pulses sit either side of the origin, so both leave the window at the
+  // same moment. A flat line would say nothing about how far off they are, so
+  // say the number instead -- and say it in millimetres of path as well, since
+  // that is the unit of the control you are about to turn.
+  // The chosen window is an exact setting, so label it exactly -- "25 ps",
+  // not the general formatter's rounding of 25000 fs.
+  const spanLabel = `${halfSpanFs / 1000} ps`;
+  if (Math.abs(sep) / 2 > halfSpanFs) {
     const mm = Math.abs(sep) * 1e-15 * C_MM_PER_NS * 1e9;
-    return { note: `RELATIVE DELAY ${t(Math.abs(sep))} > RANGE ${t(rangeFs)}`
+    return { note: `RELATIVE DELAY ${t(Math.abs(sep))} > SPAN ±${spanLabel}`
       + `|SHORTEN THE ${sep > 0 ? 'SECOND' : 'FIRST'} ARM BY ${mm < 10 ? mm.toFixed(2) : mm.toFixed(1)} MM` };
   }
 
   const baseline = 8, height = 19;
-  const widest = Math.max(arms[0].pulseWidthFs, arms[1].pulseWidthFs, cc.traceFwhmFs);
-  // Wide enough to hold both peaks with air around them, never so tight that a
-  // merged pair fills the whole plot, never wider than the instrument's range.
-  const spanFs = Math.min(rangeFs,
-    Math.max(widest * 3.2, Math.abs(sep) * 1.6 + widest * 2.2));
-  const xAt = fs => -35 + 70 * (fs + spanFs / 2) / spanFs;
+  const xAt = fs => -35 + 70 * (fs + halfSpanFs) / (2 * halfSpanFs);
   const yAt = v => baseline - Math.max(0, Math.min(1, v)) * height;
 
+  // Sampling follows the window, not the features: at a wide timebase a 150 fs
+  // pulse is a spike a fraction of a pixel across, so the curve is drawn on a
+  // grid fine enough to keep it from vanishing between samples.
+  const narrowest = Math.min(arms[0].pulseWidthFs, arms[1].pulseWidthFs, cc.traceFwhmFs);
+  const steps = Math.max(72, Math.min(600, Math.ceil((2 * halfSpanFs) / Math.max(1e-9, narrowest / 8))));
   const curve = (centreFs, fwhmFs, shape, amplitude) => {
     const pts = [];
-    for (let i = 0; i <= 72; i++) {
-      const tau = -spanFs / 2 + spanFs * i / 72;
+    for (let i = 0; i <= steps; i++) {
+      const tau = -halfSpanFs + (2 * halfSpanFs) * i / steps;
       pts.push(`${xAt(tau).toFixed(2)},${yAt(amplitude * correlationShapeValue(tau - centreFs, fwhmFs, shape)).toFixed(2)}`);
     }
     return pts;
@@ -681,7 +685,7 @@ function crossCorrelationScope(sensor, reading) {
   // by construction -- and its height is the overlap. This is the peak that
   // lights up when the arms meet, and the one a real cross-correlator detects.
   const sfg = cc.overlap > 0.002
-    ? `<polyline data-cross-correlation="${73}" points="${curve(0, cc.traceFwhmFs, cc.traceShape, cc.overlap).join(' ')}" fill="none" stroke="${reading.color || '#fca5a5'}" stroke-width="1.3"/>`
+    ? `<polyline data-cross-correlation="${steps + 1}" points="${curve(0, cc.traceFwhmFs, cc.traceShape, cc.overlap).join(' ')}" fill="none" stroke="${reading.color || '#fca5a5'}" stroke-width="1.3"/>`
     : '';
 
   const atZero = Math.abs(sep) < cc.traceFwhmFs * 0.02;
@@ -691,8 +695,8 @@ function crossCorrelationScope(sensor, reading) {
     `<line x1="${zeroX}" y1="${baseline}" x2="${zeroX}" y2="${yAt(1).toFixed(2)}" stroke="#3d5566" stroke-width="0.5" stroke-dasharray="1 1"/>` +
     armSvg + sfg +
     `<text x="${zeroX}" y="${(baseline + 5.4)}" text-anchor="middle" font-size="3.4" fill="#5f7d8e">0</text>` +
-    `<text x="-35" y="${(baseline + 5.4)}" font-size="3.4" fill="#5f7d8e">−${esc(t(spanFs / 2))}</text>` +
-    `<text x="35" y="${(baseline + 5.4)}" text-anchor="end" font-size="3.4" fill="#5f7d8e">+${esc(t(spanFs / 2))}</text>` +
+    `<text x="-35" y="${(baseline + 5.4)}" font-size="3.4" fill="#5f7d8e">−${esc(spanLabel)}</text>` +
+    `<text x="35" y="${(baseline + 5.4)}" text-anchor="end" font-size="3.4" fill="#5f7d8e">+${esc(spanLabel)}</text>` +
     `<text x="-35" y="-8.2" font-size="6.2" font-weight="780" fill="${atZero ? '#86efac' : '#ecf7fa'}">` +
     `${atZero ? 'TIME ZERO' : esc(`${sep > 0 ? '+' : '−'}${t(Math.abs(sep))}`)}</text>` +
     `<text x="-35" y="-3.4" font-size="3.2" fill="#7892a1">ARRIVAL TIME · OVERLAP ${(cc.overlap * 100).toFixed(0)}%` +
