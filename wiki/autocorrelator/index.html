@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autocorrelator — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/autocorrelator/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Autocorrelator — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/autocorrelator/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul>
+            <li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul>
+            <li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <ul>
+            <li><a href="../../wiki/lens/" class="">Convex lens</a></li><li><a href="../../wiki/lensc/" class="">Concave lens</a></li><li><a href="../../wiki/metalens/" class="">Metalens</a></li><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group (surface table)</a></li><li><a href="../../wiki/telescope/" class="">Telescope (lens pair)</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul>
+            <li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul>
+            <li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul>
+            <li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul>
+            <li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul>
+            <li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul>
+            <li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul>
+            <li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="current">Autocorrelator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul>
+            <li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul>
+            <li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li>
+          </ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul>
+            <li><a href="../../wiki/phaseplate/" class="">Phase object</a></li>
+          </ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#detectors">Detectors</a> / Autocorrelator</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-35 -35 70 70" aria-hidden="true"><rect x="-28" y="-15" width="56" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-29.7" y="-11" width="3.4" height="22" rx="1" fill="#fca5a5" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">AC</text><circle cx="20" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></div>
+        <div>
+          <h1>Autocorrelator</h1>
+        </div>
+      </div>
+      <p class="tagline">Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one.</p>
+      <a class="place-cta" href="../../sketch/?place=autocorrelator">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=autocorrelator"
+          title="Interactive Autocorrelator — click it to see its live specs and try its parameters"
+          loading="lazy"></iframe>
+      </div>
+      <p class="embed-caption">Click the autocorrelator to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>A femtosecond pulse cannot be timed by anything electronic. The fastest
+        photodiodes and sampling oscilloscopes reach a few picoseconds; a 100&nbsp;fs pulse
+        is two orders of magnitude shorter than that, and no detector exists whose response
+        is short enough to resolve it<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The way out is to stop looking for a faster
+        clock and instead use the pulse to measure itself.</p>
+        <p>That is what an autocorrelator does. A beam splitter makes two copies of the
+        incoming pulse; one travels through a variable delay line; the two are then brought
+        together in a medium with a &chi;<sup>(2)</sup> nonlinearity — typically a thin
+        second-harmonic crystal — where they mix only while they physically overlap in
+        time<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Sum-frequency light appears at a new, shorter wavelength, and its
+        power depends on how much of the two envelopes coincide. Sweep the delay, record
+        that power, and the resulting curve — the autocorrelation trace — is about as wide as the
+        pulse is long. Nothing in the detection chain needs to be fast: the photodiode only
+        has to read an <em>average</em> power for each delay setting, because a mode-locked
+        laser supplies a regular train of nominally identical pulses<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <h3>Intensity autocorrelation</h3>
+        <p>In the standard arrangement the two copies cross at a small angle in the crystal,
+        so the sum-frequency beam leaves along its own direction, between the two inputs.
+        Because that beam only exists where the pulses overlap, the signal falls to zero at
+        large delay: the measurement is <strong>background-free</strong><sup class="cite">[<a href="#ref-1">1</a>]</sup>, and this
+        non-collinear geometry is what gives an intensity autocorrelator its high dynamic
+        range<sup class="cite">[<a href="#ref-2">2</a>]</sup>. The trace it records is</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>I</mi><mrow><mi mathvariant="normal">a</mi><mi mathvariant="normal">c</mi></mrow></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><msubsup><mo>∫</mo><mrow><mo>−</mo><mi mathvariant="normal">∞</mi></mrow><mi mathvariant="normal">∞</mi></msubsup><mi>P</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mtext> </mtext><mi>P</mi><mo stretchy="false">(</mo><mi>t</mi><mo>+</mo><mi>τ</mi><mo stretchy="false">)</mo><mtext> </mtext><mi mathvariant="normal">d</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">I_{\mathrm{ac}}(\tau)=\int_{-\infty}^{\infty} P(t)\,P(t+\tau)\,\mathrm{d}t</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">ac</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.3846em;vertical-align:-0.9703em;"></span><span class="mop"><span class="mop op-symbol large-op" style="margin-right:0.4445em;position:relative;top:-0.0011em;">∫</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.4143em;"><span style="top:-1.7881em;margin-left:-0.4445em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight">∞</span></span></span></span><span style="top:-3.8129em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">∞</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9703em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathrm">d</span><span class="mord mathnormal">t</span></span></span></span></span></div>
+      <div class="caption">The intensity autocorrelation: the optical power of the pulse multiplied by a delayed copy of itself, integrated over time, as a function of the delay τ set by the moving arm.</div>
+    </div>
+
+        <h3>Why the trace is always wider than the pulse</h3>
+        <p>Look at that integral at zero delay: the two copies sit exactly on top of one
+        another and the product is maximal. Now shift by a delay smaller than the pulse
+        duration. The overlap has shrunk, but it has not vanished — the trailing part of one
+        copy is still sitting on the leading part of the other, so a real signal is still
+        produced. Only when the delay exceeds roughly the pulse length does the product
+        finally go to zero. The measured curve therefore stays above half maximum for
+        <em>longer</em> than the pulse itself does, and the autocorrelation is inescapably
+        broader than the thing it is measuring. This is not an instrumental defect that
+        better optics would remove; it is a property of the operation.</p>
+        <p>How much broader depends on the shape of the envelope. For a Gaussian pulse the
+        autocorrelation is itself Gaussian and about <strong>1.41 times</strong> wider —
+        exactly &radic;2, because Gaussian widths add in quadrature and
+        &radic;(&tau;&sup2;&nbsp;+&nbsp;&tau;&sup2;)&nbsp;=&nbsp;&radic;2&nbsp;&tau;<sup class="cite">[<a href="#ref-1">1</a>]</sup>. For a sech² pulse, the shape most
+        mode-locked oscillators actually produce, the pulse duration is about
+        <strong>0.65 times</strong> the width of the trace<sup class="cite">[<a href="#ref-1">1</a>]</sup> — a factor of roughly
+        1.543 the other way. So the instrument never reports a duration directly. It reports
+        a trace width, and someone must divide out a <em>deconvolution factor</em>:</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>τ</mi><mi mathvariant="normal">p</mi></msub><mo>=</mo><mfrac><mrow><mi mathvariant="normal">Δ</mi><msub><mi>τ</mi><mrow><mi mathvariant="normal">a</mi><mi mathvariant="normal">c</mi></mrow></msub></mrow><mi>k</mi></mfrac><mo separator="true">,</mo><mspace width="2em"/><msub><mi>k</mi><mrow><mi mathvariant="normal">G</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">u</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">s</mi></mrow></msub><mo>=</mo><msqrt><mn>2</mn></msqrt><mo>≈</mo><mn>1.414</mn><mo separator="true">,</mo><mspace width="2em"/><msub><mi>k</mi><msup><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">c</mi><mi mathvariant="normal">h</mi></mrow><mn>2</mn></msup></msub><mo>≈</mo><mn>1.543</mn></mrow><annotation encoding="application/x-tex">\tau_{\mathrm{p}}=\frac{\Delta\tau_{\mathrm{ac}}}{k},\qquad k_{\mathrm{Gauss}}=\sqrt{2}\approx 1.414,\qquad k_{\mathrm{sech}^2}\approx 1.543</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathrm mtight">p</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0315em;">k</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">Δ</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">ac</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0315em;">k</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0315em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">Gauss</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.04em;vertical-align:-0.0839em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9561em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord">2</span></span></span><span style="top:-2.9161em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.08em" viewBox="0 0 400000 1080" preserveAspectRatio="xMinYMin slice"><path d="M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.0839em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.911em;vertical-align:-0.2165em;"></span><span class="mord">1.414</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0315em;">k</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3448em;"><span style="top:-2.4835em;margin-left:-0.0315em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">sech</span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8019em;"><span style="top:-2.8416em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="katex-sizing reset-size3 size1 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2165em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≈</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">1.543</span></span></span></span></span></div>
+      <div class="caption">The pulse duration is the measured autocorrelation FWHM divided by a factor that depends entirely on the pulse shape you assume it has.</div>
+    </div>
+
+        <p>And there is the catch that defines the technique. The factor depends on a shape
+        the measurement itself cannot establish. Gaussian and sech² traces do not look
+        dramatically different, so fitting one to the data is a sanity check rather than a
+        proof<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Yet the two factors differ by 9%, so assuming the wrong one puts
+        the answer out by 9% before any other error is counted — and for genuinely odd pulse
+        shapes, by far more. A quoted "150&nbsp;fs, assuming sech²" is an honest reading;
+        a quoted "150&nbsp;fs" is an incomplete one.</p>
+        <h3>What an autocorrelation cannot tell you</h3>
+        <p>The deeper limitation is structural: <strong>the autocorrelation trace is always
+        symmetric about zero delay, even when the pulse is not</strong><sup class="cite">[<a href="#ref-1">1</a>]</sup>. Swapping
+        <em>t</em>&nbsp;&rarr;&nbsp;&minus;<em>t</em> in the integral leaves it unchanged, so a pulse with a steep rise and a slow
+        decay produces exactly the same trace as its mirror image. The direction of time is
+        simply not in the data<sup class="cite">[<a href="#ref-2">2</a>]</sup>. Neither is the phase: an intensity autocorrelation
+        responds only to optical power, so it carries no information about chirp, and
+        different pulses can yield indistinguishable traces<sup class="cite">[<a href="#ref-1">1</a>,<a href="#ref-3">3</a>]</sup>. Usefully, the
+        symmetry works as a diagnostic in reverse — an <em>asymmetric</em> trace means a
+        misaligned autocorrelator, not an asymmetric pulse<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p>Noise makes this worse in a specific and notorious way. When a laser is not
+        mode-locking cleanly, each pulse in the train differs from the last, and the
+        averaged trace can show a narrow spike sitting on a much broader pedestal. Taking
+        that spike as the pulse duration is wrong: it is a <strong>coherent
+        artifact</strong>, and in such a situation the trace conveys very little about the
+        real pulse<sup class="cite">[<a href="#ref-1">1</a>,<a href="#ref-5">5</a>]</sup>. A distorted train can look like a beautifully short
+        pulse.</p>
+        <h3>Interferometric autocorrelation</h3>
+        <p>Send the two copies collinearly instead — same path, same polarization — and they
+        interfere before the crystal sees them. The recorded signal then resolves the
+        optical fringes, oscillating with a period of half the optical wavelength<sup class="cite">[<a href="#ref-1">1</a>]</sup>:</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>I</mi><mrow><mi mathvariant="normal">i</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">c</mi></mrow></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><mo>∫</mo><mo fence="true" stretchy="true" minsize="1.2em" maxsize="1.2em">(</mo><mi>E</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>+</mo><mi>E</mi><mo stretchy="false">(</mo><mi>t</mi><mo>+</mo><mi>τ</mi><mo stretchy="false">)</mo><msup><mo fence="true" stretchy="true" minsize="1.2em" maxsize="1.2em">)</mo><mn>4</mn></msup><mtext> </mtext><mi mathvariant="normal">d</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">I_{\mathrm{iac}}(\tau)=\int \bigl(E(t)+E(t+\tau)\bigr)^{4}\,\mathrm{d}t</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3175em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">iac</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.2222em;vertical-align:-0.8622em;"></span><span class="mop op-symbol large-op" style="margin-right:0.4445em;position:relative;top:-0.0011em;">∫</span><span class="mopen"><span class="delimsizing size1">(</span></span><span class="mord mathnormal" style="margin-right:0.0576em;">E</span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">E</span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.404em;vertical-align:-0.35em;"></span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mclose">)</span><span class="mclose"><span class="mclose"><span class="delimsizing size1">)</span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:1.054em;"><span style="top:-3.3029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">4</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathrm">d</span><span class="mord mathnormal">t</span></span></span></span></span></div>
+      <div class="caption">The interferometric (fringe-resolved) autocorrelation. Because the fields add before being squared twice, perfect constructive interference gives four times the intensity and sixteen times the second-harmonic signal — against a background of twice that from one arm alone.</div>
+    </div>
+
+        <p>That arithmetic gives the technique its built-in alignment check: a properly
+        aligned interferometric autocorrelator always produces a trace whose peak is exactly
+        <strong>eight times</strong> its wings<sup class="cite">[<a href="#ref-1">1</a>]</sup>. If the fringes are averaged out,
+        as they are for longer pulses, the ratio becomes 3:1 rather than 4:1, because the
+        oscillation is not sinusoidal<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Unlike the intensity version, this trace
+        <em>is</em> sensitive to chirp — although a chirped pulse's duration is
+        underestimated if one simply reads off the width, and post-processing methods such as
+        MOSAIC exist to make the chirp legible<sup class="cite">[<a href="#ref-1">1</a>]</sup>. The collinear geometry avoids the
+        geometric smearing that a crossing angle causes, which is why interferometric designs
+        dominate at the few-femtosecond end<sup class="cite">[<a href="#ref-1">1</a>,<a href="#ref-2">2</a>]</sup>.</p>
+        <h3>Practical variants</h3>
+        <p><strong>Scanning versus single-shot.</strong> Most traces are built from many
+        pulses, one or more per delay setting, which quietly assumes the train is regular —
+        fine for a mode-locked oscillator, unreliable for a low-repetition-rate amplifier.
+        A single-shot autocorrelator instead focuses with a <em>cylindrical</em> lens so that
+        position across the crystal maps to delay, and reads the whole trace off a camera
+        from one pulse<sup class="cite">[<a href="#ref-1">1</a>]</sup>. Scanning units suit stable high-rate trains; single-shot
+        units are what a 10&nbsp;Hz or 1&nbsp;kHz amplifier needs, and the only way to see
+        shot-to-shot fluctuation<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p><strong>Two-photon detectors.</strong> A photodiode with a band gap too large to
+        absorb the light linearly still responds through two-photon absorption, which is
+        itself the required nonlinearity — so the crystal disappears entirely, and with it
+        the phase-matching alignment<sup class="cite">[<a href="#ref-1">1</a>]</sup>. LEDs run backwards as detectors work
+        too<sup class="cite">[<a href="#ref-1">1</a>]</sup>. These are the compact, nearly alignment-free instruments, at the cost
+        of sensitivity: quoted as the product of average and peak power, a TPA head reaches
+        around 10<sup>&minus;2</sup>&nbsp;W&sup2; where a photomultiplier-based unit reaches
+        10<sup>&minus;6</sup>&nbsp;W&sup2;<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+        <p><strong>Dynamic range.</strong> Weak pedestals and satellite pulses — a
+        speciality of mode-locked fiber lasers — need far more range than a standard trace
+        offers. Type-II phase matching, two-frequency chopping with lock-in detection, and
+        photomultiplier detection push background-free measurements to 80 or even
+        100&nbsp;dB<sup class="cite">[<a href="#ref-1">1</a>]</sup>. A third-order autocorrelator, mixing the light with its own
+        second harmonic, breaks the symmetry altogether and can distinguish a pre-pulse from
+        a post-pulse — at much lower sensitivity<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+        <p><strong>When to stop autocorrelating.</strong> Below about 10&nbsp;fs the
+        phase-matching bandwidth of even a very thin crystal becomes the limit, and
+        frequency-resolved optical gating (FROG) and spectral phase interferometry (SPIDER)
+        are both more accurate and able to return the phase the autocorrelation discards
+        <sup class="cite">[<a href="#ref-1">1</a>,<a href="#ref-3">3</a>,<a href="#ref-6">6</a>]</sup>. FROG is in one sense just an autocorrelator that spectrally resolves
+        its output — spectrum versus delay instead of energy versus delay — and that one
+        extra axis is enough to lift the ambiguity<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+        <h3>Cross-correlation: two different pulses</h3>
+        <p>Nothing in the layout requires the two arms to carry copies of the same pulse.
+        Feed the nonlinear crystal from two <em>different</em> beams and the same delay scan
+        measures their <strong>cross-correlation</strong>:</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>I</mi><mrow><mi mathvariant="normal">c</mi><mi mathvariant="normal">c</mi></mrow></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><msubsup><mo>∫</mo><mrow><mo>−</mo><mi mathvariant="normal">∞</mi></mrow><mi mathvariant="normal">∞</mi></msubsup><msub><mi>I</mi><mn>1</mn></msub><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mtext> </mtext><msub><mi>I</mi><mn>2</mn></msub><mo stretchy="false">(</mo><mi>t</mi><mo>+</mo><mi>τ</mi><mo stretchy="false">)</mo><mtext> </mtext><mi mathvariant="normal">d</mi><mi>t</mi><mo separator="true">,</mo><mspace width="2em"/><mi mathvariant="normal">Δ</mi><msub><mi>τ</mi><mrow><mi mathvariant="normal">c</mi><mi mathvariant="normal">c</mi></mrow></msub><mo>=</mo><msqrt><mrow><msubsup><mi>τ</mi><mn>1</mn><mn>2</mn></msubsup><mo>+</mo><msubsup><mi>τ</mi><mn>2</mn><mn>2</mn></msubsup></mrow></msqrt><mtext>  </mtext><mo stretchy="false">(</mo><mtext>Gaussians</mtext><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">I_{\mathrm{cc}}(\tau)=\int_{-\infty}^{\infty} I_1(t)\,I_2(t+\tau)\,\mathrm{d}t,\qquad \Delta\tau_{\mathrm{cc}}=\sqrt{\tau_1^{2}+\tau_2^{2}}\ \ (\text{Gaussians})</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">cc</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.3846em;vertical-align:-0.9703em;"></span><span class="mop"><span class="mop op-symbol large-op" style="margin-right:0.4445em;position:relative;top:-0.0011em;">∫</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.4143em;"><span style="top:-1.7881em;margin-left:-0.4445em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight">∞</span></span></span></span><span style="top:-3.8129em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">∞</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9703em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathrm">d</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">cc</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.84em;vertical-align:-0.5413em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.2987em;"><span class="svg-align" style="top:-3.8em;"><span class="pstrut" style="height:3.8em;"></span><span class="mord" style="padding-left:1em;"><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7959em;"><span style="top:-2.4337em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span><span style="top:-3.0448em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2663em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7959em;"><span style="top:-2.4337em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span><span style="top:-3.0448em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2663em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.2587em;"><span class="pstrut" style="height:3.8em;"></span><span class="hide-tail" style="min-width:1.02em;height:1.88em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.88em" viewBox="0 0 400000 1944" preserveAspectRatio="xMinYMin slice"><path d="M983 90
+l0 -0
+c4,-6.7,10,-10,18,-10 H400000v40
+H1013.1s-83.4,268,-264.1,840c-180.7,572,-277,876.3,-289,913c-4.7,4.7,-12.7,7,-24,7
+s-12,0,-12,0c-1.3,-3.3,-3.7,-11.7,-7,-25c-35.3,-125.3,-106.7,-373.3,-214,-744
+c-10,12,-21,25,-33,39s-32,39,-32,39c-6,-5.3,-15,-14,-27,-26s25,-30,25,-30
+c26.7,-32.7,52,-63,76,-91s52,-60,52,-60s208,722,208,722
+c56,-175.3,126.3,-397.3,211,-666c84.7,-268.7,153.8,-488.2,207.5,-658.5
+c53.7,-170.3,84.5,-266.8,92.5,-289.5z
+M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.5413em;"><span></span></span></span></span></span><span class="mspace"> </span><span class="mspace"> </span><span class="mopen">(</span><span class="mord text"><span class="mord">Gaussians</span></span><span class="mclose">)</span></span></span></span></span></div>
+      <div class="caption">The cross-correlation of two pulses, and — for Gaussian envelopes — the width of the resulting trace, which adds the two durations in quadrature.</div>
+    </div>
+
+        <p>Two things change, and both are improvements. First, the trace is no longer
+        forced to be symmetric, so an asymmetric pulse now shows its asymmetry and the
+        direction of time survives the measurement. Second, if one of the two pulses is
+        already known and much shorter than the other, it acts as a fast optical gate:
+        <em>I</em><sub>1</sub> approaches a delta function, the integral collapses to <em>I</em><sub>2</sub>(&tau;), and the
+        trace <em>is</em> the unknown envelope, sampled directly rather than
+        deconvolved<sup class="cite">[<a href="#ref-1">1</a>]</sup>. This is why a characterized reference pulse is worth so much,
+        and why the quadrature relation above matters — with &tau;<sub>1</sub>&nbsp;&#8810;&nbsp;&tau;<sub>2</sub> the
+        measured width is just &tau;<sub>2</sub>.</p>
+        <h3>Finding time zero for multi-beam overlap</h3>
+        <p>The most common use of a cross-correlation in a working laboratory is not
+        measuring a duration at all. It is answering a blunter question: <em>when do these
+        two beams actually arrive at the same place at the same time?</em></p>
+        <p>Any experiment driven by two or more synchronized pulses has this problem. The
+        beams travel different paths — different numbers of mirrors, different lengths of
+        glass, an optical parametric oscillator in one arm and none in the other — and a
+        single millimetre of path difference is 3.3&nbsp;ps of timing error, which for
+        100&nbsp;fs pulses means no overlap whatsoever. Spatial alignment can be judged by
+        eye or on a camera; temporal alignment cannot be seen at all. Worse, the search space
+        is large and the signal is exactly zero everywhere outside it, so scanning blind is
+        hopeless without a signal that appears the moment the pulses coincide.</p>
+        <p>The cross-correlation provides exactly that. Combine the two beams on a dichroic
+        mirror, focus them into a thin nonlinear crystal, and scan one arm's delay while
+        watching for sum-frequency light. Because 1/&lambda;<sub>SF</sub>&nbsp;=&nbsp;1/&lambda;<sub>1</sub>&nbsp;+&nbsp;1/&lambda;<sub>2</sub>, that light appears at a wavelength lying between the two
+        second harmonics — a colour that <strong>only</strong> exists when both beams are
+        present together, which makes it unmistakable. The delay-stage position that
+        maximises it is <strong>time zero</strong>, and the width of the peak around it tells
+        you how much timing slop the experiment can tolerate<sup class="cite">[<a href="#ref-4">4</a>]</sup>.</p>
+        <p>Coherent Raman microscopy is the textbook case. In coherent anti-Stokes Raman
+        scattering (CARS), a pump photon and a Stokes photon drive a molecular vibration
+        whose frequency is their difference, and a third photon probes it — so the signal
+        exists only where and when both beams overlap in the focal volume<sup class="cite">[<a href="#ref-4">4</a>]</sup>. The
+        pump typically comes from a femtosecond oscillator and the Stokes from an optical
+        parametric oscillator pumped by it: synchronized by construction, but arriving at the
+        sample at quite different times until a delay line is set. The standard procedure is
+        to focus the combined beams into a type-I BBO crystal and maximise the
+        sum-frequency signal<sup class="cite">[<a href="#ref-4">4</a>]</sup>.</p>
+        <p>Two subtleties make this more than an alignment step. The overlap that matters is
+        at the <em>focus of the objective</em>, not at the entrance to the microscope, and a
+        high-NA objective is a substantial piece of glass — so a measurement made on the
+        bench with an external autocorrelator does not describe the pulses that actually
+        reach the sample<sup class="cite">[<a href="#ref-4">4</a>]</sup>. And when the pulses are deliberately chirped for
+        <em>spectral focusing</em> — stretched so that their instantaneous frequency
+        difference stays constant across the overlap — the delay no longer merely switches
+        the signal on. It <em>tunes the Raman shift</em>. Time zero then defines the origin
+        of the spectroscopic axis, and getting it wrong shifts every measured vibrational
+        frequency<sup class="cite">[<a href="#ref-4">4</a>]</sup>.</p>
+        <p>A neat consequence, exploited by Piazza and co-workers, is that the delay line
+        already present in every such microscope is enough to characterize both pulses
+        without any autocorrelator at all. Scanning it while recording two different
+        nonlinear signals from a sample — the sum-frequency signal, which mixes one pump
+        photon with one Stokes photon, and the non-resonant four-wave-mixing signal, which
+        takes two pump photons and one Stokes photon — gives two cross-correlation widths
+        that depend differently on the two durations. Two equations, two unknowns: both
+        durations fall out, and tracking how the centre wavelength of each signal drifts with
+        delay yields each pulse's chirp as well<sup class="cite">[<a href="#ref-4">4</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>The Autocorrelator reports the pulse duration of whatever pulse train reaches its
+        face — and reports it the way a real instrument does, as a trace width with an
+        assumption divided out, rather than as a number read off the source.</p>
+        <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
+        (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
+        instrument works out for itself, because in a laboratory it is not something the
+        instrument <em>can</em> work out for itself. Set it to the wrong shape and the
+        reading changes — a Gaussian assumption on a sech² source reads about 9% long, and
+        the inspector says so explicitly, naming the true duration beside the inferred one.
+        That disagreement is the lesson the component exists to teach.</p>
+        <p>The reading is taken from the pulse that <em>arrives</em>, not the one that was
+        emitted. Put a <a href="../glassrod/">glass rod</a> in the path and the autocorrelator
+        measures the stretched duration; add a <a href="../pulsecompressor/">pulse
+        compressor</a> with the opposite group delay dispersion and it measures the pulse
+        recovering. The bundled <em>Ultrashort pulse chirping</em> example is built around
+        exactly that comparison, with three autocorrelators reading the same pulse under
+        three different dispersion conditions.</p>
+        <p>Wired to a Detector screen, it draws the trace: delay on
+        the horizontal axis rather than laboratory time, the curve symmetric about zero delay
+        as a real autocorrelation always is, the half-maximum chord that <em>is</em> the
+        measurement marked across it, and the inferred duration printed above. A continuous-wave
+        source produces no trace and says so; two different pulse trains arriving together
+        produce no trace either, and say that instead of averaging them into a meaningless
+        number.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>No scan is simulated. The trace is drawn from the arriving duration
+        and the assumed shape rather than being accumulated by stepping a delay line through
+        a nonlinear crystal, so there is no scan time, no delay-line travel limit setting a
+        maximum measurable duration, and no acquisition noise. Everything downstream of that
+        choice follows: no crystal, no phase matching, no group velocity mismatch, and
+        therefore none of the difficulties that dominate real measurements below about
+        20&nbsp;fs.</p>
+        <p>Only the intensity autocorrelation is modelled. There is no interferometric mode,
+        so the fringes, the diagnostic 8:1 peak-to-background ratio, and the chirp sensitivity
+        that comes with a collinear geometry have no counterpart here. There is no dynamic
+        range and no noise floor, so pedestals, satellite pulses, and the coherent artifact
+        cannot appear — the trace is always the clean curve of a well-behaved pulse. Pulse
+        shapes other than Gaussian and sech² are not available, and since the modelled
+        envelope is symmetric, the asymmetry that a real autocorrelation famously hides is
+        not there to be hidden.</p>
+        <p>It is an autocorrelator only. Two beams cannot be cross-correlated against each
+        other: a single instrument sees the sum of what reaches its face, and if that is more
+        than one pulse train it declines to report rather than mixing them. Finding time zero
+        between two arms, as described above, is therefore something the component describes
+        but does not perform.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/glassrod/"><svg viewBox="-38 -38 76 76" aria-hidden="true"><rect x="-30" y="-6.35" width="60" height="12.7" rx="4" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5"/></svg>Glass rod</a><a href="../../wiki/pulsecompressor/"><svg viewBox="-32 -32 64 64" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/><g  fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round"><path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/><path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">−GDD</text></svg>Pulse compressor</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/spectrometer/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-27" y="-15" width="54" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-28.7" y="-11" width="3.4" height="22" rx="1" fill="#fde68a" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">SPEC</text><circle cx="19" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Spectrometer</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/autocorrelators.html" target="_blank" rel="noopener">R. Paschotta, “Autocorrelators,” RP Photonics Encyclopedia; doi:10.61835/y7n</a></li><li id="ref-2"><a href="https://www.meetoptics.com/academy/autocorrelators" target="_blank" rel="noopener">“Ultrashort laser pulse characterisation: Optical autocorrelators,” MEETOPTICS Academy</a></li><li id="ref-3"><a href="https://www.sciencedirect.com/science/article/pii/B0123693950008423" target="_blank" rel="noopener">D. J. Kane, “Ultrafast Laser Techniques: Pulse Characterization Techniques,” in Encyclopedia of Modern Optics, Elsevier (2005), pp. 227–239; doi:10.1016/B0-12-369395-0/00842-3</a></li><li id="ref-4"><a href="https://doi.org/10.1371/journal.pone.0156371" target="_blank" rel="noopener">V. Piazza, G. de Vito, E. Farrokhtakin, G. Ciofani and V. Mattoli, “Femtosecond-laser-pulse characterization and optimization for CARS microscopy,” PLoS ONE 11(5), e0156371 (2016)</a></li><li id="ref-5"><a href="https://doi.org/10.1063/1.1653002" target="_blank" rel="noopener">R. A. Fisher and J. A. Fleck Jr., “On the phase characteristics and compression of picosecond pulses,” Appl. Phys. Lett. 15, 287 (1969) — the origin of the coherent-artifact warning</a></li><li id="ref-6"><a href="https://doi.org/10.1109/3.199311" target="_blank" rel="noopener">D. J. Kane and R. Trebino, “Characterization of arbitrary femtosecond pulses using frequency-resolved optical gating,” IEEE J. Quantum Electron. 29(2), 571–579 (1993)</a></li>
+      </ol>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/pulse_characterization.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Pulse Characterization</a></li><li><a href="https://www.rp-photonics.com/pulse_duration.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Pulse Duration</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>
