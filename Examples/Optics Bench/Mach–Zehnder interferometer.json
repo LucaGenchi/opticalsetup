@@ -197,7 +197,7 @@
    "showLabel": false,
    "labelPos": "b",
    "params": {
-    "text": "**Phase modulator** — the same swap driven by a voltage instead of a stage, and already running: half a wave at 1 MHz. Press play and the two screens trade the light back and forth. This is a Mach–Zehnder modulator.",
+    "text": "**Phase modulator** — the same swap driven by a voltage instead of a stage, and already running: half a wave at 1 MHz. The two screens trade the light back and forth on their own. This is a Mach–Zehnder modulator.",
     "fontSize": 13,
     "fill": "#333333"
    }

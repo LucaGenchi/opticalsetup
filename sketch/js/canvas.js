@@ -5,7 +5,7 @@ import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
-  displayActionUpdate,
+  displayActionUpdate, delayLineSweepSpanMm,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
@@ -290,7 +290,8 @@ function hasMotion() {
   return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
     || (el.type === 'aod' && el.params.scanMode !== 'static')
     || (el.type === 'phasemodulator' && el.params.driveMode !== 'static')
-    || (el.type === 'delayline' && el.params.moveMode === 'linear')
+    || (el.type === 'delayline' && el.params.moveMode === 'linear'
+      && delayLineSweepSpanMm(el.params) > 0)
     || (el.type === 'chopper' && el.params.modulate)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
     || (el.type === 'retroreflector' && el.params.moveMode === 'linear'))
@@ -322,7 +323,9 @@ function hasStageMotion() {
 }
 
 function hasDelaySweep() {
-  return state.elements.some(el => el.type === 'delayline' && el.params.moveMode === 'linear');
+  return state.elements.some(el => el.type === 'delayline'
+    && el.params.moveMode === 'linear'
+    && delayLineSweepSpanMm(el.params) > 0);
 }
 
 function hasRetroMotion() {

@@ -8,6 +8,7 @@ import {
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
+import { elementDriveHz, recommendedTimeScale } from '../sketch/js/timescale.js';
 import {
   phaseModulatorDrive, phaseModulatorOpdMm, phaseModulatorPeakOpdMm,
 } from '../sketch/js/electro-optic.js';
@@ -255,4 +256,24 @@ test('a delay-line sweep works whichever end was typed first', () => {
   const readout = registry.delayline.params.find(p => p.key === 'delaySweepReadout').readout;
   assert.match(readout(held), /Nothing/);
   assert.match(readout(reversed), /1\.00 µm/);
+});
+
+test('a delay line with equal endpoints is not reported as moving', () => {
+  // Equal endpoints are a supported way of holding still. Reporting a drive
+  // for one would put the whole scene into Mechanics mode and suppress the
+  // pulse packet layer on behalf of a stage that is not going anywhere, and
+  // would have the canvas re-tracing it thirty times a second for nothing.
+  const held = { type: 'delayline', params: { moveMode: 'linear', delayMinMm: 0.001, delayMaxMm: 0.001, freqHz: 1 } };
+  const moving = { type: 'delayline', params: { moveMode: 'linear', delayMinMm: 0, delayMaxMm: 0.001, freqHz: 1 } };
+  const still = { type: 'delayline', params: { moveMode: 'static', delayMm: 100 } };
+
+  assert.equal(elementDriveHz(held), null, 'equal endpoints are not a drive');
+  assert.equal(elementDriveHz(still), null);
+  assert.equal(elementDriveHz(moving), 1);
+  // And a reversed pair is a real sweep, so it does report one.
+  assert.equal(elementDriveHz({ type: 'delayline', params: { moveMode: 'linear', delayMinMm: 0.001, delayMaxMm: 0, freqHz: 1 } }), 1);
+
+  // Nothing standing still should drag the whole scene into Mechanics mode.
+  assert.equal(recommendedTimeScale([held]).mechanics, false);
+  assert.equal(recommendedTimeScale([moving]).mechanics, true);
 });

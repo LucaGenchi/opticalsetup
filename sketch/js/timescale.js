@@ -92,7 +92,15 @@ export function elementDriveHz(el) {
     case 'eom':
       return p.modulate && p.driveMode === 'switching' && p.switchFreqMHz > 0 ? p.switchFreqMHz * 1e6 : null;
     case 'delayline':
-      return p.moveMode === 'linear' && p.freqHz > 0 ? p.freqHz : null;
+      // Equal endpoints are a supported way of holding still. Reporting a
+      // drive for one would put the whole scene into Mechanics mode, and
+      // suppress the pulse packet layer, on behalf of a stage that is not
+      // going anywhere.
+      // Computed here rather than imported: this module is deliberately
+      // standalone, and the rule is one line.
+      return p.moveMode === 'linear' && p.freqHz > 0
+        && Math.abs((Number(p.delayMaxMm) || 0) - (Number(p.delayMinMm) || 0)) > 0
+        ? p.freqHz : null;
     case 'stage':
       if (!p.pzMode || p.pzMode === 'static') return null;
       // the slower of the two active axes governs what you need to watch
