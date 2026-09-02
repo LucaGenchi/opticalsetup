@@ -406,7 +406,7 @@ function machZehnder({
   delayMm = 0, interference = true, ratio = null, mirrorReflectivity = null,
   replaceMirrorWithGalvo = false,
 } = {}) {
-  const fixture = new URL('../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json', import.meta.url);
+  const fixture = new URL('./fixtures/mach-zehnder.json', import.meta.url);
   const raw = JSON.parse(readFileSync(fixture, 'utf8'));
   assert.equal(raw.elements.find(element => element.type === 'cwlaser').params.beamMode, 'beam');
   const authoredCameras = raw.elements.filter(element => element.type === 'camera');
@@ -461,7 +461,7 @@ test('the actual Mach–Zehnder scene has complementary coherent camera outputs'
 });
 
 test('a real independent source survives coherent cancellation in camera metadata', () => {
-  const fixture = new URL('../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json', import.meta.url);
+  const fixture = new URL('./fixtures/mach-zehnder.json', import.meta.url);
   const scene = parseSketch(readFileSync(fixture, 'utf8'), registry);
   const source = createElement('cwlaser', 450, 530);
   source.params.beamMode = 'beam';
@@ -575,7 +575,7 @@ test('the detector-local switch does not undo upstream Mach–Zehnder recombinat
 });
 
 test('the traced and drawn Mach–Zehnder output follows the grouped field power', () => {
-  const fixture = new URL('../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json', import.meta.url);
+  const fixture = new URL('./fixtures/mach-zehnder.json', import.meta.url);
   const raw = readFileSync(fixture, 'utf8');
   const traceAtDelay = delayMm => {
     const scene = parseSketch(raw, registry);
@@ -656,7 +656,7 @@ test('camera spectra preserve same-source continuum routes with different clippi
 });
 
 test('dispersive quadrature nodes remain a continuum in camera metadata', () => {
-  const fixture = new URL('../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json', import.meta.url);
+  const fixture = new URL('./fixtures/mach-zehnder.json', import.meta.url);
   const raw = JSON.parse(readFileSync(fixture, 'utf8'));
   const source = raw.elements.find(element => element.type === 'cwlaser');
   const defaults = createElement('sclaser', source.x, source.y);

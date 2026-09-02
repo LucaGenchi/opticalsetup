@@ -11,7 +11,7 @@ import {
 import { readFileSync } from 'node:fs';
 
 const LAMBDA_MM = 532e-6;
-const MZ = readFileSync('Examples/Optics Bench/Mach–Zehnder interferometer.json', 'utf8');
+const MZ = readFileSync('test/fixtures/mach-zehnder.json', 'utf8');
 
 // Fringe contrast at a given nominal path difference, sampled finely enough
 // to actually catch the extremes of one fringe.

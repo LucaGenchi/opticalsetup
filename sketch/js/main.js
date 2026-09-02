@@ -419,8 +419,12 @@ const demoScenes = {
   // intensity at the output. Alone the modulator does nothing at all, which
   // is why it needs the second arm to be seen.
   phasemodulator: () => {
-    const bright = mkDemo('camera', 780, 400, 0, { ch: 30, pixels: 24 },
-      { label: 'output', showLabel: true, labelPos: 'b' });
+    // Both ports, because the whole point is that they are complementary:
+    // the light one loses is exactly the light the other gains.
+    const portOne = mkDemo('camera', 780, 400, 0, { ch: 30, pixels: 24 },
+      { label: 'port 1', showLabel: true, labelPos: 't' });
+    const portTwo = mkDemo('camera', 600, 580, 90, { ch: 30, pixels: 24 },
+      { label: 'port 2', showLabel: true, labelPos: 'l' });
     return [
       mkDemo('cwlaser', 100, 200, 0, { beamMode: 'beam', beamWidth: 8 },
         { label: 'laser', showLabel: true, labelPos: 'b' }),
@@ -430,11 +434,28 @@ const demoScenes = {
         { label: 'phase modulator — half a wave, driven at 1 MHz', showLabel: true, labelPos: 't' }),
       mkDemo('mirror', 600, 200, 135, {}, { label: 'M1', showLabel: true, labelPos: 'r' }),
       mkDemo('mirror', 300, 400, 135, {}, { label: 'M2', showLabel: true, labelPos: 'b' }),
-      mkDemo('bs', 600, 400, 90, { ratio: 0.5 }, { label: 'BS2', showLabel: true, labelPos: 'b' }),
-      bright,
-      mkDemo('display', 850, 300, 0, { sensorId: bright.id, displayScale: 0.5 }),
+      mkDemo('bs', 600, 400, 90, { ratio: 0.5 }, { label: 'BS2', showLabel: true, labelPos: 'l' }),
+      portOne,
+      mkDemo('display', 900, 330, 0, { sensorId: portOne.id, displayScale: 0.55 }),
+      portTwo,
+      mkDemo('display', 830, 600, 0, { sensorId: portTwo.id, displayScale: 0.55 }),
     ];
   },
+  // Without a source this fell back to a bare element with nothing to read.
+  // A 150 fs pulse is wide enough in wavelength to be worth measuring: its
+  // transform-limited bandwidth is about 8.3 nm at 920 nm.
+  spectrometer: () => {
+    const meter = mkDemo('spectrometer', 560, 200, 0, { aperture: 30 },
+      { label: 'spectrometer', showLabel: true, labelPos: 't' });
+    return [
+      mkDemo('pulsedlaser', 140, 200, 0,
+        { wavelength: 920, pulseWidthFs: 150, beamMode: 'beam', beamWidth: 6 },
+        { label: '920 nm, 150 fs', showLabel: true, labelPos: 'b' }),
+      meter,
+      mkDemo('display', 420, 380, 0, { sensorId: meter.id, displayScale: 1.1 }),
+    ];
+  },
+
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {
@@ -1524,6 +1545,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderAll();
   renderSelection();
   syncToolbar();
+  // A scene loaded straight from the URL -- a wiki embed, an example page, a
+  // shared link -- never went through onChange, so it never picked a time
+  // scale for whatever is moving in it. Without this a setup whose whole
+  // point is an animation opens frozen at the default scale.
+  autoAdjustTimeScale();
   syncPulseControls();
   syncMobileSheets();
 

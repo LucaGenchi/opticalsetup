@@ -3,133 +3,162 @@
  "version": 1,
  "elements": [
   {
-   "id": "eyumbb09",
+   "id": "title",
    "type": "textlabel",
-   "x": 450,
+   "x": 100,
    "y": 80,
    "rot": 0,
    "label": "",
    "showLabel": false,
+   "labelPos": "b",
    "params": {
-    "text": "Mach–Zehnder — camera-integrated same-source interference (ΔL swaps the outputs)",
+    "text": "**Mach–Zehnder interferometer** — one layout, three ways to put phase into an arm. Each row splits the beam, changes one path, and recombines: whatever leaves one port arrives at the other.",
     "fontSize": 14,
-    "fill": "#333"
+    "fill": "#333333"
    }
   },
   {
-   "id": "e9incbv0",
+   "id": "alab",
+   "type": "textlabel",
+   "x": 100,
+   "y": 130,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "text": "**Delay line** — lengthen one arm mechanically. Half a wavelength (0.000266 mm at 532 nm) swaps the outputs; a full wavelength brings them back. Set Motion to Periodic sweep to walk through the fringes instead.",
+    "fontSize": 13,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "asrc",
    "type": "cwlaser",
    "x": 100,
    "y": 200,
    "rot": 0,
-   "label": "laser",
+   "label": "532 nm",
    "showLabel": true,
+   "labelPos": "b",
    "params": {
     "wavelength": 532,
+    "avgPowerW": 1,
     "beamMode": "beam",
     "beamWidth": 6,
     "pol": 0,
+    "coherenceLengthMm": 0,
     "autoColor": true,
-    "color": "#e02020"
+    "color": "#22c55e",
+    "temporalMode": "cw"
    }
   },
   {
-   "id": "eejtp1yq",
+   "id": "abs1",
    "type": "bs",
    "x": 300,
    "y": 200,
    "rot": 90,
    "label": "BS1",
    "showLabel": true,
+   "labelPos": "t",
    "params": {
     "ratio": 0.5,
     "size": 25.4
-   },
-   "labelPos": "t"
-  },
-  {
-   "id": "eo7a4heh",
-   "type": "delayline",
-   "x": 460,
-   "y": 200,
-   "rot": 0,
-   "label": "ΔL arm",
-   "showLabel": true,
-   "params": {
-    "delayMm": 0,
-    "aperture": 24
    }
   },
   {
-   "id": "efjtdmms",
+   "id": "ael",
+   "x": 460,
+   "y": 200,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "type": "delayline",
+   "params": {
+    "aperture": 24,
+    "delayMm": 0
+   }
+  },
+  {
+   "id": "am1",
    "type": "mirror",
    "x": 600,
    "y": 200,
    "rot": 135,
    "label": "M1",
    "showLabel": true,
+   "labelPos": "r",
    "params": {
     "length": 25.4,
-    "refl": 100
-   },
-   "labelPos": "r"
+    "refl": 100,
+    "showTransmitted": false
+   }
   },
   {
-   "id": "e0p2fspb",
+   "id": "am2",
    "type": "mirror",
    "x": 300,
    "y": 400,
    "rot": 135,
    "label": "M2",
    "showLabel": true,
+   "labelPos": "b",
    "params": {
     "length": 25.4,
-    "refl": 100
+    "refl": 100,
+    "showTransmitted": false
    }
   },
   {
-   "id": "enxt7on8",
+   "id": "abs2",
    "type": "bs",
    "x": 600,
    "y": 400,
    "rot": 90,
    "label": "BS2",
    "showLabel": true,
+   "labelPos": "b",
    "params": {
     "ratio": 0.5,
     "size": 25.4
    }
   },
   {
-   "id": "etn24g3r",
+   "id": "ac1",
    "type": "camera",
    "x": 780,
    "y": 400,
    "rot": 0,
-   "label": "output camera 1",
+   "label": "port 1",
    "showLabel": true,
+   "labelPos": "t",
    "params": {
     "ch": 30,
     "pixels": 64,
-    "interference": true
+    "interference": true,
+    "profileScale": "absolute"
    }
   },
   {
-   "id": "eq4a46pm",
+   "id": "ac2",
    "type": "camera",
    "x": 600,
    "y": 560,
    "rot": 90,
-   "label": "output camera 2",
+   "label": "port 2",
    "showLabel": true,
+   "labelPos": "l",
    "params": {
     "ch": 30,
     "pixels": 64,
-    "interference": true
+    "interference": true,
+    "profileScale": "absolute"
    }
   },
   {
-   "id": "ecohdisp1",
+   "id": "ad1",
    "type": "display",
    "x": 850,
    "y": 310,
@@ -137,23 +166,368 @@
    "label": "",
    "showLabel": false,
    "params": {
-    "sensorId": "etn24g3r",
-    "displayScale": 0.45,
+    "sensorId": "ac1",
+    "displayScale": 1,
     "screenOn": true,
     "displayView": "main"
    }
   },
   {
-   "id": "ecohdisp2",
+   "id": "ad2",
    "type": "display",
-   "x": 720,
+   "x": 730,
    "y": 560,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "params": {
-    "sensorId": "eq4a46pm",
-    "displayScale": 0.45,
+    "sensorId": "ac2",
+    "displayScale": 1,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "blab",
+   "type": "textlabel",
+   "x": 100,
+   "y": 770,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "text": "**Phase modulator** — the same swap driven by a voltage instead of a stage, and already running: half a wave at 1 MHz. Press play and the two screens trade the light back and forth. This is a Mach–Zehnder modulator.",
+    "fontSize": 13,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "bsrc",
+   "type": "cwlaser",
+   "x": 100,
+   "y": 840,
+   "rot": 0,
+   "label": "532 nm",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "wavelength": 532,
+    "avgPowerW": 1,
+    "beamMode": "beam",
+    "beamWidth": 6,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#22c55e",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "bbs1",
+   "type": "bs",
+   "x": 300,
+   "y": 840,
+   "rot": 90,
+   "label": "BS1",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "bel",
+   "x": 460,
+   "y": 840,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "type": "phasemodulator",
+   "params": {
+    "aperture": 12,
+    "designWavelength": 532,
+    "depthDeg": 180,
+    "driveMode": "sine",
+    "freqMHz": 1,
+    "phaseDeg": 0
+   }
+  },
+  {
+   "id": "bm1",
+   "type": "mirror",
+   "x": 600,
+   "y": 840,
+   "rot": 135,
+   "label": "M1",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "bm2",
+   "type": "mirror",
+   "x": 300,
+   "y": 1040,
+   "rot": 135,
+   "label": "M2",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "bbs2",
+   "type": "bs",
+   "x": 600,
+   "y": 1040,
+   "rot": 90,
+   "label": "BS2",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "bc1",
+   "type": "camera",
+   "x": 780,
+   "y": 1040,
+   "rot": 0,
+   "label": "port 1",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "ch": 30,
+    "pixels": 64,
+    "interference": true,
+    "profileScale": "absolute"
+   }
+  },
+  {
+   "id": "bc2",
+   "type": "camera",
+   "x": 600,
+   "y": 1200,
+   "rot": 90,
+   "label": "port 2",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "ch": 30,
+    "pixels": 64,
+    "interference": true,
+    "profileScale": "absolute"
+   }
+  },
+  {
+   "id": "bd1",
+   "type": "display",
+   "x": 850,
+   "y": 950,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "bc1",
+    "displayScale": 1,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "bd2",
+   "type": "display",
+   "x": 730,
+   "y": 1200,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "bc2",
+    "displayScale": 1,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "clab",
+   "type": "textlabel",
+   "x": 100,
+   "y": 1410,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "text": "**Phase object** — a half-wave bar across part of the beam. Now the arms disagree differently at each height, so the output is a pattern rather than a level: phase contrast.",
+    "fontSize": 13,
+    "fill": "#333333"
+   }
+  },
+  {
+   "id": "csrc",
+   "type": "cwlaser",
+   "x": 100,
+   "y": 1480,
+   "rot": 0,
+   "label": "532 nm",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "wavelength": 532,
+    "avgPowerW": 1,
+    "beamMode": "beam",
+    "beamWidth": 6,
+    "pol": 0,
+    "coherenceLengthMm": 0,
+    "autoColor": true,
+    "color": "#22c55e",
+    "temporalMode": "cw"
+   }
+  },
+  {
+   "id": "cbs1",
+   "type": "bs",
+   "x": 300,
+   "y": 1480,
+   "rot": 90,
+   "label": "BS1",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "cel",
+   "x": 460,
+   "y": 1480,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "type": "phaseplate",
+   "params": {
+    "profile": "bar",
+    "opdUm": 0.27,
+    "aperture": 6
+   }
+  },
+  {
+   "id": "cm1",
+   "type": "mirror",
+   "x": 600,
+   "y": 1480,
+   "rot": 135,
+   "label": "M1",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "cm2",
+   "type": "mirror",
+   "x": 300,
+   "y": 1680,
+   "rot": 135,
+   "label": "M2",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "length": 25.4,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "cbs2",
+   "type": "bs",
+   "x": 600,
+   "y": 1680,
+   "rot": 90,
+   "label": "BS2",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "cc1",
+   "type": "camera",
+   "x": 780,
+   "y": 1680,
+   "rot": 0,
+   "label": "port 1",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "ch": 30,
+    "pixels": 64,
+    "interference": true,
+    "profileScale": "absolute"
+   }
+  },
+  {
+   "id": "cc2",
+   "type": "camera",
+   "x": 600,
+   "y": 1840,
+   "rot": 90,
+   "label": "port 2",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "ch": 30,
+    "pixels": 64,
+    "interference": true,
+    "profileScale": "absolute"
+   }
+  },
+  {
+   "id": "cd1",
+   "type": "display",
+   "x": 850,
+   "y": 1590,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "cc1",
+    "displayScale": 1,
+    "screenOn": true,
+    "displayView": "main"
+   }
+  },
+  {
+   "id": "cd2",
+   "type": "display",
+   "x": 730,
+   "y": 1840,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "sensorId": "cc2",
+    "displayScale": 1,
     "screenOn": true,
     "displayView": "main"
    }

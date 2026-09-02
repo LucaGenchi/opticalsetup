@@ -12,7 +12,7 @@ import {
   phaseModulatorDrive, phaseModulatorOpdMm, phaseModulatorPeakOpdMm,
 } from '../sketch/js/electro-optic.js';
 
-const MZ = readFileSync('Examples/Optics Bench/Mach–Zehnder interferometer.json', 'utf8');
+const MZ = readFileSync('test/fixtures/mach-zehnder.json', 'utf8');
 
 const closeToMm = (actual, expected) =>
   assert.ok(Math.abs(actual - expected) < 1e-12, `${actual} mm should be ${expected} mm`);
