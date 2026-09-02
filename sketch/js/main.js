@@ -418,29 +418,36 @@ const demoScenes = {
   // The Mach-Zehnder modulator: phase driven in one arm, read out as
   // intensity at the output. Alone the modulator does nothing at all, which
   // is why it needs the second arm to be seen.
+  // The Mach-Zehnder modulator, as refined on the bench: phase driven in one
+  // arm, read out as intensity at both ports. Alone the modulator does
+  // nothing at all, which is why it needs the second arm to be seen.
   phasemodulator: () => {
-    // Both ports, because the whole point is that they are complementary:
-    // the light one loses is exactly the light the other gains.
-    const portOne = mkDemo('camera', 780, 400, 0, { ch: 30, pixels: 24 },
-      { label: 'port 1', showLabel: true, labelPos: 't' });
-    const portTwo = mkDemo('camera', 600, 580, 90, { ch: 30, pixels: 24 },
-      { label: 'port 2', showLabel: true, labelPos: 'l' });
+    const laser = { wavelength: 532, avgPowerW: 0.1, beamMode: 'beam', beamWidth: 3, pol: 0, coherenceLengthMm: 0, autoColor: true, color: '#e02020', temporalMode: 'cw' };
+    const splitter = { ratio: 0.5, size: 25.4 };
+    const flat = { length: 25.4, refl: 100, showTransmitted: false };
+    const sensor = { ch: 30, pixels: 24, interference: true, profileScale: 'absolute' };
+    const portOne = mkDemo('camera', 472, 625, 0, sensor);
+    const portTwo = mkDemo('camera', 400, 697, 90, sensor);
     return [
-      mkDemo('cwlaser', 100, 200, 0, { beamMode: 'beam', beamWidth: 8 },
-        { label: 'laser', showLabel: true, labelPos: 'b' }),
-      mkDemo('bs', 300, 200, 90, { ratio: 0.5 }, { label: 'BS1', showLabel: true, labelPos: 't' }),
-      mkDemo('phasemodulator', 460, 200, 0,
-        { depthDeg: 180, driveMode: 'sine', freqMHz: 1, aperture: 12 },
-        { label: 'phase modulator — half a wave, driven at 1 MHz', showLabel: true, labelPos: 't' }),
-      mkDemo('mirror', 600, 200, 135, {}, { label: 'M1', showLabel: true, labelPos: 'r' }),
-      mkDemo('mirror', 300, 400, 135, {}, { label: 'M2', showLabel: true, labelPos: 'b' }),
-      mkDemo('bs', 600, 400, 90, { ratio: 0.5 }, { label: 'BS2', showLabel: true, labelPos: 'l' }),
+      mkDemo('textlabel', 75, 450, 0, {
+        text: '**Mach\u2013Zehnder modulator**: phase in one arm is controlled by an electro-optic phase modulator.\nIt is transferred to an intensity modulation through interference.',
+        fontSize: 14, fill: '#333333',
+      }),
+      mkDemo('cwlaser', 123, 525, 0, laser),
+      mkDemo('bs', 250, 525, 90, splitter),
+      mkDemo('phasemodulator', 325, 525, 0,
+        { aperture: 12, designWavelength: 532, depthDeg: 180, driveMode: 'sine', freqMHz: 10, phaseDeg: 0 },
+        { label: 'Phase modulator', showLabel: true, labelPos: 'b' }),
+      mkDemo('mirror', 400, 525, 135, flat),
+      mkDemo('mirror', 250, 625, 315, flat),
+      mkDemo('bs', 400, 625, 90, splitter),
       portOne,
-      mkDemo('display', 900, 330, 0, { sensorId: portOne.id, displayScale: 0.55 }),
+      mkDemo('display', 625, 575, 0, { sensorId: portOne.id, displayScale: 1, screenOn: true, displayView: 'main' }),
       portTwo,
-      mkDemo('display', 830, 600, 0, { sensorId: portTwo.id, displayScale: 0.55 }),
+      mkDemo('display', 625, 725, 0, { sensorId: portTwo.id, displayScale: 1, screenOn: true, displayView: 'main' }),
     ];
   },
+
   // Without a source this fell back to a bare element with nothing to read.
   // A 150 fs pulse is wide enough in wavelength to be worth measuring: its
   // transform-limited bandwidth is about 8.3 nm at 920 nm.
