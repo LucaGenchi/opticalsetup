@@ -762,6 +762,11 @@ export function detectorReading(elementId) {
         stretchedPulseWidthFs: canBroaden
           ? gaussianPulseDurationAfterGDD(p.pulseWidthFs, gddFs2)
           : null,
+        // A cross-correlation is between two specific trains, so it needs each
+        // one's own shape and colour rather than the aggregate's -- the whole
+        // point is that the two arms differ.
+        pulseShape: p.pulseShape || 'gauss',
+        centerWavelengthNm: centerWavelength,
       };
     });
     const sources = new Set(pulsed.map(h => h.pulse.sourceId).filter(Boolean));

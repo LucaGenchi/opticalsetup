@@ -7,6 +7,7 @@ import {
 import {
   gaussianPulseDurationAfterGDD, glassAbbe, glassGVD, glassIndex,
   glassWavelengthRange, isWavelengthInGlassRange, autocorrelationReading,
+  crossCorrelationReading, crossCorrelationPair, correlationShapeValue,
 } from '../sketch/js/glass.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import '../sketch/js/detector-instruments.js';
@@ -328,6 +329,170 @@ test('an autocorrelator on a detector screen draws its trace and the duration', 
   const cwSvg = reg.display.svg(screen, cwScene);
   assert.doesNotMatch(cwSvg, /data-autocorrelation=/, 'no trace without a pulse');
   assert.match(cwSvg, /NO PULSE/);
+});
+
+// ---------------- cross-correlator ----------------
+
+const arm = (over = {}) => ({
+  pulseWidthFs: 150, pulseShape: 'gauss', repRateMHz: 80, centerWavelengthNm: 800,
+  arrivalFs: 0, ...over,
+});
+
+test('a cross-correlation of two identical pulses reproduces their autocorrelation exactly', () => {
+  // The width model must not default to plain quadrature: that is right for
+  // Gaussians and 9% wrong for sech², which is the very error this instrument
+  // exists to demonstrate.
+  for (const shape of ['gauss', 'sech2']) {
+    const cc = crossCorrelationReading(arm({ pulseShape: shape }), arm({ pulseShape: shape }));
+    const ac = autocorrelationReading(150, shape, shape);
+    assert.ok(Math.abs(cc.traceFwhmFs - ac.traceFwhmFs) < 1e-9,
+      `${shape}: cross ${cc.traceFwhmFs} vs auto ${ac.traceFwhmFs}`);
+    assert.equal(cc.shapeMismatch, false);
+  }
+});
+
+test('unequal durations add in quadrature, and a short reference samples the long pulse', () => {
+  const cc = crossCorrelationReading(arm(), arm({ pulseWidthFs: 2000 }));
+  assert.ok(Math.abs(cc.traceFwhmFs - Math.hypot(150, 2000)) < 1e-9);
+  // the gating limit: a much shorter reference returns the long pulse itself
+  const gated = crossCorrelationReading(arm({ pulseWidthFs: 5 }), arm({ pulseWidthFs: 2000 }));
+  assert.ok(Math.abs(gated.traceFwhmFs - 2000) / 2000 < 0.001,
+    `expected ~2000 fs, got ${gated.traceFwhmFs}`);
+});
+
+test('the trace peaks at the real timing mismatch, and overlap falls away from it', () => {
+  const aligned = crossCorrelationReading(arm(), arm());
+  assert.equal(aligned.offsetFs, 0);
+  assert.ok(Math.abs(aligned.overlap - 1) < 1e-12, 'perfectly overlapped reads full');
+
+  const late = crossCorrelationReading(arm(), arm({ arrivalFs: 400 }));
+  assert.equal(late.offsetFs, 400);
+  assert.ok(late.overlap < 0.02, `400 fs apart should barely overlap, got ${late.overlap}`);
+
+  // half the trace width off must sit exactly at half maximum, by definition
+  const half = crossCorrelationReading(arm(), arm({ arrivalFs: aligned.traceFwhmFs / 2 }));
+  assert.ok(Math.abs(half.overlap - 0.5) < 1e-9, `expected 0.5, got ${half.overlap}`);
+});
+
+test('mismatch is measured against the nearest pulse, so nulling is modulo the period', () => {
+  // 80 MHz is a 12 500 000 fs period; an arm 12 500 100 fs long is 100 fs from
+  // the NEXT pulse, not 12.5 ns from the previous one.
+  const cc = crossCorrelationReading(arm(), arm({ arrivalFs: 12500100 }));
+  assert.ok(Math.abs(cc.offsetFs - 100) < 1e-6, `expected +100 fs, got ${cc.offsetFs}`);
+  assert.equal(cc.rawOffsetFs, 12500100);
+  assert.ok(cc.overlap > 0.5, 'and it therefore overlaps well');
+});
+
+test('trains that are not synchronized report no stable trace', () => {
+  const cc = crossCorrelationReading(arm(), arm({ repRateMHz: 79.5 }));
+  assert.equal(cc.synchronized, false);
+  assert.equal(cc.overlap, 0);
+  assert.equal(cc.periodFs, null);
+});
+
+test('the sum-frequency wavelength is the one only both beams together can make', () => {
+  const cc = crossCorrelationReading(arm(), arm({ centerWavelengthNm: 1030 }));
+  // 1/lambda_SF = 1/800 + 1/1030
+  assert.ok(Math.abs(cc.sumFrequencyNm - (800 * 1030) / 1830) < 1e-9);
+  // and it lies between the two second harmonics, which is why it is separable
+  assert.ok(cc.sumFrequencyNm > 400 && cc.sumFrequencyNm < 515);
+});
+
+test('mixed shapes are flagged rather than silently averaged', () => {
+  const cc = crossCorrelationReading(arm(), arm({ pulseShape: 'sech2' }));
+  assert.equal(cc.shapeMismatch, true);
+  const g = crossCorrelationReading(arm(), arm());
+  const s = crossCorrelationReading(arm({ pulseShape: 'sech2' }), arm({ pulseShape: 'sech2' }));
+  assert.ok(cc.traceFwhmFs > g.traceFwhmFs && cc.traceFwhmFs < s.traceFwhmFs,
+    'a mixed pair lands between the two pure cases');
+});
+
+test('crossCorrelationPair refuses anything that is not exactly two trains', () => {
+  assert.equal(crossCorrelationPair({}).reason, 'NO PULSE');
+  assert.equal(crossCorrelationPair({ pulse: { trains: [{}] } }).reason, 'NEEDS A SECOND SOURCE');
+  assert.match(crossCorrelationPair({ pulse: { trains: [{}, {}, {}] } }).reason, /EXACTLY 2/);
+  const pair = crossCorrelationPair({ pulse: { trains: [
+    { pulseWidthFs: 150, phaseNs: 0, pathDelayNs: 1, repRateMHz: 80 },
+    { pulseWidthFs: 150, phaseNs: 0.001, pathDelayNs: 1, repRateMHz: 80 },
+  ] } });
+  // emission phase and propagation both decide when a pulse turns up
+  assert.ok(Math.abs(pair.arms[0].arrivalFs - 1e6) < 1e-6);
+  assert.ok(Math.abs(pair.arms[1].arrivalFs - 1.001e6) < 1e-6);
+});
+
+test('a cross-correlator on a screen finds two real sources and reports the mismatch', () => {
+  const mk = (y, wl) => {
+    const laser = createElement('pulsedlaser', 60, y);
+    Object.assign(laser.params, {
+      wavelength: wl, beamMode: 'line', pulseWidthFs: 150, repRateMHz: 80,
+      transformLimited: true, pulseShape: 'gauss', bandwidth: 0,
+    });
+    return laser;
+  };
+  const pump = mk(0, 800);
+  const stokes = mk(0, 1030);
+  // same face, different emission times: a 300 fs head start on the Stokes arm
+  stokes.params.pulsePhaseNs = 0.0003;
+  const meter = createElement('autocorrelator', 430, 0);
+  Object.assign(meter.params, { aperture: 34, measurementMode: 'cross' });
+  const screen = createElement('display', 560, 0);
+  Object.assign(screen.params, { sensorId: meter.id, screenOn: true });
+
+  const scene = [pump, stokes, meter, screen];
+  traceAll(scene, []);
+  const svg = reg.display.svg(screen, scene);
+
+  assert.match(svg, /CROSS-CORRELATION/, 'the screen labels the mode');
+  assert.match(svg, /data-cross-correlation="\d+"/, 'and plots a sampled trace');
+  assert.match(svg, /0 DELAY/, 'zero delay is drawn as a landmark, not as the centre');
+  assert.match(svg, /OVERLAP/, 'with the figure you maximize while hunting');
+
+  const trains = detectorReading(meter.id).pulse.trains;
+  assert.equal(trains.length, 2, 'two sources give two trains even with equal timing settings');
+  const cc = crossCorrelationReading(...crossCorrelationPair({ pulse: { trains } }).arms);
+  assert.ok(Math.abs(Math.abs(cc.offsetFs) - 300) < 1, `expected ~300 fs, got ${cc.offsetFs}`);
+  assert.ok(Math.abs(cc.sumFrequencyNm - (800 * 1030) / 1830) < 1);
+});
+
+test('one source in cross mode says so instead of plotting an autocorrelation', () => {
+  const laser = createElement('pulsedlaser', 60, 0);
+  Object.assign(laser.params, { beamMode: 'line', pulseWidthFs: 150, wavelength: 800 });
+  const meter = createElement('autocorrelator', 430, 0);
+  Object.assign(meter.params, { aperture: 34, measurementMode: 'cross' });
+  const screen = createElement('display', 560, 0);
+  Object.assign(screen.params, { sensorId: meter.id, screenOn: true });
+  const scene = [laser, meter, screen];
+  traceAll(scene, []);
+  const svg = reg.display.svg(screen, scene);
+  assert.doesNotMatch(svg, /data-cross-correlation=/, 'no trace from one arm');
+  assert.match(svg, /SECOND SOURCE/);
+});
+
+test('switching modes does not disturb the autocorrelation readout', () => {
+  const laser = createElement('pulsedlaser', 60, 0);
+  Object.assign(laser.params, {
+    beamMode: 'line', pulseWidthFs: 150, wavelength: 800,
+    transformLimited: true, pulseShape: 'gauss', bandwidth: 0,
+  });
+  const meter = createElement('autocorrelator', 430, 0);
+  meter.params.aperture = 34;
+  const screen = createElement('display', 560, 0);
+  Object.assign(screen.params, { sensorId: meter.id, screenOn: true });
+  const scene = [laser, meter, screen];
+  traceAll(scene, []);
+  const before = reg.display.svg(screen, scene);
+  meter.params.measurementMode = 'auto';
+  traceAll(scene, []);
+  assert.equal(reg.display.svg(screen, scene), before,
+    'the default and an explicit "auto" must render identically');
+  assert.match(before, /data-autocorrelation="\d+"/);
+});
+
+test('correlationShapeValue is normalized and hits half maximum at the half width', () => {
+  for (const shape of ['gauss', 'sech2']) {
+    assert.equal(correlationShapeValue(0, 200, shape), 1);
+    assert.ok(Math.abs(correlationShapeValue(100, 200, shape) - 0.5) < 1e-9, shape);
+  }
 });
 
 test('a supercontinuum stays one beam where its colours have not separated', () => {

@@ -408,6 +408,29 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">â
         stretched duration exists to report: the instrument falls back to the duration
         configured on the source, and the inspector says so in as many words rather than
         letting a dispersion measurement be read out of a number that never moved.</p>
+        <h3>Cross-correlation mode</h3>
+        <p><strong>Measurement mode</strong> switches the same box between correlating one
+        source against itself and correlating <em>two</em> sources against each other. In
+        cross-correlation mode the assumed-shape control disappears, because the instrument
+        is no longer inferring a duration &mdash; it is reporting a timing relationship.</p>
+        <p>The trace is then <em>not</em> centred. Zero delay is drawn as a fixed landmark and
+        the curve peaks wherever the two arms actually meet, so the gap between the peak and
+        that marker is the timing error, in femtoseconds and in microns of path. Beside it the
+        instrument reports the <strong>overlap</strong> as a percentage of the peak &mdash;
+        the number you maximise on a bench &mdash; and the sum-frequency wavelength, the
+        colour that exists only when both beams are present. Lengthen one arm, or dial the
+        delay line, and the peak slides toward the marker until the readout says
+        <strong>TIME ZERO</strong>. That hunt is the whole procedure described above, performed
+        rather than described &mdash;
+        <a href="../../sketch/?demo=crosscorrelator">open the two-arm bench</a> and try it: the
+        scene opens 0.06&nbsp;mm short, and setting the delay line to 200&nbsp;mm lands it.</p>
+        <p>Two details are modelled because leaving them out would teach the wrong lesson.
+        Trains with different repetition rates are reported as <strong>unsynchronised</strong>
+        rather than given a trace, since without a fixed phase relationship there is nothing
+        stable to average up. And the mismatch is measured against the <em>nearest</em> pulse
+        of the other train, not the nominally corresponding one: pulses repeat, so arms can
+        only ever be nulled modulo the repetition period, and an arm 12.5&nbsp;ns long at
+        80&nbsp;MHz is perfectly overlapped rather than hopelessly late.</p>
         <p>Wired to a Detector screen, it draws the trace: delay on
         the horizontal axis rather than laboratory time, the curve symmetric about zero delay
         as a real autocorrelation always is, the half-maximum chord that <em>is</em> the
@@ -435,11 +458,20 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">â
         or accumulated dispersion differ, in which case the trace is drawn from the first of
         them and the averaged group delay dispersion. That is a real gap: two genuinely
         different pulses can be measured as one.</p>
-        <p>It is an autocorrelator only. Two beams cannot be cross-correlated against each
-        other, because a single instrument sees the sum of what reaches its face rather than
-        two arms it could delay against one another. Finding time zero between two beams, as
-        described above, is therefore something the component describes but does not
-        perform.</p></div>
+        <p>Cross-correlation is between exactly two arriving trains. One is not enough and
+        three cannot be reduced to a single pair, and both cases say so rather than picking
+        two. The two arms are two sources whose light lands on one detector face, not two
+        ports the instrument delays against each other, so the delay is whatever the scene
+        builds rather than something the box scans internally &mdash; which is why nulling
+        the mismatch is a job for a <a href="../glassrod/">path</a> or a delay line rather
+        than a control on the instrument.</p>
+        <p>The trace width uses the exact result that variance adds under correlation, so it
+        reduces to the correct autocorrelation factor when the two pulses match. Mixed shapes
+        &mdash; a Gaussian against a sech&sup2; &mdash; have no closed form, and the value
+        shown is an interpolation flagged as approximate. Chirp is not carried into the width:
+        the arriving durations are used as they stand, so matched-chirp spectral focusing,
+        where the delay tunes the Raman shift rather than merely switching the signal on, is
+        described above but not modelled.</p></div>
       </div>
 
       
