@@ -123,21 +123,31 @@ const EMBED_MAX_H = 900;
 // fifth of full size is under 3 px tall.
 const MIN_LEGIBLE_ZOOM = 0.4;
 
-function embedHeightFor(scene) {
+// How the frame around a scene should be shaped. Returning a style rather
+// than a height because a fixed height is the wrong instrument: the article
+// is responsive, so the same frame is around 760 px wide on a desktop and
+// closer to 320 on a phone, and a height chosen for one leaves the other
+// width-limited at exactly the zoom this is trying to avoid -- while an
+// inline height would also override the narrow-screen rule in wiki.css and
+// make a phone's embed taller without making it any more readable.
+//
+// An aspect ratio scales with whatever width the frame is actually given, so
+// zoomFit lands in the same place at both ends. The cap keeps a tall scene
+// from running past a desktop screen; there it becomes height-limited, which
+// is the trade worth making.
+function embedStyleFor(scene) {
   const points = (scene?.elements || []).filter(el => Number.isFinite(el.x) && Number.isFinite(el.y));
-  if (points.length < 2) return EMBED_MIN_H;
+  if (points.length < 2) return '';
   const xs = points.map(el => el.x), ys = points.map(el => el.y);
   const width = Math.max(...xs) - Math.min(...xs) + 200;
   const height = Math.max(...ys) - Math.min(...ys) + 200;
-  if (!(width > 0) || !(height > 0)) return EMBED_MIN_H;
-  // zoomFit takes the smaller of the two ratios, so a scene taller than the
-  // frame's shape is the one that gets shrunk. Leave every embed at the
-  // standard height unless that would squash its scene below legibility, and
-  // then give it only the height it needs.
+  if (!(width > 0) || !(height > 0)) return '';
+  // Leave every embed alone unless the standard height would squash its
+  // scene below legibility on the desktop layout.
   const zoomAtDefault = Math.min(EMBED_WIDTH / width, EMBED_MIN_H / height);
-  if (zoomAtDefault >= MIN_LEGIBLE_ZOOM) return EMBED_MIN_H;
-  const needed = Math.min(MIN_LEGIBLE_ZOOM, EMBED_WIDTH / width) * height;
-  return Math.round(Math.min(EMBED_MAX_H, Math.max(EMBED_MIN_H, needed)));
+  if (zoomAtDefault >= MIN_LEGIBLE_ZOOM) return '';
+  return ` style="height: auto; aspect-ratio: ${Math.round(width)} / ${Math.round(height)};`
+    + ` max-height: ${EMBED_MAX_H}px; min-height: ${EMBED_MIN_H}px;"`;
 }
 
 function pageHTML(entry, manifestEntry, scene) {
@@ -174,7 +184,7 @@ ${header(base)}
 
       <a class="place-cta" href="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}">Open in the canvas →</a>
 
-      <div class="embed-wrap" style="height: ${embedHeightFor(scene)}px;">
+      <div class="embed-wrap"${embedStyleFor(scene)}>
         <iframe class="embed-frame" src="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}"
           title="${esc(entry.title)} — click any component to see its live specs"
           loading="lazy"></iframe>
