@@ -18,6 +18,7 @@ const PRECACHE_PATHS = [
   "./js/camera-profile.js",
   "./js/canvas.js",
   "./js/clipboard.js",
+  "./js/lamps.js",
   "./js/probe.js",
   "./js/community-data.js",
   "./js/detector-instruments.js",

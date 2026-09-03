@@ -25,7 +25,11 @@ export const fwhmToSigma = fwhm => fwhm * SIGMA_PER_FWHM;
 // X-rays or radio.
 const GAUSS_SUPPORT_SIGMA = 3;
 
+import { LAMP_PRESETS } from './lamps.js';
+
 const GRID = 65;
+// Nominal half-width given to a discharge line so integrals over it are finite.
+const LINE_HALF_NM = 0.05;
 const LOCATE_GRID = 257;
 
 // Below this fraction of incident power survives, a filtered result counts
@@ -39,8 +43,25 @@ export const gaussianSpectrum = (center, fwhm) =>
 export const flatSpectrum = (lo, hi) =>
   (Math.abs(hi - lo) > 0 ? { kind: 'flat', lo: Math.min(lo, hi), hi: Math.max(lo, hi) } : null);
 
+// A discrete line spectrum: what a low-pressure gas discharge actually emits.
+// Kept as the lines themselves rather than re-gridded, because any uniform
+// grid fine enough to resolve a 0.1 nm line across the visible would be
+// thousands of points wide and every consumer re-samples this.
+export const lineSpectrum = lines => {
+  const kept = (lines || [])
+    .map(l => ({ nm: Number(l.nm), w: Math.max(0, Number(l.w ?? 1)) }))
+    .filter(l => Number.isFinite(l.nm) && l.nm > 0 && l.w > 0)
+    .sort((a, b) => a.nm - b.nm);
+  return kept.length ? { kind: 'lines', lines: kept } : null;
+};
+
 export function spectrumSupport(spec) {
   if (!spec) return null;
+  if (spec.kind === 'lines') {
+    const first = spec.lines[0].nm, last = spec.lines[spec.lines.length - 1].nm;
+    // A single line still needs a finite span for anything that integrates.
+    return first === last ? [first - 0.05, last + 0.05] : [first, last];
+  }
   if (spec.kind === 'gauss') {
     const half = GAUSS_SUPPORT_SIGMA * SIGMA_PER_FWHM * spec.fwhm;
     return [Math.max(1, spec.center - half), spec.center + half];
@@ -51,6 +72,16 @@ export function spectrumSupport(spec) {
 // Relative weight at one wavelength, normalised so the profile peaks at 1.
 export function spectrumWeight(spec, wl) {
   if (!spec) return 1;
+  if (spec.kind === 'lines') {
+    // Lines are quasi-monochromatic; LINE_HALF_NM is the nominal half-width
+    // they are given so that anything asking "how much is at this
+    // wavelength" gets a finite answer instead of a delta function.
+    let best = 0;
+    for (const line of spec.lines) {
+      if (Math.abs(wl - line.nm) <= LINE_HALF_NM) best = Math.max(best, line.w);
+    }
+    return best;
+  }
   if (spec.kind === 'gauss') {
     const z = (wl - spec.center) / (SIGMA_PER_FWHM * spec.fwhm);
     return Math.exp(-0.5 * z * z);
@@ -71,6 +102,14 @@ export function spectrumWeight(spec, wl) {
 // spectral density rather than splitting it evenly.
 export function spectrumSamples(spec, count = GRID) {
   if (!spec) return null;
+  if (spec.kind === 'lines') {
+    // The lines ARE the samples. Handing back a uniform grid here would put
+    // most of the weight where the lamp emits nothing, and a grating fanning
+    // this spectrum would produce colours that are not in the light.
+    const total = spec.lines.reduce((sum, l) => sum + l.w, 0);
+    if (!(total > 0)) return null;
+    return spec.lines.map(l => ({ wl: l.nm, weight: l.w / total }));
+  }
   const [lo, hi] = spectrumSupport(spec);
   const n = Math.max(2, count);
   const out = [];
@@ -91,6 +130,15 @@ export function spectrumSamples(spec, count = GRID) {
 // stays the width every readout in the app already speaks in.
 export function spectrumStats(spec) {
   if (!spec) return null;
+  if (spec.kind === 'lines') {
+    const total = spec.lines.reduce((sum, l) => sum + l.w, 0);
+    if (!(total > 0)) return null;
+    const center = spec.lines.reduce((sum, l) => sum + l.nm * l.w, 0) / total;
+    const first = spec.lines[0].nm, last = spec.lines[spec.lines.length - 1].nm;
+    // For a line spectrum the useful "width" is the span it covers, not a
+    // half-maximum of anything: a single line has no width worth quoting.
+    return { center, fwhm: last - first };
+  }
   if (spec.kind === 'gauss') return { center: spec.center, fwhm: spec.fwhm };
   if (spec.kind === 'flat') return { center: (spec.lo + spec.hi) / 2, fwhm: spec.hi - spec.lo };
   const w = spec.w, n = w.length;
@@ -209,6 +257,18 @@ export function transformLimitedDurationFs(bandwidthNm, wavelengthNm, shape = 'g
 // per-source-type branching.
 export function resolveSourceSpectrum(type, params = {}) {
   const p = params;
+  if (type === 'lamp') {
+    const spec = lineSpectrum(LAMP_PRESETS[p.lampType]?.lines || LAMP_PRESETS.hg.lines);
+    if (!spec) return { wl: 546.074, bw: 0, spec: null };
+    const stats = spectrumStats(spec);
+    // The nominal wavelength is the brightest visible line -- what the beam is
+    // drawn as, and what a single-wavelength readout quotes -- while `spec`
+    // carries the whole set for anything that disperses or measures it.
+    const visible = spec.lines.filter(l => l.nm >= 380 && l.nm <= 780);
+    const brightest = (visible.length ? visible : spec.lines)
+      .reduce((best, l) => (l.w > best.w ? l : best));
+    return { wl: brightest.nm, bw: stats ? stats.fwhm : 0, spec };
+  }
   if (type === 'sclaser') {
     const lo = Math.min(p.scMin ?? 300, p.scMax ?? 700);
     const hi = Math.max(p.scMin ?? 300, p.scMax ?? 700);

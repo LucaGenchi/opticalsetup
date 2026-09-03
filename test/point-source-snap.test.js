@@ -36,9 +36,15 @@ test('point source emission angle restricts the fan without duplicate full-circl
   assert.ok(cone.every(r => Math.abs(Math.atan2(r.dy, r.dx)) <= (30 + 1e-9) * Math.PI / 180));
 });
 
-test('led and lamp were fully removed, superseded by Point source', () => {
+test('the LED remains merged into Point source; the lamp came back for its spectra', () => {
+  // Both were folded into Point source in July, on the grounds that neither
+  // did anything the point source could not. That still holds for the LED.
+  // It stopped holding for the lamp: a discharge lamp emits a LINE spectrum
+  // chosen from a list, which is the one thing a single-wavelength point
+  // source genuinely cannot express, so `lamp` is a distinct element again.
   assert.equal(Object.hasOwn(registry, 'led'), false);
-  assert.equal(Object.hasOwn(registry, 'lamp'), false);
+  assert.equal(Object.hasOwn(registry, 'lamp'), true);
+  assert.equal(registry.lamp.category, 'Sources');
   assert.ok(!registry.pointsource.hidden, 'pointsource is visible');
   // still searchable under their old names
   assert.ok(registry.pointsource.aliases.includes('led'));

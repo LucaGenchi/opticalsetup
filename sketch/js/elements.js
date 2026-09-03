@@ -9,6 +9,7 @@
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
+import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -2001,6 +2002,58 @@ export const registry = {
       const n = Math.max(1, Math.round(nrays));
       for (let i = 0; i < n; i++) {
         // A full-circle source must not duplicate the -180°/+180° sample.
+        const aDeg = spread >= 359.999
+          ? 360 * i / n
+          : (n === 1 ? 0 : -spread / 2 + spread * i / (n - 1));
+        const a = aDeg * Math.PI / 180;
+        out.push({ x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a), evan: true, evanLen: 110 });
+      }
+      return out;
+    },
+  },
+
+  // A spectral lamp: the same isotropic near-field emitter as the point
+  // source -- so the same lenses, objectives, fibers and mirrors collect it --
+  // but emitting a discharge line spectrum chosen from a list instead of a
+  // single wavelength. Incoherent by construction: like every source here
+  // except a sized monochromatic CW laser, its light is carried as power and
+  // never reconstructed as a field, so it cannot produce fringes.
+  lamp: {
+    label: 'Spectral lamp', category: 'Sources', paletteOrder: 4, size: { w: 30, h: 34 },
+    aliases: ['discharge lamp', 'calibration lamp', 'mercury', 'sodium', 'neon', 'pen-ray', 'spectral lines'],
+    size_: el => ({ w: 30 * (el.params.displayScale || 1), h: 34 * (el.params.displayScale || 1) }),
+    params: [
+      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2.5, step: 0.1, def: 1 },
+      {
+        key: 'lampType', label: 'Lamp', type: 'select', def: 'hg',
+        options: Object.entries(LAMP_PRESETS).map(([key, preset]) => [key, preset.label]),
+      },
+      { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType) },
+      { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
+      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 32, step: 2, def: 12 },
+      P.autoColor, P.color,
+    ],
+    svg(el) {
+      const scale = el.params.displayScale || 1;
+      const c = el.params.autoColor === false && el.params.color
+        ? el.params.color : lampColor(el.params.lampType);
+      // A pen-ray envelope: the narrow tube these lamps almost always are.
+      return `<g transform="scale(${scale})">` +
+        `<rect x="-5" y="-13" width="10" height="26" rx="5" fill="${c}" stroke="#333" stroke-width="1.2"/>` +
+        `<rect x="-5" y="-13" width="10" height="26" rx="5" fill="none" stroke="#fff" stroke-width="0.6" opacity="0.5"/>` +
+        `<line x1="0" y1="-8" x2="0" y2="8" stroke="#fff" stroke-width="1.4" opacity="0.75"/>` +
+        `<rect x="-3.5" y="12" width="7" height="4" rx="1" fill="#4d565f"/>` +
+        `<g stroke="${c}" stroke-width="1.4" stroke-linecap="round" opacity="0.9">` +
+        `<line x1="-9" y1="-6" x2="-13" y2="-8"/><line x1="9" y1="-6" x2="13" y2="-8"/>` +
+        `<line x1="-9" y1="2" x2="-13" y2="2"/><line x1="9" y1="2" x2="13" y2="2"/>` +
+        `</g></g>`;
+    },
+    source(el) {
+      // identical geometry to the point source, including the evanescent
+      // near field, so every collector treats the two the same way
+      const { spread, nrays } = el.params, out = [];
+      const n = Math.max(1, Math.round(nrays));
+      for (let i = 0; i < n; i++) {
         const aDeg = spread >= 359.999
           ? 360 * i / n
           : (n === 1 ? 0 : -spread / 2 + spread * i / (n - 1));
@@ -4365,6 +4418,7 @@ const DIRECT = {
   pulsedlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'λ' } },
   sclaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'scMax', short: 'λ max' } },
   pointsource: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
+  lamp: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
