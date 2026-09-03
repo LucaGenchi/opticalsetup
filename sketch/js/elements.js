@@ -48,6 +48,15 @@ import {
 } from './aotf.js';
 import { aodScanPosition, aodAccessTimeUs, aodMaxScanRateKHz } from './acousto-optic.js';
 import { phaseModulatorOpdMm, phaseModulatorPeakOpdMm } from './electro-optic.js';
+import {
+  ASPHERE_LIMITS, asphereSag, asphereSlope, asphericLensAdjustment, asphericLensCardinals,
+  asphericLensGeometry, asphericSurfaceSummary,
+} from './asphere.js';
+
+export {
+  ASPHERE_LIMITS, asphereSag, asphereSlope, asphericLensAdjustment, asphericLensCardinals,
+  asphericLensGeometry, asphericSurfaceSummary,
+};
 
 // true when the element's rotation would render baked-in text upside down
 function isFlipped(el) {
@@ -153,6 +162,19 @@ const formatRealizedGeometry = params => {
   return `R₁ ${formatGeometryValue(g.R1)} · R₂ ${formatGeometryValue(g.R2)} · t ${formatGeometryValue(g.d)} mm`;
 };
 
+const formatAsphericGeometry = params => {
+  const geometry = asphericLensGeometry(params);
+  const adjustment = asphericLensAdjustment(params);
+  const values = [
+    `R₁ ${formatGeometryValue(geometry.front.R)}`,
+    `R₂ ${formatGeometryValue(geometry.rear.R)}`,
+    `t ${formatGeometryValue(geometry.d)} mm`,
+  ];
+  if (adjustment?.frontScale < 1) values.push(`front A terms ×${Number(adjustment.frontScale.toPrecision(3))}`);
+  if (adjustment?.rearScale < 1) values.push(`rear A terms ×${Number(adjustment.rearScale.toPrecision(3))}`);
+  return values.join(' · ');
+};
+
 // Names the shape the two radii actually describe. Worth showing, because the
 // standard Cartesian convention the lensmaker's equation needs is famously
 // counter-intuitive on the REAR surface: R is positive when the centre of
@@ -182,10 +204,11 @@ export function thickLensShapeName(params = {}) {
 // A hand-built cemented doublet therefore comes out silently wrong rather than
 // visibly broken, which is the worst way for a model to fail — so say so.
 // The gap itself is defined in lensgroup.js, the module that has to insert it.
-export const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
+export const GLASS_BODY_TYPES = new Set(['thicklens', 'asphericlens', 'freeglass']);
 
 function glassBodyWorldPoints(el) {
   const local = el?.type === 'thicklens' ? thickLensGeometry(el.params).points
+    : el?.type === 'asphericlens' ? asphericLensGeometry(el.params).points
     : el?.type === 'freeglass' ? freeglassPoints(el)
       : null;
   if (!local) return null;
@@ -2330,6 +2353,93 @@ export const registry = {
     refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
   },
 
+  // A finite singlet whose two faces follow the standard even-asphere sag
+  // equation. The tracer intersects those analytic profiles and uses their
+  // exact local derivatives for Snell refraction; the sampled outline is only
+  // for drawing, hit testing, and containment.
+  asphericlens: {
+    label: 'Aspheric lens', category: 'Lenses', paletteOrder: 4,
+    aliases: ['asphere', 'aspheric singlet', 'conic lens', 'hyperbolic lens', 'even asphere', 'A4 A6 A8'],
+    params: [
+      { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 30, slider: false },
+      { key: 'k1', label: 'Front conic constant k₁', type: 'number', min: -ASPHERE_LIMITS.conic, max: ASPHERE_LIMITS.conic, step: 0.01, def: -0.58, slider: false },
+      { key: 'r2', label: 'Rear radius R₂ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 0, slider: false },
+      { key: 'k2', label: 'Rear conic constant k₂', type: 'number', min: -ASPHERE_LIMITS.conic, max: ASPHERE_LIMITS.conic, step: 0.05, def: 0, slider: false },
+      { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
+      { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
+      { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
+      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      { key: 'shape', label: 'Surface types', type: 'readout', readout: p => asphericSurfaceSummary(p) },
+      {
+        key: 'realizedGeometry', label: 'Geometry used', type: 'readout',
+        show: p => Boolean(asphericLensAdjustment(p)), readout: p => formatAsphericGeometry(p),
+      },
+      { key: 'efl', label: 'Paraxial focal length at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(asphericLensCardinals(p).f) },
+      { key: 'bfd', label: 'Paraxial back focal distance at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(asphericLensCardinals(p).bfd) },
+      { key: 'asphere-polynomial', label: 'Higher-order asphere coefficients', type: 'section', open: false },
+      { key: 'a4_1', label: 'Front A₄ (mm⁻³)', type: 'number', min: -ASPHERE_LIMITS.a4, max: ASPHERE_LIMITS.a4, step: 0.000001, def: 0, slider: false },
+      { key: 'a6_1', label: 'Front A₆ (mm⁻⁵)', type: 'number', min: -ASPHERE_LIMITS.a6, max: ASPHERE_LIMITS.a6, step: 0.00000001, def: 0, slider: false },
+      { key: 'a8_1', label: 'Front A₈ (mm⁻⁷)', type: 'number', min: -ASPHERE_LIMITS.a8, max: ASPHERE_LIMITS.a8, step: 0.0000000001, def: 0, slider: false },
+      { key: 'a4_2', label: 'Rear A₄ (mm⁻³)', type: 'number', min: -ASPHERE_LIMITS.a4, max: ASPHERE_LIMITS.a4, step: 0.000001, def: 0, slider: false },
+      { key: 'a6_2', label: 'Rear A₆ (mm⁻⁵)', type: 'number', min: -ASPHERE_LIMITS.a6, max: ASPHERE_LIMITS.a6, step: 0.00000001, def: 0, slider: false },
+      { key: 'a8_2', label: 'Rear A₈ (mm⁻⁷)', type: 'number', min: -ASPHERE_LIMITS.a8, max: ASPHERE_LIMITS.a8, step: 0.0000000001, def: 0, slider: false },
+    ],
+    size_: el => {
+      const geometry = asphericLensGeometry(el.params);
+      return { w: geometry.span + 6, h: 2 * geometry.h + 6 };
+    },
+    svg(el) {
+      const geometry = asphericLensGeometry(el.params);
+      return `<path d="${boundaryPathData(geometry.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    },
+    surfaces(el) {
+      const geometry = asphericLensGeometry(el.params);
+      const frontTop = geometry.frontPoints[0];
+      const frontBottom = geometry.frontPoints.at(-1);
+      const rearBottom = geometry.rearPoints[0];
+      const rearTop = geometry.rearPoints.at(-1);
+      const transmission = surfaceTransmission(el.params);
+      const common = { material: el.params.glass, transmission };
+      const worldProfile = (vertexX, profile) => {
+        const vertex = toWorld(el, vertexX, 0);
+        return {
+          ...profile,
+          cx: vertex.x, cy: vertex.y,
+          ux: rotPt(1, 0, el.rot || 0),
+          uy: rotPt(0, 1, el.rot || 0),
+          h: geometry.h,
+        };
+      };
+      return [
+        {
+          x1: frontTop.x, y1: frontTop.y, x2: frontBottom.x, y2: frontBottom.y, kind: 'refract',
+          data: { ...common, topologyKey: 'front', asphere: worldProfile(geometry.xv1, geometry.front) },
+        },
+        {
+          x1: frontBottom.x, y1: frontBottom.y, x2: rearBottom.x, y2: rearBottom.y, kind: 'refract',
+          data: { ...common, topologyKey: 'rim-bottom' },
+        },
+        {
+          // Keep +h -> -h ordering on both analytic faces so hit.u has one
+          // consistent endpoint convention for exact-corner detection.
+          x1: rearTop.x, y1: rearTop.y, x2: rearBottom.x, y2: rearBottom.y, kind: 'refract',
+          data: { ...common, topologyKey: 'rear', asphere: worldProfile(geometry.xv2, geometry.rear) },
+        },
+        {
+          x1: rearTop.x, y1: rearTop.y, x2: frontTop.x, y2: frontTop.y, kind: 'refract',
+          data: { ...common, topologyKey: 'rim-top' },
+        },
+      ];
+    },
+    hitTest(el, localPoint, tolerance = 4) {
+      const points = asphericLensGeometry(el.params).points;
+      return pointInBoundary(localPoint, points)
+        || points.some((point, index) => distToSegment(localPoint, point, points[(index + 1) % points.length]) <= tolerance);
+    },
+    containsLocal(el, localPoint) { return pointInBoundary(localPoint, asphericLensGeometry(el.params).points); },
+    refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
+  },
+
   // The singlet generalised: a surface table describing any number of glass
   // bodies in a row, which is how real prescriptions are written. Cemented
   // and air-spaced groups are the same data — glass continuing across an
@@ -2337,7 +2447,7 @@ export const registry = {
   // achromatic doublet and anything else the table can express. Nothing about
   // the focal length is configured; see lensgroup.js.
   lensgroup: {
-    label: 'Lens group (surface table)', category: 'Lenses', paletteOrder: 4,
+    label: 'Lens group (surface table)', category: 'Lenses', paletteOrder: 5,
     aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table'],
     params: [
       { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
@@ -2460,7 +2570,7 @@ export const registry = {
   },
 
   telescope: {
-    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 5, size: { w: 174, h: 62 },
+    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 6, size: { w: 174, h: 62 },
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -2507,7 +2617,7 @@ export const registry = {
     // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
     // because WD is capped at EFL. It is never drawn — an objective is an
     // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses', paletteOrder: 6, size: { w: 36, h: 40 },
+    label: 'Objective', category: 'Lenses', paletteOrder: 7, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
@@ -4378,6 +4488,7 @@ const DIRECT = {
   // Radii are the physics, so the tune knob drives R1 (and the shape
   // follows); resize sets the clear aperture, which is genuinely a size.
   thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'R₁' } },
+  asphericlens: { resize: { y: 'dia' }, tune: { key: 'k1', short: 'k₁' } },
   lensgroup: { resize: { y: 'dia' }, tune: { key: 'lastRadius', short: 'R last' } },
   telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'f₂' } },
   // The blue handle changes the physical front opening.
@@ -4476,6 +4587,7 @@ const ELEMENT_HELP = {
   metalens: 'A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency.',
   lensgroup: 'Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.',
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
+  asphericlens: 'Refracts through exact conic-plus-even-polynomial faces, so changing k or A₄/A₆/A₈ changes the physical ray intersections and aberration rather than only the drawing.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
   objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
@@ -4583,18 +4695,24 @@ export function getElementMeta(type, params = {}, context = {}) {
       : 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
   } else if (DIAGRAM_ONLY.has(type)) {
     note = 'This element is intentionally visual and never changes traced rays.';
-  } else if (type === 'thicklens' || type === 'freeglass') {
+  } else if (GLASS_BODY_TYPES.has(type)) {
     const cemented = context.element && Array.isArray(context.elements)
       ? touchingGlassBody(context.element, context.elements)
       : null;
-    const adjusted = type === 'thicklens' ? thickLensAdjustment(params) : null;
+    const adjusted = type === 'thicklens' ? thickLensAdjustment(params)
+      : type === 'asphericlens' ? asphericLensAdjustment(params)
+        : null;
     if (cemented) {
       tier = 'configurable';
       note = `This body is touching another glass body. The tracer cannot resolve two interfaces that close together, so one of them is skipped and the rays are wrong — not obviously wrong, just wrong. Leave at least ${MIN_CEMENT_GAP} mm between them; a real cemented group is a 10-20 µm layer of not-quite-glass anyway.`;
     } else if (adjusted) {
-      note = `Requested radii or thickness cannot close at this aperture. The trace uses ${formatRealizedGeometry(params)}; see Geometry used below.`;
+      note = type === 'asphericlens'
+        ? `Requested asphere geometry is outside the finite-aperture safety bounds or would cross the other face. The trace uses ${formatAsphericGeometry(params)}; see Geometry used below.`
+        : `Requested radii or thickness cannot close at this aperture. The trace uses ${formatRealizedGeometry(params)}; see Geometry used below.`;
     } else if (type === 'thicklens') {
-      note = 'A 2D meridional singlet with spherical or flat faces and visible-band catalogue approximations. Aspheres, skew rays, coatings, and calibrated off-axis aberrations are not modeled.';
+      note = 'A 2D meridional singlet with spherical or flat faces and visible-band catalogue approximations. Use Aspheric lens for conic/even-polynomial faces; skew rays, coatings, and calibrated off-axis aberrations are not modeled.';
+    } else if (type === 'asphericlens') {
+      note = 'The trace uses the standard even-asphere sag with exact intersections and surface normals in a 2D meridional section. Paraxial focal readouts use vertex curvature; diffraction, skew rays, coatings, and manufacturing tolerances are not modeled.';
     } else {
       note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
     }

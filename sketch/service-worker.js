@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v46';
+const CACHE_NAME = 'opticalsetup-pwa-v47';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -13,6 +13,7 @@ const PRECACHE_PATHS = [
   "./icons/maskable-512.png",
   "./icons/apple-touch-icon.png",
   "./js/acousto-optic.js",
+  "./js/asphere.js",
   "./js/aotf.js",
   "./js/electro-optic.js",
   "./js/camera-profile.js",

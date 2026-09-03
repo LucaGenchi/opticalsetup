@@ -33,6 +33,7 @@ import {
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
+import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
 let lastPaths = [];
@@ -1403,6 +1404,78 @@ function rayArcHit(p, d, surface) {
   return null;
 }
 
+// Intersect a ray with the exact rotationally symmetric profile carried by an
+// aspheric-lens face. In the element frame the surface is single-valued,
+// x = sag(y), so the finite aperture gives a bounded one-dimensional root
+// search. Ordinary near-axial rays have constant y and are solved directly;
+// oblique rays use deterministic bracketing and bisection. The returned point
+// lies on the analytic profile rather than on the sampled SVG outline.
+function rayAsphereHit(p, d, surface) {
+  const profile = surface.data.asphere;
+  const offset = { x: p.x - profile.cx, y: p.y - profile.cy };
+  const x0 = dot(offset, profile.ux), y0 = dot(offset, profile.uy);
+  const dx = dot(d, profile.ux), dy = dot(d, profile.uy);
+  const h = Math.max(0.5, Number(profile.h) || 0.5);
+  const valueAt = t => x0 + dx * t - asphereSag(y0 + dy * t, profile);
+  const makeHit = t => {
+    if (!Number.isFinite(t) || t < 0.05) return null;
+    const localY = y0 + dy * t;
+    if (localY < -h - 1e-7 || localY > h + 1e-7) return null;
+    return {
+      t,
+      // The authored surface runs from +h to -h, matching surface.a -> b.
+      u: Math.min(1, Math.max(0, (h - localY) / (2 * h))),
+      p: add(p, mul(d, t)),
+    };
+  };
+
+  if (Math.abs(dy) < 1e-10) {
+    if (Math.abs(y0) > h + 1e-7 || Math.abs(dx) < 1e-12) return null;
+    return makeHit((asphereSag(y0, profile) - x0) / dx);
+  }
+
+  const edgeA = (-h - y0) / dy;
+  const edgeB = (h - y0) / dy;
+  let lo = Math.max(0.05, Math.min(edgeA, edgeB));
+  const hi = Math.max(edgeA, edgeB);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) return null;
+
+  // Moving a hair beyond the self-hit threshold prevents a ray launched from
+  // this face from rediscovering the same numerical root at exactly 0.05 mm.
+  lo += 1e-9;
+  const STEPS = 128;
+  let previousT = lo;
+  let previousValue = valueAt(previousT);
+  if (!Number.isFinite(previousValue)) return null;
+  if (Math.abs(previousValue) < 1e-10) return makeHit(previousT);
+  for (let i = 1; i <= STEPS; i++) {
+    const currentT = lo + (hi - lo) * i / STEPS;
+    const currentValue = valueAt(currentT);
+    if (!Number.isFinite(currentValue)) return null;
+    if (Math.abs(currentValue) < 1e-10) return makeHit(currentT);
+    if (previousValue * currentValue < 0) {
+      let left = previousT, right = currentT;
+      let leftValue = previousValue;
+      for (let iteration = 0; iteration < 52; iteration++) {
+        const middle = (left + right) / 2;
+        const middleValue = valueAt(middle);
+        if (!Number.isFinite(middleValue)) return null;
+        if (Math.abs(middleValue) < 1e-12) { left = middle; right = middle; break; }
+        if (leftValue * middleValue <= 0) {
+          right = middle;
+        } else {
+          left = middle;
+          leftValue = middleValue;
+        }
+      }
+      return makeHit((left + right) / 2);
+    }
+    previousT = currentT;
+    previousValue = currentValue;
+  }
+  return null;
+}
+
 function rayLineHit(p, d, surface) {
   const e = sub(surface.b, surface.a);
   const den = d.x * e.y - d.y * e.x;
@@ -1431,8 +1504,9 @@ function rayInfiniteLineHit(p, d, surface) {
 function nearestHit(p, d, surfaces, skip) {
   let best = null;
   for (const s of surfaces) {
-    if (s === skip && !s.data.arc) continue;
-    const candidate = s.data.arc ? rayArcHit(p, d, s) : rayLineHit(p, d, s);
+    if (s === skip && !s.data.arc && !s.data.asphere) continue;
+    const candidate = s.data.asphere ? rayAsphereHit(p, d, s)
+      : s.data.arc ? rayArcHit(p, d, s) : rayLineHit(p, d, s);
     if (!candidate) continue;
     if (!best || candidate.t < best.t - 1e-8) {
       best = { ...candidate, surface: s, ambiguous: false };
@@ -1725,9 +1799,18 @@ function interact(ray, hit) {
     const slope = local / (2 * f);
     return norm({ x: ux.x + uy.x * slope, y: ux.y + uy.y * slope });
   };
+  const asphereNormal = () => {
+    const profile = data.asphere;
+    const offset = { x: hit.p.x - profile.cx, y: hit.p.y - profile.cy };
+    const localY = dot(offset, profile.uy);
+    const slope = asphereSlope(localY, profile);
+    // Gradient of x - sag(y) = 0, transformed back to world coordinates.
+    return norm(sub(profile.ux, mul(profile.uy, slope)));
+  };
   const n = data.arc
     ? norm({ x: hit.p.x - data.arc.cx, y: hit.p.y - data.arc.cy })
     : data.parab ? parabolaNormal()
+      : data.asphere ? asphereNormal()
       : perp(t);
 
   switch (k) {

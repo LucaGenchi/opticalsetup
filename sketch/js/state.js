@@ -9,7 +9,7 @@ import { normalizeAotfChannels } from './aotf.js';
 
 // Elements whose boundary refracts and therefore carries per-surface
 // transmission of its own.
-const GLASS_BODY_TYPES = new Set(['thicklens', 'freeglass']);
+const GLASS_BODY_TYPES = new Set(['thicklens', 'asphericlens', 'freeglass']);
 
 export const state = {
   elements: [],   // optical elements
