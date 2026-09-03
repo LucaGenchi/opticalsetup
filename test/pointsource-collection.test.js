@@ -122,9 +122,9 @@ test('curved mirrors collect too, not just flat and parabolic ones', () => {
 // source 25 mm away. A parabola's defining property is that every ray from its
 // focus leaves parallel to the axis, so this is the case that must come out
 // exactly collimated.
-function beamWidthAt(mirrorType, length, distanceX) {
+function beamWidthAt(mirrorType, length, distanceX, { from = 60, to = 340 } = {}) {
   let lo = null, hi = null;
-  for (let y = 60; y <= 340; y += 4) {
+  for (let y = from; y <= to; y += 4) {
     const source = mk('pointsource', 125, 200, 0, { spread: 360, nrays: 200, bwMode: 'mono' });
     const mirror = mk(mirrorType, 100, 200, 180, { length, f: 25 });
     const probe = mk('detector', distanceX, y, 0, { aperture: 4 });
@@ -145,15 +145,47 @@ test('a point source at a parabola\'s focus leaves exactly collimated', () => {
   assert.equal(far, near, `parabola must not spread: ${near} mm at 400, ${far} mm at 1200`);
 });
 
-test('the spherical mirror collimates too, being modelled as an ideal surface', () => {
-  // Worth stating rather than assuming: a REAL spherical mirror has spherical
-  // aberration and would not collimate a point source perfectly. This one is
-  // modelled as an ideal focusing surface, so it does -- which is a
-  // simplification in the opposite direction from the parabola's old error.
-  const near = beamWidthAt('cmirror', 100, 400);
-  const far = beamWidthAt('cmirror', 100, 1200);
-  assert.ok(near > 0);
-  assert.equal(far, near, `${near} mm at 400, ${far} mm at 1200`);
+test('a spherical mirror does NOT collimate, and that is the point of the parabola', () => {
+  // The two mirrors on the benchmark scene, same focal length and aperture,
+  // source at the focus of each. A parabola brings every ray out parallel; a
+  // sphere cannot, and the error grows steeply as the mirror gets faster.
+  const parabola = [beamWidthAt('oap', 100, 400), beamWidthAt('oap', 100, 1200)];
+  assert.equal(parabola[1], parabola[0], `parabola stays collimated: ${parabola.join(' -> ')}`);
+
+  // the aberrated beam is far wider than the parabola's, so it needs a wider
+  // scan to be measured rather than clipped
+  const wide = { from: -400, to: 900 };
+  const sphere = [beamWidthAt('cmirror', 100, 400, wide), beamWidthAt('cmirror', 100, 1200, wide)];
+  assert.ok(sphere[1] > sphere[0] * 1.2,
+    `an f/0.25 sphere must spread badly, got ${sphere.join(' -> ')}`);
+  assert.ok(sphere[0] > parabola[0] * 2,
+    `and is already far wider at 400 mm: ${sphere[0]} vs ${parabola[0]}`);
+});
+
+test('spherical aberration falls away as the mirror gets slower', () => {
+  // The paraxial limit is the check that the geometry is right rather than
+  // merely broken: a slow spherical mirror is very nearly as good as a
+  // parabola, which is why slow systems can use one.
+  const spread = (f, length) => {
+    const probe = distance => {
+      let lo = null, hi = null;
+      for (let y = -100; y <= 500; y += 1) {
+        const source = mk('pointsource', 100 + f, 200, 0, { spread: 360, nrays: 400, bwMode: 'mono' });
+        const mirror = mk('cmirror', 100, 200, 180, { length, f });
+        const detector = mk('detector', distance, y, 0, { aperture: 1 });
+        traceAll([source, mirror, detector], []);
+        if ((detectorReading(detector.id)?.signal ?? 0) > 0) { if (lo === null) lo = y; hi = y; }
+      }
+      return lo === null ? null : hi - lo;
+    };
+    const near = probe(400), far = probe(1200);
+    return Math.abs(Math.atan2((far - near) / 2, 800) * 180 / Math.PI);
+  };
+  const slow = spread(100, 25.4);   // f/3.9
+  const fast = spread(25, 50);      // f/0.5
+  assert.ok(slow < 0.2, `a slow mirror is nearly collimating, got ${slow.toFixed(3)} deg`);
+  assert.ok(fast > 2, `a fast mirror aberrates badly, got ${fast.toFixed(3)} deg`);
+  assert.ok(fast > slow * 10, 'and the aberration grows steeply with speed');
 });
 
 test('the benchmark scene loads and both rows produce a beam', async () => {
@@ -204,7 +236,9 @@ test('collected light is not re-evanesced by a later splitter', () => {
   const build = withSplitter => {
     const parts = [
       mk('pointsource', 175, 200, 0, { spread: 360, nrays: 200, bwMode: 'mono' }),
-      mk('cmirror', 150, 200, 180, { f: 25, length: 100 }),
+      // a parabola, so the beam really is collimated and the test measures
+              // evanescence rather than the sphere's aberration
+      mk('oap', 150, 200, 180, { f: 25, length: 100 }),
     ];
     // tilted so its own reflection leaves the axis instead of returning to
     // the collecting mirror and being sent downstream a second time

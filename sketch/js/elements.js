@@ -815,6 +815,47 @@ function boxSVG(w, h, fill, stroke, text, textFill, flip) {
     (text ? `<text x="0" y="0" ${flip ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="${Math.min(11, w / (text.length * 0.62))}" font-weight="600" fill="${textFill || '#fff'}">${esc(text)}</text>` : '');
 }
 
+// A real spherical mirror surface. Radius R = 2f, vertex at the element
+// origin, centre of curvature in front for a concave mirror and behind for a
+// convex one. Handed to the tracer as a true circular arc -- endpoints plus a
+// point it passes through -- so both the intersection and the normal are
+// analytic. Spherical aberration then comes out of the geometry rather than
+// having to be modelled: a sphere simply does not bring marginal rays to the
+// paraxial focus, which is the entire reason parabolic mirrors exist.
+function sphericalMirrorGeometry(el, concave) {
+  const f = Math.max(5, Math.abs(Number(el.params.f) || 100));
+  const R = 2 * f;
+  // A mirror cannot be wider than its own sphere.
+  const L = Math.min(el.params.length / 2, R * 0.98);
+  const sgn = concave ? -1 : 1;
+  return { R, L, sgn, x: y => sgn * (R - Math.sqrt(Math.max(0, R * R - y * y))) };
+}
+
+function sphericalMirrorSurfaces(el, concave) {
+  const g = sphericalMirrorGeometry(el, concave);
+  return [{
+    x1: g.x(-g.L), y1: -g.L, x2: g.x(g.L), y2: g.L, kind: 'cmirror',
+    data: {
+      f: concave ? Math.abs(el.params.f) : -Math.abs(el.params.f),
+      refl: el.params.refl,
+      showTransmitted: el.params.showTransmitted,
+      // the vertex: the third point that fixes the circle
+      arcPoint: { x: 0, y: 0 },
+    },
+  }];
+}
+
+// The drawn profile, matching the surface the tracer actually uses.
+function sphericalMirrorPath(el, concave) {
+  const g = sphericalMirrorGeometry(el, concave);
+  let d = '';
+  for (let i = 0; i <= 24; i++) {
+    const y = -g.L + (2 * g.L * i) / 24;
+    d += (i ? ' L ' : 'M ') + g.x(y).toFixed(2) + ',' + y.toFixed(2);
+  }
+  return d;
+}
+
 function hatch(x, y1, y2, side, n) {
   // decorative hatching behind mirror-like surfaces
   if (!Number.isFinite(n) || n < 1 || y2 <= y1) return '';
@@ -2031,6 +2072,7 @@ export const registry = {
     },
   },
 
+
   cmirrorx: {
     label: 'Convex mirror', category: 'Mirrors', paletteOrder: 1, size: { w: 18, h: 56 },
     params: [
@@ -2042,12 +2084,9 @@ export const registry = {
     svg(el) {
       const L = el.params.length / 2;
       // bulges toward the incoming beam (from -x)
-      return `<path d="M 0,${-L} Q -7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="${sphericalMirrorPath(el, false)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
     },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'cmirror', data: { f: -Math.abs(el.params.f), refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
-    },
+    surfaces(el) { return sphericalMirrorSurfaces(el, false); },
   },
 
   cmirror: {
@@ -2061,12 +2100,9 @@ export const registry = {
     svg(el) {
       const L = el.params.length / 2;
       // hollow toward the incoming beam (from -x): focuses it
-      return `<path d="M 0,${-L} Q 7,0 0,${L}" fill="none" stroke="#444" stroke-width="3.5"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="${sphericalMirrorPath(el, true)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
     },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'cmirror', data: { f: Math.abs(el.params.f), refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
-    },
+    surfaces(el) { return sphericalMirrorSurfaces(el, true); },
   },
 
   oap: {

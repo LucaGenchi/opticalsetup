@@ -1773,7 +1773,12 @@ function interact(ray, hit) {
     }
     case 'cmirror': {
       const R = Math.min(1, Math.max(0, (data.refl ?? 100) / 100));
-      const focused = lensBend(reflect(d, n), hit.p, s, data.f);
+      // A real spherical surface reflects off its own normal, and the
+      // aberration follows from that. `data.arc` gives the exact normal at
+      // the hit point, so no paraxial bend is applied or wanted: a sphere
+      // does not bring marginal rays to the paraxial focus, and pretending
+      // otherwise hid the entire reason parabolic mirrors exist.
+      const focused = data.arc ? reflect(d, n) : lensBend(reflect(d, n), hit.p, s, data.f);
       if (R >= 1) return [{ d: focused }];
       const out = [];
       if (R > 0) out.push({ d: focused, intensity: ray.intensity * R, tag: 'R', retainWeak: true });
@@ -2677,7 +2682,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // has to keep fading; otherwise it leaves as ordinary light carrying
         // 99% of the power and reaches any detector on the bench. The
         // transmitted child inherits this.
-        r.carriedEvan = { evanLen: EVAN_LEN, captureLen: CAPTURE };
+        // The transmitted child starts AT the collector, having already used
+        // up hit.t of its range. Handing it the full range again would let a
+        // chain of partial mirrors walk near-field light across the bench.
+        r.carriedEvan = {
+          evanLen: Math.max(0, EVAN_LEN - hit.t),
+          captureLen: Math.max(0, CAPTURE - hit.t),
+        };
         if (!coherent?.dryRun) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
       }
       if (!hit) {
