@@ -24,6 +24,11 @@ Interface work on the canvas, none of it changing what the tracer does.
   open, which pushed the other fourteen below the fold: the first thing a new
   sketch showed was a scroll bar rather than the shape of the library. All
   seventeen now fit on one screen.
+- **A tighter starter scene.** The three sources sit 50 mm apart instead of
+  110, and the prompt reads "choose a source and add components from the
+  library" — naming where the components come from, now that the library is
+  the first thing on screen. The pulsed source opens at 920 nm, so its beam
+  reads visibly different from the 532 nm one above it.
 - **Copy and paste**, ⌘C/⌘V or Ctrl+C/Ctrl+V, alongside the duplicate shortcut
   that was already there. Successive pastes cascade instead of stacking.
   Singletons are refused, and a detector screen pasted together with its

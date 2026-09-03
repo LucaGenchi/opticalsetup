@@ -1663,14 +1663,21 @@ window.addEventListener('DOMContentLoaded', async () => {
         return e;
       };
       state.elements.push(
-        // Two lines, not one: at 18 pt the single line is 303 mm wide against a
-        // 315 mm canvas on a 375 px phone, so it clipped. Wrapping fits any
-        // width without shrinking the type.
-        mk('textlabel', 60, 84, 0, { text: 'Choose a source', fontSize: 18, fill: '#333333' }),
-        mk('textlabel', 60, 110, 0, { text: 'and start developing', fontSize: 18, fill: '#333333' }),
-        mk('cwlaser', 100, 170, 0, {}),
-        mk('pulsedlaser', 100, 280, 0, {}),
-        mk('sclaser', 100, 390, 0, {}),
+        // Two lines, not one: at 18 pt a single line of this runs 329 mm wide
+        // against a 315 mm canvas on a 375 px phone, so it clipped. The break
+        // is explicit in the text rather than split across two labels, since
+        // markdownLayout already lays out on newlines; wrapped, the widest
+        // line is 251 mm and fits any width without shrinking the type.
+        mk('textlabel', 50, 100, 0, {
+          text: 'Choose a source and add\ncomponents from the library.',
+          fontSize: 18, fill: '#333333',
+        }),
+        mk('cwlaser', 98, 150, 0, {}),
+        // 920 nm: the Ti:sapphire-ish line most of the pulsed examples use, and
+        // far enough into the infrared that its beam reads differently from the
+        // 532 nm one above it.
+        mk('pulsedlaser', 98, 200, 0, { wavelength: 920 }),
+        mk('sclaser', 98, 250, 0, {}),
       );
     }
   }
