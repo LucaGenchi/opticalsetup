@@ -2610,8 +2610,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // are separate: a collection lens routinely sits well outside the few
         // centimetres of visible glow, and the light is really there.
         const CAPTURE = r.captureLen || EVAN_LEN * 1.5;
-        const captured = hit && hit.t <= CAPTURE
-          && (hit.surface.kind === 'lens' || hit.surface.kind === 'metalens' || hit.surface.kind === 'fiberin');
+        // Mirrors collect too. A parabolic mirror with an emitter at its focus
+        // is the standard way to collimate a lamp or an arc without chromatic
+        // aberration, and a collection mirror round a fluorescing sample is
+        // ordinary spectroscopy -- leaving them off this list meant a point
+        // source's light passed straight through any mirror as if it were not
+        // there, which is what made a parabola fail to collimate it.
+        const COLLECTORS = new Set(['lens', 'metalens', 'fiberin', 'mirror']);
+        const captured = hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
         if (!captured) {
           const L = hit ? Math.min(hit.t, EVAN_LEN) : EVAN_LEN;
           appendPoint(r, { x: r.x + r.dx * L, y: r.y + r.dy * L }, L);
