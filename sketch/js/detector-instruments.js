@@ -8,7 +8,7 @@ import { detectorReading } from './raytrace.js';
 import { enhancedReading, objectImageAtCamera, pmtVerdict } from './detector-measurements.js';
 import { fwhmToSigma } from './spectrum.js';
 import { scopeTrace } from './pulses.js';
-import { formatTimeAxisNs, probeTimeWindowNs, syncedTimeWindowNs } from './probe.js';
+import { formatTimeAxisNs, probeTimeWindowNs, syncedTimeWindowNs, arrivalDelayNs } from './probe.js';
 import {
   autocorrelationReading, crossCorrelationReading, correlationShapeValue, crossCorrelationPair,
   crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS, DEFAULT_SCOPE_SPAN_PS,
@@ -323,17 +323,35 @@ const formatMHz = mhz => (mhz >= 1000 ? `${(mhz / 1000).toFixed(2)} GHz`
 // against each other instead of each being drawn to its own scale.
 export function detectorTimeWindow(sensor, elements = []) {
   const own = { reading: detectorReading(sensor.id), params: sensor.params || {} };
-  if (!sensor.params?.sync) return probeTimeWindowNs(own.reading, own.params);
+  // On its own a detector measures from its own arrival: the absolute flight
+  // time from the source is a constant offset that tells you nothing when
+  // there is nothing to compare it against.
+  if (!sensor.params?.sync) return { ...probeTimeWindowNs(own.reading, own.params), lagNs: 0 };
   const group = elements
     .filter(el => el?.params?.sync && (el.type === 'detector' || el.type === 'pmt'))
     .map(el => (el.id === sensor.id ? own : { reading: detectorReading(el.id), params: el.params }))
     .filter(m => m.reading);
-  return syncedTimeWindowNs(group.length ? group : [own]) || probeTimeWindowNs(own.reading, own.params);
+  const window = syncedTimeWindowNs(group.length ? group : [own]);
+  if (!window) return { ...probeTimeWindowNs(own.reading, own.params), lagNs: 0 };
+  // Synced, every member measures from the group's earliest arrival, so a
+  // longer arm draws its train shifted right by exactly its extra flight time.
+  return { ...window, lagNs: arrivalDelayNs(own.reading) - window.originNs };
+}
+
+// The mode line, which is the one place on this card with room for the lag:
+// it sizes itself to the screen, so adding to it can never push anything off
+// the edge or over the trace. The shift is also drawn to scale, but at a wide
+// timebase that can be a fraction of a pixel -- 50 mm of extra arm is 167 ps
+// against a 25 ns window -- so the number has to be legible on its own.
+function scopeMode(base, window) {
+  if (!window?.synced) return base === 'PMT' ? 'PMT · OSCILLOSCOPE' : base;
+  const lag = window.lagNs || 0;
+  return `${base} · SYNCED${Math.abs(lag) > 1e-9 ? ` +${formatTimeAxisNs(lag)}` : ''}`;
 }
 
 function scopePlot(reading, window = null) {
   const trace = scopeTrace(reading.pulse, window
-    ? { spanNs: window.spanNs, startNs: window.startNs }
+    ? { spanNs: window.spanNs, startNs: window.startNs, delayNs: window.lagNs || 0 }
     : {});
   if (!trace) return null;
   const baseline = 6, height = 17;
@@ -370,7 +388,7 @@ function scopePlot(reading, window = null) {
     ? `MOD ${formatMHz(trace.modulationMHz)} · REP ${formatMHz(trace.repRateMHz)}`
     : `REP ${formatMHz(trace.repRateMHz)}`;
 
-  return `<g data-scope-pulses="${trace.pulses.length}">` + axis + envelope + spikes +
+  return `<g data-scope-pulses="${trace.pulses.length}" data-scope-lag-ns="${(trace.delayNs || 0).toFixed(6)}">` + axis + envelope + spikes +
     tick(from, 'start') + tick(from + trace.spanNs / 2, 'middle') + tick(from + trace.spanNs, 'end') + `</g>` +
     `<text x="-35" y="17" font-size="4.6" fill="#fde68a">${esc(caption)}</text>` +
     `<text x="35" y="17" text-anchor="end" font-size="4.6" fill="#7892a1">Σw ${compactNumber(reading.signal)}</text>`;
@@ -806,7 +824,7 @@ function panel(sensor, reading, elements, view) {
     // plain intensity readout — there is nothing to plot against time.
     const window = detectorTimeWindow(sensor, elements);
     const scope = reading.pulse ? scopePlot(reading, window) : null;
-    if (scope) return header(name, window.synced ? 'OSCILLOSCOPE · SYNCED' : 'OSCILLOSCOPE', reading.pulse) + scope;
+    if (scope) return header(name, scopeMode('OSCILLOSCOPE', window), reading.pulse) + scope;
     return header(name, 'REL INTENSITY', reading.pulse) +
       `<circle cx="-31" cy="-1" r="2.3" fill="${reading.color}"/><text x="35" y="4" text-anchor="end" font-size="15" font-weight="780" fill="#ecf7fa">${compactNumber(reading.signal)}</text><text x="35" y="12" text-anchor="end" font-size="5" fill="#7892a1">Σw · REL INTENSITY</text>`;
   }
@@ -837,7 +855,7 @@ function panel(sensor, reading, elements, view) {
     const window = detectorTimeWindow(sensor, elements);
     const scope = reading.pulse ? scopePlot(reading, window) : null;
     if (scope) {
-      return header(name, window.synced ? 'PMT · SYNCED' : 'PMT · OSCILLOSCOPE', reading.pulse) + scope +
+      return header(name, scopeMode('PMT', window), reading.pulse) + scope +
         `<text x="35" y="-8" text-anchor="end" font-size="4.6" font-weight="700" fill="${verdict?.key === 'linear' ? '#7fd7a6' : '#f0b46a'}">${esc((verdict?.label || '').toUpperCase())}</text>`;
     }
     return header(name, 'LOW-LIGHT INTENSITY', reading.pulse) + metrics([

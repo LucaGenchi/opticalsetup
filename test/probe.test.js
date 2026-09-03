@@ -248,6 +248,63 @@ test('the sync window is symmetric — it does not depend on which member is dra
   assert.equal(forward.startNs, 0, 'the earliest offset, and 0 is earlier than 3');
 });
 
+test('synced arms are drawn where the light actually arrives', () => {
+  // One source, split, with one arm folded 50 mm further round. Synced, the
+  // two displays share an origin, so the longer arm's train sits shifted
+  // right by exactly its extra flight time -- 50 mm is 167 ps.
+  const mk = (t, x, y, rot = 0, params = {}) => {
+    const el = createElement(t, x, y); el.rot = rot; Object.assign(el.params, params); return el;
+  };
+  const build = sync => {
+    const laser = mk('pulsedlaser', 98, 200, 0, { wavelength: 920, beamMode: 'beam', beamWidth: 3 });
+    const bs = mk('bs', 350, 200, 270, { ratio: 0.5, size: 25.4 });
+    const mirror = mk('mirror', 350, 250, 315, { length: 25.4 });
+    const near = mk('detector', 469, 200, 0, { aperture: 26, sync });
+    const far = mk('detector', 469, 250, 0, { aperture: 26, sync });
+    const nearScreen = mk('display', 625, 150, 0, { sensorId: near.id, screenOn: true });
+    const farScreen = mk('display', 625, 300, 0, { sensorId: far.id, screenOn: true });
+    const scene = [laser, bs, mirror, near, far, nearScreen, farScreen];
+    traceAll(scene, []);
+    const lagOf = screen => Number(/data-scope-lag-ns="([^"]+)"/.exec(registry.display.svg(screen, scene))?.[1]);
+    return { scene, nearScreen, farScreen, lagOf };
+  };
+
+  const synced = build(true);
+  assert.equal(synced.lagOf(synced.nearScreen), 0, 'the earliest arm is the reference');
+  assert.ok(Math.abs(synced.lagOf(synced.farScreen) - 0.16678) < 1e-4,
+    `50 mm of extra arm is 167 ps, got ${synced.lagOf(synced.farScreen)} ns`);
+  assert.match(registry.display.svg(synced.farScreen, synced.scene), /\+167 ps/,
+    'and the number is named, since at a 25 ns timebase the shift is sub-pixel');
+
+  // unsynced, each display measures from its own arrival and shows no lag
+  const alone = build(false);
+  assert.equal(alone.lagOf(alone.nearScreen), 0);
+  assert.equal(alone.lagOf(alone.farScreen), 0);
+  assert.doesNotMatch(registry.display.svg(alone.farScreen, alone.scene), /\+167 ps/);
+});
+
+test('narrowing the timebase makes the shift visible on the axis', () => {
+  const firstPulseX = timeSpanNs => {
+    const mk = (t, x, y, rot = 0, params = {}) => {
+      const el = createElement(t, x, y); el.rot = rot; Object.assign(el.params, params); return el;
+    };
+    const laser = mk('pulsedlaser', 98, 200, 0, { wavelength: 920, beamMode: 'beam', beamWidth: 3 });
+    const bs = mk('bs', 350, 200, 270, { ratio: 0.5, size: 25.4 });
+    const mirror = mk('mirror', 350, 250, 315, { length: 25.4 });
+    const far = mk('detector', 469, 250, 0, { aperture: 26, sync: true, timeSpanNs });
+    const near = mk('detector', 469, 200, 0, { aperture: 26, sync: true, timeSpanNs });
+    const screen = mk('display', 625, 300, 0, { sensorId: far.id, screenOn: true });
+    const scene = [laser, bs, mirror, near, far, screen];
+    traceAll(scene, []);
+    const svg = registry.display.svg(screen, scene);
+    return Number([...svg.matchAll(/<line x1="(-?[\d.]+)" y1="6"[^>]*stroke-width="1.3"/g)].map(m => m[1])[0]);
+  };
+  // the plot runs -35..35, so 167 ps of 25 ns is half a unit -- real, but
+  // invisible; of 1 ns it is nearly twelve
+  assert.ok(Math.abs(firstPulseX(0) - -34.53) < 0.1, 'sub-pixel at the automatic 25 ns window');
+  assert.ok(Math.abs(firstPulseX(1) - -23.33) < 0.1, 'clearly separated at 1 ns');
+});
+
 test('a PMT draws the same trace, so it can join a sync group', () => {
   const pmt = detectorRow(0, null, { sync: true }, 'pmt');
   const photo = detectorRow(200, 1e6, { sync: true });

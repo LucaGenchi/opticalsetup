@@ -137,7 +137,11 @@ export function pulseGateTransmission(pulse, sampleCount = 4096) {
 // The window defaults to two periods of whichever is slower — the pulse train
 // or the slowest modulation — so an alternating pattern (e.g. a 20 MHz train
 // switched at 10 MHz) always shows at least one full repeat of its structure.
-export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs = 0 } = {}) {
+// `delayNs` shifts what is DRAWN without touching what is evaluated: gates are
+// defined against emission time and carry their own optical path, so a pulse
+// that arrives late must still be gated by where it was when it passed the
+// chopper. Only its position on the screen moves.
+export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs = 0, delayNs = 0 } = {}) {
   const repRateMHz = Number.isFinite(pulse?.repRateMHz) && pulse.repRateMHz > 0
     ? Math.min(1e6, Math.max(0.001, pulse.repRateMHz)) : null;
   if (!repRateMHz) return null;
@@ -158,13 +162,15 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs
   const maxPulses = 240;
   const from = Number.isFinite(startNs) ? startNs : 0;
   const to = from + spanNs;
-  const first = Math.ceil((from - phaseNs) / pulsePeriodNs);
+  const lag = Number.isFinite(delayNs) ? delayNs : 0;
+  const first = Math.ceil((from - lag - phaseNs) / pulsePeriodNs);
   const pulses = [];
   for (let k = first; pulses.length < maxPulses; k++) {
-    const tNs = phaseNs + k * pulsePeriodNs;
+    const emittedNs = phaseNs + k * pulsePeriodNs;
+    const tNs = emittedNs + lag;
     if (tNs > to + 1e-9) break;
     if (tNs < from - 1e-9) continue;
-    pulses.push({ tNs, amplitude: gates.length ? pulseTransmissionAt(gated, tNs) : 1 });
+    pulses.push({ tNs, amplitude: gates.length ? pulseTransmissionAt(gated, emittedNs) : 1 });
   }
 
   const count = Math.max(2, Math.min(600, Math.round(samples)));
@@ -173,13 +179,14 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs
     const tNs = from + spanNs * i / (count - 1);
     envelope.push({
       tNs,
-      value: gates.reduce((acc, gate) => acc * gateTransmissionAt(gate, tNs), 1),
+      value: gates.reduce((acc, gate) => acc * gateTransmissionAt(gate, tNs - lag), 1),
     });
   }
 
   return {
     spanNs,
     startNs: from,
+    delayNs: lag,
     repRateMHz,
     modulationMHz: slowestGateNs > 0 ? 1000 / slowestGateNs : null,
     truncated: pulses.length >= maxPulses,

@@ -99,16 +99,26 @@ export function probeTimeWindowNs(reading, params = {}) {
 // on any one of them moves the whole group, which is what sync should feel
 // like.
 export function syncedTimeWindowNs(members) {
-  const windows = (members || [])
-    .map(m => probeTimeWindowNs(m?.reading, m?.params || {}))
-    .filter(Boolean);
+  const list = (members || []).filter(Boolean);
+  const windows = list.map(m => probeTimeWindowNs(m.reading, m.params || {}));
   if (!windows.length) return null;
   return {
     startNs: Math.min(...windows.map(w => w.startNs)),
     spanNs: Math.max(...windows.map(w => w.spanNs)),
+    // A shared origin is the whole point: with one common zero, light that
+    // took the longer route is drawn where it actually arrives, so the two
+    // trains sit apart on screen by exactly their path difference.
+    originNs: Math.min(...list.map(m => arrivalDelayNs(m.reading))),
     synced: true,
     members: windows.length,
   };
+}
+
+// When the light reaching this detector was emitted versus when it got here.
+// Both displays measure from the same instant only if this is accounted for.
+export function arrivalDelayNs(reading) {
+  const delay = Number(reading?.pulse?.earliestPathDelayNs);
+  return Number.isFinite(delay) ? delay : 0;
 }
 
 // The wavelength axis, on the spectrometer's own principle: span whatever
