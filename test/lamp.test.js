@@ -71,22 +71,22 @@ test('a lamp is tinted by its own lines, not washed to grey', () => {
 });
 
 test('the element resolves its preset into a spectrum the tracer can use', () => {
-  const resolved = resolveSourceSpectrum('lamp', { lampType: 'na' });
+  const resolved = resolveSourceSpectrum('pointsource', { sourceKind: 'lamp', lampType: 'na' });
   assert.equal(resolved.spec.kind, 'lines');
   // the nominal wavelength is the brightest VISIBLE line, so the beam is
   // drawn the colour the lamp looks, not the colour of its strongest infrared
   assert.ok(resolved.wl > 588 && resolved.wl < 590, `sodium reads as its D line, got ${resolved.wl}`);
-  const cs = resolveSourceSpectrum('lamp', { lampType: 'cs' });
+  const cs = resolveSourceSpectrum('pointsource', { sourceKind: 'lamp', lampType: 'cs' });
   assert.ok(cs.wl < 780, `caesium's 852 nm line is stronger but invisible, got ${cs.wl}`);
   // an unknown or missing preset falls back rather than failing
-  assert.equal(resolveSourceSpectrum('lamp', {}).spec.kind, 'lines');
-  assert.equal(resolveSourceSpectrum('lamp', { lampType: 'nope' }).spec.kind, 'lines');
+  assert.equal(resolveSourceSpectrum('pointsource', { sourceKind: 'lamp' }).spec.kind, 'lines');
+  assert.equal(resolveSourceSpectrum('pointsource', { sourceKind: 'lamp', lampType: 'nope' }).spec.kind, 'lines');
 });
 
 test('a lamp emits like a point source and is collected the same way', () => {
-  const lamp = createElement('lamp', 175, 200);
-  Object.assign(lamp.params, { lampType: 'hg', spread: 360, nrays: 24 });
-  const rays = registry.lamp.source(lamp);
+  const lamp = createElement('pointsource', 175, 200);
+  Object.assign(lamp.params, { sourceKind: 'lamp', lampType: 'hg', spread: 360, nrays: 24 });
+  const rays = registry.pointsource.source(lamp);
   assert.equal(rays.length, 24);
   assert.ok(rays.every(r => r.evan && r.evanLen === 110),
     'the same near-field behaviour, so the same collectors apply');
@@ -106,10 +106,25 @@ test('a lamp emits like a point source and is collected the same way', () => {
 test('a lamp cannot interfere, which is what makes it a lamp', () => {
   // Not a setting: like every source except a sized monochromatic CW laser,
   // its light is carried as power and no field is reconstructed from it.
-  const lamp = createElement('lamp', 100, 200);
-  const stats = spectrumStats(resolveSourceSpectrum('lamp', lamp.params).spec);
+  const lamp = createElement('pointsource', 100, 200);
+  lamp.params.sourceKind = 'lamp';
+  const stats = spectrumStats(resolveSourceSpectrum('pointsource', lamp.params).spec);
   assert.ok(stats.fwhm > 0, 'it spans a real range of wavelengths');
-  assert.equal(registry.lamp.category, 'Sources');
-  assert.ok(!registry.lamp.params.some(p => p.key === 'coherenceLengthMm'),
+  assert.ok(!registry.pointsource.params.some(p => p.key === 'coherenceLengthMm'),
     'and offers no coherence-length control, which would not do anything');
+});
+
+test('the drawing follows the mode, and the point mode is untouched', () => {
+  const el = createElement('pointsource', 0, 0);
+  const asPoint = registry.pointsource.svg(el);
+  el.params.sourceKind = 'lamp';
+  const asLamp = registry.pointsource.svg(el);
+  assert.match(asPoint, /<circle r="4.5"/, 'a point emitter is still the star glyph');
+  assert.doesNotMatch(asPoint, /<rect/);
+  assert.match(asLamp, /<rect x="-5" y="-13"/, 'a lamp is drawn as a pen-ray tube');
+  assert.doesNotMatch(asLamp, /<circle r="4.5"/);
+  // and the point mode's spectrum is unchanged by the new option existing
+  const mono = resolveSourceSpectrum('pointsource', { wavelength: 532, bwMode: 'mono' });
+  assert.equal(mono.wl, 532);
+  assert.equal(mono.spec, null);
 });

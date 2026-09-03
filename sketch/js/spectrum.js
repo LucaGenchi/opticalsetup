@@ -257,7 +257,7 @@ export function transformLimitedDurationFs(bandwidthNm, wavelengthNm, shape = 'g
 // per-source-type branching.
 export function resolveSourceSpectrum(type, params = {}) {
   const p = params;
-  if (type === 'lamp') {
+  if (type === 'pointsource' && p.sourceKind === 'lamp') {
     const spec = lineSpectrum(LAMP_PRESETS[p.lampType]?.lines || LAMP_PRESETS.hg.lines);
     if (!spec) return { wl: 546.074, bw: 0, spec: null };
     const stats = spectrumStats(spec);

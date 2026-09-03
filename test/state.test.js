@@ -131,19 +131,12 @@ test('objective medium and NA normalize together while unresolved old high-NA sc
   assert.equal(loadedLegacy.params.na, 1.4);
 });
 
-test('an LED from before the Point source merge still does not load', () => {
+test('sketches from before the LED/lamp -> Point source merge no longer load', () => {
   // No back-compat is kept at this stage: an old element type is simply an
-  // unknown type, same as any other invalid sketch reference.
+  // unknown type, same as any other invalid sketch reference. The lamp is a
+  // mode of pointsource, not a type, so this stays true for both.
   assert.throws(() => parseSketch(file([{ type: 'led', x: 0, y: 0, params: {} }]), registry), /unknown element/);
-});
-
-test('a lamp loads again, and an old one without a type gets the default preset', () => {
-  // `lamp` was an unknown type between the July merge and the return of the
-  // element; a sketch from either side of that now loads, and one saved
-  // before lampType existed falls back to mercury rather than failing.
-  const loaded = parseSketch(file([{ type: 'lamp', x: 0, y: 0, params: {} }]), registry);
-  assert.equal(loaded.elements[0].type, 'lamp');
-  assert.equal(loaded.elements[0].params.lampType, 'hg');
+  assert.throws(() => parseSketch(file([{ type: 'lamp', x: 0, y: 0, params: {} }]), registry), /unknown element/);
 });
 
 test('duplicate object ids are repaired during import', () => {
