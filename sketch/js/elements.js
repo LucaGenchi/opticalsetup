@@ -2106,7 +2106,20 @@ export const registry = {
       // more segments for deeper curves so marginal rays still hit the focus
       const N = Math.min(64, Math.max(16, Math.round(L / 2 + (L * L) / (6 * f))));
       const segs = [];
-      const data = { refl: el.params.refl, showTransmitted: el.params.showTransmitted };
+      // The facets exist to find WHERE a ray lands. Reflecting off the chord
+      // itself would then send it off by the angle between chord and curve,
+      // which is what stopped a source at the focus from collimating: a
+      // parabola's whole defining property is that it does. `parab` carries
+      // the true surface into the tracer, which uses it for the normal at the
+      // hit point exactly as `arc` already does for circles -- so the facet
+      // count now sets only positional accuracy, not angular.
+      const rot = ((el.rot || 0) * Math.PI) / 180;
+      const cos = Math.cos(rot), sin = Math.sin(rot);
+      const data = {
+        refl: el.params.refl,
+        showTransmitted: el.params.showTransmitted,
+        parab: { cx: el.x, cy: el.y, ux: { x: cos, y: sin }, uy: { x: -sin, y: cos }, f },
+      };
       let py = -L, px = -(py * py) / (4 * f);
       for (let i = 1; i <= N; i++) {
         const y = -L + (2 * L * i) / N;

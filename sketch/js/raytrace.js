@@ -1683,9 +1683,20 @@ const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
   const t = norm(sub(s.b, s.a));
+  // A parabola x = -y^2/(4f) has gradient (1, y/(2f)) in its own frame, so
+  // the exact normal is available at any point on it. Using it rather than
+  // the facet chord is what makes reflection off the curve exact.
+  const parabolaNormal = () => {
+    const { cx, cy, ux, uy, f } = data.parab;
+    const rx = hit.p.x - cx, ry = hit.p.y - cy;
+    const local = rx * uy.x + ry * uy.y;
+    const k = local / (2 * f);
+    return norm({ x: ux.x + uy.x * k, y: ux.y + uy.y * k });
+  };
   const n = data.arc
     ? norm({ x: hit.p.x - data.arc.cx, y: hit.p.y - data.arc.cy })
-    : perp(t);
+    : data.parab ? parabolaNormal()
+      : perp(t);
 
   switch (k) {
     case 'absorb': return [];

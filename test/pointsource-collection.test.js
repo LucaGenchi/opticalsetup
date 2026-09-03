@@ -114,3 +114,62 @@ test('curved mirrors collect too, not just flat and parabolic ones', () => {
   const without = detectorReading(bare.id);
   assert.ok(!without || without.signal === 0, 'no collector, no light');
 });
+
+// ---------------- collimation benchmark ----------------
+
+// The reported benchmark scene: a point source at the focus of a spherical
+// mirror on one row and a parabolic mirror on the other, both f = 25 with the
+// source 25 mm away. A parabola's defining property is that every ray from its
+// focus leaves parallel to the axis, so this is the case that must come out
+// exactly collimated.
+function beamWidthAt(mirrorType, length, distanceX) {
+  let lo = null, hi = null;
+  for (let y = 60; y <= 340; y += 4) {
+    const source = mk('pointsource', 125, 200, 0, { spread: 360, nrays: 200, bwMode: 'mono' });
+    const mirror = mk(mirrorType, 100, 200, 180, { length, f: 25 });
+    const probe = mk('detector', distanceX, y, 0, { aperture: 4 });
+    traceAll([source, mirror, probe], []);
+    if ((detectorReading(probe.id)?.signal ?? 0) > 0) { if (lo === null) lo = y; hi = y; }
+  }
+  return lo === null ? null : hi - lo;
+}
+
+test('a point source at a parabola\'s focus leaves exactly collimated', () => {
+  // Collimated means the beam does not spread: its width is the same however
+  // far away it is measured. Reflecting off the flat facets instead of the
+  // curve used to widen this beam from 144 mm to 160 mm over 800 mm -- about
+  // a degree of divergence a parabola should not have.
+  const near = beamWidthAt('oap', 150, 400);
+  const far = beamWidthAt('oap', 150, 1200);
+  assert.ok(near > 0, 'the parabola produces a beam at all');
+  assert.equal(far, near, `parabola must not spread: ${near} mm at 400, ${far} mm at 1200`);
+});
+
+test('the spherical mirror collimates too, being modelled as an ideal surface', () => {
+  // Worth stating rather than assuming: a REAL spherical mirror has spherical
+  // aberration and would not collimate a point source perfectly. This one is
+  // modelled as an ideal focusing surface, so it does -- which is a
+  // simplification in the opposite direction from the parabola's old error.
+  const near = beamWidthAt('cmirror', 100, 400);
+  const far = beamWidthAt('cmirror', 100, 1200);
+  assert.ok(near > 0);
+  assert.equal(far, near, `${near} mm at 400, ${far} mm at 1200`);
+});
+
+test('the benchmark scene loads and both rows produce a beam', async () => {
+  const { readFileSync } = await import('node:fs');
+  const raw = JSON.parse(readFileSync(new URL('./fixtures/parabola-collimation.json', import.meta.url), 'utf8'));
+  const scene = raw.elements.map(e => {
+    const el = createElement(e.type, e.x, e.y);
+    el.id = e.id; el.rot = e.rot; Object.assign(el.params, e.params);
+    return el;
+  });
+  // a wide detector far downstream of each row
+  const rows = [175, 425].map(y => mk('detector', 900, y, 0, { aperture: 220 }));
+  traceAll([...scene, ...rows], []);
+  for (const [i, row] of rows.entries()) {
+    const reading = detectorReading(row.id);
+    assert.ok(reading && reading.signal > 0,
+      `row ${i} (y=${row.y}) must deliver light 775 mm downstream`);
+  }
+});
