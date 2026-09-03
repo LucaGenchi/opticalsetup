@@ -57,14 +57,6 @@
       </a>
       <span class="model-badge">Qualitative ray tracing</span>
     </div>
-    <div class="toolgroup examples-group">
-      <select id="exampleSel" aria-label="Load a pre-made example setup" title="Load a pre-made example setup">
-        <option value="">Examples…</option>
-      </select>
-      <select id="communitySel" aria-label="Load a setup shared by the community" title="Load a setup shared by the community">
-        <option value="">From the community…</option>
-      </select>
-    </div>
     <div class="toolgroup file-group" aria-label="File actions">
       <button type="button" id="btnNew" title="New sketch">New</button>
       <button type="button" id="btnOpen" title="Open .json sketch">Open</button>
@@ -77,6 +69,11 @@
       <button type="button" id="btnRedo" title="Redo (⇧⌘Z)" aria-label="Redo">↪︎</button>
     </div>
     <span class="spacer"></span>
+    <nav class="toolgroup nav-group" aria-label="Browse OpticalSetup">
+      <a class="toolbar-link" href="/wiki/" target="_blank" rel="noopener" title="Every component, with the physics behind it (opens in a new tab)">Wiki</a>
+      <a class="toolbar-link" href="/example-setups/" target="_blank" rel="noopener" title="Worked example setups, each with an explanation (opens in a new tab)">Examples</a>
+      <a class="toolbar-link" href="/community/" target="_blank" rel="noopener" title="Setups shared by the community (opens in a new tab)">Community</a>
+    </nav>
     <div class="toolgroup theme-group" aria-label="Appearance">
       <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
         <svg class="theme-icon theme-icon-moon" viewBox="0 0 20 20" aria-hidden="true">
@@ -181,6 +178,11 @@
       <button type="button" data-mobile-action="svg">Export SVG</button>
       <button type="button" data-mobile-action="png">Export PNG</button>
       <button type="button" data-mobile-action="gif">Export GIF</button>
+    </div>
+    <div class="mobile-menu-links">
+      <a href="/wiki/" target="_blank" rel="noopener">Wiki</a>
+      <a href="/example-setups/" target="_blank" rel="noopener">Examples</a>
+      <a href="/community/" target="_blank" rel="noopener">Community</a>
     </div>
   </dialog>
   <div id="mobileBackdrop" hidden></div>
