@@ -1,5 +1,6 @@
 // App bootstrap: palette, toolbar, keyboard shortcuts.
 
+import { copyableSelection, pasteObjects } from './clipboard.js';
 import { state, changed, onChange, pushUndo, undo, redo, canUndo, canRedo, findSelected, serialize, parseSketch, replaceScene, loadAutosave } from './state.js';
 import {
   registry, categories, createElement, getElementMeta, dataPortDirection, findFreePlacement,
@@ -635,7 +636,10 @@ function buildPalette() {
       <span class="pal-copy"><span class="pal-label">${esc(def.label)}</span><span class="pal-desc">${esc(meta.description)}</span></span>
       <i class="cap-dot ${meta.tier}" title="${esc(meta.status)}" aria-label="${esc(meta.status)}"></i></button>`;
   };
-  const initiallyOpen = new Set(['Sources', 'Mirrors', 'Lenses']);
+  // Every group starts closed. The library is long enough that three open
+  // categories pushed the rest below the fold, so the first thing a new
+  // sketch showed was a scroll bar rather than the shape of the library.
+  const initiallyOpen = new Set();
   for (const cat of categories) {
     const entries = Object.entries(registry).filter(([, def]) => def.category === cat && !def.hidden)
       .sort((a, b) => (a[1].paletteOrder ?? 100) - (b[1].paletteOrder ?? 100));
@@ -889,6 +893,63 @@ function duplicateSelected() {
   renderInspector();
 }
 
+// ---------- clipboard ----------
+// An in-app clipboard rather than the system one: the selection is a graph of
+// elements and beams that reference each other by id, and round-tripping that
+// through text would either lose the links or invite arbitrary JSON in. The
+// rules live in clipboard.js so they can be tested without a DOM.
+let clipboard = null;
+// Successive pastes cascade instead of stacking exactly on top of one another,
+// the way duplicate already steps by 30.
+let pasteStep = 0;
+
+function selectionContents() {
+  const s = state.selection;
+  if (!s) return { els: [], beams: [] };
+  if (s.kind === 'multi') {
+    return {
+      els: s.els.map(id => state.elements.find(e => e.id === id)).filter(Boolean),
+      beams: s.beams.map(id => state.beams.find(b => b.id === id)).filter(Boolean),
+    };
+  }
+  const one = findSelected();
+  if (!one) return { els: [], beams: [] };
+  return s.kind === 'beam' ? { els: [], beams: [one] } : { els: [one], beams: [] };
+}
+
+const isSingleton = type => Boolean(registry[type]?.singleton);
+
+function copySelection() {
+  if (state.demoMode) return false;
+  const copied = copyableSelection(selectionContents(), isSingleton);
+  if (!copied) return false;
+  clipboard = copied;
+  pasteStep = 0;
+  return true;
+}
+
+function pasteClipboard() {
+  if (state.demoMode) return;
+  pasteStep += 1;
+  const pasted = pasteObjects(clipboard, {
+    offset: 30 * pasteStep,
+    newId,
+    isSingleton,
+    hasType: type => state.elements.some(el => el.type === type),
+  });
+  if (!pasted) { pasteStep = Math.max(0, pasteStep - 1); return; }
+
+  pushUndo();
+  state.elements.push(...pasted.els);
+  state.beams.push(...pasted.beams);
+  const ids = pasted.els.map(el => el.id), beamIds = pasted.beams.map(b => b.id);
+  state.selection = ids.length + beamIds.length === 1
+    ? (ids.length ? { kind: 'element', id: ids[0] } : { kind: 'beam', id: beamIds[0] })
+    : { kind: 'multi', els: ids, beams: beamIds };
+  changed();
+  renderInspector();
+}
+
 function rotateSelected(deg) {
   if (state.demoMode) return;
   if (isPlacing()) { rotatePlacing(deg); return; }
@@ -946,6 +1007,10 @@ function bindKeys() {
       return;
     }
     if (meta && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }
+    // Only swallow the copy if something was actually taken, so the shortcut
+    // still falls through to the browser when there is no selection.
+    if (meta && e.key.toLowerCase() === 'c') { if (copySelection()) e.preventDefault(); return; }
+    if (meta && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteClipboard(); return; }
     if (e.key === 'Escape') {
       cancelTool();
       if (state.selection) { state.selection = null; renderAll(); renderInspector(); }
@@ -1598,14 +1663,21 @@ window.addEventListener('DOMContentLoaded', async () => {
         return e;
       };
       state.elements.push(
-        // Two lines, not one: at 18 pt the single line is 303 mm wide against a
-        // 315 mm canvas on a 375 px phone, so it clipped. Wrapping fits any
-        // width without shrinking the type.
-        mk('textlabel', 60, 84, 0, { text: 'Choose a source', fontSize: 18, fill: '#333333' }),
-        mk('textlabel', 60, 110, 0, { text: 'and start developing', fontSize: 18, fill: '#333333' }),
-        mk('cwlaser', 100, 170, 0, {}),
-        mk('pulsedlaser', 100, 280, 0, {}),
-        mk('sclaser', 100, 390, 0, {}),
+        // Two lines, not one: at 18 pt a single line of this runs 329 mm wide
+        // against a 315 mm canvas on a 375 px phone, so it clipped. The break
+        // is explicit in the text rather than split across two labels, since
+        // markdownLayout already lays out on newlines; wrapped, the widest
+        // line is 251 mm and fits any width without shrinking the type.
+        mk('textlabel', 50, 100, 0, {
+          text: 'Choose a source and add\ncomponents from the library.',
+          fontSize: 18, fill: '#333333',
+        }),
+        mk('cwlaser', 98, 150, 0, {}),
+        // 920 nm: the Ti:sapphire-ish line most of the pulsed examples use, and
+        // far enough into the infrared that its beam reads differently from the
+        // 532 nm one above it.
+        mk('pulsedlaser', 98, 200, 0, { wavelength: 920 }),
+        mk('sclaser', 98, 250, 0, {}),
       );
     }
   }

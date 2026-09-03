@@ -6,6 +6,36 @@ request that carries the full reasoning and the exact diff.
 This file starts in September 2026. For anything before that, the pull
 request history is the record.
 
+## 2026-09-03 — Sketch toolbar, collapsed library, copy and paste
+
+[#92](https://github.com/LucaGenchi/opticalsetup/pull/92)
+
+Interface work on the canvas, none of it changing what the tracer does.
+
+- **Wiki, Examples and Community are links, not dropdowns.** They sit on the
+  right of the toolbar exactly as they do on the landing page, and open in a
+  new tab — so the destination is the browsable index with every entry and its
+  description, rather than a list of filenames with nowhere to read about them.
+  Loading a setup into the canvas still happens from those pages, which is
+  where the explanation lives.
+- **File actions moved left**, off the wordmark and into the space the
+  dropdowns had been using.
+- **The component library opens collapsed.** Three categories used to start
+  open, which pushed the other fourteen below the fold: the first thing a new
+  sketch showed was a scroll bar rather than the shape of the library. All
+  seventeen now fit on one screen.
+- **A tighter starter scene.** The three sources sit 50 mm apart instead of
+  110, and the prompt reads "choose a source and add components from the
+  library" — naming where the components come from, now that the library is
+  the first thing on screen. The pulsed source opens at 920 nm, so its beam
+  reads visibly different from the 532 nm one above it.
+- **Copy and paste**, ⌘C/⌘V or Ctrl+C/Ctrl+V, alongside the duplicate shortcut
+  that was already there. Successive pastes cascade instead of stacking.
+  Singletons are refused, and a detector screen pasted together with its
+  detector is relinked to the copy — without that it would keep reading the
+  original, which looks like a working paste right up until the two readings
+  disagree.
+
 ## 2026-09-03 — Autocorrelator, cross-correlation, and finding time zero
 
 [#90](https://github.com/LucaGenchi/opticalsetup/pull/90)

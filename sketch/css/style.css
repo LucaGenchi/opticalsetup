@@ -104,7 +104,27 @@ body {
 .model-badge { color: var(--muted); font-size: 9px; letter-spacing: 0.35px; text-transform: uppercase; }
 .toolgroup { display: flex; align-items: center; gap: 3px; }
 .toolgroup + .toolgroup { border-left: 1px solid var(--border); padding-left: 10px; }
+/* The file actions start the tool run, so they get air after the wordmark
+   instead of butting straight up against it. */
+#toolbar .file-group { margin-left: 12px; }
 #toolbar .spacer { flex: 1; }
+/* Wiki / Examples / Community, matching the landing page's header links so
+   the same three destinations look the same wherever you meet them. */
+.nav-group { gap: 2px; }
+.toolbar-link {
+  color: var(--muted); font-weight: 600; font-size: 14px; text-decoration: none;
+  padding: 6px 9px; border-radius: 7px; white-space: nowrap;
+}
+.toolbar-link:hover { color: var(--text); background: var(--surface-hover); }
+.toolbar-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The same three destinations inside the mobile sheet, where the toolbar's
+   own row is hidden. */
+.mobile-menu-links { display: flex; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.mobile-menu-links a {
+  flex: 1; text-align: center; color: var(--muted); font-weight: 600; font-size: 14px;
+  text-decoration: none; padding: 9px 6px; border: 1px solid var(--border); border-radius: 8px;
+}
+.mobile-menu-links a:hover { color: var(--text); background: var(--surface-hover); }
 button {
   font: inherit;
   color: var(--text);
@@ -545,7 +565,7 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   #toolbar { min-height: 54px; gap: 7px; padding: 6px 10px; }
   .brandblock { min-width: 0; }
   .brand { font-size: 14px; }
-  .model-badge, #toolbar .examples-group, #toolbar .file-group,
+  .model-badge, #toolbar .file-group, #toolbar .nav-group,
   #toolbar .export-group, #toolbar .spacer { display: none; }
   #toolbar .history-group { margin-left: auto; border-left: 0; padding-left: 0; gap: 2px; }
   #toolbar .history-group button { min-width: 38px; min-height: 38px; padding: 4px; font-size: 18px; }
@@ -918,7 +938,7 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 /* Wiki embed: a single fixed, non-editable-position component. Hide
    everything that would let the visitor add, move, or delete anything. */
 body.demo-mode #palette,
-body.demo-mode #toolbar .examples-group,
+body.demo-mode #toolbar .nav-group,
 body.demo-mode #toolbar .file-group,
 body.demo-mode #toolbar .export-group,
 body.demo-mode #toolbar .history-group,

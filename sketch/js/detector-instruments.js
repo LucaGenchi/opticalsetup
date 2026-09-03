@@ -905,8 +905,8 @@ async function rebuildGroup(category) {
 async function enhancePalette() {
   if (typeof document === 'undefined') return;
   await rebuildGroup('Detectors');
-  const group = document.querySelector('.palette-group[data-category="Detectors"]');
-  if (group) group.open = true;
+  // Rebuilding the group must not also open it: every palette group starts
+  // collapsed, and this one is no more deserving of the fold than the rest.
   const count = document.getElementById('libraryCount');
   if (count) count.textContent = `${document.querySelectorAll('.palitem').length} components`;
   const { renderAll } = await import('./canvas.js');
