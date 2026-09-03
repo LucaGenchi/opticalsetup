@@ -599,8 +599,16 @@ export function detectorReading(elementId) {
   if (!cameraHits.length) return null;
   const metadataPower = cameraHits.reduce((sum, hit) => sum + Math.max(0, hit.power), 0);
   let wavelength = cameraHits.reduce((sum, h) => sum + h.wl * h.power, 0) / metadataPower;
-  let bandMin = Math.min(...cameraHits.map(h => h.wl - h.bw / 2));
-  let bandMax = Math.max(...cameraHits.map(h => h.wl + h.bw / 2));
+  // `bw` is a width about `wl`, which is right for a Gaussian laser line or a
+  // flat continuum but not for a line spectrum: a lamp's lines are not
+  // centred on its brightest one, so mercury would report 111-760 nm instead
+  // of the 365-1014 nm it actually emits. A line spectrum states its own
+  // extent, so use that.
+  const hitBand = h => (h.spec?.kind === 'lines'
+    ? spectrumSupport(h.spec)
+    : [h.wl - h.bw / 2, h.wl + h.bw / 2]);
+  let bandMin = Math.min(...cameraHits.map(h => hitBand(h)[0]));
+  let bandMax = Math.max(...cameraHits.map(h => hitBand(h)[1]));
   const us = activeHits.map(h => h.u);
   const aperture = Math.max(...cameraHits.map(h => h.aperture || 0));
   let spotSpan = us.length ? aperture * (Math.max(...us) - Math.min(...us)) : 0;
