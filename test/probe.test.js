@@ -6,6 +6,7 @@ import { traceAll } from '../sketch/js/raytrace.js';
 import '../sketch/js/detector-instruments.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
+  slowestPeriodNs, syncedTimeWindowNs, formatTimeAxisNs,
 } from '../sketch/js/probe.js';
 
 // A source of the given type on a line beam, with a probe downstream of it.
@@ -26,7 +27,8 @@ test('the probe quotes the source power scaled by what survived the path', () =>
   const { scene, probe } = bench('cwlaser', { avgPowerW: 0.2 }, { prop: 'power' });
   const svg = registry.probe.svg(probe, scene);
   assert.match(svg, /200 mW/, 'an unobstructed beam carries the whole configured power');
-  assert.match(svg, /average/);
+  // the value is the whole card -- nothing captions what the probe is set to
+  assert.doesNotMatch(svg, /average/);
 });
 
 test('an attenuator on the way is reflected in the reading', () => {
@@ -73,6 +75,7 @@ test('the duration card reads from the real source on the bench', () => {
   for (const [type, expected] of [['cwlaser', /CW source/], ['pulsedlaser', /150 fs/], ['sclaser', /Undefined/]]) {
     const { svg } = bench(type, {}, { prop: 'duration' });
     assert.match(svg(), expected, `${type} should report ${expected}`);
+    assert.doesNotMatch(svg(), /pulse duration/, 'no caption under the value');
   }
 });
 
@@ -161,6 +164,120 @@ test('the time axis stays readable across six orders of magnitude', () => {
   assert.equal(spanned(25), '25 ns');
   assert.equal(spanned(2000), '2 µs');
   assert.equal(spanned(2e6), '2 ms');
+});
+
+// ---------------- detector timebase and sync ----------------
+
+// One beam per row: a bare 80 MHz train, or the same train through a chopper.
+function detectorRow(y, chopHz, params = {}, type = 'detector') {
+  const laser = createElement('pulsedlaser', 0, y);
+  laser.params.beamMode = 'line';
+  const parts = [laser];
+  if (chopHz) {
+    const chopper = createElement('chopper', 80, y);
+    Object.assign(chopper.params, { modulate: true, frequencyHz: chopHz });
+    parts.push(chopper);
+  }
+  const detector = createElement(type, 300, y);
+  Object.assign(detector.params, params);
+  const screen = createElement('display', 420, y);
+  Object.assign(screen.params, { sensorId: detector.id, screenOn: true });
+  return { parts: [...parts, detector, screen], detector, screen };
+}
+
+const axisLabels = (screen, scene) =>
+  [...registry.display.svg(screen, scene).matchAll(/font-size="3.4" fill="#5f7d8e">([^<]+)</g)].map(m => m[1]);
+
+test('the slowest period is found in either shape of pulse record', () => {
+  // the probe's single train...
+  assert.equal(slowestPeriodNs({ repRateMHz: 80, gates: [] }), 12.5);
+  // ...and a detector's aggregate, where the trains sit one level down
+  assert.equal(slowestPeriodNs({ trains: [{ repRateMHz: 80, gates: [{ frequencyMHz: 1 }] }] }), 1000);
+  assert.equal(slowestPeriodNs(null), 0);
+});
+
+test('an unsynced detector picks the window its own beam needs', () => {
+  const bare = detectorRow(0, null);
+  const chopped = detectorRow(200, 1e6);
+  const scene = [...bare.parts, ...chopped.parts];
+  traceAll(scene, []);
+  assert.deepEqual(axisLabels(bare.screen, scene), ['0', '12.5 ns', '25 ns']);
+  assert.deepEqual(axisLabels(chopped.screen, scene), ['0', '1 µs', '2 µs']);
+});
+
+test('synced detectors share one axis, wide enough for every member', () => {
+  const bare = detectorRow(0, null, { sync: true });
+  const chopped = detectorRow(200, 1e6, { sync: true });
+  const scene = [...bare.parts, ...chopped.parts];
+  traceAll(scene, []);
+  // the widest window any member wanted, so nothing a member had to show
+  // falls outside the shared axis
+  assert.deepEqual(axisLabels(bare.screen, scene), ['0', '1 µs', '2 µs']);
+  assert.deepEqual(axisLabels(chopped.screen, scene), ['0', '1 µs', '2 µs']);
+  assert.match(registry.display.svg(bare.screen, scene), /SYNCED/);
+});
+
+test('an unsynced detector is not dragged onto a synced group\'s axis', () => {
+  const loner = detectorRow(0, null, { sync: false });
+  const a = detectorRow(200, 1e6, { sync: true });
+  const b = detectorRow(400, 1e6, { sync: true });
+  const scene = [...loner.parts, ...a.parts, ...b.parts];
+  traceAll(scene, []);
+  assert.deepEqual(axisLabels(loner.screen, scene), ['0', '12.5 ns', '25 ns']);
+  assert.doesNotMatch(registry.display.svg(loner.screen, scene), /SYNCED/);
+});
+
+test('a sync group takes the earliest offset, so moving one moves them all', () => {
+  const early = detectorRow(0, null, { sync: true, timeOffsetNs: 5 });
+  const late = detectorRow(200, null, { sync: true, timeOffsetNs: 40 });
+  const scene = [...early.parts, ...late.parts];
+  traceAll(scene, []);
+  const labels = axisLabels(late.screen, scene);
+  assert.equal(labels[0], '5 ns', 'the group starts where the earliest member asked');
+  assert.deepEqual(axisLabels(early.screen, scene), labels, 'and both draw the same axis');
+});
+
+test('the sync window is symmetric — it does not depend on which member is drawn', () => {
+  const window = params => syncedTimeWindowNs(params.map(p => ({
+    reading: { pulse: { repRateMHz: 80, gates: p.gates || [] } }, params: p,
+  })));
+  const forward = window([{ timeOffsetNs: 3 }, { timeSpanNs: 500 }]);
+  const reversed = window([{ timeSpanNs: 500 }, { timeOffsetNs: 3 }]);
+  assert.deepEqual(forward, reversed);
+  assert.equal(forward.spanNs, 500);
+  assert.equal(forward.startNs, 0, 'the earliest offset, and 0 is earlier than 3');
+});
+
+test('a PMT draws the same trace, so it can join a sync group', () => {
+  const pmt = detectorRow(0, null, { sync: true }, 'pmt');
+  const photo = detectorRow(200, 1e6, { sync: true });
+  const scene = [...pmt.parts, ...photo.parts];
+  traceAll(scene, []);
+  const svg = registry.display.svg(pmt.screen, scene);
+  assert.match(svg, /PMT · SYNCED/);
+  assert.deepEqual(axisLabels(pmt.screen, scene), ['0', '1 µs', '2 µs'],
+    'the PMT follows the group, not its own 25 ns beam');
+});
+
+test('a CW beam still has nothing to plot, synced or not', () => {
+  const laser = createElement('cwlaser', 0, 0);
+  laser.params.beamMode = 'line';
+  const detector = createElement('detector', 300, 0);
+  detector.params.sync = true;
+  const screen = createElement('display', 420, 0);
+  Object.assign(screen.params, { sensorId: detector.id, screenOn: true });
+  const scene = [laser, detector, screen];
+  traceAll(scene, []);
+  assert.match(registry.display.svg(screen, scene), /REL INTENSITY/);
+});
+
+test('the shared time formatter never reaches for an exponent', () => {
+  assert.equal(formatTimeAxisNs(0), '0');
+  assert.equal(formatTimeAxisNs(0.5), '500 ps');
+  assert.equal(formatTimeAxisNs(12.5), '12.5 ns');
+  assert.equal(formatTimeAxisNs(2000), '2 µs');
+  assert.equal(formatTimeAxisNs(2e6), '2 ms');
+  assert.equal(formatTimeAxisNs(-25), '-25 ns');
 });
 
 // ---------------- spectrum range ----------------

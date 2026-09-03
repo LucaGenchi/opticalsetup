@@ -10,7 +10,10 @@ import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengt
 import { uid } from './util.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
-import { probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange } from './probe.js';
+import {
+  probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
+  formatTimeAxisNs,
+} from './probe.js';
 import {
   linewidthForCoherenceLengthNm, spectrumSamples, transformLimitedBandwidthNm,
 } from './spectrum.js';
@@ -939,33 +942,29 @@ function probeCard(el, rd, elements = []) {
     };
   }
 
-  if (prop === 'power') {
-    const watts = probeAveragePowerW(rd, elements);
-    const label = formatPowerMw(watts);
-    // Without a source carrying a configured wattage there is no absolute
-    // number to give, and the relative weight is not one -- say so.
-    const sub = watts === null ? 'no source power set' : 'average';
-    const w = Math.max(58, label.length * 6.2 + 20);
+  // A plain value in a box: the reading is the whole content, with nothing
+  // captioning what the probe is already set to show.
+  const valueCard = label => {
+    const w = Math.max(46, label.length * 6.4 + 16);
     return {
       w,
-      h: 32,
-      body: `<rect x="0" y="0" width="${w}" height="32" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-        `<text x="${w / 2}" y="13" text-anchor="middle" font-size="11" font-weight="700" fill="#333">${esc(label)}</text>` +
-        `<text x="${w / 2}" y="25" text-anchor="middle" font-size="6" fill="#9aa2ad">${esc(sub)}</text>`,
+      h: 22,
+      body: `<rect x="0" y="0" width="${w}" height="22" rx="4" fill="#fff" stroke="#c9ced6"/>` +
+        `<text x="${w / 2}" y="11" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" fill="#333">${esc(label)}</text>`,
     };
+  };
+
+  if (prop === 'power') {
+    const watts = probeAveragePowerW(rd, elements);
+    // Without a source carrying a configured wattage there is no absolute
+    // number to give, and the relative weight is not one -- say so, in place
+    // of the number rather than under it.
+    return valueCard(watts === null ? 'no source power' : formatPowerMw(watts));
   }
 
   if (prop === 'duration') {
     const source = elements.find(item => item?.id === rd.sourceId);
-    const label = probeDurationLabel(rd, source?.type);
-    const w = Math.max(58, label.length * 6.2 + 20);
-    return {
-      w,
-      h: 32,
-      body: `<rect x="0" y="0" width="${w}" height="32" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-        `<text x="${w / 2}" y="13" text-anchor="middle" font-size="11" font-weight="700" fill="#333">${esc(label)}</text>` +
-        `<text x="${w / 2}" y="25" text-anchor="middle" font-size="6" fill="#9aa2ad">pulse duration</text>`,
-    };
+    return valueCard(probeDurationLabel(rd, source?.type));
   }
 
   if (prop === 'time') {
@@ -975,20 +974,7 @@ function probeCard(el, rd, elements = []) {
     const frame = `<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#fff" stroke="#c9ced6"/>` +
       `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
       `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>`;
-    // A chopper runs at kilohertz while the train runs at megahertz, so this
-    // axis has to stay readable across six orders of magnitude without ever
-    // falling back to exponent notation.
-    const axis = ns => {
-      if (ns === 0) return '0';
-      const abs = Math.abs(ns);
-      const [value, unit] = abs >= 1e6 ? [ns / 1e6, 'ms']
-        : abs >= 1000 ? [ns / 1000, 'µs']
-          : abs >= 1 ? [ns, 'ns']
-            : [ns * 1000, 'ps'];
-      const rounded = Math.abs(value) >= 100 ? Math.round(value)
-        : Number(value.toPrecision(3));
-      return esc(`${rounded} ${unit}`);
-    };
+    const axis = ns => esc(formatTimeAxisNs(ns));
     const ticks = `<text x="${x0}" y="${y0 + 6}" font-size="4.6" fill="#666">${axis(startNs)}</text>` +
       `<text x="${x0 + pw}" y="${y0 + 6}" text-anchor="end" font-size="4.6" fill="#666">${axis(startNs + spanNs)}</text>`;
     const trace = scopeTrace(rd.pulse, { spanNs, startNs, samples: 160 });

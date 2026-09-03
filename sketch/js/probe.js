@@ -44,6 +44,38 @@ export function probeDurationLabel(reading, sourceType) {
   return `${fs < 100 ? fs.toPrecision(3) : Math.round(fs)} fs`;
 }
 
+// The slowest period on a beam, in ns: the repetition period, or a slower
+// intensity modulation riding on it. Accepts either shape of pulse record --
+// the probe's single train, or a detector's aggregate with its trains array --
+// because both displays answer the same question about the same light.
+export function slowestPeriodNs(pulse) {
+  if (!pulse) return 0;
+  const trains = Array.isArray(pulse.trains) && pulse.trains.length ? pulse.trains : [pulse];
+  const rates = trains.map(t => Number(t?.repRateMHz)).filter(r => Number.isFinite(r) && r > 0);
+  const repPeriod = rates.length ? Math.max(...rates.map(r => 1000 / r)) : 0;
+  const gatePeriods = trains
+    .flatMap(t => (Array.isArray(t?.gates) ? t.gates : []))
+    .map(g => Number(g?.frequencyMHz))
+    .filter(f => Number.isFinite(f) && f > 0)
+    .map(f => 1000 / f);
+  return Math.max(repPeriod, ...(gatePeriods.length ? gatePeriods : [0]));
+}
+
+// A signed time-axis label that stays readable from picoseconds to
+// milliseconds without ever falling back to exponent notation -- a chopper
+// runs at kilohertz while the train it gates runs at megahertz, so one axis
+// has to cross six orders of magnitude.
+export function formatTimeAxisNs(ns) {
+  if (!Number.isFinite(ns) || ns === 0) return '0';
+  const abs = Math.abs(ns);
+  const [value, unit] = abs >= 1e6 ? [ns / 1e6, 'ms']
+    : abs >= 1000 ? [ns / 1000, 'µs']
+      : abs >= 1 ? [ns, 'ns']
+        : [ns * 1000, 'ps'];
+  const rounded = Math.abs(value) >= 100 ? Math.round(value) : Number(value.toPrecision(3));
+  return `${rounded} ${unit}`;
+}
+
 // The default time window: two periods of the slowest thing happening on this
 // beam. With nothing but the train itself that is two repetition periods, so
 // three pulses land on screen; with an intensity modulation on top, it is two
@@ -53,17 +85,30 @@ export function probeTimeWindowNs(reading, params = {}) {
   const offset = Number(params.timeOffsetNs);
   const startNs = Number.isFinite(offset) ? offset : 0;
   if (Number.isFinite(manual) && manual > 0) return { startNs, spanNs: manual, auto: false };
-
-  const rep = Number(reading?.pulse?.repRateMHz);
-  const periodNs = rep > 0 ? 1000 / rep : null;
-  const gatePeriods = (reading?.pulse?.gates || [])
-    .map(g => Number(g?.frequencyMHz))
-    .filter(f => Number.isFinite(f) && f > 0)
-    .map(f => 1000 / f);
-  const slowest = Math.max(periodNs || 0, ...(gatePeriods.length ? gatePeriods : [0]));
+  const slowest = slowestPeriodNs(reading?.pulse);
   // A CW beam with no modulation at all has no timescale of its own; a
   // nanosecond of flat line is as good a window as any other.
   return { startNs, spanNs: slowest > 0 ? 2 * slowest : 1, auto: true };
+}
+
+// One window for a group of detectors, so their traces can be read against
+// each other. It is the widest window any member would have picked alone, at
+// the earliest offset any member asked for -- which guarantees nothing a
+// member wanted to show falls outside the shared axis, and makes the result
+// independent of which detector you happen to be drawing. Moving the offset
+// on any one of them moves the whole group, which is what sync should feel
+// like.
+export function syncedTimeWindowNs(members) {
+  const windows = (members || [])
+    .map(m => probeTimeWindowNs(m?.reading, m?.params || {}))
+    .filter(Boolean);
+  if (!windows.length) return null;
+  return {
+    startNs: Math.min(...windows.map(w => w.startNs)),
+    spanNs: Math.max(...windows.map(w => w.spanNs)),
+    synced: true,
+    members: windows.length,
+  };
 }
 
 // The wavelength axis, on the spectrometer's own principle: span whatever
