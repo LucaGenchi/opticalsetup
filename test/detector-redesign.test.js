@@ -101,7 +101,7 @@ test('the oscilloscope reports the modulation frequency and window for a switche
   // midpoint tick at 100 ns.
   assert.match(svg, />200 ns</);
   assert.match(svg, />100 ns</);
-  assert.match(svg, />0 ns</, 'the window starts at a plain zero, not a sub-nanosecond unit');
+  assert.match(svg, />0</, 'the window starts at a plain zero, not a sub-nanosecond unit');
   assert.match(svg, /data-scope-envelope="\d+"/, 'the gate envelope is drawn behind the pulses');
 });
 

@@ -11,7 +11,11 @@ import { uid } from './util.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
 import {
-  fwhmToSigma, linewidthForCoherenceLengthNm, spectrumSamples, transformLimitedBandwidthNm,
+  probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
+  formatTimeAxisNs,
+} from './probe.js';
+import {
+  linewidthForCoherenceLengthNm, spectrumSamples, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -37,7 +41,7 @@ import {
   objectiveNumericalAperture, objectivePresetKey, objectivePupilDiameter, objectivePupilRadius,
   objectiveWorkingDistance,
 } from './objective.js';
-import { pulseOverlap } from './pulses.js';
+import { pulseOverlap, scopeTrace } from './pulses.js';
 import {
   normalizeAotfChannels, aotfOpenChannels, aotfSummary, legacyAotfPassband,
   normalizeAotfPassband, AOTF_BAND_MIN, AOTF_BAND_MAX, AOTF_BAND_DEFAULT,
@@ -863,7 +867,7 @@ export const OBJ_SHAPES = {
 // top-left corner at the local origin and reports its own {w, h}, so the
 // caller can place the card relative to the sampled point and keep it upright
 // no matter how the probe itself is rotated — see probeCardPlacement().
-function probeCard(el, rd) {
+function probeCard(el, rd, elements = []) {
   if (!rd) {
     return {
       w: 56,
@@ -938,6 +942,87 @@ function probeCard(el, rd) {
     };
   }
 
+  // A plain value in a box: the reading is the whole content, with nothing
+  // captioning what the probe is already set to show.
+  const valueCard = label => {
+    const w = Math.max(46, label.length * 6.4 + 16);
+    return {
+      w,
+      h: 22,
+      body: `<rect x="0" y="0" width="${w}" height="22" rx="4" fill="#fff" stroke="#c9ced6"/>` +
+        `<text x="${w / 2}" y="11" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" fill="#333">${esc(label)}</text>`,
+    };
+  };
+
+  if (prop === 'power') {
+    const watts = probeAveragePowerW(rd, elements);
+    // Without a source carrying a configured wattage there is no absolute
+    // number to give, and the relative weight is not one -- say so, in place
+    // of the number rather than under it.
+    return valueCard(watts === null ? 'no source power' : formatPowerMw(watts));
+  }
+
+  if (prop === 'duration') {
+    const source = elements.find(item => item?.id === rd.sourceId);
+    return valueCard(probeDurationLabel(rd, source?.type));
+  }
+
+  if (prop === 'time') {
+    const W = 78, H = 46, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 22;
+    const { startNs, spanNs } = probeTimeWindowNs(rd, el.params);
+    const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
+    const frame = `<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#fff" stroke="#c9ced6"/>` +
+      `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
+      `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>`;
+    const axis = ns => esc(formatTimeAxisNs(ns));
+    const ticks = `<text x="${x0}" y="${y0 + 6}" font-size="4.6" fill="#666">${axis(startNs)}</text>` +
+      `<text x="${x0 + pw}" y="${y0 + 6}" text-anchor="end" font-size="4.6" fill="#666">${axis(startNs + spanNs)}</text>`;
+    const trace = scopeTrace(rd.pulse, { spanNs, startNs, samples: 160 });
+    if (!trace) {
+      // Continuous wave: the honest picture is a flat line at full height.
+      return {
+        w: W,
+        h: H,
+        body: frame +
+          `<line data-probe-time="cw" x1="${x0}" y1="${(y0 - ph).toFixed(2)}" x2="${x0 + pw}" y2="${(y0 - ph).toFixed(2)}" stroke="${c}" stroke-width="1.6"/>` +
+          ticks +
+          `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6" fill="#333">CW</text>`,
+      };
+    }
+    const peak = Math.max(1e-9, ...trace.pulses.map(p => p.amplitude || 0), ...trace.envelope.map(e => e.value || 0));
+    const yAt = v => y0 - Math.max(0, Math.min(1, v / peak)) * ph;
+    // The gate envelope behind the spikes makes a modulation readable even
+    // where the train is too dense to resolve pulse by pulse.
+    const gated = (rd.pulse.gates || []).length > 0;
+    const envelopePts = trace.envelope.map(pt => `${xAt(pt.tNs).toFixed(2)},${yAt(pt.value).toFixed(2)}`);
+    const envelope = trace.envelope.length > 1 && gated
+      ? `<polyline points="${envelopePts.join(' ')}" fill="none" stroke="#7c3aed" stroke-width="0.7" opacity="0.75"/>`
+      : '';
+    // Two periods of a kilohertz chopper contain tens of thousands of
+    // megahertz pulses. Drawing them individually is both a lie -- the trace
+    // is capped long before that -- and an unreadable block of ink, so past
+    // the point where pulses stop being separable the beam is filled in under
+    // its own envelope, which is what a scope at that timebase shows.
+    const dense = trace.pulses.length > pw / 2 || trace.truncated;
+    const spikes = dense
+      ? `<path d="M ${xAt(trace.startNs).toFixed(2)},${y0} L ${envelopePts.join(' L ')} L ${xAt(trace.startNs + spanNs).toFixed(2)},${y0} Z" fill="${c}" opacity="0.55" stroke="none"/>`
+      : trace.pulses.filter(p => p.amplitude > 1e-6).map(p => {
+        const x = xAt(p.tNs).toFixed(2);
+        return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${yAt(p.amplitude).toFixed(2)}" stroke="${c}" stroke-width="1.4" stroke-linecap="round"/>`;
+      }).join('');
+    const rate = trace.repRateMHz >= 1000 ? `${(trace.repRateMHz / 1000).toPrecision(3)} GHz`
+      : trace.repRateMHz >= 1 ? `${Number(trace.repRateMHz.toPrecision(3))} MHz`
+        : `${Number((trace.repRateMHz * 1000).toPrecision(3))} kHz`;
+    return {
+      w: W,
+      h: H,
+      body: frame + envelope +
+        `<g data-probe-time="${dense ? 'dense' : trace.pulses.length}">${spikes}</g>` + ticks +
+        `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I</text>` +
+        `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6" fill="#333">${esc(rate)}</text>`,
+    };
+  }
+
   // spectrum plot: λ (nm) vs I (a.u.), real sampled data, smoothed through a
   // Catmull-Rom spline (matching the spectrometer's own screen readout).
   // Domain is ±2σ of the beam's FWHM bandwidth plus 5 nm padding — wide
@@ -945,8 +1030,8 @@ function probeCard(el, rd) {
   // — and the rendered samples are both filtered to that domain and clipped,
   // since the spec's own sampled support (±3σ) can otherwise reach past it.
   const W = 74, H = 50, x0 = 10, y0 = H - 13, pw = W - 18, ph = H - 24;
-  const sigma = fwhmToSigma(rd.bw || 0);
-  const lo = rd.wl - 2 * sigma - 5, hi = rd.wl + 2 * sigma + 5, span = Math.max(1e-6, hi - lo);
+  const { lo, hi } = probeSpectrumRange(rd, el.params);
+  const span = Math.max(1e-6, hi - lo);
   const xAt = wl => x0 + pw * (wl - lo) / span;
   let curve = '';
   if (rd.spec) {
@@ -3838,11 +3923,33 @@ export const registry = {
     noLabel: true,
     params: [
       { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2, step: 0.05, def: 1 },
-      { key: 'prop', label: 'Show', type: 'select', def: 'spectrum', options: [['spectrum', 'Spectrum plot'], ['pol', 'Polarization'], ['wl', 'Wavelength label']] },
+      { key: 'prop', label: 'Show', type: 'select', def: 'spectrum', options: [
+        ['spectrum', 'Spectrum plot'],
+        ['wl', 'Wavelength label'],
+        ['power', 'Average power'],
+        ['pol', 'Polarization'],
+        ['duration', 'Pulse duration'],
+        ['time', 'Intensity over time'],
+      ] },
+      // The wavelength axis frames itself from the light by default, on the
+      // spectrometer's own principle. A fixed window is there for comparing
+      // two probes against the same scale.
+      { key: 'rangeMode', label: 'Wavelength range', type: 'select', def: 'auto',
+        options: [['auto', 'Automatic'], ['manual', 'Fixed range']],
+        show: p => p.prop === 'spectrum' },
+      { key: 'specMin', label: 'From (nm)', type: 'number', min: 10, max: 12000, step: 10, def: 400,
+        show: p => p.prop === 'spectrum' && p.rangeMode === 'manual' },
+      { key: 'specMax', label: 'To (nm)', type: 'number', min: 11, max: 12000, step: 10, def: 700,
+        show: p => p.prop === 'spectrum' && p.rangeMode === 'manual' },
+      // Left at 0 the window is two periods of the slowest thing on the beam.
+      { key: 'timeSpanNs', label: 'Time interval (ns) · 0 = automatic', type: 'number', min: 0, max: 1e6, step: 0.1, def: 0,
+        show: p => p.prop === 'time' },
+      { key: 'timeOffsetNs', label: 'Time offset (ns)', type: 'number', min: -1e6, max: 1e6, step: 0.1, def: 0,
+        show: p => p.prop === 'time' },
     ],
-    svg(el) {
+    svg(el, elements = []) {
       const scale = probeScale(el);
-      const card = probeCard(el, probeAt(el.x, el.y));
+      const card = probeCard(el, probeAt(el.x, el.y), elements);
       const place = probeCardPlacement(el, card, scale);
       // The crosshair marks the exact point being read and must stay put
       // regardless of scale — only the readout card grows with Display scale.

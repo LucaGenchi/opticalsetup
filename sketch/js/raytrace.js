@@ -856,6 +856,17 @@ export function probeAt(x, y, tol = 16) {
   return best ? {
     wl: best.wl, bw: best.bw || 0, spec: best.spec || null, pol: best.pol,
     stokes: cloneStokes(best.stokes), intensity: best.intensity,
+    // Which source this ray came from, so the probe can quote that source's
+    // configured watts, and what its train looks like here -- including any
+    // gates picked up on the way, which is what the time plot draws.
+    sourceId: best.sourceId || null,
+    pulse: best.pulse ? {
+      repRateMHz: best.pulse.repRateMHz,
+      pulseWidthFs: best.pulse.pulseWidthFs,
+      phaseNs: best.pulse.phaseNs,
+      pulseShape: best.pulse.pulseShape || 'gauss',
+      gates: (best.pulse.gates || []).map(g => ({ ...g })),
+    } : null,
     // A polarization-modulated segment has no single meaningful state, so the
     // probe reports the alternation itself rather than its average.
     polMod: best.polMod || null,
