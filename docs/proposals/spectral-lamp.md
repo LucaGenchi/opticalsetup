@@ -1,6 +1,12 @@
 # Proposal: gas-discharge and spectral lamps
 
-Status: **design, not implemented.** Opened for review before any code.
+Status: **shipped**, as a mode of the point source rather than a separate
+element — see the changelog entry for 2026-09-03 and the point source wiki
+page. Kept because the reasoning is worth having on the record, including the
+two claims in it that turned out to be wrong: `coherenceLengthMm` would not
+have made a lamp incoherent (nothing was needed — every source but a sized
+monochromatic CW laser is power-only already), and the sodium doublet resolves
+perfectly well, so it ships as a pair rather than as its calibration mean.
 
 ## What is being asked for
 
