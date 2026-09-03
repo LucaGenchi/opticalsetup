@@ -523,6 +523,21 @@ const demoScenes = {
     ];
   },
 
+  // The point source's defining behaviour is that its light fades in the near
+  // field unless something collects it -- so the embed shows it being
+  // collected. A parabolic mirror with the source exactly at its focus
+  // (f = 25 mm, so 25 mm in front of the vertex) turns isotropic emission
+  // into a parallel beam, which is how a lamp or an arc is collimated on a
+  // real bench and the one arrangement that makes the near-field model
+  // visible rather than puzzling. Switch Source to Gas discharge lamp and the
+  // same geometry collimates a line spectrum instead.
+  pointsource: () => [
+    mkDemo('oap', 150, 200, 180, { length: 110, f: 25 },
+      { label: 'parabola, f = 25 mm', showLabel: true, labelPos: 'l' }),
+    mkDemo('pointsource', 175, 200, 0, { spread: 360, nrays: 16, displayScale: 1.1 },
+      { label: 'source at the focus', showLabel: true, labelPos: 'b' }),
+  ],
+
   metasurface: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 20 }),
     mkDemo('metasurface', 300, 200, 0, {
