@@ -2653,11 +2653,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // within 1.5x that range (a small grace margin so an optic right at
         // the fade boundary still counts); otherwise the light is simply
         // gone and never reaches downstream detectors.
-        const EVAN_LEN = r.evanLen || 22;
+        // `??`, not `||`: a range of exactly zero means exhausted, and falling
+        // back to the default there would hand a spent branch a fresh 22 mm.
+        const EVAN_LEN = r.evanLen ?? 22;
         // How far the glow is DRAWN and how far an optic can still collect it
         // are separate: a collection lens routinely sits well outside the few
         // centimetres of visible glow, and the light is really there.
-        const CAPTURE = r.captureLen || EVAN_LEN * 1.5;
+        const CAPTURE = r.captureLen ?? EVAN_LEN * 1.5;
         // Mirrors collect too. A parabolic mirror with an emitter at its focus
         // is the standard way to collimate a lamp or an arc without chromatic
         // aberration, and a collection mirror round a fluorescing sample is

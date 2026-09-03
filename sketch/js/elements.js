@@ -845,6 +845,32 @@ function sphericalMirrorSurfaces(el, concave) {
   }];
 }
 
+// Bounds that cover the real curve. A short focal length with a wide aperture
+// gives a sag of tens or hundreds of millimetres, and a box 18 mm wide would
+// leave most of the drawn mirror outside hit testing, selection handles and
+// the export crop.
+function sphericalMirrorSize(el, concave) {
+  const g = sphericalMirrorGeometry(el, concave);
+  const sag = Math.abs(g.x(g.L));
+  return { w: Math.max(18, sag + 12), h: 2 * g.L + 6 };
+}
+
+// A mirror cannot be wider than its own sphere, so a wide aperture on a short
+// focal length is silently reduced. Saying so beats letting the panel claim a
+// size the optic does not have.
+const SPHERICAL_APERTURE_READOUT = {
+  key: 'realizedAperture', label: 'Actual aperture', type: 'readout',
+  readout: p => {
+    const f = Math.max(5, Math.abs(Number(p.f) || 100));
+    const R = 2 * f;
+    const full = Number(p.length) || 0;
+    const used = Math.min(full / 2, R * 0.98) * 2;
+    return used < full - 1e-9
+      ? `${used.toFixed(1)} mm — limited by the ${R.toFixed(0)} mm radius`
+      : `${full.toFixed(1)} mm · radius ${R.toFixed(0)} mm`;
+  },
+};
+
 // The drawn profile, matching the surface the tracer actually uses.
 function sphericalMirrorPath(el, concave) {
   const g = sphericalMirrorGeometry(el, concave);
@@ -2078,13 +2104,14 @@ export const registry = {
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: -100, negative: true },
+      SPHERICAL_APERTURE_READOUT,
       ...reflectivityParams(),
     ],
-    size_: el => ({ w: 18, h: el.params.length + 6 }),
+    size_: el => sphericalMirrorSize(el, false),
     svg(el) {
-      const L = el.params.length / 2;
+      const g = sphericalMirrorGeometry(el, false);
       // bulges toward the incoming beam (from -x)
-      return `<path d="${sphericalMirrorPath(el, false)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="${sphericalMirrorPath(el, false)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -g.L, g.L - 6, 1, Math.max(2, Math.round(g.L / 4)));
     },
     surfaces(el) { return sphericalMirrorSurfaces(el, false); },
   },
@@ -2094,13 +2121,14 @@ export const registry = {
     params: [
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 100 },
+      SPHERICAL_APERTURE_READOUT,
       ...reflectivityParams(),
     ],
-    size_: el => ({ w: 18, h: el.params.length + 6 }),
+    size_: el => sphericalMirrorSize(el, true),
     svg(el) {
-      const L = el.params.length / 2;
+      const g = sphericalMirrorGeometry(el, true);
       // hollow toward the incoming beam (from -x): focuses it
-      return `<path d="${sphericalMirrorPath(el, true)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -L, L - 6, 1, Math.round(el.params.length / 8));
+      return `<path d="${sphericalMirrorPath(el, true)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -g.L, g.L - 6, 1, Math.max(2, Math.round(g.L / 4)));
     },
     surfaces(el) { return sphericalMirrorSurfaces(el, true); },
   },
@@ -4440,9 +4468,9 @@ const ELEMENT_HELP = {
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
-  cmirrorx: 'Diverges reflected rays with a paraxial focal-length model.',
-  cmirror: 'Focuses reflected rays with a paraxial focal-length model.',
-  oap: 'Reflects from segmented parabolic geometry toward the configured focus.',
+  cmirrorx: 'Diverges reflected rays off a real spherical surface of radius 2f, so it carries the spherical aberration a real one does.',
+  cmirror: 'Focuses reflected rays off a real spherical surface of radius 2f — marginal rays cross ahead of the paraxial focus, which is the aberration a parabolic mirror exists to avoid.',
+  oap: 'Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.',
   lens: 'Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
   lensc: 'Diverges rays with a negative thin-lens focal length. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
   metalens: 'A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency.',
