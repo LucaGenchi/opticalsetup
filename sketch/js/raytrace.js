@@ -1688,10 +1688,42 @@ function interact(ray, hit) {
   // the facet chord is what makes reflection off the curve exact.
   const parabolaNormal = () => {
     const { cx, cy, ux, uy, f } = data.parab;
-    const rx = hit.p.x - cx, ry = hit.p.y - cy;
-    const local = rx * uy.x + ry * uy.y;
-    const k = local / (2 * f);
-    return norm({ x: ux.x + uy.x * k, y: ux.y + uy.y * k });
+    // hit.p is on a facet CHORD, not on the curve, so its height is not quite
+    // the height at which the ray really meets the parabola. Using it directly
+    // leaves an error that grows as the facets get long relative to the
+    // curvature: negligible at f = 25, but measurable at f = 5.
+    // Solve the ray against the curve itself. With a = local x, b = local y
+    // and the surface a + b^2/(4f) = 0, substituting a = a0 + t*da and
+    // b = b0 + t*db gives a quadratic in t.
+    const rx = ray.x - cx, ry = ray.y - cy;
+    const a0 = rx * ux.x + ry * ux.y, b0 = rx * uy.x + ry * uy.y;
+    const da = d.x * ux.x + d.y * ux.y, db = d.x * uy.x + d.y * uy.y;
+    const k = 1 / (4 * f);
+    const A = k * db * db, B = da + 2 * k * b0 * db, C = a0 + k * b0 * b0;
+    let t = null;
+    if (Math.abs(A) < 1e-12) {
+      // Ray parallel to the axis: the equation is linear in t.
+      if (Math.abs(B) > 1e-12) t = -C / B;
+    } else {
+      const disc = B * B - 4 * A * C;
+      if (disc >= 0) {
+        const root = Math.sqrt(disc);
+        const t1 = (-B - root) / (2 * A), t2 = (-B + root) / (2 * A);
+        // Both roots are real intersections with the full parabola; the facet
+        // already told us which one the ray actually reached.
+        const candidates = [t1, t2].filter(v => Number.isFinite(v));
+        for (const v of candidates) {
+          if (t === null || Math.abs(v - hit.t) < Math.abs(t - hit.t)) t = v;
+        }
+      }
+    }
+    // If the quadratic degenerates, the chord height is still the best
+    // estimate available and is what the facets were built to approximate.
+    const local = t === null
+      ? (hit.p.x - cx) * uy.x + (hit.p.y - cy) * uy.y
+      : b0 + t * db;
+    const slope = local / (2 * f);
+    return norm({ x: ux.x + uy.x * slope, y: ux.y + uy.y * slope });
   };
   const n = data.arc
     ? norm({ x: hit.p.x - data.arc.cx, y: hit.p.y - data.arc.cy })
@@ -2799,6 +2831,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         }
         break; // the connector absorbs the incoming beam either way
       }
+      // The collection marker applies to THIS interaction and no other: it
+      // exists to tell the transmitted branch of a partial collector that it
+      // was never actually gathered. Left on the ray, it would re-evanesce the
+      // transmitted child of every later splitter the collected light happens
+      // to meet -- a dichroic, an etalon, another partial mirror -- and that
+      // light would die for no reason. The one-child fast path reuses `r`, so
+      // clearing it here covers that route too.
+      const carriedEvan = r.carriedEvan;
+      r.carriedEvan = null;
       const children = interact(r, hit);
       if (children.length === 0) break;
       recordCoherentArrival(r, hit, children, coherent?.arrivals);
@@ -2880,9 +2921,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           chopped: c.chopped || r.chopped || undefined,
           // A branch that merely passed THROUGH a collector was never
           // collected, so it stays evanescent with the range it had.
-          evan: c.evan || Boolean(c.tag === 'T' && r.carriedEvan),
-          evanLen: c.evanLen ?? (c.tag === 'T' ? r.carriedEvan?.evanLen : undefined),
-          captureLen: c.captureLen ?? (c.tag === 'T' ? r.carriedEvan?.captureLen : undefined),
+          evan: c.evan || Boolean(c.tag === 'T' && carriedEvan),
+          evanLen: c.evanLen ?? (c.tag === 'T' ? carriedEvan?.evanLen : undefined),
+          captureLen: c.captureLen ?? (c.tag === 'T' ? carriedEvan?.captureLen : undefined),
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,

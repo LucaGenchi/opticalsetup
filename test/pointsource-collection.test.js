@@ -173,3 +173,48 @@ test('the benchmark scene loads and both rows produce a beam', async () => {
       `row ${i} (y=${row.y}) must deliver light 775 mm downstream`);
   }
 });
+
+test('the parabola stays exact at short focal length and large aperture', () => {
+  // The facet chords are longest relative to the curvature when f is small,
+  // which is where reflecting off the chord instead of the curve showed up:
+  // f = 5 at the standard 25.4 mm size spread by about 0.14 degrees, while
+  // f = 25 was already exact and so could not catch it.
+  for (const [f, length] of [[5, 25.4], [5, 150], [5, 500]]) {
+    let near = null, far = null;
+    for (const distance of [400, 1200]) {
+      let lo = null, hi = null;
+      for (let y = -400; y <= 800; y += 2) {
+        const source = mk('pointsource', 100 + f, 200, 0, { spread: 360, nrays: 300, bwMode: 'mono' });
+        const mirror = mk('oap', 100, 200, 180, { length, f });
+        const probe = mk('detector', distance, y, 0, { aperture: 2 });
+        traceAll([source, mirror, probe], []);
+        if ((detectorReading(probe.id)?.signal ?? 0) > 0) { if (lo === null) lo = y; hi = y; }
+      }
+      if (distance === 400) near = lo === null ? null : hi - lo; else far = lo === null ? null : hi - lo;
+    }
+    assert.ok(near > 0, `f=${f} length=${length} produces a beam`);
+    assert.equal(far, near, `f=${f} length=${length}: ${near} mm at 400, ${far} mm at 1200`);
+  }
+});
+
+test('collected light is not re-evanesced by a later splitter', () => {
+  // The marker that keeps a partial collector's transmitted branch fading
+  // must not survive the interaction that set it. Left on the ray, the
+  // transmitted child of every later splitter would die for no reason.
+  const build = withSplitter => {
+    const parts = [
+      mk('pointsource', 175, 200, 0, { spread: 360, nrays: 200, bwMode: 'mono' }),
+      mk('cmirror', 150, 200, 180, { f: 25, length: 100 }),
+    ];
+    // tilted so its own reflection leaves the axis instead of returning to
+    // the collecting mirror and being sent downstream a second time
+    if (withSplitter) parts.push(mk('mirror', 500, 200, 10, { length: 300, refl: 30, showTransmitted: true }));
+    const detector = mk('detector', 800, 200, 0, { aperture: 300 });
+    traceAll([...parts, detector], []);
+    return detectorReading(detector.id)?.signal ?? 0;
+  };
+  const plain = build(false), through = build(true);
+  assert.ok(plain > 0, 'the collected beam reaches the detector');
+  assert.ok(Math.abs(through / plain - 0.7) < 1e-9,
+    `a 30% mirror must pass 70% of collected light, got ${(through / plain).toFixed(4)}`);
+});
