@@ -2616,7 +2616,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // ordinary spectroscopy -- leaving them off this list meant a point
         // source's light passed straight through any mirror as if it were not
         // there, which is what made a parabola fail to collimate it.
-        const COLLECTORS = new Set(['lens', 'metalens', 'fiberin', 'mirror']);
+        // `cmirror` is the concave/convex pair, which is what an actual
+        // collection mirror around a sample usually is -- leaving it out
+        // would have fixed the flat and parabolic cases and left the two
+        // components most likely to be used for collection still broken.
+        const COLLECTORS = new Set(['lens', 'metalens', 'fiberin', 'mirror', 'cmirror']);
         const captured = hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
         if (!captured) {
           const L = hit ? Math.min(hit.t, EVAN_LEN) : EVAN_LEN;
@@ -2625,6 +2629,12 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           break;
         }
         r.evan = false; // collected: from here on it behaves like normal light
+        // ...but a partial mirror only collects what it REFLECTS. Light that
+        // goes through a 1%-reflective mirror was gathered by nothing, so it
+        // has to keep fading; otherwise it leaves as ordinary light carrying
+        // 99% of the power and reaches any detector on the bench. The
+        // transmitted child inherits this.
+        r.carriedEvan = { evanLen: EVAN_LEN, captureLen: CAPTURE };
         if (!coherent?.dryRun) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
       }
       if (!hit) {
@@ -2857,9 +2867,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralHi : null,
           speckle: c.speckle || r.speckle || false,
           chopped: c.chopped || r.chopped || undefined,
-          evan: c.evan || false,
-          evanLen: c.evanLen,
-          captureLen: c.captureLen,
+          // A branch that merely passed THROUGH a collector was never
+          // collected, so it stays evanescent with the range it had.
+          evan: c.evan || Boolean(c.tag === 'T' && r.carriedEvan),
+          evanLen: c.evanLen ?? (c.tag === 'T' ? r.carriedEvan?.evanLen : undefined),
+          captureLen: c.captureLen ?? (c.tag === 'T' ? r.carriedEvan?.captureLen : undefined),
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,

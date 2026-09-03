@@ -75,3 +75,42 @@ test('collection still respects the capture range', () => {
   assert.ok(!reading || reading.signal === 0,
     'a collector beyond the capture range collects nothing');
 });
+
+test('a partial mirror collects only what it reflects', () => {
+  // A 30% mirror gathers 30% of the light. The other 70% passed through and
+  // was collected by nothing, so it must keep fading -- otherwise it leaves as
+  // ordinary light carrying most of the power and reaches any detector on the
+  // bench, which would be a worse bug than the one this fixes.
+  // The 45 degree fold separates the two branches geometrically: reflected
+  // light goes down, transmitted light carries straight on to the left.
+  const bench = (detector) => {
+    const source = mk('pointsource', 300, 200, 0, { spread: 360, nrays: 24, bwMode: 'mono' });
+    const mirror = mk('mirror', 200, 200, 45, { length: 120, refl: 30, showTransmitted: true });
+    traceAll([source, mirror, detector], []);
+    return detectorReading(detector.id);
+  };
+
+  const reflected = bench(mk('detector', 200, 310, 90, { aperture: 140 }));
+  assert.ok(reflected && reflected.signal > 0, 'the reflected fraction is collected');
+
+  const transmitted = bench(mk('detector', 60, 200, 180, { aperture: 140 }));
+  assert.ok(!transmitted || transmitted.signal === 0,
+    `the 70% that passed through must still fade, got ${transmitted && transmitted.signal}`);
+});
+
+test('curved mirrors collect too, not just flat and parabolic ones', () => {
+  // A concave mirror is what a collection mirror around a sample actually is,
+  // and it uses a different surface kind from the flat and parabolic ones.
+  const source = mk('pointsource', 300, 200, 0, { spread: 360, nrays: 24, bwMode: 'mono' });
+  const concave = mk('cmirror', 150, 200, 0, { f: 75, length: 160 });
+  const detector = mk('detector', 700, 200, 0, { aperture: 200 });
+  traceAll([source, concave, detector], []);
+  const reading = detectorReading(detector.id);
+  assert.ok(reading && reading.signal > 0, 'a concave mirror gathers the light and sends it on');
+
+  // without it, nothing survives the trip
+  const bare = mk('detector', 700, 200, 0, { aperture: 200 });
+  traceAll([mk('pointsource', 300, 200, 0, { spread: 360, nrays: 24, bwMode: 'mono' }), bare], []);
+  const without = detectorReading(bare.id);
+  assert.ok(!without || without.signal === 0, 'no collector, no light');
+});
