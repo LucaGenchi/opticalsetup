@@ -1683,9 +1683,52 @@ const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
 function interact(ray, hit) {
   const s = hit.surface, d = { x: ray.dx, y: ray.dy }, k = s.kind, data = s.data;
   const t = norm(sub(s.b, s.a));
+  // A parabola x = -y^2/(4f) has gradient (1, y/(2f)) in its own frame, so
+  // the exact normal is available at any point on it. Using it rather than
+  // the facet chord is what makes reflection off the curve exact.
+  const parabolaNormal = () => {
+    const { cx, cy, ux, uy, f } = data.parab;
+    // hit.p is on a facet CHORD, not on the curve, so its height is not quite
+    // the height at which the ray really meets the parabola. Using it directly
+    // leaves an error that grows as the facets get long relative to the
+    // curvature: negligible at f = 25, but measurable at f = 5.
+    // Solve the ray against the curve itself. With a = local x, b = local y
+    // and the surface a + b^2/(4f) = 0, substituting a = a0 + t*da and
+    // b = b0 + t*db gives a quadratic in t.
+    const rx = ray.x - cx, ry = ray.y - cy;
+    const a0 = rx * ux.x + ry * ux.y, b0 = rx * uy.x + ry * uy.y;
+    const da = d.x * ux.x + d.y * ux.y, db = d.x * uy.x + d.y * uy.y;
+    const k = 1 / (4 * f);
+    const A = k * db * db, B = da + 2 * k * b0 * db, C = a0 + k * b0 * b0;
+    let t = null;
+    if (Math.abs(A) < 1e-12) {
+      // Ray parallel to the axis: the equation is linear in t.
+      if (Math.abs(B) > 1e-12) t = -C / B;
+    } else {
+      const disc = B * B - 4 * A * C;
+      if (disc >= 0) {
+        const root = Math.sqrt(disc);
+        const t1 = (-B - root) / (2 * A), t2 = (-B + root) / (2 * A);
+        // Both roots are real intersections with the full parabola; the facet
+        // already told us which one the ray actually reached.
+        const candidates = [t1, t2].filter(v => Number.isFinite(v));
+        for (const v of candidates) {
+          if (t === null || Math.abs(v - hit.t) < Math.abs(t - hit.t)) t = v;
+        }
+      }
+    }
+    // If the quadratic degenerates, the chord height is still the best
+    // estimate available and is what the facets were built to approximate.
+    const local = t === null
+      ? (hit.p.x - cx) * uy.x + (hit.p.y - cy) * uy.y
+      : b0 + t * db;
+    const slope = local / (2 * f);
+    return norm({ x: ux.x + uy.x * slope, y: ux.y + uy.y * slope });
+  };
   const n = data.arc
     ? norm({ x: hit.p.x - data.arc.cx, y: hit.p.y - data.arc.cy })
-    : perp(t);
+    : data.parab ? parabolaNormal()
+      : perp(t);
 
   switch (k) {
     case 'absorb': return [];
@@ -1730,7 +1773,12 @@ function interact(ray, hit) {
     }
     case 'cmirror': {
       const R = Math.min(1, Math.max(0, (data.refl ?? 100) / 100));
-      const focused = lensBend(reflect(d, n), hit.p, s, data.f);
+      // A real spherical surface reflects off its own normal, and the
+      // aberration follows from that. `data.arc` gives the exact normal at
+      // the hit point, so no paraxial bend is applied or wanted: a sphere
+      // does not bring marginal rays to the paraxial focus, and pretending
+      // otherwise hid the entire reason parabolic mirrors exist.
+      const focused = data.arc ? reflect(d, n) : lensBend(reflect(d, n), hit.p, s, data.f);
       if (R >= 1) return [{ d: focused }];
       const out = [];
       if (R > 0) out.push({ d: focused, intensity: ray.intensity * R, tag: 'R', retainWeak: true });
@@ -2605,13 +2653,25 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // within 1.5x that range (a small grace margin so an optic right at
         // the fade boundary still counts); otherwise the light is simply
         // gone and never reaches downstream detectors.
-        const EVAN_LEN = r.evanLen || 22;
+        // `??`, not `||`: a range of exactly zero means exhausted, and falling
+        // back to the default there would hand a spent branch a fresh 22 mm.
+        const EVAN_LEN = r.evanLen ?? 22;
         // How far the glow is DRAWN and how far an optic can still collect it
         // are separate: a collection lens routinely sits well outside the few
         // centimetres of visible glow, and the light is really there.
-        const CAPTURE = r.captureLen || EVAN_LEN * 1.5;
-        const captured = hit && hit.t <= CAPTURE
-          && (hit.surface.kind === 'lens' || hit.surface.kind === 'metalens' || hit.surface.kind === 'fiberin');
+        const CAPTURE = r.captureLen ?? EVAN_LEN * 1.5;
+        // Mirrors collect too. A parabolic mirror with an emitter at its focus
+        // is the standard way to collimate a lamp or an arc without chromatic
+        // aberration, and a collection mirror round a fluorescing sample is
+        // ordinary spectroscopy -- leaving them off this list meant a point
+        // source's light passed straight through any mirror as if it were not
+        // there, which is what made a parabola fail to collimate it.
+        // `cmirror` is the concave/convex pair, which is what an actual
+        // collection mirror around a sample usually is -- leaving it out
+        // would have fixed the flat and parabolic cases and left the two
+        // components most likely to be used for collection still broken.
+        const COLLECTORS = new Set(['lens', 'metalens', 'fiberin', 'mirror', 'cmirror']);
+        const captured = hit && hit.t <= CAPTURE && COLLECTORS.has(hit.surface.kind);
         if (!captured) {
           const L = hit ? Math.min(hit.t, EVAN_LEN) : EVAN_LEN;
           appendPoint(r, { x: r.x + r.dx * L, y: r.y + r.dy * L }, L);
@@ -2619,6 +2679,18 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           break;
         }
         r.evan = false; // collected: from here on it behaves like normal light
+        // ...but a partial mirror only collects what it REFLECTS. Light that
+        // goes through a 1%-reflective mirror was gathered by nothing, so it
+        // has to keep fading; otherwise it leaves as ordinary light carrying
+        // 99% of the power and reaches any detector on the bench. The
+        // transmitted child inherits this.
+        // The transmitted child starts AT the collector, having already used
+        // up hit.t of its range. Handing it the full range again would let a
+        // chain of partial mirrors walk near-field light across the bench.
+        r.carriedEvan = {
+          evanLen: Math.max(0, EVAN_LEN - hit.t),
+          captureLen: Math.max(0, CAPTURE - hit.t),
+        };
         if (!coherent?.dryRun) recordCameraNearMisses(r, cameraSurfaces, hit?.t ?? MAXLEN);
       }
       if (!hit) {
@@ -2772,6 +2844,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         }
         break; // the connector absorbs the incoming beam either way
       }
+      // The collection marker applies to THIS interaction and no other: it
+      // exists to tell the transmitted branch of a partial collector that it
+      // was never actually gathered. Left on the ray, it would re-evanesce the
+      // transmitted child of every later splitter the collected light happens
+      // to meet -- a dichroic, an etalon, another partial mirror -- and that
+      // light would die for no reason. The one-child fast path reuses `r`, so
+      // clearing it here covers that route too.
+      const carriedEvan = r.carriedEvan;
+      r.carriedEvan = null;
       const children = interact(r, hit);
       if (children.length === 0) break;
       recordCoherentArrival(r, hit, children, coherent?.arrivals);
@@ -2851,9 +2932,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralHi : null,
           speckle: c.speckle || r.speckle || false,
           chopped: c.chopped || r.chopped || undefined,
-          evan: c.evan || false,
-          evanLen: c.evanLen,
-          captureLen: c.captureLen,
+          // A branch that merely passed THROUGH a collector was never
+          // collected, so it stays evanescent with the range it had.
+          evan: c.evan || Boolean(c.tag === 'T' && carriedEvan),
+          evanLen: c.evanLen ?? (c.tag === 'T' ? carriedEvan?.evanLen : undefined),
+          captureLen: c.captureLen ?? (c.tag === 'T' ? carriedEvan?.captureLen : undefined),
           pol: 'pol' in c ? c.pol : r.pol,
           stokes: 'stokes' in c ? cloneStokes(c.stokes) : cloneStokes(r.stokes),
           polMod: 'polMod' in c ? c.polMod : r.polMod,

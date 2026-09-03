@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Parabolic mirror — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Reflects from segmented parabolic geometry toward the configured focus. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/oap/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Parabolic mirror — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Reflects from segmented parabolic geometry toward the configured focus.">
+<meta property="og:description" content="Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/oap/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -147,7 +147,7 @@
           <h1>Parabolic mirror</h1>
         </div>
       </div>
-      <p class="tagline">Reflects from segmented parabolic geometry toward the configured focus.</p>
+      <p class="tagline">Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.</p>
       <a class="place-cta" href="../../sketch/?place=oap">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -175,25 +175,31 @@
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
         
-        <p>Unlike the concave and convex mirrors, which reflect off a single flat line
-        and add focusing as a separate paraxial correction, the parabolic mirror is
-        <strong>traced as its real geometric curve</strong> — split into a chain of short
-        flat segments, each obeying the exact vector law of reflection. A collimated beam
-        genuinely converges to the focus through real reflection geometry at every ray
-        height, with no paraxial approximation involved.</p>
+        <p>The mirror is traced as its real curve. Short flat facets locate <em>where</em> a
+        ray lands, but the reflection uses the parabola's own normal at that point, found
+        analytically: the surface <span class="w">x = −y²/4f</span> has gradient
+        <span class="w">(1, y/2f)</span>, and the exact ray–curve intersection is solved
+        rather than taken from the facet chord. The facet count therefore sets positional
+        accuracy only, never angular — which is what makes the defining property hold at
+        <em>any</em> aperture rather than only at gentle ones.</p>
+        <p>The consequence is worth checking against the
+        <a href="../cmirror/">spherical mirror</a> directly. With a point source at the focus
+        of each, f&nbsp;=&nbsp;25 and a 100&nbsp;mm aperture, the parabola returns a beam
+        98&nbsp;mm wide at 400&nbsp;mm and still 98&nbsp;mm wide at 1200&nbsp;mm — collimated,
+        exactly. The sphere returns 468&nbsp;mm widening to 792&nbsp;mm: about 11°. Neither
+        number is put in by hand; both come out of the two surfaces.</p>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is closer to first-principles optics than most elements in the
-        library, but it's still a 2D on-axis cross-section — a real OAP is typically an
-        off-axis section of a 3D paraboloid, which this side view can't represent. The
-        curve is also faceted into a finite number of straight segments rather than
-        perfectly smooth; the segment count scales with size and focal length to keep
-        faceting error negligible for realistic apertures, but an extremely fast mirror
-        sampled too coarsely could show it.</p></div>
+        library, but it is still a 2D on-axis cross-section — a real OAP is typically an
+        off-axis section of a 3D paraboloid, which this side view cannot represent. Being
+        exact in reflection also means it is exact in a way no manufactured mirror is: there
+        is no surface figure error, no roughness, and no coating model, so reflectivity does
+        not vary with wavelength or angle.</p></div>
       </div>
 
       
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
-        <a href="../../wiki/cmirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 7,0 0,12.7" fill="none" stroke="#444" stroke-width="3.5"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg>Concave mirror</a><a href="../../wiki/cmirrorx/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q -7,0 0,12.7" fill="none" stroke="#444" stroke-width="3.5"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg>Convex mirror</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a>
+        <a href="../../wiki/cmirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -0.40,-12.70 L -0.34,-11.64 L -0.28,-10.58 L -0.23,-9.53 L -0.18,-8.47 L -0.14,-7.41 L -0.10,-6.35 L -0.07,-5.29 L -0.04,-4.23 L -0.03,-3.17 L -0.01,-2.12 L -0.00,-1.06 L 0.00,-0.00 L -0.00,1.06 L -0.01,2.12 L -0.03,3.18 L -0.04,4.23 L -0.07,5.29 L -0.10,6.35 L -0.14,7.41 L -0.18,8.47 L -0.23,9.52 L -0.28,10.58 L -0.34,11.64 L -0.40,12.70" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg>Concave mirror</a><a href="../../wiki/cmirrorx/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0.40,-12.70 L 0.34,-11.64 L 0.28,-10.58 L 0.23,-9.53 L 0.18,-8.47 L 0.14,-7.41 L 0.10,-6.35 L 0.07,-5.29 L 0.04,-4.23 L 0.03,-3.17 L 0.01,-2.12 L 0.00,-1.06 L 0.00,-0.00 L 0.00,1.06 L 0.01,2.12 L 0.03,3.18 L 0.04,4.23 L 0.07,5.29 L 0.10,6.35 L 0.14,7.41 L 0.18,8.47 L 0.23,9.52 L 0.28,10.58 L 0.34,11.64 L 0.40,12.70" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg>Convex mirror</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a>
       </div>
 
       

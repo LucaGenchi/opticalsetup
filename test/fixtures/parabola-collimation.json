@@ -1,0 +1,75 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "efc50524",
+   "type": "pointsource",
+   "x": 125,
+   "y": 175,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "displayScale": 1,
+    "wavelength": 532,
+    "bwMode": "mono",
+    "bandwidth": 400,
+    "spread": 360,
+    "nrays": 20,
+    "autoColor": true,
+    "color": "#e02020"
+   }
+  },
+  {
+   "id": "ebygjbjy",
+   "type": "cmirror",
+   "x": 100,
+   "y": 175,
+   "rot": 180,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 100,
+    "f": 25,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "ezaog19p",
+   "type": "oap",
+   "x": 100,
+   "y": 425,
+   "rot": 180,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "length": 150,
+    "f": 25,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "e6geflj4",
+   "type": "pointsource",
+   "x": 125,
+   "y": 425,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "displayScale": 1,
+    "wavelength": 532,
+    "bwMode": "mono",
+    "bandwidth": 400,
+    "spread": 360,
+    "nrays": 20,
+    "autoColor": true,
+    "color": "#e02020"
+   }
+  }
+ ],
+ "beams": []
+}

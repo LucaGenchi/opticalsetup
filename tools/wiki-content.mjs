@@ -4766,15 +4766,18 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>Identical implementation to the <a href="../cmirror/">concave mirror</a> —
-        exact vector reflection off the drawn line, followed by the lens-style paraxial
-        correction <span class="w">u' = u − h/f</span> — just with a negative focal
-        length, which is why the reflected beam here visibly spreads instead of
-        converging.</p>`,
+        <p>Identical implementation to the <a href="../cmirror/">concave mirror</a> — a real
+        spherical surface of radius <span class="w">R = 2f</span>, intersected and reflected
+        analytically — just with the curvature the other way round, which is why the beam
+        here spreads instead of converging. The aberration is present for the same reason and
+        by the same mechanism; it simply matters less, because a diverging mirror is rarely
+        asked to form an image.</p>`,
       formulas: [],
-      limitations: `<p>Same caveat as the concave mirror: the curvature drawn in the icon
-        is cosmetic, the correction is exact at every ray height (no spherical
-        aberration), and there's no wavelength- or angle-dependent reflectivity.</p>`,
+      limitations: `<p>Same caveats as the concave mirror: a 2D cross-section of a sphere
+        rather than a full 3D surface, so only aberrations expressible in the meridional
+        plane appear; no coating model, and so no wavelength- or angle-dependent
+        reflectivity; and a mirror cannot be wider than its own sphere, so a very short focal
+        length silently limits the aperture — the panel reports the size actually used.</p>`,
     },
     related: ['cmirror', 'mirror', 'oap'],
     resources: [
@@ -4804,19 +4807,30 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>OpticalSetup reflects each ray off the mirror's drawn line using the exact
-        vector law of reflection, then applies the same paraxial ray-transfer correction
-        used by the <a href="../lens/">lens</a> element — <span class="w">u' = u −
-        h/f</span> — to the reflected direction. The visible curvature in the icon is
-        cosmetic; the ray/surface interaction happens against the flat line, with focusing
-        added afterward as a per-ray angular correction.</p>`,
+        <p>The mirror is a <strong>real spherical surface</strong>: radius
+        <span class="w">R = 2f</span>, vertex at the element's origin, centre of curvature in
+        front of it. Rays are intersected against that circle analytically and reflected off
+        its true normal, with no paraxial correction applied anywhere. Nothing about the
+        focusing is imposed — it falls out of the geometry, and so does the aberration.</p>
+        <p>That means this element behaves like a sphere rather than like an idealisation of
+        one. Put a <a href="../pointsource/">point source</a> at the focus and the returning
+        beam is <em>not</em> collimated: marginal rays leave at a different angle from
+        paraxial ones, and the beam widens as it travels. How badly depends entirely on how
+        fast the mirror is:</p>
+        <p><strong>f/3.9</strong> — 0.07°, near enough to collimated to use.
+        <strong>f/2.0</strong> — 0.14°. <strong>f/0.5</strong> — 5.7°, useless for the
+        purpose. Same source, same focus, only the aperture-to-focal-length ratio changing.
+        That steep dependence is the whole reason a fast system is built round a
+        <a href="../oap/">parabola</a> instead, and the two elements are worth putting
+        side by side to see it.</p>`,
       formulas: [],
-      limitations: `<p>Because the paraxial correction is applied exactly at every ray
-        height rather than being derived from a real curved surface, this mirror has
-        <em>no</em> spherical aberration at any aperture — every parallel ray converges
-        exactly to the focal point regardless of how far it is from the axis. A real
-        spherical mirror this fast would show visible aberration; this one won't. For a
-        mirror whose curvature is actually ray-traced, see the parabolic mirror.</p>`,
+      limitations: `<p>The surface is a 2D cross-section of a sphere, so only aberrations
+        that live in the meridional plane can appear — spherical aberration and defocus do,
+        while astigmatism and coma, which need the third dimension or a full off-axis field,
+        do not. There is no coating model, so reflectivity does not vary with wavelength or
+        angle of incidence. And a mirror cannot be wider than its own sphere: a short focal
+        length with a wide aperture is limited to what the radius allows, and the panel
+        reports the aperture actually used rather than the one requested.</p>`,
     },
     related: ['cmirrorx', 'mirror', 'oap'],
     resources: [
@@ -4843,20 +4857,26 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>Unlike the concave and convex mirrors, which reflect off a single flat line
-        and add focusing as a separate paraxial correction, the parabolic mirror is
-        <strong>traced as its real geometric curve</strong> — split into a chain of short
-        flat segments, each obeying the exact vector law of reflection. A collimated beam
-        genuinely converges to the focus through real reflection geometry at every ray
-        height, with no paraxial approximation involved.</p>`,
+        <p>The mirror is traced as its real curve. Short flat facets locate <em>where</em> a
+        ray lands, but the reflection uses the parabola's own normal at that point, found
+        analytically: the surface <span class="w">x = −y²/4f</span> has gradient
+        <span class="w">(1, y/2f)</span>, and the exact ray–curve intersection is solved
+        rather than taken from the facet chord. The facet count therefore sets positional
+        accuracy only, never angular — which is what makes the defining property hold at
+        <em>any</em> aperture rather than only at gentle ones.</p>
+        <p>The consequence is worth checking against the
+        <a href="../cmirror/">spherical mirror</a> directly. With a point source at the focus
+        of each, f&nbsp;=&nbsp;25 and a 100&nbsp;mm aperture, the parabola returns a beam
+        98&nbsp;mm wide at 400&nbsp;mm and still 98&nbsp;mm wide at 1200&nbsp;mm — collimated,
+        exactly. The sphere returns 468&nbsp;mm widening to 792&nbsp;mm: about 11°. Neither
+        number is put in by hand; both come out of the two surfaces.</p>`,
       formulas: [],
       limitations: `<p>This is closer to first-principles optics than most elements in the
-        library, but it's still a 2D on-axis cross-section — a real OAP is typically an
-        off-axis section of a 3D paraboloid, which this side view can't represent. The
-        curve is also faceted into a finite number of straight segments rather than
-        perfectly smooth; the segment count scales with size and focal length to keep
-        faceting error negligible for realistic apertures, but an extremely fast mirror
-        sampled too coarsely could show it.</p>`,
+        library, but it is still a 2D on-axis cross-section — a real OAP is typically an
+        off-axis section of a 3D paraboloid, which this side view cannot represent. Being
+        exact in reflection also means it is exact in a way no manufactured mirror is: there
+        is no surface figure error, no roughness, and no coating model, so reflectivity does
+        not vary with wavelength or angle.</p>`,
     },
     related: ['cmirror', 'cmirrorx', 'mirror'],
     resources: [
