@@ -137,7 +137,7 @@ export function pulseGateTransmission(pulse, sampleCount = 4096) {
 // The window defaults to two periods of whichever is slower — the pulse train
 // or the slowest modulation — so an alternating pattern (e.g. a 20 MHz train
 // switched at 10 MHz) always shows at least one full repeat of its structure.
-export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs } = {}) {
+export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs = 0 } = {}) {
   const repRateMHz = Number.isFinite(pulse?.repRateMHz) && pulse.repRateMHz > 0
     ? Math.min(1e6, Math.max(0.001, pulse.repRateMHz)) : null;
   if (!repRateMHz) return null;
@@ -156,19 +156,21 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs } = {}) 
   // Pulse arrivals inside the window, each scaled by what survived the gates.
   // Very dense trains are bounded so one window can't emit thousands of spikes.
   const maxPulses = 240;
-  const first = Math.ceil(-phaseNs / pulsePeriodNs);
+  const from = Number.isFinite(startNs) ? startNs : 0;
+  const to = from + spanNs;
+  const first = Math.ceil((from - phaseNs) / pulsePeriodNs);
   const pulses = [];
   for (let k = first; pulses.length < maxPulses; k++) {
     const tNs = phaseNs + k * pulsePeriodNs;
-    if (tNs > spanNs + 1e-9) break;
-    if (tNs < -1e-9) continue;
+    if (tNs > to + 1e-9) break;
+    if (tNs < from - 1e-9) continue;
     pulses.push({ tNs, amplitude: gates.length ? pulseTransmissionAt(gated, tNs) : 1 });
   }
 
   const count = Math.max(2, Math.min(600, Math.round(samples)));
   const envelope = [];
   for (let i = 0; i < count; i++) {
-    const tNs = spanNs * i / (count - 1);
+    const tNs = from + spanNs * i / (count - 1);
     envelope.push({
       tNs,
       value: gates.reduce((acc, gate) => acc * gateTransmissionAt(gate, tNs), 1),
@@ -177,6 +179,7 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs } = {}) 
 
   return {
     spanNs,
+    startNs: from,
     repRateMHz,
     modulationMHz: slowestGateNs > 0 ? 1000 / slowestGateNs : null,
     truncated: pulses.length >= maxPulses,

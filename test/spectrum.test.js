@@ -451,37 +451,66 @@ test('the beam probe plots real sampled data for a broadband line as a smooth cu
   assert.ok(sampleCount > 5, `expected many sampled points for a broadband line, got ${sampleCount}`);
 });
 
-test('the beam probe shows the range as ±2σ of the FWHM bandwidth plus 5 nm, with extremes and centre labeled', () => {
+test('the beam probe frames the spectrum by what clears a thousandth of the peak', () => {
+  // The spectrometer's rule, not a fixed number of standard deviations: the
+  // axis spans whatever the light actually contains, so a wider band gets a
+  // wider window rather than the same shape drawn at the same apparent size.
+  const bench = bandwidth => {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'line';
+    laser.params.bwMode = 'band';
+    laser.params.bandwidth = bandwidth;
+    const probe = createElement('probe', 150, 0);
+    traceAll([laser, probe]);
+    const svg = registry.probe.svg(probe, [laser, probe]);
+    const ticks = [...svg.matchAll(/font-size="4.6" fill="#666">(\d+)</g)].map(m => Number(m[1]));
+    return { svg, ticks };
+  };
+  const narrow = bench(40), wide = bench(200);
+  assert.equal(narrow.ticks[1], 532, 'centre wavelength is labeled');
+  assert.equal(wide.ticks[1], 532);
+  const span = t => t[2] - t[0];
+  assert.ok(span(wide.ticks) > span(narrow.ticks) * 3,
+    `a 5x wider band must open the window: ${span(narrow.ticks)} vs ${span(wide.ticks)} nm`);
+  // and each window must actually contain its own band
+  assert.ok(narrow.ticks[0] < 512 && narrow.ticks[2] > 552, 'the 40 nm band fits inside its window');
+});
+
+test('a fixed wavelength range overrides the automatic one', () => {
   const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
-  laser.params.bandwidth = 40; // FWHM 40 -> sigma ~16.99 -> padded [~493, ~571], centre 532
+  laser.params.bandwidth = 40;
   const probe = createElement('probe', 150, 0);
+  Object.assign(probe.params, { rangeMode: 'manual', specMin: 500, specMax: 560 });
   traceAll([laser, probe]);
-  const svg = registry.probe.svg(probe);
-  assert.match(svg, />493</, 'left extreme (centre - 2σ - 5) should be labeled');
-  assert.match(svg, />532</, 'centre wavelength should be labeled');
-  assert.match(svg, />571</, 'right extreme (centre + 2σ + 5) should be labeled');
+  const ticks = [...registry.probe.svg(probe, [laser, probe])
+    .matchAll(/font-size="4.6" fill="#666">(\d+)</g)].map(m => Number(m[1]));
+  assert.deepEqual(ticks, [500, 530, 560], 'the axis is exactly what was asked for');
 });
 
-test('the beam probe spectrum plot never overflows the white box, even when the spec\'s sampled support reaches past the displayed range', () => {
-  // Regression: the curve used to be drawn from all 28 raw samples across
-  // the spec's own ±3σ support, unfiltered and unclipped — for a wide
-  // enough laser the ±3σ tails ran past the plot box's edges. A wide
-  // bandwidth (sigma ~85 nm) makes the ±2σ+5 display window (~180 nm) much
-  // narrower than the ±3σ sample support (~255 nm), so some of the 28 raw
-  // samples must now be filtered out.
+test('the beam probe spectrum plot never overflows the white box', () => {
+  // Regression: the curve was once drawn from all 28 raw samples of the
+  // spec's own support, unfiltered and unclipped, so a wide enough laser ran
+  // past the plot box's edges. The automatic window now spans the light
+  // rather than cutting it, but a manual range can still be narrower than
+  // what is there -- so both guards, the filter and the clip, still matter.
   const laser = createElement('cwlaser', 0, 0);
   laser.params.beamMode = 'line';
   laser.params.bwMode = 'band';
   laser.params.bandwidth = 200;
   const probe = createElement('probe', 150, 0);
+  Object.assign(probe.params, { rangeMode: 'manual', specMin: 500, specMax: 560 });
   traceAll([laser, probe]);
-  const svg = registry.probe.svg(probe);
-  assert.match(svg, /<clipPath id="probeSpecClip/, 'the curve must also be clipped to the plot box as a second guard');
-  const sampleCount = Number(svg.match(/data-spectrum-points="(\d+)"/)?.[1] ?? 0);
-  assert.ok(sampleCount > 0 && sampleCount < 28,
-    `expected the wide Gaussian's ±3σ tail samples to be filtered out of the 28-sample sweep, got ${sampleCount}`);
+  const svg = registry.probe.svg(probe, [laser, probe]);
+  assert.match(svg, /<clipPath id="probeSpecClip/, 'the curve is clipped to the plot box');
+
+  // every plotted point must sit inside the axes, not merely be clipped there
+  const path = /<path data-spectrum-points="\d+" d="([^"]+)"/.exec(svg)?.[1] || '';
+  const xs = [...path.matchAll(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)].map(m => Number(m[1]));
+  assert.ok(xs.length > 2, 'the curve has points to check');
+  assert.ok(Math.min(...xs) >= 10 - 0.01 && Math.max(...xs) <= 66 + 0.01,
+    `points must stay within the 10..66 plot box, got ${Math.min(...xs)}..${Math.max(...xs)}`);
 });
 
 test('the beam probe pads a monochromatic line by 5 nm on each side too', () => {
