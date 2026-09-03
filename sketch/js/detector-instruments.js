@@ -172,6 +172,33 @@ const TIME_WINDOW_PARAMS = [
 ];
 for (const type of ['detector', 'pmt']) registry[type].params.push(...TIME_WINDOW_PARAMS.map(p => ({ ...p })));
 
+// How fast the instrument can actually follow the light. This is the property
+// that separates these two from an autocorrelator: neither can resolve
+// structure shorter than its own impulse response, so neither can time two
+// pulse trains against each other to better than that. A photodiode's speed
+// trades against its active area -- the fastest devices have sub-millimetre
+// apertures and reach tens of GHz, while a centimetre-wide one is far slower.
+// A photomultiplier is limited by the spread in electron transit time: better
+// than 1 ns with optimized electrodes, but over 10 ns for a standard design.
+registry.detector.params.push({
+  key: 'riseTimeNs', label: 'Response time (ns)', type: 'number', min: 0.01, max: 1000, step: 0.1, def: 1,
+});
+registry.pmt.params.push({
+  key: 'riseTimeNs', label: 'Response time (ns)', type: 'number', min: 0.1, max: 1000, step: 0.1, def: 2,
+});
+
+export function detectorResponseNs(sensor) {
+  const fallback = sensor?.type === 'pmt' ? 2 : 1;
+  const value = Number(sensor?.params?.riseTimeNs);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+// Zooming in past the response shows nothing the instrument could have seen,
+// so the window stops there. Five response times keeps the impulse itself a
+// fifth of the screen -- tight enough to read, wide enough to still be a
+// measurement rather than a picture of the detector.
+const MIN_WINDOW_RESPONSES = 5;
+
 registry.generaldetector = instrumentDefinition({
   label: 'General detector', code: 'DET', readoutKind: 'general', paletteOrder: 9, width: 54, accent: '#67e8f9',
   aliases: ['universal detector', 'all properties', 'pulse detector', 'repetition rate', 'pulse duration'],
@@ -326,16 +353,27 @@ export function detectorTimeWindow(sensor, elements = []) {
   // On its own a detector measures from its own arrival: the absolute flight
   // time from the source is a constant offset that tells you nothing when
   // there is nothing to compare it against.
-  if (!sensor.params?.sync) return { ...probeTimeWindowNs(own.reading, own.params), lagNs: 0 };
+  const floorNs = MIN_WINDOW_RESPONSES * detectorResponseNs(sensor);
+  const clamp = w => ({ ...w, spanNs: Math.max(w.spanNs, floorNs), floorNs, responseNs: detectorResponseNs(sensor) });
+  if (!sensor.params?.sync) return clamp({ ...probeTimeWindowNs(own.reading, own.params), lagNs: 0 });
   const group = elements
     .filter(el => el?.params?.sync && (el.type === 'detector' || el.type === 'pmt'))
-    .map(el => (el.id === sensor.id ? own : { reading: detectorReading(el.id), params: el.params }))
+    .map(el => (el.id === sensor.id ? { ...own, sensor } : { reading: detectorReading(el.id), params: el.params, sensor: el }))
     .filter(m => m.reading);
   const window = syncedTimeWindowNs(group.length ? group : [own]);
-  if (!window) return { ...probeTimeWindowNs(own.reading, own.params), lagNs: 0 };
+  if (!window) return clamp({ ...probeTimeWindowNs(own.reading, own.params), lagNs: 0 });
   // Synced, every member measures from the group's earliest arrival, so a
   // longer arm draws its train shifted right by exactly its extra flight time.
-  return { ...window, lagNs: arrivalDelayNs(own.reading) - window.originNs };
+  // A synced group also cannot go below the SLOWEST member's response: a
+  // shared axis is only honest at a resolution every member can deliver.
+  const groupFloor = Math.max(floorNs, ...group.map(m => MIN_WINDOW_RESPONSES * detectorResponseNs(m.sensor || sensor)));
+  return {
+    ...window,
+    spanNs: Math.max(window.spanNs, groupFloor),
+    floorNs: groupFloor,
+    responseNs: detectorResponseNs(sensor),
+    lagNs: arrivalDelayNs(own.reading) - window.originNs,
+  };
 }
 
 // The mode line, which is the one place on this card with room for the lag:
@@ -346,7 +384,11 @@ export function detectorTimeWindow(sensor, elements = []) {
 function scopeMode(base, window) {
   if (!window?.synced) return base === 'PMT' ? 'PMT · OSCILLOSCOPE' : base;
   const lag = window.lagNs || 0;
-  return `${base} · SYNCED${Math.abs(lag) > 1e-9 ? ` +${formatTimeAxisNs(lag)}` : ''}`;
+  if (Math.abs(lag) <= 1e-9) return `${base} · SYNCED`;
+  // Naming a delay the instrument cannot resolve would be quoting a number it
+  // did not measure. The geometry knows it; this detector does not.
+  const resolved = Math.abs(lag) >= (window.responseNs || 0);
+  return `${base} · SYNCED ${resolved ? `+${formatTimeAxisNs(lag)}` : `+${formatTimeAxisNs(lag)} UNRESOLVED`}`;
 }
 
 function scopePlot(reading, window = null) {
@@ -378,17 +420,47 @@ function scopePlot(reading, window = null) {
       `fill="none" stroke="#67e8f9" stroke-width="0.7" opacity="0.45"/>`
     : '';
 
-  const spikes = trace.pulses.filter(p => p.amplitude > 1e-6).map(p => {
-    const x = xAt(p.tNs).toFixed(2);
-    return `<line x1="${x}" y1="${baseline}" x2="${x}" y2="${yAt(p.amplitude).toFixed(2)}" ` +
-      `stroke="${reading.color || '#8fd3ff'}" stroke-width="1.3" stroke-linecap="round"/>`;
-  }).join('');
+  // What the instrument would actually put on a scope: the train convolved
+  // with its own impulse response. Drawing infinitely sharp spikes implied a
+  // photodiode could separate anything you cared to zoom in on -- it cannot,
+  // and two pulses closer together than its response merge into one bump here
+  // exactly as they would on the bench. This is the whole reason an
+  // autocorrelator exists.
+  const live = trace.pulses.filter(p => p.amplitude > 1e-6);
+  const responseNs = Math.max(1e-9, window?.responseNs || 0);
+  let spikes = '';
+  if (live.length) {
+    const steps = 220;
+    const at = t => live.reduce((sum, p) => {
+      const d = (t - p.tNs) / responseNs;
+      // Beyond a few response widths the contribution is numerically nothing;
+      // skipping it keeps a 240-pulse train from being O(n^2) for no gain.
+      return Math.abs(d) > 4 ? sum : sum + p.amplitude * Math.exp(-4 * Math.LN2 * d * d);
+    }, 0);
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = from + trace.spanNs * i / steps;
+      pts.push({ t, v: at(t) });
+    }
+    // Scaled so that ONE resolved pulse reaches full height -- not so that the
+    // curve's own maximum does. A detector too slow to follow the train sums
+    // many overlapping responses into something well past full scale, which
+    // clips into the flat level such a detector really outputs; normalizing to
+    // the summed peak instead would have stretched that residual ripple back
+    // across the screen and made an unresolvable train look resolved.
+    const single = Math.max(...live.map(p => p.amplitude), 1e-9);
+    const scale = 1 / single;
+    const path = pts.map(pt => `${xAt(pt.t).toFixed(2)},${yAt(pt.v * scale * (peak || 1)).toFixed(2)}`).join(' ');
+    spikes = `<polyline data-scope-trace="${steps + 1}" points="${path}" fill="none" ` +
+      `stroke="${reading.color || '#8fd3ff'}" stroke-width="1.3" stroke-linejoin="round"/>`;
+  }
 
   const caption = trace.modulationMHz
     ? `MOD ${formatMHz(trace.modulationMHz)} · REP ${formatMHz(trace.repRateMHz)}`
     : `REP ${formatMHz(trace.repRateMHz)}`;
 
-  return `<g data-scope-pulses="${trace.pulses.length}" data-scope-lag-ns="${(trace.delayNs || 0).toFixed(6)}">` + axis + envelope + spikes +
+  return `<g data-scope-pulses="${trace.pulses.length}" data-scope-lag-ns="${(trace.delayNs || 0).toFixed(6)}"` +
+    ` data-scope-response-ns="${responseNs.toFixed(4)}">` + axis + envelope + spikes +
     tick(from, 'start') + tick(from + trace.spanNs / 2, 'middle') + tick(from + trace.spanNs, 'end') + `</g>` +
     `<text x="-35" y="17" font-size="4.6" fill="#fde68a">${esc(caption)}</text>` +
     `<text x="35" y="17" text-anchor="end" font-size="4.6" fill="#7892a1">Σw ${compactNumber(reading.signal)}</text>`;

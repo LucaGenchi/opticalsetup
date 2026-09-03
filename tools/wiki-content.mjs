@@ -3136,16 +3136,44 @@ export const wikiEntries = [
         category. This is genuinely useful for seeing <em>whether</em> light reaches a given
         point, roughly how strong it is relative to other configurations, and what its
         spectral or polarization content is — regardless of what real sensor a lab bench
-        would need there.</p>`,
+        would need there.</p>
+        <h3>The oscilloscope, and why it has a floor</h3>
+        <p>Pulsed light turns the readout into a scope trace: the pulse train against time,
+        with any chopper or modulator envelope behind it. The window defaults to two periods
+        of the slowest thing on the beam, and <strong>Time interval</strong> and
+        <strong>Time offset</strong> override it.</p>
+        <p>What that trace shows is the train <em>convolved with the detector's own
+        response</em>, set by <strong>Response time</strong> and defaulting to 1&nbsp;ns.
+        This is not decoration. Two pulses closer together than the response merge into one
+        bump, exactly as they would on a bench, and a detector slower than the pulse spacing
+        stops resolving the train at all and reads the flat average instead — put a 15&nbsp;ns
+        response on an 80&nbsp;MHz train and the trace goes level, which is what such a
+        detector really outputs. The window will not zoom below five response times either,
+        because nothing there is anything the instrument could have seen.</p>
+        <p><strong>Sync</strong> puts several detectors on one axis <em>and one time origin</em>,
+        so light that took a longer route is drawn where it actually arrives. That is where the
+        limit bites hardest, and where it is most worth understanding: an arm 50&nbsp;mm longer
+        delays its pulses by 167&nbsp;ps, and a 1&nbsp;ns photodiode cannot see that — the
+        readout names the delay but marks it <strong>unresolved</strong>, because the geometry
+        knows it and the instrument does not. Give the detector a 50&nbsp;ps response, as a
+        small fibre-coupled diode really has, and the same shift is resolved. This is precisely
+        why timing two ultrashort pulse trains against each other is a job for an
+        <a href="../autocorrelator/">autocorrelator</a> rather than a photodiode and a scope:
+        the autocorrelator sidesteps detector speed entirely by using the pulses themselves as
+        the clock.</p>`,
       formulas: [],
       limitations: `<p>The reported signal is not calibrated to any real unit, and there is no
         concept of sensor material at all: a photodetector in this app reads every wavelength
         in its traced light with equal weight, whether that light is 405&nbsp;nm (well inside
         silicon's range) or 1550&nbsp;nm (which silicon cannot detect at all and would need
         InGaAs). There is no responsivity curve, no bandgap cutoff, and no way to configure or
-        even see which material is assumed. There is also no frequency response of any kind —
-        no bandwidth, no rise time, no 3 dB cutoff — so a beam modulated far beyond what any
-        real photodiode could follow reads at full strength exactly like a steady beam. Dark
+        even see which material is assumed. The response time shapes the <em>time trace</em>
+        and sets how finely the axis can be read, but it is not a filter on anything else: the
+        relative signal is still an instantaneous sum, so a beam modulated far beyond what the
+        configured response could follow still reads at full strength as a single number, and
+        there is no roll-off, no 3&nbsp;dB point, and no phase response. Nor is the response
+        tied to the active area, though on a real device those trade against each other
+        directly. Dark
         current, noise-equivalent power, and saturation are likewise not modeled here; the
         PMT variant is the only detector in this category with any qualitative gain/saturation
         behavior at all. Treat every reading as relative and instantaneous, never as a
@@ -3238,6 +3266,16 @@ export const wikiEntries = [
         number too small to compare against anything. A gain of 10⁵ lifts exactly that
         signal into a readable range.</p>
 
+        <h3>Speed, and the transit-time limit</h3>
+        <p>Pulsed light gives the PMT the same scope trace the
+        <a href="../detector/">photodetector</a> draws, with the same Time interval, Time
+        offset and Sync controls — and the same convolution with its own
+        <strong>Response time</strong>, which here defaults to 2&nbsp;ns. That default is not
+        arbitrary: a photomultiplier's speed is limited by the <em>spread</em> in how long
+        electrons take to cross the tube, which for a standard electrode design can put the
+        rise time above 10&nbsp;ns, while optimized designs reach well below
+        1&nbsp;ns${cite(2)}. A slow tube on a fast train does not draw a blurred train — it
+        draws a flat level, because it never resolved the pulses at all.</p>
         <h3>The dark floor, and why gain cannot beat it</h3>
         <p>The <strong>equivalent dark input</strong> is the tube's own dark current
         expressed as the light level that would produce the same output — referred to the
@@ -3275,9 +3313,9 @@ export const wikiEntries = [
     related: ['detector', 'camera', 'powermeter', 'sample', 'objective'],
     citations: [
       { label: 'Hamamatsu — Photomultiplier Tubes: Basics and Applications (photocathode quantum efficiency and spectral response)', url: 'https://www.hamamatsu.com/content/dam/hamamatsu-photonics/sites/documents/99_SALES_LIBRARY/etd/PMT_handbook_v4E.pdf' },
+      { label: 'R. Paschotta, “Photomultipliers,” RP Photonics Encyclopedia — electron transit time spread, and the rise time that follows from it', url: 'https://www.rp-photonics.com/photomultipliers.html' },
     ],
     resources: [
-      { label: 'RP Photonics Encyclopedia — Photomultipliers', url: 'https://www.rp-photonics.com/photomultipliers.html' },
       { label: 'RP Photonics Encyclopedia — Photon Counting', url: 'https://www.rp-photonics.com/photon_counting.html' },
     ],
   },

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
+import { detectorResponseNs } from '../sketch/js/detector-instruments.js';
 import { traceAll } from '../sketch/js/raytrace.js';
 import '../sketch/js/detector-instruments.js';
 import {
@@ -283,58 +284,100 @@ test('synced arms are drawn where the light actually arrives', () => {
   assert.doesNotMatch(registry.display.svg(alone.farScreen, alone.scene), /\+167 ps/);
 });
 
-test('narrowing the timebase makes the shift visible on the axis', () => {
-  const firstPulseX = timeSpanNs => {
-    const mk = (t, x, y, rot = 0, params = {}) => {
-      const el = createElement(t, x, y); el.rot = rot; Object.assign(el.params, params); return el;
-    };
+test('the response time is a real parameter on both instruments, with sane bounds', () => {
+  const spec = type => registry[type].params.find(p => p.key === 'riseTimeNs');
+  // a typical fast lab photodiode, and a photomultiplier limited by the
+  // spread in electron transit time -- slower, and floored higher
+  assert.equal(spec('detector').def, 1);
+  assert.equal(spec('pmt').def, 2);
+  assert.equal(spec('detector').min, 0.01, 'the fastest packaged diodes reach ~10 ps');
+  assert.equal(spec('pmt').min, 0.1, 'no photomultiplier is that fast');
+  assert.equal(detectorResponseNs(createElement('detector', 0, 0)), 1);
+  assert.equal(detectorResponseNs(createElement('pmt', 0, 0)), 2);
+  // a scene saved before this existed still gets a sane response
+  assert.equal(detectorResponseNs({ type: 'pmt', params: {} }), 2);
+  assert.equal(detectorResponseNs({ type: 'detector', params: { riseTimeNs: 0 } }), 1);
+});
+
+test('a synced group is held to the slowest member, not the fastest', () => {
+  // A shared axis is only honest at a resolution every member can deliver:
+  // pairing a 50 ps diode with a 10 ns PMT cannot buy the PMT any speed.
+  const mk = (t, x, y, params) => { const el = createElement(t, x, y); Object.assign(el.params, params); return el; };
+  const beam = y => { const l = createElement('pulsedlaser', 0, y); l.params.beamMode = 'line'; return l; };
+  const fast = mk('detector', 300, 0, { sync: true, riseTimeNs: 0.05, timeSpanNs: 1 });
+  const slow = mk('pmt', 300, 100, { sync: true, riseTimeNs: 10, timeSpanNs: 1 });
+  const screen = mk('display', 420, 0, { sensorId: fast.id, screenOn: true });
+  // each needs its own beam: a member with nothing arriving has no trace to
+  // share, and is left out of the group rather than constraining it
+  const scene = [beam(0), beam(100), fast, slow, screen];
+  traceAll(scene, []);
+  const axis = [...registry.display.svg(screen, scene)
+    .matchAll(/font-size="3.4" fill="#5f7d8e">([^<]+)</g)].map(m => m[1]);
+  assert.deepEqual(axis, ['0', '25 ns', '50 ns'],
+    'the fast diode is held to the 10 ns PMT it is synced with');
+});
+
+test('a detector cannot resolve, or claim, a shift shorter than its own response', () => {
+  // This is the point of the whole instrument distinction: a photodiode and a
+  // scope cannot time two trains against each other to picoseconds. The
+  // geometry knows the arms differ by 167 ps; this detector does not.
+  const mk = (t, x, y, rot = 0, params = {}) => {
+    const el = createElement(t, x, y); el.rot = rot; Object.assign(el.params, params); return el;
+  };
+  const bench = (riseTimeNs, timeSpanNs) => {
     const laser = mk('pulsedlaser', 98, 200, 0, { wavelength: 920, beamMode: 'beam', beamWidth: 3 });
     const bs = mk('bs', 350, 200, 270, { ratio: 0.5, size: 25.4 });
     const mirror = mk('mirror', 350, 250, 315, { length: 25.4 });
-    const far = mk('detector', 469, 250, 0, { aperture: 26, sync: true, timeSpanNs });
-    const near = mk('detector', 469, 200, 0, { aperture: 26, sync: true, timeSpanNs });
+    const near = mk('detector', 469, 200, 0, { aperture: 26, sync: true, riseTimeNs, timeSpanNs });
+    const far = mk('detector', 469, 250, 0, { aperture: 26, sync: true, riseTimeNs, timeSpanNs });
     const screen = mk('display', 625, 300, 0, { sensorId: far.id, screenOn: true });
     const scene = [laser, bs, mirror, near, far, screen];
     traceAll(scene, []);
     const svg = registry.display.svg(screen, scene);
-    return Number([...svg.matchAll(/<line x1="(-?[\d.]+)" y1="6"[^>]*stroke-width="1.3"/g)].map(m => m[1])[0]);
+    return {
+      svg,
+      mode: [...svg.matchAll(/fill="#67e8f9"[^>]*>([^<]+)</g)].map(m => m[1])[1],
+      axis: [...svg.matchAll(/font-size="3.4" fill="#5f7d8e">([^<]+)</g)].map(m => m[1]),
+    };
   };
-  // the plot runs -35..35, so 167 ps of 25 ns is half a unit -- real, but
-  // invisible; of 1 ns it is nearly twelve
-  assert.ok(Math.abs(firstPulseX(0) - -34.53) < 0.1, 'sub-pixel at the automatic 25 ns window');
-  assert.ok(Math.abs(firstPulseX(1) - -23.33) < 0.1, 'clearly separated at 1 ns');
+
+  // a 1 ns photodiode: the lag is real but not measurable here, and asking
+  // for a 1 ns window gets the 5 ns floor instead
+  const ordinary = bench(1, 1);
+  assert.match(ordinary.mode, /UNRESOLVED/);
+  assert.deepEqual(ordinary.axis, ['0', '2.5 ns', '5 ns'], 'clamped to five response times');
+
+  // a 50 ps fibre-coupled diode can see it, and says so without the caveat
+  const fast = bench(0.05, 1);
+  assert.match(fast.mode, /\+167 ps/);
+  assert.doesNotMatch(fast.mode, /UNRESOLVED/);
+  assert.deepEqual(fast.axis, ['0', '500 ps', '1 ns'], 'a fast detector keeps the window it was given');
+
+  // a standard 10 ns PMT cannot even hold the automatic window
+  assert.deepEqual(bench(10, 0).axis, ['0', '25 ns', '50 ns']);
 });
 
-test('a PMT draws the same trace, so it can join a sync group', () => {
-  const pmt = detectorRow(0, null, { sync: true }, 'pmt');
-  const photo = detectorRow(200, 1e6, { sync: true });
-  const scene = [...pmt.parts, ...photo.parts];
-  traceAll(scene, []);
-  const svg = registry.display.svg(pmt.screen, scene);
-  assert.match(svg, /PMT · SYNCED/);
-  assert.deepEqual(axisLabels(pmt.screen, scene), ['0', '1 µs', '2 µs'],
-    'the PMT follows the group, not its own 25 ns beam');
-});
-
-test('a CW beam still has nothing to plot, synced or not', () => {
-  const laser = createElement('cwlaser', 0, 0);
-  laser.params.beamMode = 'line';
-  const detector = createElement('detector', 300, 0);
-  detector.params.sync = true;
-  const screen = createElement('display', 420, 0);
-  Object.assign(screen.params, { sensorId: detector.id, screenOn: true });
-  const scene = [laser, detector, screen];
-  traceAll(scene, []);
-  assert.match(registry.display.svg(screen, scene), /REL INTENSITY/);
-});
-
-test('the shared time formatter never reaches for an exponent', () => {
-  assert.equal(formatTimeAxisNs(0), '0');
-  assert.equal(formatTimeAxisNs(0.5), '500 ps');
-  assert.equal(formatTimeAxisNs(12.5), '12.5 ns');
-  assert.equal(formatTimeAxisNs(2000), '2 µs');
-  assert.equal(formatTimeAxisNs(2e6), '2 ms');
-  assert.equal(formatTimeAxisNs(-25), '-25 ns');
+test('pulses closer together than the response merge, as they would on a scope', () => {
+  const trace = riseTimeNs => {
+    const laser = createElement('pulsedlaser', 0, 0);
+    Object.assign(laser.params, { beamMode: 'line', repRateMHz: 80 });
+    const detector = createElement('detector', 300, 0);
+    Object.assign(detector.params, { riseTimeNs });
+    const screen = createElement('display', 420, 0);
+    Object.assign(screen.params, { sensorId: detector.id, screenOn: true });
+    const scene = [laser, detector, screen];
+    traceAll(scene, []);
+    const svg = registry.display.svg(screen, scene);
+    const pts = /data-scope-trace="\d+" points="([^"]+)"/.exec(svg)[1].split(' ')
+      .map(p => Number(p.split(',')[1]));
+    // how far the curve swings between its peaks and troughs
+    return Math.max(...pts) - Math.min(...pts);
+  };
+  // 12.5 ns apart: a 0.5 ns detector separates them cleanly
+  assert.ok(trace(0.5) > 12, 'a fast detector resolves the individual pulses');
+  // a 40 ns detector cannot follow an 80 MHz train at all -- it reads the
+  // average, which is a nearly flat line
+  assert.ok(trace(40) < 1, 'a slow detector integrates the train into a level');
 });
 
 // ---------------- spectrum range ----------------

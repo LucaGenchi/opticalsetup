@@ -232,6 +232,16 @@
         number too small to compare against anything. A gain of 10⁵ lifts exactly that
         signal into a readable range.</p>
 
+        <h3>Speed, and the transit-time limit</h3>
+        <p>Pulsed light gives the PMT the same scope trace the
+        <a href="../detector/">photodetector</a> draws, with the same Time interval, Time
+        offset and Sync controls — and the same convolution with its own
+        <strong>Response time</strong>, which here defaults to 2&nbsp;ns. That default is not
+        arbitrary: a photomultiplier's speed is limited by the <em>spread</em> in how long
+        electrons take to cross the tube, which for a standard electrode design can put the
+        rise time above 10&nbsp;ns, while optimized designs reach well below
+        1&nbsp;ns<sup class="cite">[<a href="#ref-2">2</a>]</sup>. A slow tube on a fast train does not draw a blurred train — it
+        draws a flat level, because it never resolved the pulses at all.</p>
         <h3>The dark floor, and why gain cannot beat it</h3>
         <p>The <strong>equivalent dark input</strong> is the tube's own dark current
         expressed as the light level that would produce the same output — referred to the
@@ -277,13 +287,13 @@
       
       <h2 class="section-head real"><span class="sw"></span>References</h2>
       <ol class="reference-list">
-        <li id="ref-1"><a href="https://www.hamamatsu.com/content/dam/hamamatsu-photonics/sites/documents/99_SALES_LIBRARY/etd/PMT_handbook_v4E.pdf" target="_blank" rel="noopener">Hamamatsu — Photomultiplier Tubes: Basics and Applications (photocathode quantum efficiency and spectral response)</a></li>
+        <li id="ref-1"><a href="https://www.hamamatsu.com/content/dam/hamamatsu-photonics/sites/documents/99_SALES_LIBRARY/etd/PMT_handbook_v4E.pdf" target="_blank" rel="noopener">Hamamatsu — Photomultiplier Tubes: Basics and Applications (photocathode quantum efficiency and spectral response)</a></li><li id="ref-2"><a href="https://www.rp-photonics.com/photomultipliers.html" target="_blank" rel="noopener">R. Paschotta, “Photomultipliers,” RP Photonics Encyclopedia — electron transit time spread, and the rise time that follows from it</a></li>
       </ol>
 
       
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
-        <li><a href="https://www.rp-photonics.com/photomultipliers.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Photomultipliers</a></li><li><a href="https://www.rp-photonics.com/photon_counting.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Photon Counting</a></li>
+        <li><a href="https://www.rp-photonics.com/photon_counting.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Photon Counting</a></li>
       </ul>
     </main>
   </div>
