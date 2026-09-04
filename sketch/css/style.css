@@ -935,15 +935,37 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   :root.theme-transition * { transition: none !important; }
 }
 
-/* Wiki embed: a single fixed, non-editable-position component. Hide
-   everything that would let the visitor add, move, or delete anything. */
-body.demo-mode #palette,
-body.demo-mode #toolbar .nav-group,
-body.demo-mode #toolbar .file-group,
-body.demo-mode #toolbar .export-group,
-body.demo-mode #toolbar .history-group,
-body.demo-mode #btnAdd,
-body.demo-mode #btnTrash,
-body.demo-mode #btnMobileMenu {
+/* Embedded preview (?embed=1): a flat picture of a scene for a wiki, example
+   or community page to frame. It is deliberately inert -- nothing here is
+   clickable, because the page beside it does the explaining and the "Open in
+   the canvas" link is where interaction belongs. The render loop still runs,
+   so an animated setup still animates. */
+body.embed-mode #palette,
+body.embed-mode #inspector,
+body.embed-mode #toolbar .nav-group,
+body.embed-mode #toolbar .file-group,
+body.embed-mode #toolbar .export-group,
+body.embed-mode #toolbar .history-group,
+body.embed-mode #btnAdd,
+body.embed-mode #btnTrash,
+body.embed-mode #btnMobileMenu,
+body.embed-mode #viewControls,
+body.embed-mode #toolMode,
+body.embed-mode #mobileToolActions,
+body.embed-mode #status,
+body.embed-mode .mobile-toolbar-actions {
   display: none !important;
 }
+
+/* Belt and braces with the pointer/key guards in canvas.js: no hover
+   affordance, no text selection, no touch panning, no focus ring. The
+   pulse controls stay visible and usable -- playing an animation is
+   watching the picture, not editing it. */
+body.embed-mode #canvas {
+  pointer-events: none !important;
+  touch-action: none !important;
+  cursor: default !important;
+  user-select: none !important;
+}
+body.embed-mode #canvas:focus,
+body.embed-mode #canvas:focus-visible { outline: none !important; }

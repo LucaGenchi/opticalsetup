@@ -185,11 +185,11 @@ ${header(base)}
       <a class="place-cta" href="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}">Open in the canvas →</a>
 
       <div class="embed-wrap"${embedStyleFor(scene)}>
-        <iframe class="embed-frame" src="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}"
-          title="${esc(entry.title)} — click any component to see its live specs"
-          loading="lazy"></iframe>
+        <iframe class="embed-frame" src="${base}/sketch/?example=${encodeURIComponent(manifestEntry.slug)}&amp;embed=1"
+          title="${esc(entry.title)} — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
-      <p class="embed-caption">Click any component to see its live specs — this embedded canvas can't be moved, deleted, or added to.</p>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
 
       ${entry.html ? `
       <h2 class="section-head real"><span class="sw"></span>Background</h2>

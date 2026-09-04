@@ -839,7 +839,7 @@ function renderOverlay() {
     // 66px button, so placed at the rotate handle's height it would cover the
     // handle and steal its clicks — and above that it lands under the mobile
     // canvas toolbar. Text labels carry no element label, so below is clear.
-    const textEditControl = sel.type === 'textlabel' && !state.demoMode && textEditor?.el !== sel
+    const textEditControl = sel.type === 'textlabel' && !state.embedMode && textEditor?.el !== sel
       ? `<g data-text-edit="${esc(sel.id)}" role="button" aria-label="Edit text on canvas" transform="translate(${off.x - hw} ${off.y + hh + 8 / z})">` +
         `<rect x="0" y="0" width="66" height="20" rx="6" transform="scale(${1 / z})" transform-origin="0 0" fill="#2f6fed" stroke="#ffffff" stroke-width="1"/>` +
         `<text x="33" y="13.6" transform="scale(${1 / z})" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">Edit text</text></g>`
@@ -1099,7 +1099,7 @@ function finishTextEdit({ cancel = false } = {}) {
 }
 
 export function beginTextEdit(el = findSelected()) {
-  if (!el || el.type !== 'textlabel' || state.demoMode) return false;
+  if (!el || el.type !== 'textlabel' || state.embedMode) return false;
   if (textEditor?.el === el) {
     textEditor.textarea.focus();
     return true;
@@ -1357,6 +1357,11 @@ export function finishBeam() {
 function setStatus(t) { if (statusEl) statusEl.textContent = t; }
 
 function bindPointer() {
+  // An embedded preview is a picture. Bind nothing that could move, select or
+  // edit anything: CSS pointer-events already blocks the mouse, but keyboard
+  // and wheel listeners are on window and would still fire, and a wheel zoom
+  // inside a page's iframe would hijack the reader's scroll.
+  if (state.embedMode) return;
   svg.addEventListener('pointerdown', onDown);
   svg.addEventListener('contextmenu', e => {
     e.preventDefault();
@@ -1439,7 +1444,7 @@ function onDown(e) {
   }
 
   const editTextControl = e.target.closest?.('[data-text-edit]');
-  if (editTextControl && !state.demoMode) {
+  if (editTextControl && !state.embedMode) {
     const text = state.elements.find(el => el.id === editTextControl.getAttribute('data-text-edit'));
     if (text?.type === 'textlabel') {
       e.preventDefault();
@@ -1527,7 +1532,7 @@ function onDown(e) {
 
   const displayControl = e.target.closest?.('[data-display-action]');
   const displayOwner = displayControl?.closest?.('[data-element-id]');
-  if (displayControl && displayOwner && !state.demoMode) {
+  if (displayControl && displayOwner && !state.embedMode) {
     const display = state.elements.find(element =>
       element.id === displayOwner.getAttribute('data-element-id') && element.type === 'display');
     const result = displayActionUpdate(display, displayControl.getAttribute('data-display-action'), state.elements);
@@ -1574,7 +1579,7 @@ function onDown(e) {
   // Shift can constrain a point drag to 45° drafting directions.
   const selectedBeforeHit = findSelected();
   const selectedPointIndex = hitElementEditPoint(selectedBeforeHit, w);
-  if (selectedPointIndex >= 0 && !state.demoMode) {
+  if (selectedPointIndex >= 0 && !state.embedMode) {
     const editor = registry[selectedBeforeHit.type].editPoints;
     drag = {
       mode: 'editpoint', el: selectedBeforeHit, editor, i: selectedPointIndex,
@@ -1586,7 +1591,7 @@ function onDown(e) {
   }
 
   // shift interactions: toggle membership on objects, marquee on empty space
-  if (e.shiftKey && !state.demoMode) {
+  if (e.shiftKey && !state.embedMode) {
     const elHit = hitElement(w);
     const bHit = elHit ? null : hitBeam(w);
     if (elHit || bHit) {
@@ -1658,7 +1663,7 @@ function onDown(e) {
     return;
   }
   // rotation handle?
-  if (hitRotHandle(sel, w) && !state.demoMode) {
+  if (hitRotHandle(sel, w) && !state.embedMode) {
     drag = { mode: 'rotate', el: sel, moved: false };
     svg.setPointerCapture(e.pointerId);
     return;
@@ -1674,18 +1679,18 @@ function onDown(e) {
   const el = hitElement(w);
   if (el) {
     state.selection = { kind: 'element', id: el.id };
-    if (!state.demoMode) {
+    if (!state.embedMode) {
       drag = {
         mode: 'move', el, ox: el.x - w.x, oy: el.y - w.y, moved: false,
         pointerType: e.pointerType, pressClientX: e.clientX, pressClientY: e.clientY, maxDistancePx: 0,
       };
       svg.setPointerCapture(e.pointerId);
     }
-    renderAll(); onSelectionChange({ openMobile: state.demoMode });
+    renderAll(); onSelectionChange({ openMobile: state.embedMode });
     return;
   }
   // manual beam?
-  const b = state.demoMode ? null : hitBeam(w);
+  const b = state.embedMode ? null : hitBeam(w);
   if (b) {
     state.selection = { kind: 'beam', id: b.id };
     drag = {
@@ -1987,6 +1992,7 @@ function onUp(e) {
 }
 
 function bindWheel() {
+  if (state.embedMode) return;
   svg.addEventListener('wheel', e => {
     e.preventDefault();
     const v = state.view;
