@@ -110,6 +110,30 @@ function inPaletteOrder(entries, category) {
     (rank.has(a.type) ? rank.get(a.type) : Infinity) - (rank.has(b.type) ? rank.get(b.type) : Infinity));
 }
 
+// A category whose palette entries carry paletteGroup is listed here under the
+// same subheadings, so the wiki index and the component library read alike.
+// Subjects the palette does not carry stay unlabelled and lead the category.
+function subgroupedList(entries, currentType, base) {
+  const link = e => `<li><a href="${base}/wiki/${e.type}/" class="${e.type === currentType ? 'current' : ''}">${esc(e.title)}</a></li>`;
+  const groupOf = e => registry[e.type]?.paletteGroup || '';
+  if (!entries.some(e => groupOf(e))) return `<ul>${entries.map(link).join('')}</ul>`;
+  const plain = [];
+  let html = '';
+  let open = null;
+  for (const e of entries) {
+    const group = groupOf(e);
+    if (!group) { plain.push(e); continue; }
+    if (group !== open) {
+      if (open !== null) html += '</ul>';
+      html += `<div class="cat-sub">${esc(group)}</div><ul>`;
+      open = group;
+    }
+    html += link(e);
+  }
+  if (open !== null) html += '</ul>';
+  return (plain.length ? `<ul>${plain.map(link).join('')}</ul>` : '') + html;
+}
+
 function sidebar(entries, currentType, base) {
   const byCategory = new Map();
   for (const e of entries) {
@@ -123,9 +147,7 @@ function sidebar(entries, currentType, base) {
       ${cats.map(cat => `
         <div class="cat">
           <div class="cat-name">${esc(cat)}</div>
-          <ul>
-            ${inPaletteOrder(byCategory.get(cat), cat).map(e => `<li><a href="${base}/wiki/${e.type}/" class="${e.type === currentType ? 'current' : ''}">${esc(e.title)}</a></li>`).join('')}
-          </ul>
+          ${subgroupedList(inPaletteOrder(byCategory.get(cat), cat), currentType, base)}
         </div>`).join('')}
     </nav>`;
 }

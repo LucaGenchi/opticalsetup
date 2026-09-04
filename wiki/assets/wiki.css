@@ -90,6 +90,10 @@ a:hover { text-decoration: underline; }
 .wiki-nav .cat { margin-bottom: 18px; }
 .wiki-nav .cat-name { font-weight: 650; color: var(--ink); margin-bottom: 6px; font-size: 12.5px; }
 .wiki-nav ul { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.wiki-nav .cat-sub { color: var(--muted); font-size: 11px; letter-spacing: .04em;
+  text-transform: uppercase; margin: 8px 0 3px; }
+.wiki-nav .cat-sub:first-of-type { margin-top: 2px; }
+.wiki-nav .cat-sub + ul { padding-left: 8px; border-left: 1px solid var(--border); }
 .wiki-nav a { color: var(--muted); padding: 2px 0; display: block; }
 .wiki-nav a:hover { color: var(--accent); text-decoration: none; }
 .wiki-nav a.current { color: var(--accent); font-weight: 650; }
