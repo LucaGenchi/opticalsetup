@@ -729,13 +729,24 @@ export const wikiEntries = [
         the same claim: same throughput, same focus, same aberration. Radii follow the same
         Cartesian sign convention, so a prescription can be moved between the two.</p>
         <h3>Realized versus requested</h3>
-        <p>Two constraints are applied to keep a prescription physical, and both are
+        <p>Three constraints are applied to keep a prescription physical, and all three are
         reported rather than applied quietly. A conic with
         <span class="w">1 + k &gt; 0</span> has a finite radial extent, so a radius too short
-        for the requested aperture is increased until the aperture fits on the surface. And
-        centre thickness is increased when needed to leave a real edge. The inspector shows
-        the geometry actually traced, so a clamped prescription is visible rather than
-        inferred.</p>`,
+        for the requested aperture is increased until the aperture fits on the surface.
+        Centre thickness is increased when needed to leave a real edge. And the aspheric
+        departure is bounded: if <span class="w">A₄y⁴ + A₆y⁶ + A₈y⁸</span> exceeds the
+        semi-aperture anywhere across the clear aperture, all three coefficients are scaled
+        by a common factor until it does not.</p>
+        <p>That third one is easier to reach than it looks, and it is worth knowing where.
+        At the default 25.4&nbsp;mm diameter the departure bound bites at about
+        <span class="w">A₄ = 5&nbsp;×&nbsp;10⁻⁴</span>, so a typed
+        <span class="w">A₄ = 0.001</span> is traced at roughly half its value. Because the
+        three terms are scaled together the ratio between them is preserved, but the surface
+        traced is not the surface requested — it is a smaller relative of it. Real catalogue
+        aspheres sit far below this, in the <span class="w">10⁻⁵</span> range and below,
+        where nothing is rescaled; the guard exists so that a hand-edited or stale scene
+        cannot produce a metre-deep surface. The inspector reports the geometry actually
+        traced, so a rescaled prescription is visible rather than inferred.</p>`,
       formulas: [],
       limitations: `<p>This is a 2D meridional section of a rotationally symmetric lens, so
         only aberrations that live in that plane can appear. Spherical aberration and
