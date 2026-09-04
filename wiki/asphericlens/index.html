@@ -268,9 +268,29 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         <p>The paraxial focal length and back focal distance in the panel are computed from
         vertex curvature and centre thickness, exactly as for a spherical singlet, because
         neither the conic nor the polynomial terms change curvature at the vertex. They
-        therefore describe the paraxial limit and say nothing about the aberration the rest of
-        the surface produces — which is the interesting part, and is why the ray trace rather
-        than the readout is the thing to look at.</p>
+        therefore describe the paraxial limit and say nothing about the aberration the rest
+        of the surface produces. How little they say is easy to measure: for the default
+        prescription the panel quotes a back focal distance of 54.094&nbsp;mm, and a traced
+        ray at the very edge of the clear aperture crosses the axis 11&nbsp;µm from it —
+        while the <em>same</em> lens with <span class="w">k₁</span> set to 0 keeps the
+        identical quoted number and focuses its edge ray 2.8&nbsp;mm short. Two lenses,
+        one readout, a 250-fold difference in what actually happens. The ray trace is the
+        thing to look at.</p>
+        <p>Two numerical limits belong to the tracer rather than to the optics. Ray–surface
+        intersections are found by scanning the residual along the ray in 128 steps and
+        bisecting the first sign change, so a ray that grazes a face — entering and leaving
+        within a single scan step — can be missed and pass through the glass unrefracted.
+        Constructing tangency deliberately on the default face and walking the ray inwards,
+        the miss threshold sits at about <strong>27&nbsp;nm</strong> of offset from exact
+        tangency: closer than that and the two intersections are too close together to
+        bracket. That is well below the wavelength of the light being traced, and a grid
+        sweep of 168,000 ordinary ray–surface pairs produced no misses at all, so this is a
+        geometric corner rather than something a bench layout will meet. Separately,
+        whether a point counts as <em>inside</em> the glass is judged against the 24-chord
+        drawing outline rather than the analytic curve, so a sliver between chord and curve
+        — at most 6&nbsp;µm deep on the default lens, 12&nbsp;µm on a fast
+        <span class="w">f/0.6</span> one — is refracted as glass but classified as air. It
+        matters only for a source placed inside the lens body, in that sliver.</p>
         <p>Nothing here is manufactured: there is no surface figure error, no roughness, no
         centring tolerance, and no coating, so reflectivity does not vary with wavelength or
         angle. A real asphere is corrected for one conjugate and one wavelength; this one is
