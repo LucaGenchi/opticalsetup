@@ -950,6 +950,7 @@ body.embed-mode #btnAdd,
 body.embed-mode #btnTrash,
 body.embed-mode #btnMobileMenu,
 body.embed-mode #viewControls,
+body.embed-mode #pulseControls,
 body.embed-mode #toolMode,
 body.embed-mode #mobileToolActions,
 body.embed-mode #status,
@@ -958,9 +959,12 @@ body.embed-mode .mobile-toolbar-actions {
 }
 
 /* Belt and braces with the pointer/key guards in canvas.js: no hover
-   affordance, no text selection, no touch panning, no focus ring. The
-   pulse controls stay visible and usable -- playing an animation is
-   watching the picture, not editing it. */
+   affordance, no text selection, no touch panning, no focus ring.
+   The pulse controls go too. They were the last interactive thing left, and
+   keeping them was incoherent: the iframe is tabindex="-1" and aria-hidden,
+   so they would have been reachable by mouse only. An animated preview plays
+   on its own; under prefers-reduced-motion it holds a still frame, which is
+   what that preference asks for. */
 body.embed-mode #canvas {
   pointer-events: none !important;
   touch-action: none !important;
