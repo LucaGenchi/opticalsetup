@@ -2229,7 +2229,9 @@ export const registry = {
 
   // ---------------- Lenses ----------------
   lens: {
-    label: 'Convex lens', category: 'Lenses', paletteOrder: 0, size: { w: 18, h: 56 },
+    label: 'Thin convex lens', category: 'Lenses',
+    paletteGroup: 'Ideal lenses', paletteOrder: 0, size: { w: 18, h: 56 },
+    aliases: ['convex lens', 'thin lens', 'positive lens', 'converging lens', 'ideal lens'],
     params: [
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
@@ -2250,7 +2252,8 @@ export const registry = {
   },
 
   metalens: {
-    label: 'Metalens', category: 'Lenses', paletteOrder: 2, size: { w: 12, h: 20 },
+    label: 'Metalens', category: 'Lenses',
+    paletteGroup: 'Metalenses', paletteOrder: 7, size: { w: 12, h: 20 },
     aliases: ['flat lens', 'metasurface lens', 'meta optic', 'meta-optic', 'diffractive lens'],
     params: [
       {
@@ -2316,7 +2319,8 @@ export const registry = {
   // of it for free rather than being painted on. See thickLensCardinals() for
   // the paraxial summary shown in the inspector.
   thicklens: {
-    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 3,
+    label: 'Thick spherical lens', category: 'Lenses',
+    paletteGroup: 'Real lenses', paletteOrder: 4,
     aliases: ['real lens', 'spherical lens', 'singlet', 'biconvex', 'plano-convex', 'meniscus', 'aberration'],
     params: [
       { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 60, slider: false },
@@ -2369,7 +2373,8 @@ export const registry = {
   // achromatic doublet and anything else the table can express. Nothing about
   // the focal length is configured; see lensgroup.js.
   lensgroup: {
-    label: 'Lens group (surface table)', category: 'Lenses', paletteOrder: 4,
+    label: 'Lens group', category: 'Lenses',
+    paletteGroup: 'Real lenses', paletteOrder: 5,
     aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table'],
     params: [
       { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
@@ -2492,7 +2497,9 @@ export const registry = {
   },
 
   telescope: {
-    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 5, size: { w: 174, h: 62 },
+    label: 'Conjugated thin lens pair', category: 'Lenses',
+    paletteGroup: 'Ideal lenses', paletteOrder: 2, size: { w: 174, h: 62 },
+    aliases: ['telescope', 'beam expander', 'lens pair', 'relay', '4f', 'afocal', 'keplerian'],
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -2539,7 +2546,8 @@ export const registry = {
     // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
     // because WD is capped at EFL. It is never drawn — an objective is an
     // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses', paletteOrder: 6, size: { w: 36, h: 40 },
+    label: 'Objective', category: 'Lenses',
+    paletteGroup: 'Ideal lenses', paletteOrder: 3, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
@@ -4350,8 +4358,10 @@ export function boxAnchor(el) {
 // concave lens: identical optics to 'lens', concave default focal length
 registry.lensc = {
   ...registry.lens,
-  label: 'Concave lens',
+  label: 'Thin concave lens',
+  paletteGroup: 'Ideal lenses',
   paletteOrder: 1,
+  aliases: ['concave lens', 'thin lens', 'negative lens', 'diverging lens', 'ideal lens'],
   params: registry.lens.params.map(p => (p.key === 'f' ? { ...p, def: -100 } : p)),
 };
 

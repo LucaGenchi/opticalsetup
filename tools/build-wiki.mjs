@@ -110,6 +110,32 @@ function inPaletteOrder(entries, category) {
     (rank.has(a.type) ? rank.get(a.type) : Infinity) - (rank.has(b.type) ? rank.get(b.type) : Infinity));
 }
 
+// A category whose palette entries carry paletteGroup is listed here under the
+// same subheadings, so the wiki index and the component library read alike.
+// Subjects the palette does not carry stay unlabelled and lead the category.
+// Split a category into consecutive runs sharing a paletteGroup. Entries the
+// palette does not carry -- the fiber drawing tools -- have no group and lead
+// the category in one unlabelled run. Both the sidebar and the hub render from
+// this, so the two views cannot disagree about the shape of a category.
+function subgroupedRuns(entries) {
+  const groupOf = e => registry[e.type]?.paletteGroup || '';
+  const runs = [];
+  for (const e of entries) {
+    const group = groupOf(e);
+    const last = runs[runs.length - 1];
+    if (last && last.group === group) last.entries.push(e);
+    else runs.push({ group, entries: [e] });
+  }
+  return runs;
+}
+
+function subgroupedList(entries, currentType, base) {
+  const link = e => `<li><a href="${base}/wiki/${e.type}/" class="${e.type === currentType ? 'current' : ''}">${esc(e.title)}</a></li>`;
+  return subgroupedRuns(entries).map(run =>
+    (run.group ? `<div class="cat-sub">${esc(run.group)}</div>` : '')
+    + `<ul>${run.entries.map(link).join('')}</ul>`).join('');
+}
+
 function sidebar(entries, currentType, base) {
   const byCategory = new Map();
   for (const e of entries) {
@@ -123,9 +149,7 @@ function sidebar(entries, currentType, base) {
       ${cats.map(cat => `
         <div class="cat">
           <div class="cat-name">${esc(cat)}</div>
-          <ul>
-            ${inPaletteOrder(byCategory.get(cat), cat).map(e => `<li><a href="${base}/wiki/${e.type}/" class="${e.type === currentType ? 'current' : ''}">${esc(e.title)}</a></li>`).join('')}
-          </ul>
+          ${subgroupedList(inPaletteOrder(byCategory.get(cat), cat), currentType, base)}
         </div>`).join('')}
     </nav>`;
 }
@@ -303,14 +327,14 @@ ${header(base)}
         ${cats.map(cat => `
         <div class="hub-group" id="${cat.toLowerCase().replace(/[^a-z0-9]+/g, '-')}">
           <h2>${esc(cat)}</h2>
-          <div class="hub-grid">
-            ${inPaletteOrder(byCategory.get(cat), cat).map(e => {
-    return `<a class="hub-card" href="${base}/wiki/${e.type}/">
+          ${subgroupedRuns(inPaletteOrder(byCategory.get(cat), cat)).map(run => `
+            ${run.group ? `<h3 class="hub-sub">${esc(run.group)}</h3>` : ''}
+            <div class="hub-grid">
+              ${run.entries.map(e => `<a class="hub-card" href="${base}/wiki/${e.type}/">
                 <span class="ic">${iconSVG(e.type)}</span>
                 <span class="info"><span class="name">${esc(e.title)}</span><span class="desc">${esc(taglineOf(e))}</span></span>
-              </a>`;
-  }).join('')}
-          </div>
+              </a>`).join('')}
+            </div>`).join('')}
         </div>`).join('')}
       </div>
     </div>

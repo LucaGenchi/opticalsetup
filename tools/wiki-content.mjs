@@ -529,7 +529,7 @@ export const wikiEntries = [
 
   {
     type: 'lens',
-    title: 'Convex lens',
+    title: 'Thin convex lens',
     category: 'Lenses',
     realWorld: {
       html: `
@@ -644,7 +644,7 @@ export const wikiEntries = [
 
   {
     type: 'lensc',
-    title: 'Concave lens',
+    title: 'Thin concave lens',
     category: 'Lenses',
     realWorld: {
       html: `
@@ -672,7 +672,7 @@ export const wikiEntries = [
         is the only thing that determines converging versus diverging behavior anywhere
         in OpticalSetup.</p>`,
       formulas: [],
-      limitations: `<p>Same caveats as the convex lens: exact paraxial geometry with no
+      limitations: `<p>Same caveats as the thin convex lens: exact paraxial geometry with no
         spherical or chromatic aberration. GDD alone uses the same diameter-aware N-BK7
         sag estimate (roughly a 10% class estimate); the assumed thickness never becomes
         traced geometry.</p>`,
@@ -774,7 +774,7 @@ export const wikiEntries = [
 
   {
     type: 'lensgroup',
-    title: 'Lens group (surface table)',
+    title: 'Lens group',
     category: 'Lenses',
     realWorld: {
       html: `
@@ -865,7 +865,7 @@ export const wikiEntries = [
 
   {
     type: 'telescope',
-    title: 'Telescope (lens pair)',
+    title: 'Conjugated thin lens pair',
     category: 'Lenses',
     realWorld: {
       html: `
