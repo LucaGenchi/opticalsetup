@@ -88,3 +88,29 @@ test('embed mode is the only thing that suppresses the workbench autosave', asyn
   assert.match(source, /embedMode/, 'state must expose embedMode');
   assert.ok(!source.includes('demoMode'), 'demoMode must be fully renamed');
 });
+
+test('an embed has no link that can navigate the frame', async () => {
+  // The brand links to "/" with no target, so inside an iframe it loads the
+  // whole site into the preview -- and a wiki page opened from there embeds
+  // another preview inside that one, nesting without limit. Embed mode must
+  // strip the href rather than merely hide or unstyle it.
+  const main = await readFile(resolve(ROOT, 'sketch/js/main.js'), 'utf8');
+  const embedBlock = main.slice(main.indexOf("classList.add('embed-mode')"));
+  assert.match(embedBlock.slice(0, 900), /\.brand[^]*removeAttribute\('href'\)/,
+    'embed mode must remove the brand href');
+
+  // Everything else in the shell that navigates must either be hidden in an
+  // embed or open in a new tab; nothing may target the frame itself.
+  const html = await readFile(resolve(ROOT, 'sketch/index.html'), 'utf8');
+  const css = await readFile(resolve(ROOT, 'sketch/css/style.css'), 'utf8');
+  const hidden = css.slice(css.indexOf('body.embed-mode'), css.indexOf('body.embed-mode #canvas'));
+  for (const [, attrs] of html.matchAll(/<a\s([^>]*)>/g)) {
+    const href = /href="([^"]*)"/.exec(attrs)?.[1];
+    if (!href || href.startsWith('#')) continue;
+    if (attrs.includes('target="_blank"')) continue;
+    const cls = /class="([^"]*)"/.exec(attrs)?.[1] || '';
+    const inHiddenGroup = cls.split(/\s+/).some(c => c && hidden.includes(`.${c}`));
+    assert.ok(cls.includes('brand') || inHiddenGroup,
+      `<a href="${href}"> would navigate the embed frame: hide it, give it target="_blank", or strip its href`);
+  }
+});

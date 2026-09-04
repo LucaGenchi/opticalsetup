@@ -1625,6 +1625,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (isEmbed) {
     state.embedMode = true;
     document.body.classList.add('embed-mode');
+    // The brand is a link to the homepage with no target, so inside an iframe
+    // it navigates the frame rather than the tab: the whole site loads into
+    // the preview, and a wiki page opened from there embeds another preview
+    // inside that one, nesting as far as the visitor keeps clicking. An embed
+    // has no navigation of its own, so drop the href and keep the mark --
+    // an <a> without href is not a link and is not focusable.
+    const brand = document.querySelector('.brand');
+    if (brand) brand.removeAttribute('href');
   }
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));

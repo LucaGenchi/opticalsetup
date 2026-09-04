@@ -973,3 +973,15 @@ body.embed-mode #canvas {
 }
 body.embed-mode #canvas:focus,
 body.embed-mode #canvas:focus-visible { outline: none !important; }
+
+/* A scene label can carry a markdown link, rendered as a real anchor with its
+   own pointer-events so it stays clickable inside the canvas. Those open in a
+   new tab rather than nesting the frame, but a preview is a picture: nothing
+   in it should be a click target. The brand link is neutralised in main.js,
+   where the href can be removed outright. */
+body.embed-mode #canvas a,
+body.embed-mode #canvas [data-text-link="true"] {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+body.embed-mode .brand { cursor: default; }
