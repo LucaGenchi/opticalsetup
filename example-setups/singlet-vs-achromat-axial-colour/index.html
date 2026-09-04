@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Singlet vs achromat — axial colour — Examples | OpticalSetup</title>
-<meta name="description" content="Two 100 mm prescriptions under the same visible supercontinuum: the crown singlet separates colour while the crown–flint doublet brings it back together.">
+<meta name="description" content="Two f = 40 mm prescriptions under the same 400–750 nm beam: one glass spreads the spectrum along the axis, two glasses fold it back.">
 <link rel="canonical" href="https://opticalsetup.com/example-setups/singlet-vs-achromat-axial-colour/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Singlet vs achromat — axial colour — OpticalSetup Examples">
-<meta property="og:description" content="Two 100 mm prescriptions under the same visible supercontinuum: the crown singlet separates colour while the crown–flint doublet brings it back together.">
+<meta property="og:description" content="Two f = 40 mm prescriptions under the same 400–750 nm beam: one glass spreads the spectrum along the axis, two glasses fold it back.">
 <meta property="og:url" content="https://opticalsetup.com/example-setups/singlet-vs-achromat-axial-colour/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -59,7 +59,7 @@
     <main class="wiki-article" style="max-width: 760px;">
       <div class="crumb"><a href="../../example-setups/">Examples</a> / Lens Physics / Singlet vs achromat — axial colour</div>
       <h1>Singlet vs achromat — axial colour</h1>
-      <p class="tagline" style="margin-top: 10px;">Two 100 mm prescriptions under the same visible supercontinuum: the crown singlet separates colour while the crown–flint doublet brings it back together.</p>
+      <p class="tagline" style="margin-top: 10px;">Two f = 40 mm prescriptions under the same 400–750 nm beam: one glass spreads the spectrum along the axis, two glasses fold it back.</p>
 
       <a class="place-cta" href="../../sketch/?example=singlet-vs-achromat-axial-colour">Open in the canvas →</a>
 
@@ -73,34 +73,59 @@
       
       <h2 class="section-head real"><span class="sw"></span>Background</h2>
       
-      <p>A single positive lens cannot focus every visible wavelength at the same
-      axial position because optical-glass index changes with wavelength. Blue light
-      generally sees more power than red light and therefore focuses closer to the
-      lens. An achromatic doublet combines a low-dispersion crown element with a
-      higher-dispersion flint element of opposing power, cancelling most of that
-      first-order colour without cancelling the useful net focus.</p>
-      <p>This side-by-side scene holds the comparison unusually clean: both lanes use
-      the same 486.1–656.3&nbsp;nm source band, 24&nbsp;mm beam, clear aperture, and
-      approximately 100&nbsp;mm effective focal length. Only the prescription changes.</p>
+      <p>A lens works because glass slows light, and it slows every colour by a different
+      amount. The refractive index of any ordinary glass falls as wavelength rises — blue
+      light sees a denser medium than red — and since the power of a thin lens is
+      <span class="w">(n − 1)</span> times its curvature, a single positive lens is
+      simply <em>stronger in the blue</em>. Blue focuses short, red focuses long, and the
+      focal length becomes a function of colour. That is axial, or longitudinal,
+      chromatic aberration.</p>
+      <p>Nothing about the shape can remove it. Bending a singlet — changing the two
+      radii while holding the power — is the classical cure for spherical aberration and
+      does nothing at all for colour, because colour comes from the material, not the
+      geometry. One glass has one dispersion curve, and the lens is stuck with it.</p>
+      <p>The escape is to use two glasses with different dispersions. Put a positive
+      crown element in contact with a negative flint element of much stronger dispersion,
+      and choose the two powers so that
+      <span class="w">φ₁/V₁ + φ₂/V₂ = 0</span>, where <span class="w">V</span> is the Abbe
+      number — about 64 for N-BK7 and 26 for N-SF11. The colour errors then cancel to
+      first order while the powers still add to something useful. The flint gives back
+      less power than it removes colour, which is exactly the trade an achromat is.</p>
 
       <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
       <div class="sim-block">
         
-      <p>The upper N-BK7 singlet produces about −1.53&nbsp;mm of F-to-C longitudinal
-      colour. The lower N-BK7 + N-SF11 cemented achromat produces about
-      −0.0003&nbsp;mm in the same model — roughly five thousand times less. That
-      correction is not a display effect or an “achromat” flag: every sampled
-      wavelength refracts through the drawn spherical faces with its own glass index,
-      and the focus separation emerges from those interactions.</p>
-      <p>Select either Lens group to inspect the actual surface rows. Editing any row
-      makes a custom copy of the preset; the per-row action can then vary one radius to
-      null the F-to-C readout while preserving a finite focal length of the same sign.</p>
-        <div class="limitations"><span class="lbl">What you won't see</span><p>The comparison is a 2D meridional geometric trace. It shows
-      longitudinal colour and spherical caustics, not diffraction-limited spot size,
-      lateral colour, quantitative off-axis aberrations, coatings, manufacturing
-      tolerances, or a full visible image. The near-zero F/C result does not mean every
-      intermediate wavelength shares exactly one focus, and the catalogue glasses use
-      visible-band Cauchy fits rather than full Sellmeier data.</p></div>
+      <p>Both lanes are identical apart from the prescription: the same 400–750&nbsp;nm
+      supercontinuum, the same 20&nbsp;mm beam, the same 1-inch clear aperture, and the
+      same 40&nbsp;mm focal length at the d line. Anything that differs downstream is the
+      glass.</p>
+      <p>The uncorrected N-BK7 singlet spreads its focus over <strong>1.39&nbsp;mm</strong>
+      between 400 and 750&nbsp;nm. At the d-line focal plane, where the screen sits, that
+      leaves a coloured blur about <strong>0.39&nbsp;mm</strong> across — blue core, red
+      skirt, and no plane anywhere that is sharp in every colour at once. The cemented
+      N-BK7 + N-SF11 achromat, at the same focal length, brings that to
+      <strong>0.15&nbsp;mm</strong> of focus spread and a <strong>0.04&nbsp;mm</strong>
+      spot: about ten times tighter.</p>
+      <p>None of that is a flag or a display effect. Every sampled wavelength refracts
+      through the drawn faces with its own catalogue index, and the separation is whatever
+      those interactions produce. Select either group to read its surface table and its
+      axial-colour figure, or edit a row to make a custom copy and watch the correction
+      break.</p>
+      <p>The residual in the corrected lane is worth looking at rather than ignoring. Two
+      glasses can bring exactly two wavelengths to a common focus; everything between and
+      beyond them lands slightly differently, and that leftover bow is the
+      <em>secondary spectrum</em>. Removing it needs a third glass with anomalous
+      dispersion — which is what separates an apochromat from an achromat, and most of
+      what you pay for in one.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>This is a 2D meridional geometric trace: it shows longitudinal
+      colour, not diffraction-limited spot size, lateral colour, off-axis aberration,
+      coatings, or manufacturing tolerance. The catalogue glasses use visible-band Cauchy
+      fits rather than full Sellmeier data, so the residual figures are indicative rather
+      than a design-grade prediction. The doublet here is solved for this aperture in this
+      model; it is a teaching prescription, not a catalogue part.</p>
+      <p>Both lenses are deliberately fast — f/2 on a 20&nbsp;mm beam — which makes the
+      colour easy to see but also means each lane carries spherical aberration of its own.
+      The spot sizes quoted are the combined blur, not colour alone.</p></div>
       </div>
 
       
@@ -114,7 +139,7 @@
       
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
-        <li><a href="https://www.rp-photonics.com/achromatic_optics.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Achromatic Optics</a></li>
+        <li><a href="https://www.rp-photonics.com/achromatic_optics.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Achromatic Optics</a></li><li><a href="https://www.rp-photonics.com/chromatic_dispersion.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Chromatic Dispersion</a></li>
       </ul>
     </main>
   </div>

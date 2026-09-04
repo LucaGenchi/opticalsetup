@@ -1,0 +1,525 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "h1",
+      "type": "textlabel",
+      "x": 42,
+      "y": 44,
+      "rot": 0,
+      "params": {
+        "text": "Spherical aberration: three lenses of the same power",
+        "fontSize": 17,
+        "fill": "#8a8f98"
+      }
+    },
+    {
+      "id": "h2",
+      "type": "textlabel",
+      "x": 42,
+      "y": 70,
+      "rot": 0,
+      "params": {
+        "text": "One 20 mm monochromatic bundle. Three 1-inch lenses, all f = 25 mm. Only the shape differs.",
+        "fontSize": 11.5,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "ideal-h",
+      "type": "textlabel",
+      "x": 42,
+      "y": 132,
+      "rot": 0,
+      "params": {
+        "text": "IDEAL THIN LENS",
+        "fontSize": 13,
+        "fill": "#1361fa"
+      }
+    },
+    {
+      "id": "ideal-s",
+      "type": "textlabel",
+      "x": 42,
+      "y": 150,
+      "rot": 0,
+      "params": {
+        "text": "the textbook construction: one focus for every ray height",
+        "fontSize": 10.5,
+        "fill": "#1361fa"
+      }
+    },
+    {
+      "id": "ideal-src",
+      "type": "pointsource",
+      "x": 120,
+      "y": 190,
+      "rot": 0,
+      "params": {
+        "wavelength": 587.6,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "spread": 28.1,
+        "nrays": 9,
+        "autoColor": true,
+        "displayScale": 1
+      }
+    },
+    {
+      "id": "ideal-coll",
+      "type": "lens",
+      "x": 160,
+      "y": 190,
+      "rot": 0,
+      "params": {
+        "f": 40,
+        "dia": 26,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "ideal-lens",
+      "type": "lens",
+      "x": 240,
+      "y": 190,
+      "rot": 0,
+      "label": "ideal thin lens",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "f": 25,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "ideal-screen",
+      "type": "box",
+      "x": 265,
+      "y": 190,
+      "rot": 0,
+      "params": {
+        "w": 3,
+        "h": 52,
+        "behavior": "block",
+        "fill": "#dbe3ec"
+      }
+    },
+    {
+      "id": "ideal-n",
+      "type": "textlabel",
+      "x": 279,
+      "y": 150,
+      "rot": 0,
+      "params": {
+        "text": "one point",
+        "fontSize": 10.5,
+        "fill": "#1361fa"
+      }
+    },
+    {
+      "id": "sphere-h",
+      "type": "textlabel",
+      "x": 42,
+      "y": 292,
+      "rot": 0,
+      "params": {
+        "text": "SPHERICAL SINGLET",
+        "fontSize": 13,
+        "fill": "#c2410c"
+      }
+    },
+    {
+      "id": "sphere-s",
+      "type": "textlabel",
+      "x": 42,
+      "y": 310,
+      "rot": 0,
+      "params": {
+        "text": "the rim focuses 6.8 mm short of the centre",
+        "fontSize": 10.5,
+        "fill": "#c2410c"
+      }
+    },
+    {
+      "id": "sphere-src",
+      "type": "pointsource",
+      "x": 120,
+      "y": 350,
+      "rot": 0,
+      "params": {
+        "wavelength": 587.6,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "spread": 28.1,
+        "nrays": 9,
+        "autoColor": true,
+        "displayScale": 1
+      }
+    },
+    {
+      "id": "sphere-coll",
+      "type": "lens",
+      "x": 160,
+      "y": 350,
+      "rot": 0,
+      "params": {
+        "f": 40,
+        "dia": 26,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "sphere-lens",
+      "type": "thicklens",
+      "x": 240,
+      "y": 350,
+      "rot": 0,
+      "label": "N-BK7 sphere",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "r1": 24.006,
+        "r2": -24.006,
+        "thickness": 10,
+        "dia": 25.4,
+        "glass": "nbk7",
+        "transEff": 100
+      }
+    },
+    {
+      "id": "sphere-screen",
+      "type": "box",
+      "x": 266,
+      "y": 350,
+      "rot": 0,
+      "params": {
+        "w": 3,
+        "h": 52,
+        "behavior": "block",
+        "fill": "#dbe3ec"
+      }
+    },
+    {
+      "id": "sphere-n",
+      "type": "textlabel",
+      "x": 280,
+      "y": 310,
+      "rot": 0,
+      "params": {
+        "text": "7.5 mm smear",
+        "fontSize": 10.5,
+        "fill": "#c2410c"
+      }
+    },
+    {
+      "id": "asphere-h",
+      "type": "textlabel",
+      "x": 42,
+      "y": 452,
+      "rot": 0,
+      "params": {
+        "text": "ASPHERIC SINGLET",
+        "fontSize": 13,
+        "fill": "#15803d"
+      }
+    },
+    {
+      "id": "asphere-s",
+      "type": "textlabel",
+      "x": 42,
+      "y": 470,
+      "rot": 0,
+      "params": {
+        "text": "one conic constant removes it",
+        "fontSize": 10.5,
+        "fill": "#15803d"
+      }
+    },
+    {
+      "id": "asphere-src",
+      "type": "pointsource",
+      "x": 120,
+      "y": 510,
+      "rot": 0,
+      "params": {
+        "wavelength": 587.6,
+        "bwMode": "mono",
+        "bandwidth": 400,
+        "spread": 28.1,
+        "nrays": 9,
+        "autoColor": true,
+        "displayScale": 1
+      }
+    },
+    {
+      "id": "asphere-coll",
+      "type": "lens",
+      "x": 160,
+      "y": 510,
+      "rot": 0,
+      "params": {
+        "f": 40,
+        "dia": 26,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "asphere-lens",
+      "type": "asphericlens",
+      "x": 240,
+      "y": 510,
+      "rot": 0,
+      "label": "N-BK7 asphere · k₁ −0.55",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "r1": 12.92,
+        "k1": -0.55,
+        "r2": 0,
+        "k2": 0,
+        "thickness": 14,
+        "dia": 25.4,
+        "glass": "nbk7",
+        "transEff": 100,
+        "a4_1": 0,
+        "a6_1": 0,
+        "a8_1": 0,
+        "a4_2": 0,
+        "a6_2": 0,
+        "a8_2": 0
+      }
+    },
+    {
+      "id": "asphere-screen",
+      "type": "box",
+      "x": 263,
+      "y": 510,
+      "rot": 0,
+      "params": {
+        "w": 3,
+        "h": 52,
+        "behavior": "block",
+        "fill": "#dbe3ec"
+      }
+    },
+    {
+      "id": "asphere-n",
+      "type": "textlabel",
+      "x": 277,
+      "y": 470,
+      "rot": 0,
+      "params": {
+        "text": "0.02 mm — a point",
+        "fontSize": 10.5,
+        "fill": "#15803d"
+      }
+    },
+    {
+      "id": "z0",
+      "type": "textlabel",
+      "x": 430,
+      "y": 150,
+      "rot": 0,
+      "params": {
+        "text": "WHY THE SPHERE FAILS",
+        "fontSize": 12,
+        "fill": "#8a8f98"
+      }
+    },
+    {
+      "id": "z1",
+      "type": "textlabel",
+      "x": 430,
+      "y": 176,
+      "rot": 0,
+      "params": {
+        "text": "A sphere is the easy shape to grind, not the right one.",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "z2",
+      "type": "textlabel",
+      "x": 430,
+      "y": 198,
+      "rot": 0,
+      "params": {
+        "text": "It curves too sharply away from the axis, so a ray that",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "z3",
+      "type": "textlabel",
+      "x": 430,
+      "y": 220,
+      "rot": 0,
+      "params": {
+        "text": "strikes it 10 mm out is bent too strongly and crosses",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "z4",
+      "type": "textlabel",
+      "x": 430,
+      "y": 242,
+      "rot": 0,
+      "params": {
+        "text": "the axis early. The error grows as the cube of ray",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "z5",
+      "type": "textlabel",
+      "x": 430,
+      "y": 264,
+      "rot": 0,
+      "params": {
+        "text": "height: invisible on axis, severe at the rim. No plane",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "z6",
+      "type": "textlabel",
+      "x": 430,
+      "y": 286,
+      "rot": 0,
+      "params": {
+        "text": "anywhere along the axis catches a point — the tightest",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "z7",
+      "type": "textlabel",
+      "x": 430,
+      "y": 308,
+      "rot": 0,
+      "params": {
+        "text": "is the circle of least confusion, 1.7 mm across and",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "z8",
+      "type": "textlabel",
+      "x": 430,
+      "y": 330,
+      "rot": 0,
+      "params": {
+        "text": "5.2 mm before the paraxial focus.",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "z9",
+      "type": "textlabel",
+      "x": 430,
+      "y": 372,
+      "rot": 0,
+      "params": {
+        "text": "WHAT THE ASPHERE CHANGES",
+        "fontSize": 12,
+        "fill": "#8a8f98"
+      }
+    },
+    {
+      "id": "za",
+      "type": "textlabel",
+      "x": 430,
+      "y": 398,
+      "rot": 0,
+      "params": {
+        "text": "The conic constant k keeps the vertex curvature — so",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "zb",
+      "type": "textlabel",
+      "x": 430,
+      "y": 420,
+      "rot": 0,
+      "params": {
+        "text": "the focal length is unchanged — while flattening the",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "zc",
+      "type": "textlabel",
+      "x": 430,
+      "y": 442,
+      "rot": 0,
+      "params": {
+        "text": "surface away from the axis by exactly the amount",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "zd",
+      "type": "textlabel",
+      "x": 430,
+      "y": 464,
+      "rot": 0,
+      "params": {
+        "text": "needed to hold the focus still. Longitudinal spread",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "ze",
+      "type": "textlabel",
+      "x": 430,
+      "y": 486,
+      "rot": 0,
+      "params": {
+        "text": "falls from 6.8 mm to 0.046 mm: 147x better.",
+        "fontSize": 11,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "zf",
+      "type": "textlabel",
+      "x": 430,
+      "y": 528,
+      "rot": 0,
+      "params": {
+        "text": "All three are f/1.25, to make the effect plain. Stop the",
+        "fontSize": 11,
+        "fill": "#6d737c"
+      }
+    },
+    {
+      "id": "zg",
+      "type": "textlabel",
+      "x": 430,
+      "y": 550,
+      "rot": 0,
+      "params": {
+        "text": "sphere down and the blur collapses as the cube.",
+        "fontSize": 11,
+        "fill": "#6d737c"
+      }
+    }
+  ],
+  "beams": []
+}
