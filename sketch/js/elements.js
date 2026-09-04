@@ -2392,7 +2392,7 @@ export const registry = {
   // A finite singlet whose two faces follow the standard even-asphere sag
   // equation. The tracer intersects those analytic profiles and uses their
   // exact local derivatives for Snell refraction; the sampled outline is only
-  // for drawing, hit testing, and containment.
+  // for drawing and pointer hit testing.
   asphericlens: {
     label: 'Aspheric lens', category: 'Lenses',
     paletteGroup: 'Real lenses', paletteOrder: 6,
@@ -2473,7 +2473,16 @@ export const registry = {
       return pointInBoundary(localPoint, points)
         || points.some((point, index) => distToSegment(localPoint, point, points[(index + 1) % points.length]) <= tolerance);
     },
-    containsLocal(el, localPoint) { return pointInBoundary(localPoint, asphericLensGeometry(el.params).points); },
+    containsLocal(el, localPoint) {
+      if (!Number.isFinite(localPoint?.x) || !Number.isFinite(localPoint?.y)) return false;
+      const geometry = asphericLensGeometry(el.params);
+      const tolerance = 1e-7;
+      if (localPoint.y < -geometry.h - tolerance || localPoint.y > geometry.h + tolerance) return false;
+      const y = Math.min(geometry.h, Math.max(-geometry.h, localPoint.y));
+      const frontX = geometry.xv1 + asphereSag(y, geometry.front);
+      const rearX = geometry.xv2 + asphereSag(y, geometry.rear);
+      return localPoint.x >= frontX - tolerance && localPoint.x <= rearX + tolerance;
+    },
     refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
   },
 

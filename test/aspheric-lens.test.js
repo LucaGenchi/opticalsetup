@@ -108,6 +108,45 @@ test('oblique hits land on the analytic profile and the finite aperture clips sa
   assert.ok(cornerPath.pts.every(point => Number.isFinite(point.x) && Number.isFinite(point.y)));
 });
 
+test('near-tangent paired roots inside one scan interval still refract the ray', () => {
+  const lens = createElement('asphericlens', X, 0);
+  Object.assign(lens.params, {
+    r1: 30, k1: 0, r2: 0, k2: 0, thickness: 6, dia: 25.4,
+    a4_1: 0, a6_1: 0, a8_1: 0, a4_2: 0, a6_2: 0, a8_2: 0,
+  });
+
+  // In lens-local coordinates this is the review reproduction
+  // x = -3 + 0.1700743y - 0.430776. It crosses the spherical front face
+  // twice near y = 5.006 and y = 5.054, inside one of the old 128 scan bins.
+  const lineSlope = 0.1700743;
+  const directionLength = Math.hypot(lineSlope, 1);
+  const dx = lineSlope / directionLength;
+  const dy = 1 / directionLength;
+  const sourceY = -20;
+  const sourceX = X - lens.params.thickness / 2 + lineSlope * sourceY - 0.430776;
+  const laser = createElement('cwlaser', sourceX - 52 * dx, sourceY - 52 * dy);
+  laser.rot = Math.atan2(dy, dx) * 180 / Math.PI;
+  laser.params.beamMode = 'line';
+
+  const path = traceScene([laser, lens]).drawables.find(drawable => drawable.type === 'path');
+  assert.ok(path?.pts.length > 2, 'the near-grazing ray must interact instead of passing through untouched');
+  const firstHit = toLocal(lens, path.pts[1].x, path.pts[1].y);
+  assert.ok(Math.abs(firstHit.y - 5.006) < 0.01, `first front-face hit was at y=${firstHit.y}`);
+});
+
+test('aspheric containment uses the realized analytic faces', () => {
+  const lens = createElement('asphericlens');
+  Object.assign(lens.params, { r1: 30, k1: 0, dia: 25.4 });
+  const localPoint = { x: -2.993, y: 0.5292 };
+  const geometry = asphericLensGeometry(lens.params);
+  const frontX = geometry.xv1 + asphereSag(localPoint.y, geometry.front);
+  const rearX = geometry.xv2 + asphereSag(localPoint.y, geometry.rear);
+
+  assert.ok(frontX < localPoint.x && localPoint.x < rearX,
+    `review point must be analytically inside [${frontX}, ${rearX}]`);
+  assert.equal(registry.asphericlens.containsLocal(lens, localPoint), true);
+});
+
 test('the default conic suppresses longitudinal spherical aberration', () => {
   const lens = createElement('asphericlens');
   const corrected = { ...lens.params, transEff: 100 };

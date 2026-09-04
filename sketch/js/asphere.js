@@ -122,9 +122,10 @@ function sampleFace(vertex, profile, fromY, toY) {
   return points;
 }
 
-// A closed, sampled outline for drawing/containment plus the exact analytic
-// profiles handed to the ray tracer. Centre thickness is increased only when
-// needed to keep at least a 0.4 mm edge everywhere across the aperture.
+// A closed, sampled outline for drawing and pointer hit testing, plus the exact
+// analytic profiles used for tracing and containment. Centre thickness is
+// increased only when needed to keep at least a 0.4 mm edge everywhere across
+// the aperture.
 export function asphericLensGeometry(params = {}) {
   const h = Math.max(0.5, finite(params.dia, 25.4) / 2);
   const front = profileFromParams(params, 1, h);

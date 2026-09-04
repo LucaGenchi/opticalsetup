@@ -1412,12 +1412,58 @@ function rayArcHit(p, d, surface) {
   return null;
 }
 
+const ASPHERE_BINOMIAL = Array.from({ length: 17 }, (_, n) => {
+  const row = Array(n + 1).fill(1);
+  for (let k = 1; k < n; k++) row[k] = row[k - 1] * (n - k + 1) / k;
+  return row;
+});
+
+function multiplyPolynomial(a, b) {
+  const result = Array(a.length + b.length - 1).fill(0);
+  for (let i = 0; i < a.length; i++) {
+    for (let j = 0; j < b.length; j++) result[i + j] += a[i] * b[j];
+  }
+  return result;
+}
+
+function powerToBernstein(power) {
+  const degree = power.length - 1;
+  return power.map((_, i) => {
+    let value = 0;
+    for (let j = 0; j <= i; j++) {
+      value += power[j] * ASPHERE_BINOMIAL[i][j] / ASPHERE_BINOMIAL[degree][j];
+    }
+    return value;
+  });
+}
+
+function splitBernsteinHalf(coefficients) {
+  const degree = coefficients.length - 1;
+  let level = coefficients;
+  const left = [level[0]];
+  const right = [level[degree]];
+  for (let depth = 1; depth <= degree; depth++) {
+    const next = Array(level.length - 1);
+    for (let i = 0; i < next.length; i++) next[i] = (level[i] + level[i + 1]) / 2;
+    left.push(next[0]);
+    right.push(next.at(-1));
+    level = next;
+  }
+  right.reverse();
+  return [left, right];
+}
+
 // Intersect a ray with the exact rotationally symmetric profile carried by an
 // aspheric-lens face. In the element frame the surface is single-valued,
 // x = sag(y), so the finite aperture gives a bounded one-dimensional root
-// search. Ordinary near-axial rays have constant y and are solved directly;
-// oblique rays use deterministic bracketing and bisection. The returned point
-// lies on the analytic profile rather than on the sampled SVG outline.
+// search. Ordinary near-axial rays have constant y and are solved directly.
+// For oblique rays, substituting the ray and even-polynomial departure into
+// the conic's implicit equation produces a polynomial of degree at most 16.
+// Bernstein subdivision isolates every root, including even-multiplicity
+// tangencies and two crossings whose endpoint residuals share a sign. Roots
+// on the conic's unused second branch are rejected against the explicit sag.
+// The returned point lies on the analytic profile rather than on the sampled
+// SVG outline.
 function rayAsphereHit(p, d, surface) {
   const profile = surface.data.asphere;
   const offset = { x: p.x - profile.cx, y: p.y - profile.cy };
@@ -1451,35 +1497,128 @@ function rayAsphereHit(p, d, surface) {
   // Moving a hair beyond the self-hit threshold prevents a ray launched from
   // this face from rediscovering the same numerical root at exactly 0.05 mm.
   lo += 1e-9;
-  const STEPS = 128;
-  let previousT = lo;
-  let previousValue = valueAt(previousT);
-  if (!Number.isFinite(previousValue)) return null;
-  if (Math.abs(previousValue) < 1e-10) return makeHit(previousT);
-  for (let i = 1; i <= STEPS; i++) {
-    const currentT = lo + (hi - lo) * i / STEPS;
-    const currentValue = valueAt(currentT);
-    if (!Number.isFinite(currentValue)) return null;
-    if (Math.abs(currentValue) < 1e-10) return makeHit(currentT);
-    if (previousValue * currentValue < 0) {
-      let left = previousT, right = currentT;
-      let leftValue = previousValue;
-      for (let iteration = 0; iteration < 52; iteration++) {
-        const middle = (left + right) / 2;
+
+  const span = hi - lo;
+  const xa = x0 + dx * lo;
+  const ya = y0 + dy * lo;
+  const xStep = dx * span;
+  const yStep = dy * span;
+
+  // P(y(u)) in the normalized ray parameter u = (t - lo) / span.
+  const departure = Array(9).fill(0);
+  for (const [degree, coefficient] of [
+    [4, Number(profile.a4) || 0],
+    [6, Number(profile.a6) || 0],
+    [8, Number(profile.a8) || 0],
+  ]) {
+    for (let j = 0; j <= degree; j++) {
+      departure[j] += coefficient * ASPHERE_BINOMIAL[degree][j]
+        * ya ** (degree - j) * yStep ** j;
+    }
+  }
+
+  // z = x - P(y) is the conic-only sag. For a non-plane conic it obeys
+  // y² - 2Rz + (1+k)z² = 0; for a plane base, z itself is the equation.
+  const z = departure.map((coefficient, i) => (i === 0 ? xa : i === 1 ? xStep : 0) - coefficient);
+  let equation;
+  const R = Number(profile.R) || 0;
+  const conicFactor = 1 + (Number(profile.k) || 0);
+  if (Math.abs(R) < 1e-9) {
+    equation = z;
+  } else {
+    const zSquared = multiplyPolynomial(z, z);
+    equation = Array(zSquared.length).fill(0);
+    equation[0] = ya * ya;
+    equation[1] = 2 * ya * yStep;
+    equation[2] = yStep * yStep;
+    for (let i = 0; i < z.length; i++) equation[i] -= 2 * R * z[i];
+    for (let i = 0; i < zSquared.length; i++) equation[i] += conicFactor * zSquared[i];
+  }
+  while (equation.length > 1 && equation.at(-1) === 0) equation.pop();
+
+  const residualTolerance = 1e-9;
+  const polishRoot = (leftT, rightT) => {
+    let leftValue = valueAt(leftT);
+    let rightValue = valueAt(rightT);
+    if (!Number.isFinite(leftValue) || !Number.isFinite(rightValue)) return null;
+    if (Math.abs(leftValue) <= residualTolerance) return leftT;
+    if (Math.abs(rightValue) <= residualTolerance) return rightT;
+    if (leftValue * rightValue < 0) {
+      for (let iteration = 0; iteration < 56; iteration++) {
+        const middle = (leftT + rightT) / 2;
         const middleValue = valueAt(middle);
         if (!Number.isFinite(middleValue)) return null;
-        if (Math.abs(middleValue) < 1e-12) { left = middle; right = middle; break; }
+        if (Math.abs(middleValue) <= 1e-12) return middle;
         if (leftValue * middleValue <= 0) {
-          right = middle;
+          rightT = middle;
+          rightValue = middleValue;
         } else {
-          left = middle;
+          leftT = middle;
           leftValue = middleValue;
         }
       }
-      return makeHit((left + right) / 2);
+      return (leftT + rightT) / 2;
     }
-    previousT = currentT;
-    previousValue = currentValue;
+
+    // An even-multiplicity tangency has no sign-changing bracket. Start from
+    // the best point in the isolated interval and polish with safeguarded
+    // Newton steps using the exact analytic derivative.
+    const middle = (leftT + rightT) / 2;
+    const samples = [
+      { t: leftT, value: leftValue },
+      { t: middle, value: valueAt(middle) },
+      { t: rightT, value: rightValue },
+    ];
+    let best = samples.reduce((a, b) => Math.abs(b.value) < Math.abs(a.value) ? b : a);
+    for (let iteration = 0; iteration < 12; iteration++) {
+      if (!Number.isFinite(best.value) || Math.abs(best.value) <= residualTolerance) break;
+      const derivative = dx - dy * asphereSlope(y0 + dy * best.t, profile);
+      if (!Number.isFinite(derivative) || Math.abs(derivative) < 1e-14) break;
+      const nextT = best.t - best.value / derivative;
+      if (!(nextT > leftT && nextT < rightT)) break;
+      const next = { t: nextT, value: valueAt(nextT) };
+      if (!Number.isFinite(next.value) || Math.abs(next.value) >= Math.abs(best.value)) break;
+      best = next;
+    }
+    return Math.abs(best.value) <= residualTolerance ? best.t : null;
+  };
+
+  if (equation.every(coefficient => coefficient === 0)) {
+    const candidate = polishRoot(lo, hi);
+    return candidate === null ? null : makeHit(candidate);
+  }
+
+  const initial = powerToBernstein(equation);
+  const stack = [{ coefficients: initial, u0: 0, u1: 1, depth: 0 }];
+  while (stack.length) {
+    const interval = stack.pop();
+    const scale = Math.max(1, ...interval.coefficients.map(Math.abs));
+    const coefficientTolerance = 256 * Number.EPSILON * scale;
+    const minimum = Math.min(...interval.coefficients);
+    const maximum = Math.max(...interval.coefficients);
+    if (minimum > coefficientTolerance || maximum < -coefficientTolerance) continue;
+
+    const width = interval.u1 - interval.u0;
+    if (interval.depth >= 56 || width <= 2 ** -48) {
+      const leftT = lo + span * interval.u0;
+      const rightT = lo + span * interval.u1;
+      const candidate = polishRoot(leftT, rightT);
+      if (candidate !== null) return makeHit(candidate);
+      continue;
+    }
+
+    const middleU = (interval.u0 + interval.u1) / 2;
+    const [leftCoefficients, rightCoefficients] = splitBernsteinHalf(interval.coefficients);
+    // LIFO order keeps the search increasing in t, so the first accepted root
+    // is the nearest physical hit even when one interval contains a pair.
+    stack.push({
+      coefficients: rightCoefficients, u0: middleU, u1: interval.u1,
+      depth: interval.depth + 1,
+    });
+    stack.push({
+      coefficients: leftCoefficients, u0: interval.u0, u1: middleU,
+      depth: interval.depth + 1,
+    });
   }
   return null;
 }

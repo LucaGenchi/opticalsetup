@@ -827,10 +827,12 @@ export const wikiEntries = [
       html: `
         <p>Both faces carry an independent radius, conic constant and
         <span class="w">A₄/A₆/A₈</span> set. What matters is that these are not a drawing
-        instruction: the tracer <strong>intersects the analytic profile and refracts off its
-        local derivative</strong>, so changing <span class="w">k</span> changes where rays
-        actually cross the glass and where they end up. There is no paraxial correction
-        applied afterwards — the aberration is whatever the surface produces.</p>
+        instruction: the tracer <strong>isolates intersections on the analytic profile and
+        refracts off its local derivative</strong>, including paired crossings near tangency.
+        The same realized analytic faces determine whether a source begins inside the glass.
+        Changing <span class="w">k</span> therefore changes where rays actually cross the
+        glass and where they end up. There is no paraxial correction applied afterwards —
+        the aberration is whatever the surface produces.</p>
         <p>That claim is checkable, and worth checking, because it is the whole point of the
         element. Set up the classic case — flat face toward a collimated beam, curved face
         toward the focus — and sweep the conic while measuring the focused spot:</p>
@@ -881,21 +883,6 @@ export const wikiEntries = [
         identical quoted number and focuses its edge ray 2.8&nbsp;mm short. Two lenses,
         one readout, a 250-fold difference in what actually happens. The ray trace is the
         thing to look at.</p>
-        <p>Two numerical limits belong to the tracer rather than to the optics. Ray–surface
-        intersections are found by scanning the residual along the ray in 128 steps and
-        bisecting the first sign change, so a ray that grazes a face — entering and leaving
-        within a single scan step — can be missed and pass through the glass unrefracted.
-        Constructing tangency deliberately on the default face and walking the ray inwards,
-        the miss threshold sits at about <strong>27&nbsp;nm</strong> of offset from exact
-        tangency: closer than that and the two intersections are too close together to
-        bracket. That is well below the wavelength of the light being traced, and a grid
-        sweep of 168,000 ordinary ray–surface pairs produced no misses at all, so this is a
-        geometric corner rather than something a bench layout will meet. Separately,
-        whether a point counts as <em>inside</em> the glass is judged against the 24-chord
-        drawing outline rather than the analytic curve, so a sliver between chord and curve
-        — at most 6&nbsp;µm deep on the default lens, 12&nbsp;µm on a fast
-        <span class="w">f/0.6</span> one — is refracted as glass but classified as air. It
-        matters only for a source placed inside the lens body, in that sliver.</p>
         <p>Nothing here is manufactured: there is no surface figure error, no roughness, no
         centring tolerance, and no coating, so reflectivity does not vary with wavelength or
         angle. A real asphere is corrected for one conjugate and one wavelength; this one is
