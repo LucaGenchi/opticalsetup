@@ -75,39 +75,149 @@ export const exampleEntries = [
   {
     match: 'Singlet vs achromat — axial colour',
     title: 'Singlet vs achromat — axial colour',
-    tagline: 'Two 100 mm prescriptions under the same visible supercontinuum: the crown singlet separates colour while the crown–flint doublet brings it back together.',
+    tagline: 'Two f = 40 mm prescriptions under the same 400–750 nm beam: one glass spreads the spectrum along the axis, two glasses fold it back.',
     html: `
-      <p>A single positive lens cannot focus every visible wavelength at the same
-      axial position because optical-glass index changes with wavelength. Blue light
-      generally sees more power than red light and therefore focuses closer to the
-      lens. An achromatic doublet combines a low-dispersion crown element with a
-      higher-dispersion flint element of opposing power, cancelling most of that
-      first-order colour without cancelling the useful net focus.</p>
-      <p>This side-by-side scene holds the comparison unusually clean: both lanes use
-      the same 486.1–656.3&nbsp;nm source band, 24&nbsp;mm beam, clear aperture, and
-      approximately 100&nbsp;mm effective focal length. Only the prescription changes.</p>`,
+      <p>A lens works because glass slows light, and it slows every colour by a different
+      amount. The refractive index of any ordinary glass falls as wavelength rises — blue
+      light sees a denser medium than red — and since the power of a thin lens is
+      <span class="w">(n − 1)</span> times its curvature, a single positive lens is
+      simply <em>stronger in the blue</em>. Blue focuses short, red focuses long, and the
+      focal length becomes a function of colour. That is axial, or longitudinal,
+      chromatic aberration.</p>
+      <p>Nothing about the shape can remove it. Bending a singlet — changing the two
+      radii while holding the power — is the classical cure for spherical aberration and
+      does nothing at all for colour, because colour comes from the material, not the
+      geometry. One glass has one dispersion curve, and the lens is stuck with it.</p>
+      <p>The escape is to use two glasses with different dispersions. Put a positive
+      crown element in contact with a negative flint element of much stronger dispersion,
+      and choose the two powers so that
+      <span class="w">φ₁/V₁ + φ₂/V₂ = 0</span>, where <span class="w">V</span> is the Abbe
+      number — about 64 for N-BK7 and 26 for N-SF11. The colour errors then cancel to
+      first order while the powers still add to something useful. The flint gives back
+      less power than it removes colour, which is exactly the trade an achromat is.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
-      <p>The upper N-BK7 singlet produces about −1.53&nbsp;mm of F-to-C longitudinal
-      colour. The lower N-BK7 + N-SF11 cemented achromat produces about
-      −0.0003&nbsp;mm in the same model — roughly five thousand times less. That
-      correction is not a display effect or an “achromat” flag: every sampled
-      wavelength refracts through the drawn spherical faces with its own glass index,
-      and the focus separation emerges from those interactions.</p>
-      <p>Select either Lens group to inspect the actual surface rows. Editing any row
-      makes a custom copy of the preset; the per-row action can then vary one radius to
-      null the F-to-C readout while preserving a finite focal length of the same sign.</p>`,
-    limitations: `<p>The comparison is a 2D meridional geometric trace. It shows
-      longitudinal colour and spherical caustics, not diffraction-limited spot size,
-      lateral colour, quantitative off-axis aberrations, coatings, manufacturing
-      tolerances, or a full visible image. The near-zero F/C result does not mean every
-      intermediate wavelength shares exactly one focus, and the catalogue glasses use
-      visible-band Cauchy fits rather than full Sellmeier data.</p>`,
+      <p>Both lanes are identical apart from the prescription: the same 400–750&nbsp;nm
+      supercontinuum, the same 20&nbsp;mm beam, the same 1-inch clear aperture, and the
+      same 40&nbsp;mm focal length at the d line. Anything that differs downstream is the
+      glass.</p>
+      <p>The uncorrected N-BK7 singlet spreads its focus over <strong>1.39&nbsp;mm</strong>
+      between 400 and 750&nbsp;nm. At the d-line focal plane, where the screen sits, that
+      leaves a coloured blur about <strong>0.39&nbsp;mm</strong> across — blue core, red
+      skirt, and no plane anywhere that is sharp in every colour at once. The cemented
+      N-BK7 + N-SF11 achromat, at the same focal length, brings that to
+      <strong>0.15&nbsp;mm</strong> of focus spread and a <strong>0.04&nbsp;mm</strong>
+      spot: about ten times tighter.</p>
+      <p>None of that is a flag or a display effect. Every sampled wavelength refracts
+      through the drawn faces with its own catalogue index, and the separation is whatever
+      those interactions produce. Select either group to read its surface table and its
+      axial-colour figure, or edit a row to make a custom copy and watch the correction
+      break.</p>
+      <p>The residual in the corrected lane is worth looking at rather than ignoring. Two
+      glasses can bring exactly two wavelengths to a common focus; everything between and
+      beyond them lands slightly differently, and that leftover bow is the
+      <em>secondary spectrum</em>. Removing it needs a third glass with anomalous
+      dispersion — which is what separates an apochromat from an achromat, and most of
+      what you pay for in one.</p>`,
+    limitations: `<p>This is a 2D meridional geometric trace: it shows longitudinal
+      colour, not diffraction-limited spot size, lateral colour, off-axis aberration,
+      coatings, or manufacturing tolerance. The catalogue glasses use visible-band Cauchy
+      fits rather than full Sellmeier data, so the residual figures are indicative rather
+      than a design-grade prediction. The doublet here is solved for this aperture in this
+      model; it is a teaching prescription, not a catalogue part.</p>
+      <p>Both lenses are deliberately fast — f/2 on a 20&nbsp;mm beam — which makes the
+      colour easy to see but also means each lane carries spherical aberration of its own.
+      The spot sizes quoted are the combined blur, not colour alone.</p>`,
     citations: [],
     resources: [
       { label: 'RP Photonics Encyclopedia — Achromatic Optics', url: 'https://www.rp-photonics.com/achromatic_optics.html' },
+      { label: 'RP Photonics Encyclopedia — Chromatic Dispersion', url: 'https://www.rp-photonics.com/chromatic_dispersion.html' },
     ],
     related: ['lensgroup', 'thicklens', 'sclaser'],
+  },
+  {
+    match: 'Spherical aberration — sphere vs asphere vs ideal lens',
+    title: 'Sphere, asphere, and the lens that does not exist',
+    tagline: 'Three 1-inch lenses of the same 25 mm focal length under one 20 mm monochromatic bundle: a perfect point, a 7.5 mm smear, and a point again.',
+    html: `
+      <p>The thin-lens construction every optics course starts with sends every ray
+      through a single focal point. It is an approximation, and the approximation is
+      <em>paraxial</em> — it assumes rays stay close enough to the axis that
+      <span class="w">sin θ ≈ θ</span>. Push light out to the rim of a real lens and the
+      neglected terms arrive.</p>
+      <p>A spherical surface is the shape that is easy to make, not the shape that is
+      right. Grinding two glass blanks against each other with abrasive between them
+      naturally produces spheres, because the sphere is the only surface that slides on
+      itself in every direction — which is why almost every lens ever made has been
+      spherical. But a sphere curves away from the axis faster than focusing requires. A
+      ray striking it far from the axis meets a surface that is too steeply tilted, is
+      refracted too strongly, and crosses the axis <em>before</em> the paraxial focus. The
+      further out the ray, the worse the error: it grows as the cube of ray height, which
+      is why spherical aberration is invisible near the axis and brutal at the edge, and
+      why stopping a lens down cures it so dramatically.</p>
+      <p>The consequence is not a blurrier focus. It is that there is <strong>no focus at
+      all</strong> — no plane anywhere along the axis where the light comes to a point. The
+      rays instead form a caustic, the bright cusped envelope you can see in a coffee cup.
+      The best available plane is the <em>circle of least confusion</em>, sitting well
+      inside the paraxial focus, and it is a disc rather than a point.</p>
+      <p>An asphere breaks the manufacturing constraint to fix the optical one. Adding a
+      conic constant <span class="w">k</span> to the sag equation keeps the curvature at
+      the vertex — so the paraxial focal length is untouched — while flattening the
+      surface progressively away from the axis, by exactly the amount needed to stop
+      over-bending the marginal rays. One number, chosen correctly, removes almost the
+      whole error.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Three lanes, each starting identically: a monochromatic 587.6&nbsp;nm point
+      source at the front focus of a collimator, producing a 20&nbsp;mm bundle of parallel
+      rays. Every lens under test is 1 inch across with a 25&nbsp;mm focal length, so all
+      three are working at f/1.25 and any difference between them is shape alone.</p>
+      <ul>
+        <li><strong>The ideal thin lens</strong> puts every ray height through one point.
+        Longitudinal spread: <strong>0.000&nbsp;mm</strong>. This is the construction, not
+        a lens that can be built.</li>
+        <li><strong>The N-BK7 spherical singlet</strong> focuses its paraxial rays at
+        26.4&nbsp;mm and its rim rays at 19.6&nbsp;mm — <strong>6.8&nbsp;mm apart</strong>.
+        At the paraxial plane, where the screen sits, the bundle is spread over
+        <strong>7.5&nbsp;mm</strong>. Even at its tightest, 5.2&nbsp;mm short of that
+        plane, the circle of least confusion is still <strong>1.7&nbsp;mm</strong>
+        across.</li>
+        <li><strong>The N-BK7 asphere</strong>, same power, same aperture, with
+        <span class="w">k₁ = −0.55</span> on its front face: longitudinal spread
+        <strong>0.046&nbsp;mm</strong> and a <strong>0.02&nbsp;mm</strong> spot. That is
+        147 times better than the sphere longitudinally, and about 74 times tighter than
+        the sphere's <em>best</em> plane.</li>
+      </ul>
+      <p>Two things are worth doing by hand. Select the spherical singlet and drag its
+      aperture down: the blur collapses far faster than the aperture does, because the
+      transverse error goes as the cube of ray height — this is why a slow lens is easy and
+      a fast one is hard, and why photographers stop down. Then select the asphere and
+      sweep <span class="w">k₁</span> away from −0.55: the focal length readout does not
+      move, because the conic constant does not touch vertex curvature, but the rim rays
+      swing through the focus and back out again.</p>
+      <p>Notice also that the three screens are not at the same distance. Equal focal
+      length does not mean equal back focal distance: the asphere's is shorter because its
+      principal planes sit differently. Focal length is measured from the principal plane,
+      not from the glass.</p>`,
+    limitations: `<p>A 2D meridional trace shows only the aberrations that live in that
+      plane. Spherical aberration and defocus do; coma, astigmatism and field curvature
+      need the third dimension or a real off-axis field, so the asphere here is being
+      judged on the one job this model can actually check. A real aspheric condenser is
+      corrected for one conjugate and one wavelength, and the conic that fixes an infinite
+      conjugate is not the conic that fixes a finite one.</p>
+      <p>All three lenses are f/1.25 so the effect is unmistakable at a glance; a normal
+      f/8 singlet would show a blur too small to see at this scale. The tracer samples nine
+      rays, so the caustic is drawn as a handful of distinct crossings rather than the
+      continuous envelope it really is. Nothing here is manufactured: no surface figure
+      error, no roughness, no centring tolerance, and no coating — a real asphere is
+      considerably harder to make than these numbers suggest, which is the whole reason
+      spherical lenses dominated for four centuries.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Spherical Aberration', url: 'https://www.rp-photonics.com/spherical_aberrations.html' },
+      { label: 'Edmund Optics — All About Aspheric Lenses', url: 'https://www.edmundoptics.com/knowledge-center/application-notes/optics/all-about-aspheric-lenses/' },
+    ],
+    related: ['asphericlens', 'thicklens', 'lens', 'pointsource'],
   },
   {
     match: 'Multiphoton microscope — SHG and two photon fluorescence',

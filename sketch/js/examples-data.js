@@ -25,6 +25,12 @@ export const examples = [
     "slug": "spherical-aberration-ideal-lens-vs-spherical-singlet"
   },
   {
+    "group": "Lens Physics",
+    "name": "Spherical aberration — sphere vs asphere vs ideal lens",
+    "path": "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20sphere%20vs%20asphere%20vs%20ideal%20lens.json",
+    "slug": "spherical-aberration-sphere-vs-asphere-vs-ideal-lens"
+  },
+  {
     "group": "Microscopy Implementations",
     "name": "Coherent Raman microscope — SRS and CARS",
     "path": "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
