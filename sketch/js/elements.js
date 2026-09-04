@@ -2364,7 +2364,7 @@ export const registry = {
       { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 30, slider: false },
       { key: 'k1', label: 'Front conic constant k₁', type: 'number', min: -ASPHERE_LIMITS.conic, max: ASPHERE_LIMITS.conic, step: 0.01, def: -0.58, slider: false },
       { key: 'r2', label: 'Rear radius R₂ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 0, slider: false },
-      { key: 'k2', label: 'Rear conic constant k₂', type: 'number', min: -ASPHERE_LIMITS.conic, max: ASPHERE_LIMITS.conic, step: 0.05, def: 0, slider: false },
+      { key: 'k2', label: 'Rear conic constant k₂', type: 'number', min: -ASPHERE_LIMITS.conic, max: ASPHERE_LIMITS.conic, step: 0.01, def: 0, slider: false },
       { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
       { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
