@@ -256,6 +256,9 @@ footer.wiki-footer {
 .hub-group { margin-top: 40px; }
 .hub-group h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); font-weight: 700; margin-bottom: 16px; }
 .hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.hub-sub { font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--muted); font-weight: 650; margin: 18px 0 10px; }
+.hub-group h2 + .hub-sub { margin-top: 0; }
 .hub-card {
   display: flex; align-items: center; gap: 14px;
   padding: 14px 16px; border-radius: 10px;
