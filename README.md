@@ -36,7 +36,7 @@ figures as SVG or PNG.
   laser, directional LED, broadband point source, mirrors (flat with reflectivity,
   convex/concave, true parabolic,
   galvo), paraxial lenses, wavelength-aware flat metalenses, spherical thick
-  singlets, editable surface-table lens
+  singlets, exact conic/even-polynomial aspheric singlets, editable surface-table lens
   groups (including traced crown–flint achromats), telescopes, objectives,
   dichroics, filters, beamsplitters,
   polarization optics (polarizers, waveplates, PBS, isolator), gratings, prisms,
@@ -80,9 +80,10 @@ figures as SVG or PNG.
   changing the power when the sensor bin count changes. Profile colors show the
   qualitative wavelength mixture at each position. Scalar readouts use arbitrary relative
   ray-weight units rather than implying a calibrated percentage.
-- **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets
-  and multi-element surface tables with aperture stops and emergent axial colour,
-  with exact circular-surface intersections and catalogue-glass dispersion,
+- **Physics that responds**: thin-lens/paraxial transfer, thick spherical singlets,
+  conic-plus-A₄/A₆/A₈ aspheric singlets, and multi-element surface tables with
+  aperture stops and emergent axial colour, with exact curved-surface intersections,
+  exact surface normals, and catalogue-glass dispersion,
   spectral band arithmetic at filters, Malus's law, grating equation,
   Sellmeier glass/prism dispersion and second-order pulse GDD, cavity round trips
   with partial mirrors, image formation with magnification (arrow / letter F / tree
@@ -113,11 +114,15 @@ OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optic
 design package. It models ray paths, bounded relative power, spectral bands, Stokes
 polarization, thin-lens elements, refractive boundaries, timed pulse trains,
 second-order material and compensator GDD, and simple detector responses. Thick
-singlets and lens groups use a 2D meridional section with spherical or flat faces;
+spherical singlets and lens groups use a 2D meridional section with spherical or flat faces;
 lens-group readouts follow the same aperture-aware realized prescription as the trace,
 including the tracer-safe 0.06 mm air gap used at nominally cemented interfaces. They
-do not model skew rays, aspheres, coatings, cement index, or calibrated off-axis
-aberrations. Outside the bounded coherent cases below, the app does not model carrier
+do not apply aspheric terms. The dedicated aspheric singlet uses the standard conic sag
+plus even A₄, A₆, and A₈ coefficients on either face, with analytic intersections and
+normals; its paraxial readouts still depend only on vertex curvature. It does not model
+  skew rays, diffraction, coatings, cement index, manufacturing tolerances, or
+  calibrated off-axis aberrations. Outside the bounded coherent cases below,
+  the app does not model carrier
 phase or interference; it also does not model diffraction-limited propagation,
 higher-order pulse dispersion, arbitrary spectral phase, input chirp beyond its configured
 state, or laboratory-specific calibration. The pulse

@@ -88,7 +88,7 @@ test('lenses are grouped ideal, then real, then metasurface', () => {
     .sort(([, a], [, b]) => a.paletteOrder - b.paletteOrder);
   assert.deepEqual(lensPalette.map(([type]) => type), [
     'lens', 'lensc', 'telescope', 'objective',
-    'thicklens', 'lensgroup',
+    'thicklens', 'lensgroup', 'asphericlens',
     'metalens',
   ]);
   // Every lens carries a subgroup, and each subgroup is contiguous in the
@@ -96,7 +96,7 @@ test('lenses are grouped ideal, then real, then metasurface', () => {
   // out-of-place paletteOrder would silently split one heading into two.
   assert.deepEqual(lensPalette.map(([, definition]) => definition.paletteGroup), [
     'Ideal lenses', 'Ideal lenses', 'Ideal lenses', 'Ideal lenses',
-    'Real lenses', 'Real lenses',
+    'Real lenses', 'Real lenses', 'Real lenses',
     'Metalenses',
   ]);
   assert.deepEqual(paletteOrderedTypes('Lenses'), lensPalette.map(([type]) => type),
@@ -309,7 +309,7 @@ test('a flat face is traced as a plane, not a huge-radius arc', () => {
 // ---------------- per-surface transmission is a percentage ----------------
 
 test('glass bodies express per-surface transmission the same way every other optic does', () => {
-  for (const type of ['thicklens', 'freeglass']) {
+  for (const type of ['thicklens', 'asphericlens', 'freeglass']) {
     const spec = registry[type].params.find(p => p.key === 'transEff');
     assert.ok(spec, `${type} must carry transEff, not a bespoke 0-1 transmission`);
     assert.deepEqual([spec.min, spec.max, spec.def], [0, 100, 98], `${type} bounds`);
@@ -326,7 +326,7 @@ test('glass bodies express per-surface transmission the same way every other opt
 
 test('a sketch saved with the old 0-1 transmission loads at the same physical value', () => {
   const file = els => JSON.stringify({ app: 'optics2d', version: 1, elements: els, beams: [] });
-  for (const type of ['thicklens', 'freeglass']) {
+  for (const type of ['thicklens', 'asphericlens', 'freeglass']) {
     for (const stored of [0, 0.5, 0.98, 1]) {
       const fresh = createElement(type, 0, 0);
       const params = { ...fresh.params, transmission: stored };

@@ -773,6 +773,135 @@ export const wikiEntries = [
   },
 
   {
+    type: 'asphericlens',
+    title: 'Aspheric lens',
+    category: 'Lenses',
+    realWorld: {
+      html: `
+        <p>A sphere is easy to make and wrong for the job. Grinding two glass surfaces
+        against each other with rotation and pressure naturally produces spheres, which is
+        why almost every lens ever made has been one — but a sphere does not bring a wide
+        collimated beam to a single point. Rays through the outer part of the lens cross the
+        axis closer than rays near it, and that gap is
+        <a href="../thicklens/">spherical aberration</a>${cite(3)}. It is not a
+        manufacturing defect; it is what the shape does.</p>
+        <p>The classical fix is more glass: split the power over several elements so each
+        bends the light less, and the aberration each contributes partly cancels. That works,
+        and it is why a fast camera lens has many elements. An asphere takes the other route
+        — keep one element and give it the surface the problem actually calls for.</p>
+        <h3>The surface that has no spherical aberration</h3>
+        <p>For one conjugate pair the exact surface is known in closed form. Take a
+        plano-convex singlet with the <em>flat</em> face toward a collimated beam: light
+        enters without deviation, and the curved exit face has to turn a plane wavefront into
+        a perfect spherical one converging on the focus. The surface that does it exactly is a
+        <strong>hyperboloid</strong> of conic constant</p>`,
+      formulas: [
+        { tex: 'k = -n^{2}', caption: 'The conic constant that eliminates spherical aberration for a plano-convex singlet focusing a collimated beam, with the curved face toward the focus. For N-BK7 at 587.6 nm, n = 1.5168 and k = −2.301.' },
+        { tex: 'x(y) = \\frac{c\\,y^{2}}{1 + \\sqrt{1 - (1+k)c^{2}y^{2}}} + A_{4}y^{4} + A_{6}y^{6} + A_{8}y^{8}', caption: 'The even-asphere sag, the standard prescription form. c = 1/R is the vertex curvature; k selects the conic; the polynomial terms correct what the conic alone cannot.' },
+      ],
+      html2: `
+        <p>The conic constant names the family: <span class="w">k = 0</span> is a sphere,
+        <span class="w">−1 &lt; k &lt; 0</span> an ellipsoid, <span class="w">k = −1</span> a
+        paraboloid, and <span class="w">k &lt; −1</span> a hyperboloid. A parabola is the
+        shape that collimates a point source <em>by reflection</em> — which is why the
+        <a href="../oap/">parabolic mirror</a> exists — but refraction has an index in it, so
+        the shape that does the equivalent job in glass is a hyperbola instead.</p>
+        <p>One conjugate is all a conic can fix. Correct a lens for a collimated input and it
+        is no longer corrected for a nearby object, and nothing about the conic addresses
+        off-axis aberrations — coma and astigmatism survive untouched. The
+        <span class="w">A₄, A₆, A₈</span> terms exist for that: extra degrees of freedom, each
+        beginning at a higher power of the ray height, that let a designer trade residual
+        aberrations against each other across a field rather than perfecting a single point.
+        They start at fourth order precisely so they leave the paraxial focal length
+        alone.</p>
+        <h3>Why they are everywhere now</h3>
+        <p>Aspheres were long a specialist item because a non-spherical surface cannot be
+        made by the natural grinding process. Moulded glass and plastic, single-point diamond
+        turning, and deterministic polishing changed the economics, and the result is that
+        one moulded asphere now routinely replaces a two- or three-element spherical
+        assembly${cite(1)}. Laser diode collimators, fiber-coupling lenses, condensers and
+        every phone camera stack rely on them — anywhere the alternative is more elements,
+        more weight, more surfaces to coat and more light lost.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Both faces carry an independent radius, conic constant and
+        <span class="w">A₄/A₆/A₈</span> set. What matters is that these are not a drawing
+        instruction: the tracer <strong>isolates intersections on the analytic profile and
+        refracts off its local derivative</strong>, including paired crossings near tangency.
+        The same realized analytic faces determine whether a source begins inside the glass.
+        Changing <span class="w">k</span> therefore changes where rays actually cross the
+        glass and where they end up. There is no paraxial correction applied afterwards —
+        the aberration is whatever the surface produces.</p>
+        <p>That claim is checkable, and worth checking, because it is the whole point of the
+        element. Set up the classic case — flat face toward a collimated beam, curved face
+        toward the focus — and sweep the conic while measuring the focused spot:</p>
+        <p><strong>k = 0</strong> gives 1.08&nbsp;mm. <strong>k = −2</strong> gives
+        0.14&nbsp;mm. <strong>k = −2.3</strong> gives <strong>0.0009&nbsp;mm</strong>.
+        <strong>k = −2.6</strong> is back to 0.14&nbsp;mm. The collapse sits at −2.301, which
+        is −n² for N-BK7 at that wavelength, and it moves when you change glass: N-SF11 wants
+        −3.19, fused silica −2.13. Nothing puts those numbers in — they come out of the
+        geometry.</p>
+        <p>With <span class="w">k = 0</span> and no polynomial terms the element reduces to
+        the <a href="../thicklens/">spherical singlet</a> exactly, which is the other half of
+        the same claim: same throughput, same focus, same aberration. Radii follow the same
+        Cartesian sign convention, so a prescription can be moved between the two.</p>
+        <h3>Realized versus requested</h3>
+        <p>Three constraints are applied to keep a prescription physical, and all three are
+        reported rather than applied quietly. A conic with
+        <span class="w">1 + k &gt; 0</span> has a finite radial extent, so a radius too short
+        for the requested aperture is increased until the aperture fits on the surface.
+        Centre thickness is increased when needed to leave a real edge. And the aspheric
+        departure is bounded: if <span class="w">A₄y⁴ + A₆y⁶ + A₈y⁸</span> exceeds the
+        semi-aperture anywhere across the clear aperture, all three coefficients are scaled
+        by a common factor until it does not.</p>
+        <p>That third one is easier to reach than it looks, and it is worth knowing where.
+        At the default 25.4&nbsp;mm diameter the departure bound bites at about
+        <span class="w">A₄ = 5&nbsp;×&nbsp;10⁻⁴</span>, so a typed
+        <span class="w">A₄ = 0.001</span> is traced at roughly half its value. Because the
+        three terms are scaled together the ratio between them is preserved, but the surface
+        traced is not the surface requested — it is a smaller relative of it. Real catalogue
+        aspheres sit far below this, in the <span class="w">10⁻⁵</span> range and below,
+        where nothing is rescaled; the guard exists so that a hand-edited or stale scene
+        cannot produce a metre-deep surface. The inspector reports the geometry actually
+        traced, so a rescaled prescription is visible rather than inferred.</p>`,
+      formulas: [],
+      limitations: `<p>This is a 2D meridional section of a rotationally symmetric lens, so
+        only aberrations that live in that plane can appear. Spherical aberration and
+        defocus do; coma, astigmatism and field curvature need the third dimension or a real
+        off-axis field and do not — which means the <span class="w">A₄/A₆/A₈</span> terms
+        cannot be used here for the field-balancing job they mostly exist to do in real
+        designs. There are no skew rays.</p>
+        <p>The paraxial focal length and back focal distance in the panel are computed from
+        vertex curvature and centre thickness, exactly as for a spherical singlet, because
+        neither the conic nor the polynomial terms change curvature at the vertex. They
+        therefore describe the paraxial limit and say nothing about the aberration the rest
+        of the surface produces. How little they say is easy to measure: for the default
+        prescription the panel quotes a back focal distance of 54.094&nbsp;mm, and a traced
+        ray at the very edge of the clear aperture crosses the axis 11&nbsp;µm from it —
+        while the <em>same</em> lens with <span class="w">k₁</span> set to 0 keeps the
+        identical quoted number and focuses its edge ray 2.8&nbsp;mm short. Two lenses,
+        one readout, a 250-fold difference in what actually happens. The ray trace is the
+        thing to look at.</p>
+        <p>Nothing here is manufactured: there is no surface figure error, no roughness, no
+        centring tolerance, and no coating, so reflectivity does not vary with wavelength or
+        angle. A real asphere is corrected for one conjugate and one wavelength; this one is
+        as good as its prescription at every wavelength the glass transmits, with only the
+        catalogue dispersion moving the answer.</p>`,
+    },
+    related: ['thicklens', 'lens', 'lensgroup', 'oap', 'metalens'],
+    citations: [
+      { label: 'Edmund Optics — “All About Aspheric Lenses”: how aspheres replace multi-element spherical assemblies, and how they are manufactured', url: 'https://www.edmundoptics.com/knowledge-center/application-notes/optics/all-about-aspheric-lenses/' },
+      { label: 'R. Paschotta, “Aspheric Optics,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/aspheric_optics.html' },
+      { label: 'R. Paschotta, “Spherical Aberrations,” RP Photonics Encyclopedia', url: 'https://www.rp-photonics.com/spherical_aberrations.html' },
+    ],
+    resources: [
+      { label: 'ISO 10110-12 — the even-asphere surface description used for optical prescriptions', url: 'https://www.iso.org/standard/61143.html' },
+      { label: 'Thorlabs — Aspheric lens selection guide', url: 'https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=6975' },
+    ],
+  },
+
+  {
     type: 'lensgroup',
     title: 'Lens group',
     category: 'Lenses',
