@@ -133,7 +133,8 @@ test('objective medium and NA normalize together while unresolved old high-NA sc
 
 test('sketches from before the LED/lamp -> Point source merge no longer load', () => {
   // No back-compat is kept at this stage: an old element type is simply an
-  // unknown type, same as any other invalid sketch reference.
+  // unknown type, same as any other invalid sketch reference. The lamp is a
+  // mode of pointsource, not a type, so this stays true for both.
   assert.throws(() => parseSketch(file([{ type: 'led', x: 0, y: 0, params: {} }]), registry), /unknown element/);
   assert.throws(() => parseSketch(file([{ type: 'lamp', x: 0, y: 0, params: {} }]), registry), /unknown element/);
 });

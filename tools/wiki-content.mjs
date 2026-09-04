@@ -374,6 +374,122 @@ export const wikiEntries = [
   },
 
   {
+    type: 'pointsource',
+    title: 'Point source',
+    category: 'Sources',
+    realWorld: {
+      html: `
+        <p>Not every source is a laser, and most of optics predates the ones that are. A
+        point source is the opposite limit: light leaving a region small enough to treat as
+        a point, spreading into every direction at once, with no fixed phase relationship
+        between one direction and the next. A fluorescing molecule, the tip of a fiber, an
+        arc between two electrodes and a pinhole in a screen all behave this way.</p>
+        <p>Two consequences follow, and between them they explain most of what such a
+        source is like to work with. The first is that the power falls as
+        <span class="w">1/r&sup2;</span> — spread over a sphere whose area grows with the
+        square of the distance — so an isotropic emitter is dim at any useful range unless
+        something gathers its light. The second is that you cannot get the brightness back.
+        Étendue, the product of source area and solid angle, cannot be reduced by any
+        passive optic; a lens can redirect an emitter's output but not concentrate it
+        beyond what its own size and spread allow. This is exactly why a laser can be
+        focused to a diffraction-limited spot and a lamp cannot, and it is a geometric
+        limit rather than an engineering one.</p>
+        <h3>Gas discharge lamps</h3>
+        <p>The most useful incoherent point sources in a laboratory are gas discharge
+        lamps, and what makes them useful is that they do not emit a continuum. Passing a
+        current through a low-pressure gas excites its atoms, and they radiate on the
+        discrete transitions that atom happens to have — a <strong>line spectrum</strong>,
+        fixed by atomic structure rather than by temperature${cite(1)}. Low pressure is part
+        of the design and not an accident: it keeps collisions rare, so the lines stay
+        narrow instead of being pressure-broadened into a smear${cite(2)}.</p>
+        <p>Those wavelengths are reproducible to a small fraction of a nanometre, which is
+        why such lamps are also called <em>calibration lamps</em>: mercury's 546.074&nbsp;nm
+        green, sodium's 589&nbsp;nm doublet and helium's 587.5618&nbsp;nm yellow are
+        standard lines an instrument can be checked against${cite(2)}.</p>
+        <p>The line <em>strengths</em> are a different matter, and it is worth being blunt
+        about it. Relative intensities depend on how the discharge is excited and drift with
+        drive current and lamp age; they are usually not specified at all${cite(2)}. The
+        standard tabulations carry the same warning — the RIT compilation of discharge
+        spectra, built from Reader and Corliss's <em>Line Spectra of the Elements</em>, notes
+        that its line intensities "may be quite different in the lamp you observe" and that
+        the excitation conditions behind the tabulated values are not
+        recorded${cite(1)}. Wavelengths are data; intensities are an
+        illustration.</p>
+        <p>What you can rely on is the pattern. Sodium's pair of close yellow lines, neon's
+        dense red-orange group, hydrogen's four Balmer lines and mercury's blue-green-yellow
+        set are recognisable on sight, and that recognisability is the whole reason a
+        spectroscopy course starts here.</p>`,
+      formulas: [
+        { tex: 'E = \\frac{P}{4\\pi r^{2}}', caption: 'Irradiance from an isotropic emitter: the inverse-square law is the reason uncollected point-source light is gone within a short distance.' },
+      ],
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The point source emits rays evenly over its <strong>emission angle</strong> —
+        the full 360&deg; by default — and those rays are drawn as a glow that
+        <strong>fades within a short range unless something collects them</strong>. That
+        fading is the model's one strong opinion, and it is there because the alternative
+        is worse: an isotropic emitter whose rays ran forever would light up every detector
+        on the bench at full strength, which is the opposite of how such a source behaves.</p>
+        <p>A lens, a microscope objective, a fiber tip or a <a href="../mirror/">mirror</a>
+        within range collects the light, and from that point on it is ordinary light that
+        propagates normally. The embedded bench above shows the arrangement that makes this
+        clearest: a <a href="../oap/">parabolic mirror</a> with the source exactly at its
+        focus, 25&nbsp;mm in front of the vertex, turning isotropic emission into a parallel
+        beam. That is how a lamp or an arc is collimated in a real instrument, and a
+        parabola does it without chromatic aberration — which matters here, because a lamp
+        emits many wavelengths at once.</p>
+        <h3>Lamp mode</h3>
+        <p>Setting <strong>Source</strong> to <em>Gas discharge lamp</em> changes what the
+        element emits and how it is drawn: a pen-ray tube rather than a star, tinted by its
+        own lines, and emitting a fixed line spectrum instead of a wavelength you type.
+        Eight lamps are available — mercury, sodium, cadmium, helium, hydrogen, neon,
+        caesium and argon — each carrying the standard lines it is bought for.</p>
+        <p>The lines are carried as lines, not as a sampled curve. A
+        <a href="../grating/">grating</a> fans exactly the wavelengths that are present and
+        none in between, a <a href="../filter/">filter</a> passes or blocks each one on its
+        own, and the <a href="../spectrometer/">spectrometer</a> draws them as separate
+        peaks. Sodium ships as its D doublet rather than as the single mean wavelength,
+        because the pair is what makes sodium recognisable and the two do resolve.</p>
+        <p>Relative line strengths are nominal, and deliberately coarse. They are set to
+        make each lamp look like itself, not to be photometry — for the reason given above,
+        a real lamp's ratios are not a fixed property of the element at all.</p>
+        <p><strong>Neither mode can interfere</strong>, and that is correct rather than a
+        limitation. Coherent field reconstruction in this tracer is reserved for a sized,
+        monochromatic continuous-wave laser; every other source carries power only. A lamp
+        in an interferometer therefore produces no fringes, which is what an incoherent
+        source does.</p>`,
+      formulas: [],
+      limitations: `<p>The near-field fade is a modelling device, not physics. Real
+        isotropic light does not stop at a boundary — it keeps going, growing weaker as
+        1/r&sup2; — and the range here is a fixed distance rather than anything derived from
+        the source's power or the detector's sensitivity. A collector just outside it gathers
+        nothing when a real one would gather a little.</p>
+        <p>The source is a true point, so it has no étendue: the one property that most
+        constrains real incoherent sources is absent, and a lens can focus this light to a
+        spot no real lamp could reach. There is no arc length, no electrode geometry, and no
+        angular distribution other than uniform — a real discharge is neither a point nor
+        isotropic.</p>
+        <p>Lamp line strengths are illustrative and no absolute radiometry is attached to
+        them, so a lamp's output is a relative weight rather than watts. Line widths are not
+        modelled at all: each line is treated as monochromatic, with no Doppler, pressure or
+        Stark broadening, and no self-absorption of the strong resonance lines — which is a
+        real effect in sodium lamps in particular. Nor is there any continuum background
+        beneath the lines, which a real discharge always has to some degree.</p>`,
+    },
+    related: ['cwlaser', 'sclaser', 'oap', 'spectrometer', 'grating'],
+    citations: [
+      { label: 'M. Richmond, “Spectra of Gas Discharges,” RIT PHYS 230 — simulated discharge spectra from Reader &amp; Corliss, “Line Spectra of the Elements” (CRC Handbook / NSRDS-NBS 68), with the author\'s own warning that tabulated line intensities need not match the lamp in front of you', url: 'http://spiff.rit.edu/classes/phys230/lectures/spectrographs/spectral_lines/index.html' },
+      { label: 'R. Paschotta, “Spectral Lamps,” RP Photonics Encyclopedia; doi:10.61835/zgq', url: 'https://www.rp-photonics.com/spectral_lamps.html' },
+    ],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Gas Discharge Lamps', url: 'https://www.rp-photonics.com/gas_discharge_lamps.html' },
+      { label: 'NIST Atomic Spectra Database — line wavelengths and relative intensities', url: 'https://www.nist.gov/pml/atomic-spectra-database' },
+      { label: 'RP Photonics Encyclopedia — Etendue', url: 'https://www.rp-photonics.com/etendue.html' },
+    ],
+  },
+
+  {
     type: 'mirror',
     title: 'Mirror',
     category: 'Mirrors',
@@ -413,7 +529,7 @@ export const wikiEntries = [
 
   {
     type: 'lens',
-    title: 'Convex lens',
+    title: 'Thin convex lens',
     category: 'Lenses',
     realWorld: {
       html: `
@@ -528,7 +644,7 @@ export const wikiEntries = [
 
   {
     type: 'lensc',
-    title: 'Concave lens',
+    title: 'Thin concave lens',
     category: 'Lenses',
     realWorld: {
       html: `
@@ -556,7 +672,7 @@ export const wikiEntries = [
         is the only thing that determines converging versus diverging behavior anywhere
         in OpticalSetup.</p>`,
       formulas: [],
-      limitations: `<p>Same caveats as the convex lens: exact paraxial geometry with no
+      limitations: `<p>Same caveats as the thin convex lens: exact paraxial geometry with no
         spherical or chromatic aberration. GDD alone uses the same diameter-aware N-BK7
         sag estimate (roughly a 10% class estimate); the assumed thickness never becomes
         traced geometry.</p>`,
@@ -800,7 +916,7 @@ export const wikiEntries = [
 
   {
     type: 'lensgroup',
-    title: 'Lens group (surface table)',
+    title: 'Lens group',
     category: 'Lenses',
     realWorld: {
       html: `
@@ -891,7 +1007,7 @@ export const wikiEntries = [
 
   {
     type: 'telescope',
-    title: 'Telescope (lens pair)',
+    title: 'Conjugated thin lens pair',
     category: 'Lenses',
     realWorld: {
       html: `

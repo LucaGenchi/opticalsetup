@@ -9,6 +9,7 @@
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
+import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -2003,21 +2004,52 @@ export const registry = {
     size_: el => ({ w: 30 * (el.params.displayScale || 1), h: 30 * (el.params.displayScale || 1) }),
     params: [
       { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2.5, step: 0.1, def: 1 },
-      P.wavelength,
-      { key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono', options: [['mono', 'Monochromatic'], ['band', 'Broadband']] },
-      { key: 'bandwidth', label: 'Spectrum width (nm)', type: 'number', min: 10, max: 600, step: 10, def: 400, show: p => p.bwMode === 'band' },
+      // The same emitter, wearing one of two hats. A discharge lamp is
+      // geometrically a point source -- isotropic, incoherent, collected the
+      // same way -- and differs only in emitting a fixed set of lines instead
+      // of a wavelength you type, so it is a mode here rather than an element
+      // of its own.
+      {
+        key: 'sourceKind', label: 'Source', type: 'select', def: 'point',
+        options: [['point', 'Point emitter'], ['lamp', 'Gas discharge lamp']],
+      },
+      { ...P.wavelength, show: p => (p.sourceKind || 'point') !== 'lamp' },
+      { key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono', options: [['mono', 'Monochromatic'], ['band', 'Broadband']], show: p => (p.sourceKind || 'point') !== 'lamp' },
+      { key: 'bandwidth', label: 'Spectrum width (nm)', type: 'number', min: 10, max: 600, step: 10, def: 400, show: p => (p.sourceKind || 'point') !== 'lamp' && p.bwMode === 'band' },
+      {
+        key: 'lampType', label: 'Lamp', type: 'select', def: 'hg',
+        options: Object.entries(LAMP_PRESETS).map(([key, preset]) => [key, preset.label]),
+        show: p => p.sourceKind === 'lamp',
+      },
+      { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
       { key: 'spread', label: 'Emission angle (°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
       { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 32, step: 2, def: 12 },
       P.autoColor, P.color,
     ],
     svg(el) {
-      const c = el.params.autoColor === false && el.params.color ? el.params.color : wavelengthToColor(el.params.wavelength);
+      const lamp = el.params.sourceKind === 'lamp';
+      const c = el.params.autoColor === false && el.params.color
+        ? el.params.color
+        : (lamp ? lampColor(el.params.lampType) : wavelengthToColor(el.params.wavelength));
+      const scale = el.params.displayScale || 1;
+      if (lamp) {
+        // A pen-ray envelope: the narrow tube these lamps almost always are.
+        return `<g transform="scale(${scale})">` +
+          `<rect x="-5" y="-13" width="10" height="26" rx="5" fill="${c}" stroke="#333" stroke-width="1.2"/>` +
+          `<rect x="-5" y="-13" width="10" height="26" rx="5" fill="none" stroke="#fff" stroke-width="0.6" opacity="0.5"/>` +
+          `<line x1="0" y1="-8" x2="0" y2="8" stroke="#fff" stroke-width="1.4" opacity="0.75"/>` +
+          `<rect x="-3.5" y="12" width="7" height="4" rx="1" fill="#4d565f"/>` +
+          `<g stroke="${c}" stroke-width="1.4" stroke-linecap="round" opacity="0.9">` +
+          `<line x1="-9" y1="-6" x2="-13" y2="-8"/><line x1="9" y1="-6" x2="13" y2="-8"/>` +
+          `<line x1="-9" y1="2" x2="-13" y2="2"/><line x1="9" y1="2" x2="13" y2="2"/>` +
+          `</g></g>`;
+      }
       let spokes = '';
       for (let i = 0; i < 8; i++) {
         const a = (i * 45) * Math.PI / 180;
         spokes += `<line x1="${(6 * Math.cos(a)).toFixed(1)}" y1="${(6 * Math.sin(a)).toFixed(1)}" x2="${(11 * Math.cos(a)).toFixed(1)}" y2="${(11 * Math.sin(a)).toFixed(1)}" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/>`;
       }
-      return `<g transform="scale(${el.params.displayScale || 1})"><circle r="4.5" fill="${c}" stroke="#333" stroke-width="1"/>` + spokes + `</g>`;
+      return `<g transform="scale(${scale})"><circle r="4.5" fill="${c}" stroke="#333" stroke-width="1"/>` + spokes + `</g>`;
     },
     source(el) {
       const { spread, nrays } = el.params, out = [];
@@ -2220,7 +2252,9 @@ export const registry = {
 
   // ---------------- Lenses ----------------
   lens: {
-    label: 'Convex lens', category: 'Lenses', paletteOrder: 0, size: { w: 18, h: 56 },
+    label: 'Thin convex lens', category: 'Lenses',
+    paletteGroup: 'Ideal lenses', paletteOrder: 0, size: { w: 18, h: 56 },
+    aliases: ['convex lens', 'thin lens', 'positive lens', 'converging lens', 'ideal lens'],
     params: [
       { key: 'f', label: 'Focal length (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
       { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
@@ -2241,7 +2275,8 @@ export const registry = {
   },
 
   metalens: {
-    label: 'Metalens', category: 'Lenses', paletteOrder: 2, size: { w: 12, h: 20 },
+    label: 'Metalens', category: 'Lenses',
+    paletteGroup: 'Metalenses', paletteOrder: 7, size: { w: 12, h: 20 },
     aliases: ['flat lens', 'metasurface lens', 'meta optic', 'meta-optic', 'diffractive lens'],
     params: [
       {
@@ -2307,7 +2342,8 @@ export const registry = {
   // of it for free rather than being painted on. See thickLensCardinals() for
   // the paraxial summary shown in the inspector.
   thicklens: {
-    label: 'Thick lens (spherical)', category: 'Lenses', paletteOrder: 3,
+    label: 'Thick spherical lens', category: 'Lenses',
+    paletteGroup: 'Real lenses', paletteOrder: 4,
     aliases: ['real lens', 'spherical lens', 'singlet', 'biconvex', 'plano-convex', 'meniscus', 'aberration'],
     params: [
       { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 60, slider: false },
@@ -2358,7 +2394,8 @@ export const registry = {
   // exact local derivatives for Snell refraction; the sampled outline is only
   // for drawing, hit testing, and containment.
   asphericlens: {
-    label: 'Aspheric lens', category: 'Lenses', paletteOrder: 4,
+    label: 'Aspheric lens', category: 'Lenses',
+    paletteGroup: 'Real lenses', paletteOrder: 6,
     aliases: ['asphere', 'aspheric singlet', 'conic lens', 'hyperbolic lens', 'even asphere', 'A4 A6 A8'],
     params: [
       { key: 'r1', label: 'Front radius R₁ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 30, slider: false },
@@ -2447,7 +2484,8 @@ export const registry = {
   // achromatic doublet and anything else the table can express. Nothing about
   // the focal length is configured; see lensgroup.js.
   lensgroup: {
-    label: 'Lens group (surface table)', category: 'Lenses', paletteOrder: 5,
+    label: 'Lens group', category: 'Lenses',
+    paletteGroup: 'Real lenses', paletteOrder: 5,
     aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table'],
     params: [
       { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
@@ -2570,7 +2608,9 @@ export const registry = {
   },
 
   telescope: {
-    label: 'Telescope (lens pair)', category: 'Lenses', paletteOrder: 6, size: { w: 174, h: 62 },
+    label: 'Conjugated thin lens pair', category: 'Lenses',
+    paletteGroup: 'Ideal lenses', paletteOrder: 2, size: { w: 174, h: 62 },
+    aliases: ['telescope', 'beam expander', 'lens pair', 'relay', '4f', 'afocal', 'keplerian'],
     size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
     params: [
       { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
@@ -2617,7 +2657,8 @@ export const registry = {
     // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
     // because WD is capped at EFL. It is never drawn — an objective is an
     // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses', paletteOrder: 7, size: { w: 36, h: 40 },
+    label: 'Objective', category: 'Lenses',
+    paletteGroup: 'Ideal lenses', paletteOrder: 3, size: { w: 36, h: 40 },
     snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
     // The objective owns the medium; immersion.js derives the disposable
     // relationship from this front tip to a compatible scene contact.
@@ -4428,8 +4469,10 @@ export function boxAnchor(el) {
 // concave lens: identical optics to 'lens', concave default focal length
 registry.lensc = {
   ...registry.lens,
-  label: 'Concave lens',
+  label: 'Thin concave lens',
+  paletteGroup: 'Ideal lenses',
   paletteOrder: 1,
+  aliases: ['concave lens', 'thin lens', 'negative lens', 'diverging lens', 'ideal lens'],
   params: registry.lens.params.map(p => (p.key === 'f' ? { ...p, def: -100 } : p)),
 };
 
@@ -4574,7 +4617,7 @@ const ELEMENT_HELP = {
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam.',
-  pointsource: 'Emits isotropic light (360° by default, optionally broadband) that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip — a parabolic mirror with the source at its focus collimates it.',
+  pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',

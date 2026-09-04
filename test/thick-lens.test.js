@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  createElement, getElementMeta, MIN_CEMENT_GAP, registry, surfaceTransmission,
+  createElement, getElementMeta, MIN_CEMENT_GAP, paletteOrderedTypes, registry, surfaceTransmission,
   thickLensAdjustment, thickLensCardinals, thickLensGeometry, thickLensShapeName,
   touchingGlassBody,
 } from '../sketch/js/elements.js';
@@ -82,12 +82,25 @@ test('shape names follow the Cartesian sign convention the lensmaker equation ne
   assert.ok(thickLensCardinals({ r1: -60, r2: 60, thickness: 5, dia: 25.4, glass: 'nbk7' }).f < 0);
 });
 
-test('physical singlets sit before compound lens assemblies', () => {
+test('lenses are grouped ideal, then real, then metasurface', () => {
   const lensPalette = Object.entries(registry)
     .filter(([, definition]) => definition.category === 'Lenses')
-    .sort(([, a], [, b]) => a.paletteOrder - b.paletteOrder)
-    .map(([type]) => type);
-  assert.deepEqual(lensPalette, ['lens', 'lensc', 'metalens', 'thicklens', 'asphericlens', 'lensgroup', 'telescope', 'objective']);
+    .sort(([, a], [, b]) => a.paletteOrder - b.paletteOrder);
+  assert.deepEqual(lensPalette.map(([type]) => type), [
+    'lens', 'lensc', 'telescope', 'objective',
+    'thicklens', 'lensgroup', 'asphericlens',
+    'metalens',
+  ]);
+  // Every lens carries a subgroup, and each subgroup is contiguous in the
+  // sequence: paletteOrderedTypes emits groups in first-seen order, so an
+  // out-of-place paletteOrder would silently split one heading into two.
+  assert.deepEqual(lensPalette.map(([, definition]) => definition.paletteGroup), [
+    'Ideal lenses', 'Ideal lenses', 'Ideal lenses', 'Ideal lenses',
+    'Real lenses', 'Real lenses', 'Real lenses',
+    'Metalenses',
+  ]);
+  assert.deepEqual(paletteOrderedTypes('Lenses'), lensPalette.map(([type]) => type),
+    'the component library and the wiki index share this sequence');
 });
 
 test('the cement gap is just wide enough for the tracer to see both interfaces', () => {
