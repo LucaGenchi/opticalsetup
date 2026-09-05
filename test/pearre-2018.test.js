@@ -5,10 +5,11 @@ import { readFile } from 'node:fs/promises';
 import { registry, getVisualBounds } from '../sketch/js/elements.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
-import { buildPaperHandoff } from '../sketch/js/two-photon-handoff.js';
+import { reviewedPaperHandoff, readCollectionSetups } from '../tools/2pp-collection-support.mjs';
 
 const sceneText = await readFile(new URL('../collections/2pp/setups/pearre-2018.json', import.meta.url), 'utf8');
 const loadScene = () => parseSketch(sceneText, registry);
+const { papers } = JSON.parse(await readFile(new URL('../collections/2pp/papers.json', import.meta.url), 'utf8'));
 
 test('Pearre scene round-trips and keeps reported kHz and MHz quantities distinct', () => {
   const scene = loadScene();
@@ -59,15 +60,14 @@ test('Pearre controls remove emission and change Pockels-addressed monitor signa
   assert.ok(mostlyOpen > mostlyClosed * 5);
 });
 
-test('Pearre paper handoff exports verified fields and omits non-exact power', () => {
-  const result = buildPaperHandoff({
-    wavelengthNm: 780,
-    repetitionRateMHz: 80,
-    pulseDurationFs: 120,
-    numericalAperture: 0.8,
-  });
+test('Pearre paper handoff uses its reviewed subset and omits typical, approximate and ranged values', () => {
+  const result = reviewedPaperHandoff(papers.find(paper => paper.id === 'pearre-2018'));
   const query = new URL(result.url).searchParams;
   assert.equal(query.get('repetitionRateMHz'), '80');
+  assert.equal(query.get('basis'), 'paper');
+  assert.equal(query.get('numericalAperture'), '0.8');
+  assert.equal(query.has('wavelengthNm'), false);
+  assert.equal(query.has('pulseDurationFs'), false);
   assert.equal(query.has('sourcePowerMw'), false);
   assert.equal(query.has('switchFreqMHz'), false);
   assert.equal(query.has('resonanceFrequencyKHz'), false);
@@ -101,4 +101,14 @@ test('Pearre slow-Y control independently moves the focus while a held resonant 
   assert.notEqual(hitAt(0.25 / 30), hitAt(0.75 / 30));
   slowY.params.scanMode = 'static';
   assert.equal(hitAt(0), hitAt(1));
+});
+
+
+test('Pearre collection page uses the common loader and discovers the authored scene', async () => {
+  const setups = await readCollectionSetups(new URL('../collections/2pp/', import.meta.url).pathname, papers);
+  assert.ok(setups.has('pearre-2018'));
+  const page = await readFile(new URL('../collections/2pp/pearre-2018/index.html', import.meta.url), 'utf8');
+  assert.match(page, /\/sketch\/\?paper=pearre-2018&amp;edit=1/);
+  assert.match(page, /\/sketch\/\?paper=pearre-2018&amp;embed=1/);
+  assert.match(page, /basis=paper&amp;repetitionRateMHz=80&amp;numericalAperture=0.8/);
 });

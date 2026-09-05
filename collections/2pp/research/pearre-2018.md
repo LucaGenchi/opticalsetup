@@ -39,7 +39,7 @@ The enabled 780 nm pulsed source traces through the Pockels-cell/analyzer proxy,
 
 OpticalSetup calculates a qualitative 2D geometric trace, objective aperture/focus, polarization-dependent attenuation, and bounded resin arrival markers. It does not calculate resonant dynamics, sinusoidal scan correction, the 152-address spatial map, PrintImage timing, vectorial focal fields, compensation-ring aberration correction, voxel dose, threshold, polymerization kinetics, or a calibrated 3D print.
 
-The paper-level calculator handoff supports the verified 780 nm wavelength, 80 MHz repetition rate, approximately 120 fs duration, and NA 0.8. It omits power because the paper reports a 0.6–1 W laser-output range rather than one exact operating value at the sample. The live resin handoff is deliberately disabled for the same reason. The 3.33 MHz DAC rate remains a modulator command rate and is never exported as optical repetition frequency.
+The paper-level calculator handoff transfers only the reported 80 MHz repetition rate and NA 0.8. Its additive, explicitly reviewed `paper.handoff` subset omits the typically 780 nm wavelength and approximately 120 fs pulse duration because the numeric-only contract cannot carry those qualifiers; the original source record and scene retain those values and their context. It also omits power because the paper reports a 0.6–1 W laser-output range rather than one exact operating value at the sample. The live resin handoff is deliberately disabled for the same reason. The 3.33 MHz DAC rate remains a modulator command rate and is never exported as optical repetition frequency.
 
 
 ## PR 125 review — 2026-09-05
@@ -51,3 +51,10 @@ The original Figure frame clipped the title, monitor and long component labels. 
 The new resonant helper previously overflowed for very large finite time/phase inputs; phase reduction now keeps the mirror angle finite. The shared source correction also prevents a zero-watt laser from emitting light or writing voxels.
 
 Validation: `npm test` passed (785 tests); every `sketch/js/*.js` and `serve.mjs` passed `node --check`; `git diff --check` passed. Deterministic tests cover the default route, resonant extrema, independent slow-Y motion, held scanners, Pockels duty, laser off/zero power, save/reload, supported handoff units, extreme scanner inputs and frame containment. Native SVG exports were rasterized and inspected for [default](../verification/pearre-2018-default.png), [held scanners](../verification/pearre-2018-static-galvos.png) and [laser off](../verification/pearre-2018-laser-off.png). Live browser verification is recorded separately by the collection reviewer; these exports do not claim browser UI coverage.
+
+
+## Shared collection integration
+
+The native scene now opens through the common loader. Existing `paper`, `setup` and `collection` links resolve to the same scene; `edit=1` opens controls and `embed=1` keeps the preview locked. The common builder discovers authored scene files without replacing siblings or requiring a paper-specific generated allowlist. The service worker revision refreshes the loader for returning users. Original source records remain unchanged; only the verified handoff subset was added. The generated collection page links the 80 MHz / NA 0.8 subset and lists unsupported quantities as omitted.
+
+Final integration checks: `npm test` passed (790 tests), all workbench JavaScript and `serve.mjs` passed syntax checks, and `git diff --check` passed. Collection pages were rebuilt with the common builder.
