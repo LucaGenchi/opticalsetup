@@ -269,6 +269,9 @@ npm test               # runs the regression suite
 
 (Any static file server works; ES modules require http(s), not file://.)
 
-### 2PP paper collection
+### 2PP research workspace
 
-The [2PP collection](collections/2pp/README.md) contains 15 native editable apparatus drawings, source evidence for 14 references, and three explicit full-text gaps. It includes distinct diffractive splitter, microlens-array and metalens-array teaching models and partial literature presets for Two-Photon Lithography. The apparatus drawings are schematic, with source tracing off.
+The [2PP research workspace](collections/2pp/README.md) preserves the references,
+figure reviews, reported parameters, optical sequences and open questions for
+17 benchmark references. Generated setups and preset links have been removed.
+Future reconstructions will be handled individually from the source documents.

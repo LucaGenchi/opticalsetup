@@ -1,24 +1,25 @@
-# Collection validation — 2026-09-05
+# Research workspace validation — 2026-09-05
 
-- `npm test`: 775 tests passed, zero failed.
-- JavaScript syntax checks passed for every `sketch/js/*.js`, `serve.mjs`, the
-  service worker, new 2PP tools, and the sitemap generator.
-- `git diff --check` passed.
-- All 18 downloaded source PDFs matched the reviewed SHA-256 manifest.
-- All 15 apparatus files loaded and survived save/parse round trips. Their
-  sources emitted no traced rays; dashed paths remained manual annotations.
-- All 14 partial presets passed against the actual companion destination parser.
-- Desktop browser inspection covered the Kiefer editable drawing and inspector.
-  Changing its microlens focal length from 40 to 55 mm worked; undo restored 40.
-- At 1024 pixels, the toolbar, palette, canvas, inspector, landing navigation,
-  collection table and Gu page stayed within the viewport. The three array
-  teaching models displayed traced rays. No browser console warnings or errors
-  were observed in these checks.
-- The companion site's seven import tests passed. Its full production build
-  could not run on this Mac: the existing build script requires GNU `timeout`.
-  The companion PR's Linux CI must establish full application validation.
+The generated reconstructions have been removed. Earlier scene-validation
+results describe superseded drafts and are not evidence of accepted setups.
 
-These checks establish file, interaction and limited model behavior. They do
-not validate complete experimental optical prescriptions or material response.
-Dong, Yang and Yan full texts, Gu's main PDF and the other source-specific
-unknowns in `papers.json` remain unresolved.
+- `npm test`: 774 passed, zero failures. The test specific to the removed
+  apparatus scenes was removed; component and research-record tests remain.
+- Syntax checks passed for every `sketch/js/*.js`, `serve.mjs`, the service
+  worker and the research-page generator. `git diff --check` passed.
+- All 151 existing local research files retained their exact SHA-256 hashes,
+  including the 18 validated PDFs, extracted text and figure renders.
+- `papers.json` and `sources.json` are unchanged from the research commit.
+- All 18 research HTML pages contain no scene embeds, share payloads, example
+  links, JSON scene downloads or numerical lab presets.
+- The generated 2PP Examples directory, scene manifest and layout recipes are
+  absent. The existing nine examples remain in the application manifest.
+- Browser inspection verified the preserved Fischer notes at desktop width
+  and all 17 references at 1024 pixels, with no horizontal overflow, setup
+  controls, or browser console warnings/errors.
+
+The local research directory now also has an index and one Markdown dossier per
+reference for future individually assigned work. The records are working notes
+that must be checked against primary documents before any new reconstruction.
+Dong, Yang and Yan full texts, Gu's main PDF and the source-specific unknowns
+in `papers.json` remain unresolved.

@@ -1,31 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {registry} from '../sketch/js/elements.js';
-import '../sketch/js/detector-instruments.js';
-import {parseSketch} from '../sketch/js/state.js';
-import {traceScene} from '../sketch/js/raytrace.js';
-import {examples} from '../sketch/js/examples-data.js';
 const load=async p=>JSON.parse(await readFile(new URL(p,import.meta.url),'utf8'));
-
-test('all referenced apparatus files load, remain editable, and never pass annotations off as traced rays',async()=>{
- const manifest=await load('../collections/2pp/scene-manifest.json');
- assert.equal(manifest.length,17);
- const missing=manifest.filter(p=>p.status==='full-text-needed');
- assert.deepEqual(missing.map(p=>p.id),['dong-2007','yang-2015','yan-2015']);
- assert.ok(missing.every(p=>p.setups.length===0));
- const setups=manifest.flatMap(p=>p.setups);assert.equal(setups.length,15);
- for(const s of setups){
-  assert.ok(examples.some(e=>e.slug===s.slug),s.slug);
-  const raw=await load(`..${decodeURIComponent(s.file)}`);
-  const scene=parseSketch(raw,registry);
-  assert.equal(scene.elements.length,raw.elements.length);
-  assert.ok(scene.beams.length>0);
-  assert.ok(scene.beams.every(b=>b.dash===true),s.name);
-  assert.equal(traceScene(scene.elements).drawables.length,0,s.name);
-  assert.deepEqual(parseSketch(JSON.stringify(scene),registry),scene,`${s.name} save round trip`);
- }
-});
 
 test('paper identities and source files have explicit provenance and unresolved values',async()=>{
  const {papers}=await load('../collections/2pp/papers.json');
