@@ -9,18 +9,42 @@
       "title": "Micronanofabrication of assembled three-dimensional microstructures by designable multiple beams multiphoton processing",
       "doi": "10.1063/1.2789661",
       "family": "Lens and aperture arrays",
-      "status": "full-text-needed",
+      "status": "mechanism-interpretation",
       "documents": [],
-      "reviewed": [],
-      "opticalTrain": [],
-      "mechanism": "The abstract describes configurable lens sets and aperture masks for multiple-beam writing. Full apparatus not reconstructed from the abstract.",
-      "modelLimits": "Full text and apparatus figure unavailable.",
+      "reviewed": [
+        "AIP bibliographic record and abstract: title, authors, journal, article number and corrected DOI verified; abstract states configurable lens sets and aperture masks for multiple-beam multiphoton processing.",
+        "Targeted exact-title/DOI searches of publisher, author listing and public repository results on 2026-09-05 found no accessible complete manuscript or supplement."
+      ],
+      "opticalTrain": [
+        "Reported: configurable lens sets",
+        "Reported: aperture masks",
+        "Reported: designable multiple beams used for parallel multiphoton processing",
+        "Free interpretation — not specified in the paper: 800 nm, 120 fs, 1 MHz, 100 mW pulsed source",
+        "Free interpretation — not specified in the paper: 3× afocal beam-expansion lens pair, one fold mirror, adjustable slit mask, four-lenslet focusing array and XY resin stage"
+      ],
+      "mechanism": "The abstract supports configurable lens sets and aperture masks that determine the geometry of multiple writing beams. Because the full text and apparatus figure remain unavailable, the working scene is an explicitly labelled 2D mechanism interpretation: a telescope expands a pulsed beam, a slit selects the illuminated array region, and independent lenslets form simultaneous foci on a moving resin plane.",
+      "modelLimits": "Mechanism interpretation, not an exact paper apparatus reconstruction. Optical prescriptions, source parameters, mask geometry, relay spacing, fold and stage motion are invented for a coherent native demonstration. The tracer is a 2D paraxial section and does not calculate diffraction, a 2D focus lattice, multiphoton dose, threshold curing, voxel dimensions or assembled 3D fabrication.",
       "settings": {},
       "unknowns": [
         "The benchmark DOI 10.1063/1.2535504 resolves to a different paper. Corrected DOI verified against title and authors.",
-        "Publisher access failed; no exact OA manuscript located in author/repository searches."
+        "Publisher access is paywalled; no exact OA manuscript or supplement was located in targeted author/repository searches.",
+        "Laser wavelength, repetition rate, pulse duration and power are unverified.",
+        "Lens prescriptions, aperture-mask pattern, scanner or stage architecture, objective, resin and observation path are unverified."
       ],
-      "auxiliaryPath": ""
+      "auxiliaryPath": "No observation or alignment path is established by the accessible abstract; none is claimed in the scene.",
+      "reconstruction": {
+        "kind": "mechanism-interpretation",
+        "scene": "setups/dong-2007.json",
+        "note": "research/dong-2007.md",
+        "summary": "Full text and apparatus figures remain unavailable. This editable scene demonstrates only the abstract-supported throughput mechanism; every numerical and mechanical choice is marked as free interpretation.",
+        "controls": [
+          "Laser enable: turn off the pulsed source; all traced light and every resin preview focus must disappear.",
+          "Aperture selection: reduce the slit gap from 38 mm to 18 mm; the outer lenslets are blocked and the four-focus pattern becomes two central foci.",
+          "Beam geometry: change the microlens count from 4 to 2; the same illuminated section resolves into two independently focused beamlets.",
+          "Focus-plane mismatch: reduce lenslet focal length from 60 mm to 45 mm; the waist moves before the resin plane and the beamlets arrive diverging."
+        ],
+        "companion": "No literature-backed numerical handoff is offered. The scene's pulsed-source settings are explicitly invented, its 1 MHz repetition rate is outside the calculator's accepted 10–100 MHz range, and the source-to-per-focus power split is not calibrated."
+      }
     },
     {
       "id": "fischer-2011",
