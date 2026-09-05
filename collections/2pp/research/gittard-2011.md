@@ -9,9 +9,9 @@ Primary source checked: 12-page article PDF from Europe PMC, SHA-256 `57aeb23397
 | Claim | Primary-source location | Status in the scene |
 |---|---|---|
 | Ti:sapphire Chameleon at 780 nm, repetition rate 80 MHz, average source power 4 W, pulse width `<150 fs` | PDF p. 6, Experimental | Source fields use 780 nm, 80 MHz and 4 W. The 150 fs scene value is an upper-bound playback proxy, not exported as an exact paper value. |
-| Pulse-energy control uses a liquid-crystal modulator and polarizing beamsplitter, followed by a beam expander | PDF p. 6, Experimental | Native voltage-controlled retarder plus PBS, followed by an interpreted 20/40 mm expander. The native retarder is only an LC-attenuator proxy. |
+| Pulse-energy control uses a liquid-crystal modulator and polarizing beamsplitter, followed by a beam expander | PDF p. 6, Experimental | Native voltage-controlled retarder plus PBS, followed by an interpreted 20/40 mm expander. The default 135° retardance gives an illustrative 14.6% transmitted fraction, keeping the SLM input below the reported 1 W damage limit. The native retarder is only an LC-attenuator proxy. |
 | LC-R2500 reflective, phase-only SLM; 256 gray levels; 128×128-pixel CGH tiled 6×6 on the XGA SLM | PDF p. 6, Experimental | Reflective SLM with a visible 4×4 square-focus CGH proxy. Pixel-level phase and the 6×6 tiling are documented, not calculated. |
-| First diffracted order forms an arbitrary pattern at Fourier plane P and the sample; zero order is removed at P | PDF pp. 6–7 and Fig. 1 on p. 7 | A bounded carrier-steer proxy separates the configured focus pattern from a specular zero-order branch; a dump at P removes the latter. |
+| First diffracted order forms an arbitrary pattern at Fourier plane P and the sample; zero order is removed at P | PDF pp. 6–7 and Fig. 1 on p. 7 | A native Fourier lens and a bounded carrier-steer proxy separate the configured focus pattern from a specular zero-order branch; a dump at P removes the latter. |
 | Phase-modulated beam passes through a galvanoscanner for X/Y structuring control, then a microscope objective | PDF pp. 6–7 and Fig. 1 on p. 7 | Two animated galvo mirrors move the traced focus-row pattern through an interpreted scanner/pupil relay and the objective. |
 | Representative Venus run: 16 beams in a 4×4 array, 8–12 mW average power per spot, 100× oil objective, NA 1.40, 100 nm layer/raster spacing, 1 mm/s | PDF p. 7, Results | Default is 4×4, with four rows traced in the 2D section, and a 100×-equivalent 2 mm EFL oil objective at NA 1.40. Power, spacing and speed are annotations because the tracer is not a calibrated writer. |
 | Four-focus scaffold run used 35 µm square spacing and a 20×, NA 0.4 objective | PDF p. 8 | Documented as a different run; not substituted into the representative Venus default. |
@@ -27,7 +27,7 @@ Primary source checked: 12-page article PDF from Europe PMC, SHA-256 `57aeb23397
 3. Interpreted two-lens beam expander.
 4. Reflective SLM carrying an 8° carrier-steer interpretation and a 4×4 square-focus CGH proxy.
 5. Fourier plane P: the specular zero order is dumped while the selected first-order focus pattern continues.
-6. X and Y galvo mirrors translate the whole configured focus-row pattern.
+6. A native Fourier lens forms the selected row near plane P; X and Y galvo mirrors translate the whole configured focus-row pattern.
 7. Interpreted scan relay maps the scanner toward the objective pupil.
 8. 100×-equivalent, NA 1.40 oil objective focuses into resin on the positioning stage.
 9. An auxiliary visible source below the specimen is collected through the specimen/objective and picked off to the CMOS camera.
@@ -55,3 +55,16 @@ The scene does not solve a CGH, its diffraction efficiency, scalar or vector dif
 ## Cross-site handoff
 
 The paper-backed handoff supports exactly 780 nm, 80 MHz and NA 1.40. It omits pulse duration because `<150 fs` is not an exact value, and omits 4000 mW because it is outside the companion lab’s accepted source-power range. The paper’s 8–12 mW per-spot Venus value is a downstream writing-plane measurement and is not substituted for source power.
+
+
+## PR review corrections (2026-09-05)
+
+Visually re-read Fig. 1 on p. 7 of the attached article and checked the Experimental section on pp. 6–7. The initial focus-grid implementation divided the SLM aperture into lenslet zones. That incorrectly made the number of foci depend on which zones were illuminated. The corrected bounded holography proxy sends every illuminated aperture point into every configured in-plane focus branch and conserves their total relative power. One ray near either edge still produces all four targets. Each displayed row aggregates the out-of-plane columns; its ray weight is not a calibrated per-focus power. The target display remains a CGH target preview, not a computed phase hologram.
+
+The selected branches previously fell below the tracer's generic 2% cutoff after realistic attenuation. The focus grid now uses the existing bounded weak-branch mechanism so dim but nonzero branches propagate without artificially increasing their power. A 90% residual order plus eight 1.25% selected branches retains unit total signal in the regression test. Writing markers follow the source's central reference ray for each target, rather than whichever aperture-edge ray happened to be visited first.
+
+Added the ordinary Fourier lens shown in Fig. 1, retuned the selected-order stop and zero-order dump, made the GX/GY relay conjugate, and added a separate Y-to-objective-pupil relay. All four source reference branches now reach the resin through the NA 1.4 objective during the default scan. Enlarged and centered the SLM aperture so the expanded beam cannot simply miss it. Added physical unused-port dumps and interpreted spectral isolation; the default has no unterminated rays crossing the annotations. The LC/PBS setting now attenuates the 4 W source to below the reported 1 W SLM input limit. All added dimensions/settings are free interpretations.
+
+Replaced long overlapping labels and clipped paragraphs with short optical labels and bounded multiline notes, then rasterized the native SVG and visually checked the result. Tests cover narrow-aperture full-grid branching, weak-branch power conservation, four objective-path arrivals, actual zero-order dump termination, scanner movement, exact zero power with independent observation, save/reload, supported handoff values and figure bounds. The shared collection loader and per-paper verified handoff metadata are adopted so sibling setups can coexist without loader conflicts.
+
+Final automated review: `npm test` passed **789/789**; `node --check` passed for every `sketch/js/*.js` and `serve.mjs`; `git diff --check` passed. Collection pages regenerated; sitemap regeneration changed only unrelated timestamps, which were excluded from the patch. Desktop browser review is coordinated separately; native SVG rendering and figure-bound trace checks passed here.

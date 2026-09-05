@@ -1,77 +1,54 @@
-// Render the research collection. A verified native scene placed in setups/
-// gains a validated share-loader link and a bounded paper-parameter handoff;
-// papers without scenes remain research-only.
+// Build source pages and link individually authored native scenes. No scenes
+// are generated, and one paper does not need a private loader or allowlist.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { registry } from '../sketch/js/elements.js';
-import { parseSketch } from '../sketch/js/state.js';
-import { encodeSharePayload } from '../sketch/js/share.js';
-import { buildPaperHandoff } from '../sketch/js/two-photon-handoff.js';
-import '../sketch/js/detector-instruments.js';
-import '../sketch/js/etalon.js';
-import '../sketch/js/vipa.js';
+import { readCollectionSetups, reviewedPaperHandoff } from './2pp-collection-support.mjs';
 
 const DIR = fileURLToPath(new URL('../collections/2pp/', import.meta.url));
 const records = JSON.parse(await readFile(join(DIR, 'papers.json'), 'utf8'));
 const sources = JSON.parse(await readFile(join(DIR, 'sources.json'), 'utf8'));
-const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const setups = await readCollectionSetups(DIR, records.papers);
+const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const pretty = id => id.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
 const link = p => p.doi.startsWith('arXiv:') ? `https://arxiv.org/abs/${p.doi.slice(6)}` : p.doi ? `https://doi.org/${p.doi}` : sources.documents.find(d => d.paper === p.id)?.url;
 const list = items => items.map(s => `<li>${esc(s)}</li>`).join('');
-
-const setups = new Map();
-for (const paper of records.papers) {
-  const path = join(DIR, 'setups', `${paper.id}.json`);
-  try {
-    const text = await readFile(path, 'utf8');
-    const scene = parseSketch(text, registry);
-    if (!scene.elements.length) throw new Error('scene has no elements');
-    setups.set(paper.id, {
-      payload: await encodeSharePayload(text),
-      handoff: buildPaperHandoff(paper.settings),
-    });
-  } catch (err) {
-    if (err.code !== 'ENOENT') throw new Error(`collections/2pp/setups/${paper.id}.json: ${err.message}`);
-  }
-}
-
 const head = (title, canonical) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · OpticalSetup</title>
-<meta name="description" content="Two-photon lithography research: primary references, inspected figures, optical sequences, reported parameters and unresolved details.">
+<meta name="description" content="Two-photon lithography research: primary references, native optical setups, source evidence, reported parameters and unresolved details.">
 <link rel="canonical" href="https://opticalsetup.com${canonical}"><link rel="stylesheet" href="/collections/2pp/style.css"></head>
 <body><header><a class="brand" href="/">OpticalSetup</a><nav aria-label="Main"><a href="/sketch/">Workbench</a><a href="/example-setups/">Examples</a><a href="/collections/2pp/">2PP research</a></nav></header>`;
-const end = `<footer>Research notes for future individual reconstructions. Source PDFs remain with their authors and publishers.<br>
+const end = `<footer>Paper-specific research and qualitative optical models. Source PDFs remain with their authors and publishers.<br>
 <a href="/collections/2pp/sources.json">Download source manifest</a> · <a href="/collections/2pp/papers.json">Download research records</a></footer></body></html>\n`;
-const rows = records.papers.map(p => `<tr><td>${p.year}</td><th scope="row"><a href="${p.id}/">${esc(pretty(p.id))}</a><span>${esc(p.title)}</span></th><td>${esc(p.family)}</td><td>${setups.has(p.id) ? 'Working native setup' : p.status === 'reviewed' ? 'Source notes available' : 'Full text needed'}</td></tr>`).join('\n');
+// Keep the shared index independent of the scenes present on an individual
+// feature branch. Each paper page owns its availability and preview links.
+const rows = records.papers.map(p => `<tr><td>${p.year}</td><th scope="row"><a href="${esc(p.id)}/">${esc(pretty(p.id))}</a><span>${esc(p.title)}</span></th><td>${esc(p.family)}</td><td>${p.status === 'reviewed' ? 'Source notes available' : 'Evidence incomplete'}</td></tr>`).join('\n');
 await writeFile(join(DIR, 'index.html'), head('2PP research workspace', '/collections/2pp/') + `<main>
-<p class="eyebrow">Research workspace · ${records.reviewDate}</p><h1>Two-photon lithography,<br>paper by paper.</h1>
-<p class="lead">Primary references, figure reviews and optical reasoning for reconstructing each apparatus individually.</p>
-<div class="summary"><strong>17 references · ${setups.size} working native setup${setups.size === 1 ? '' : 's'}</strong><p>Fourteen references have usable primary documents. Reconstructed setups are added one paper at a time after direct source verification; the remaining entries retain research notes only.</p></div>
+<p class="eyebrow">Research workspace · ${esc(records.reviewDate)}</p><h1>Two-photon lithography,<br>paper by paper.</h1>
+<p class="lead">Primary references, optical reasoning and individually reviewed native setups.</p>
+<div class="summary"><strong>${records.papers.length} references · source notes and optical models</strong><p>Open a reference to find its evidence, unresolved details and available native setup. Each scene identifies reported values, free interpretation and simulation limits in its companion note.</p></div>
 <section aria-labelledby="papers"><h2 id="papers">References and understanding</h2><div class="table-wrap"><table><thead><tr><th>Year</th><th>Reference</th><th>Method</th><th>Evidence</th></tr></thead><tbody>${rows}</tbody></table></div></section>
-<section><h2>Starting point for individual setup work</h2><p>The previous generated setups have been removed. Each reference retains its reported optical sequence, inspected evidence, parameters and open questions. These notes are a starting point to check against the original figures and methods, not an accepted reconstruction.</p><p>Future work should focus on one apparatus at a time, resolving its optical paths and missing prescriptions before creating an editable scene.</p><p><a href="${esc(records.sourceArticle)}">Original throughput-scaling article</a></p></section></main>` + end);
+<section><h2>One apparatus at a time</h2><p>The earlier batch-generated setups were removed. New scenes are reviewed against their source figures and methods. A native geometric trace illustrates the supported optical mechanism; it does not establish a calibrated fabrication recipe.</p><p><a href="${esc(records.sourceArticle)}">Original throughput-scaling article</a></p></section></main>` + end);
 
-for (const p of records.papers) {
-  const docs = sources.documents.filter(d => d.paper === p.id);
-  const setup = setups.get(p.id);
-  const settings = Object.entries(p.settings).map(([k,v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('');
-  const handoff = setup?.handoff;
-  const handoffSummary = handoff ? `<section><h2>Companion-lab handoff</h2><p>${handoff.url
-    ? `<a href="${esc(handoff.url)}">Open supported paper values in the Two-Photon Lithography Lab</a>.`
-    : 'No exact reported value falls inside the companion lab contract.'}</p><p>Imported: ${handoff.imported.length
-      ? handoff.imported.map(field => `${esc(field.label)} ${esc(field.value)}${field.unit ? ` ${esc(field.unit)}` : ''}`).join(' · ')
-      : 'none'}. Omitted: ${handoff.omitted.map(field => `${esc(field.label)} (${esc(field.reason)})`).join(' · ')}.</p></section>` : '';
-  const html = head(pretty(p.id), `/collections/2pp/${p.id}/`) + `<main>
-<a class="back" href="../">← All 17 references</a><p class="eyebrow">${esc(p.family)} · ${p.year}</p>
-<h1 class="paper-title">${esc(p.title)}</h1><p><a href="${esc(link(p))}">${esc(p.doi || 'Vendor datasheet')}</a></p>
-${setup
-    ? `<div class="summary"><strong>Working native setup · source checked</strong><p>The editable scene uses the real tracer. Reported values, free interpretations and unsupported physics are identified in its companion note.</p></div><p><a href="/sketch/#sketch=${setup.payload}">Open editable setup in the workbench</a> · <a href="/collections/2pp/setups/${esc(p.id)}.json" download>Download scene JSON</a> · <a href="/collections/2pp/research/${esc(p.id)}.md">Read evidence and controls</a></p>`
-    : `<div class="summary"><strong>Research retained · setup removed</strong><p>${p.status === 'reviewed' ? 'The generated drawing has been removed. The source review below is preserved for a future individual reconstruction.' : 'Full text is still needed. The abstract and bibliographic record do not establish the complete apparatus.'}</p></div>`}
-<section><h2>Current understanding</h2><p>${esc(p.mechanism)}</p>${p.opticalTrain.length ? `<h3>Reported optical sequence</h3><ol>${list(p.opticalTrain)}</ol>` : ''}${p.auxiliaryPath ? `<h3>Observation and auxiliary paths</h3><p>${esc(p.auxiliaryPath)}</p>` : ''}</section>
-<section><h2>Evidence inspected</h2><ul>${list(p.reviewed) || '<li>Bibliographic identity and abstract only.</li>'}</ul><ul>${docs.map(d => `<li><a href="${esc(d.url)}">${esc(d.kind)} PDF</a> · ${d.pages} pages · SHA-256 <code>${d.sha256.slice(0,16)}…</code></li>`).join('')}${sources.additionalFigures.filter(f => f.paper === p.id).map(f => `<li><a href="${esc(f.url)}">${esc(f.label)}</a></li>`).join('')}</ul></section>
-<section><h2>Limits and unresolved details</h2><p>${esc(p.modelLimits)}</p><ul>${list(p.unknowns)}</ul>${settings ? `<details><summary>Reported numerical inputs and units</summary><table><tbody>${settings}</tbody></table></details>` : ''}</section>${handoffSummary}</main>` + end;
-  await mkdir(join(DIR, p.id), { recursive:true });
-  await writeFile(join(DIR, p.id, 'index.html'), html);
+for (const paper of records.papers) {
+  const docs = sources.documents.filter(document => document.paper === paper.id);
+  const setup = setups.get(paper.id);
+  const settings = Object.entries(paper.settings).map(([key,value]) => `<tr><th>${esc(key)}</th><td>${esc(value)}</td></tr>`).join('');
+  const interpreted = paper.status !== 'reviewed' || /interpretation/i.test(paper.setup?.kind || '');
+  const setupBlock = setup ? `<div class="summary"><strong>${interpreted ? 'Mechanism interpretation · apparatus evidence incomplete' : 'Native optical setup · qualitative model'}</strong><p>${interpreted ? 'This scene is a labelled teaching interpretation, not a reconstruction of an established full optical train. ' : ''}Read the companion evidence note for reported facts, design choices, control experiments and model limits.</p></div>
+<div class="actions"><a class="button" href="/sketch/?paper=${esc(paper.id)}&amp;edit=1">Open editable setup</a><a class="button secondary" href="../${esc(setup.path)}" download>Download native scene</a><a class="download" href="../${esc(setup.research)}">Evidence and controls</a></div>
+<div class="preview"><iframe title="${esc(pretty(paper.id))} native OpticalSetup preview" src="/sketch/?paper=${esc(paper.id)}&amp;embed=1" loading="lazy"></iframe></div><p class="caption">Live native trace. Click components to inspect them; open the editable setup to change controls and save your copy.</p>` : `<div class="summary"><strong>Research notes · native setup pending</strong><p>${paper.status === 'reviewed' ? 'The source review below is preserved for an individual reconstruction.' : 'Full apparatus evidence is incomplete. Bibliographic records and abstracts do not establish the complete optical train.'}</p></div>`;
+  const handoff = setup ? reviewedPaperHandoff(paper) : null;
+  const handoffBlock = setup ? `<section><h2>Companion calculator</h2>${handoff?.url ? `<p><a href="${esc(handoff.url)}">Open the explicitly reviewed paper subset</a></p><div class="handoff"><div><h3>Transferred</h3><ul>${handoff.imported.map(field => `<li>${esc(field.label)}: ${esc(field.value)} ${esc(field.unit)}</li>`).join('')}</ul></div><div><h3>Not transferred</h3><ul>${handoff.omitted.map(field => `<li>${esc(field.label)}: ${esc(field.reason)}</li>`).join('')}</ul></div></div><p>Source ratings are not sample or per-focus power. The destination keeps defaults for missing quantities. Literature provenance requires the companion paper-handoff support; verify its import notice before using these values.</p>` : `<p>No calculator preset is supplied for this scene. <a href="../${esc(setup.research)}">See the evidence note</a> for supported inputs, omitted ranges and interpretation limits.</p>`}<p class="caption">The workbench writing preview does not calibrate dose, curing or three-dimensional focal volume.</p></section>` : '';
+  const html = head(pretty(paper.id), `/collections/2pp/${paper.id}/`) + `<main>
+<a class="back" href="../">← All ${records.papers.length} references</a><p class="eyebrow">${esc(paper.family)} · ${paper.year}</p>
+<h1 class="paper-title">${esc(paper.title)}</h1><p><a href="${esc(link(paper))}">${esc(paper.doi || 'Vendor datasheet')}</a></p>
+${setupBlock}
+<section><h2>Current understanding</h2><p>${esc(paper.mechanism)}</p>${paper.opticalTrain.length ? `<h3>Reported optical sequence</h3><ol>${list(paper.opticalTrain)}</ol>` : ''}${paper.auxiliaryPath ? `<h3>Observation and auxiliary paths</h3><p>${esc(paper.auxiliaryPath)}</p>` : ''}</section>
+<section><h2>Evidence inspected</h2><ul>${list(paper.reviewed) || '<li>Bibliographic identity and abstract only.</li>'}</ul><ul>${docs.map(document => `<li><a href="${esc(document.url)}">${esc(document.kind)} PDF</a> · ${document.pages} pages · SHA-256 <code>${document.sha256.slice(0,16)}…</code></li>`).join('')}${sources.additionalFigures.filter(figure => figure.paper === paper.id).map(figure => `<li><a href="${esc(figure.url)}">${esc(figure.label)}</a></li>`).join('')}</ul></section>
+<section><h2>Limits and unresolved details</h2><p>${esc(paper.modelLimits)}</p><ul>${list(paper.unknowns)}</ul>${settings ? `<details><summary>Reported numerical inputs and units</summary><table><tbody>${settings}</tbody></table></details>` : ''}</section>${handoffBlock}</main>` + end;
+  await mkdir(join(DIR, paper.id), { recursive: true });
+  await writeFile(join(DIR, paper.id, 'index.html'), html);
 }
-console.log(`Built ${records.papers.length} research pages with ${setups.size} working setup${setups.size === 1 ? '' : 's'}`);
+console.log(`Built ${records.papers.length} reference pages; linked ${setups.size} authored native scenes`);

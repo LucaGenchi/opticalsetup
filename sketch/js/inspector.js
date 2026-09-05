@@ -457,7 +457,7 @@ function layersHTML(layers) {
       h += numberField(countLabel, `data-li="${i}" data-lk="n"`, ly.n, { min: 1, max: 8, step: 1 });
       h += field('Focal length (mm)', `<input type="number" data-li="${i}" data-lk="f" min="-3000" max="3000" step="5" value="${ly.f}">`);
       if (ly.type === 'focusgrid') {
-        h += `<div class="hint">N×N target pattern; this 2D workbench traces the N in-plane focus rows. The other N columns are shown on the SLM but are out of plane.</div>`;
+        h += `<div class="hint">N×N target pattern; the full illuminated aperture feeds each of the N in-plane focus rows. The other N columns are shown on the SLM but are out of plane.</div>`;
       }
     } else if (ly.type === 'grating') {
       h += field('Lines / mm', `<input type="number" data-li="${i}" data-lk="lines" min="10" max="3600" step="10" value="${ly.lines}">`);

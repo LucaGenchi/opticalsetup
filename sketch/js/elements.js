@@ -1857,7 +1857,11 @@ function laserAperture(el) {
 
 function laserSource(el) {
   const p = el.params;
-  if (p.enabled === false) return [];
+  // Relative ray weights remain normalized for qualitative geometry, but an
+  // explicitly powerless or malformed source cannot illuminate a detector or
+  // leave resin write markers. Missing power is a legacy sketch convention.
+  if (p.enabled === false || (p.avgPowerW !== undefined
+    && (typeof p.avgPowerW !== 'number' || !Number.isFinite(p.avgPowerW) || p.avgPowerW <= 0))) return [];
   if (p.beamMode === 'beam') {
     // sample rays across the beam width; adjacent samples with an identical
     // interaction history are filled as an envelope strip, so a lenslet

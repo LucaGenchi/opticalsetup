@@ -18,7 +18,7 @@ test('paper identities and source files have explicit provenance and unresolved 
 
 test('Gittard collection page exposes the verified native scene and bounded handoff',async()=>{
  const page=await text('../collections/2pp/gittard-2011/index.html');
- assert.match(page,/Working native setup · source checked/);
+ assert.match(page,/Native optical setup · qualitative model/);
  assert.match(page,/gittard-2011\.json/);
  assert.match(page,/gittard-2011\.md/);
  assert.match(page,/wavelengthNm=780/);

@@ -93,7 +93,16 @@
         "4 W source output is not 8–12 mW per-focus writing power.",
         "Fig. 1 labels the attenuator as a half-wave plate/polarizer and the source as <140 fs; prose describes a liquid-crystal modulator/PBS and <150 fs. The drawing follows the prose and retains this discrepancy."
       ],
-      "auxiliaryPath": "A CMOS camera branch connects near the scanner; transmission illumination is below the specimen. No APD is specified in Fig. 1."
+      "auxiliaryPath": "A CMOS camera branch connects near the scanner; transmission illumination is below the specimen. No APD is specified in Fig. 1.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 780,
+          "repetitionRateMHz": 80,
+          "numericalAperture": 1.4
+        }
+      }
     },
     {
       "id": "buckmann-2014",

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { registry } from '../sketch/js/elements.js';
+import { registry, getVisualBounds } from '../sketch/js/elements.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { buildPaperHandoff } from '../sketch/js/two-photon-handoff.js';
@@ -36,7 +36,11 @@ test('Gittard default traces four focus rows through the NA 1.40 objective into 
 test('Gittard controls distinguish focus generation, zero order, scan and laser-off behavior', () => {
   const baseline = loadScene();
   const baselineTrace = traceScene(baseline.elements, baseline.beams);
-  const baselinePaths = baselineTrace.drawables.filter(drawable => drawable.type === 'path').length;
+  const zeroDumpTracks = result => result.pulseTracks.filter(track => {
+    const end = track.pts.at(-1);
+    return Math.abs(end.y - 190) < 0.01 && Math.abs(end.x - 361.16) < 3;
+  });
+  assert.ok(zeroDumpTracks(baselineTrace).length > 0);
   const baselineMean = baselineTrace.writeHits.reduce((sum, hit) => sum + hit.x, 0) / baselineTrace.writeHits.length;
 
   const single = loadScene();
@@ -45,9 +49,8 @@ test('Gittard controls distinguish focus generation, zero order, scan and laser-
 
   const noZero = loadScene();
   byId(noZero, 'gittard-slm').params.zeroOrder = false;
-  const noZeroPaths = traceScene(noZero.elements, noZero.beams).drawables
-    .filter(drawable => drawable.type === 'path').length;
-  assert.ok(noZeroPaths < baselinePaths, 'turning off zeroth order removes its route into the plane-P dump');
+  assert.equal(zeroDumpTracks(traceScene(noZero.elements, noZero.beams)).length, 0,
+    'turning off zeroth order removes its actual route into the plane-P dump');
 
   const scanned = loadScene();
   for (const id of ['gittard-galvo-x', 'gittard-galvo-y']) byId(scanned, id)._animationTimeS = 0.0025;
@@ -78,4 +81,23 @@ test('Gittard scene save/reload and paper-basis handoff preserve only supported 
   assert.equal(query.get('numericalAperture'), '1.4');
   assert.equal(query.has('sourcePowerMw'), false);
   assert.equal(query.has('pulseDurationFs'), false);
+});
+
+
+test('Gittard zero power stops writes while observation remains active', () => {
+  const scene = loadScene();
+  byId(scene, 'gittard-laser').params.avgPowerW = 0;
+  assert.equal(traceScene(scene.elements).writeHits.length, 0);
+  assert.ok(detectorReading('gittard-cmos').signal > 0);
+});
+
+test('Gittard figure contains annotations and terminated default ray paths', () => {
+  const scene = loadScene();
+  const frame = getVisualBounds(byId(scene, 'gittard-frame'));
+  for (const element of scene.elements.filter(element => element.type === 'textlabel')) {
+    const bounds = getVisualBounds(element);
+    assert.ok(bounds.x0 >= frame.x0 && bounds.x1 <= frame.x1 && bounds.y0 >= frame.y0 && bounds.y1 <= frame.y1, element.id);
+  }
+  assert.ok(traceScene(scene.elements).drawables.every(item => (item.pts || []).every(point =>
+    point.x >= frame.x0 && point.x <= frame.x1 && point.y >= frame.y0 && point.y <= frame.y1)));
 });

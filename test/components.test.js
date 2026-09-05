@@ -471,12 +471,15 @@ test('SLM square-focus CGH proxy renders its grid and focuses the in-plane rows'
   for (const y of [-22, -13, -1, 11, 22]) {
     const source = createElement('cwlaser', 0, y);
     source.params.beamMode = 'line';
-    const path = paths([source, slm]).find(candidate => Math.abs(candidate.pts[0].x - 171) < 0.01);
-    const [a, b] = path.pts.slice(-2);
-    const idx = Math.min(3, Math.max(0, Math.floor((y + 24) / 12)));
-    const axis = -24 + (idx + 0.5) * 12;
-    const focusY = a.y + (211 - a.x) * (b.y - a.y) / (b.x - a.x);
-    assert.ok(Math.abs(focusY - axis) < 0.01, `${focusY} vs ${axis}`);
+    const outgoing = paths([source, slm]).filter(candidate => Math.abs(candidate.pts[0].x - 171) < 0.01);
+    assert.equal(outgoing.length, 4, 'each illuminated aperture point contributes to every target');
+    const foci = outgoing.map(path => {
+      const [a, b] = path.pts.slice(-2);
+      return a.y + (211 - a.x) * (b.y - a.y) / (b.x - a.x);
+    }).sort((a, b) => a - b);
+    for (const [index, expected] of [-18, -6, 6, 18].entries()) {
+      assert.ok(Math.abs(foci[index] - expected) < 0.01);
+    }
   }
 });
 
