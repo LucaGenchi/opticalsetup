@@ -199,6 +199,12 @@ function normalizeElement(raw, definitions, used) {
   if (wasLegacyLaser) {
     rawParams = migrateLegacyLaserParams(rawParams, raw.type);
   }
+  // Older continuum sketches could store reversed endpoints while the tracer
+  // sorted them. Preserve that emitted band before applying dependent bounds.
+  if (raw.type === 'sclaser' && finite(rawParams.scMin) && finite(rawParams.scMax)
+      && rawParams.scMin > rawParams.scMax) {
+    rawParams = { ...rawParams, scMin: rawParams.scMax, scMax: rawParams.scMin };
+  }
   if (def) {
     for (const spec of def.params || []) {
       // `readout`/`derived` params have no storage of their own — always

@@ -1339,6 +1339,12 @@ export function applyInput(inp, rebuild = false) {
     refreshReadouts(sel);
     refreshDerivedSelects(sel);
   }
+  // Each continuum endpoint sets the other field's valid range. Refresh on
+  // commit so the next edit uses the current endpoint, without stealing typing.
+  if (rebuild && sel.type === 'sclaser' && ['scMin', 'scMax'].includes(pkey)) {
+    renderInspector();
+    return;
+  }
   // While a pulsed laser is transform-limited its bandwidth is derived from
   // the pulse duration, so the field is hidden and nothing needs syncing.
   // Switching TL off reveals it — seed it from the width the pulse actually
