@@ -1,0 +1,292 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "fischer-frame",
+   "type": "figureframe",
+   "x": 500,
+   "y": 280,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": { "w": 1000, "h": 520, "background": "white" }
+  },
+  {
+   "id": "fischer-title",
+   "type": "textlabel",
+   "x": 30,
+   "y": 35,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "## Fischer & Wegener 2011 — STED-inspired 3D direct laser writing",
+    "fontSize": 11,
+    "fill": "#26333a"
+   }
+  },
+  {
+   "id": "excitation-source",
+   "type": "pulsedlaser",
+   "x": 60,
+   "y": 420,
+   "rot": 0,
+   "label": "~810 nm excitation*",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "enabled": true,
+    "wavelength": 810,
+    "avgPowerW": 0.01048,
+    "handoffEnabled": false,
+    "beamMode": "beam",
+    "beamWidth": 5.6,
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "pol": 0,
+    "showPulse": true
+   }
+  },
+  {
+   "id": "excitation-aom",
+   "type": "aom",
+   "x": 140,
+   "y": 420,
+   "rot": 0,
+   "label": "AOM · 4 kHz / 3%",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "aperture": 12,
+    "deflect": 0,
+    "rfMHz": 80,
+    "zero": false,
+    "eff": 1,
+    "modulate": true,
+    "modShape": "square",
+    "modFreqMHz": 0.004,
+    "chopDuty": 0.03,
+    "phaseNs": 0
+   }
+  },
+  {
+   "id": "excitation-qwp",
+   "type": "qwp",
+   "x": 170,
+   "y": 420,
+   "rot": 0,
+   "label": "circular",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": { "a": 45, "length": 12 }
+  },
+  {
+   "id": "excitation-relay-l1",
+   "type": "lens",
+   "x": 200,
+   "y": 420,
+   "rot": 0,
+   "label": "L1*",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": { "f": 100, "dia": 20, "transEff": 100 }
+  },
+  {
+   "id": "depletion-source",
+   "type": "cwlaser",
+   "x": 200,
+   "y": 100,
+   "rot": 0,
+   "label": "532 nm CW depletion",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "enabled": true,
+    "wavelength": 532,
+    "avgPowerW": 0.05,
+    "beamMode": "beam",
+    "beamWidth": 5.6,
+    "pol": 0,
+    "coherenceLengthMm": 0
+   }
+  },
+  {
+   "id": "depletion-qwp",
+   "type": "qwp",
+   "x": 270,
+   "y": 100,
+   "rot": 0,
+   "label": "circular",
+   "showLabel": false,
+   "labelPos": "t",
+   "params": { "a": 45, "length": 12 }
+  },
+  {
+   "id": "depletion-fold",
+   "type": "mirror",
+   "x": 300,
+   "y": 100,
+   "rot": -45,
+   "label": "fold*",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": { "length": 20, "refl": 100 }
+  },
+  {
+   "id": "depletion-aom",
+   "type": "aom",
+   "x": 300,
+   "y": 170,
+   "rot": 90,
+   "label": "AOM · 4 kHz / 3%",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "aperture": 12,
+    "deflect": 0,
+    "rfMHz": 80,
+    "zero": false,
+    "eff": 1,
+    "modulate": true,
+    "modShape": "square",
+    "modFreqMHz": 0.004,
+    "chopDuty": 0.03,
+    "phaseNs": 0
+   }
+  },
+  {
+   "id": "central-pi-mask",
+   "type": "phaseplate",
+   "x": 300,
+   "y": 220,
+   "rot": 90,
+   "label": "π zone · 50% pupil area",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "profile": "pupil",
+    "centralAreaFraction": 0.5,
+    "opdUm": 0.266,
+    "aperture": 12
+   }
+  },
+  {
+   "id": "depletion-relay-l1",
+   "type": "lens",
+   "x": 300,
+   "y": 320,
+   "rot": 90,
+   "label": "L1 pupil relay*",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": { "f": 100, "dia": 20, "transEff": 100 }
+  },
+  {
+   "id": "wavelength-combiner",
+   "type": "dichroic",
+   "x": 300,
+   "y": 420,
+   "rot": -45,
+   "label": "dichroic combiner*",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": { "dtype": "longpass", "cutoff": 650, "length": 30 }
+  },
+  {
+   "id": "common-relay-l2",
+   "type": "lens",
+   "x": 400,
+   "y": 420,
+   "rot": 0,
+   "label": "L2 · mask → pupil*",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": { "f": 100, "dia": 20, "transEff": 100 }
+  },
+  {
+   "id": "leica-objective",
+   "type": "objective",
+   "x": 500,
+   "y": 420,
+   "rot": 0,
+   "label": "NA 1.4",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "efl": 2,
+    "workingDistance": 0.13,
+    "frontAperture": 10,
+    "immersion": "oil",
+    "immersionIndex": 1.518,
+    "na": 1.4,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "detc-peta-stage",
+   "type": "stage",
+   "x": 516.13,
+   "y": 420,
+   "rot": 90,
+   "label": "DETC/PETA · 100 µm/s",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "pzMode": "xy",
+    "pzTravelXY": 5,
+    "pzFreqXY": 0.01,
+    "aperture": 30,
+    "specimenType": "resin",
+    "showSignalSpot": true,
+    "thickness": 0.5,
+    "voxelPreview": true,
+    "voxelSize": 0.6,
+    "transmitExc": true,
+    "transmission": 0.2
+   }
+  },
+  {
+   "id": "post-sample-dump",
+   "type": "beamdump",
+   "x": 540,
+   "y": 420,
+   "rot": 0,
+   "label": "dump*",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": { "aperture": 70 }
+  },
+  {
+   "id": "fischer-mechanism-note",
+   "type": "textlabel",
+   "x": 620,
+   "y": 140,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "### Reported mechanism\n- Distinct ~810 nm excitation and 532 nm depletion\n- Both AOM-gated at 4 kHz and 3% duty\n- Central π zone covers 50% **pupil area**\n  (meridional diameter = √0.5)\n- One circularly polarized, NA 1.4 focus\n\nThe pupil step gives axial lobes **and** a radial ring.\nIt is not a vortex doughnut.\n\n**Computed:** rays, gates, polarization, relay, focus,\npupil clipping and sample hits.\n\n**Not computed:** stimulated depletion, vectorial PSF,\ntriplet dynamics, resin kinetics or calibrated curing.",
+    "fontSize": 8,
+    "fill": "#334155"
+   }
+  },
+  {
+   "id": "fischer-controls-note",
+   "type": "textlabel",
+   "x": 620,
+   "y": 282,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "### Controls\n1. Disable **532 nm depletion** → green path off.\n2. Set **pupil area** or **OPD** to 0 → mask off;\n   geometric focus unchanged (diffraction unsupported).\n3. Set stage to **Static** → scan and sweep stop.\n4. Disable **810 nm excitation** → no voxel arrivals.\n\n*Free interpretation — not specified in the paper:*\n80 MHz, 150 fs, 10.48 mW excitation; beam size;\nrelay lenses; fold/combiner; EFL/WD/oil; scan travel; dump.\nConfigured-value handoff is off; use the paper page.",
+    "fontSize": 8,
+    "fill": "#334155"
+   }
+  }
+ ],
+ "beams": []
+}

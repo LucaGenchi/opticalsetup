@@ -45,7 +45,7 @@
         "DETC/PETA resin, scanned at 100 µm/s"
       ],
       "mechanism": "A central phase step in the depletion pupil produces axial and radial inhibition around the excitation volume. This is not simply a lateral doughnut.",
-      "modelLimits": "No stimulated depletion, vectorial PSF, triplet dynamics or resin kinetics are simulated. Combiner placement is inferred from the stated common objective, not a published mechanical drawing.",
+      "modelLimits": "No stimulated depletion, vectorial PSF, triplet dynamics or resin kinetics are simulated. The 2D meridional phase-zone proxy converts pupil area to diameter but cannot calculate the axial/radial depletion focus. Combiner placement is inferred from the stated common objective, not a published mechanical drawing.",
       "settings": {
         "wavelengthNm": 810,
         "numericalAperture": 1.4
@@ -53,7 +53,7 @@
       "unknowns": [
         "Excitation repetition rate and pulse duration are not specified in the retrieved manuscript.",
         "Depletion 50 mW is before the objective; ordinary excitation 7.4–8.3 mW is not a single fixed source power.",
-        "Central mask occupies 50% of the pupil area; the 2D drawing cannot encode radial area fractions."
+        "Central mask occupies 50% of the pupil area; the native meridional proxy uses the corresponding sqrt(0.5) diameter, while the physical pupil diameter and relay prescription remain unspecified."
       ],
       "auxiliaryPath": ""
     },
