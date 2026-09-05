@@ -925,6 +925,13 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   fill: var(--floating-strong);
 }
 
+/* Probe cards have their own paper background; theme it together with the
+   neutral labels so the global light-text rule cannot erase their readings. */
+:root[data-theme="dark"] #elementLayer .probe-card [fill="#fff"] { fill: var(--surface); }
+:root[data-theme="dark"] #elementLayer .probe-card text { fill: var(--text); }
+:root[data-theme="dark"] #elementLayer .probe-card [stroke="#c9ced6"] { stroke: var(--border); }
+:root[data-theme="dark"] #elementLayer .probe-card [stroke="#888"] { stroke: var(--muted); }
+
 :root.theme-transition :is(
   body, #toolbar, #palette, #inspector, #canvas, button, select, input, textarea,
   .library-head, .canvas-controls, .pulse-controls, .context-menu, .direct-hint
