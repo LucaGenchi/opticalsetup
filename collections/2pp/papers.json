@@ -306,7 +306,15 @@
         "Supplementary instrument prescription has not been downloaded.",
         "1 kHz and 35 fs fall outside the current lab input ranges."
       ],
-      "auxiliaryPath": ""
+      "auxiliaryPath": "",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 800,
+          "numericalAperture": 1.25
+        }
+      }
     },
     {
       "id": "hahn-2020",

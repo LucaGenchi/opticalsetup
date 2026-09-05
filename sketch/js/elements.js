@@ -1,3 +1,5 @@
+import { dmdPatternPhaseAt, dmdPatternBands } from './dmd-pattern.js';
+export { dmdPatternPhaseAt } from './dmd-pattern.js';
 // Registry of optical elements.
 // Local coordinates: element centered at (0,0); default optical propagation is along +x.
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
@@ -1857,7 +1859,11 @@ function laserAperture(el) {
 
 function laserSource(el) {
   const p = el.params;
-  if (p.enabled === false) return [];
+  // Relative ray weights remain normalized for qualitative geometry, but an
+  // explicitly powerless or malformed source cannot illuminate a detector or
+  // leave resin write markers. Missing power is a legacy sketch convention.
+  if (p.enabled === false || (p.avgPowerW !== undefined
+    && (typeof p.avgPowerW !== 'number' || !Number.isFinite(p.avgPowerW) || p.avgPowerW <= 0))) return [];
   if (p.beamMode === 'beam') {
     // sample rays across the beam width; adjacent samples with an identical
     // interaction history are filled as an envelope strip, so a lenslet
@@ -3338,8 +3344,10 @@ export const registry = {
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
       const L = el.params.length / 2;
-      let mm = '';
-      for (let y = -L + 4; y < L - 2; y += 6) mm += `<line x1="-11" y1="${y + 2}" x2="-7" y2="${y - 2}" stroke="#cfd6dd" stroke-width="1.6"/>`;
+      const phase = dmdPatternPhaseAt(el.params, el._animationTimeS || 0);
+      const mm = dmdPatternBands(el.params, phase).map(band =>
+        `<rect data-dmd-on="${band.on}" x="-12" y="${band.y0}" width="5" height="${band.y1 - band.y0}" fill="${band.on ? '#7ee2bc' : '#334155'}"/>`
+      ).join('');
       return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/>` + mm +
         `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">DMD</text>`;
     },

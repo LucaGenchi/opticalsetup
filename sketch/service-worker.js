@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v52';
+const CACHE_NAME = 'opticalsetup-pwa-v53-2pp-review';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -19,11 +19,13 @@ const PRECACHE_PATHS = [
   "./js/camera-profile.js",
   "./js/canvas.js",
   "./js/clipboard.js",
+  "./js/collection-loader.js",
   "./js/lamps.js",
   "./js/probe.js",
   "./js/community-data.js",
   "./js/detector-instruments.js",
   "./js/detector-measurements.js",
+  "./js/dmd-pattern.js",
   "./js/elements.js",
   "./js/etalon.js",
   "./js/examples-data.js",
@@ -53,6 +55,7 @@ const PRECACHE_PATHS = [
   "./js/vipa.js",
   "./js/viewport.js",
   "./js/wiki-types.js",
+  "../collections/2pp/setups/saha-2019.json",
   "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json",
   "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",

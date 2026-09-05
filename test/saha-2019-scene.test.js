@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { registry } from '../sketch/js/elements.js';
+import { registry, stageOffsetAt, getVisualBounds } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import '../sketch/js/etalon.js';
 import '../sketch/js/vipa.js';
@@ -53,4 +53,42 @@ test('Saha controls distinguish source, spectral dispersion, and binary mask beh
   dmd.params.duty = 0.05;
   result = traceScene(scene.elements, scene.beams);
   assert.equal(result.writeHits.length, 0, 'the default illuminated DMD coordinate should become an OFF stripe');
+});
+
+
+test('Saha spectral rays re-image the illuminated mask point at the nominal resin plane', async () => {
+  const scene = await loadScene();
+  const hitSpan = () => {
+    const hits = traceScene(scene.elements).signalHits.filter(hit => hit.sourceId === 'saha-laser');
+    assert.ok(hits.length >= 3);
+    return Math.max(...hits.map(hit => hit.x)) - Math.min(...hits.map(hit => hit.x));
+  };
+  assert.ok(hitSpan() < 0.0001, 'different wavelengths must coincide geometrically, not merely hit the same wide resin holder');
+  scene.elements.find(element => element.id === 'saha-l1').params.f *= 1.1;
+  assert.ok(hitSpan() > 0.0001, 'breaking the relay conjugates must visibly separate the spectral hits');
+});
+
+test('Saha stage motion stays downstream of the objective and zero source power stops writing', async () => {
+  const scene = await loadScene();
+  const stage = scene.elements.find(element => element.id === 'saha-stage');
+  const laser = scene.elements.find(element => element.id === 'saha-laser');
+  const nominalY = stage.y;
+  for (const seconds of [0, 0.75, 1.25, 2.5, 4]) {
+    const offset = stageOffsetAt(stage.params, seconds);
+    stage.y = nominalY + offset.y;
+    const hits = traceScene(scene.elements).signalHits.filter(hit => hit.sourceId === 'saha-laser');
+    assert.ok(hits.length >= 3);
+    assert.ok(hits.every(hit => hit.objectiveNA === 1.25), 'moving resin must never intercept the unfocused beam before the objective');
+  }
+  laser.params.avgPowerW = 0;
+  assert.equal(traceScene(scene.elements).writeHits.length, 0);
+});
+
+test('Saha exported figure frame includes all component labels and explanatory text', async () => {
+  const scene = await loadScene();
+  const frame = getVisualBounds(scene.elements.find(element => element.type === 'figureframe'));
+  for (const element of scene.elements) {
+    const bounds = getVisualBounds(element);
+    assert.ok(bounds.x0 >= frame.x0 && bounds.y0 >= frame.y0 && bounds.x1 <= frame.x1 && bounds.y1 <= frame.y1, element.id);
+  }
 });
