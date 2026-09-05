@@ -47,3 +47,24 @@ test('Ouyang scene is native, reload-stable, traced to resin, and honest at hand
  assert.deepEqual(handoff.omitted.filter(field=>field.value!==null).map(field=>field.key),
   ['sourcePowerMw','repetitionRateMHz']);
 });
+
+test('Ouyang control experiments change the traced focal group at the resin',async()=>{
+ const raw=await readFile(new URL('../collections/2pp/setups/ouyang-2023.json',import.meta.url),'utf8');
+ const scene=parseSketch(raw,registry);
+ const dmd=scene.elements.find(e=>e.id==='ouyang-dmd');
+ const laser=scene.elements.find(e=>e.id==='ouyang-laser');
+ const slit=scene.elements.find(e=>e.id==='ouyang-filter');
+ const hits=()=>traceScene(scene.elements,scene.beams).signalHits.filter(h=>
+  h.stageId==='ouyang-stage'&&h.sourceId===laser.id&&h.wavelengthNm===800);
+ const baseline=hits(); assert.equal(baseline.length,3);
+ dmd.params.focusCount=1; assert.equal(hits().length,1);
+ dmd.params.focusCount=3;dmd.params.scanAngle=1;
+ const shifted=hits(); assert.equal(shifted.length,3);
+ assert.ok(shifted.every((h,i)=>Math.abs(h.x-baseline[i].x)>0.05));
+ dmd.params.scanAngle=0;slit.params.gap=4;assert.equal(hits().length,1);
+ slit.params.gap=24;laser.params.avgPowerW=0;
+ assert.equal(hits().length,0);
+ assert.ok(detectorReading('ouyang-ccd')?.signal>0,'independent observation light survives');
+ laser.params.avgPowerW=2;assert.deepEqual(hits(),baseline,'positive source power preserves normalized geometry');
+ laser.params.enabled=false;assert.equal(hits().length,0);
+});

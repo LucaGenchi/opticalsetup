@@ -2679,7 +2679,7 @@ function interact(ray, hit) {
       const h = dot(sub(hit.p, mid), t) + (data.length || 40) / 2 + pitch / 2;
       const phase = ((h % pitch) + pitch) % pitch / pitch;
       const on = data.pattern === 'hologram'
-        ? dmdBinaryHologramOn(h, data)
+        ? dmdBinaryHologramOn(dot(sub(hit.p, mid), t), data)
         : phase < Math.min(0.95, Math.max(0.05, data.duty ?? 0.5));
       if (!on && !data.routeOff) return [];
       const base = reflect(d, n);

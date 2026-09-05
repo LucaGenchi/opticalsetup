@@ -1857,7 +1857,11 @@ function laserAperture(el) {
 
 function laserSource(el) {
   const p = el.params;
-  if (p.enabled === false) return [];
+  // Relative ray weights remain normalized for qualitative geometry, but an
+  // explicitly powerless or malformed source cannot illuminate a detector or
+  // leave resin write markers. Missing power is a legacy sketch convention.
+  if (p.enabled === false || (p.avgPowerW !== undefined
+    && (typeof p.avgPowerW !== 'number' || !Number.isFinite(p.avgPowerW) || p.avgPowerW <= 0))) return [];
   if (p.beamMode === 'beam') {
     // sample rays across the beam width; adjacent samples with an identical
     // interaction history are filled as an envelope strip, so a lenslet
@@ -1921,8 +1925,10 @@ export function dmdBinaryHologramOn(localHeight, params = {}) {
   const duty = clampDmd(params.duty, 0.05, 0.95, 0.5);
   const count = Math.round(clampDmd(params.focusCount, 1, 8, 3));
   const scan = clampDmd(params.scanAngle, -20, 20, 0);
+  const span = clampDmd(params.focusSpan, 0, 20, 6);
   const carrier = localHeight / pitch;
   const phaseWarp = 0.18 * Math.sin(2 * Math.PI * localHeight / (pitch * (count + 1)))
+    + span / 40 * Math.sin(Math.PI * localHeight / pitch)
     + scan / 40;
   const phase = ((carrier + phaseWarp) % 1 + 1) % 1;
   return phase < duty;
@@ -3365,9 +3371,21 @@ export const registry = {
     svg(el) {
       const L = el.params.length / 2;
       let mm = '';
-      for (let y = -L + 3; y < L - 2; y += 4) {
-        const on = el.params.pattern !== 'hologram' || dmdBinaryHologramOn(y, el.params);
-        mm += `<line x1="-11" y1="${y + (on ? 1.4 : -1.4)}" x2="-7" y2="${y + (on ? -1.4 : 1.4)}" stroke="${on ? '#f8fbff' : '#73808a'}" stroke-width="1.4"/>`;
+      if (el.params.pattern === 'hologram') {
+        // Sample the same centred surface coordinate as the tracer. Resolve
+        // below the carrier pitch so a pitch equal to the glyph spacing cannot
+        // alias an alternating mask into an apparently uniform ON surface.
+        const step = clampDmd(el.params.pitch, 1, 40, 8) / 8;
+        for (let y = -L; y < L; y += step) {
+          const height = Math.min(step, L - y);
+          const centre = y + height / 2;
+          const on = dmdBinaryHologramOn(centre, el.params);
+          mm += `<rect data-dmd-height="${centre}" data-dmd-on="${on}" x="-11" y="${y}" width="4" height="${height}" fill="${on ? '#f8fbff' : '#73808a'}"/>`;
+        }
+      } else {
+        for (let y = -L + 3; y < L - 2; y += 4) {
+          mm += `<line x1="-11" y1="${y + 1.4}" x2="-7" y2="${y - 1.4}" stroke="#f8fbff" stroke-width="1.4"/>`;
+        }
       }
       return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/>` + mm +
         `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">DMD</text>`;

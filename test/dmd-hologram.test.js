@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   createElement, dmdBinaryHologramOn, dmdHologramAngles, getElementMeta, registry,
 } from '../sketch/js/elements.js';
-import { traceScene } from '../sketch/js/raytrace.js';
+import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 
 const outgoingAngles = params => {
@@ -39,6 +39,45 @@ test('binary hologram mode creates the configured representative focus orders', 
 
 test('legacy stripe mode keeps its single ON/OFF routing behavior', () => {
   assert.equal(outgoingAngles({ pattern: 'stripes', focusCount: 8 }).length, 1);
+});
+
+test('displayed hologram samples gate the same physical points on the DMD face', () => {
+  const dmd = createElement('dmd', 100, 0);
+  Object.assign(dmd.params, { pattern: 'hologram', length: 48, pitch: 4,
+    duty: 0.5, focusCount: 3, focusSpan: 4, scanAngle: 1, routeOff: false });
+  const svg = registry.dmd.svg(dmd);
+  const bands = [...svg.matchAll(/data-dmd-height="([^"]+)" data-dmd-on="(true|false)"/g)];
+  assert.ok(bands.some(band => band[2] === 'true') && bands.some(band => band[2] === 'false'));
+  for (const [index, band] of bands.entries()) {
+    if (index % 5) continue;
+    const source = createElement('cwlaser', 0, Number(band[1]));
+    source.params.beamMode = 'line';
+    const paths = traceScene([source, dmd]).drawables.filter(path =>
+      path.type === 'path' && Math.abs(path.pts[0]?.x - 91) < 1e-9);
+    assert.equal(paths.length, band[2] === 'true' ? 3 : 0,
+      `display and propagation disagree at local height ${band[1]}`);
+  }
+  dmd.params.focusSpan = 14;
+  assert.notEqual(registry.dmd.svg(dmd), svg, 'focus-span control must also update the displayed mask');
+});
+
+test('representative hologram orders conserve accepted ray power', () => {
+  const source = createElement('cwlaser', 0, 0); source.params.beamMode = 'line';
+  const dmd = createElement('dmd', 200, 0);
+  Object.assign(dmd.params, { pattern: 'hologram', duty: 0.95, focusCount: 8 });
+  const paths = traceScene([source, dmd]).drawables.filter(path =>
+    path.type === 'path' && path.pts[0]?.x === 191);
+  assert.equal(paths.length, 8);
+  // Unit input is divided into eight equal geometric branches. The opacity
+  // is deliberately not a power meter; trace to a collecting detector instead.
+  const detector = createElement('detector', 120, -27);
+  detector.rot = 180;
+  detector.params.aperture = 40;
+  const all = traceScene([source, dmd, detector]);
+  assert.ok(Math.abs(detectorReading(detector.id).signal - 1) < 1e-9,
+    'splitting into eight selected orders must not multiply incident power');
+  assert.equal(detectorReading(detector.id).samples, 8);
+  assert.ok(all.drawables.every(path => (path.pts || []).every(p => Number.isFinite(p.x) && Number.isFinite(p.y))));
 });
 
 test('malformed hologram inputs normalize and helper outputs stay finite and bounded', () => {

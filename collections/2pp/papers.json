@@ -422,7 +422,16 @@
         "Supplement compensation prose swaps the L1/L2 values; the drawing follows the explicit Fig. S1 caption (225/250 mm).",
         "4 W is source output; reported 5 nJ per focus at 1 kHz is not source power."
       ],
-      "auxiliaryPath": "589 nm fibre LED below the substrate reflects from M1 through the objective and dichroic to L6=100 mm and CCD."
+      "auxiliaryPath": "589 nm fibre LED below the substrate reflects from M1 through the objective and dichroic to L6=100 mm and CCD.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 800,
+          "pulseDurationFs": 100,
+          "numericalAperture": 1.3
+        }
+      }
     },
     {
       "id": "jiao-2023",

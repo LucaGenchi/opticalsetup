@@ -42,7 +42,7 @@ The observation path is independent at 589 nm: fibre LED → M1 → substrate/re
 
 ## Control experiments
 
-1. **Laser emission and power boundary.** Select the Spitfire source and clear **Emit traced rays**: every 800 nm writing ray and resin arrival disappears, while the independent 589 nm observation path remains. Re-enable it, then change **Average power** from 4 W. The peak-power readout and handoff value change, but normalized ray geometry and qualitative voxel markers do not; this deliberately proves no calibrated cure/dose model is being claimed.
+1. **Laser emission and power boundary.** Select the Spitfire source and clear **Emit traced rays**: every 800 nm writing ray and resin arrival disappears, while the independent 589 nm observation path remains. Re-enable it, then change **Average power** from 4 W. For positive power the peak-power readout and source metadata change, but normalized ray geometry and qualitative voxel markers do not. Setting power to 0 W stops writing; the independent observation source remains on. The collection handoff retains reported paper values. This deliberately demonstrates no calibrated cure/dose model is being claimed.
 2. **Single versus multi-focus hologram.** Select the DMD and set **Representative foci** from 3 to 1. Three traced angular orders collapse to one and one representative focus route reaches the resin. This demonstrates the scene’s distinguishing multi-focus mechanism, not a 3D PSF or the reported 2000-focus limit.
 3. **Random-access steering.** Change **Random-access scan** from 0° to +1° (larger angles can leave the finite relay aperture). The whole focus group shifts through the relay and at the sample. This is a 2D angular proxy for changing the tilted/spherical phase terms in sequential holograms.
 4. **Fourier-order selection.** Select the Fourier-plane slit and reduce **Gap** from 24 mm to about 4 mm. Outer representative orders are clipped while the central route survives. The result shows why an order filter is physically meaningful; it does not predict the paper’s exact aperture or diffraction efficiency.
@@ -59,3 +59,15 @@ The native traced stage resolves the ordinary pulsed source and the objective’
 - Angular-dispersion/pulse-front compensation as a time-dependent field calculation; the workbench traces spatial wavelength samples and ordinary lens/grating geometry only.
 - High-NA vectorial PSF, the reported 90/141 nm structures, refractive-index matching errors, cover-glass effects, depletion, plasma/ionization, radical diffusion, solidification, damage, and micro-explosions.
 - Calibrated pulse energy at each focus. The reported 5 nJ per focus and measured component efficiencies (64% grating, ~5% DMD, 82% objective, ~2.62% overall) are not inferred from or substituted for the 4 W source output.
+
+
+## PR review addendum
+
+The attached article was re-read, including the rendered Fig. 1 on p. 2: the DMD generates the holographic focus group at the Fourier plane; the filter selects orders, and L4/L5 reimage them into resin. The stage is static for this random-access DMD demonstration.
+
+- Fixed a DMD mask disagreement: the renderer used centred surface coordinates while the tracer sampled a shifted coordinate. Both now use the same local height. Finer sampling prevents the 4 mm carrier from aliasing into a visually uniform mask, and focus-span changes update the displayed proxy too.
+- Changed the default displayed ON fraction to 0.5. The three centre-wavelength focal routes remain live; independent tests check glyph/trace agreement across ON and OFF regions and verify total power conservation across eight selected orders.
+- Separated the dichroic, objective and resin by redistributing the same L4–objective optical path length. Repositioned clipped labels, added on-canvas control instructions, and created current native SVG-derived default/single-focus previews under `previews/`. Earlier browser screenshots are historical verification of the original PR.
+- Verified at the resin: three centre-wavelength foci become one, +1° scan translates all three, a 4 mm Fourier slit selects only the central group, and source disabled or 0 W removes writing while 589 nm camera signal remains. Nine default hit records represent three geometric focus orders sampled at three wavelengths, not nine independent physical foci.
+- The shared zero-power guard rejects invalid/zero laser emission. Positive average power still changes source metadata rather than normalized geometric weights; no calibrated dose/curing law is inferred.
+- Verification: full `npm test`, native-source and DMD boundary regressions, complete scene controls, save/reload equivalence, partial handoff ranges, all application JavaScript syntax, `git diff --check`, and visual inspection of the native SVG raster previews. Browser review is recorded separately by the collection reviewer.
