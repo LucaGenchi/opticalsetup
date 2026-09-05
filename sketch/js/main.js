@@ -1577,11 +1577,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
+  const paperId = params.get('paper');
+  const validPaperId = typeof paperId === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(paperId);
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isPaperEmbed = Boolean(!isTypeDemo && !isCommunityDemo && !isExampleDemo
+    && validPaperId && params.has('embed'));
+  const isPaperScene = Boolean(!isTypeDemo && !isCommunityDemo && !isExampleDemo && validPaperId);
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo || isPaperEmbed;
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1654,6 +1659,23 @@ window.addEventListener('DOMContentLoaded', async () => {
       state.beams.push(...scene.beams);
     } catch (err) {
       console.error('Could not load example:', err);
+    }
+  } else if (isPaperScene) {
+    // Per-paper collection scenes use the native save format and stay outside
+    // the curated Examples menu. `embed` locks the canvas for the research
+    // page; the same URL without it opens an editable working copy.
+    try {
+      const res = await fetch(`../collections/2pp/setups/${paperId}.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      if (isPaperEmbed) {
+        state.elements.push(...scene.elements);
+        state.beams.push(...scene.beams);
+      } else {
+        replaceScene(scene, { resetHistory: true });
+      }
+    } catch (err) {
+      console.error('Could not load paper setup:', err);
     }
   } else {
     let sharedScene = null;
