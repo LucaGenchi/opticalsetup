@@ -39,7 +39,7 @@ const $ = id => document.getElementById(id);
 // so the showcased component's actual optical function is visible, not
 // just its icon sitting in empty space. The showcased component keeps its
 // registry type unique within its own scene, so it can be found again by
-// type after the scene is built (see isDemo boot below).
+// type after the scene is built (see the boot block below).
 function mkDemo(type, x, y, rot = 0, params = {}, extra = {}) {
   const e = createElement(type, x, y);
   e.rot = rot;
@@ -834,7 +834,7 @@ function renderSelection(detail = {}) {
 
 // ---------- selection / deletion ----------
 function deleteSelected() {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   const s = state.selection;
   if (s?.kind === 'multi') {
     pushUndo();
@@ -858,7 +858,7 @@ function deleteSelected() {
 const newId = pre => pre + Math.random().toString(36).slice(2, 9);
 
 function duplicateSelected() {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   const s = state.selection;
   if (s?.kind === 'multi') {
     const hasDuplicable = s.beams.length || s.els.some(id => {
@@ -935,7 +935,7 @@ function selectionContents() {
 const isSingleton = type => Boolean(registry[type]?.singleton);
 
 function copySelection() {
-  if (state.demoMode) return false;
+  if (state.embedMode) return false;
   const copied = copyableSelection(selectionContents(), isSingleton);
   if (!copied) return false;
   clipboard = copied;
@@ -944,7 +944,7 @@ function copySelection() {
 }
 
 function pasteClipboard() {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   pasteStep += 1;
   const pasted = pasteObjects(clipboard, {
     offset: 30 * pasteStep,
@@ -966,7 +966,7 @@ function pasteClipboard() {
 }
 
 function rotateSelected(deg) {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   if (isPlacing()) { rotatePlacing(deg); return; }
   const sel = findSelected();
   if (!sel || state.selection.kind !== 'element') return;
@@ -978,7 +978,7 @@ function rotateSelected(deg) {
 }
 
 function nudgeSelected(dx, dy) {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   const s = state.selection;
   if (s?.kind === 'multi') {
     pushUndo();
@@ -1504,7 +1504,7 @@ function bindContextMenu() {
   const hide = () => { menu.hidden = true; };
   document.addEventListener('optics:contextmenu', event => {
     const detail = event.detail;
-    if (!detail || state.demoMode) { hide(); return; }
+    if (!detail || state.embedMode) { hide(); return; }
     const rect = wrap.getBoundingClientRect();
     const rotate = menu.querySelector('[data-action="rotate"]');
     const duplicate = menu.querySelector('[data-action="duplicate"]');
@@ -1544,7 +1544,7 @@ function bindContextMenu() {
 // first clear spot on the side its cable leaves from, so connecting a readout
 // is one click instead of place-then-find-the-sensor-in-a-dropdown.
 function connectDetectorScreen(sensorId) {
-  if (state.demoMode) return;
+  if (state.embedMode) return;
   const sensor = state.elements.find(el => el.id === sensorId);
   if (!sensor || !registry[sensor.type]?.readoutKind) return;
   pushUndo();
@@ -1571,6 +1571,35 @@ document.addEventListener('optics:pulserepresentation', e => showAnchoredPopup(e
 document.addEventListener('optics:viewchange', e => syncViewControls(e.detail));
 document.addEventListener('optics:toast', e => { if (e.detail?.message) showToast(e.detail.message); });
 
+// Opening a linked scene as a workbench replaces whatever the visitor already
+// had on the bench, and that bench may hold unsaved work. There are now ~73
+// pages whose "Open in the canvas" does this, so it cannot be silent: ask
+// first, and push the displaced scene onto the undo stack so a visitor who
+// says yes and regrets it can step straight back.
+//
+// The undo stack alone was not enough, which is why the confirm is here: the
+// first edit to the linked scene overwrites the autosave and pushes another
+// entry above the snapshot, so after any editing the old bench is neither one
+// undo away nor on disk. Consent is what makes that acceptable.
+//
+// Returns false if the visitor declined, in which case the caller leaves the
+// bench alone -- already reloaded into state here -- and does not load the
+// linked scene.
+function preserveWorkbenchInUndo() {
+  if (!loadAutosave(registry)) return true;
+  if (!state.elements.length && !state.beams.length) return true;
+  const count = state.elements.length;
+  const ok = confirm(
+    `Opening this setup will replace the ${count} item${count === 1 ? '' : 's'} on your canvas.\n\n`
+    + 'Undo brings your current setup back if you change your mind.\n\nOpen it?');
+  if (!ok) return false;
+  pushUndo();
+  state.elements.length = 0;
+  state.beams.length = 0;
+  state.selection = null;
+  return true;
+}
+
 // ---------- boot ----------
 window.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
@@ -1579,33 +1608,54 @@ window.addEventListener('DOMContentLoaded', async () => {
   const exampleSlug = params.get('example');
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
-  const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
-  const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isCommunityScene = Boolean(!isTypeDemo && communitySlug);
+  const isExampleScene = Boolean(!isTypeDemo && !isCommunityScene && exampleSlug);
+  // Which scene to load, and how to present it, are two separate questions.
+  // Any of the three scene params can be opened either way: bare, the scene
+  // becomes the visitor's own workbench with the full toolbar behind it;
+  // with ?embed=1 it is a flat, non-interactive picture for a page to frame.
+  const hasLinkedScene = isTypeDemo || isCommunityScene || isExampleScene;
+  const isEmbed = hasLinkedScene && params.get('embed') === '1';
 
+  // The mode has to be set before initCanvas(), which synchronously registers
+  // the pointer, wheel and key handlers: deciding afterwards would leave them
+  // bound and the embed guards dead. SVG descendants that set their own
+  // pointer-events: all -- markdown links, display controls -- would then
+  // still deliver events through them, whatever the canvas CSS says.
+  if (isEmbed) {
+    state.embedMode = true;
+    document.body.classList.add('embed-mode');
+    // The brand is a link to the homepage with no target, so inside an iframe
+    // it navigates the frame rather than the tab: the whole site loads into
+    // the preview, and a wiki page opened from there embeds another preview
+    // inside that one, nesting as far as the visitor keeps clicking. An embed
+    // has no navigation of its own, so drop the href and keep the mark --
+    // an <a> without href is not a link and is not focusable.
+    const brand = document.querySelector('.brand');
+    if (brand) brand.removeAttribute('href');
+  }
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
   initInspector($('inspectorContent'));
-  if (isDemo) {
-    state.demoMode = true;
-    document.body.classList.add('demo-mode');
-  } else {
-    buildPalette();
-  }
+  if (!isEmbed) buildPalette();
   syncToolMode();
     bindToolbar();
     bindContextMenu();
-  if (!isDemo) { bindExamples(); bindCommunity(); }
+  if (!isEmbed) { bindExamples(); bindCommunity(); }
   bindKeys();
   setSelectionCallback(renderSelection);
   setMeasurementsCallback(refreshMeasurements);
   onChange(() => { renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion(); });
 
-  if (isTypeDemo) {
-    // Wiki embed: a small fixed scene — a light source plus the showcased
-    // component, so its actual optical function is visible — with no way
-    // to add/move/delete anything. See state.demoMode call sites in this
-    // file and canvas.js for what's disabled.
+  // A visitor who declines the replacement keeps the bench that
+  // preserveWorkbenchInUndo() has already loaded back into state, and the
+  // linked scene is simply not loaded.
+  const loadLinked = !hasLinkedScene || isEmbed || preserveWorkbenchInUndo();
+
+  if (isTypeDemo && loadLinked) {
+    // The showcased component plus a source, so its optical function is
+    // visible. Framed with ?embed=1 this is the flat preview a wiki page
+    // shows; without it, the same scene opens as the visitor's workbench.
     const build = demoScenes[demoType];
     const built = build ? build() : [createElement(demoType, 0, 0)];
     const sceneElements = Array.isArray(built) ? built : (built.elements || []);
@@ -1617,16 +1667,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     // A fiber demo's subject is the drawn path, not one of the elements that
     // feed it, so select the beam instead.
-    if (state.beams.length && FIBER_DEMOS.has(demoType)) {
-      state.selection = { kind: 'beam', id: state.beams[0].id };
-    } else {
-      const hero = sceneElements.find(e => e.type === demoType) || sceneElements[0];
-      state.selection = { kind: 'element', id: hero.id };
-    }
-  } else if (isCommunityDemo) {
-    // Community embed: the actual submitted scene, locked the same way as a
-    // wiki demo (state.demoMode), but with no single "hero" element — the
-    // whole setup is there to click through, not one component to focus on.
+    // Nothing is selected either way. An embed has no inspector to explain a
+    // selection any more, so selecting the subject would do nothing but draw a
+    // dashed box and rotate/resize/tune handles over a picture that cannot be
+    // edited. Opened as a workbench, the scene is the visitor's and starts
+    // clean like any other file they load.
+  } else if (isCommunityScene && loadLinked) {
+    // The actual submitted scene, with no single "hero" element.
     try {
       const entry = community.find(e => e.slug === communitySlug);
       if (!entry) throw new Error('Unknown community setup');
@@ -1639,7 +1686,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load community setup:', err);
     }
-  } else if (isExampleDemo) {
+  } else if (isExampleScene && loadLinked) {
     // Example embed: same locked treatment as the community embed above —
     // the whole curated setup is there to click through. Examples/*.json is
     // the plain native save format (no {scene: ...} wrapper), same as
@@ -1655,7 +1702,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load example:', err);
     }
-  } else {
+  } else if (!hasLinkedScene) {
     let sharedScene = null;
     try {
       const sharedText = await sharedSceneFromURL();
@@ -1707,9 +1754,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   syncPulseControls();
   syncMobileSheets();
 
-  if (isDemo) {
+  if (hasLinkedScene && loadLinked) {
     zoomFit();
-  } else {
+  }
+  if (!isEmbed) {
     // Deep link from the wiki ("Open in the canvas" on a component page):
     // ?place=<type> arms the placement tool for that component on load.
     const placeType = params.get('place');
