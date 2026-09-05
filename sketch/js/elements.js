@@ -1868,7 +1868,11 @@ function laserAperture(el) {
 
 function laserSource(el) {
   const p = el.params;
-  if (p.enabled === false) return [];
+  // Relative ray weights remain normalized for qualitative geometry, but an
+  // explicitly powerless or malformed source cannot illuminate a detector or
+  // leave resin write markers. Missing power is a legacy sketch convention.
+  if (p.enabled === false || (p.avgPowerW !== undefined
+    && (typeof p.avgPowerW !== 'number' || !Number.isFinite(p.avgPowerW) || p.avgPowerW <= 0))) return [];
   if (p.beamMode === 'beam') {
     // sample rays across the beam width; adjacent samples with an identical
     // interaction history are filled as an envelope strip, so a lenslet
@@ -3188,8 +3192,10 @@ export const registry = {
         const pitch = el.params.length / levels.length;
         px = levels.map((level, i) => {
           const y = -L + i * pitch;
-          const lightness = 22 + 58 * level;
-          return `<rect data-amplitude-band="${i}" x="-11" y="${y.toFixed(3)}" width="4" height="${pitch.toFixed(3)}" fill="hsl(172 48% ${lightness.toFixed(1)}%)"/>`;
+          // Explicit RGB also survives SVG rasterizers without CSS Color 4
+          // space-separated HSL support; a dark exported face hid the mask.
+          const color = [29 + 146 * level, 83 + 145 * level, 80 + 141 * level].map(Math.round);
+          return `<rect data-amplitude-band="${i}" x="-11" y="${y.toFixed(3)}" width="4" height="${pitch.toFixed(3)}" fill="rgb(${color.join(',')})"/>`;
         }).join('');
       } else {
         for (let y = -L + 2; y < L - 1; y += 5) px += `<line x1="-11" y1="${y}" x2="-7" y2="${y}" stroke="#4ac0b0" stroke-width="2.5"/>`;

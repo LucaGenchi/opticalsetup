@@ -5,14 +5,14 @@
   {
    "id": "frame",
    "type": "figureframe",
-   "x": 430,
+   "x": 450,
    "y": 330,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "labelPos": "b",
    "params": {
-    "w": 830,
+    "w": 870,
     "h": 620,
     "background": "white"
    }
@@ -46,7 +46,7 @@
     "wavelength": 800,
     "avgPowerW": 7,
     "beamMode": "beam",
-    "beamWidth": 8,
+    "beamWidth": 9.4,
     "repRateMHz": 0.001,
     "pulsePhaseNs": 0,
     "pulseWidthFs": 35,
@@ -64,7 +64,7 @@
    "id": "sourceLabel",
    "type": "textlabel",
    "x": 28,
-   "y": 128,
+   "y": 141,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -148,7 +148,7 @@
   {
    "id": "qwp1",
    "type": "qwp",
-   "x": 575,
+   "x": 550,
    "y": 105,
    "rot": 0,
    "label": "QWP1 · double pass",
@@ -162,7 +162,7 @@
   {
    "id": "slm",
    "type": "slm",
-   "x": 645,
+   "x": 579,
    "y": 105,
    "rot": 0,
    "label": "LC-SLM · amplitude bands",
@@ -170,7 +170,7 @@
    "labelPos": "r",
    "params": {
     "transmissive": false,
-    "length": 48,
+    "length": 23.625,
     "zeroOrder": false,
     "zeroFrac": 0.1,
     "layers": [
@@ -191,7 +191,7 @@
    "id": "qwp2",
    "type": "qwp",
    "x": 525,
-   "y": 165,
+   "y": 126,
    "rot": 90,
    "label": "QWP2",
    "showLabel": true,
@@ -205,7 +205,7 @@
    "id": "l1",
    "type": "lens",
    "x": 525,
-   "y": 220,
+   "y": 135,
    "rot": 90,
    "label": "L1 · 75 mm",
    "showLabel": true,
@@ -220,7 +220,7 @@
    "id": "window1",
    "type": "thicklens",
    "x": 525,
-   "y": 282,
+   "y": 197,
    "rot": 90,
    "label": "",
    "showLabel": false,
@@ -238,7 +238,7 @@
    "id": "window2",
    "type": "thicklens",
    "x": 525,
-   "y": 308,
+   "y": 223,
    "rot": 90,
    "label": "",
    "showLabel": false,
@@ -255,14 +255,14 @@
   {
    "id": "vacuumLabel",
    "type": "textlabel",
-   "x": 554,
-   "y": 278,
+   "x": 550,
+   "y": 282,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "labelPos": "b",
    "params": {
-    "text": "**Vacuum focus**\nCell suppresses air ionization.\nWindows are interpreted fused silica.",
+    "text": "**Vacuum focus (between windows)**\nInterpreted fused-silica windows.\nAir ionization is not calculated.",
     "fontSize": 8,
     "fill": "#52626b"
    }
@@ -271,7 +271,7 @@
    "id": "l2",
    "type": "lens",
    "x": 525,
-   "y": 495,
+   "y": 410,
    "rot": 90,
    "label": "L2 · 200 mm",
    "showLabel": true,
@@ -285,14 +285,14 @@
   {
    "id": "fold",
    "type": "mirror",
-   "x": 552,
-   "y": 570,
+   "x": 525,
+   "y": 485,
    "rot": 45,
    "label": "Fold",
    "showLabel": true,
    "labelPos": "b",
    "params": {
-    "length": 86,
+    "length": 94,
     "refl": 99,
     "showTransmitted": false
    }
@@ -300,11 +300,11 @@
   {
    "id": "ml2",
    "type": "metalensarray",
-   "x": 350,
-   "y": 570,
+   "x": 400,
+   "y": 485,
    "rot": 0,
    "label": "ML2 active · 370×350 · 100 µm · NA 0.8",
-   "showLabel": true,
+   "showLabel": false,
    "labelPos": "t",
    "params": {
     "length": 63,
@@ -317,10 +317,10 @@
   {
    "id": "stage",
    "type": "stage",
-   "x": 310,
-   "y": 570,
+   "x": 360,
+   "y": 485,
    "rot": 90,
-   "label": "Substrate + resin on XYZ stage",
+   "label": "Resin on XYZ stage",
    "showLabel": true,
    "labelPos": "b",
    "params": {
@@ -339,7 +339,7 @@
     "voxelPreview": true,
     "voxelSize": 0.8,
     "transmitExc": true,
-    "transmission": 0.05,
+    "transmission": 0,
     "mode": "none",
     "fluorWl": 520,
     "carsWl": 660,
@@ -349,8 +349,8 @@
   {
    "id": "ml1",
    "type": "metalensarray",
-   "x": 805,
-   "y": 255,
+   "x": 818,
+   "y": 232,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -366,8 +366,8 @@
   {
    "id": "ml1Note",
    "type": "textlabel",
-   "x": 640,
-   "y": 235,
+   "x": 615,
+   "y": 190,
    "rot": 0,
    "label": "",
    "showLabel": false,
@@ -466,7 +466,7 @@
    "x": 815,
    "y": 455,
    "rot": 0,
-   "label": "illumination dump",
+   "label": "Dump",
    "showLabel": true,
    "labelPos": "t",
    "params": {
@@ -497,7 +497,7 @@
    "id": "obsSample",
    "type": "sample",
    "x": 745,
-   "y": 555,
+   "y": 536,
    "rot": 0,
    "label": "Sample (offset)",
    "showLabel": true,
@@ -511,7 +511,7 @@
     "voxelPreview": false,
     "voxelSize": 0.6,
     "transmitExc": true,
-    "transmission": 0.8,
+    "transmission": 0,
     "mode": "none",
     "fluorWl": 520,
     "carsWl": 660,
@@ -522,15 +522,42 @@
    "id": "controls",
    "type": "textlabel",
    "x": 42,
-   "y": 400,
+   "y": 270,
    "rot": 0,
    "label": "",
    "showLabel": false,
    "labelPos": "b",
    "params": {
-    "text": "**Try these controls**\n1. Laser → “Emit traced rays” off: all writing rays disappear.\n2. SLM → amplitude levels `1,1,1,1,1,1,1`: uniform representative foci. Use zeros to gate selected foci.\n3. ML2 → increase focal length: the focus moves; the SLM itself does not create the fan.\n4. Stage → Static / XY / XYZ sync: the substrate moves through fixed metalens foci.\n\n_Free interpretation — display-scale focal lengths, stage travel, sample transmission,\nwindow material/thickness and compact fold are not specified in the paper._",
-    "fontSize": 8.5,
+    "text": "**Try these controls**\n1. Laser off or 0 W: writing stops. Positive power is metadata.\n2. SLM levels: `1,1,1,1,1,1,1` opens all seven regions.\nSet selected bands to zero to remove their foci.\n3. Increase ML2 focal length: the crossings move.\nThe SLM only gates amplitude.\n4. Stage Static / XY / XYZ sync: move resin through fixed foci.\n\nFree interpretation — focal length, stage travel, window glass,\nsample transmission and observation condenser are display choices.",
+    "fontSize": 9,
     "fill": "#40525b"
+   }
+  },
+  {
+   "id": "ml2Label",
+   "type": "textlabel",
+   "x": 180,
+   "y": 420,
+   "rot": 0,
+   "params": {
+    "text": "**ML2 active · seven lenslets**\n370×350 · 100 µm · NA 0.8",
+    "fontSize": 9,
+    "fill": "#40525b"
+   }
+  },
+  {
+   "id": "obsCondenser",
+   "type": "lens",
+   "x": 685,
+   "y": 455,
+   "rot": 0,
+   "label": "Condenser*",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "f": 35,
+    "dia": 23,
+    "transEff": 99
    }
   }
  ],

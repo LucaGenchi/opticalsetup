@@ -56,3 +56,30 @@ test('Gu paper handoff preserves kHz and out-of-range provenance',async()=>{
  assert.equal(url.searchParams.get('numericalAperture'),'0.8');
  assert.equal(url.searchParams.has('repetitionRateMHz'),false);
 });
+
+test('Gu conjugate relay selects seven separate metalens focal regions', async () => {
+ const raw=await readFile(new URL('../collections/2pp/setups/gu-2025.json',import.meta.url),'utf8');
+ const scene=parseSketch(raw,registry);
+ const byId=id=>scene.elements.find(e=>e.id===id);
+ const slm=byId('slm'), l1=byId('l1'), l2=byId('l2'), pbs=byId('pbs2'), fold=byId('fold'), array=byId('ml2');
+ assert.equal((slm.x-9-pbs.x)+(l1.y-pbs.y),l1.params.f);
+ assert.equal(l2.y-l1.y,l1.params.f+l2.params.f);
+ assert.equal((fold.y-l2.y)+(fold.x-array.x),l2.params.f);
+ const hits=()=>traceScene(scene.elements,scene.beams).signalHits.filter(h=>h.stageId==='stage'&&h.wavelengthNm===800);
+ const groups=()=>[...new Set(hits().map(h=>Math.round((h.y-array.y)/9)))].sort((a,b)=>a-b);
+ slm.params.layers[0].levels='1,1,1,1,1,1,1';
+ assert.deepEqual(groups(),[-3,-2,-1,0,1,2,3]);
+ for(let band=0;band<7;band++){
+  slm.params.layers[0].levels=Array.from({length:7},(_,i)=>i===band?1:0).join(',');
+  assert.deepEqual(groups(),[3-band],`SLM band ${band} must select only its conjugate lenslet`);
+ }
+ slm.params.layers[0].levels='1,1,1,1,1,1,1';
+ const focused=hits(); array.params.f=60;
+ assert.notDeepEqual(hits().map(h=>h.y),focused.map(h=>h.y),'metalens focal length must alter sample crossings');
+ const active=traceScene(scene.elements,scene.beams);
+ assert.ok(active.writeHits.length>0);
+ assert.ok(active.signalHits.some(h=>h.stageId==='obsSample'),'observation illumination must reach its sample');
+ byId('laser').params.avgPowerW=0;
+ assert.equal(hits().length,0);
+ assert.equal(traceScene(scene.elements,scene.beams).writeHits.length,0);
+});

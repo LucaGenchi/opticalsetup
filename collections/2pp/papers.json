@@ -587,7 +587,15 @@
         "Metalens focal lengths and most free-space distances are not numerically specified.",
         "The caption names HWP1–2, but the Methods writing-path description specifies HWP1 only and the second HWP is not unambiguously located."
       ],
-      "auxiliaryPath": "A separate observation objective above the substrate connects to a beam splitter, LED, L3 and CMOS. It is not the writing objective."
+      "auxiliaryPath": "A separate observation objective above the substrate connects to a beam splitter, LED, L3 and CMOS. It is not the writing objective.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 800,
+          "numericalAperture": 0.8
+        }
+      }
     }
   ]
 }
