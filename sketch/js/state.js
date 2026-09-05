@@ -43,7 +43,7 @@ function freshId(prefix, candidate, used) {
 
 function normalizeLayers(value) {
   if (!Array.isArray(value)) return [];
-  const types = new Set(['lensarray', 'grating', 'steer', 'speckle']);
+  const types = new Set(['lensarray', 'focusgrid', 'grating', 'steer', 'speckle']);
   return value.slice(0, 4).filter(record).map(raw => {
     const type = types.has(raw.type) ? raw.type : 'lensarray';
     const n = finite(raw.n) ? raw.n : 3;

@@ -2704,7 +2704,7 @@ function interact(ray, hit) {
           if (ly.type === 'steer') {
             const a = (ly.angle || 0) * D2R, c = Math.cos(a), sn = Math.sin(a);
             next.push({ ...r, d: { x: r.d.x * c - r.d.y * sn, y: r.d.x * sn + r.d.y * c } });
-          } else if (ly.type === 'lensarray') {
+          } else if (ly.type === 'lensarray' || ly.type === 'focusgrid') {
             const nL = Math.min(8, Math.max(1, Math.round(ly.n || 1)));
             const pitch = L / nL;
             const h = dot(sub(hit.p, mid), t);
@@ -2713,7 +2713,12 @@ function interact(ray, hit) {
             const hc = -L / 2 + (idx + 0.5) * pitch;
             // lenslet index goes into the branch signature so beam strips
             // only pair up within the same lenslet
-            next.push({ ...r, d: lensBend(r.d, hit.p, s, ly.f, hc), tag: r.tag + 'L' + idx });
+            next.push({
+              ...r,
+              d: lensBend(r.d, hit.p, s, ly.f, hc),
+              tag: r.tag + (ly.type === 'focusgrid' ? 'F' : 'L') + idx,
+              ...(ly.type === 'focusgrid' ? { writeReference: true, focusRow: idx } : {}),
+            });
           } else if (ly.type === 'grating') {
             const parsed = [...new Set(String(ly.orders ?? '1').split(',').map(v => parseInt(v.trim(), 10)).filter(m => Number.isFinite(m)))].slice(0, 21);
             const orders = parsed.length ? parsed : [1];
@@ -2755,6 +2760,8 @@ function interact(ray, hit) {
       const out = rays.map(r => ({
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
         wl: r.wl, bw: r.bw, speckle: r.speckle || undefined,
+        ...('writeReference' in r ? { writeReference: r.writeReference } : {}),
+        ...('focusRow' in r ? { focusRow: r.focusRow } : {}),
       }));
       if (zf > 0) {
         out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0' });
@@ -2962,9 +2969,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // 2PP voxel marks, which its own writeVoxel flag already gates.
       const holder = hit.surface.el?.type;
       if ((holder === 'stage' || holder === 'sample') && r.writeReference) {
-        if (writeHits && hit.surface.data.writeVoxel && r.pulse) {
+        const sameFocusRow = candidate => Number.isInteger(r.focusRow)
+          && candidate.stageId === hit.surface.el.id
+          && candidate.sourceId === r.pulse?.sourceId
+          && candidate.focusRow === r.focusRow;
+        if (writeHits && hit.surface.data.writeVoxel && r.pulse && !writeHits.some(sameFocusRow)) {
           writeHits.push({
             stageId: hit.surface.el.id,
+            sourceId: r.pulse.sourceId,
+            ...(Number.isInteger(r.focusRow) ? { focusRow: r.focusRow } : {}),
             x: hit.p.x,
             y: hit.p.y,
             opl: r.opl,
@@ -2972,7 +2985,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             intensity: Math.min(1, Math.max(0, r.intensity || 0)),
           });
         }
-        if (signalHits && hit.surface.data.reportHit) {
+        if (signalHits && hit.surface.data.reportHit && !signalHits.some(sameFocusRow)) {
           // The generated-signal wavelength, when this surface actually
           // converts light (fluorescence emission, or SHG/THG/CARS forward
           // conversion) — used to color the excitation-spot indicator by
@@ -2996,6 +3009,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           }
           signalHits.push({
             stageId: hit.surface.el.id,
+            ...(Number.isInteger(r.focusRow) ? { focusRow: r.focusRow } : {}),
             x: hit.p.x,
             y: hit.p.y,
             wl: signalWl,
@@ -3205,7 +3219,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
             : undefined,
           sample: r.sample, sampleCount: r.sampleCount, sampleGrid: r.sampleGrid,
-          writeReference: r.writeReference,
+          writeReference: 'writeReference' in c ? c.writeReference : r.writeReference,
+          focusRow: 'focusRow' in c ? c.focusRow : r.focusRow,
           objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),
           retainWeak: childRetainsWeak,

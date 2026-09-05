@@ -51,6 +51,20 @@ test('malformed arrays normalize to finite bounded geometry and branching', () =
   assert.ok(result.drawables.every(s => (s.pts || []).every(p => [p.x, p.y].every(Number.isFinite))));
 });
 
+test('square-focus CGH layers normalize to a bounded in-plane section', () => {
+  const slm = mk('slm', 100, 0, {
+    transmissive: true,
+    layers: [{ type: 'focusgrid', n: 1e9, f: Infinity }],
+  });
+  const normalized = parseSketch(JSON.stringify({ elements: [slm] }), registry).elements[0];
+  assert.deepEqual(normalized.params.layers, [{
+    type: 'focusgrid', n: 8, f: 50, lines: 600, orders: '1', angle: 5, div: 8,
+  }]);
+  const result = traceScene([mk('cwlaser', 0, 0), normalized]);
+  assert.ok(result.drawables.every(path => (path.pts || []).every(point =>
+    Number.isFinite(point.x) && Number.isFinite(point.y))));
+});
+
 test('disabled paper sources emit no rays; legacy sources still emit', () => {
   for (const type of ['cwlaser', 'pulsedlaser']) {
     const source = mk(type, 0, 0, { enabled: false });
