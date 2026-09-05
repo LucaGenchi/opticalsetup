@@ -386,7 +386,9 @@ function measurementHTML(el) {
       <dt>Spot span</dt><dd>${spot}</dd>`;
   const measurementFoot = cancelled
     ? 'Exact coherent cancellation leaves an empty sensor profile.'
-    : isCamera ? 'Profile height is normalized to the brightest sensor pixel.'
+    : isCamera ? (rd.profileScale === 'fit'
+      ? 'Profile height is normalized to the brightest sensor pixel.'
+      : 'Profile height follows the relative sensor intensity; attenuation lowers the profile.')
     : 'Relative ray weight from the qualitative tracer—not calibrated optical power.';
   const statusText = cancelled ? 'Coherent cancellation'
     : cameraState?.kind === 'phase-unavailable' ? 'Deposited intensity'
