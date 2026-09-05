@@ -30,13 +30,14 @@ function sceneBounds(elements = state.elements, drawables = null) {
   }
   for (const b of state.beams) pts.push(...b.pts);
   const traced = drawables || traceScene(elements, state.beams).drawables;
+  const rayPts = [];
   for (const d of traced) {
     // beams can extend far; clamp their contribution so an unterminated ray
     // doesn't blow up the export canvas
-    if (d.pts) pts.push(...d.pts);
-    if (d.dots) pts.push(...d.dots);
+    if (d.pts) rayPts.push(...d.pts);
+    if (d.dots) rayPts.push(...d.dots);
   }
-  if (!pts.length) return { x: 0, y: 0, w: 400, h: 300 };
+  if (!pts.length && !rayPts.length) return { x: 0, y: 0, w: 400, h: 300 };
   // clamp runaway rays to the element bounding box + margin
   const elPts = clampPts;
   let bx0, bx1, by0, by1;
@@ -44,8 +45,10 @@ function sceneBounds(elements = state.elements, drawables = null) {
     bx0 = Math.min(...elPts.map(p => p.x)) - 150; bx1 = Math.max(...elPts.map(p => p.x)) + 150;
     by0 = Math.min(...elPts.map(p => p.y)) - 150; by1 = Math.max(...elPts.map(p => p.y)) + 150;
   } else { bx0 = -1e9; bx1 = 1e9; by0 = -1e9; by1 = 1e9; }
-  const xs = pts.map(p => Math.min(bx1, Math.max(bx0, p.x)));
-  const ys = pts.map(p => Math.min(by1, Math.max(by0, p.y)));
+  // Authored geometry must always fit. Only simulated rays may be clipped
+  // to keep an unterminated beam from making the export enormous.
+  const xs = [...pts.map(p => p.x), ...rayPts.map(p => Math.min(bx1, Math.max(bx0, p.x)))];
+  const ys = [...pts.map(p => p.y), ...rayPts.map(p => Math.min(by1, Math.max(by0, p.y)))];
   const m = 30;
   const x0 = Math.min(...xs) - m, y0 = Math.min(...ys) - m;
   return { x: x0, y: y0, w: Math.max(...xs) + m - x0, h: Math.max(...ys) + m - y0 };
