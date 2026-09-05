@@ -184,14 +184,25 @@
       "family": "Parallel writing",
       "status": "full-text-needed",
       "documents": [],
-      "reviewed": [],
-      "opticalTrain": [],
-      "mechanism": "Parallel fabrication of compound parabolic mirror arrays. The 633 nm optical characterization wavelength is not evidence for the fabrication laser wavelength.",
-      "modelLimits": "Full text and apparatus figure unavailable; no reconstructed scene is published.",
+      "reviewed": [
+        "Publisher preview p. 1: identity, abstract and introduction.",
+        "Publisher-preview Fig. 1 caption: SLM phase pattern, 4×4 hexagonal array, Fourier-plane zeroth-order filtration and objective focal-plane array.",
+        "Publisher-preview Figs. 2–4 captions: multifocal/compound patterns, fabricated mirror arrays and 633 nm characterization geometry."
+      ],
+      "opticalTrain": [
+        "Fabrication laser source (wavelength, timing and power unspecified)",
+        "SLM with phase modulation pattern for a 4×4 hexagonal multifocal array",
+        "Zeroth-order filtration at a Fourier plane",
+        "Objective lens (specification unavailable)",
+        "Parallel focal array at the objective focal plane"
+      ],
+      "mechanism": "An SLM phase pattern creates a 4×4 hexagonal multifocal array, with the zeroth order filtered at a Fourier plane before the final objective focal plane. Parallel fabrication addresses the serial-writing bottleneck and can produce simple and compound parabolic-mirror arrays. The 633 nm value is optical characterization, not evidence for the fabrication laser wavelength.",
+      "modelLimits": "The complete article, methods and full apparatus figure remain unavailable. The published native scene is explicitly a 1D mechanism interpretation of the Fig. 1 caption, not an exact reconstruction or a CGH/PSF/curing calculation.",
       "settings": {},
       "unknowns": [
         "Exact title and DOI verified. Publisher access unavailable and no exact OA full text obtained.",
-        "RMIT repository record 27487374 has an empty files list; the old Swinburne handle redirects after repository migration."
+        "RMIT repository record 27487374 has an empty files list; the old Swinburne handle redirects after repository migration.",
+        "Fabrication wavelength, repetition rate, pulse duration, power, polarization, source model, objective/NA, relay prescriptions, scan hardware, resin and writing trajectory remain unverified."
       ],
       "auxiliaryPath": ""
     },
