@@ -32,4 +32,3 @@ I’m removing the scene files, their previews and edit links, the setup generat
 ```text
 The setups are removed, and all 151 original research files are unchanged. I’ve added a durable workspace index and a separate research dossier for each reference. The remaining 774 tests pass; I’m updating the PR and checking that no setup links remain.
 ```
-
