@@ -859,51 +859,16 @@ const newId = pre => pre + Math.random().toString(36).slice(2, 9);
 
 function duplicateSelected() {
   if (state.demoMode) return;
-  const s = state.selection;
-  if (s?.kind === 'multi') {
-    const hasDuplicable = s.beams.length || s.els.some(id => {
-      const el = state.elements.find(item => item.id === id);
-      return el && !registry[el.type]?.singleton;
-    });
-    if (!hasDuplicable) return;
-    pushUndo();
-    const els = [], bms = [];
-    for (const id of s.els) {
-      const src = state.elements.find(e => e.id === id);
-      if (!src || registry[src.type]?.singleton) continue;
-      const copy = JSON.parse(JSON.stringify(src));
-      copy.id = newId('e'); copy.x += 30; copy.y += 30;
-      state.elements.push(copy); els.push(copy.id);
-    }
-    for (const id of s.beams) {
-      const src = state.beams.find(b => b.id === id);
-      if (!src) continue;
-      const copy = JSON.parse(JSON.stringify(src));
-      copy.id = newId('b');
-      for (const p of copy.pts) { p.x += 30; p.y += 30; }
-      state.beams.push(copy); bms.push(copy.id);
-    }
-    state.selection = { kind: 'multi', els, beams: bms };
-    changed();
-    renderInspector();
-    return;
-  }
-  const sel = findSelected();
-  if (!sel) return;
-  if (state.selection.kind === 'element' && registry[sel.type]?.singleton) return;
+  const copied = copyableSelection(selectionContents(), isSingleton);
+  const duplicated = pasteObjects(copied, { offset: 30, newId });
+  if (!duplicated) return;
   pushUndo();
-  const copy = JSON.parse(JSON.stringify(sel));
-  if (state.selection.kind === 'element') {
-    copy.id = newId('e');
-    copy.x += 30; copy.y += 30;
-    state.elements.push(copy);
-    state.selection = { kind: 'element', id: copy.id };
-  } else {
-    copy.id = newId('b');
-    for (const p of copy.pts) { p.x += 30; p.y += 30; }
-    state.beams.push(copy);
-    state.selection = { kind: 'beam', id: copy.id };
-  }
+  state.elements.push(...duplicated.els);
+  state.beams.push(...duplicated.beams);
+  const els = duplicated.els.map(el => el.id), beams = duplicated.beams.map(beam => beam.id);
+  state.selection = state.selection?.kind === 'multi'
+    ? { kind: 'multi', els, beams }
+    : els.length ? { kind: 'element', id: els[0] } : { kind: 'beam', id: beams[0] };
   changed();
   renderInspector();
 }
