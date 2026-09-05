@@ -20,7 +20,10 @@ export const state = {
   snap: true,
   showFocal: true,
   tool: 'select', // 'select' | 'beam' | 'place:<type>'
-  demoMode: false, // wiki embed: single fixed element, no adding/moving/deleting
+  embedMode: false, // wiki embed: single fixed element, no adding/moving/deleting
+  // Did the last changed() reach localStorage? False means the scene exists
+  // only in memory, so nothing else holding a copy of it may drop theirs.
+  autosaved: false,
 };
 
 const undoStack = [], redoStack = [];
@@ -311,8 +314,17 @@ export function changed() {
   // Wiki/example/community embeds are deliberately interactive enough to let
   // readers try parameters, but they must never replace the user's real
   // workbench autosave when both pages share the same origin.
-  if (!state.demoMode) {
-    try { localStorage.setItem(AUTOSAVE_KEY, serialize()); } catch (_) { /* ignore */ }
+  if (!state.embedMode) {
+    // Whether this succeeded is not private bookkeeping: storage can be
+    // disabled, full, or partitioned in private browsing, and a caller about
+    // to discard the only other copy of the scene -- the share fragment --
+    // has to be able to tell that nothing was kept.
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, serialize());
+      state.autosaved = true;
+    } catch (_) {
+      state.autosaved = false;
+    }
   }
   for (const fn of listeners) fn();
 }
