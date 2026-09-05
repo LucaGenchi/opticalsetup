@@ -50,6 +50,8 @@ test('collection discovery composes two authored scenes without rewriting them o
     assert.equal((await readCollectionSetups(directory, papers)).size, 0);
     await mkdir(join(directory, 'setups'));
     await mkdir(join(directory, 'research'));
+    // Earlier setup branches stored metadata beside the native scenes.
+    await writeFile(join(directory, 'setups', 'manifest.json'), JSON.stringify({ setups: [] }));
     const sceneText = JSON.stringify({ app: 'optics2d', version: 1, elements: [createElement('pulsedlaser', 0, 0)], beams: [] });
     for (const paper of papers.slice(0, 2)) {
       await writeFile(join(directory, 'setups', `${paper.id}.json`), sceneText);

@@ -15,7 +15,7 @@ export async function readCollectionSetups(directory, papers) {
   catch (error) { if (error.code === 'ENOENT') return new Map(); throw error; }
   const known = new Set(papers.map(paper => paper.id));
   const entries = new Map();
-  for (const file of files.filter(name => name.endsWith('.json')).sort()) {
+  for (const file of files.filter(name => name.endsWith('.json') && name !== 'manifest.json').sort()) {
     const id = file.slice(0, -5);
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || !known.has(id)) {
       throw new Error(`Unknown 2PP paper setup: ${file}`);
