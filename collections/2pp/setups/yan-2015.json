@@ -45,7 +45,7 @@
    "x": 260,
    "y": 220,
    "rot": 0,
-   "label": "SLM: 4-focus row proxy",
+   "label": "SLM (4 orders)",
    "showLabel": true,
    "params": {
     "transmissive": true,
@@ -63,7 +63,7 @@
    "x": 320,
    "y": 220,
    "rot": 0,
-   "label": "Fourier lens (interpretation)",
+   "label": "L1",
    "showLabel": true,
    "params": { "f": 60, "dia": 55, "transEff": 100 }
   },
@@ -73,7 +73,7 @@
    "x": 380,
    "y": 220,
    "rot": 0,
-   "label": "0th-order stop",
+   "label": "BPF stop",
    "showLabel": true,
    "params": { "aperture": 6 }
   },
@@ -83,7 +83,7 @@
    "x": 440,
    "y": 220,
    "rot": 0,
-   "label": "Relay lens (interpretation)",
+   "label": "L2",
    "showLabel": true,
    "params": { "f": 60, "dia": 55, "transEff": 100 }
   },
@@ -93,7 +93,7 @@
    "x": 520,
    "y": 220,
    "rot": 45,
-   "label": "Packing fold (interpretation)",
+   "label": "M1 fold",
    "showLabel": true,
    "params": { "length": 70, "refl": 100, "showTransmitted": false }
   },
@@ -103,7 +103,7 @@
    "x": 520,
    "y": 110,
    "rot": 90,
-   "label": "Objective (spec unknown)",
+   "label": "Objective",
    "showLabel": true,
    "params": {
     "efl": 40,
@@ -171,11 +171,11 @@
    "id": "yan-projection",
    "type": "textlabel",
    "x": 55,
-   "y": 270,
+   "y": 96,
    "rot": 0,
    "label": "",
    "showLabel": false,
-   "params": { "text": "**What is computed:** SLM diffraction → Fourier stop → relay/fold → objective → four resin hits.\n**Model boundary:** one 2D row stands in for the reported 4×4 hexagonal focal array; no CGH, vector PSF, dose, cure, or 3D mirror geometry is solved.", "fontSize": 9, "fill": "#334155" }
+   "params": { "text": "**Computed:** native SLM orders → L1 → BPF stop → L2 → M1 → objective → four resin hits.\n**Projection:** one 2D row represents the reported 4×4 hexagonal focal array.\n**Not solved:** CGH, vector PSF, dose, cure, or 3D mirror geometry.", "fontSize": 9, "fill": "#334155" }
   }
  ],
  "beams": []
