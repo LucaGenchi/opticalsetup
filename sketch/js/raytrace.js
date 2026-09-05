@@ -2740,7 +2740,7 @@ function interact(ray, hit) {
             const sid = hit.surface.id;
             if (ray.sample == null) {
               for (let k = 0; k < 5; k++) {
-                next.push({ ...r, d: rotv(r.d, jitter(k * 3 + 1, sid) * div), intensity: r.intensity / 2.5, tag: r.tag + 's' + k, speckle: true });
+                next.push({ ...r, d: rotv(r.d, jitter(k * 3 + 1, sid) * div), intensity: r.intensity / 5, tag: r.tag + 's' + k, speckle: true });
               }
             } else {
               next.push({ ...r, d: rotv(r.d, jitter(ray.sample, sid) * div), speckle: true });
