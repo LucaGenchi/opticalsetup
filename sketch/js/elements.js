@@ -4496,8 +4496,8 @@ registry.sclaser = {
   aliases: ['super continuum', 'white laser', 'broadband pulsed source', 'sc laser'],
   params: [
     { ...P.wavelength, def: 500, show: () => false },
-    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200, max: 11999, step: 10, def: 300 },
-    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number', min: 201, max: 12000, step: 10, def: 700 },
+    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200, max: p => Math.max(200, Math.min(11999, p.scMax ?? 700)), step: 10, def: 300 },
+    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number', min: p => Math.min(12000, Math.max(201, p.scMin ?? 300)), max: 12000, step: 10, def: 700 },
     { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
     ...beamShapeParams(3),
     ...pulseTrainParams(),
