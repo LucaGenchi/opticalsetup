@@ -1,25 +1,31 @@
-# Research workspace validation — 2026-09-05
+# 2PP collection validation - 2026-09-05
 
-The generated reconstructions have been removed. Earlier scene-validation
-results describe superseded drafts and are not evidence of accepted setups.
+The rejected batch reconstructions remain removed. This validation covers the
+one independently rebuilt apparatus, `nanoscribe-gt`, plus the preserved
+research workspace.
 
-- `npm test`: 774 passed, zero failures. The test specific to the removed
-  apparatus scenes was removed; component and research-record tests remain.
-- Syntax checks passed for every `sketch/js/*.js`, `serve.mjs`, the service
-  worker and the research-page generator. `git diff --check` passed.
-- All 151 existing local research files retained their exact SHA-256 hashes,
-  including the 18 validated PDFs, extracted text and figure renders.
-- `papers.json` and `sources.json` are unchanged from the research commit.
-- All 18 research HTML pages contain no scene embeds, share payloads, example
-  links, JSON scene downloads or numerical lab presets.
-- The generated 2PP Examples directory, scene manifest and layout recipes are
-  absent. The existing nine examples remain in the application manifest.
-- Browser inspection verified the preserved Fischer notes at desktop width
-  and all 17 references at 1024 pixels, with no horizontal overflow, setup
-  controls, or browser console warnings/errors.
+- The supplied two-page GT datasheet was rendered and inspected. Its SHA-256 is
+  `471bd66e9974798b34f58c4098c8a12450d239d3aeea25838a8da59b60755d6f`,
+  matching `sources.json`. The footer reads `DS/GT/V04_2016`.
+- `node --test`: 778 passed, zero failures. The environment blocked the
+  `npm test` wrapper before execution with a network-approval error;
+  `package.json` defines that wrapper as exactly `node --test`, which was run
+  directly.
+- Syntax checks passed for every `sketch/js/*.js`, `serve.mjs` and
+  `sketch/service-worker.js`. `git diff --check` passed.
+- The Nanoscribe-specific deterministic test loads and normalizes the native
+  scene, checks save/reload equivalence, traces the default route to the resin,
+  verifies both moving galvos shift the computed hit, verifies laser-off and
+  static-galvo controls, and checks the 300 um / 100 um/s piezo configuration.
+- Only `nanoscribe-gt` has a `setup` record. No sibling setup, scene recipe or
+  rejected reconstruction was restored.
+- The default, static-galvo and laser-off evidence PNGs were generated from the
+  app's own SVG export and visually inspected at 1320 x 600. Labels stay inside
+  the frame, the path reaches the stage, and the warnings remain readable.
+- The cloud browser refused both `localhost:5182` and `127.0.0.1:5182` with
+  `ERR_BLOCKED_BY_CLIENT`. Therefore desktop/1024 live browser layout, console
+  and overflow checks were not claimed. Reproduce locally with `node serve.mjs`,
+  then open `/collections/2pp/nanoscribe-gt/` and the editable setup action.
 
-The local research directory now also has an index and one Markdown dossier per
-reference for future individually assigned work. The records are working notes
-that must be checked against primary documents before any new reconstruction.
-Dong, Yang and Yan full texts, Gu's main PDF and the source-specific unknowns
-in `papers.json` remain unresolved.
+Dong 2007, Yang 2015 and Yan 2015 still lack full text; Gu still lacks the main
+article PDF. Those preserved source-specific gaps are unchanged.

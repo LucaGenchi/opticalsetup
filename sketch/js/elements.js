@@ -1990,6 +1990,14 @@ export const registry = {
       P.autoColor, P.color,
       { key: 'peakPower', label: 'Peak power', type: 'readout', readout: p => formatPower(peakPowerW(p)) },
       SHOW_PULSE_PARAM,
+      // Collection scenes can use plausible values when a source does not
+      // report them. Preserve that provenance into the cross-site handoff so
+      // a runnable teaching model is never mistaken for measured literature
+      // input. Ordinary user-created lasers keep the historical `user` basis.
+      {
+        key: 'handoffBasis', label: 'Handoff provenance', type: 'select', def: 'user', hidden: true,
+        options: [['user', 'User configured'], ['interpretation', 'Free interpretation']],
+      },
       pinnedParam('temporalMode', 'pulsed'),
     ],
     svg(el) {

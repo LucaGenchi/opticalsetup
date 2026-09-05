@@ -152,6 +152,12 @@
       "mechanism": "Datasheet lists typical 10 mm/s beam scanning and 100 µm/s piezo scanning, 300 µm XYZ piezo travel, and 100×100 mm² accessible motorized print area.",
       "modelLimits": "A vendor functional diagram, not a reverse-engineered optical prescription. The 2016 document does not establish the exact 2014 configuration.",
       "settings": {},
+      "setup": {
+        "path": "setups/nanoscribe-gt.json",
+        "research": "research/nanoscribe-gt.md",
+        "kind": "Free interpretation",
+        "summary": "A working native two-galvo teaching scene. Invented source, relay and objective values are labelled in the canvas and retain interpretation provenance in the lab handoff."
+      },
       "unknowns": [
         "Wavelength, repetition rate, duration, power and objective NA are unspecified.",
         "Electrical consumption below 500 W is not optical laser power."
