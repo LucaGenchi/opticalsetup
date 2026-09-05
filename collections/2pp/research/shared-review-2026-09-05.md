@@ -74,3 +74,23 @@ need not be rewritten merely to add shared infrastructure. Scene branches run
 the common builder to publish their own setup pages. Zero-power regression
 coverage is in a standalone file so independent array-feature additions do
 not contend for the same end-of-file insertion.
+
+## Reconciliation with current main
+
+The shared foundation now also incorporates upstream main commit
+`6673f2fc94025f062c044c5e21d5bbed42a08b14`, retaining its separate editable and
+inert embedded views, prior-workbench confirmation and undo preservation, and
+share-link reload protection. Collection aliases join the same linked-scene
+loading flow while keeping explicit `edit=1` and conservative preview defaults.
+No default branch or pull request is merged or deployed by this operation.
+
+Four regressions execute the actual bootstrap with rendering stubbed out:
+preview mode is installed before canvas initialization and never reads the
+workbench autosave; accepting an editable link preserves the previous scene
+in undo; declining it leaves the previous scene intact without fetching; and
+existing example links retain priority. The final combined foundation suite
+passes **798 tests**, including the upstream embed/share tests. Syntax and
+whitespace checks pass. The generated collection iframe and caption now match
+the inert preview contract. Older setup branches must integrate this complete
+foundation; the loader-only adoption script rejects an incompatible pre-embed
+bootstrap instead of silently dropping upstream safeguards.

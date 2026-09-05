@@ -1,7 +1,7 @@
 # Shared native loader and contribution contract
 
 Use `/sketch/?paper=<paper-id>&edit=1` for the editable workbench and
-`/sketch/?paper=<paper-id>&embed=1` for a locked preview. Bare collection URLs
+`/sketch/?paper=<paper-id>&embed=1` for an inert preview. Bare collection URLs
 are previews so historical iframe links cannot replace the user's autosave.
 The `setup` and `collection` aliases, `collectionMode=edit`, and `locked=1`
 remain accepted. Invalid or conflicting IDs never become scene fetch paths.
@@ -36,3 +36,11 @@ physics and scene files, replaces the competing collection bootstraps with
 the shared implementation, and updates the PWA import. Rebuild pages and
 inspect the diff before delivery. Setup tests must assert that their assigned
 scene is available, not that no other scene can coexist.
+
+
+The common collection loader follows the workbench's current `embedMode`
+contract. Embedded previews are noninteractive. Editable links preserve the
+visitor's previous workbench in undo, with the same replacement confirmation
+as other linked scenes. Initial loading does not write autosave; after an
+actual edit, the shared-link reload protection from the main application
+remains in effect.

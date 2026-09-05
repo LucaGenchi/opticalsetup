@@ -21,6 +21,9 @@ target_main = (target / 'sketch/js/main.js').read_text()
 if source_main.count(marker) != 1 or target_main.count(marker) != 1:
     raise SystemExit('Expected one native application boot section; review this branch manually.')
 prefix, _ = target_main.split(marker, 1)
+if 'state.embedMode' in source_main and 'function preserveWorkbenchInUndo()' not in prefix:
+    raise SystemExit('This branch predates the current workbench embed/undo contract. '
+                     'Integrate the shared foundation first; replacing only its loader would lose upstream behavior.')
 obsolete = ('./paper-setups-data.js', './two-photon-setups-data.js', './collection-setups.js', './collection-loader.js')
 prefix = ''.join(line for line in prefix.splitlines(keepends=True)
                  if not (line.startswith('import ') and any(path in line for path in obsolete)))
@@ -37,7 +40,7 @@ if '"./js/collection-loader.js"' not in worker:
     worker = worker.replace('  "./js/clipboard.js",', '  "./js/clipboard.js",\n  "./js/collection-loader.js",')
 # An adopted loader must reach returning visitors as well as a fresh browser.
 lines = worker.splitlines(keepends=True)
-lines[0] = "const CACHE_NAME = 'opticalsetup-pwa-v53-2pp-review';\n"
+lines[0] = "const CACHE_NAME = 'opticalsetup-pwa-v54-2pp-linked-scenes';\n"
 updates['sketch/service-worker.js'] = ''.join(lines)
 for name, contents in updates.items():
     path = target / name
