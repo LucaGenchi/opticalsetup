@@ -117,7 +117,7 @@ function inspectorSection(key, title, content, { open = true, meta = '' } = {}) 
   </details>`;
 }
 
-const LAYER_TYPES = [['lensarray', 'Lens array'], ['grating', 'Grating'], ['steer', 'Beam steer'], ['speckle', 'Speckle / diffuser']];
+const LAYER_TYPES = [['lensarray', 'Lens array'], ['grating', 'Grating'], ['steer', 'Beam steer'], ['speckle', 'Speckle / diffuser'], ['amplitude', 'Amplitude mask']];
 
 const positiveMod = (value, modulus) => ((value % modulus) + modulus) % modulus;
 
@@ -454,6 +454,9 @@ function layersHTML(layers) {
       h += field('Orders', `<input type="text" data-li="${i}" data-lk="orders" maxlength="200" value="${esc(ly.orders)}">`);
     } else if (ly.type === 'speckle') {
       h += numberField('Divergence (°)', `data-li="${i}" data-lk="div"`, ly.div ?? 8, { min: 0.5, max: 40, step: 0.5 });
+    } else if (ly.type === 'amplitude') {
+      h += field('Relative levels (0–1)', `<input type="text" data-li="${i}" data-lk="levels" maxlength="63" value="${esc(ly.levels ?? '1')}">`);
+      h += `<div class="hint">Comma-separated bands across the active face; up to eight values.</div>`;
     } else {
       h += field('Steer angle (°)', `<input type="number" data-li="${i}" data-lk="angle" min="-360" max="360" step="0.5" value="${ly.angle}">`);
     }

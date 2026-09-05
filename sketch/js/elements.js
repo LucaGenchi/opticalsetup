@@ -926,6 +926,17 @@ export function newShaperLayer() {
 }
 const layersParam = { key: 'layers', label: 'Optical function', type: 'layers', def: [] };
 
+// A deliberately bounded 1D slice through a spatial amplitude pattern. The
+// full apparatus may carry millions of 2D pixels; the workbench samples at
+// most eight horizontal bands so the ray count and the saved representation
+// stay compact and deterministic.
+export function amplitudeMaskLevels(value) {
+  const levels = String(value ?? '1').split(',').slice(0, 8)
+    .map(Number).filter(Number.isFinite)
+    .map(v => Math.min(1, Math.max(0, v)));
+  return levels.length ? levels : [1];
+}
+
 // object shapes for image-formation diagrams, in unit coords:
 // base at (0,0), tip at (0,-1); the traced image redraws the same shape
 // scaled by the magnification (negative m = inverted)
@@ -3170,8 +3181,19 @@ export const registry = {
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
       const L = el.params.length / 2;
+      const amplitude = (el.params.layers || []).find(layer => layer.type === 'amplitude');
+      const levels = amplitudeMaskLevels(amplitude?.levels);
       let px = '';
-      for (let y = -L + 2; y < L - 1; y += 5) px += `<line x1="-11" y1="${y}" x2="-7" y2="${y}" stroke="#4ac0b0" stroke-width="2.5"/>`;
+      if (amplitude) {
+        const pitch = el.params.length / levels.length;
+        px = levels.map((level, i) => {
+          const y = -L + i * pitch;
+          const lightness = 22 + 58 * level;
+          return `<rect data-amplitude-band="${i}" x="-11" y="${y.toFixed(3)}" width="4" height="${pitch.toFixed(3)}" fill="hsl(172 48% ${lightness.toFixed(1)}%)"/>`;
+        }).join('');
+      } else {
+        for (let y = -L + 2; y < L - 1; y += 5) px += `<line x1="-11" y1="${y}" x2="-7" y2="${y}" stroke="#4ac0b0" stroke-width="2.5"/>`;
+      }
       return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/>` + px +
         `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">SLM</text>`;
     },

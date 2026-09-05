@@ -1577,11 +1577,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
+  const requestedSetup = params.get('setup') || '';
+  const collectionSetupId = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(requestedSetup) ? requestedSetup : '';
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isCollectionSetup = Boolean(!isTypeDemo && !isCommunityDemo && !isExampleDemo && collectionSetupId);
+  const isCollectionDemo = isCollectionSetup && params.get('embed') === '1';
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo || isCollectionDemo;
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1654,6 +1658,19 @@ window.addEventListener('DOMContentLoaded', async () => {
       state.beams.push(...scene.beams);
     } catch (err) {
       console.error('Could not load example:', err);
+    }
+  } else if (isCollectionSetup) {
+    // Reviewed collection scenes use the native save format and stay editable
+    // when opened directly. Their research pages add embed=1 for a locked
+    // click-to-inspect preview of the exact same JSON file.
+    try {
+      const res = await fetch(`../collections/2pp/setups/${encodeURIComponent(collectionSetupId)}.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      replaceScene(scene, { resetHistory: true });
+      zoomFit();
+    } catch (err) {
+      console.error('Could not load collection setup:', err);
     }
   } else {
     let sharedScene = null;
