@@ -90,6 +90,25 @@ export function clearSharedSceneURL(href = window.location.href, navigation = wi
   navigation.replaceState(navigation.state, '', url.toString());
 }
 
+// Building a share URL is asynchronous -- the payload is gzipped -- so the
+// canvas can move underneath it. Two things go wrong when it does: the link
+// describes a scene the visitor is no longer looking at, and the fragment the
+// caller installs holds a pre-edit snapshot that no later edit is guaranteed
+// to retire, so a reload restores the older scene over the edit.
+//
+// Rebuild once against the settled scene. `settled` reports whether the scene
+// held still long enough for the URL to describe it, so a caller can decline
+// to park a stale snapshot in the address bar while someone is mid-drag.
+export async function shareURLForScene(readScene, build) {
+  let scene = readScene();
+  let url = await build(scene);
+  if (readScene() !== scene) {
+    scene = readScene();
+    url = await build(scene);
+  }
+  return { scene, url, settled: readScene() === scene };
+}
+
 export async function copyText(text) {
   if (navigator.clipboard?.writeText) {
     try {

@@ -26,7 +26,7 @@ import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
-import { buildShareURL, clearSharedSceneURL, copyText, sharedSceneFromURL } from './share.js';
+import { buildShareURL, clearSharedSceneURL, copyText, shareURLForScene, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.js';
@@ -1375,9 +1375,13 @@ function bindToolbar() {
     const button = $('btnShare');
     button.disabled = true;
     try {
-      const sketch = serialize();
-      const url = await buildShareURL(sketch);
-      history.replaceState(null, '', url);
+      // The scene can change while the payload is being compressed, so build
+      // against a settled scene and only put the snapshot in the address bar
+      // if it still matches what is on the canvas. Parking a stale one there
+      // would survive to the next reload and undo the edit that raced it.
+      const { scene: sketch, url, settled } = await shareURLForScene(
+        serialize, text => buildShareURL(text));
+      if (settled) history.replaceState(null, '', url);
       // The auto-copy is best-effort: restrictive clipboard permissions must
       // not block the dialog, which offers its own Copy button and a
       // selectable URL field as the fallback.

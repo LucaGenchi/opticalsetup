@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-import { buildShareURL, clearSharedSceneURL, sharedSceneFromURL } from '../sketch/js/share.js';
+import { buildShareURL, clearSharedSceneURL, shareURLForScene, sharedSceneFromURL } from '../sketch/js/share.js';
 import { registry, createElement } from '../sketch/js/elements.js';
 import { state, changed, onChange, parseSketch, replaceScene, loadAutosave, serialize } from '../sketch/js/state.js';
 
@@ -84,4 +84,42 @@ test('the scene-change listener reads only state flags that exist', () => {
   }
   assert.ok(read.includes('embedMode'),
     'the share-URL retirement must stay gated on embedMode');
+});
+
+test('a share URL describes the scene as it settles, not as it was clicked', async () => {
+  // Compressing the payload is asynchronous, so an edit can land between
+  // reading the scene and installing the fragment. The URL must describe the
+  // edited scene, not the one the click started with.
+  const scenes = ['first', 'edited-during-compression'];
+  let reads = 0;
+  const readScene = () => scenes[Math.min(reads++, scenes.length - 1)];
+  const build = async text => `https://example.org/sketch/#sketch=${text}`;
+  const moved = await shareURLForScene(readScene, build);
+  assert.equal(moved.scene, 'edited-during-compression');
+  assert.match(moved.url, /edited-during-compression$/);
+  assert.equal(moved.settled, true, 'a scene that settles must be safe to install');
+
+  // A scene still moving on the second read must not be parked in history: a
+  // stale fragment there outlives the edit and wins on the next reload.
+  let tick = 0;
+  const neverSettles = await shareURLForScene(() => `scene-${tick++}`, build);
+  assert.equal(neverSettles.settled, false);
+
+  const still = await shareURLForScene(() => 'unchanged', build);
+  assert.equal(still.settled, true);
+  assert.match(still.url, /unchanged$/);
+});
+
+test('the share handler only writes history once the scene has settled', async () => {
+  // Structural: the guard lives inside a DOM click handler, so assert the
+  // shape rather than reimplementing it. Installing the fragment
+  // unconditionally is the regression that matters.
+  const main = readFileSync(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
+  const handler = main.slice(main.indexOf("$('btnShare').addEventListener"));
+  const install = handler.indexOf("history.replaceState");
+  assert.ok(install > -1, 'the share handler still installs the snapshot');
+  assert.match(handler.slice(0, install), /shareURLForScene\(/,
+    'the share URL must be built through shareURLForScene, which settles the scene');
+  assert.match(handler.slice(Math.max(0, install - 60), install), /if \(settled\)/,
+    'history must only be written when the scene settled');
 });
