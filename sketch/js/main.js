@@ -26,7 +26,7 @@ import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
-import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
+import { buildShareURL, clearSharedSceneURL, copyText, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.js';
@@ -1599,7 +1599,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindKeys();
   setSelectionCallback(renderSelection);
   setMeasurementsCallback(refreshMeasurements);
-  onChange(() => { renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion(); });
+  onChange(() => {
+    if (!state.demoMode) clearSharedSceneURL();
+    renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion();
+  });
 
   if (isTypeDemo) {
     // Wiki embed: a small fixed scene — a light source plus the showcased
