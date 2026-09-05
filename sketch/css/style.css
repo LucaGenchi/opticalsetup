@@ -903,6 +903,12 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 :root[data-theme="dark"] .camera-profile-note { color: #d7a756; }
 :root[data-theme="dark"] .no-signal .signal-light { background: #707b88; }
 
+/* Labels outside an optic and the tuning-pill text sit on the dark canvas,
+   unlike the light-painted optical surfaces themselves. */
+:root[data-theme="dark"] #overlayLayer text[fill="#6547b3"],
+:root[data-theme="dark"] :is(.palitem svg, #elementLayer) text[fill="#6a4a80"] { fill: #d8b4fe; }
+:root[data-theme="dark"] :is(.palitem svg, #elementLayer) text[fill="#7a6430"] { fill: #e9c77b; }
+
 :root[data-theme="dark"] :is(.palitem svg, #elementLayer) :is(
   [stroke="#111"],
   [stroke="#222b31"],
