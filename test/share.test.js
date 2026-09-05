@@ -42,3 +42,29 @@ test('non-share fragments are ignored and damaged links fail closed', async () =
   assert.equal(await sharedSceneFromURL('https://example.org/#section'), null);
   await assert.rejects(() => sharedSceneFromURL('https://example.org/#sketch=g.not-valid'), /damaged|invalid/i);
 });
+
+test('creating a share link rejects payloads that its own loader cannot open', async () => {
+  const source = JSON.stringify({ ...JSON.parse(scene), note: 'x'.repeat(160_000) });
+  await assert.rejects(
+    () => buildShareURL(source, 'https://example.org/sketch/', { compression: false }),
+    /too large.*share link/i,
+  );
+});
+
+test('large compressible scenes still produce working share links', async (t) => {
+  if (typeof CompressionStream !== 'function' || typeof DecompressionStream !== 'function') {
+    t.skip('stream compression is unavailable'); return;
+  }
+  const source = JSON.stringify({ ...JSON.parse(scene), note: 'x'.repeat(160_000) });
+  const url = await buildShareURL(source, 'https://example.org/sketch/');
+  assert.deepEqual(JSON.parse(await sharedSceneFromURL(url)), JSON.parse(source));
+});
+
+test('the largest uncompressed share fragment round-trips at the loader limit', async () => {
+  // 149992 JSON bytes encode to 199990 base64url characters; the prefix and
+  // encoding marker bring the complete fragment to exactly 200000.
+  const source = JSON.stringify({ note: 'x'.repeat(149_981) });
+  const url = await buildShareURL(source, 'https://example.org/sketch/', { compression: false });
+  assert.equal(new URL(url).hash.length, 200_000);
+  assert.equal(await sharedSceneFromURL(url), source);
+});
