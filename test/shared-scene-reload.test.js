@@ -176,4 +176,15 @@ test('an unsettled share is abandoned rather than published', () => {
   }
   assert.match(handler.slice(bail, bail + 400), /return;/,
     'the unsettled branch must return rather than fall through');
+
+  // Every await in the handler is a window for the canvas to move, and the
+  // clipboard one can sit on a permission prompt for seconds. Whatever fills
+  // the dialog must be validated after the last await, not just after the
+  // first: the fragment is retired by then, but the dialog and QR would still
+  // describe the pre-edit scene.
+  const copy = handler.indexOf('copyText(');
+  const dialog = handler.indexOf("$('shareURL').value");
+  const recheck = handler.indexOf('serialize() !== sketch', copy);
+  assert.ok(recheck > copy && recheck < dialog,
+    'the scene must be revalidated between the clipboard await and the dialog');
 });

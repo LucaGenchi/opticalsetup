@@ -1395,6 +1395,16 @@ function bindToolbar() {
       // selectable URL field as the fallback.
       let copied = true;
       try { await copyText(url); } catch (_) { copied = false; }
+      // The clipboard is the longest await in this handler -- it can sit on a
+      // permission prompt for seconds -- and the canvas stays live underneath
+      // it. An edit landing there has already retired the fragment through the
+      // change listener, so the address bar is consistent; what is left is the
+      // dialog and its QR, which would still describe the pre-edit scene.
+      // Nothing is published unless the scene still matches what was built.
+      if (serialize() !== sketch) {
+        showToast('The canvas changed while the link was building — press Share again.');
+        return;
+      }
       shareUrl = url;
       shareSceneText = sketch;
       $('shareURL').value = url;
