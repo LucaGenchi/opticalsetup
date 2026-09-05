@@ -3823,9 +3823,11 @@ export const registry = {
           if (!reading) return 'No pulse through it yet';
           const fmt = v => `${Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs²`;
           const share = reading.incoming !== 0
-            ? Math.abs((reading.incoming - reading.outgoing) / reading.incoming) * 100 : 0;
+            ? (1 - Math.abs(reading.outgoing / reading.incoming)) * 100 : 0;
           return `${fmt(reading.incoming)} → ${fmt(reading.outgoing)}` +
-            (reading.incoming !== 0 ? ` · cancels ${share.toFixed(0)}%` : '');
+            (reading.incoming !== 0 ? (share >= 0
+              ? ` · reduces |GDD| by ${share.toFixed(0)}%`
+              : ` · increases |GDD| by ${(-share).toFixed(0)}%`) : '');
         },
       },
       {
@@ -3833,7 +3835,7 @@ export const registry = {
         readout: (p, el) => {
           const reading = el ? compressorGddReading(el.id) : null;
           if (!reading) return '—';
-          const need = -(reading.incoming - (Number(p.gddFs2) || 0));
+          const need = -reading.incoming;
           return `${Math.round(need).toLocaleString()} fs²`;
         },
       },
