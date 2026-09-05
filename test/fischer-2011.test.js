@@ -101,7 +101,7 @@ test('collection loader and evidence note keep interpretation and model limits e
     readFile(new URL('../collections/2pp/research/fischer-2011.md', import.meta.url), 'utf8'),
   ]);
   assert.match(main, /fetch\(collectionRequest\.path\)/);
-  assert.match(main, /isDemo \|\| collectionRequest/,
+  assert.match(main, /hasLinkedScene && loadLinked/,
     'both the locked preview and editable literature scene must fit the full apparatus');
   assert.match(note, /Free interpretation — not specified in the paper/);
   assert.match(note, /does \*\*not\*\* compute stimulated-emission depletion/);
