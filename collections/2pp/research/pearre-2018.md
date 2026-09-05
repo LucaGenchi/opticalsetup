@@ -57,4 +57,6 @@ Validation: `npm test` passed (785 tests); every `sketch/js/*.js` and `serve.mjs
 
 The native scene now opens through the common loader. Existing `paper`, `setup` and `collection` links resolve to the same scene; `edit=1` opens controls and `embed=1` keeps the preview locked. The common builder discovers authored scene files without replacing siblings or requiring a paper-specific generated allowlist. The service worker revision refreshes the loader for returning users. Original source records remain unchanged; only the verified handoff subset was added. The generated collection page links the 80 MHz / NA 0.8 subset and lists unsupported quantities as omitted.
 
-Final integration checks: `npm test` passed (790 tests), all workbench JavaScript and `serve.mjs` passed syntax checks, and `git diff --check` passed. Collection pages were rebuilt with the common builder.
+Final integration checks: `npm test` passed (810 tests), all workbench JavaScript and `serve.mjs` passed syntax checks, and `git diff --check` passed. Collection pages were rebuilt with the common builder.
+
+Current-workbench integration keeps embedded previews inert (`embedMode`), while explicit edit links preserve the existing workbench through replacement consent and undo recovery. A shared snapshot is retired only after successful autosave. The native scientific scene and its reviewed controls are unchanged.
