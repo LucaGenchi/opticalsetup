@@ -4501,6 +4501,10 @@ registry.sclaser = {
     { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
     ...beamShapeParams(3),
     ...pulseTrainParams(),
+    // Duration and envelope are configured independently of the broad spectrum;
+    // this is not a reconstruction of nonlinear continuum generation.
+    ...registry.pulsedlaser.params.filter(p => ['pulseWidthFs', 'pulseShape'].includes(p.key))
+      .map(p => p.key === 'pulseWidthFs' ? { ...p, def: 100 } : { ...p }),
     POL_PARAM,
     // Broadband white by default: a supercontinuum has no single colour to
     // derive, and this is the shade the tracer already paints wide-band light.
@@ -4625,7 +4629,7 @@ export function getDirectManipulation(el) {
 const ELEMENT_HELP = {
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
-  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam.',
+  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Pulse duration and envelope are independent configured inputs, not inferred from the spectrum or nonlinear broadening.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
