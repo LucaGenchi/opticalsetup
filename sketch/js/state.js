@@ -20,7 +20,7 @@ export const state = {
   snap: true,
   showFocal: true,
   tool: 'select', // 'select' | 'beam' | 'place:<type>'
-  demoMode: false, // wiki embed: single fixed element, no adding/moving/deleting
+  embedMode: false, // wiki embed: single fixed element, no adding/moving/deleting
 };
 
 const undoStack = [], redoStack = [];
@@ -311,7 +311,7 @@ export function changed() {
   // Wiki/example/community embeds are deliberately interactive enough to let
   // readers try parameters, but they must never replace the user's real
   // workbench autosave when both pages share the same origin.
-  if (!state.demoMode) {
+  if (!state.embedMode) {
     try { localStorage.setItem(AUTOSAVE_KEY, serialize()); } catch (_) { /* ignore */ }
   }
   for (const fn of listeners) fn();
