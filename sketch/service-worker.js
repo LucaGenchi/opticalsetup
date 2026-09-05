@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v53-2pp-review';
+const CACHE_NAME = 'opticalsetup-pwa-v54-2pp-linked-scenes';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.

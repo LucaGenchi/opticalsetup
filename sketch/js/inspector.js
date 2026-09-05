@@ -417,7 +417,7 @@ function measurementHTML(el) {
 // has no screen yet: the common case is wanting one, and a second screen on
 // the same sensor is still available from the screen's own sensor dropdown.
 function screenLinkHTML(el) {
-  if (!registry[el.type]?.readoutKind || state.demoMode) return '';
+  if (!registry[el.type]?.readoutKind || state.embedMode) return '';
   const linked = state.elements.filter(candidate => candidate.type === 'display'
     && candidate.params.sensorId === el.id);
   if (linked.length) {
@@ -875,7 +875,7 @@ export function renderInspector() {
       flushSection();
     }
 
-    if (!state.demoMode) {
+    if (!state.embedMode) {
       let positionFields = '';
       positionFields += field('X (mm)', `<input type="number" step="1" data-k="x" value="${Math.round(sel.x * 10) / 10}">`);
       positionFields += field('Y (mm)', `<input type="number" step="1" data-k="y" value="${Math.round(sel.y * 10) / 10}">`);
@@ -902,7 +902,7 @@ export function renderInspector() {
         h += inspectorSection('appearance', 'Label & appearance', appearanceFields, { open: false });
       }
     }
-    if (!state.demoMode) {
+    if (!state.embedMode) {
       h += `<div class="btnrow">${def.singleton ? '' : '<button type="button" id="inspDup">Duplicate</button>'}<button type="button" id="inspDel" class="danger">Delete</button></div>`;
       if (WIKI_TYPES.has(sel.type)) {
         h += `<a class="wiki-link" href="../wiki/${sel.type}/">Explore this element on the Wiki →</a>`;
