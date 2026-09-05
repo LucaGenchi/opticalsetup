@@ -6,7 +6,8 @@ import { registry } from '../sketch/js/elements.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { buildPaperHandoff, twoPhotonHandoffCandidates } from '../sketch/js/two-photon-handoff.js';
-import { twoPhotonSetups } from '../sketch/js/two-photon-setups-data.js';
+import { readCollectionSetups } from '../tools/2pp-collection-support.mjs';
+import { fileURLToPath } from 'node:url';
 
 const sceneUrl = new URL('../collections/2pp/setups/yan-2015.json', import.meta.url);
 
@@ -49,10 +50,11 @@ test('Yan scene round-trips and exposes no invented paper handoff values', async
   const scene = await loadScene();
   const reloaded = parseSketch(JSON.stringify(scene), registry);
   assert.deepEqual(reloaded, scene);
-  assert.deepEqual(twoPhotonSetups, [{
-    slug: 'yan-2015',
-    path: '../collections/2pp/setups/yan-2015.json',
-  }]);
+  const directory = fileURLToPath(new URL('../collections/2pp/', import.meta.url));
+  const { papers } = JSON.parse(await readFile(new URL('../collections/2pp/papers.json', import.meta.url), 'utf8'));
+  const setups = await readCollectionSetups(directory, papers);
+  assert.ok(setups.has('yan-2015'));
+  assert.equal(setups.get('yan-2015').path, 'setups/yan-2015.json');
   const handoff = buildPaperHandoff({});
   assert.equal(handoff.url, null);
   assert.equal(handoff.imported.length, 0);
