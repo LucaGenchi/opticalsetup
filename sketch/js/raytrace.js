@@ -3020,7 +3020,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // a uniform port into a fringe pattern once the arms recombine.
         const peak = Math.min(20000, Math.max(0, Number(hit.surface.data.opdUm) || 0)) * 1e-3;
         if (!coherent?.dryRun) recordPhasePlateSpan(hit.surface.el?.id, hit.u);
-        const extraOpl = peak * phasePlateOpdFraction(hit.surface.data.profile, hit.u);
+        const extraOpl = peak * phasePlateOpdFraction(
+          hit.surface.data.profile, hit.u, hit.surface.data.centralAreaFraction,
+        );
         if (extraOpl > 0) {
           r.segmentIntensities.push(r.intensity);
           r.segmentHistories.push(r.sig);

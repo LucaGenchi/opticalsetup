@@ -98,6 +98,10 @@ test('resolves only ordinary pulsed lasers traced to the selected stage', () => 
     ['first', 'second'],
   );
   assert.deepEqual(twoPhotonLaserCandidates([first], hits, 'missing-stage'), []);
+
+  first.params.handoffEnabled = false;
+  assert.deepEqual(twoPhotonLaserCandidates([first], hits, 'stage-a'), [],
+    'a research scene can block interpreted configured values from being transferred');
 });
 
 test('uses real traced stage hits and exposes every incident pulsed laser explicitly', () => {

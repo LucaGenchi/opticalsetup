@@ -1577,11 +1577,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
+  const paperSlug = params.get('paper');
+  const isPaperSetup = Boolean(paperSlug && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(paperSlug));
+  const isPaperDemo = isPaperSetup && params.get('embed') === '1';
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo || isPaperDemo;
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1655,6 +1658,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load example:', err);
     }
+  } else if (isPaperSetup) {
+    // Individually reviewed literature setups use the same native save format
+    // as examples. The collection page can open an editable workbench or add
+    // embed=1 for a locked preview that leaves the user's autosave untouched.
+    try {
+      const res = await fetch(`../collections/2pp/setups/${paperSlug}.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      state.elements.push(...scene.elements);
+      state.beams.push(...scene.beams);
+    } catch (err) {
+      console.error('Could not load paper setup:', err);
+    }
   } else {
     let sharedScene = null;
     try {
@@ -1707,7 +1723,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   syncPulseControls();
   syncMobileSheets();
 
-  if (isDemo) {
+  if (isDemo || isPaperSetup) {
     zoomFit();
   } else {
     // Deep link from the wiki ("Open in the canvas" on a component page):

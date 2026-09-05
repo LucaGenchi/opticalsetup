@@ -559,22 +559,33 @@ export function cameraReadingState(reading) {
 // range is just the length of the mean phasor -- no search over d needed, and
 // no chance of sampling only the reference phases where a given profile
 // happens to be flat.
-function portSwing(profile, fringes) {
+function portSwing(profile, fringes, centralAreaFraction = 0.5) {
   const SAMPLES = 256;
   let meanCos = 0, meanSin = 0;
   for (let i = 0; i < SAMPLES; i++) {
-    const phase = 2 * Math.PI * fringes * phasePlateOpdFraction(profile, (i + 0.5) / SAMPLES);
+    const phase = 2 * Math.PI * fringes
+      * phasePlateOpdFraction(profile, (i + 0.5) / SAMPLES, centralAreaFraction);
     meanCos += Math.cos(phase);
     meanSin += Math.sin(phase);
   }
   return Math.hypot(meanCos, meanSin) / SAMPLES;
 }
 
-export function phasePlateOpdFraction(profile, u) {
+export function phasePlateCentralDiameterFraction(areaFraction = 0.5) {
+  const raw = Number(areaFraction);
+  const area = Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : 0;
+  return Math.sqrt(area);
+}
+
+export function phasePlateOpdFraction(profile, u, centralAreaFraction = 0.5) {
   const position = Math.min(1, Math.max(0, Number(u)));
   const centred = 2 * position - 1;          // -1 at one edge, +1 at the other
   if (profile === 'step') return position < 0.5 ? 0 : 1;
   if (profile === 'bar') return Math.abs(centred) < 1 / 3 ? 1 : 0;
+  if (profile === 'pupil') {
+    const diameter = phasePlateCentralDiameterFraction(centralAreaFraction);
+    return diameter > 0 && Math.abs(centred) <= diameter ? 1 : 0;
+  }
   if (profile === 'bump') return 1 - centred * centred;
   return position;                            // 'ramp'
 }
@@ -1960,6 +1971,7 @@ export const registry = {
       { key: 'enabled', label: 'Emit traced rays', type: 'checkbox', def: true },
       P.wavelength,
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
+      { key: 'handoffEnabled', label: 'Allow configured-value 2PP handoff', type: 'checkbox', def: true },
       ...beamShapeParams(3),
       ...pulseTrainParams(),
       { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150 },
@@ -3781,10 +3793,15 @@ export const registry = {
         key: 'profile', label: 'Path profile', type: 'select', def: 'bar',
         options: [
           ['bar', 'Central bar — a phase-contrast test object'],
+          ['pupil', 'Central pupil zone — area calibrated'],
           ['ramp', 'Wedge — path rises across the aperture'],
           ['step', 'Step — half the aperture retarded'],
           ['bump', 'Curved — quadratic, thickest at the centre'],
         ],
+      },
+      {
+        key: 'centralAreaFraction', label: 'Central pupil area fraction', type: 'number',
+        min: 0, max: 1, step: 0.01, def: 0.5, show: p => p.profile === 'pupil',
       },
       // Half a wave at 532 nm. That is the phase-contrast condition -- the
       // setting that turns the most phase into the most contrast -- and it
@@ -3814,7 +3831,7 @@ export const registry = {
           // wave -- the total sits at half the light however the reference arm
           // is set, and only the profile carries the pattern. Saying that is
           // the difference between a subtle element and one that looks broken.
-          if (portSwing(params.profile, fringes) < 0.05) {
+          if (portSwing(params.profile, fringes, params.centralAreaFraction) < 0.05) {
             return `${count} — total stays put, read the profile`;
           }
           return count;
@@ -3825,11 +3842,14 @@ export const registry = {
     svg(el) {
       const h = (el.params.aperture || 30) / 2;
       const profile = el.params.profile || 'ramp';
+      const pupilHalfHeight = h * phasePlateCentralDiameterFraction(el.params.centralAreaFraction) / 2;
       // The drawn wedge/step/bar shows which part of the beam is retarded.
       const shape = profile === 'step'
         ? `M -4,0 L 4,0 L 4,${h} L -4,${h} Z`
         : profile === 'bar'
           ? `M -4,${-h / 3} L 4,${-h / 3} L 4,${h / 3} L -4,${h / 3} Z`
+          : profile === 'pupil'
+            ? `M -4,${-pupilHalfHeight} L 4,${-pupilHalfHeight} L 4,${pupilHalfHeight} L -4,${pupilHalfHeight} Z`
           : profile === 'bump'
             ? `M -1,${-h} Q 5,0 -1,${h} L -4,${h} L -4,${-h} Z`
             : `M -4,${-h} L 1,${-h} L 4,${h} L -4,${h} Z`;
@@ -3841,7 +3861,10 @@ export const registry = {
       const h = (el.params.aperture || 30) / 2;
       return [{
         x1: 0, y1: -h, x2: 0, y2: h, kind: 'phaseplate',
-        data: { profile: el.params.profile || 'ramp', opdUm: el.params.opdUm },
+        data: {
+          profile: el.params.profile || 'ramp', opdUm: el.params.opdUm,
+          centralAreaFraction: el.params.centralAreaFraction,
+        },
       }];
     },
   },
@@ -4814,7 +4837,9 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (type === 'metalens') {
     note = 'Focal length follows f(λ) = f₀λ₀/λ. Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
   } else if (type === 'phaseplate') {
-    note = 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. A wedge near half a fringe swings the port total hardest; at a whole fringe the written phases cancel and the total stops moving while the profile still shows the pattern, which is when the readout says so.';
+    note = params.profile === 'pupil'
+      ? 'The central-zone diameter is sqrt(area fraction), so its 2D meridional section represents the requested radial pupil area. It writes optical path but this geometric tracer does not propagate the resulting vectorial diffraction pattern or predict a depleted focus.'
+      : 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. A wedge near half a fringe swings the port total hardest; at a whole fringe the written phases cancel and the total stops moving while the profile still shows the pattern, which is when the readout says so.';
   } else if (type === 'pmt') {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'aod') {

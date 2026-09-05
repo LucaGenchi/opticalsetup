@@ -41,6 +41,7 @@ export function twoPhotonLaserCandidates(elements = [], signalHits = [], stageId
 
   return elements.filter(element => sourceIds.has(element?.id)
     && element.type === 'pulsedlaser'
+    && element.params?.handoffEnabled !== false
     && buildTwoPhotonHandoffUrl(element));
 }
 
