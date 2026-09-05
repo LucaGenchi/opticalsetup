@@ -1906,6 +1906,37 @@ function arraySection(params) {
   return { count, pitch: length / count };
 }
 
+const clampDmd = (value, lo, hi, fallback) => {
+  const number = Number(value);
+  return Math.min(hi, Math.max(lo, Number.isFinite(number) ? number : fallback));
+};
+
+// A deterministic one-dimensional section through a Lee-style binary pattern.
+// It is shared by the icon and tracer so the displayed ON/OFF structure is the
+// structure that gates rays. This is deliberately a bounded geometric proxy:
+// the outgoing angles below stand in for selected CGH orders, rather than
+// claiming a scalar- or vector-field reconstruction of the hologram.
+export function dmdBinaryHologramOn(localHeight, params = {}) {
+  const pitch = clampDmd(params.pitch, 0.1, 40, 8);
+  const duty = clampDmd(params.duty, 0.05, 0.95, 0.5);
+  const count = Math.round(clampDmd(params.focusCount, 1, 8, 3));
+  const scan = clampDmd(params.scanAngle, -20, 20, 0);
+  const carrier = localHeight / pitch;
+  const phaseWarp = 0.18 * Math.sin(2 * Math.PI * localHeight / (pitch * (count + 1)))
+    + scan / 40;
+  const phase = ((carrier + phaseWarp) % 1 + 1) % 1;
+  return phase < duty;
+}
+
+export function dmdHologramAngles(params = {}) {
+  const count = Math.round(clampDmd(params.focusCount, 1, 8, 3));
+  const span = clampDmd(params.focusSpan, 0, 20, 6);
+  const scan = clampDmd(params.scanAngle, -20, 20, 0);
+  if (count === 1) return [scan];
+  return Array.from({ length: count }, (_, index) =>
+    scan + span * (index / (count - 1) - 0.5));
+}
+
 export const registry = {
 
   // ---------------- Sources ----------------
@@ -3324,13 +3355,20 @@ export const registry = {
       { key: 'tilt', label: 'Micromirror tilt (°)', type: 'number', min: 1, max: 20, step: 0.5, def: 12 },
       { key: 'pitch', label: 'Pattern pitch (mm)', type: 'number', min: 1, max: 40, step: 0.5, def: 8 },
       { key: 'duty', label: 'ON fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5 },
-      { key: 'routeOff', label: 'Show OFF order', type: 'checkbox', def: false },
+      { key: 'pattern', label: 'Pattern', type: 'select', def: 'stripes', options: [['stripes', 'Binary stripes'], ['hologram', 'Binary hologram — 1D proxy']] },
+      { key: 'focusCount', label: 'Representative foci', type: 'number', min: 1, max: 8, step: 1, def: 3, show: p => p.pattern === 'hologram' },
+      { key: 'focusSpan', label: 'Focus span (°)', type: 'number', min: 0, max: 20, step: 0.5, def: 6, show: p => p.pattern === 'hologram' },
+      { key: 'scanAngle', label: 'Random-access scan (°)', type: 'number', min: -20, max: 20, step: 0.5, def: 0, show: p => p.pattern === 'hologram' },
+      { key: 'routeOff', label: 'Show rejected / OFF order', type: 'checkbox', def: false },
     ],
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
       const L = el.params.length / 2;
       let mm = '';
-      for (let y = -L + 4; y < L - 2; y += 6) mm += `<line x1="-11" y1="${y + 2}" x2="-7" y2="${y - 2}" stroke="#cfd6dd" stroke-width="1.6"/>`;
+      for (let y = -L + 3; y < L - 2; y += 4) {
+        const on = el.params.pattern !== 'hologram' || dmdBinaryHologramOn(y, el.params);
+        mm += `<line x1="-11" y1="${y + (on ? 1.4 : -1.4)}" x2="-7" y2="${y + (on ? -1.4 : 1.4)}" stroke="${on ? '#f8fbff' : '#73808a'}" stroke-width="1.4"/>`;
+      }
       return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/>` + mm +
         `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">DMD</text>`;
     },
@@ -3340,7 +3378,9 @@ export const registry = {
         x1: -9, y1: -L, x2: -9, y2: L, kind: 'dmd',
         data: {
           length: el.params.length, tilt: el.params.tilt, pitch: el.params.pitch,
-          duty: el.params.duty, routeOff: el.params.routeOff,
+          duty: el.params.duty, pattern: el.params.pattern,
+          focusCount: el.params.focusCount, focusSpan: el.params.focusSpan,
+          scanAngle: el.params.scanAngle, routeOff: el.params.routeOff,
         },
       }, ...shaperBody(-9, 11, L, L + 3)];
     },
@@ -4754,7 +4794,7 @@ const ELEMENT_HELP = {
   phaseplate: 'Retards part of the beam without bending it \u2014 invisible on its own, and the thing an interferometer exists to reveal.',
   slm: 'Reflects by default and can overlay lens-array, grating, steering, or speckle functions.',
   metasurface: 'A patterned layer on a thin transparent carrier, working in transmission by default. Overlays the same lens-array, grating, steering, and speckle functions as the SLM, with an optional undiffracted zeroth order — but the phase profile is fixed at fabrication rather than programmable.',
-  dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
+  dmd: 'Routes binary micromirrors into ON/OFF orders, or expands a displayed one-dimensional hologram proxy into independently steerable representative focus orders.',
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
@@ -4819,6 +4859,8 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'aod') {
     note = 'Deflection is set directly in degrees, not derived from a crystal and an acoustic velocity, so the angles here need not belong to any real device \u2014 a real deflector reaches a few degrees at most. Efficiency is flat across the scan, where a real one falls away toward both ends, and the optical frequency shift a deflector applies is not carried: at 80 MHz it moves 532 nm by 7.6\u00d710\u207b\u2075 nm, far below anything this workbench resolves.';
+  } else if (type === 'dmd' && params.pattern === 'hologram') {
+    note = 'A one-dimensional geometric proxy: the displayed binary mask gates the beam and the configured focus count/span creates traced angular orders. It does not calculate a Lee hologram, WGS optimization, diffraction efficiency, phase, a 2D/3D focal field, or focus uniformity.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';

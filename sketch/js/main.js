@@ -1577,11 +1577,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
+  const requestedPaper = params.get('paper');
+  const paperSlug = requestedPaper && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(requestedPaper)
+    ? requestedPaper : null;
+  const isPaperDemo = Boolean(paperSlug && params.get('embed') === '1');
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo || isPaperDemo;
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1655,6 +1659,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load example:', err);
     }
+  } else if (paperSlug) {
+    // Reviewed paper scenes are ordinary native save files. The collection
+    // page adds embed=1 for its locked preview; omitting it opens the same
+    // scene with the full palette, inspector, Save/Open, and undo history.
+    try {
+      const res = await fetch(`../collections/2pp/setups/${paperSlug}.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      state.elements.push(...scene.elements);
+      state.beams.push(...scene.beams);
+    } catch (err) {
+      console.error('Could not load paper setup:', err);
+    }
   } else {
     let sharedScene = null;
     try {
@@ -1707,7 +1724,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   syncPulseControls();
   syncMobileSheets();
 
-  if (isDemo) {
+  if (isDemo || paperSlug) {
     zoomFit();
   } else {
     // Deep link from the wiki ("Open in the canvas" on a component page):

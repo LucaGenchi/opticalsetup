@@ -1,0 +1,293 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "ouyang-frame",
+   "type": "figureframe",
+   "x": 300,
+   "y": 350,
+   "rot": 0,
+   "params": { "w": 1200, "h": 1250, "background": "white" }
+  },
+  {
+   "id": "ouyang-title",
+   "type": "textlabel",
+   "x": 0,
+   "y": -245,
+   "rot": 0,
+   "params": {
+    "text": "# Ouyang et al. (2023)\nUltrafast 3D nanofabrication via digital holography",
+    "fontSize": 17,
+    "fill": "#26333a"
+   }
+  },
+  {
+   "id": "ouyang-scope",
+   "type": "textlabel",
+   "x": 650,
+   "y": 150,
+   "rot": 0,
+   "params": {
+    "text": "## What this scene shows\nA traced **1D binary-hologram proxy**:\nfocus count, angular span, and scan offset\nchange the DMD pattern and rays at the resin.\n\n**Not simulated:** Lee/WGS hologram synthesis,\n2D/3D focal fields, focus uniformity, single-pulse\npolymerization, dose, diffusion, or cure kinetics.\n\nReported nonlinear coefficients are **6.65–8.65**;\nthis is not a calibrated two-photon-only model.\n\n*Free interpretation — exact beam diameters,\nmechanical spacings, and compact fold packing\nare not specified in the paper.*",
+    "fontSize": 11,
+    "fill": "#334155"
+   }
+  },
+  {
+   "id": "ouyang-lens-conflict",
+   "type": "textlabel",
+   "x": 555,
+   "y": 430,
+   "rot": 0,
+   "params": {
+    "text": "**L1/L2 evidence conflict**\nFig. S1 caption: 225 / 250 mm (drawn)\nSupplement prose later swaps them to 250 / 225 mm.",
+    "fontSize": 10,
+    "fill": "#8a4b08"
+   }
+  },
+  {
+   "id": "ouyang-laser",
+   "type": "pulsedlaser",
+   "x": -30,
+   "y": 890.9,
+   "rot": 0,
+   "label": "Spitfire Pro",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "enabled": true,
+    "wavelength": 800,
+    "avgPowerW": 4,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "nrays": 3,
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 100,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "pol": 0,
+    "showPulse": true
+   }
+  },
+  {
+   "id": "ouyang-hwp",
+   "type": "hwp",
+   "x": 80,
+   "y": 890.9,
+   "rot": 0,
+   "label": "HWP",
+   "showLabel": false,
+   "params": { "a": 0, "length": 30 }
+  },
+  {
+   "id": "ouyang-pbs",
+   "type": "pbs",
+   "x": 150,
+   "y": 890.9,
+   "rot": 0,
+   "label": "PBS attenuation",
+   "showLabel": false,
+   "params": { "size": 30 }
+  },
+  {
+   "id": "ouyang-grating",
+   "type": "grating",
+   "x": 270,
+   "y": 890.9,
+   "rot": 80,
+   "label": "Reflective grating · 600 lines/mm",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": { "lines": 600, "orders": "1", "transmissive": false, "length": 60 }
+  },
+  {
+   "id": "ouyang-l1",
+   "type": "lens",
+   "x": 348.129,
+   "y": 679.9,
+   "rot": 290.319,
+   "label": "L1 · f = 225 mm",
+   "showLabel": true,
+   "params": { "f": 225, "dia": 40, "transEff": 100 }
+  },
+  {
+   "id": "ouyang-l2",
+   "type": "lens",
+   "x": 513.068,
+   "y": 234.457,
+   "rot": 290.319,
+   "label": "L2 · f = 250 mm",
+   "showLabel": true,
+   "params": { "f": 250, "dia": 44, "transEff": 100 }
+  },
+  {
+   "id": "ouyang-dmd",
+   "type": "dmd",
+   "x": 606.034,
+   "y": -6.553,
+   "rot": 313.16,
+   "label": "DLP6500 binary hologram · 1 kHz sync",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "length": 48,
+    "tilt": 12,
+    "pitch": 4,
+    "duty": 0.95,
+    "pattern": "hologram",
+    "focusCount": 3,
+    "focusSpan": 4,
+    "scanAngle": 0,
+    "routeOff": false
+   }
+  },
+  {
+   "id": "ouyang-l3",
+   "type": "lens",
+   "x": 450,
+   "y": 0,
+   "rot": 0,
+   "label": "L3 · f = 150 mm",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": { "f": 150, "dia": 60, "transEff": 100 }
+  },
+  {
+   "id": "ouyang-filter",
+   "type": "slit",
+   "x": 300,
+   "y": 0,
+   "rot": 0,
+   "label": "Fourier-plane order filter",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": { "gap": 24, "length": 70 }
+  },
+  {
+   "id": "ouyang-l4",
+   "type": "lens",
+   "x": 100,
+   "y": 0,
+   "rot": 0,
+   "label": "L4 · f = 200 mm",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": { "f": 200, "dia": 60, "transEff": 100 }
+  },
+  {
+   "id": "ouyang-dichroic",
+   "type": "dichroic",
+   "x": -85,
+   "y": 0,
+   "rot": 45,
+   "label": "DM · 800 nm reflected / 589 nm transmitted",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": { "dtype": "shortpass", "cutoff": 700, "length": 60 }
+  },
+  {
+   "id": "ouyang-objective",
+   "type": "objective",
+   "x": -85,
+   "y": 9,
+   "rot": 90,
+   "label": "L5 · Nikon 40× oil · NA 1.3 · WD 0.24 mm",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "efl": 5,
+    "workingDistance": 0.24,
+    "immersion": "oil",
+    "na": 1.3,
+    "frontAperture": 13,
+    "transEff": 82,
+    "showAcceptance": true
+   }
+  },
+  {
+   "id": "ouyang-stage",
+   "type": "stage",
+   "x": -85,
+   "y": 25.24,
+   "rot": 0,
+   "label": "Photocurable resin on six-axis hexapod",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "pzMode": "static",
+    "aperture": 50,
+    "specimenType": "resin",
+    "thickness": 6,
+    "voxelPreview": true,
+    "voxelSize": 0.6,
+    "transmitExc": true,
+    "transmission": 0.05,
+    "showSignalSpot": true
+   }
+  },
+  {
+   "id": "ouyang-led-proxy",
+   "type": "cwlaser",
+   "x": -250,
+   "y": 100,
+   "rot": 0,
+   "label": "589 nm fibre LED · directional collection proxy",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "enabled": true,
+    "wavelength": 589,
+    "avgPowerW": 0.001,
+    "beamMode": "line",
+    "pol": 0
+   }
+  },
+  {
+   "id": "ouyang-m1",
+   "type": "mirror",
+   "x": -85,
+   "y": 100,
+   "rot": 45,
+   "label": "M1 below substrate",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": { "length": 40, "refl": 100 }
+  },
+  {
+   "id": "ouyang-l6",
+   "type": "lens",
+   "x": -85,
+   "y": -100,
+   "rot": 90,
+   "label": "L6 · f = 100 mm",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": { "f": 100, "dia": 50, "transEff": 100 }
+  },
+  {
+   "id": "ouyang-ccd",
+   "type": "camera",
+   "x": -85,
+   "y": -220,
+   "rot": 270,
+   "label": "CCD in-situ observation",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": { "ch": 40, "pixels": 64, "exposure": 10 }
+  },
+  {
+   "id": "ouyang-observation-note",
+   "type": "textlabel",
+   "x": -265,
+   "y": -75,
+   "rot": 0,
+   "params": {
+    "text": "**Observation return**\n589 nm: LED → M1 → resin → objective → DM → L6 → CCD\nDirectional source is a free-interpretation proxy for the reported fibre LED.",
+    "fontSize": 9,
+    "fill": "#7a6500"
+   }
+  }
+ ],
+ "beams": []
+}

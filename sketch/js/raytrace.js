@@ -9,6 +9,7 @@ import {
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength,
+  dmdBinaryHologramOn, dmdHologramAngles,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
@@ -2677,11 +2678,21 @@ function interact(ray, hit) {
       const pitch = Math.max(0.1, data.pitch || 8);
       const h = dot(sub(hit.p, mid), t) + (data.length || 40) / 2 + pitch / 2;
       const phase = ((h % pitch) + pitch) % pitch / pitch;
-      const on = phase < Math.min(0.95, Math.max(0.05, data.duty ?? 0.5));
+      const on = data.pattern === 'hologram'
+        ? dmdBinaryHologramOn(h, data)
+        : phase < Math.min(0.95, Math.max(0.05, data.duty ?? 0.5));
       if (!on && !data.routeOff) return [];
       const base = reflect(d, n);
-      const angle = (on ? 1 : -1) * 2 * (data.tilt || 12) * D2R;
-      return [{ d: rotv(base, angle), tag: on ? 'on' : 'off' }];
+      const carrier = (on ? 1 : -1) * 2 * (data.tilt || 12) * D2R;
+      if (!on || data.pattern !== 'hologram') {
+        return [{ d: rotv(base, carrier), tag: on ? 'on' : 'off' }];
+      }
+      const angles = dmdHologramAngles(data);
+      return angles.map((angle, index) => ({
+        d: rotv(base, carrier + angle * D2R),
+        intensity: ray.intensity / angles.length,
+        tag: `h${index}`,
+      }));
     }
     case 'dm': {
       let out = reflect(d, n);
