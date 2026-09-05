@@ -81,6 +81,15 @@ export async function sharedSceneFromURL(href = window.location.href) {
   return decodeSharePayload(hash.slice(SHARE_PREFIX.length));
 }
 
+// After a successful import, autosave owns subsequent edits. Keeping the
+// original fragment would import the old scene again on every reload.
+export function clearSharedSceneURL(href = window.location.href, navigation = window.history) {
+  const url = new URL(href);
+  if (!url.hash.startsWith(SHARE_PREFIX)) return;
+  url.hash = '';
+  navigation.replaceState(navigation.state, '', url.toString());
+}
+
 export async function copyText(text) {
   if (navigator.clipboard?.writeText) {
     try {
