@@ -3325,6 +3325,15 @@ export const registry = {
       { key: 'pitch', label: 'Pattern pitch (mm)', type: 'number', min: 1, max: 40, step: 0.5, def: 8 },
       { key: 'duty', label: 'ON fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5 },
       { key: 'routeOff', label: 'Show OFF order', type: 'checkbox', def: false },
+      { key: 'spectralDispersion', label: 'Disperse broadband light', type: 'checkbox', def: false },
+      {
+        key: 'dispersionReferenceNm', label: 'Reference wavelength (nm)', type: 'number',
+        min: 200, max: 2000, step: 10, def: 800, show: p => p.spectralDispersion,
+      },
+      {
+        key: 'dispersionSlopeDegPer100Nm', label: 'Angular slope (° / 100 nm)', type: 'number',
+        min: -60, max: 60, step: 0.5, def: 6, show: p => p.spectralDispersion,
+      },
     ],
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
@@ -3341,6 +3350,9 @@ export const registry = {
         data: {
           length: el.params.length, tilt: el.params.tilt, pitch: el.params.pitch,
           duty: el.params.duty, routeOff: el.params.routeOff,
+          spectralDispersion: el.params.spectralDispersion,
+          dispersionReferenceNm: el.params.dispersionReferenceNm,
+          dispersionSlopeDegPer100Nm: el.params.dispersionSlopeDegPer100Nm,
         },
       }, ...shaperBody(-9, 11, L, L + 3)];
     },
@@ -4754,7 +4766,7 @@ const ELEMENT_HELP = {
   phaseplate: 'Retards part of the beam without bending it \u2014 invisible on its own, and the thing an interferometer exists to reveal.',
   slm: 'Reflects by default and can overlay lens-array, grating, steering, or speckle functions.',
   metasurface: 'A patterned layer on a thin transparent carrier, working in transmission by default. Overlays the same lens-array, grating, steering, and speckle functions as the SLM, with an optional undiffracted zeroth order — but the phase profile is fixed at fabrication rather than programmable.',
-  dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
+  dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders; an opt-in bounded proxy can also separate broadband wavelengths by angle.',
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
@@ -4819,6 +4831,8 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'aod') {
     note = 'Deflection is set directly in degrees, not derived from a crystal and an acoustic velocity, so the angles here need not belong to any real device \u2014 a real deflector reaches a few degrees at most. Efficiency is flat across the scan, where a real one falls away toward both ends, and the optical frequency shift a deflector applies is not carried: at 80 MHz it moves 532 nm by 7.6\u00d710\u207b\u2075 nm, far below anything this workbench resolves.';
+  } else if (type === 'dmd' && params.spectralDispersion) {
+    note = 'ON/OFF stripes route real traced rays and broadband samples leave at wavelength-dependent angles. The angular slope is a bounded geometric proxy: it does not derive a diffraction order or blaze efficiency, propagate a pulse envelope, or prove temporal focusing at a later plane.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
