@@ -23,9 +23,33 @@ function base64UrlToBytes(value) {
   return bytes;
 }
 
-async function transform(bytes, Transformer, format) {
+class ShareSizeError extends Error {
+  constructor() { super('Shared sketch is too large to open safely'); }
+}
+
+async function transform(bytes, Transformer, format, maxBytes = Infinity) {
   const stream = new Blob([bytes]).stream().pipeThrough(new Transformer(format));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const reader = stream.getReader();
+  const chunks = [];
+  let length = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw new ShareSizeError();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const result = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.byteLength; }
+  return result;
 }
 
 export async function encodeSharePayload(text, { compression = true } = {}) {
@@ -53,8 +77,9 @@ export async function decodeSharePayload(payload) {
       throw new Error('This browser cannot open compressed share links');
     }
     try {
-      bytes = await transform(bytes, DecompressionStream, 'gzip');
-    } catch (_) {
+      bytes = await transform(bytes, DecompressionStream, 'gzip', MAX_SCENE_BYTES);
+    } catch (error) {
+      if (error instanceof ShareSizeError) throw error;
       throw new Error('Share link is damaged or incomplete');
     }
   } else if (encoding !== 'j') {
