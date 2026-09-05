@@ -1,3 +1,4 @@
+import { dmdPatternOnAt } from './dmd-pattern.js';
 // 2D ray-tracing engine.
 // Builds world-space surfaces from elements, propagates rays from every source,
 // and returns drawables: stroked polylines (line-mode / beam edges) and filled
@@ -2674,11 +2675,7 @@ function interact(ray, hit) {
     }
     case 'dmd': {
       const mid = mul(add(s.a, s.b), 0.5);
-      const pitch = Math.max(0.1, data.pitch || 8);
-      const phaseShift = Math.min(1, Math.max(0, data.patternPhase || 0)) * pitch;
-      const h = dot(sub(hit.p, mid), t) + (data.length || 40) / 2 + pitch / 2 + phaseShift;
-      const phase = ((h % pitch) + pitch) % pitch / pitch;
-      const on = phase < Math.min(0.95, Math.max(0.05, data.duty ?? 0.5));
+      const on = dmdPatternOnAt(data, dot(sub(hit.p, mid), t), data.patternPhase || 0);
       if (!on && !data.routeOff) return [];
       const base = reflect(d, n);
       const angle = (on ? 1 : -1) * 2 * (data.tilt || 12) * D2R;

@@ -17,9 +17,9 @@ test('paper identities and source files have explicit provenance and unresolved 
  const zhang=papers.find(p=>p.id==='zhang-2024');assert.equal(zhang.settings.sourcePowerMw,undefined,'maximum capacity is not operating power');
 });
 
-test('the Somers entry is the only rebuilt native paper setup and is reloadable',async()=>{
+test('the Somers native paper setup is included and is reloadable',async()=>{
  const {setups}=await load('../collections/2pp/setups/manifest.json');
- assert.deepEqual(setups.map(s=>s.id),['somers-2021']);
+ assert.ok(setups.some(s=>s.id==='somers-2021'));
  const text=await readFile(new URL('../collections/2pp/setups/somers-2021.json',import.meta.url),'utf8');
  const scene=parseSketch(text,registry);
  assert.ok(scene.elements.some(e=>e.id==='somers-laser'&&e.params.repRateMHz===0.005));

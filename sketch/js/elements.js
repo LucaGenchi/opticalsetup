@@ -1,3 +1,5 @@
+import { dmdPatternPhaseAt, dmdPatternBands } from './dmd-pattern.js';
+export { dmdPatternPhaseAt } from './dmd-pattern.js';
 // Registry of optical elements.
 // Local coordinates: element centered at (0,0); default optical propagation is along +x.
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
@@ -925,18 +927,6 @@ export function newShaperLayer() {
   return { type: 'lensarray', n: 3, f: 50, lines: 600, orders: '1', angle: 5, div: 8 };
 }
 const layersParam = { key: 'layers', label: 'Optical function', type: 'layers', def: [] };
-
-// DMD mask playback is intentionally slow and illustrative. Published devices
-// can switch patterns at kilohertz rates, which would alias into a stationary
-// blur on a 30 fps canvas; this phase advances the binary pattern at a separate
-// user-selected preview rate without claiming to reproduce controller timing.
-export function dmdPatternPhaseAt(params = {}, timeSeconds = 0) {
-  if (params.sequence !== true) return 0;
-  const hz = Math.min(10, Math.max(0.05,
-    Number.isFinite(params.sequenceHz) ? params.sequenceHz : 0.5));
-  const cycle = (Number.isFinite(timeSeconds) ? timeSeconds : 0) * hz;
-  return ((cycle % 1) + 1) % 1;
-}
 
 // object shapes for image-formation diagrams, in unit coords:
 // base at (0,0), tip at (0,-1); the traced image redraws the same shape
@@ -1869,7 +1859,11 @@ function laserAperture(el) {
 
 function laserSource(el) {
   const p = el.params;
-  if (p.enabled === false) return [];
+  // Relative ray weights remain normalized for qualitative geometry, but an
+  // explicitly powerless or malformed source cannot illuminate a detector or
+  // leave resin write markers. Missing power is a legacy sketch convention.
+  if (p.enabled === false || (p.avgPowerW !== undefined
+    && (typeof p.avgPowerW !== 'number' || !Number.isFinite(p.avgPowerW) || p.avgPowerW <= 0))) return [];
   if (p.beamMode === 'beam') {
     // sample rays across the beam width; adjacent samples with an identical
     // interaction history are filled as an envelope strip, so a lenslet
@@ -3347,12 +3341,10 @@ export const registry = {
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
       const L = el.params.length / 2;
-      const patternShift = dmdPatternPhaseAt(el.params, el._animationTimeS || 0) * 6;
-      let mm = '';
-      for (let y = -L + 4 - patternShift; y < L + 4; y += 6) {
-        if (y < -L - 2 || y > L + 2) continue;
-        mm += `<line x1="-11" y1="${y + 2}" x2="-7" y2="${y - 2}" stroke="#cfd6dd" stroke-width="1.6"/>`;
-      }
+      const phase = dmdPatternPhaseAt(el.params, el._animationTimeS || 0);
+      const mm = dmdPatternBands(el.params, phase).map(band =>
+        `<rect data-dmd-on="${band.on}" x="-12" y="${band.y0}" width="5" height="${band.y1 - band.y0}" fill="${band.on ? '#7ee2bc' : '#334155'}"/>`
+      ).join('');
       return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/>` + mm +
         `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">DMD</text>`;
     },

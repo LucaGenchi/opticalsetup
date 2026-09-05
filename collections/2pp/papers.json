@@ -382,7 +382,16 @@
         "5 kHz is outside the lab repetition-rate range.",
         "Total operating source power is not a single value."
       ],
-      "auxiliaryPath": "50:50 beam splitter before the objective feeds a CCD. A 633 nm alignment laser enters through a DMLP650 dichroic. A GaP detector is used upstream of the DMD while minimizing pulse duration."
+      "auxiliaryPath": "50:50 beam splitter before the objective feeds a CCD. A 633 nm alignment laser enters through a DMLP650 dichroic. A GaP detector is used upstream of the DMD while minimizing pulse duration.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 800,
+          "pulseDurationFs": 65,
+          "numericalAperture": 1.49
+        }
+      }
     },
     {
       "id": "ouyang-2023",

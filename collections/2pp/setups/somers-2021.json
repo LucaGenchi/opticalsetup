@@ -5,20 +5,24 @@
     {
       "id": "somers-frame",
       "type": "figureframe",
-      "x": 560,
-      "y": 430,
+      "x": 630,
+      "y": 420,
       "rot": 0,
-      "params": { "w": 1060, "h": 800, "background": "white" }
+      "params": {
+        "w": 1260,
+        "h": 820,
+        "background": "white"
+      }
     },
     {
       "id": "somers-title",
       "type": "textlabel",
       "x": 55,
-      "y": 50,
+      "y": 54,
       "rot": 0,
       "params": {
         "text": "**Somers et al. (2021) — continuous projection multi-photon printing**\nNative 2D reconstruction of Fig. 1a and Methods · DOI 10.1038/s41377-021-00645-z",
-        "fontSize": 16,
+        "fontSize": 14,
         "fill": "#26333a"
       }
     },
@@ -28,7 +32,7 @@
       "x": 88,
       "y": 700,
       "rot": 0,
-      "label": "Spitfire · 800 nm · 65 fs · 5 kHz · ~22 nm",
+      "label": "Spitfire · 800 nm · 65 fs",
       "showLabel": true,
       "labelPos": "t",
       "params": {
@@ -59,7 +63,10 @@
       "label": "HWP",
       "showLabel": true,
       "labelPos": "b",
-      "params": { "a": 0, "length": 25.4 }
+      "params": {
+        "a": 0,
+        "length": 25.4
+      }
     },
     {
       "id": "somers-pbs",
@@ -67,10 +74,12 @@
       "x": 225,
       "y": 700,
       "rot": 0,
-      "label": "PBS25-780 · power control",
+      "label": "PBS25-780",
       "showLabel": true,
-      "labelPos": "b",
-      "params": { "size": 25.4 }
+      "labelPos": "t",
+      "params": {
+        "size": 25.4
+      }
     },
     {
       "id": "somers-power-dump",
@@ -81,7 +90,9 @@
       "label": "rejected port",
       "showLabel": true,
       "labelPos": "l",
-      "params": { "aperture": 24 }
+      "params": {
+        "aperture": 24
+      }
     },
     {
       "id": "somers-galilean",
@@ -89,10 +100,15 @@
       "x": 312.5,
       "y": 700,
       "rot": 0,
-      "label": "Galilean −75 / +100 mm → ~6 mm",
+      "label": "−75 / +100 mm → 6 mm",
       "showLabel": true,
       "labelPos": "b",
-      "params": { "f1": -75, "f2": 100, "dia": 25.4, "transEff": 99 }
+      "params": {
+        "f1": -75,
+        "f2": 100,
+        "dia": 25.4,
+        "transEff": 99
+      }
     },
     {
       "id": "somers-pishaper-note",
@@ -115,26 +131,35 @@
       "label": "L1 100 mm / L2 150 mm · DMD fill",
       "showLabel": true,
       "labelPos": "b",
-      "params": { "f1": 100, "f2": 150, "dia": 30, "transEff": 99 }
+      "params": {
+        "f1": 100,
+        "f2": 150,
+        "dia": 30,
+        "transEff": 99
+      }
     },
     {
       "id": "somers-fold",
       "type": "mirror",
-      "x": 740,
+      "x": 865.580005985,
       "y": 700,
-      "rot": 99,
-      "label": "Free interpretation — fold for compact layout",
+      "rot": 147,
+      "label": "Layout fold",
       "showLabel": true,
-      "labelPos": "t",
-      "params": { "length": 34, "refl": 100, "showTransmitted": false }
+      "labelPos": "r",
+      "params": {
+        "length": 30,
+        "refl": 100,
+        "showTransmitted": false
+      }
     },
     {
       "id": "somers-dmd",
       "type": "dmd",
-      "x": 856.7,
-      "y": 741,
-      "rot": 42,
-      "label": "DLP3000 · ~24° incidence · normal selected order",
+      "x": 850,
+      "y": 744,
+      "rot": 90,
+      "label": "DLP3000",
       "showLabel": true,
       "labelPos": "r",
       "params": {
@@ -154,12 +179,12 @@
     {
       "id": "somers-dmd-note",
       "type": "textlabel",
-      "x": 900,
-      "y": 665,
+      "x": 945,
+      "y": 635,
       "rot": 0,
       "params": {
-        "text": "DMD mask gates the image **and**\nits carrier disperses the pulse.\n4 kHz is the reported maximum mask rate;\n0.4 Hz is only a visible preview.",
-        "fontSize": 11,
+        "text": "**DMD: IMAGE MASK + DISPERSION**\n~24° incidence; selected normal order.\nBright bands are ON; dark bands OFF.\nPreview masks at 0.4 Hz (paper: 4 kHz).\nNear-IR spectral rays are all red.",
+        "fontSize": 10,
         "fill": "#5b3a75"
       }
     },
@@ -172,7 +197,11 @@
       "label": "L3 achromat · f = 300 mm",
       "showLabel": true,
       "labelPos": "l",
-      "params": { "f": 300, "dia": 50.8, "transEff": 99 }
+      "params": {
+        "f": 300,
+        "dia": 50.8,
+        "transEff": 99
+      }
     },
     {
       "id": "somers-align-dichroic",
@@ -183,7 +212,13 @@
       "label": "DMLP650 · 800 nm through / 633 nm in",
       "showLabel": true,
       "labelPos": "l",
-      "params": { "dtype": "longpass", "cutoff": 650, "center": 650, "band": 20, "length": 32 }
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 650,
+        "center": 650,
+        "band": 20,
+        "length": 32
+      }
     },
     {
       "id": "somers-align-laser",
@@ -191,11 +226,11 @@
       "x": 1045,
       "y": 280,
       "rot": 180,
-      "label": "633 nm surface alignment",
+      "label": "633 nm alignment",
       "showLabel": true,
       "labelPos": "t",
       "params": {
-        "enabled": true,
+        "enabled": false,
         "wavelength": 633,
         "avgPowerW": 0.005,
         "beamMode": "line",
@@ -212,10 +247,13 @@
       "x": 850,
       "y": 220,
       "rot": 0,
-      "label": "BSW29 · 50:50 observation pickoff",
+      "label": "BSW29 · 50:50",
       "showLabel": true,
       "labelPos": "l",
-      "params": { "ratio": 0.5, "size": 25.4 }
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
     },
     {
       "id": "somers-ccd",
@@ -223,10 +261,14 @@
       "x": 970,
       "y": 220,
       "rot": 0,
-      "label": "Panasonic CCD · in situ image branch",
+      "label": "CCD · incident-light monitor",
       "showLabel": true,
       "labelPos": "t",
-      "params": { "pixels": 64, "ch": 30, "interference": false }
+      "params": {
+        "pixels": 64,
+        "ch": 30,
+        "interference": false
+      }
     },
     {
       "id": "somers-objective",
@@ -252,16 +294,16 @@
       "id": "somers-stage",
       "type": "stage",
       "x": 850,
-      "y": 130.77,
+      "y": 130.87,
       "rot": 0,
-      "label": "BBK/PETA · ABL1000 XYZ stage",
+      "label": "BBK/PETA · XYZ stage",
       "showLabel": true,
-      "labelPos": "b",
+      "labelPos": "t",
       "params": {
         "pzMode": "z",
         "pzTravelXY": 0,
         "pzFreqXY": 0.15,
-        "pzTravelZ": 4,
+        "pzTravelZ": 0.1,
         "pzFreqZ": 0.2,
         "pzZSteps": 5,
         "aperture": 50,
@@ -283,12 +325,12 @@
     {
       "id": "somers-print-plane",
       "type": "textlabel",
-      "x": 905,
-      "y": 110,
+      "x": 920,
+      "y": 123,
       "rot": 0,
       "params": {
-        "text": "**PRINT PLANE**\nDMD image + shortest pulse\n(temporal recompression not solved)",
-        "fontSize": 11,
+        "text": "**NOMINAL MASK IMAGE PLANE**\nTemporal recompression not solved.\nZ travel: 0.1 mm preview; zoom in.\nSee note for the reported 100 µm/s.",
+        "fontSize": 10,
         "fill": "#6b2d77"
       }
     },
@@ -298,10 +340,13 @@
       "x": 660,
       "y": 625,
       "rot": 270,
-      "label": "GaP DET25K · diagnostic position not specified",
+      "label": "GaP DET25K",
       "showLabel": true,
       "labelPos": "l",
-      "params": { "aperture": 22, "detectorType": "Photodetector" }
+      "params": {
+        "aperture": 22,
+        "detectorType": "Photodetector"
+      }
     },
     {
       "id": "somers-gap-note",
@@ -319,10 +364,10 @@
       "id": "somers-summary",
       "type": "textlabel",
       "x": 55,
-      "y": 90,
+      "y": 145,
       "rot": 0,
       "params": {
-        "text": "**THROUGHPUT:** stage-triggered masks + continuous Z remove layer dead time.\n**TRACE:** power control → expanders → dispersive DMD → L3/objective → resin.\n**LIMIT:** spectral-ray proxy only; no temporal field, dose, curing, or 3D prediction.",
+        "text": "**CONTINUOUS PROJECTION PRINTING**\nReported: synchronized masks + continuous Z remove layer dead time.\nSource: 800 nm, 65 fs, 5 kHz and ~22 nm bandwidth.\n\n**TRY:** switch the laser off; rotate HWP from 0° to 22.5°;\ndisable DMD dispersion; freeze the mask or change ON fraction.\n**LIMIT:** geometric imaging; no temporal field, dose or curing.",
         "fontSize": 11,
         "fill": "#3e4c53"
       }
@@ -331,17 +376,34 @@
       "id": "somers-interpretation-note",
       "type": "textlabel",
       "x": 55,
-      "y": 785,
+      "y": 350,
       "rot": 0,
       "params": {
-        "text": "**Free interpretation — not specified in the paper:** 0.10 W display power; 4.5 mm input ray tube; 5 mW alignment source; compact fold; equivalent DMD carrier 92.6 lines/mm, order 5; 0.4 Hz mask preview; stage preview travel/rate; first-order relay placement and display-only resin properties.",
-        "fontSize": 9,
+        "text": "**FREE INTERPRETATION — NOT SPECIFIED IN THE PAPER**\n0.10 W display source power; 4.5 mm input beam; 5 mW alignment;\ncompact fold and relay placement; DMD carrier 92.6 lines/mm, order 5;\n0.4 Hz masks; 0.1 mm stage travel; objective EFL/WD/transmission;\ndisplay resin properties. The preview clock is not controller timing.\n\n**OBSERVATION PATH LIMIT**\nThe paper describes CCD imaging of the sample through the objective.\nThis branch measures incident writing/alignment light only;\nno reflected sample image or return illumination is computed.\nThe 633 nm alignment source is optional and starts disabled.",
+        "fontSize": 11,
         "fill": "#7a4b18"
+      }
+    },
+    {
+      "id": "somers-output-dump",
+      "type": "beamdump",
+      "x": 850,
+      "y": 60,
+      "rot": 270,
+      "label": "Output dump (layout choice)",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "aperture": 140
       }
     }
   ],
   "beams": [],
-  "view": { "x": 25, "y": 20, "z": 0.9 },
+  "view": {
+    "x": 25,
+    "y": 20,
+    "z": 0.9
+  },
   "showGrid": true,
   "snap": true,
   "showFocal": true
