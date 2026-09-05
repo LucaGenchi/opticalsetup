@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import { createElement, registry } from '../sketch/js/elements.js';
+import { createElement, registry, getVisualBounds, stageOffsetAt } from '../sketch/js/elements.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { collectionSetupPath } from '../sketch/js/collection-setups.js';
@@ -34,7 +34,7 @@ test('Nanoscribe GT teaching scene loads, traces, scans, and preserves its nativ
   const galvos = [byId('gt-galvo-x'), byId('gt-galvo-y')];
 
   assert.equal(source.params.handoffBasis, 'interpretation');
-  assert.equal(new URL(buildTwoPhotonHandoffUrl(source)).searchParams.get('basis'), 'interpretation');
+  assert.equal(buildTwoPhotonHandoffUrl(source), null, 'invented values must not leave without supported provenance');
   assert.equal(stage.params.pzTravelXY, 0.3);
   assert.equal(stage.params.pzTravelZ, 0.3);
   assert.ok(Math.abs(2 * stage.params.pzTravelXY * stage.params.pzFreqXY - 0.1) < 1e-12,
@@ -54,6 +54,9 @@ test('Nanoscribe GT teaching scene loads, traces, scans, and preserves its nativ
   source.params.enabled = false;
   assert.equal(traceScene(scene.elements).signalHits.length, 0, 'laser-off control removes the writing path');
   source.params.enabled = true;
+  source.params.avgPowerW = 0;
+  assert.equal(traceScene(scene.elements).writeHits.length, 0, 'zero optical power cannot write');
+  source.params.avgPowerW = 0.08;
   for (const galvo of galvos) galvo.params.scanMode = 'static';
   const staticHit = traceScene(scene.elements).signalHits[0];
   assert.ok(staticHit, 'static-galvo control retains a centred writing path');
@@ -72,4 +75,42 @@ test('only the assigned Nanoscribe record publishes a collection setup', async (
   assert.match(page, /<iframe src="\/sketch\/\?setup=nanoscribe-gt"/);
   assert.match(page, /setups\/nanoscribe-gt\.json/);
   assert.match(page, /research\/nanoscribe-gt\.md/);
+});
+
+
+test('Nanoscribe independently driven axes and fine piezo retain the computed resin route', async () => {
+  const scene = parseSketch(await readFile(new URL('../collections/2pp/setups/nanoscribe-gt.json', import.meta.url), 'utf8'), registry);
+  const galvos = scene.elements.filter(element => element.type === 'galvo');
+  for (const active of galvos) {
+    for (const galvo of galvos) galvo.params.scanMode = galvo === active ? 'sine' : 'static';
+    active.params.scanPhaseDeg = 0;
+    const hits = [0.25, 0.75].map(phase => {
+      active._animationTimeS = phase / active.params.scanFrequencyHz;
+      const traced = traceScene(scene.elements);
+      assert.equal(traced.writeHits.length, 1);
+      return traced.writeHits[0].y;
+    });
+    assert.notEqual(hits[0], hits[1], `${active.id} must move the focus independently`);
+  }
+  for (const galvo of galvos) galvo.params.scanMode = 'static';
+  const stage = scene.elements.find(element => element.type === 'stage');
+  stage.params.pzMode = 'xy';
+  const materialHits = [0.75, 2.25].map(time => {
+    const local = stageOffsetAt(stage.params, time);
+    const moved = { ...stage, y: stage.y + local.x }; // the authored stage is rotated 90 degrees
+    const traced = traceScene(scene.elements.map(element => element === stage ? moved : element));
+    assert.equal(traced.writeHits.length, 1);
+    return traced.writeHits[0].y - moved.y;
+  });
+  assert.ok(Math.abs(materialHits[0] - materialHits[1]) > 0.1, 'piezo movement changes where the focus meets the mounted material');
+});
+
+test('Nanoscribe Figure frame includes all component and text bounds', async () => {
+  const scene = parseSketch(await readFile(new URL('../collections/2pp/setups/nanoscribe-gt.json', import.meta.url), 'utf8'), registry);
+  const frame = getVisualBounds(scene.elements.find(element => element.type === 'figureframe'), { includeLabel: false });
+  for (const element of scene.elements) {
+    const bounds = getVisualBounds(element);
+    assert.ok(bounds.x0 >= frame.x0 && bounds.x1 <= frame.x1
+      && bounds.y0 >= frame.y0 && bounds.y1 <= frame.y1, `${element.id} must fit its export frame`);
+  }
 });
