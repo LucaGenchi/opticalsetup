@@ -2216,6 +2216,17 @@ function interact(ray, hit) {
       const out = [];
       const wls = wlSamples(ray);
       for (const m of data.orders) {
+        // The undiffracted order keeps the incident spectrum intact. It
+        // redirects the whole band specularly (or passes it straight through),
+        // rather than turning the first spectral sample into a laser line.
+        if (m === 0) {
+          out.push({
+            d: data.transmissive ? d : reflect(d, n),
+            intensity: ray.intensity / data.orders.length,
+            tag: 'm0',
+          });
+          continue;
+        }
         for (let i = 0; i < wls.length; i++) {
           const sd = si + m * wls[i].wl / data.d;
           if (Math.abs(sd) > 1) continue;
@@ -2224,10 +2235,9 @@ function interact(ray, hit) {
           out.push({
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
-            intensity: ray.intensity * (m === 0 ? 1 : wls[i].weight) / data.orders.length,
+            intensity: ray.intensity * wls[i].weight / data.orders.length,
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
           });
-          if (m === 0 && wls.length > 1) break; // 0th order is undispersed
         }
       }
       return out;
