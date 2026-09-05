@@ -1,0 +1,219 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "dong-frame",
+      "type": "figureframe",
+      "x": 350,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "w": 680, "h": 380, "background": "white" }
+    },
+    {
+      "id": "dong-title",
+      "type": "textlabel",
+      "x": 20,
+      "y": 16,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# DONG 2007 — DESIGNABLE MULTIPLE-BEAM 2PP",
+        "fontSize": 14,
+        "fill": "#1e293b"
+      }
+    },
+    {
+      "id": "dong-warning",
+      "type": "textlabel",
+      "x": 20,
+      "y": 52,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**MECHANISM INTERPRETATION — FULL APPARATUS UNAVAILABLE**\nReported only: configurable lens sets + aperture masks → parallel multiphoton writing.",
+        "fontSize": 8,
+        "fill": "#9a3412"
+      }
+    },
+    {
+      "id": "dong-source",
+      "type": "pulsedlaser",
+      "x": 70,
+      "y": 150,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "enabled": true,
+        "wavelength": 800,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 12,
+        "repRateMHz": 1,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 120,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "dong-telescope",
+      "type": "telescope",
+      "x": 230,
+      "y": 150,
+      "rot": 0,
+      "label": "3× beam-expansion lens set (free interpretation)",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": { "f1": 25, "f2": 75, "dia": 50.8, "transEff": 98 }
+    },
+    {
+      "id": "dong-fold",
+      "type": "mirror",
+      "x": 370,
+      "y": 150,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "r",
+      "params": { "length": 60, "refl": 100, "showTransmitted": false }
+    },
+    {
+      "id": "dong-mask",
+      "type": "slit",
+      "x": 370,
+      "y": 215,
+      "rot": 90,
+      "label": "Aperture mask — 38 mm",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": { "gap": 38, "length": 50.8 }
+    },
+    {
+      "id": "dong-array",
+      "type": "microlensarray",
+      "x": 370,
+      "y": 265,
+      "rot": 90,
+      "label": "4 lenslets · f = 60 mm",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": { "length": 40, "count": 4, "f": 60 }
+    },
+    {
+      "id": "dong-stage",
+      "type": "stage",
+      "x": 370,
+      "y": 325,
+      "rot": 0,
+      "label": "Resin plane (free interpretation)",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": {
+        "pzMode": "xy",
+        "pzTravelXY": 8,
+        "pzFreqXY": 0.1,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "resin",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": true,
+        "voxelSize": 1.2,
+        "transmitExc": true,
+        "transmission": 0,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "dong-mechanism-note",
+      "type": "textlabel",
+      "x": 465,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**WHAT THE TRACE SHOWS**\n1. Lens pair expands the live ray bundle.\n2. Mask clips which lenslets receive light.\n3. Each illuminated lenslet has its own axis.\n4. Four traced beamlets meet the resin at once.",
+        "fontSize": 8,
+        "fill": "#334155"
+      }
+    },
+    {
+      "id": "dong-limits-note",
+      "type": "textlabel",
+      "x": 20,
+      "y": 357,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**MODEL LIMIT:** 2D paraxial section only — no 2D focus lattice, diffraction/PSF, dose, threshold curing,\ncalibrated per-focus power, or 3D assembly proof.",
+        "fontSize": 7,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "dong-control-note",
+      "type": "textlabel",
+      "x": 465,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**TRY**\nMask gap 38 → 18 mm: 4 → 2 foci\nLenslets 4 → 2: two-beam geometry\nf 60 → 45 mm: waist before resin\nLaser emission off: no writing trace",
+        "fontSize": 8,
+        "fill": "#365314"
+      }
+    },
+    {
+      "id": "dong-source-note",
+      "type": "textlabel",
+      "x": 20,
+      "y": 184,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Free interpretation source\n800 nm · 120 fs · 1 MHz · 100 mW",
+        "fontSize": 8,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "dong-fold-note",
+      "type": "textlabel",
+      "x": 394,
+      "y": 172,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Packing fold\n(free interpretation)",
+        "fontSize": 7,
+        "fill": "#475569"
+      }
+    }
+  ],
+  "beams": []
+}
