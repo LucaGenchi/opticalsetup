@@ -76,4 +76,6 @@ Validation: `npm test` passed (782 tests); every `sketch/js/*.js` and `serve.mjs
 
 The common loader now resolves existing `paper`, `setup` and `collection` links to the same native scene. Explicit edit links open the workbench; embed links stay locked and do not replace autosave. The common builder discovers authored files so this contribution can coexist with other paper scenes. The service worker revision updates the loader for returning users. The source record is preserved and an additive reviewed handoff object has an empty settings subset: the datasheet supplies no supported numeric optical settings, so no paper calculator preset is generated.
 
-Final integration checks: `npm test` passed (786 tests), all workbench JavaScript and `serve.mjs` passed syntax checks, and `git diff --check` passed. Collection pages were rebuilt with the common builder.
+Final integration checks: `npm test` passed (806 tests), all workbench JavaScript and `serve.mjs` passed syntax checks, and `git diff --check` passed. Collection pages were rebuilt with the common builder.
+
+Current-workbench integration keeps embedded previews inert (`embedMode`), while explicit edit links preserve the existing workbench through replacement consent and undo recovery. A shared snapshot is retired only after successful autosave. The native scientific scene and its reviewed controls are unchanged.
