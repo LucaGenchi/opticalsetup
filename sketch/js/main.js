@@ -26,7 +26,7 @@ import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
-import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
+import { buildShareURL, clearSharedSceneURL, copyText, shareURLForScene, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.js';
@@ -1375,14 +1375,36 @@ function bindToolbar() {
     const button = $('btnShare');
     button.disabled = true;
     try {
-      const sketch = serialize();
-      const url = await buildShareURL(sketch);
+      // The scene can change while the payload is being compressed, so build
+      // against a settled scene and only put the snapshot in the address bar
+      // if it still matches what is on the canvas. Parking a stale one there
+      // would survive to the next reload and undo the edit that raced it.
+      const { scene: sketch, url, settled } = await shareURLForScene(
+        serialize, text => buildShareURL(text));
+      if (!settled) {
+        // Still moving after a rebuild: the visitor is mid-edit. Publishing
+        // now would hand them a link to a scene they are not looking at --
+        // through the dialog and QR as much as the address bar -- so stop
+        // rather than share something stale.
+        showToast('The canvas changed while the link was building — press Share again.');
+        return;
+      }
       history.replaceState(null, '', url);
       // The auto-copy is best-effort: restrictive clipboard permissions must
       // not block the dialog, which offers its own Copy button and a
       // selectable URL field as the fallback.
       let copied = true;
       try { await copyText(url); } catch (_) { copied = false; }
+      // The clipboard is the longest await in this handler -- it can sit on a
+      // permission prompt for seconds -- and the canvas stays live underneath
+      // it. An edit landing there has already retired the fragment through the
+      // change listener, so the address bar is consistent; what is left is the
+      // dialog and its QR, which would still describe the pre-edit scene.
+      // Nothing is published unless the scene still matches what was built.
+      if (serialize() !== sketch) {
+        showToast('The canvas changed while the link was building — press Share again.');
+        return;
+      }
       shareUrl = url;
       shareSceneText = sketch;
       $('shareURL').value = url;
@@ -1645,7 +1667,19 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindKeys();
   setSelectionCallback(renderSelection);
   setMeasurementsCallback(refreshMeasurements);
-  onChange(() => { renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion(); });
+  // [scene-change-listener] test/shared-scene-reload.test.js pulls this block
+  // out and runs it, so it exercises the real listener rather than a copy that
+  // could drift from it. Keep the marker; the test finds the call by it rather
+  // than by matching the source formatting.
+  onChange(() => {
+    // Retire the snapshot only once the scene is safely in the autosave.
+    // changed() swallows a failed write, and loading a shared link calls
+    // replaceScene() and so changed() before any edit -- so without the
+    // autosaved check, a visitor with storage disabled or full would lose
+    // the fragment too and reload into an empty canvas.
+    if (!state.embedMode && state.autosaved) clearSharedSceneURL();
+    renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion();
+  });
 
   // A visitor who declines the replacement keeps the bench that
   // preserveWorkbenchInUndo() has already loaded back into state, and the
