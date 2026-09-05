@@ -2663,8 +2663,8 @@ export const registry = {
     // collimated light) is the wide barrel and carries the back pupil; front
     // (sample side) is the narrow tip at local x=+16, the physical boundary
     // the working distance is measured from. The equivalent refracting plane
-    // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
-    // because WD is capped at EFL. It is never drawn — an objective is an
+    // of focal length EFL sits at x = 16 + WD - EFL. This equivalent plane
+    // can lie outside the barrel for long-WD designs. It is never drawn — an
     // opaque barrel, not a visible singlet. See objective.js.
     label: 'Objective', category: 'Lenses',
     paletteGroup: 'Ideal lenses', paletteOrder: 3, size: { w: 36, h: 40 },
@@ -2706,7 +2706,7 @@ export const registry = {
             return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — ${(ratio * 100).toFixed(0)}% filled, all through`;
           }
           return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — overfilled, ` +
-            `${(fill.transmitted * 100).toFixed(0)}% through (${((1 - fill.transmitted) * 100).toFixed(0)}% lost)`;
+            `${(fill.transmitted * 100).toFixed(0)}% circular-area estimate (2D traced power can differ)`;
         },
       },
       // Underfilling the pupil does not just waste the rating — it hands you a
@@ -4641,7 +4641,7 @@ const ELEMENT_HELP = {
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
   asphericlens: 'Refracts through exact conic-plus-even-polynomial faces, so changing k or A₄/A₆/A₈ changes the physical ray intersections and aberration rather than only the drawing.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
-  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
+  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane is placed so light focuses one working distance past the front tip. It can lie outside the drawn barrel for long-working-distance designs; it represents the whole objective, not a physical glass surface. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',

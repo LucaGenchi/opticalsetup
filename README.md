@@ -176,7 +176,8 @@ manufacturer prescriptions, and EFL is no longer exposed as an unrestricted canv
 control. Magnification is reported from EFL against a 200 mm
 reference tube lens rather than typed in, because it belongs to the objective plus
 whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
-`front tip + WD − EFL`, always inside the barrel, so collimated light focuses exactly
+`front tip + WD − EFL` and can lie outside the drawn barrel for long-working-distance
+designs. It is an equivalent plane, not a physical glass surface. Collimated light focuses exactly
 one working distance past the tip, an external tube lens produces the reported
 magnification, and the back focal plane one EFL behind the plane is a real traced
 conjugate that light focused on leaves collimated. Nothing is drawn at that plane; an
