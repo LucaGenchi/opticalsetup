@@ -162,7 +162,12 @@
         "Wavelength, repetition rate, duration, power and objective NA are unspecified.",
         "Electrical consumption below 500 W is not optical laser power."
       ],
-      "auxiliaryPath": ""
+      "auxiliaryPath": "",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {}
+      }
     },
     {
       "id": "yang-2015",

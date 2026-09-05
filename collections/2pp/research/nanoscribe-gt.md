@@ -70,3 +70,10 @@ Fixed a provenance loss: the companion does not support `basis=interpretation`, 
 Repositioned the title/source and resized the crop to prevent clipped bounds, moved the objective label above the sample bracket to remove their collision, and regenerated all three native preview images. Applied the shared source correction so zero optical power no longer emits light or leaves resin arrivals.
 
 Validation: `npm test` passed (782 tests); every `sketch/js/*.js` and `serve.mjs` passed `node --check`; `git diff --check` passed. Regressions cover each galvo independently, held scanners, the 300 um piezo moving the material through a fixed focus, laser off/zero power, save/reload, unsupported-provenance handoff and inspector copy, and every component/text bound inside the Figure frame. Updated [default](../verification/nanoscribe-gt-default.png), [held galvos](../verification/nanoscribe-gt-static-galvos.png) and [laser-off](../verification/nanoscribe-gt-laser-off.png) PNGs were generated from native SVG exports and visually inspected. Live browser verification is recorded separately by the collection reviewer; these exports do not claim browser UI coverage.
+
+
+## Shared collection integration
+
+The common loader now resolves existing `paper`, `setup` and `collection` links to the same native scene. Explicit edit links open the workbench; embed links stay locked and do not replace autosave. The common builder discovers authored files so this contribution can coexist with other paper scenes. The service worker revision updates the loader for returning users. The source record is preserved and an additive reviewed handoff object has an empty settings subset: the datasheet supplies no supported numeric optical settings, so no paper calculator preset is generated.
+
+Final integration checks: `npm test` passed (786 tests), all workbench JavaScript and `serve.mjs` passed syntax checks, and `git diff --check` passed. Collection pages were rebuilt with the common builder.

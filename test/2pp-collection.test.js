@@ -4,7 +4,8 @@ import {readFile} from 'node:fs/promises';
 import { createElement, registry, getVisualBounds, stageOffsetAt } from '../sketch/js/elements.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
-import { collectionSetupPath } from '../sketch/js/collection-setups.js';
+import { collectionSetupRequest } from '../sketch/js/collection-loader.js';
+import { readCollectionSetups, reviewedPaperHandoff } from '../tools/2pp-collection-support.mjs';
 import { buildTwoPhotonHandoffUrl } from '../sketch/js/two-photon-handoff.js';
 const load=async p=>JSON.parse(await readFile(new URL(p,import.meta.url),'utf8'));
 
@@ -21,8 +22,8 @@ test('paper identities and source files have explicit provenance and unresolved 
 });
 
 test('collection setup paths accept only slugs', () => {
-  assert.equal(collectionSetupPath('nanoscribe-gt'), '../collections/2pp/setups/nanoscribe-gt.json');
-  for (const value of ['', '../secret', 'a/b', 'UPPER', null]) assert.equal(collectionSetupPath(value), null);
+  assert.equal(collectionSetupRequest(new URLSearchParams({ paper: 'nanoscribe-gt' })).path, '../collections/2pp/setups/nanoscribe-gt.json');
+  for (const value of ['', '../secret', 'a/b', 'UPPER']) assert.equal(collectionSetupRequest(new URLSearchParams({ paper: value })), null);
 });
 
 test('Nanoscribe GT teaching scene loads, traces, scans, and preserves its native save state', async () => {
@@ -66,15 +67,18 @@ test('Nanoscribe GT teaching scene loads, traces, scans, and preserves its nativ
   assert.equal(createElement('pulsedlaser').params.handoffBasis, 'user');
 });
 
-test('only the assigned Nanoscribe record publishes a collection setup', async () => {
+test('Nanoscribe discovery includes its scene with canonical collection links and no numeric preset', async () => {
   const { papers } = await load('../collections/2pp/papers.json');
-  assert.deepEqual(papers.filter(paper => paper.setup).map(paper => paper.id), ['nanoscribe-gt']);
+  const setups = await readCollectionSetups(new URL('../collections/2pp/', import.meta.url).pathname, papers);
+  assert.ok(setups.has('nanoscribe-gt'));
+  assert.equal(reviewedPaperHandoff(papers.find(paper => paper.id === 'nanoscribe-gt')).url, null);
   const page = await readFile(new URL('../collections/2pp/nanoscribe-gt/index.html', import.meta.url), 'utf8');
   assert.match(page, /Open editable setup/);
-  assert.match(page, /\/sketch\/\?setup=nanoscribe-gt&amp;collectionMode=edit/);
-  assert.match(page, /<iframe src="\/sketch\/\?setup=nanoscribe-gt"/);
+  assert.match(page, /\/sketch\/\?paper=nanoscribe-gt&amp;edit=1/);
+  assert.match(page, /src="\/sketch\/\?paper=nanoscribe-gt&amp;embed=1"/);
   assert.match(page, /setups\/nanoscribe-gt\.json/);
   assert.match(page, /research\/nanoscribe-gt\.md/);
+  assert.match(page, /No calculator preset is supplied/);
 });
 
 
