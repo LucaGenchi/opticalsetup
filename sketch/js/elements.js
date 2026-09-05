@@ -1868,7 +1868,11 @@ function laserAperture(el) {
 
 function laserSource(el) {
   const p = el.params;
-  if (p.enabled === false) return [];
+  // Relative ray weights remain normalized for qualitative geometry, but an
+  // explicitly powerless or malformed source cannot illuminate a detector or
+  // leave resin write markers. Missing power is a legacy sketch convention.
+  if (p.enabled === false || (p.avgPowerW !== undefined
+    && (typeof p.avgPowerW !== 'number' || !Number.isFinite(p.avgPowerW) || p.avgPowerW <= 0))) return [];
   if (p.beamMode === 'beam') {
     // sample rays across the beam width; adjacent samples with an identical
     // interaction history are filled as an envelope strip, so a lenslet
@@ -3819,7 +3823,9 @@ export const registry = {
           // beam, so a wide plate in a narrow beam makes far fewer fringes
           // than its own peak path difference suggests.
           const lit = el?.id ? phasePlateIllumination(el.id) : null;
-          const fringes = acrossAperture * (lit ? lit.span : 1);
+          const pupilSpan = params.centralAreaFraction > 0 && params.centralAreaFraction < 1 ? 1 : 0;
+          const span = params.profile === 'pupil' ? (lit?.phaseSpan ?? pupilSpan) : (lit?.span ?? 1);
+          const fringes = acrossAperture * span;
           const count = `${fringes.toFixed(2)} at 532 nm`;
           if (!lit) return `${count} if the beam fills the aperture`;
           if (fringes < 0.02) return `${count} — too little path to see`;
@@ -3842,7 +3848,7 @@ export const registry = {
     svg(el) {
       const h = (el.params.aperture || 30) / 2;
       const profile = el.params.profile || 'ramp';
-      const pupilHalfHeight = h * phasePlateCentralDiameterFraction(el.params.centralAreaFraction) / 2;
+      const pupilHalfHeight = h * phasePlateCentralDiameterFraction(el.params.centralAreaFraction);
       // The drawn wedge/step/bar shows which part of the beam is retarded.
       const shape = profile === 'step'
         ? `M -4,0 L 4,0 L 4,${h} L -4,${h} Z`

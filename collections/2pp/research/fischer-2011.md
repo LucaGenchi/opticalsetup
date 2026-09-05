@@ -40,3 +40,14 @@ The 80 MHz, 150 fs excitation timing, 10.48 mW illustrative excitation setting, 
 The paper-specific collection handoff transfers only the verified 810 nm wavelength and NA 1.4. It intentionally omits source power, repetition rate and pulse duration because the paper does not give one fixed supported value for those fields. The native scene’s configured-value handoff is disabled: its timing and excitation power are illustrative operating choices and must not be treated as literature inputs.
 
 This scene computes qualitative geometric rays, AOM gates, polarization state, relay geometry, objective pupil clipping/focus and sample hits. It does **not** compute stimulated-emission depletion, vectorial diffraction or PSFs, axial/radial inhibition strength, triplet or radical dynamics, photoinitiator kinetics, dose thresholds, polymer conversion, shrinkage, voxel dimensions or calibrated 3D fabrication.
+
+
+## Review addendum (2026-09-05)
+
+Re-inspected manuscript pp. 6–7 and Fig. 2. Corrected the phase-mask aperture from 12 mm to the 5.6 mm pupil diameter: the former central zone covered the entire illuminated beam, so it could not represent a central zone plus an unretarded annulus. The phase glyph now draws the same √area diameter as the phase-path calculation. The 1:1 relay image now coincides with the native objective's realized aperture stop at x = 500 mm; this is the workbench's clamped pupil proxy, not a claim about the Leica internal prescription. Repositioned the focus annotation and downstream dump to keep the objective/sample region readable while absorbing the complete divergent output cone.
+
+The depletion-only control is now tested with the CW source left enabled: its green ray reaches the resin, while no writing hits are recorded. Removing the phase zone changes optical path, not ray directions or a calculated inhibition field. The mask and relay dimensions remain free interpretation; no vectorial depletion calculation is implied.
+
+The pupil inspector now reports sampled differential phase: 0.50 waves for the intended illuminated central/outer zones, and zero for an empty, full or oversized central zone. Added the shared zero-power source guard; enabled lasers set to 0 W emit no illumination or writing traces. Review validation: 782 tests passed, all JavaScript syntax checks and `git diff --check` passed. Default and depletion-off native SVG/PNG exports were visually inspected.
+
+Collection integration review: adopted the shared native loader and authored-scene discovery, including legacy-manifest coexistence. Rebuilt all 17 collection pages. The explicit verified paper handoff contains only 810 nm and NA 1.4. The editable and locked-preview URL aliases now use the same tested route. Final integrated verification: 787 tests passed, JavaScript syntax checks and `git diff --check` passed.

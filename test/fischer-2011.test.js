@@ -5,9 +5,11 @@ import { readFile } from 'node:fs/promises';
 import {
   phasePlateCentralDiameterFraction, phasePlateOpdFraction, registry, stageOffsetAt,
 } from '../sketch/js/elements.js';
+import { objectiveStopX, objectivePupilDiameter } from '../sketch/js/objective.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { buildPaperHandoff, twoPhotonHandoffCandidates } from '../sketch/js/two-photon-handoff.js';
+import { reviewedPaperHandoff } from '../tools/2pp-collection-support.mjs';
 
 const SCENE_URL = new URL('../collections/2pp/setups/fischer-2011.json', import.meta.url);
 
@@ -35,6 +37,8 @@ test('Fischer default traces both distinct colours through the common objective 
   for (const drawable of result.drawables) {
     for (const point of drawable.pts || []) {
       assert.ok(Number.isFinite(point.x) && Number.isFinite(point.y));
+      assert.ok(point.x < 560 && point.y > 20 && point.y < 540,
+        'the post-sample dump must contain the complete divergent output cone');
     }
   }
 });
@@ -63,7 +67,10 @@ test('Fischer controls switch real traced behavior without claiming depletion ki
 
   const excitation = loaded.elements.find(element => element.id === 'excitation-source');
   excitation.params.enabled = false;
+  depletion.params.enabled = true;
   result = traceScene(loaded.elements);
+  assert.equal(result.signalHits.length, 1, 'CW depletion still reaches the sample');
+  assert.ok(Math.abs(result.signalHits[0].wavelengthNm - 532) < 0.001);
   assert.equal(result.writeHits.length, 0);
 
   const stage = loaded.elements.find(element => element.id === 'detc-peta-stage');
@@ -93,10 +100,60 @@ test('collection loader and evidence note keep interpretation and model limits e
     readFile(new URL('../sketch/js/main.js', import.meta.url), 'utf8'),
     readFile(new URL('../collections/2pp/research/fischer-2011.md', import.meta.url), 'utf8'),
   ]);
-  assert.match(main, /collections\/2pp\/setups\/\$\{paperSlug\}\.json/);
-  assert.match(main, /isDemo \|\| isPaperSetup/,
+  assert.match(main, /fetch\(collectionRequest\.path\)/);
+  assert.match(main, /isDemo \|\| collectionRequest/,
     'both the locked preview and editable literature scene must fit the full apparatus');
   assert.match(note, /Free interpretation — not specified in the paper/);
   assert.match(note, /does \*\*not\*\* compute stimulated-emission depletion/);
   assert.match(note, /not a vortex doughnut/);
+});
+
+
+test('Fischer mask spans the relayed pupil and the glyph matches its phase zone', async () => {
+  const loaded = await scene();
+  const mask = loaded.elements.find(element => element.id === 'central-pi-mask');
+  const objective = loaded.elements.find(element => element.id === 'leica-objective');
+  const relay = loaded.elements.find(element => element.id === 'common-relay-l2');
+  const source = loaded.elements.find(element => element.id === 'depletion-source');
+  assert.equal(mask.params.aperture, source.params.beamWidth,
+    'the beam must illuminate both the central phase zone and the outer annulus');
+  assert.equal(mask.params.aperture, objectivePupilDiameter(objective.params),
+    'the 1:1 relay matches the authored mask diameter to the realized objective pupil');
+  assert.equal(objective.x + objectiveStopX(objective.params), relay.x + relay.params.f,
+    'the relayed mask plane must land on the traced pupil stop');
+  const halfHeight = mask.params.aperture / 2 * Math.sqrt(0.5);
+  assert.ok(registry.phaseplate.svg(mask).includes(`M -4,${-halfHeight} L 4,${-halfHeight}`));
+  mask.params.centralAreaFraction = 1;
+  assert.ok(registry.phaseplate.svg(mask).includes('M -4,-2.8 L 4,-2.8'));
+  mask.params.centralAreaFraction = 0;
+  assert.ok(registry.phaseplate.svg(mask).includes('M -4,0 L 4,0'));
+});
+
+
+test('Fischer pupil readout measures phase contrast actually sampled by the beam', async () => {
+  const loaded = await scene();
+  const mask = loaded.elements.find(element => element.id === 'central-pi-mask');
+  const readout = registry.phaseplate.params.find(param => param.key === 'phaseFringes').readout;
+  traceScene(loaded.elements);
+  assert.match(readout(mask.params, mask), /^0\.50 at 532 nm/);
+  for (const centralAreaFraction of [0, 1]) {
+    mask.params.centralAreaFraction = centralAreaFraction;
+    traceScene(loaded.elements);
+    assert.match(readout(mask.params, mask), /^0\.00 at 532 nm/,
+      'an empty or uniformly retarded pupil has no differential phase');
+  }
+  mask.params.centralAreaFraction = 0.5;
+  mask.params.aperture = 12;
+  traceScene(loaded.elements);
+  assert.match(readout(mask.params, mask), /^0\.00 at 532 nm/,
+    'a central zone covering the entire beam must not claim a half-wave phase contrast');
+});
+
+
+test('Fischer collection transfers only its explicitly reviewed numerical subset', async () => {
+  const { papers } = JSON.parse(await readFile(new URL('../collections/2pp/papers.json', import.meta.url), 'utf8'));
+  const handoff = reviewedPaperHandoff(papers.find(paper => paper.id === 'fischer-2011'));
+  assert.deepEqual(handoff.imported.map(field => [field.key, field.value]), [
+    ['wavelengthNm', 810], ['numericalAperture', 1.4],
+  ]);
 });

@@ -55,7 +55,15 @@
         "Depletion 50 mW is before the objective; ordinary excitation 7.4–8.3 mW is not a single fixed source power.",
         "Central mask occupies 50% of the pupil area; the native meridional proxy uses the corresponding sqrt(0.5) diameter, while the physical pupil diameter and relay prescription remain unspecified."
       ],
-      "auxiliaryPath": ""
+      "auxiliaryPath": "",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 810,
+          "numericalAperture": 1.4
+        }
+      }
     },
     {
       "id": "gittard-2011",

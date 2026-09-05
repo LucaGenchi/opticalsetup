@@ -10,7 +10,11 @@
    "rot": 0,
    "label": "",
    "showLabel": false,
-   "params": { "w": 1000, "h": 520, "background": "white" }
+   "params": {
+    "w": 1000,
+    "h": 520,
+    "background": "white"
+   }
   },
   {
    "id": "fischer-title",
@@ -81,7 +85,10 @@
    "label": "circular",
    "showLabel": false,
    "labelPos": "b",
-   "params": { "a": 45, "length": 12 }
+   "params": {
+    "a": 45,
+    "length": 12
+   }
   },
   {
    "id": "excitation-relay-l1",
@@ -92,7 +99,11 @@
    "label": "L1*",
    "showLabel": true,
    "labelPos": "b",
-   "params": { "f": 100, "dia": 20, "transEff": 100 }
+   "params": {
+    "f": 100,
+    "dia": 20,
+    "transEff": 100
+   }
   },
   {
    "id": "depletion-source",
@@ -102,7 +113,7 @@
    "rot": 0,
    "label": "532 nm CW depletion",
    "showLabel": true,
-   "labelPos": "t",
+   "labelPos": "b",
    "params": {
     "enabled": true,
     "wavelength": 532,
@@ -122,7 +133,10 @@
    "label": "circular",
    "showLabel": false,
    "labelPos": "t",
-   "params": { "a": 45, "length": 12 }
+   "params": {
+    "a": 45,
+    "length": 12
+   }
   },
   {
    "id": "depletion-fold",
@@ -133,7 +147,10 @@
    "label": "fold*",
    "showLabel": true,
    "labelPos": "r",
-   "params": { "length": 20, "refl": 100 }
+   "params": {
+    "length": 20,
+    "refl": 100
+   }
   },
   {
    "id": "depletion-aom",
@@ -170,7 +187,7 @@
     "profile": "pupil",
     "centralAreaFraction": 0.5,
     "opdUm": 0.266,
-    "aperture": 12
+    "aperture": 5.6
    }
   },
   {
@@ -182,7 +199,11 @@
    "label": "L1 pupil relay*",
    "showLabel": true,
    "labelPos": "r",
-   "params": { "f": 100, "dia": 20, "transEff": 100 }
+   "params": {
+    "f": 100,
+    "dia": 20,
+    "transEff": 100
+   }
   },
   {
    "id": "wavelength-combiner",
@@ -193,7 +214,11 @@
    "label": "dichroic combiner*",
    "showLabel": true,
    "labelPos": "b",
-   "params": { "dtype": "longpass", "cutoff": 650, "length": 30 }
+   "params": {
+    "dtype": "longpass",
+    "cutoff": 650,
+    "length": 30
+   }
   },
   {
    "id": "common-relay-l2",
@@ -204,16 +229,20 @@
    "label": "L2 · mask → pupil*",
    "showLabel": true,
    "labelPos": "b",
-   "params": { "f": 100, "dia": 20, "transEff": 100 }
+   "params": {
+    "f": 100,
+    "dia": 20,
+    "transEff": 100
+   }
   },
   {
    "id": "leica-objective",
    "type": "objective",
-   "x": 500,
+   "x": 493,
    "y": 420,
    "rot": 0,
    "label": "NA 1.4",
-   "showLabel": true,
+   "showLabel": false,
    "labelPos": "t",
    "params": {
     "efl": 2,
@@ -228,11 +257,11 @@
   {
    "id": "detc-peta-stage",
    "type": "stage",
-   "x": 516.13,
+   "x": 509.13,
    "y": 420,
    "rot": 90,
    "label": "DETC/PETA · 100 µm/s",
-   "showLabel": true,
+   "showLabel": false,
    "labelPos": "b",
    "params": {
     "pzMode": "xy",
@@ -251,13 +280,15 @@
   {
    "id": "post-sample-dump",
    "type": "beamdump",
-   "x": 540,
+   "x": 533,
    "y": 420,
    "rot": 0,
    "label": "dump*",
    "showLabel": false,
    "labelPos": "b",
-   "params": { "aperture": 70 }
+   "params": {
+    "aperture": 70
+   }
   },
   {
    "id": "fischer-mechanism-note",
@@ -283,6 +314,20 @@
    "showLabel": false,
    "params": {
     "text": "### Controls\n1. Disable **532 nm depletion** → green path off.\n2. Set **pupil area** or **OPD** to 0 → mask off;\n   geometric focus unchanged (diffraction unsupported).\n3. Set stage to **Static** → scan and sweep stop.\n4. Disable **810 nm excitation** → no voxel arrivals.\n\n*Free interpretation — not specified in the paper:*\n80 MHz, 150 fs, 10.48 mW excitation; beam size;\nrelay lenses; fold/combiner; EFL/WD/oil; scan travel; dump.\nConfigured-value handoff is off; use the paper page.",
+    "fontSize": 8,
+    "fill": "#334155"
+   }
+  },
+  {
+   "id": "fischer-focus-note",
+   "type": "textlabel",
+   "x": 440,
+   "y": 463,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "NA 1.4 objective → DETC/PETA\n100 µm/s transverse stage scan",
     "fontSize": 8,
     "fill": "#334155"
    }
