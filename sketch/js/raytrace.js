@@ -2675,13 +2675,36 @@ function interact(ray, hit) {
     case 'dmd': {
       const mid = mul(add(s.a, s.b), 0.5);
       const pitch = Math.max(0.1, data.pitch || 8);
-      const h = dot(sub(hit.p, mid), t) + (data.length || 40) / 2 + pitch / 2;
+      const phaseShift = Math.min(1, Math.max(0, data.patternPhase || 0)) * pitch;
+      const h = dot(sub(hit.p, mid), t) + (data.length || 40) / 2 + pitch / 2 + phaseShift;
       const phase = ((h % pitch) + pitch) % pitch / pitch;
       const on = phase < Math.min(0.95, Math.max(0.05, data.duty ?? 0.5));
       if (!on && !data.routeOff) return [];
       const base = reflect(d, n);
       const angle = (on ? 1 : -1) * 2 * (data.tilt || 12) * D2R;
-      return [{ d: rotv(base, angle), tag: on ? 'on' : 'off' }];
+      const routed = rotv(base, angle);
+      if (!on || !data.disperseSpectrum) return [{ d: routed, tag: on ? 'on' : 'off' }];
+
+      // A DMD's micromirror lattice is also a diffraction grating. Model only
+      // the carrier's first-order geometric consequence: sampled wavelengths
+      // leave at bounded relative angles about the configured design colour.
+      // The downstream relay may re-image those rays, but this does not solve
+      // pulse-front tilt or temporal recompression at the image plane.
+      const lines = Math.min(1000, Math.max(1, data.carrierLinesPerMm || 92.6));
+      const spacingNm = 1e6 / lines;
+      const order = Math.min(20, Math.max(-20, Math.round(data.carrierOrder || 0)));
+      const design = Math.min(4000, Math.max(100, data.designWavelengthNm || ray.wl));
+      return wlSamples(ray).map((sample, index) => {
+        const sinDelta = Math.min(0.999999, Math.max(-0.999999,
+          order * (sample.wl - design) / spacingNm));
+        return {
+          d: rotv(routed, Math.asin(sinDelta)),
+          wl: sample.wl, bw: 0, spec: null,
+          intensity: ray.intensity * sample.weight,
+          keepWeak: true,
+          tag: `onw${index}`,
+        };
+      });
     }
     case 'dm': {
       let out = reflect(d, n);

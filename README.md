@@ -273,5 +273,6 @@ npm test               # runs the regression suite
 
 The [2PP research workspace](collections/2pp/README.md) preserves the references,
 figure reviews, reported parameters, optical sequences and open questions for
-17 benchmark references. Generated setups and preset links have been removed.
-Future reconstructions will be handled individually from the source documents.
+17 benchmark references. Rejected batch-generated setups were removed; new
+reconstructions are handled individually from the source documents, beginning
+with the reviewed Somers 2021 native scene.

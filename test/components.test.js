@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, registry, retroOffsetAt } from '../sketch/js/elements.js';
+import { createElement, dmdPatternPhaseAt, registry, retroOffsetAt } from '../sketch/js/elements.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { C_MM_PER_NS } from '../sketch/js/pulses.js';
+import { parseSketch } from '../sketch/js/state.js';
 
 const paths = elements => traceAll(elements).filter(d => d.type === 'path');
 const angleOfLastSegment = path => {
@@ -51,6 +52,52 @@ test('DMD routes ON and OFF micromirror stripes into distinct orders', () => {
 
   dmd.params.routeOff = false;
   assert.equal(paths([offLaser, dmd]).filter(p => Math.abs(p.pts[0].x - 171) < 1e-6).length, 0);
+});
+
+test('DMD carrier proxy disperses a finite broadband ON order and preserves total weight', () => {
+  const laser = createElement('pulsedlaser', 0, 0);
+  Object.assign(laser.params, {
+    beamMode: 'line', wavelength: 800, transformLimited: false, bandwidth: 22,
+  });
+  const dmd = createElement('dmd', 180, 0);
+  Object.assign(dmd.params, {
+    disperseSpectrum: true, carrierLinesPerMm: 92.6, carrierOrder: 5,
+    designWavelengthNm: 800,
+  });
+  const detector = createElement('detector', 100, -24);
+  detector.rot = 180;
+  detector.params.aperture = 30;
+
+  const outgoing = paths([laser, dmd, detector]).filter(path => Math.abs(path.pts[0].x - 171) < 1e-6);
+  assert.equal(outgoing.length, 5);
+  const angles = outgoing.map(angleOfLastSegment);
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.5, 'the 22 nm band should visibly fan out');
+  assert.ok(outgoing.every(path => path.pts.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))));
+  assert.ok(Math.abs(detectorReading(detector.id).signal - 1) < 1e-9);
+
+  dmd.params.disperseSpectrum = false;
+  assert.equal(paths([laser, dmd, detector]).filter(path => Math.abs(path.pts[0].x - 171) < 1e-6).length, 1);
+});
+
+test('DMD mask preview phase is periodic and malformed dispersion controls normalize safely', () => {
+  assert.equal(dmdPatternPhaseAt({}, 2), 0);
+  const params = { sequence: true, sequenceHz: 0.5 };
+  assert.equal(dmdPatternPhaseAt(params, 0), 0);
+  assert.equal(dmdPatternPhaseAt(params, 1), 0.5);
+  assert.equal(dmdPatternPhaseAt(params, 2), 0);
+  assert.equal(dmdPatternPhaseAt({ sequence: true, sequenceHz: Infinity }, Infinity), 0);
+
+  const dmd = createElement('dmd', 180, 0);
+  Object.assign(dmd.params, {
+    sequence: true, sequenceHz: 1e9, carrierLinesPerMm: -5,
+    carrierOrder: 999, designWavelengthNm: Infinity,
+  });
+  const [normalized] = JSON.parse(JSON.stringify({ elements: [dmd] })).elements;
+  const scene = parseSketch(JSON.stringify({ elements: [normalized] }), registry);
+  assert.equal(scene.elements[0].params.sequenceHz, 10);
+  assert.equal(scene.elements[0].params.carrierLinesPerMm, 1);
+  assert.equal(scene.elements[0].params.carrierOrder, 20);
+  assert.equal(scene.elements[0].params.designWavelengthNm, 800);
 });
 
 test('deformable mirror defocuses an off-axis reflected ray through its focus', () => {

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "setups": [
+    {
+      "id": "somers-2021",
+      "name": "Somers 2021 — spatiotemporal-focus projection printer",
+      "scene": "somers-2021.json",
+      "research": "../research/somers-2021.md"
+    }
+  ]
+}
