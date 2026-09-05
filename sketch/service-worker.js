@@ -20,7 +20,6 @@ const PRECACHE_PATHS = [
   "./js/canvas.js",
   "./js/clipboard.js",
   "./js/collection-loader.js",
-  "./js/collection-setups.js",
   "./js/lamps.js",
   "./js/probe.js",
   "./js/community-data.js",
