@@ -9,6 +9,7 @@ import {
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength,
+  amplitudeMaskLevels,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
@@ -2745,6 +2746,12 @@ function interact(ray, hit) {
             } else {
               next.push({ ...r, d: rotv(r.d, jitter(ray.sample, sid) * div), speckle: true });
             }
+          } else if (ly.type === 'amplitude') {
+            const levels = amplitudeMaskLevels(ly.levels);
+            const h = dot(sub(hit.p, mid), t);
+            const u = Math.min(1 - Number.EPSILON, Math.max(0, (h + L / 2) / L));
+            const idx = Math.min(levels.length - 1, Math.floor(u * levels.length));
+            next.push({ ...r, intensity: r.intensity * levels[idx], tag: r.tag + 'a' + idx });
           } else {
             next.push(r);
           }

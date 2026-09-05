@@ -84,3 +84,26 @@ test('metalens array retains independent axes and inverse-wavelength focal lengt
   assert.equal(registry.metalensarray.surfaces(normalized).length,8);
   assert.equal(normalized.params.f,1);
 });
+
+test('SLM amplitude bands visibly gate matching ray slices', () => {
+  const slm = mk('slm', 100, 0, { transmissive: true, length: 40,
+    layers: [{ type: 'amplitude', levels: '1,0.5,0' }] });
+  const detector = mk('detector', 180, 0, { aperture: 100 });
+  const signals = [-14, 0, 14].map(y => {
+    const source = mk('cwlaser', 0, y, { beamMode: 'line' });
+    traceScene([source, slm, detector]);
+    return detectorReading(detector.id)?.signal ?? 0;
+  });
+  assert.ok(Math.abs(signals[0] - 1) < 1e-8);
+  assert.ok(Math.abs(signals[1] - 0.5) < 1e-8);
+  assert.equal(signals[2], 0);
+  assert.match(registry.slm.svg(slm), /data-amplitude-band="2"/);
+});
+
+test('malformed SLM amplitude levels normalize to finite bounded values', () => {
+  const slm = mk('slm', 100, 0, { layers: [{ type: 'amplitude', levels: '2,-1,nope,0.25,Infinity' }] });
+  const normalized = parseSketch(JSON.stringify({ elements: [slm] }), registry).elements[0];
+  assert.equal(normalized.params.layers[0].levels, '1,0,0.25');
+  const result = traceScene([mk('cwlaser', 0, 0), normalized]);
+  assert.ok(result.drawables.every(s => (s.pts || []).every(p => [p.x, p.y].every(Number.isFinite))));
+});

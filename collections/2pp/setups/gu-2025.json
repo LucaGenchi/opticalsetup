@@ -1,0 +1,538 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "frame",
+   "type": "figureframe",
+   "x": 430,
+   "y": 330,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "w": 830,
+    "h": 620,
+    "background": "white"
+   }
+  },
+  {
+   "id": "title",
+   "type": "textlabel",
+   "x": 40,
+   "y": 38,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "text": "**Gu et al. 2025 — metalens-array two-photon lithography**\nRepresentative 2D meridional trace · default: 370×350 / NA 0.8 configuration",
+    "fontSize": 13,
+    "fill": "#26333a"
+   }
+  },
+  {
+   "id": "laser",
+   "type": "pulsedlaser",
+   "x": 78,
+   "y": 105,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "enabled": true,
+    "wavelength": 800,
+    "avgPowerW": 7,
+    "beamMode": "beam",
+    "beamWidth": 8,
+    "repRateMHz": 0.001,
+    "pulsePhaseNs": 0,
+    "pulseWidthFs": 35,
+    "transformLimited": false,
+    "pulseShape": "gauss",
+    "bandwidth": 20,
+    "pol": 90,
+    "autoColor": true,
+    "color": "#e02020",
+    "showPulse": true,
+    "temporalMode": "pulsed"
+   }
+  },
+  {
+   "id": "sourceLabel",
+   "type": "textlabel",
+   "x": 28,
+   "y": 128,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "text": "Solstice · 800 nm · 35 fs\n1 kHz · 7 W total",
+    "fontSize": 8,
+    "fill": "#40525b"
+   }
+  },
+  {
+   "id": "hwp1",
+   "type": "hwp",
+   "x": 145,
+   "y": 105,
+   "rot": 0,
+   "label": "HWP1",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "a": 45,
+    "length": 22
+   }
+  },
+  {
+   "id": "pbs1",
+   "type": "pbs",
+   "x": 185,
+   "y": 105,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "size": 24
+   }
+  },
+  {
+   "id": "be1",
+   "type": "lensc",
+   "x": 255,
+   "y": 105,
+   "rot": 0,
+   "label": "−100 mm",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "f": -100,
+    "dia": 20,
+    "transEff": 99
+   }
+  },
+  {
+   "id": "be2",
+   "type": "lens",
+   "x": 405,
+   "y": 105,
+   "rot": 0,
+   "label": "+250 mm",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "f": 250,
+    "dia": 50,
+    "transEff": 99
+   }
+  },
+  {
+   "id": "pbs2",
+   "type": "pbs",
+   "x": 525,
+   "y": 105,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "size": 30
+   }
+  },
+  {
+   "id": "qwp1",
+   "type": "qwp",
+   "x": 575,
+   "y": 105,
+   "rot": 0,
+   "label": "QWP1 · double pass",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "a": 45,
+    "length": 34
+   }
+  },
+  {
+   "id": "slm",
+   "type": "slm",
+   "x": 645,
+   "y": 105,
+   "rot": 0,
+   "label": "LC-SLM · amplitude bands",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "transmissive": false,
+    "length": 48,
+    "zeroOrder": false,
+    "zeroFrac": 0.1,
+    "layers": [
+     {
+      "type": "amplitude",
+      "n": 3,
+      "f": 50,
+      "lines": 600,
+      "orders": "1",
+      "angle": 5,
+      "div": 8,
+      "levels": "1,0.72,0,0.38,0.92,0.18,1"
+     }
+    ]
+   }
+  },
+  {
+   "id": "qwp2",
+   "type": "qwp",
+   "x": 525,
+   "y": 165,
+   "rot": 90,
+   "label": "QWP2",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "a": 45,
+    "length": 36
+   }
+  },
+  {
+   "id": "l1",
+   "type": "lens",
+   "x": 525,
+   "y": 220,
+   "rot": 90,
+   "label": "L1 · 75 mm",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "f": 75,
+    "dia": 42,
+    "transEff": 99
+   }
+  },
+  {
+   "id": "window1",
+   "type": "thicklens",
+   "x": 525,
+   "y": 282,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "r1": 0,
+    "r2": 0,
+    "thickness": 1,
+    "dia": 30,
+    "glass": "silica",
+    "transEff": 99
+   }
+  },
+  {
+   "id": "window2",
+   "type": "thicklens",
+   "x": 525,
+   "y": 308,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "r1": 0,
+    "r2": 0,
+    "thickness": 1,
+    "dia": 30,
+    "glass": "silica",
+    "transEff": 99
+   }
+  },
+  {
+   "id": "vacuumLabel",
+   "type": "textlabel",
+   "x": 554,
+   "y": 278,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "text": "**Vacuum focus**\nCell suppresses air ionization.\nWindows are interpreted fused silica.",
+    "fontSize": 8,
+    "fill": "#52626b"
+   }
+  },
+  {
+   "id": "l2",
+   "type": "lens",
+   "x": 525,
+   "y": 495,
+   "rot": 90,
+   "label": "L2 · 200 mm",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "f": 200,
+    "dia": 92,
+    "transEff": 99
+   }
+  },
+  {
+   "id": "fold",
+   "type": "mirror",
+   "x": 552,
+   "y": 570,
+   "rot": 45,
+   "label": "Fold",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "length": 86,
+    "refl": 99,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "ml2",
+   "type": "metalensarray",
+   "x": 350,
+   "y": 570,
+   "rot": 0,
+   "label": "ML2 active · 370×350 · 100 µm · NA 0.8",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "length": 63,
+    "count": 7,
+    "f": 40,
+    "designWavelength": 800,
+    "focusEff": 49.3
+   }
+  },
+  {
+   "id": "stage",
+   "type": "stage",
+   "x": 310,
+   "y": 570,
+   "rot": 90,
+   "label": "Substrate + resin on XYZ stage",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "pzMode": "sync",
+    "pzTravelXY": 8,
+    "pzFreqXY": 0.15,
+    "pzTravelZ": 3,
+    "pzFreqZ": 0.1,
+    "pzZSteps": 5,
+    "aperture": 76,
+    "sampleKind": "generic",
+    "specimenType": "resin",
+    "channels": [],
+    "showSignalSpot": true,
+    "thickness": 2,
+    "voxelPreview": true,
+    "voxelSize": 0.8,
+    "transmitExc": true,
+    "transmission": 0.05,
+    "mode": "none",
+    "fluorWl": 520,
+    "carsWl": 660,
+    "signalEff": 0.1
+   }
+  },
+  {
+   "id": "ml1",
+   "type": "metalensarray",
+   "x": 805,
+   "y": 255,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "length": 56,
+    "count": 5,
+    "f": 35,
+    "designWavelength": 800,
+    "focusEff": 49.3
+   }
+  },
+  {
+   "id": "ml1Note",
+   "type": "textlabel",
+   "x": 640,
+   "y": 235,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "text": "**Two reported heads**\nML2 active: 129,500 foci; 75:200 relay;\n3×3 SLM pixels/lens; 100 µm; NA 0.8.\nML1 parked above: 2,500 foci; 200:200 relay;\n16×16 pixels/lens; 200 µm; NA 1.0.\n2D slice: 7 / 5 representative lenslets.",
+    "fontSize": 8.5,
+    "fill": "#40525b"
+   }
+  },
+  {
+   "id": "obsTitle",
+   "type": "textlabel",
+   "x": 635,
+   "y": 384,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "text": "**Observation — offset**\nNot the writing objective.\nSample return is not modeled.",
+    "fontSize": 8,
+    "fill": "#52626b"
+   }
+  },
+  {
+   "id": "obsCam",
+   "type": "camera",
+   "x": 745,
+   "y": 365,
+   "rot": 270,
+   "label": "CMOS",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "ch": 24,
+    "pixels": 24,
+    "interference": false,
+    "profileScale": "fit"
+   }
+  },
+  {
+   "id": "obsL3",
+   "type": "lens",
+   "x": 745,
+   "y": 405,
+   "rot": 90,
+   "label": "L3",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "f": 35,
+    "dia": 22,
+    "transEff": 99
+   }
+  },
+  {
+   "id": "obsLed",
+   "type": "pointsource",
+   "x": 650,
+   "y": 455,
+   "rot": 0,
+   "label": "LED",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "displayScale": 0.75,
+    "sourceKind": "point",
+    "wavelength": 620,
+    "bwMode": "band",
+    "bandwidth": 80,
+    "lampType": "hg",
+    "spread": 16,
+    "nrays": 7,
+    "autoColor": true,
+    "color": "#e02020"
+   }
+  },
+  {
+   "id": "obsBs",
+   "type": "bs",
+   "x": 745,
+   "y": 455,
+   "rot": 90,
+   "label": "BS",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "ratio": 0.5,
+    "size": 25.4
+   }
+  },
+  {
+   "id": "obsDump",
+   "type": "beamdump",
+   "x": 815,
+   "y": 455,
+   "rot": 0,
+   "label": "illumination dump",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "aperture": 24
+   }
+  },
+  {
+   "id": "obsObj",
+   "type": "objective",
+   "x": 745,
+   "y": 515,
+   "rot": 90,
+   "label": "Observe",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "efl": 10,
+    "workingDistance": 5,
+    "immersion": "air",
+    "immersionIndex": 1.333,
+    "na": 0.5,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 11
+   }
+  },
+  {
+   "id": "obsSample",
+   "type": "sample",
+   "x": 745,
+   "y": 555,
+   "rot": 0,
+   "label": "Sample (offset)",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "aperture": 42,
+    "specimenType": "linear",
+    "channels": [],
+    "showSignalSpot": true,
+    "thickness": 2,
+    "voxelPreview": false,
+    "voxelSize": 0.6,
+    "transmitExc": true,
+    "transmission": 0.8,
+    "mode": "none",
+    "fluorWl": 520,
+    "carsWl": 660,
+    "signalEff": 0.1
+   }
+  },
+  {
+   "id": "controls",
+   "type": "textlabel",
+   "x": 42,
+   "y": 400,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": {
+    "text": "**Try these controls**\n1. Laser → “Emit traced rays” off: all writing rays disappear.\n2. SLM → amplitude levels `1,1,1,1,1,1,1`: uniform representative foci. Use zeros to gate selected foci.\n3. ML2 → increase focal length: the focus moves; the SLM itself does not create the fan.\n4. Stage → Static / XY / XYZ sync: the substrate moves through fixed metalens foci.\n\n_Free interpretation — display-scale focal lengths, stage travel, sample transmission,\nwindow material/thickness and compact fold are not specified in the paper._",
+    "fontSize": 8.5,
+    "fill": "#40525b"
+   }
+  }
+ ],
+ "beams": []
+}
