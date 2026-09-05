@@ -70,3 +70,31 @@ test('Dong scene reloads equivalently and does not export invented pulse setting
   const trace = traceScene(reloaded.elements, reloaded.beams);
   assert.deepEqual(twoPhotonHandoffCandidates(reloaded.elements, trace.signalHits, 'dong-stage'), []);
 });
+
+
+test('array writing groups survive subsequent diffraction without merging distinct orders', async () => {
+  const scene = await loadScene();
+  const source = scene.elements.find(element => element.id === 'dong-source');
+  source.params.transformLimited = false;
+  source.params.bandwidth = 0;
+  const array = scene.elements.find(element => element.id === 'dong-array');
+  array.type = 'slm';
+  array.params = { length: 40, transmissive: true, zeroOrder: false, layers: [
+    { type: 'lensarray', n: 4, f: 60 },
+    { type: 'grating', lines: 10, orders: '-1,1' },
+  ] };
+  let result = traceScene(scene.elements);
+  assert.equal(result.writeHits.length, 8, 'four illuminated lenslets each retain both diffraction orders');
+  assert.equal(new Set(result.writeHits.map(hit => hit.writeGroup)).size, 8);
+  array.params.layers[1].orders = '1';
+  result = traceScene(scene.elements);
+  assert.equal(result.writeHits.length, 4, 'one order keeps one group per illuminated lenslet');
+});
+
+test('Dong interpreted source remains excluded from handoff when edited into accepted ranges', async () => {
+  const scene = await loadScene();
+  scene.elements.find(element => element.id === 'dong-source').params.repRateMHz = 80;
+  const loaded = parseSketch(JSON.stringify(scene), registry);
+  const result = traceScene(loaded.elements);
+  assert.deepEqual(twoPhotonHandoffCandidates(loaded.elements, result.signalHits, 'dong-stage'), []);
+});

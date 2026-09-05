@@ -2745,6 +2745,7 @@ function interact(ray, hit) {
                   wl: wls[wi].wl, bw: 0, spec: null, speckle: r.speckle,
                   intensity: r.intensity * (m === 0 ? 1 : wls[wi].weight) / orders.length,
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
+                  writeGroup: r.writeGroup,
                 });
                 if (m === 0 && wls.length > 1) break;
               }
@@ -2982,7 +2983,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           writeHits.push({
             stageId: hit.surface.el.id,
             sourceId: r.sourceId,
-            writeGroup: groupedWrite ? r.writeGroup : null,
+            writeGroup: groupedWrite ? `${r.writeGroup}|${r.sig}` : null,
             x: hit.p.x,
             y: hit.p.y,
             opl: r.opl,
