@@ -117,7 +117,13 @@ function inspectorSection(key, title, content, { open = true, meta = '' } = {}) 
   </details>`;
 }
 
-const LAYER_TYPES = [['lensarray', 'Lens array'], ['grating', 'Grating'], ['steer', 'Beam steer'], ['speckle', 'Speckle / diffuser']];
+const LAYER_TYPES = [
+  ['focusgrid', 'Square focus grid (CGH proxy)'],
+  ['lensarray', 'Lens array'],
+  ['grating', 'Grating'],
+  ['steer', 'Beam steer'],
+  ['speckle', 'Speckle / diffuser'],
+];
 
 const positiveMod = (value, modulus) => ((value % modulus) + modulus) % modulus;
 
@@ -446,9 +452,13 @@ function layersHTML(layers) {
       <select data-li="${i}" data-lk="type" aria-label="Structure ${i + 1} type">` +
       LAYER_TYPES.map(([v, l]) => `<option value="${v}" ${v === ly.type ? 'selected' : ''}>${l}</option>`).join('') +
       `</select><button type="button" class="layerdel" data-ldel="${i}" title="Remove this structure" aria-label="Remove structure ${i + 1}">✕</button></div>`;
-    if (ly.type === 'lensarray') {
-      h += numberField('Nr. of lenses (1–8)', `data-li="${i}" data-lk="n"`, ly.n, { min: 1, max: 8, step: 1 });
+    if (ly.type === 'lensarray' || ly.type === 'focusgrid') {
+      const countLabel = ly.type === 'focusgrid' ? 'Foci per side (1–8)' : 'Nr. of lenses (1–8)';
+      h += numberField(countLabel, `data-li="${i}" data-lk="n"`, ly.n, { min: 1, max: 8, step: 1 });
       h += field('Focal length (mm)', `<input type="number" data-li="${i}" data-lk="f" min="-3000" max="3000" step="5" value="${ly.f}">`);
+      if (ly.type === 'focusgrid') {
+        h += `<div class="hint">N×N target pattern; this 2D workbench traces the N in-plane focus rows. The other N columns are shown on the SLM but are out of plane.</div>`;
+      }
     } else if (ly.type === 'grating') {
       h += field('Lines / mm', `<input type="number" data-li="${i}" data-lk="lines" min="10" max="3600" step="10" value="${ly.lines}">`);
       h += field('Orders', `<input type="text" data-li="${i}" data-lk="orders" maxlength="200" value="${esc(ly.orders)}">`);

@@ -1,0 +1,317 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "gittard-frame",
+   "type": "figureframe",
+   "x": 370,
+   "y": 235,
+   "rot": 0,
+   "params": { "w": 720, "h": 360, "background": "white" }
+  },
+  {
+   "id": "gittard-title",
+   "type": "textlabel",
+   "x": 34,
+   "y": 70,
+   "rot": 0,
+   "params": {
+    "text": "# Gittard et al. 2011 — multifocus 2PP\n**Computed 2D section:** reflective SLM focus grid → moving XY galvos → oil objective → resin",
+    "fontSize": 15,
+    "fill": "#263238"
+   }
+  },
+  {
+   "id": "gittard-model-note",
+   "type": "textlabel",
+   "x": 570,
+   "y": 70,
+   "rot": 0,
+   "params": {
+    "text": "**Paper:** 4×4 foci; 8–12 mW/spot; 1 mm/s\n**Model:** four in-plane rows; out-of-plane columns shown on SLM\nNo CGH optimization, diffraction efficiency, 3D PSF, dose or curing.",
+    "fontSize": 10,
+    "fill": "#334155"
+   }
+  },
+  {
+   "id": "gittard-source-note",
+   "type": "textlabel",
+   "x": 34,
+   "y": 350,
+   "rot": 0,
+   "params": {
+    "text": "**Reported source plane:** 4 W, 780 nm, 80 MHz.\nScene uses 150 fs only as the reported upper-bound proxy (`<150 fs`), not an exact paper value.\nFig. 1 instead says `<140 fs` and HWP/polarizer; prose says LC modulator/PBS.",
+    "fontSize": 9,
+    "fill": "#475569"
+   }
+  },
+  {
+   "id": "gittard-interpretation-key",
+   "type": "textlabel",
+   "x": 390,
+   "y": 397,
+   "rot": 0,
+   "params": {
+    "text": "**Free interpretation — not specified in the paper:** focal lengths, 8° carrier, relay ratio, galvo rates/ranges, CMOS pickoff/filter and illumination spectrum.",
+    "fontSize": 9,
+    "fill": "#7c3aed"
+   }
+  },
+  {
+   "id": "gittard-laser",
+   "type": "pulsedlaser",
+   "x": 80,
+   "y": 300,
+   "rot": 0,
+   "label": "Chameleon · 780 nm · 80 MHz · source spec 4 W",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "enabled": true,
+    "wavelength": 780,
+    "avgPowerW": 4,
+    "beamMode": "beam",
+    "beamWidth": 8,
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "transformLimited": false,
+    "bandwidth": 0,
+    "pulseShape": "gauss",
+    "pol": 0,
+    "showPulse": true
+   }
+  },
+  {
+   "id": "gittard-attenuator",
+   "type": "eom",
+   "x": 160,
+   "y": 300,
+   "rot": 0,
+   "label": "LC attenuator proxy · reported; native retarder approximation",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "aperture": 20,
+    "modulate": true,
+    "driveMode": "static",
+    "retardance": 90,
+    "a": 45
+   }
+  },
+  {
+   "id": "gittard-pbs",
+   "type": "pbs",
+   "x": 200,
+   "y": 300,
+   "rot": 0,
+   "label": "PBS · reported in prose",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": { "size": 20 }
+  },
+  {
+   "id": "gittard-expander",
+   "type": "telescope",
+   "x": 270,
+   "y": 300,
+   "rot": 0,
+   "label": "Beam expander · free interpretation: 20/40 mm",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": { "f1": 20, "f2": 40, "dia": 30, "transEff": 100 }
+  },
+  {
+   "id": "gittard-slm",
+   "type": "slm",
+   "x": 360,
+   "y": 310,
+   "rot": 45,
+   "label": "LC-R2500 · tiled 128×128 CGH · 4×4 target",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "transmissive": false,
+    "length": 20,
+    "zeroOrder": true,
+    "zeroFrac": 0.7,
+    "layers": [
+     { "type": "steer", "angle": 8 },
+     { "type": "focusgrid", "n": 4, "f": 500 }
+    ]
+   }
+  },
+  {
+   "id": "gittard-zero-dump",
+   "type": "beamdump",
+   "x": 349,
+   "y": 180,
+   "rot": 90,
+   "label": "Plane P · zero order removed",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": { "aperture": 12 }
+  },
+  {
+   "id": "gittard-order-stop",
+   "type": "slit",
+   "x": 372,
+   "y": 180,
+   "rot": 90,
+   "label": "First-order selection · free interpretation: 24 mm opening",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": { "gap": 24, "length": 50 }
+  },
+  {
+   "id": "gittard-galvo-x",
+   "type": "galvo",
+   "x": 373,
+   "y": 140,
+   "rot": 229,
+   "label": "Galvo X · free interpretation: 100 Hz, ±0.02°",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "length": 60,
+    "commandAngle": 0,
+    "scanMode": "triangle",
+    "scanAmplitude": 0.02,
+    "scanFrequencyHz": 100,
+    "scanPhaseDeg": 0
+   }
+  },
+  {
+   "id": "gittard-scan-relay",
+   "type": "telescope",
+   "x": 455,
+   "y": 140,
+   "rot": 0,
+   "label": "Scanner/pupil relay · free interpretation: 40/10 mm",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": { "f1": 40, "f2": 10, "dia": 50, "transEff": 100 }
+  },
+  {
+   "id": "gittard-galvo-y",
+   "type": "galvo",
+   "x": 540,
+   "y": 140,
+   "rot": 315,
+   "label": "Galvo Y · free interpretation: 80 Hz, ±0.02°",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "length": 60,
+    "commandAngle": 0,
+    "scanMode": "triangle",
+    "scanAmplitude": 0.02,
+    "scanFrequencyHz": 80,
+    "scanPhaseDeg": 0
+   }
+  },
+  {
+   "id": "gittard-observation-pickoff",
+   "type": "bs",
+   "x": 540,
+   "y": 220,
+   "rot": 0,
+   "label": "Observation pickoff · free interpretation",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": { "ratio": 0.8, "size": 30 }
+  },
+  {
+   "id": "gittard-camera-filter",
+   "type": "filter",
+   "x": 620,
+   "y": 220,
+   "rot": 0,
+   "label": "Visible isolation · free interpretation",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": { "ftype": "shortpass", "cutoff": 650, "length": 30 }
+  },
+  {
+   "id": "gittard-cmos",
+   "type": "camera",
+   "x": 700,
+   "y": 220,
+   "rot": 0,
+   "label": "CMOS camera · reported (not APD)",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": { "ch": 40, "pixels": 32, "interference": false, "profileScale": "fit" }
+  },
+  {
+   "id": "gittard-objective",
+   "type": "objective",
+   "x": 540,
+   "y": 270,
+   "rot": 90,
+   "label": "Representative Venus run · 100× oil · NA 1.40",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "efl": 2,
+    "workingDistance": 0.13,
+    "immersion": "oil",
+    "na": 1.4,
+    "frontAperture": 6,
+    "showAcceptance": false,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "gittard-stage",
+   "type": "stage",
+   "x": 540,
+   "y": 286.13,
+   "rot": 0,
+   "label": "Zr-based resin on XYZ stage · 1 mm/s reported scan",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "pzMode": "static",
+    "aperture": 80,
+    "specimenType": "resin",
+    "transmitExc": true,
+    "transmission": 0.8,
+    "showSignalSpot": true,
+    "voxelPreview": true,
+    "voxelSize": 0.1
+   }
+  },
+  {
+   "id": "gittard-illumination-lens",
+   "type": "lens",
+   "x": 540,
+   "y": 330,
+   "rot": 90,
+   "label": "Transmission condenser · free interpretation: 30 mm",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": { "f": 30, "dia": 50, "transEff": 100 }
+  },
+  {
+   "id": "gittard-illumination",
+   "type": "pointsource",
+   "x": 540,
+   "y": 360,
+   "rot": 270,
+   "label": "Transmission illumination · reported; spectrum unspecified",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "displayScale": 0.7,
+    "sourceKind": "point",
+    "wavelength": 550,
+    "bwMode": "mono",
+    "spread": 12,
+    "nrays": 9,
+    "autoColor": true
+   }
+  }
+ ],
+ "beams": []
+}

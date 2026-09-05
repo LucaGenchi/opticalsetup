@@ -3171,7 +3171,20 @@ export const registry = {
     svg(el) {
       const L = el.params.length / 2;
       let px = '';
-      for (let y = -L + 2; y < L - 1; y += 5) px += `<line x1="-11" y1="${y}" x2="-7" y2="${y}" stroke="#4ac0b0" stroke-width="2.5"/>`;
+      const focusGrid = (el.params.layers || []).find(layer => layer.type === 'focusgrid');
+      if (focusGrid) {
+        const n = Math.min(8, Math.max(1, Math.round(Number(focusGrid.n) || 1)));
+        const gx0 = -7, gx1 = 7, gy0 = -L + 3, gy1 = L - 3;
+        for (let row = 0; row < n; row++) {
+          const y = n === 1 ? 0 : gy0 + (gy1 - gy0) * row / (n - 1);
+          for (let col = 0; col < n; col++) {
+            const x = n === 1 ? 0 : gx0 + (gx1 - gx0) * col / (n - 1);
+            px += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="1.25" fill="#67e8d0"/>`;
+          }
+        }
+      } else {
+        for (let y = -L + 2; y < L - 1; y += 5) px += `<line x1="-11" y1="${y}" x2="-7" y2="${y}" stroke="#4ac0b0" stroke-width="2.5"/>`;
+      }
       return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/>` + px +
         `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">SLM</text>`;
     },
@@ -4752,7 +4765,7 @@ const ELEMENT_HELP = {
   beamdump: 'Absorbs incident rays.',
   blocker: 'Absorbs rays but stays hidden in exported figures.',
   phaseplate: 'Retards part of the beam without bending it \u2014 invisible on its own, and the thing an interferometer exists to reveal.',
-  slm: 'Reflects by default and can overlay lens-array, grating, steering, or speckle functions.',
+  slm: 'Reflects by default and can overlay a square-focus CGH proxy, lens-array, grating, steering, or speckle functions. A square grid traces only its in-plane rows in this 2D workbench.',
   metasurface: 'A patterned layer on a thin transparent carrier, working in transmission by default. Overlays the same lens-array, grating, steering, and speckle functions as the SLM, with an optional undiffracted zeroth order — but the phase profile is fixed at fabrication rather than programmable.',
   dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
