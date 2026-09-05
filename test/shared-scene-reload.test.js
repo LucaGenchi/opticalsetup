@@ -110,16 +110,70 @@ test('a share URL describes the scene as it settles, not as it was clicked', asy
   assert.match(still.url, /unchanged$/);
 });
 
-test('the share handler only writes history once the scene has settled', async () => {
+test('the share handler builds its URL through the settling helper', () => {
   // Structural: the guard lives inside a DOM click handler, so assert the
-  // shape rather than reimplementing it. Installing the fragment
-  // unconditionally is the regression that matters.
+  // shape rather than reimplementing it. Building the URL straight from
+  // serialize() is the regression that matters -- the ordering of the
+  // unsettled bail is covered separately below.
   const main = readFileSync(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
   const handler = main.slice(main.indexOf("$('btnShare').addEventListener"));
-  const install = handler.indexOf("history.replaceState");
+  const install = handler.indexOf('history.replaceState');
   assert.ok(install > -1, 'the share handler still installs the snapshot');
   assert.match(handler.slice(0, install), /shareURLForScene\(/,
     'the share URL must be built through shareURLForScene, which settles the scene');
-  assert.match(handler.slice(Math.max(0, install - 60), install), /if \(settled\)/,
-    'history must only be written when the scene settled');
+});
+
+test('the share fragment survives when the autosave cannot be written', async () => {
+  // Storage can be disabled, full, or partitioned in private browsing.
+  // changed() swallows that failure, and loading a shared link calls
+  // replaceScene() -- and so changed() -- before the visitor edits anything.
+  // Retiring the fragment there would leave no autosave AND no payload, so a
+  // reload would open an empty canvas with the shared scene gone for good.
+  const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const restore = () => {
+    if (previousStorage) Object.defineProperty(globalThis, 'localStorage', previousStorage);
+    else delete globalThis.localStorage;
+  };
+  try {
+    globalThis.localStorage = { getItem: () => null, setItem() { throw new Error('QuotaExceededError'); }, removeItem() {} };
+    state.embedMode = false;
+    replaceScene({ elements: [createElement('cwlaser', 10, 10)], beams: [] });
+    changed();
+    assert.equal(state.autosaved, false, 'a failed write must be reported, not swallowed');
+
+    globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+    changed();
+    assert.equal(state.autosaved, true, 'a successful write must clear the flag again');
+  } finally {
+    restore();
+  }
+});
+
+test('the change listener retires the fragment only when the scene was saved', () => {
+  // Structural, because the guard lives in main.js's bootstrap listener: the
+  // retirement must depend on the autosave having succeeded, not just on the
+  // canvas being interactive.
+  const binding = sceneChangeListener();
+  const guard = binding.slice(0, binding.indexOf('clearSharedSceneURL'));
+  assert.match(guard, /state\.autosaved/,
+    'retiring the share fragment must depend on state.autosaved');
+  assert.match(guard, /state\.embedMode/, 'and must still skip embeds');
+});
+
+test('an unsettled share is abandoned rather than published', () => {
+  // Guarding only history.replaceState is not enough: the dialog, the copied
+  // text and the QR all read the same url, so a stale one still reaches the
+  // visitor. The handler has to stop before any of them.
+  const main = readFileSync(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
+  const handler = main.slice(main.indexOf("$('btnShare').addEventListener"));
+  const bail = handler.indexOf('if (!settled)');
+  assert.ok(bail > -1, 'the handler must test for an unsettled scene');
+  const publishes = ['history.replaceState', 'copyText(', "$('shareURL').value", 'showModal('];
+  for (const step of publishes) {
+    const at = handler.indexOf(step);
+    assert.ok(at > bail,
+      `${step} must come after the unsettled check, or a stale link still reaches the visitor`);
+  }
+  assert.match(handler.slice(bail, bail + 400), /return;/,
+    'the unsettled branch must return rather than fall through');
 });

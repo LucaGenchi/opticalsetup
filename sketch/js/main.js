@@ -1381,7 +1381,15 @@ function bindToolbar() {
       // would survive to the next reload and undo the edit that raced it.
       const { scene: sketch, url, settled } = await shareURLForScene(
         serialize, text => buildShareURL(text));
-      if (settled) history.replaceState(null, '', url);
+      if (!settled) {
+        // Still moving after a rebuild: the visitor is mid-edit. Publishing
+        // now would hand them a link to a scene they are not looking at --
+        // through the dialog and QR as much as the address bar -- so stop
+        // rather than share something stale.
+        showToast('The canvas changed while the link was building — press Share again.');
+        return;
+      }
+      history.replaceState(null, '', url);
       // The auto-copy is best-effort: restrictive clipboard permissions must
       // not block the dialog, which offers its own Copy button and a
       // selectable URL field as the fallback.
@@ -1654,7 +1662,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   // could drift from it. Keep the marker; the test finds the call by it rather
   // than by matching the source formatting.
   onChange(() => {
-    if (!state.embedMode) clearSharedSceneURL();
+    // Retire the snapshot only once the scene is safely in the autosave.
+    // changed() swallows a failed write, and loading a shared link calls
+    // replaceScene() and so changed() before any edit -- so without the
+    // autosaved check, a visitor with storage disabled or full would lose
+    // the fragment too and reload into an empty canvas.
+    if (!state.embedMode && state.autosaved) clearSharedSceneURL();
     renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion();
   });
 
