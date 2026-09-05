@@ -1,0 +1,254 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "gt-frame",
+   "type": "figureframe",
+   "x": 340,
+   "y": 160,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": { "w": 660, "h": 300, "background": "white" }
+  },
+  {
+   "id": "gt-source-zone",
+   "type": "highlight",
+   "x": 112,
+   "y": 123,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": { "shape": "rect", "w": 205, "h": 154, "fill": "#dbeafe", "opacity": 18 }
+  },
+  {
+   "id": "gt-scan-zone",
+   "type": "highlight",
+   "x": 392,
+   "y": 162,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": { "shape": "rect", "w": 350, "h": 132, "fill": "#dcfce7", "opacity": 16 }
+  },
+  {
+   "id": "gt-sample-zone",
+   "type": "highlight",
+   "x": 610,
+   "y": 169,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": { "shape": "rect", "w": 108, "h": 116, "fill": "#f3e8ff", "opacity": 20 }
+  },
+  {
+   "id": "gt-source",
+   "type": "pulsedlaser",
+   "x": 60,
+   "y": 70,
+   "rot": 0,
+   "label": "NIR fs laser*",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "enabled": true,
+    "wavelength": 780,
+    "avgPowerW": 0.08,
+    "beamMode": "beam",
+    "beamWidth": 6,
+    "repRateMHz": 80,
+    "pulsePhaseNs": 0,
+    "pulseWidthFs": 100,
+    "transformLimited": true,
+    "pulseShape": "gauss",
+    "bandwidth": 0,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#e02020",
+    "showPulse": true,
+    "handoffBasis": "interpretation",
+    "temporalMode": "pulsed"
+   }
+  },
+  {
+   "id": "gt-fold-in",
+   "type": "mirror",
+   "x": 220,
+   "y": 70,
+   "rot": 135,
+   "label": "Free interpretation: packaging fold",
+   "showLabel": false,
+   "labelPos": "t",
+   "params": { "length": 26, "refl": 100, "showTransmitted": false }
+  },
+  {
+   "id": "gt-galvo-x",
+   "type": "galvo",
+   "x": 220,
+   "y": 160,
+   "rot": 135,
+   "label": "X galvo",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "length": 24,
+    "commandAngle": 0,
+    "scanMode": "sine",
+    "scanAmplitude": 0.5,
+    "scanFrequencyHz": 100,
+    "scanPhaseDeg": 0,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "gt-galvo-y",
+   "type": "galvo",
+   "x": 280,
+   "y": 160,
+   "rot": 135,
+   "label": "Y galvo (projected)",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "length": 24,
+    "commandAngle": 0,
+    "scanMode": "sine",
+    "scanAmplitude": 0.7,
+    "scanFrequencyHz": 125,
+    "scanPhaseDeg": 90,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "gt-fold-relay",
+   "type": "mirror",
+   "x": 280,
+   "y": 190,
+   "rot": 135,
+   "label": "Free interpretation: relay fold",
+   "showLabel": false,
+   "labelPos": "b",
+   "params": { "length": 26, "refl": 100, "showTransmitted": false }
+  },
+  {
+   "id": "gt-scan-lens",
+   "type": "lens",
+   "x": 330,
+   "y": 190,
+   "rot": 0,
+   "label": "Scan lens*",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": { "f": 80, "dia": 30, "transEff": 100 }
+  },
+  {
+   "id": "gt-tube-lens",
+   "type": "lens",
+   "x": 490,
+   "y": 190,
+   "rot": 0,
+   "label": "Tube lens*",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": { "f": 80, "dia": 30, "transEff": 100 }
+  },
+  {
+   "id": "gt-objective",
+   "type": "objective",
+   "x": 563.87,
+   "y": 190,
+   "rot": 0,
+   "label": "Exchangeable objective*",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "efl": 5,
+    "workingDistance": 0.13,
+    "immersion": "oil",
+    "immersionIndex": 1.333,
+    "na": 1.4,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 8
+   }
+  },
+  {
+   "id": "gt-stage",
+   "type": "stage",
+   "x": 580,
+   "y": 190,
+   "rot": 90,
+   "label": "XYZ piezo on coarse XY",
+   "showLabel": false,
+   "labelPos": "r",
+   "params": {
+    "pzMode": "static",
+    "pzTravelXY": 0.3,
+    "pzFreqXY": 0.16666666666666667,
+    "pzTravelZ": 0.3,
+    "pzFreqZ": 0.16666666666666667,
+    "pzZSteps": 5,
+    "aperture": 50,
+    "sampleKind": "resin",
+    "specimenType": "resin",
+    "channels": [],
+    "showSignalSpot": true,
+    "thickness": 0.15,
+    "voxelPreview": true,
+    "voxelSize": 0.6,
+    "transmitExc": true,
+    "transmission": 0,
+    "mode": "none",
+    "fluorWl": 520,
+    "carsWl": 660,
+    "signalEff": 0.1
+   }
+  },
+  {
+   "id": "gt-stage-note",
+   "type": "textlabel",
+   "x": 585,
+   "y": 80,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Reported stages**\n300 um XYZ piezo\n100 x 100 mm\ncoarse XY",
+    "fontSize": 7,
+    "fill": "#4b5563"
+   }
+  },
+  {
+   "id": "gt-title",
+   "type": "textlabel",
+   "x": 340,
+   "y": 30,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "# Photonic Professional GT\n2016 vendor sheet - benchmark labelled 2014",
+    "fontSize": 13,
+    "fill": "#26333a"
+   }
+  },
+  {
+   "id": "gt-notes",
+   "type": "textlabel",
+   "x": 25,
+   "y": 258,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Reported:** NIR femtosecond laser; XY galvos; exchangeable objective; 300 um XYZ piezo;\n100 x 100 mm motorized XY area; typical beam/piezo speeds 10 mm/s and 100 um/s.\n**Free interpretation - not specified:** source values, polarization, relay/folds, objective spec, drives.\nBoth real galvo axes are projected into this 2D plane; both move the computed focus.\n**Model limit:** geometric write preview only - no vector PSF, dose, threshold, curing, or throughput.\nThe listed <500 W is electrical consumption, never optical laser power.",
+    "fontSize": 8,
+    "fill": "#374151"
+   }
+  }
+ ],
+ "beams": []
+}

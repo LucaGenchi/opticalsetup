@@ -31,6 +31,7 @@ import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.js';
 import { initTheme } from './theme.js';
+import { collectionSetupPath } from './collection-setups.js';
 
 const $ = id => document.getElementById(id);
 
@@ -1577,11 +1578,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
+  const collectionSetupId = params.get('setup');
+  const collectionPath = collectionSetupPath(collectionSetupId);
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isCollectionDemo = Boolean(!isTypeDemo && !isCommunityDemo && !isExampleDemo
+    && collectionPath && params.get('collectionMode') !== 'edit');
+  const isCollectionEdit = Boolean(collectionPath && params.get('collectionMode') === 'edit');
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo || isCollectionDemo;
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1654,6 +1660,20 @@ window.addEventListener('DOMContentLoaded', async () => {
       state.beams.push(...scene.beams);
     } catch (err) {
       console.error('Could not load example:', err);
+    }
+  } else if (isCollectionDemo || isCollectionEdit) {
+    // Paper/apparatus collection scenes are ordinary native save files. A
+    // collection page embeds a locked, click-to-inspect preview; its explicit
+    // edit action uses the same loader without demo mode, so save, undo and
+    // direct manipulation remain available.
+    try {
+      const res = await fetch(collectionPath);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      state.elements.push(...scene.elements);
+      state.beams.push(...scene.beams);
+    } catch (err) {
+      console.error('Could not load collection setup:', err);
     }
   } else {
     let sharedScene = null;

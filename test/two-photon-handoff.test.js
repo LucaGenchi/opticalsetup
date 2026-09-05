@@ -42,6 +42,13 @@ test('keeps user-authored laser labels out of the numeric-only URL contract', ()
   assert.doesNotMatch(buildTwoPhotonHandoffUrl(laser), /img|onerror|label/i);
 });
 
+test('preserves free-interpretation provenance without changing ordinary handoffs', () => {
+  const interpreted = pulsedLaser();
+  interpreted.params.handoffBasis = 'interpretation';
+  assert.equal(new URL(buildTwoPhotonHandoffUrl(interpreted)).searchParams.get('basis'), 'interpretation');
+  assert.equal(new URL(buildTwoPhotonHandoffUrl(pulsedLaser())).searchParams.has('basis'), false);
+});
+
 test('preserves an allowed destination base URL while replacing handoff keys', () => {
   const url = new URL(buildTwoPhotonHandoffUrl(
     pulsedLaser(),

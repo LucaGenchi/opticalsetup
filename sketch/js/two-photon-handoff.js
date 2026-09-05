@@ -23,6 +23,7 @@ export function buildTwoPhotonHandoffUrl(laser, baseUrl = TWO_PHOTON_LAB_URL, op
   const url = new URL(baseUrl);
   url.searchParams.set('from', 'opticalsetup');
   url.searchParams.set('v', '1');
+  if (p.handoffBasis === 'interpretation') url.searchParams.set('basis', 'interpretation');
   url.searchParams.set('wavelengthNm', formatQueryNumber(p.wavelength));
   url.searchParams.set('sourcePowerMw', formatQueryNumber(p.avgPowerW * 1000));
   url.searchParams.set('repetitionRateMHz', formatQueryNumber(p.repRateMHz));
