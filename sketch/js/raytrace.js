@@ -2222,6 +2222,7 @@ function interact(ray, hit) {
           const c = Math.sqrt(1 - sd * sd);
           const sOut = data.transmissive ? sIn : -sIn;
           out.push({
+            ...(m !== 0 ? { color: wavelengthToColor(wls[i].wl) } : {}),
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
             intensity: ray.intensity * (m === 0 ? 1 : wls[i].weight) / data.orders.length,
@@ -2348,6 +2349,7 @@ function interact(ray, hit) {
             // which is exactly what wlSamples warns against and what any
             // spectrometer downstream would then report.
             ...(isAod ? {
+              color: wavelengthToColor(shiftedWl),
               bw: 0,
               spec: null,
               spectralCount: samples.length,
@@ -2731,6 +2733,7 @@ function interact(ray, hit) {
                   wl: wls[wi].wl, bw: 0, spec: null, speckle: r.speckle,
                   intensity: r.intensity * (m === 0 ? 1 : wls[wi].weight) / orders.length,
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
+                  ...(m !== 0 ? { color: wavelengthToColor(wls[wi].wl) } : r.color ? { color: r.color } : {}),
                 });
                 if (m === 0 && wls.length > 1) break;
               }
@@ -2753,6 +2756,7 @@ function interact(ray, hit) {
         if (!rays.length) break;
       }
       const out = rays.map(r => ({
+        ...(r.color ? { color: r.color } : {}),
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
         wl: r.wl, bw: r.bw, speckle: r.speckle || undefined,
       }));
