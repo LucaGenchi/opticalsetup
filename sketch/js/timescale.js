@@ -81,6 +81,8 @@ export function elementDriveHz(el) {
       return p.temporalMode === 'pulsed' && p.repRateMHz > 0 ? p.repRateMHz * 1e6 : null;
     case 'galvo':
       return p.scanMode && p.scanMode !== 'static' ? Math.max(0.01, p.scanFrequencyHz || 1) : null;
+    case 'resonantscanner':
+      return p.resonanceFrequencyKHz > 0 ? p.resonanceFrequencyKHz * 1e3 : null;
     case 'chopper':
       return p.modulate ? Math.max(0.1, p.frequencyHz || 1000) : null;
     case 'aom':
@@ -117,6 +119,7 @@ export function elementDriveHz(el) {
 
 const MOTION_LABELS = {
   galvo: 'galvo scanning',
+  resonantscanner: 'resonant scanning',
   chopper: 'the chopper',
   aom: 'AOM modulation',
   aod: 'AOD scanning',

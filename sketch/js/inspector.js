@@ -814,28 +814,32 @@ export function renderInspector() {
           sectionFields += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
         }
 
-        const candidates = twoPhotonHandoffCandidates(
-          state.elements,
-          signalHitsFromLastTrace(sel.id),
-          sel.id,
-        );
         sectionFields += `<div class="two-photon-handoff"><div class="lsechead">Continue the 2PP workflow</div>`;
-        if (!candidates.length) {
-          sectionFields += `<div class="hint">Aim a compatible ordinary pulsed Laser at this resin sample (500–1064 nm, up to 1 W source power, 10–100 MHz, 50–400 fs) to open the dedicated lithography lab with its settings.</div>`;
+        if (sel.params.handoffEnabled === false) {
+          sectionFields += `<div class="hint">This literature scene does not provide one exact operating power at the sample, so its live source is illustrative and is not transferred as a calibrated 2PP input.</div>`;
         } else {
-          const multiple = candidates.length > 1;
-          sectionFields += candidates.map(({ laser, numericalAperture, gddFs2, stretchedPulseWidthFs }, index) => {
-            const configuredName = String(laser.label || '').trim();
-            const name = configuredName || (multiple ? `Laser ${index + 1}` : 'this laser');
-            const url = buildTwoPhotonHandoffUrl(laser, undefined, { numericalAperture });
-            const gdd = `${Math.abs(gddFs2) < 10 ? gddFs2.toFixed(1) : Math.round(gddFs2).toLocaleString()} fs² GDD`;
-            const duration = Number.isFinite(stretchedPulseWidthFs)
-              ? `${stretchedPulseWidthFs.toFixed(stretchedPulseWidthFs < 100 ? 1 : 0)} fs at the sample`
-              : 'broadening needs a transform-limited Gaussian input';
-            return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>` +
-              `<div class="hint">Traced centre-wavelength path: ${esc(gdd)} · ${esc(duration)}. The handoff keeps the configured source duration; confirm and apply this qualitative broadening in the lab.</div>`;
-          }).join('');
-          sectionFields += `<div class="hint">Transfers wavelength, configured source power, repetition rate, configured pulse duration, and the traced objective NA when one compatible objective is unambiguous. Bandwidth, polarization, scan, material, and GDD settings keep that lab's defaults.</div>`;
+          const candidates = twoPhotonHandoffCandidates(
+            state.elements,
+            signalHitsFromLastTrace(sel.id),
+            sel.id,
+          );
+          if (!candidates.length) {
+            sectionFields += `<div class="hint">Aim a compatible ordinary pulsed Laser at this resin sample (500–1064 nm, up to 1 W source power, 10–100 MHz, 50–400 fs) to open the dedicated lithography lab with its settings.</div>`;
+          } else {
+            const multiple = candidates.length > 1;
+            sectionFields += candidates.map(({ laser, numericalAperture, gddFs2, stretchedPulseWidthFs }, index) => {
+              const configuredName = String(laser.label || '').trim();
+              const name = configuredName || (multiple ? `Laser ${index + 1}` : 'this laser');
+              const url = buildTwoPhotonHandoffUrl(laser, undefined, { numericalAperture });
+              const gdd = `${Math.abs(gddFs2) < 10 ? gddFs2.toFixed(1) : Math.round(gddFs2).toLocaleString()} fs² GDD`;
+              const duration = Number.isFinite(stretchedPulseWidthFs)
+                ? `${stretchedPulseWidthFs.toFixed(stretchedPulseWidthFs < 100 ? 1 : 0)} fs at the sample`
+                : 'broadening needs a transform-limited Gaussian input';
+              return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>` +
+                `<div class="hint">Traced centre-wavelength path: ${esc(gdd)} · ${esc(duration)}. The handoff keeps the configured source duration; confirm and apply this qualitative broadening in the lab.</div>`;
+            }).join('');
+            sectionFields += `<div class="hint">Transfers wavelength, configured source power, repetition rate, configured pulse duration, and the traced objective NA when one compatible objective is unambiguous. Bandwidth, polarization, scan, material, and GDD settings keep that lab's defaults.</div>`;
+          }
         }
         sectionFields += `</div>`;
       };

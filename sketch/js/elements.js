@@ -1812,6 +1812,24 @@ export function galvoAngleAt(params = {}, timeSeconds = 0) {
   return Math.min(45, Math.max(-45, center + amplitude * wave));
 }
 
+// A resonant scanner is not a command-following galvo. Its flexure/mirror is
+// driven at one mechanical resonance and the usable raster is a bounded part
+// of the resulting sinusoid. This helper intentionally models only that ideal
+// kinematic motion: it does not predict phase lag, settling, scan calibration,
+// or the optical mapping from mirror angle to sample position.
+export function resonantScannerAngleAt(params = {}, timeSeconds = 0) {
+  const center = Math.min(45, Math.max(-45,
+    Number.isFinite(params.centerAngle) ? params.centerAngle : 0));
+  const amplitude = Math.min(10, 45 - Math.abs(center),
+    Math.max(0, Number.isFinite(params.scanAmplitude) ? params.scanAmplitude : 0));
+  const frequencyKHz = Math.min(100, Math.max(0.1,
+    Number.isFinite(params.resonanceFrequencyKHz) ? params.resonanceFrequencyKHz : 8));
+  const phase = (Number.isFinite(params.scanPhaseDeg) ? params.scanPhaseDeg : 0) * Math.PI / 180;
+  const time = Number.isFinite(timeSeconds) ? timeSeconds : 0;
+  return Math.min(45, Math.max(-45,
+    center + amplitude * Math.sin(2 * Math.PI * time * frequencyKHz * 1000 + phase)));
+}
+
 // ---- shared laser-source building blocks --------------------------------
 // CW Laser, Pulsed Laser and Supercontinuum laser are three separate palette
 // entries over one emission contract, rather than a single element with an
@@ -2122,6 +2140,48 @@ export const registry = {
     surfaces(el) {
       const L = el.params.length / 2;
       const a = galvoAngleAt(el.params, el._animationTimeS || 0) * Math.PI / 180;
+      return [{
+        x1: L * Math.sin(a), y1: -L * Math.cos(a), x2: -L * Math.sin(a), y2: L * Math.cos(a), kind: 'mirror',
+        data: { refl: el.params.refl, showTransmitted: el.params.showTransmitted },
+      }];
+    },
+  },
+
+  resonantscanner: {
+    label: 'Resonant scanner', category: 'Mirrors', paletteOrder: 5, size: { w: 34, h: 44 },
+    aliases: ['resonant mirror', 'resonant scan mirror', 'resonant raster scanner'],
+    size_: el => {
+      const L = Math.max(6, el.params.length || 20);
+      const sweep = Math.abs(el.params.centerAngle || 0) + Math.abs(el.params.scanAmplitude || 0);
+      const a = Math.min(45, sweep) * Math.PI / 180;
+      return { w: Math.max(34, L * Math.sin(a) + 20), h: Math.max(44, L * Math.cos(a) + 20) };
+    },
+    params: [
+      { key: 'length', label: 'Mirror size (mm)', type: 'number', min: 6, max: 60, step: 2, def: 20 },
+      { key: 'centerAngle', label: 'Center mechanical angle (°)', type: 'number', min: -30, max: 30, step: 0.5, def: 0 },
+      { key: 'scanAmplitude', label: 'Peak mechanical sweep (°)', type: 'number', min: 0, max: 10, step: 0.1, def: 1 },
+      { key: 'resonanceFrequencyKHz', label: 'Mechanical resonance (kHz)', type: 'number', min: 0.1, max: 100, step: 0.01, def: 8 },
+      {
+        key: 'usableFraction', label: 'Usable scan fraction', type: 'number', min: 0.1, max: 1, step: 0.05, def: 0.9,
+        note: 'Annotation only. It marks the central fraction used by the controller and does not linearize the traced sinusoidal motion.',
+      },
+      { key: 'scanPhaseDeg', label: 'Scan phase (°)', type: 'number', min: -360, max: 360, step: 5, def: 0 },
+      ...reflectivityParams(),
+    ],
+    svg(el) {
+      const L = el.params.length / 2;
+      const command = resonantScannerAngleAt(el.params, el._animationTimeS || 0);
+      const usable = Math.min(1, Math.max(0.1, el.params.usableFraction || 0.9));
+      const arc = 13 + 8 * usable;
+      return `<rect x="-7" y="${-L - 8}" width="14" height="${2 * L + 16}" rx="5" fill="#e8e4f4" stroke="#66558a" stroke-width="1.2"/>` +
+        `<circle r="4.5" fill="#776b91" stroke="#443a5d" stroke-width="1.2"/>` +
+        `<g transform="rotate(${command})"><line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#40384c" stroke-width="3"/></g>` +
+        `<path d="M ${-arc},${-L - 4} A ${L + 8} ${L + 8} 0 0 1 ${arc},${-L - 4}" fill="none" stroke="#8b5cf6" stroke-width="1.4" stroke-dasharray="3 2"/>` +
+        `<text x="0" y="${L + 14}" text-anchor="middle" font-size="5" font-weight="700" fill="#66558a">RESONANT</text>`;
+    },
+    surfaces(el) {
+      const L = el.params.length / 2;
+      const a = resonantScannerAngleAt(el.params, el._animationTimeS || 0) * Math.PI / 180;
       return [{
         x1: L * Math.sin(a), y1: -L * Math.cos(a), x2: -L * Math.sin(a), y2: L * Math.cos(a), kind: 'mirror',
         data: { refl: el.params.refl, showTransmitted: el.params.showTransmitted },
@@ -4155,6 +4215,11 @@ export const registry = {
       { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.pzMode === 'sync' },
       { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true },
+      // Paper reconstructions can suppress the generic calculator handoff
+      // when their only available power is a source-output range rather than
+      // one exact operating value at the sample. Hidden so ordinary authored
+      // scenes keep the existing, enabled behavior without another control.
+      { key: 'handoffEnabled', label: '2PP Lab handoff', type: 'checkbox', def: true, hidden: true },
       // Legacy per-material selector, replaced by `specimenType`. Hidden but
       // still declared so pre-existing sketches keep loading and can be read
       // by specimenTypeOf().
@@ -4620,6 +4685,7 @@ const DIRECT = {
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
+  resonantscanner: { resize: { y: 'length' }, tune: { key: 'scanAmplitude', short: 'sweep' } },
   retroreflector: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   cmirrorx: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   cmirror: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
@@ -4724,6 +4790,7 @@ const ELEMENT_HELP = {
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
+  resonantscanner: 'Reflects rays from an animated sinusoidal mechanical resonance. The usable scan fraction is documented but does not linearize the motion or calibrate sample-space position.',
   cmirrorx: 'Diverges reflected rays off a real spherical surface of radius 2f, so it carries the spherical aberration a real one does.',
   cmirror: 'Focuses reflected rays off a real spherical surface of radius 2f — marginal rays cross ahead of the paraxial focus, which is the aberration a parabolic mirror exists to avoid.',
   oap: 'Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.',
