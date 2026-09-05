@@ -25,6 +25,7 @@ import { initInspector, renderInspector, refreshMeasurements } from './inspector
 import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
+import { twoPhotonSetups } from './two-photon-setups-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
 import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
@@ -1577,11 +1578,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
+  const paperSlug = params.get('paper');
+  const editPaper = params.get('edit') === '1';
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isPaperDemo = Boolean(!isTypeDemo && !isCommunityDemo && !isExampleDemo && paperSlug && !editPaper);
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo || isPaperDemo;
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1655,13 +1659,37 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load example:', err);
     }
+  } else if (isPaperDemo) {
+    // Paper collection embeds use the same native save format and locked,
+    // click-to-inspect workbench as curated examples. The generated manifest
+    // is the whitelist: a query value can never become an arbitrary fetch path.
+    try {
+      const entry = twoPhotonSetups.find(e => e.slug === paperSlug);
+      if (!entry) throw new Error('Unknown paper setup');
+      const res = await fetch(entry.path);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      state.elements.push(...scene.elements);
+      state.beams.push(...scene.beams);
+    } catch (err) {
+      console.error('Could not load paper setup:', err);
+    }
   } else {
     let sharedScene = null;
     try {
-      const sharedText = await sharedSceneFromURL();
-      if (sharedText) sharedScene = parseSketch(sharedText, registry);
+      const paperEntry = editPaper && paperSlug
+        ? twoPhotonSetups.find(entry => entry.slug === paperSlug)
+        : null;
+      if (paperEntry) {
+        const res = await fetch(paperEntry.path);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        sharedScene = parseSketch(await res.text(), registry);
+      } else {
+        const sharedText = await sharedSceneFromURL();
+        if (sharedText) sharedScene = parseSketch(sharedText, registry);
+      }
     } catch (err) {
-      alert('Could not open shared sketch: ' + err.message);
+      alert('Could not open requested sketch: ' + err.message);
     }
 
     if (sharedScene) {
@@ -1699,8 +1727,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderAll();
   renderSelection();
   syncToolbar();
-  // A scene loaded straight from the URL -- a wiki embed, an example page, a
-  // shared link -- never went through onChange, so it never picked a time
+  // A scene loaded straight from the URL -- a wiki embed, an example/paper
+  // page, or a shared link -- never went through onChange, so it never picked a time
   // scale for whatever is moving in it. Without this a setup whose whole
   // point is an animation opens frozen at the default scale.
   autoAdjustTimeScale();

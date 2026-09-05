@@ -1,0 +1,182 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "yan-frame",
+   "type": "figureframe",
+   "x": 320,
+   "y": 155,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": { "w": 560, "h": 270, "background": "white" }
+  },
+  {
+   "id": "yan-laser",
+   "type": "pulsedlaser",
+   "x": 100,
+   "y": 220,
+   "rot": 0,
+   "label": "Illustrative fs source",
+   "showLabel": true,
+   "params": {
+    "enabled": true,
+    "wavelength": 800,
+    "avgPowerW": 0.1,
+    "beamMode": "line",
+    "beamWidth": 3,
+    "repRateMHz": 80,
+    "pulsePhaseNs": 0,
+    "pulseWidthFs": 150,
+    "transformLimited": false,
+    "pulseShape": "gauss",
+    "bandwidth": 0,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#ff6400",
+    "showPulse": true,
+    "temporalMode": "pulsed"
+   }
+  },
+  {
+   "id": "yan-slm",
+   "type": "slm",
+   "x": 260,
+   "y": 220,
+   "rot": 0,
+   "label": "SLM (4 orders)",
+   "showLabel": true,
+   "params": {
+    "transmissive": true,
+    "length": 50,
+    "zeroOrder": true,
+    "zeroFrac": 0.1,
+    "layers": [
+     { "type": "grating", "n": 4, "f": 50, "lines": 70, "orders": "-3,-1,1,3", "angle": 5, "div": 8 }
+    ]
+   }
+  },
+  {
+   "id": "yan-fourier-lens",
+   "type": "lens",
+   "x": 320,
+   "y": 220,
+   "rot": 0,
+   "label": "L1",
+   "showLabel": true,
+   "params": { "f": 60, "dia": 55, "transEff": 100 }
+  },
+  {
+   "id": "yan-zero-dump",
+   "type": "beamdump",
+   "x": 380,
+   "y": 220,
+   "rot": 0,
+   "label": "BPF stop",
+   "showLabel": true,
+   "params": { "aperture": 6 }
+  },
+  {
+   "id": "yan-relay-lens",
+   "type": "lens",
+   "x": 440,
+   "y": 220,
+   "rot": 0,
+   "label": "L2",
+   "showLabel": true,
+   "params": { "f": 60, "dia": 55, "transEff": 100 }
+  },
+  {
+   "id": "yan-fold",
+   "type": "mirror",
+   "x": 520,
+   "y": 220,
+   "rot": 45,
+   "label": "M1 fold",
+   "showLabel": true,
+   "params": { "length": 70, "refl": 100, "showTransmitted": false }
+  },
+  {
+   "id": "yan-objective",
+   "type": "objective",
+   "x": 520,
+   "y": 110,
+   "rot": 90,
+   "label": "Objective",
+   "showLabel": true,
+   "params": {
+    "efl": 40,
+    "workingDistance": 10,
+    "immersion": "air",
+    "immersionIndex": 1,
+    "na": 0.8,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 90
+   }
+  },
+  {
+   "id": "yan-resin-stage",
+   "type": "stage",
+   "x": 520,
+   "y": 80,
+   "rot": 0,
+   "label": "Resin: 4 simultaneous hits",
+   "showLabel": true,
+   "params": {
+    "pzMode": "sync",
+    "pzTravelXY": 8,
+    "pzFreqXY": 0.2,
+    "pzTravelZ": 4,
+    "pzFreqZ": 0.1,
+    "pzZSteps": 5,
+    "aperture": 100,
+    "sampleKind": "resin",
+    "specimenType": "resin",
+    "channels": [],
+    "showSignalSpot": true,
+    "thickness": 2,
+    "voxelPreview": true,
+    "voxelSize": 0.8,
+    "transmitExc": true,
+    "transmission": 0.2,
+    "mode": "none",
+    "fluorWl": 520,
+    "carsWl": 660,
+    "signalEff": 0.1
+   }
+  },
+  {
+   "id": "yan-title",
+   "type": "textlabel",
+   "x": 55,
+   "y": 42,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": { "text": "## Yan et al. (2015) — mechanism interpretation", "fontSize": 13, "fill": "#26333a" }
+  },
+  {
+   "id": "yan-limit",
+   "type": "textlabel",
+   "x": 55,
+   "y": 66,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": { "text": "**Primary-source limit:** full text unavailable. 800 nm / 150 fs / 80 MHz / 0.1 W and NA 0.8 are free interpretation.\nThe reported 633 nm value belongs to optical characterization, not fabrication.", "fontSize": 9, "fill": "#7c3d12" }
+  },
+  {
+   "id": "yan-projection",
+   "type": "textlabel",
+   "x": 55,
+   "y": 96,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": { "text": "**Computed:** native SLM orders → L1 → BPF stop → L2 → M1 → objective → four resin hits.\n**Projection:** one 2D row represents the reported 4×4 hexagonal focal array.\n**Not solved:** CGH, vector PSF, dose, cure, or 3D mirror geometry.", "fontSize": 9, "fill": "#334155" }
+  }
+ ],
+ "beams": []
+}
