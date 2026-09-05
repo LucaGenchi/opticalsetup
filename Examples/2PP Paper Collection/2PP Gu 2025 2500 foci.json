@@ -1,0 +1,1041 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "gu-2025-2500-1",
+      "type": "textlabel",
+      "x": 0,
+      "y": -65,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2PP · Gu 2025 · 2500 foci",
+        "fontSize": 23,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-2",
+      "type": "textlabel",
+      "x": 0,
+      "y": -22,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "APPARATUS DRAWING · Optical sequence unfolded for readability\nDashed paths are annotations. Geometry and unspecified controls are schematic; source emission is off.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-3",
+      "type": "box",
+      "x": 65,
+      "y": 80,
+      "rot": 0,
+      "label": "Fs source\n800 nm\nSee verified settings",
+      "showLabel": false,
+      "params": {
+        "text": "Fs source",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "gu-2025-2500-4",
+      "type": "textlabel",
+      "x": -7,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Fs source\n800 nm\nSee verified settings",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-5",
+      "type": "hwp",
+      "x": 235,
+      "y": 80,
+      "rot": 0,
+      "label": "Half-wave plate",
+      "showLabel": false,
+      "params": {
+        "a": 22.5,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "gu-2025-2500-6",
+      "type": "textlabel",
+      "x": 163,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Half-wave plate",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-7",
+      "type": "pbs",
+      "x": 405,
+      "y": 80,
+      "rot": 0,
+      "label": "Polarizing beam splitter",
+      "showLabel": false,
+      "params": {
+        "size": 25.4
+      }
+    },
+    {
+      "id": "gu-2025-2500-8",
+      "type": "textlabel",
+      "x": 333,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Polarizing beam\nsplitter",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-9",
+      "type": "telescope",
+      "x": 575,
+      "y": 80,
+      "rot": 0,
+      "label": "Beam expander",
+      "showLabel": false,
+      "params": {
+        "f1": -30,
+        "f2": 60,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gu-2025-2500-10",
+      "type": "textlabel",
+      "x": 503,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Beam expander",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-11",
+      "type": "pbs",
+      "x": 745,
+      "y": 80,
+      "rot": 0,
+      "label": "Polarizing beam splitter",
+      "showLabel": false,
+      "params": {
+        "size": 25.4
+      }
+    },
+    {
+      "id": "gu-2025-2500-12",
+      "type": "textlabel",
+      "x": 673,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Polarizing beam\nsplitter",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-13",
+      "type": "qwp",
+      "x": 915,
+      "y": 80,
+      "rot": 0,
+      "label": "QWP1 · double pass",
+      "showLabel": false,
+      "params": {
+        "a": 45,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "gu-2025-2500-14",
+      "type": "textlabel",
+      "x": 843,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. QWP1 · double pass",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-15",
+      "type": "slm",
+      "x": 915,
+      "y": 235,
+      "rot": 0,
+      "label": "LC-SLM\nPhase to amplitude",
+      "showLabel": false,
+      "params": {
+        "transmissive": false,
+        "length": 40,
+        "zeroOrder": false,
+        "zeroFrac": 0.1,
+        "layers": []
+      }
+    },
+    {
+      "id": "gu-2025-2500-16",
+      "type": "textlabel",
+      "x": 843,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. LC-SLM\nPhase to amplitude",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-17",
+      "type": "qwp",
+      "x": 745,
+      "y": 235,
+      "rot": 0,
+      "label": "QWP2",
+      "showLabel": false,
+      "params": {
+        "a": 45,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "gu-2025-2500-18",
+      "type": "textlabel",
+      "x": 673,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "8. QWP2",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-19",
+      "type": "lens",
+      "x": 575,
+      "y": 235,
+      "rot": 0,
+      "label": "L1",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gu-2025-2500-20",
+      "type": "textlabel",
+      "x": 503,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "9. L1",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-21",
+      "type": "gascell",
+      "x": 405,
+      "y": 235,
+      "rot": 0,
+      "label": "Vacuum cell\nIntermediate focus",
+      "showLabel": false,
+      "params": {
+        "length": 90,
+        "height": 55,
+        "windowLeft": false,
+        "windowRight": false,
+        "extension": false,
+        "extensionSide": "right",
+        "gasDirection": "out",
+        "transparency": 100
+      }
+    },
+    {
+      "id": "gu-2025-2500-22",
+      "type": "textlabel",
+      "x": 333,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "10. Vacuum cell\nIntermediate focus",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-23",
+      "type": "lens",
+      "x": 235,
+      "y": 235,
+      "rot": 0,
+      "label": "L2",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gu-2025-2500-24",
+      "type": "textlabel",
+      "x": 163,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "11. L2",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-25",
+      "type": "mirror",
+      "x": 65,
+      "y": 235,
+      "rot": 0,
+      "label": "Fold mirror",
+      "showLabel": false,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "gu-2025-2500-26",
+      "type": "textlabel",
+      "x": -7,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "12. Fold mirror",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-27",
+      "type": "metalensarray",
+      "x": 65,
+      "y": 390,
+      "rot": 0,
+      "label": "Metalens array\nRepresentative section",
+      "showLabel": false,
+      "params": {
+        "length": 48,
+        "count": 5,
+        "f": 40,
+        "designWavelength": 800,
+        "focusEff": 70
+      }
+    },
+    {
+      "id": "gu-2025-2500-28",
+      "type": "textlabel",
+      "x": -7,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "13. Metalens array\nRepresentative section",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-29",
+      "type": "stage",
+      "x": 235,
+      "y": 390,
+      "rot": 90,
+      "label": "Resist / substrate\nTranslation stage",
+      "showLabel": false,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "gu-2025-2500-30",
+      "type": "textlabel",
+      "x": 163,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "14. Resist / substrate\nTranslation stage",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-31",
+      "type": "textlabel",
+      "x": 0,
+      "y": 545,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Separate observation objective above substrate",
+        "fontSize": 15,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-32",
+      "type": "objective",
+      "x": 65,
+      "y": 615,
+      "rot": 0,
+      "label": "Observation objective\nNot writing optic",
+      "showLabel": false,
+      "params": {
+        "efl": 10,
+        "workingDistance": 5,
+        "immersion": "air",
+        "immersionIndex": 1.333,
+        "na": 0.5,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "gu-2025-2500-33",
+      "type": "textlabel",
+      "x": -7,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Observation objective\nNot writing optic",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-34",
+      "type": "bs",
+      "x": 235,
+      "y": 615,
+      "rot": 0,
+      "label": "Observation splitter",
+      "showLabel": false,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "gu-2025-2500-35",
+      "type": "textlabel",
+      "x": 163,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Observation splitter",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-36",
+      "type": "lens",
+      "x": 405,
+      "y": 615,
+      "rot": 0,
+      "label": "L3",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gu-2025-2500-37",
+      "type": "textlabel",
+      "x": 333,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "L3",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-38",
+      "type": "camera",
+      "x": 575,
+      "y": 615,
+      "rot": 0,
+      "label": "CMOS",
+      "showLabel": false,
+      "params": {
+        "ch": 30,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "gu-2025-2500-39",
+      "type": "textlabel",
+      "x": 503,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "CMOS",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-40",
+      "type": "box",
+      "x": 745,
+      "y": 615,
+      "rot": 0,
+      "label": "LED illumination",
+      "showLabel": false,
+      "params": {
+        "text": "LED illumination",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "gu-2025-2500-41",
+      "type": "textlabel",
+      "x": 673,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "LED illumination",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-42",
+      "type": "textlabel",
+      "x": -1,
+      "y": 587,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "From 14",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-43",
+      "type": "textlabel",
+      "x": 0,
+      "y": 735,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "50×50 metalenses · NA 1 · 200 µm lens size",
+        "fontSize": 12,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-44",
+      "type": "textlabel",
+      "x": 0,
+      "y": 777,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Evidence and model limits: https://opticalsetup.com/collections/2pp/gu-2025/",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "gu-2025-2500-45",
+      "type": "textlabel",
+      "x": 0,
+      "y": 800,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "No vectorial high-NA metalens field, spatially adaptive dose, meta-atom efficiency or vacuum propagation nonlinearities are solved.\nOnly representative lenslets fit a 2D view.",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "gu-2025-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 80
+        },
+        {
+          "x": 235,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 80
+        },
+        {
+          "x": 405,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 80
+        },
+        {
+          "x": 575,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 80
+        },
+        {
+          "x": 745,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 80
+        },
+        {
+          "x": 915,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 235
+        },
+        {
+          "x": 915,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 235
+        },
+        {
+          "x": 745,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 235
+        },
+        {
+          "x": 575,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-8",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 235
+        },
+        {
+          "x": 405,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-9",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 235
+        },
+        {
+          "x": 235,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-10",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 235
+        },
+        {
+          "x": 65,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-11",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 235
+        },
+        {
+          "x": -20,
+          "y": 235
+        },
+        {
+          "x": -20,
+          "y": 390
+        },
+        {
+          "x": 65,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-12",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 390
+        },
+        {
+          "x": 235,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-13",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 223
+        },
+        {
+          "x": 1005,
+          "y": 223
+        },
+        {
+          "x": 1005,
+          "y": 68
+        },
+        {
+          "x": 915,
+          "y": 68
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-14",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 68
+        },
+        {
+          "x": 745,
+          "y": 68
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-15",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 615
+        },
+        {
+          "x": 235,
+          "y": 615
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-16",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 615
+        },
+        {
+          "x": 405,
+          "y": 615
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-17",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 615
+        },
+        {
+          "x": 575,
+          "y": 615
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "gu-2025-path-18",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 615
+        },
+        {
+          "x": 235,
+          "y": 615
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

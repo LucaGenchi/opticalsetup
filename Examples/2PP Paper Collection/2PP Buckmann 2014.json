@@ -1,0 +1,307 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "buckmann-2014-base-1",
+      "type": "textlabel",
+      "x": 0,
+      "y": -65,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2PP · Buckmann 2014",
+        "fontSize": 23,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-2",
+      "type": "textlabel",
+      "x": 0,
+      "y": -22,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "APPARATUS DRAWING · Optical sequence unfolded for readability\nDashed paths are annotations. Geometry and unspecified controls are schematic; source emission is off.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-3",
+      "type": "box",
+      "x": 65,
+      "y": 80,
+      "rot": 0,
+      "label": "Fs source\n780 nm\nSee verified settings",
+      "showLabel": false,
+      "params": {
+        "text": "Fs source",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-4",
+      "type": "textlabel",
+      "x": -7,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Fs source\n780 nm\nSee verified settings",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-5",
+      "type": "box",
+      "x": 235,
+      "y": 80,
+      "rot": 0,
+      "label": "GT internal optics\nUndisclosed",
+      "showLabel": false,
+      "params": {
+        "text": "GT internal optics",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-6",
+      "type": "textlabel",
+      "x": 163,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. GT internal optics\nUndisclosed",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-7",
+      "type": "galvo",
+      "x": 405,
+      "y": 80,
+      "rot": 0,
+      "label": "Galvo scanning",
+      "showLabel": false,
+      "params": {
+        "length": 20,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "buckmann-2014-base-8",
+      "type": "textlabel",
+      "x": 333,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Galvo scanning",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-9",
+      "type": "objective",
+      "x": 575,
+      "y": 80,
+      "rot": 0,
+      "label": "Zeiss 25× / NA 0.8\nDip-in to IP-S",
+      "showLabel": false,
+      "params": {
+        "efl": 8,
+        "workingDistance": 5,
+        "immersion": "custom",
+        "immersionIndex": 1.333,
+        "na": 0.8,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "buckmann-2014-base-10",
+      "type": "textlabel",
+      "x": 503,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Zeiss 25× / NA 0.8\nDip-in to IP-S",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-11",
+      "type": "stage",
+      "x": 745,
+      "y": 80,
+      "rot": 90,
+      "label": "IP-S on glass\nPositioning stages",
+      "showLabel": false,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "buckmann-2014-base-12",
+      "type": "textlabel",
+      "x": 673,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. IP-S on glass\nPositioning stages",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-13",
+      "type": "textlabel",
+      "x": 0,
+      "y": 277,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Evidence and model limits: https://opticalsetup.com/collections/2pp/buckmann-2014/",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "buckmann-2014-base-14",
+      "type": "textlabel",
+      "x": 0,
+      "y": 300,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Only the documented functional sequence is drawn. Proprietary relay, attenuator and laser architecture are not inferred from other\nNanoscribe generations.",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "buckmann-2014-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 80
+        },
+        {
+          "x": 235,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "buckmann-2014-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 80
+        },
+        {
+          "x": 405,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "buckmann-2014-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 80
+        },
+        {
+          "x": 575,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "buckmann-2014-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 80
+        },
+        {
+          "x": 745,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

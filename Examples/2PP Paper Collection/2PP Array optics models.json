@@ -1,0 +1,246 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "array-demo-0",
+      "type": "textlabel",
+      "x": -45,
+      "y": -75,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Array optics · three distinct mechanisms",
+        "fontSize": 20,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "array-demo-1",
+      "type": "textlabel",
+      "x": -45,
+      "y": -36,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Traced 1D geometric models. These are teaching examples, not paper prescriptions.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "array-demo-2",
+      "type": "cwlaser",
+      "x": 0,
+      "y": 0,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "enabled": true,
+        "wavelength": 800,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 8,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "array-demo-3",
+      "type": "diffractivesplitter",
+      "x": 125,
+      "y": 0,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 48,
+        "lines": 60,
+        "orders": "-1,0,1"
+      }
+    },
+    {
+      "id": "array-demo-4",
+      "type": "lens",
+      "x": 205,
+      "y": 0,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "f": 60,
+        "dia": 50.8,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "array-demo-5",
+      "type": "box",
+      "x": 300,
+      "y": 0,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "",
+        "w": 12,
+        "h": 105,
+        "behavior": "block",
+        "fill": "#d9dde1"
+      }
+    },
+    {
+      "id": "array-demo-6",
+      "type": "textlabel",
+      "x": -45,
+      "y": 69,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Static DOE: angular splitting → common focusing lens",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "array-demo-7",
+      "type": "cwlaser",
+      "x": 0,
+      "y": 165,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "enabled": true,
+        "wavelength": 800,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 40,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "array-demo-8",
+      "type": "microlensarray",
+      "x": 125,
+      "y": 165,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 48,
+        "count": 4,
+        "f": 40
+      }
+    },
+    {
+      "id": "array-demo-9",
+      "type": "box",
+      "x": 300,
+      "y": 165,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "",
+        "w": 12,
+        "h": 105,
+        "behavior": "block",
+        "fill": "#d9dde1"
+      }
+    },
+    {
+      "id": "array-demo-10",
+      "type": "textlabel",
+      "x": -45,
+      "y": 234,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Microlens array: a separate optical axis for each lenslet",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "array-demo-11",
+      "type": "cwlaser",
+      "x": 0,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "enabled": true,
+        "wavelength": 800,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 40,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "array-demo-12",
+      "type": "metalensarray",
+      "x": 125,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 48,
+        "count": 4,
+        "f": 40,
+        "designWavelength": 800,
+        "focusEff": 100
+      }
+    },
+    {
+      "id": "array-demo-13",
+      "type": "box",
+      "x": 300,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "",
+        "w": 12,
+        "h": 105,
+        "behavior": "block",
+        "fill": "#d9dde1"
+      }
+    },
+    {
+      "id": "array-demo-14",
+      "type": "textlabel",
+      "x": -45,
+      "y": 399,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Metalens array: independent diffractive lenses",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": []
+}

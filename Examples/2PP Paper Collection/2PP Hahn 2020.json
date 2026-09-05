@@ -1,0 +1,1003 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "hahn-2020-base-1",
+      "type": "textlabel",
+      "x": 0,
+      "y": -65,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2PP · Hahn 2020",
+        "fontSize": 23,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-2",
+      "type": "textlabel",
+      "x": 0,
+      "y": -22,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "APPARATUS DRAWING · Optical sequence unfolded for readability\nDashed paths are annotations. Geometry and unspecified controls are schematic; source emission is off.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-3",
+      "type": "pulsedlaser",
+      "x": 65,
+      "y": 80,
+      "rot": 0,
+      "label": "Fs laser\n790 nm · 90 fs\n80 MHz · 2.8 W",
+      "showLabel": false,
+      "params": {
+        "enabled": false,
+        "wavelength": 790,
+        "avgPowerW": 2.8,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 90,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "hahn-2020-base-4",
+      "type": "textlabel",
+      "x": -7,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Fs laser\n790 nm · 90 fs\n80 MHz · 2.8 W",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-5",
+      "type": "aom",
+      "x": 235,
+      "y": 80,
+      "rot": 0,
+      "label": "AOM writing +1\n0th order dumped",
+      "showLabel": false,
+      "params": {
+        "aperture": 26,
+        "deflect": 4,
+        "rfMHz": 80,
+        "zero": true,
+        "eff": 0.85,
+        "modulate": false,
+        "modShape": "square",
+        "modFreqMHz": 1,
+        "chopDuty": 0.5,
+        "modDepth": 1,
+        "phaseNs": 0
+      }
+    },
+    {
+      "id": "hahn-2020-base-6",
+      "type": "textlabel",
+      "x": 163,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. AOM writing +1\n0th order dumped",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-7",
+      "type": "prism",
+      "x": 405,
+      "y": 80,
+      "rot": 0,
+      "label": "N-SF10 prism P1",
+      "showLabel": false,
+      "params": {
+        "apex": 60,
+        "psize": 25.4,
+        "material": "nbk7"
+      }
+    },
+    {
+      "id": "hahn-2020-base-8",
+      "type": "textlabel",
+      "x": 333,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. N-SF10 prism P1",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-9",
+      "type": "prism",
+      "x": 575,
+      "y": 80,
+      "rot": 0,
+      "label": "N-SF10 prism P2\n2 m tip separation",
+      "showLabel": false,
+      "params": {
+        "apex": 60,
+        "psize": 25.4,
+        "material": "nbk7"
+      }
+    },
+    {
+      "id": "hahn-2020-base-10",
+      "type": "textlabel",
+      "x": 503,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. N-SF10 prism P2\n2 m tip separation",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-11",
+      "type": "diffractivesplitter",
+      "x": 745,
+      "y": 80,
+      "rot": 0,
+      "label": "3×3 DOE",
+      "showLabel": false,
+      "params": {
+        "length": 40,
+        "lines": 60,
+        "orders": "-1,0,1"
+      }
+    },
+    {
+      "id": "hahn-2020-base-12",
+      "type": "textlabel",
+      "x": 673,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. 3×3 DOE",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-13",
+      "type": "box",
+      "x": 915,
+      "y": 80,
+      "rot": 0,
+      "label": "Chromatic DCT\nNear 1×",
+      "showLabel": false,
+      "params": {
+        "text": "Chromatic DCT",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "hahn-2020-base-14",
+      "type": "textlabel",
+      "x": 843,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Chromatic DCT\nNear 1×",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-15",
+      "type": "pbs",
+      "x": 915,
+      "y": 235,
+      "rot": 0,
+      "label": "Polarizing beam splitter",
+      "showLabel": false,
+      "params": {
+        "size": 25.4
+      }
+    },
+    {
+      "id": "hahn-2020-base-16",
+      "type": "textlabel",
+      "x": 843,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Polarizing beam\nsplitter",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-17",
+      "type": "box",
+      "x": 745,
+      "y": 235,
+      "rot": 0,
+      "label": "LG1 / LG2\n2:1 demagnification",
+      "showLabel": false,
+      "params": {
+        "text": "LG1 / LG2",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "hahn-2020-base-18",
+      "type": "textlabel",
+      "x": 673,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "8. LG1 / LG2\n2:1 demagnification",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-19",
+      "type": "galvo",
+      "x": 575,
+      "y": 235,
+      "rot": 0,
+      "label": "GX",
+      "showLabel": false,
+      "params": {
+        "length": 20,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "hahn-2020-base-20",
+      "type": "textlabel",
+      "x": 503,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "9. GX",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-21",
+      "type": "box",
+      "x": 405,
+      "y": 235,
+      "rot": 0,
+      "label": "LG3 / LG4\nScanner relay",
+      "showLabel": false,
+      "params": {
+        "text": "LG3 / LG4",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "hahn-2020-base-22",
+      "type": "textlabel",
+      "x": 333,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "10. LG3 / LG4\nScanner relay",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-23",
+      "type": "galvo",
+      "x": 235,
+      "y": 235,
+      "rot": 0,
+      "label": "GY",
+      "showLabel": false,
+      "params": {
+        "length": 20,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "hahn-2020-base-24",
+      "type": "textlabel",
+      "x": 163,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "11. GY",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-25",
+      "type": "box",
+      "x": 65,
+      "y": 235,
+      "rot": 0,
+      "label": "LG5 / LG6\nPupil relay",
+      "showLabel": false,
+      "params": {
+        "text": "LG5 / LG6",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "hahn-2020-base-26",
+      "type": "textlabel",
+      "x": -7,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "12. LG5 / LG6\nPupil relay",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-27",
+      "type": "dichroic",
+      "x": 65,
+      "y": 390,
+      "rot": 0,
+      "label": "Dichroic",
+      "showLabel": false,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 550,
+        "center": 550,
+        "band": 50,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "hahn-2020-base-28",
+      "type": "textlabel",
+      "x": -7,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "13. Dichroic",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-29",
+      "type": "qwp",
+      "x": 235,
+      "y": 390,
+      "rot": 0,
+      "label": "Quarter-wave plate",
+      "showLabel": false,
+      "params": {
+        "a": 45,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "hahn-2020-base-30",
+      "type": "textlabel",
+      "x": 163,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "14. Quarter-wave plate",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-31",
+      "type": "objective",
+      "x": 405,
+      "y": 390,
+      "rot": 0,
+      "label": "Zeiss 40× / NA 1.4\nOil objective",
+      "showLabel": false,
+      "params": {
+        "efl": 5,
+        "workingDistance": 5,
+        "immersion": "oil",
+        "immersionIndex": 1.333,
+        "na": 1.4,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "hahn-2020-base-32",
+      "type": "textlabel",
+      "x": 333,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "15. Zeiss 40× / NA 1.4\nOil objective",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-33",
+      "type": "stage",
+      "x": 575,
+      "y": 390,
+      "rot": 90,
+      "label": "Resin\nXY + piezo Z",
+      "showLabel": false,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "hahn-2020-base-34",
+      "type": "textlabel",
+      "x": 503,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "16. Resin\nXY + piezo Z",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-35",
+      "type": "textlabel",
+      "x": 0,
+      "y": 545,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Sample return via double-pass QWP",
+        "fontSize": 15,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-36",
+      "type": "box",
+      "x": 65,
+      "y": 615,
+      "rot": 0,
+      "label": "Return APD",
+      "showLabel": false,
+      "params": {
+        "text": "Return APD",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "hahn-2020-base-37",
+      "type": "textlabel",
+      "x": -7,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Return APD",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-38",
+      "type": "camera",
+      "x": 235,
+      "y": 615,
+      "rot": 0,
+      "label": "Camera",
+      "showLabel": false,
+      "params": {
+        "ch": 30,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "hahn-2020-base-39",
+      "type": "textlabel",
+      "x": 163,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Camera",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-40",
+      "type": "box",
+      "x": 405,
+      "y": 615,
+      "rot": 0,
+      "label": "LED above sample",
+      "showLabel": false,
+      "params": {
+        "text": "LED above sample",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "hahn-2020-base-41",
+      "type": "textlabel",
+      "x": 333,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "LED above sample",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-42",
+      "type": "textlabel",
+      "x": -1,
+      "y": 587,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "From 7",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-43",
+      "type": "textlabel",
+      "x": 169,
+      "y": 587,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "From 13",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-44",
+      "type": "textlabel",
+      "x": 339,
+      "y": 587,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "To 16",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-45",
+      "type": "textlabel",
+      "x": 0,
+      "y": 777,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Evidence and model limits: https://opticalsetup.com/collections/2pp/hahn-2020/",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hahn-2020-base-46",
+      "type": "textlabel",
+      "x": 0,
+      "y": 800,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "The DCT is labelled as a prescription-dependent assembly; no ordinary relay is claimed to reproduce its chromatic correction. AOM\nfrequency and instantaneous gate timing are separate quantities.",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "hahn-2020-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 80
+        },
+        {
+          "x": 235,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 80
+        },
+        {
+          "x": 405,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 80
+        },
+        {
+          "x": 575,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 80
+        },
+        {
+          "x": 745,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 80
+        },
+        {
+          "x": 915,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 235
+        },
+        {
+          "x": 915,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 235
+        },
+        {
+          "x": 745,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 235
+        },
+        {
+          "x": 575,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-8",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 235
+        },
+        {
+          "x": 405,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-9",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 235
+        },
+        {
+          "x": 235,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-10",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 235
+        },
+        {
+          "x": 65,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-11",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 235
+        },
+        {
+          "x": -20,
+          "y": 235
+        },
+        {
+          "x": -20,
+          "y": 390
+        },
+        {
+          "x": 65,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-12",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 390
+        },
+        {
+          "x": 235,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-13",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 390
+        },
+        {
+          "x": 405,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "hahn-2020-path-14",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 390
+        },
+        {
+          "x": 575,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

@@ -1,0 +1,784 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "geng-2019-base-1",
+      "type": "textlabel",
+      "x": 0,
+      "y": -65,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2PP · Geng 2019",
+        "fontSize": 23,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-2",
+      "type": "textlabel",
+      "x": 0,
+      "y": -22,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "APPARATUS DRAWING · Optical sequence unfolded for readability\nDashed paths are annotations. Geometry and unspecified controls are schematic; source emission is off.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-3",
+      "type": "box",
+      "x": 65,
+      "y": 80,
+      "rot": 0,
+      "label": "Fs source\n800 nm\nSee verified settings",
+      "showLabel": false,
+      "params": {
+        "text": "Fs source",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "geng-2019-base-4",
+      "type": "textlabel",
+      "x": -7,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Fs source\n800 nm\nSee verified settings",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-5",
+      "type": "grating",
+      "x": 235,
+      "y": 80,
+      "rot": 0,
+      "label": "1200 lines/mm\nTransmission",
+      "showLabel": false,
+      "params": {
+        "lines": 1200,
+        "orders": "1",
+        "transmissive": true,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "geng-2019-base-6",
+      "type": "textlabel",
+      "x": 163,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. 1200 lines/mm\nTransmission",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-7",
+      "type": "mirror",
+      "x": 405,
+      "y": 80,
+      "rot": 0,
+      "label": "M1",
+      "showLabel": false,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "geng-2019-base-8",
+      "type": "textlabel",
+      "x": 333,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. M1",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-9",
+      "type": "lens",
+      "x": 575,
+      "y": 80,
+      "rot": 0,
+      "label": "L1 · 100 mm",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "geng-2019-base-10",
+      "type": "textlabel",
+      "x": 503,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. L1 · 100 mm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-11",
+      "type": "lens",
+      "x": 745,
+      "y": 80,
+      "rot": 0,
+      "label": "L2 · 250 mm",
+      "showLabel": false,
+      "params": {
+        "f": 250,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "geng-2019-base-12",
+      "type": "textlabel",
+      "x": 673,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. L2 · 250 mm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-13",
+      "type": "dmd",
+      "x": 915,
+      "y": 80,
+      "rot": 0,
+      "label": "DLP4100\nBinary holograms",
+      "showLabel": false,
+      "params": {
+        "length": 40,
+        "tilt": 12,
+        "pitch": 8,
+        "duty": 0.5,
+        "routeOff": false
+      }
+    },
+    {
+      "id": "geng-2019-base-14",
+      "type": "textlabel",
+      "x": 843,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. DLP4100\nBinary holograms",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-15",
+      "type": "lens",
+      "x": 915,
+      "y": 235,
+      "rot": 0,
+      "label": "L3 · 200 mm",
+      "showLabel": false,
+      "params": {
+        "f": 200,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "geng-2019-base-16",
+      "type": "textlabel",
+      "x": 843,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. L3 · 200 mm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-17",
+      "type": "slit",
+      "x": 745,
+      "y": 235,
+      "rot": 0,
+      "label": "Fourier plane\nFirst-order filter",
+      "showLabel": false,
+      "params": {
+        "gap": 8,
+        "length": 50.8
+      }
+    },
+    {
+      "id": "geng-2019-base-18",
+      "type": "textlabel",
+      "x": 673,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "8. Fourier plane\nFirst-order filter",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-19",
+      "type": "lens",
+      "x": 575,
+      "y": 235,
+      "rot": 0,
+      "label": "L4 · 200 mm",
+      "showLabel": false,
+      "params": {
+        "f": 200,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "geng-2019-base-20",
+      "type": "textlabel",
+      "x": 503,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "9. L4 · 200 mm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-21",
+      "type": "dichroic",
+      "x": 405,
+      "y": 235,
+      "rot": 0,
+      "label": "Dichroic",
+      "showLabel": false,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 550,
+        "center": 550,
+        "band": 50,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "geng-2019-base-22",
+      "type": "textlabel",
+      "x": 333,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "10. Dichroic",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-23",
+      "type": "objective",
+      "x": 235,
+      "y": 235,
+      "rot": 0,
+      "label": "Nikon 40× / NA 1.3\nWD 0.22 mm",
+      "showLabel": false,
+      "params": {
+        "efl": 5,
+        "workingDistance": 5,
+        "immersion": "oil",
+        "immersionIndex": 1.333,
+        "na": 1.3,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "geng-2019-base-24",
+      "type": "textlabel",
+      "x": 163,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "11. Nikon 40× / NA 1.3\nWD 0.22 mm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-25",
+      "type": "stage",
+      "x": 65,
+      "y": 235,
+      "rot": 90,
+      "label": "IP-Dip\nXYZ stage",
+      "showLabel": false,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "geng-2019-base-26",
+      "type": "textlabel",
+      "x": -7,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "12. IP-Dip\nXYZ stage",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-27",
+      "type": "textlabel",
+      "x": 0,
+      "y": 390,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Epi illumination and observation",
+        "fontSize": 15,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-28",
+      "type": "bs",
+      "x": 65,
+      "y": 460,
+      "rot": 0,
+      "label": "50:50 beam splitter",
+      "showLabel": false,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "geng-2019-base-29",
+      "type": "textlabel",
+      "x": -7,
+      "y": 495,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "50:50 beam splitter",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-30",
+      "type": "box",
+      "x": 235,
+      "y": 460,
+      "rot": 0,
+      "label": "LED illumination",
+      "showLabel": false,
+      "params": {
+        "text": "LED illumination",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "geng-2019-base-31",
+      "type": "textlabel",
+      "x": 163,
+      "y": 495,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "LED illumination",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-32",
+      "type": "camera",
+      "x": 405,
+      "y": 460,
+      "rot": 0,
+      "label": "CCD",
+      "showLabel": false,
+      "params": {
+        "ch": 30,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "geng-2019-base-33",
+      "type": "textlabel",
+      "x": 333,
+      "y": 495,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "CCD",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-34",
+      "type": "textlabel",
+      "x": -1,
+      "y": 432,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "From 10",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-35",
+      "type": "textlabel",
+      "x": 0,
+      "y": 622,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Evidence and model limits: https://opticalsetup.com/collections/2pp/geng-2019/",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "geng-2019-base-36",
+      "type": "textlabel",
+      "x": 0,
+      "y": 645,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Native DMD ON/OFF micromirror routing is not binary holography. Carrier order 10 and selected holographic first order refer to\ndifferent levels of the diffraction construction.",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "geng-2019-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 80
+        },
+        {
+          "x": 235,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 80
+        },
+        {
+          "x": 405,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 80
+        },
+        {
+          "x": 575,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 80
+        },
+        {
+          "x": 745,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 80
+        },
+        {
+          "x": 915,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 235
+        },
+        {
+          "x": 915,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 235
+        },
+        {
+          "x": 745,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 235
+        },
+        {
+          "x": 575,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-8",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 235
+        },
+        {
+          "x": 405,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-9",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 235
+        },
+        {
+          "x": 235,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-10",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 235
+        },
+        {
+          "x": 65,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-11",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 460
+        },
+        {
+          "x": 65,
+          "y": 460
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "geng-2019-path-12",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 460
+        },
+        {
+          "x": 405,
+          "y": 460
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

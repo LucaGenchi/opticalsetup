@@ -8,7 +8,7 @@
 // after any of build-wiki.mjs, build-community.mjs, or
 // build-examples-pages.mjs.
 
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { wikiEntries } from './wiki-content.mjs';
@@ -20,6 +20,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE_URL = 'https://opticalsetup.com';
 
 async function main() {
+  const { papers } = JSON.parse(await readFile(join(ROOT, 'collections/2pp/papers.json'), 'utf8'));
   const examplesByName = new Map(examples.map(e => [e.name, e]));
   const exampleSlugs = exampleEntries.map(entry => {
     const manifestEntry = examplesByName.get(entry.match);
@@ -36,6 +37,8 @@ async function main() {
     ...exampleSlugs.map(slug => ({ loc: `${SITE_URL}/example-setups/${slug}/`, priority: '0.7', freq: 'monthly' })),
     { loc: `${SITE_URL}/community/`, priority: '0.7', freq: 'weekly' },
     ...community.map(e => ({ loc: `${SITE_URL}/community/${e.slug}/`, priority: '0.6', freq: 'monthly' })),
+    { loc: `${SITE_URL}/collections/2pp/`, priority: '0.8', freq: 'monthly' },
+    ...papers.map(p => ({ loc: `${SITE_URL}/collections/2pp/${p.id}/`, priority: '0.7', freq: 'monthly' })),
   ];
 
   const today = new Date().toISOString().slice(0, 10);

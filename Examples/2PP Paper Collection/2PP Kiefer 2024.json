@@ -1,0 +1,1007 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "kiefer-2024-base-1",
+      "type": "textlabel",
+      "x": 0,
+      "y": -65,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2PP · Kiefer 2024",
+        "fontSize": 23,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-2",
+      "type": "textlabel",
+      "x": 0,
+      "y": -22,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "APPARATUS DRAWING · Optical sequence unfolded for readability\nDashed paths are annotations. Geometry and unspecified controls are schematic; source emission is off.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-3",
+      "type": "pulsedlaser",
+      "x": 65,
+      "y": 80,
+      "rot": 0,
+      "label": "Fs laser\n790 nm · 140 fs\n80 MHz · 3.7 W",
+      "showLabel": false,
+      "params": {
+        "enabled": false,
+        "wavelength": 790,
+        "avgPowerW": 3.7,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 140,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-4",
+      "type": "textlabel",
+      "x": -7,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Fs laser\n790 nm · 140 fs\n80 MHz · 3.7 W",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-5",
+      "type": "box",
+      "x": 235,
+      "y": 80,
+      "rot": 0,
+      "label": "L1 / L2\n1.25× demagnification",
+      "showLabel": false,
+      "params": {
+        "text": "L1 / L2",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-6",
+      "type": "textlabel",
+      "x": 163,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. L1 / L2\n1.25× demagnification",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-7",
+      "type": "aom",
+      "x": 405,
+      "y": 80,
+      "rot": 0,
+      "label": "AOM writing +1\n0th order dumped",
+      "showLabel": false,
+      "params": {
+        "aperture": 26,
+        "deflect": 4,
+        "rfMHz": 80,
+        "zero": true,
+        "eff": 0.85,
+        "modulate": false,
+        "modShape": "square",
+        "modFreqMHz": 1,
+        "chopDuty": 0.5,
+        "modDepth": 1,
+        "phaseNs": 0
+      }
+    },
+    {
+      "id": "kiefer-2024-base-8",
+      "type": "textlabel",
+      "x": 333,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. AOM writing +1\n0th order dumped",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-9",
+      "type": "box",
+      "x": 575,
+      "y": 80,
+      "rot": 0,
+      "label": "L3 / L4\n1.60× relay",
+      "showLabel": false,
+      "params": {
+        "text": "L3 / L4",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-10",
+      "type": "textlabel",
+      "x": 503,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. L3 / L4\n1.60× relay",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-11",
+      "type": "diffractivesplitter",
+      "x": 745,
+      "y": 80,
+      "rot": 0,
+      "label": "7×7 DOE\nSmall angular fan",
+      "showLabel": false,
+      "params": {
+        "length": 40,
+        "lines": 60,
+        "orders": "-1,0,1"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-12",
+      "type": "textlabel",
+      "x": 673,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. 7×7 DOE\nSmall angular fan",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-13",
+      "type": "box",
+      "x": 915,
+      "y": 80,
+      "rot": 0,
+      "label": "L5 / L6\n3.33× telescope",
+      "showLabel": false,
+      "params": {
+        "text": "L5 / L6",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-14",
+      "type": "textlabel",
+      "x": 843,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. L5 / L6\n3.33× telescope",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-15",
+      "type": "lens",
+      "x": 915,
+      "y": 235,
+      "rot": 0,
+      "label": "L7",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "kiefer-2024-base-16",
+      "type": "textlabel",
+      "x": 843,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. L7",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-17",
+      "type": "microlensarray",
+      "x": 745,
+      "y": 235,
+      "rot": 0,
+      "label": "Aspheric MLA\nRepresentative section",
+      "showLabel": false,
+      "params": {
+        "length": 48,
+        "count": 7,
+        "f": 40
+      }
+    },
+    {
+      "id": "kiefer-2024-base-18",
+      "type": "textlabel",
+      "x": 673,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "8. Aspheric MLA\nRepresentative section",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-19",
+      "type": "lens",
+      "x": 575,
+      "y": 235,
+      "rot": 0,
+      "label": "LG1",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "kiefer-2024-base-20",
+      "type": "textlabel",
+      "x": 503,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "9. LG1",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-21",
+      "type": "galvo",
+      "x": 405,
+      "y": 235,
+      "rot": 0,
+      "label": "GX",
+      "showLabel": false,
+      "params": {
+        "length": 20,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "kiefer-2024-base-22",
+      "type": "textlabel",
+      "x": 333,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "10. GX",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-23",
+      "type": "box",
+      "x": 235,
+      "y": 235,
+      "rot": 0,
+      "label": "LG2 / LG3\nUnity relay",
+      "showLabel": false,
+      "params": {
+        "text": "LG2 / LG3",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-24",
+      "type": "textlabel",
+      "x": 163,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "11. LG2 / LG3\nUnity relay",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-25",
+      "type": "galvo",
+      "x": 65,
+      "y": 235,
+      "rot": 0,
+      "label": "GY",
+      "showLabel": false,
+      "params": {
+        "length": 20,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "kiefer-2024-base-26",
+      "type": "textlabel",
+      "x": -7,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "12. GY",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-27",
+      "type": "box",
+      "x": 65,
+      "y": 390,
+      "rot": 0,
+      "label": "LG4 / LG5\n2× pupil relay",
+      "showLabel": false,
+      "params": {
+        "text": "LG4 / LG5",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-28",
+      "type": "textlabel",
+      "x": -7,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "13. LG4 / LG5\n2× pupil relay",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-29",
+      "type": "bs",
+      "x": 235,
+      "y": 390,
+      "rot": 0,
+      "label": "Observation BS",
+      "showLabel": false,
+      "params": {
+        "ratio": 0.5,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "kiefer-2024-base-30",
+      "type": "textlabel",
+      "x": 163,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "14. Observation BS",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-31",
+      "type": "objective",
+      "x": 405,
+      "y": 390,
+      "rot": 0,
+      "label": "Zeiss 40× / NA 1.4\nOil objective",
+      "showLabel": false,
+      "params": {
+        "efl": 5,
+        "workingDistance": 5,
+        "immersion": "oil",
+        "immersionIndex": 1.333,
+        "na": 1.4,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "kiefer-2024-base-32",
+      "type": "textlabel",
+      "x": 333,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "15. Zeiss 40× / NA 1.4\nOil objective",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-33",
+      "type": "stage",
+      "x": 575,
+      "y": 390,
+      "rot": 90,
+      "label": "49 foci · 60 µm pitch\nXYZ stage",
+      "showLabel": false,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "kiefer-2024-base-34",
+      "type": "textlabel",
+      "x": 503,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "16. 49 foci · 60 µm\npitch\nXYZ stage",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-35",
+      "type": "textlabel",
+      "x": 0,
+      "y": 545,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Transmission observation",
+        "fontSize": 15,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-36",
+      "type": "lens",
+      "x": 65,
+      "y": 615,
+      "rot": 0,
+      "label": "L8",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "kiefer-2024-base-37",
+      "type": "textlabel",
+      "x": -7,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "L8",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-38",
+      "type": "camera",
+      "x": 235,
+      "y": 615,
+      "rot": 0,
+      "label": "Camera",
+      "showLabel": false,
+      "params": {
+        "ch": 30,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-39",
+      "type": "textlabel",
+      "x": 163,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Camera",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-40",
+      "type": "box",
+      "x": 405,
+      "y": 615,
+      "rot": 0,
+      "label": "LED above specimen",
+      "showLabel": false,
+      "params": {
+        "text": "LED above specimen",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-41",
+      "type": "textlabel",
+      "x": 333,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "LED above specimen",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-42",
+      "type": "textlabel",
+      "x": -1,
+      "y": 587,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "From 14",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-43",
+      "type": "textlabel",
+      "x": 339,
+      "y": 587,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "To 16",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-44",
+      "type": "textlabel",
+      "x": 0,
+      "y": 777,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Evidence and model limits: https://opticalsetup.com/collections/2pp/kiefer-2024/",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "kiefer-2024-base-45",
+      "type": "textlabel",
+      "x": 0,
+      "y": 800,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "The native lenslet element is a 1D paraxial proxy. It cannot reproduce the custom aspheric prescription, 7×7 vectorial focus or\nmeasured efficiency.",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "kiefer-2024-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 80
+        },
+        {
+          "x": 235,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 80
+        },
+        {
+          "x": 405,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 80
+        },
+        {
+          "x": 575,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 80
+        },
+        {
+          "x": 745,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 80
+        },
+        {
+          "x": 915,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 235
+        },
+        {
+          "x": 915,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 235
+        },
+        {
+          "x": 745,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 235
+        },
+        {
+          "x": 575,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-8",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 235
+        },
+        {
+          "x": 405,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-9",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 235
+        },
+        {
+          "x": 235,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-10",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 235
+        },
+        {
+          "x": 65,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-11",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 235
+        },
+        {
+          "x": -20,
+          "y": 235
+        },
+        {
+          "x": -20,
+          "y": 390
+        },
+        {
+          "x": 65,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-12",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 390
+        },
+        {
+          "x": 235,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-13",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 390
+        },
+        {
+          "x": 405,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-14",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 390
+        },
+        {
+          "x": 575,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "kiefer-2024-path-15",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 615
+        },
+        {
+          "x": 235,
+          "y": 615
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

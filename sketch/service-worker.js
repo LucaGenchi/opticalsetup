@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v50';
+const CACHE_NAME = 'opticalsetup-pwa-v51';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -61,7 +61,23 @@ const PRECACHE_PATHS = [
   "../Examples/Optics%20Bench/Michelson%20interferometer.json",
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
-  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json"
+  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Array%20optics%20models.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Buckmann%202014.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Fischer%202011.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Geng%202019.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Gittard%202011.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Gu%202025%20129500%20foci.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Gu%202025%202500%20foci.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Hahn%202020.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Jiao%202023.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Kiefer%202024.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Nanoscribe%20Gt.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Ouyang%202023.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Pearre%202018.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Saha%202019.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Somers%202021.json",
+  "../Examples/2PP%20Paper%20Collection/2PP%20Zhang%202024.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;

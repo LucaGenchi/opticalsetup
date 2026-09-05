@@ -1,0 +1,944 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "zhang-2024-base-1",
+      "type": "textlabel",
+      "x": 0,
+      "y": -65,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2PP · Zhang 2024",
+        "fontSize": 23,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-2",
+      "type": "textlabel",
+      "x": 0,
+      "y": -22,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "APPARATUS DRAWING · Optical sequence unfolded for readability\nDashed paths are annotations. Geometry and unspecified controls are schematic; source emission is off.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-3",
+      "type": "box",
+      "x": 65,
+      "y": 80,
+      "rot": 0,
+      "label": "Fs source\n1030 nm\nSee verified settings",
+      "showLabel": false,
+      "params": {
+        "text": "Fs source",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "zhang-2024-base-4",
+      "type": "textlabel",
+      "x": -7,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Fs source\n1030 nm\nSee verified settings",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-5",
+      "type": "aom",
+      "x": 235,
+      "y": 80,
+      "rot": 0,
+      "label": "AOM writing 0th\nFirst order dumped",
+      "showLabel": false,
+      "params": {
+        "aperture": 26,
+        "deflect": 4,
+        "rfMHz": 80,
+        "zero": true,
+        "eff": 0.85,
+        "modulate": false,
+        "modShape": "square",
+        "modFreqMHz": 1,
+        "chopDuty": 0.5,
+        "modDepth": 1,
+        "phaseNs": 0
+      }
+    },
+    {
+      "id": "zhang-2024-base-6",
+      "type": "textlabel",
+      "x": 163,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. AOM writing 0th\nFirst order dumped",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-7",
+      "type": "hwp",
+      "x": 405,
+      "y": 80,
+      "rot": 0,
+      "label": "Half-wave plate",
+      "showLabel": false,
+      "params": {
+        "a": 22.5,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "zhang-2024-base-8",
+      "type": "textlabel",
+      "x": 333,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Half-wave plate",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-9",
+      "type": "pbs",
+      "x": 575,
+      "y": 80,
+      "rot": 0,
+      "label": "Polarizing beam splitter",
+      "showLabel": false,
+      "params": {
+        "size": 25.4
+      }
+    },
+    {
+      "id": "zhang-2024-base-10",
+      "type": "textlabel",
+      "x": 503,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Polarizing beam\nsplitter",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-11",
+      "type": "telescope",
+      "x": 745,
+      "y": 80,
+      "rot": 0,
+      "label": "Beam expander",
+      "showLabel": false,
+      "params": {
+        "f1": -30,
+        "f2": 60,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "zhang-2024-base-12",
+      "type": "textlabel",
+      "x": 673,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Beam expander",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-13",
+      "type": "slit",
+      "x": 915,
+      "y": 80,
+      "rot": 0,
+      "label": "Iris (2D section)",
+      "showLabel": false,
+      "params": {
+        "gap": 8,
+        "length": 50.8
+      }
+    },
+    {
+      "id": "zhang-2024-base-14",
+      "type": "textlabel",
+      "x": 843,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Iris (2D section)",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-15",
+      "type": "slm",
+      "x": 915,
+      "y": 235,
+      "rot": 0,
+      "label": "Hamamatsu LCoS\nInterference-aware CGH",
+      "showLabel": false,
+      "params": {
+        "transmissive": false,
+        "length": 40,
+        "zeroOrder": false,
+        "zeroFrac": 0.1,
+        "layers": []
+      }
+    },
+    {
+      "id": "zhang-2024-base-16",
+      "type": "textlabel",
+      "x": 843,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "7. Hamamatsu LCoS\nInterference-aware CGH",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-17",
+      "type": "lens",
+      "x": 745,
+      "y": 235,
+      "rot": 0,
+      "label": "Relay · 300 mm",
+      "showLabel": false,
+      "params": {
+        "f": 300,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "zhang-2024-base-18",
+      "type": "textlabel",
+      "x": 673,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "8. Relay · 300 mm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-19",
+      "type": "lens",
+      "x": 575,
+      "y": 235,
+      "rot": 0,
+      "label": "Relay · 200 mm",
+      "showLabel": false,
+      "params": {
+        "f": 200,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "zhang-2024-base-20",
+      "type": "textlabel",
+      "x": 503,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "9. Relay · 200 mm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-21",
+      "type": "galvo",
+      "x": 405,
+      "y": 235,
+      "rot": 0,
+      "label": "Galvo X",
+      "showLabel": false,
+      "params": {
+        "length": 20,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "zhang-2024-base-22",
+      "type": "textlabel",
+      "x": 333,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "10. Galvo X",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-23",
+      "type": "galvo",
+      "x": 235,
+      "y": 235,
+      "rot": 0,
+      "label": "Galvo Y",
+      "showLabel": false,
+      "params": {
+        "length": 20,
+        "commandAngle": 0,
+        "scanMode": "static",
+        "scanAmplitude": 1,
+        "scanFrequencyHz": 100,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "zhang-2024-base-24",
+      "type": "textlabel",
+      "x": 163,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "11. Galvo Y",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-25",
+      "type": "lens",
+      "x": 65,
+      "y": 235,
+      "rot": 0,
+      "label": "Relay · 150 mm",
+      "showLabel": false,
+      "params": {
+        "f": 150,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "zhang-2024-base-26",
+      "type": "textlabel",
+      "x": -7,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "12. Relay · 150 mm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-27",
+      "type": "lens",
+      "x": 65,
+      "y": 390,
+      "rot": 0,
+      "label": "Relay · 150 mm",
+      "showLabel": false,
+      "params": {
+        "f": 150,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "zhang-2024-base-28",
+      "type": "textlabel",
+      "x": -7,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "13. Relay · 150 mm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-29",
+      "type": "dichroic",
+      "x": 235,
+      "y": 390,
+      "rot": 0,
+      "label": "Dichroic",
+      "showLabel": false,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 550,
+        "center": 550,
+        "band": 50,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "zhang-2024-base-30",
+      "type": "textlabel",
+      "x": 163,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "14. Dichroic",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-31",
+      "type": "objective",
+      "x": 405,
+      "y": 390,
+      "rot": 0,
+      "label": "Olympus 60× / NA 1.35\nOil objective",
+      "showLabel": false,
+      "params": {
+        "efl": 3.3333333333333335,
+        "workingDistance": 5,
+        "immersion": "oil",
+        "immersionIndex": 1.333,
+        "na": 1.35,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "zhang-2024-base-32",
+      "type": "textlabel",
+      "x": 333,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "15. Olympus 60× / NA\n1.35\nOil objective",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-33",
+      "type": "stage",
+      "x": 575,
+      "y": 390,
+      "rot": 90,
+      "label": "SZ2080\nPiezo Z, manual XY",
+      "showLabel": false,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "zhang-2024-base-34",
+      "type": "textlabel",
+      "x": 503,
+      "y": 425,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "16. SZ2080\nPiezo Z, manual XY",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-35",
+      "type": "textlabel",
+      "x": 0,
+      "y": 545,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "In situ observation",
+        "fontSize": 15,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-36",
+      "type": "lens",
+      "x": 65,
+      "y": 615,
+      "rot": 0,
+      "label": "L5",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "zhang-2024-base-37",
+      "type": "textlabel",
+      "x": -7,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "L5",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-38",
+      "type": "camera",
+      "x": 235,
+      "y": 615,
+      "rot": 0,
+      "label": "CCD",
+      "showLabel": false,
+      "params": {
+        "ch": 30,
+        "pixels": 24,
+        "interference": true,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "zhang-2024-base-39",
+      "type": "textlabel",
+      "x": 163,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "CCD",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-40",
+      "type": "textlabel",
+      "x": -1,
+      "y": 587,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "From 14",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-41",
+      "type": "textlabel",
+      "x": 0,
+      "y": 777,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Evidence and model limits: https://opticalsetup.com/collections/2pp/zhang-2024/",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "zhang-2024-base-42",
+      "type": "textlabel",
+      "x": 0,
+      "y": 800,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Do not add a spatial stop at the hologram centre: cancellation is computational interference. The existing tracer cannot optimize\nthat coherent hologram.",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "zhang-2024-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 80
+        },
+        {
+          "x": 235,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 80
+        },
+        {
+          "x": 405,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 80
+        },
+        {
+          "x": 575,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 80
+        },
+        {
+          "x": 745,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 80
+        },
+        {
+          "x": 915,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 80
+        },
+        {
+          "x": 1005,
+          "y": 235
+        },
+        {
+          "x": 915,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 915,
+          "y": 235
+        },
+        {
+          "x": 745,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 235
+        },
+        {
+          "x": 575,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-8",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 235
+        },
+        {
+          "x": 405,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-9",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 235
+        },
+        {
+          "x": 235,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-10",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 235
+        },
+        {
+          "x": 65,
+          "y": 235
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-11",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 235
+        },
+        {
+          "x": -20,
+          "y": 235
+        },
+        {
+          "x": -20,
+          "y": 390
+        },
+        {
+          "x": 65,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-12",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 390
+        },
+        {
+          "x": 235,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-13",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 390
+        },
+        {
+          "x": 405,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-14",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 390
+        },
+        {
+          "x": 575,
+          "y": 390
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "zhang-2024-path-15",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 615
+        },
+        {
+          "x": 235,
+          "y": 615
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

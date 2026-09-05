@@ -1,0 +1,348 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "saha-2019-base-1",
+      "type": "textlabel",
+      "x": 0,
+      "y": -65,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2PP · Saha 2019",
+        "fontSize": 23,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "saha-2019-base-2",
+      "type": "textlabel",
+      "x": 0,
+      "y": -22,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "APPARATUS DRAWING · Optical sequence unfolded for readability\nDashed paths are annotations. Geometry and unspecified controls are schematic; source emission is off.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "saha-2019-base-3",
+      "type": "box",
+      "x": 65,
+      "y": 80,
+      "rot": 0,
+      "label": "Fs source\n800 nm\nSee verified settings",
+      "showLabel": false,
+      "params": {
+        "text": "Fs source",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "saha-2019-base-4",
+      "type": "textlabel",
+      "x": -7,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Fs source\n800 nm\nSee verified settings",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "saha-2019-base-5",
+      "type": "dmd",
+      "x": 235,
+      "y": 80,
+      "rot": 0,
+      "label": "DMD mask\nAngular dispersion",
+      "showLabel": false,
+      "params": {
+        "length": 40,
+        "tilt": 12,
+        "pitch": 8,
+        "duty": 0.5,
+        "routeOff": false
+      }
+    },
+    {
+      "id": "saha-2019-base-6",
+      "type": "textlabel",
+      "x": 163,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. DMD mask\nAngular dispersion",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "saha-2019-base-7",
+      "type": "lens",
+      "x": 405,
+      "y": 80,
+      "rot": 0,
+      "label": "L1 collimation",
+      "showLabel": false,
+      "params": {
+        "f": 100,
+        "dia": 25.4,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "saha-2019-base-8",
+      "type": "textlabel",
+      "x": 333,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. L1 collimation",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "saha-2019-base-9",
+      "type": "mirror",
+      "x": 575,
+      "y": 80,
+      "rot": 0,
+      "label": "Fold mirror",
+      "showLabel": false,
+      "params": {
+        "length": 25.4,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "saha-2019-base-10",
+      "type": "textlabel",
+      "x": 503,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Fold mirror",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "saha-2019-base-11",
+      "type": "objective",
+      "x": 745,
+      "y": 80,
+      "rot": 0,
+      "label": "L2 · 60× / NA 1.25\nProjection objective",
+      "showLabel": false,
+      "params": {
+        "efl": 3.3333333333333335,
+        "workingDistance": 5,
+        "immersion": "oil",
+        "immersionIndex": 1.333,
+        "na": 1.25,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "saha-2019-base-12",
+      "type": "textlabel",
+      "x": 673,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. L2 · 60× / NA 1.25\nProjection objective",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "saha-2019-base-13",
+      "type": "stage",
+      "x": 915,
+      "y": 80,
+      "rot": 90,
+      "label": "Temporal focus plane\nXYZ stage",
+      "showLabel": false,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "saha-2019-base-14",
+      "type": "textlabel",
+      "x": 843,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. Temporal focus plane\nXYZ stage",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "saha-2019-base-15",
+      "type": "textlabel",
+      "x": 0,
+      "y": 277,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Evidence and model limits: https://opticalsetup.com/collections/2pp/saha-2019/",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "saha-2019-base-16",
+      "type": "textlabel",
+      "x": 0,
+      "y": 300,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Geometric rays cannot establish temporal focusing, sheet confinement, voxel size or polymer conversion. No generic pulse compressor\nis substituted for this effect.",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "saha-2019-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 80
+        },
+        {
+          "x": 235,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "saha-2019-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 80
+        },
+        {
+          "x": 405,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "saha-2019-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 80
+        },
+        {
+          "x": 575,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "saha-2019-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 80
+        },
+        {
+          "x": 745,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "saha-2019-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 80
+        },
+        {
+          "x": 915,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}

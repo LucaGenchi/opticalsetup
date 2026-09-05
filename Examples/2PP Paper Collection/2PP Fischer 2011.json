@@ -1,0 +1,568 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "fischer-2011-base-1",
+      "type": "textlabel",
+      "x": 0,
+      "y": -65,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2PP · Fischer 2011",
+        "fontSize": 23,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-2",
+      "type": "textlabel",
+      "x": 0,
+      "y": -22,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "APPARATUS DRAWING · Optical sequence unfolded for readability\nDashed paths are annotations. Geometry and unspecified controls are schematic; source emission is off.",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-3",
+      "type": "box",
+      "x": 65,
+      "y": 80,
+      "rot": 0,
+      "label": "Fs source\n810 nm\nSee verified settings",
+      "showLabel": false,
+      "params": {
+        "text": "Fs source",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "fischer-2011-base-4",
+      "type": "textlabel",
+      "x": -7,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1. Fs source\n810 nm\nSee verified settings",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-5",
+      "type": "aom",
+      "x": 235,
+      "y": 80,
+      "rot": 0,
+      "label": "Excitation gate\n4 kHz · 3% duty",
+      "showLabel": false,
+      "params": {
+        "aperture": 26,
+        "deflect": 4,
+        "rfMHz": 80,
+        "zero": false,
+        "eff": 0.85,
+        "modulate": true,
+        "modShape": "square",
+        "modFreqMHz": 0.004,
+        "chopDuty": 0.03,
+        "modDepth": 1,
+        "phaseNs": 0
+      }
+    },
+    {
+      "id": "fischer-2011-base-6",
+      "type": "textlabel",
+      "x": 163,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "2. Excitation gate\n4 kHz · 3% duty",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-7",
+      "type": "box",
+      "x": 405,
+      "y": 80,
+      "rot": 0,
+      "label": "Beam combination\nplacement inferred",
+      "showLabel": false,
+      "params": {
+        "text": "Beam combination",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "fischer-2011-base-8",
+      "type": "textlabel",
+      "x": 333,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "3. Beam combination\nplacement inferred",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-9",
+      "type": "qwp",
+      "x": 575,
+      "y": 80,
+      "rot": 0,
+      "label": "Circular excitation",
+      "showLabel": false,
+      "params": {
+        "a": 45,
+        "length": 25.4
+      }
+    },
+    {
+      "id": "fischer-2011-base-10",
+      "type": "textlabel",
+      "x": 503,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "4. Circular excitation",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-11",
+      "type": "objective",
+      "x": 745,
+      "y": 80,
+      "rot": 0,
+      "label": "Leica HCX PL APO\nNA 1.4",
+      "showLabel": false,
+      "params": {
+        "efl": 2,
+        "workingDistance": 5,
+        "immersion": "oil",
+        "immersionIndex": 1.333,
+        "na": 1.4,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 11
+      }
+    },
+    {
+      "id": "fischer-2011-base-12",
+      "type": "textlabel",
+      "x": 673,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "5. Leica HCX PL APO\nNA 1.4",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-13",
+      "type": "stage",
+      "x": 915,
+      "y": 80,
+      "rot": 90,
+      "label": "DETC / PETA\n100 µm/s scan",
+      "showLabel": false,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 50,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 6,
+        "voxelPreview": false,
+        "voxelSize": 0.6,
+        "transmitExc": true,
+        "transmission": 0.8,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "fischer-2011-base-14",
+      "type": "textlabel",
+      "x": 843,
+      "y": 115,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "6. DETC / PETA\n100 µm/s scan",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-15",
+      "type": "textlabel",
+      "x": 0,
+      "y": 235,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Depletion path",
+        "fontSize": 15,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-16",
+      "type": "cwlaser",
+      "x": 65,
+      "y": 305,
+      "rot": 0,
+      "label": "Depletion · 532 nm",
+      "showLabel": false,
+      "params": {
+        "enabled": false,
+        "wavelength": 532,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 3,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "fischer-2011-base-17",
+      "type": "textlabel",
+      "x": -7,
+      "y": 340,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Depletion · 532 nm",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-18",
+      "type": "aom",
+      "x": 235,
+      "y": 305,
+      "rot": 0,
+      "label": "Synchronized AOM\n4 kHz · 3% duty",
+      "showLabel": false,
+      "params": {
+        "aperture": 26,
+        "deflect": 4,
+        "rfMHz": 80,
+        "zero": false,
+        "eff": 0.85,
+        "modulate": true,
+        "modShape": "square",
+        "modFreqMHz": 0.004,
+        "chopDuty": 0.03,
+        "modDepth": 1,
+        "phaseNs": 0
+      }
+    },
+    {
+      "id": "fischer-2011-base-19",
+      "type": "textlabel",
+      "x": 163,
+      "y": 340,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Synchronized AOM\n4 kHz · 3% duty",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-20",
+      "type": "box",
+      "x": 405,
+      "y": 305,
+      "rot": 0,
+      "label": "Central π phase mask\n50% pupil area",
+      "showLabel": false,
+      "params": {
+        "text": "Central π phase mask",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "fischer-2011-base-21",
+      "type": "textlabel",
+      "x": 333,
+      "y": 340,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Central π phase mask\n50% pupil area",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-22",
+      "type": "box",
+      "x": 575,
+      "y": 305,
+      "rot": 0,
+      "label": "Mask-to-pupil relay",
+      "showLabel": false,
+      "params": {
+        "text": "Mask-to-pupil relay",
+        "w": 76,
+        "h": 32,
+        "behavior": "pass",
+        "fill": "#eef0f3"
+      }
+    },
+    {
+      "id": "fischer-2011-base-23",
+      "type": "textlabel",
+      "x": 503,
+      "y": 340,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Mask-to-pupil relay",
+        "fontSize": 13,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-24",
+      "type": "textlabel",
+      "x": 509,
+      "y": 277,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "To 3",
+        "fontSize": 11,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-25",
+      "type": "textlabel",
+      "x": 0,
+      "y": 467,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Evidence and model limits: https://opticalsetup.com/collections/2pp/fischer-2011/",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "fischer-2011-base-26",
+      "type": "textlabel",
+      "x": 0,
+      "y": 490,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "No stimulated depletion, vectorial PSF, triplet dynamics or resin kinetics are simulated. Combiner placement is inferred from the\nstated common objective, not a published mechanical drawing.",
+        "fontSize": 10,
+        "fill": "#333333"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "fischer-2011-path-0",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 80
+        },
+        {
+          "x": 235,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "fischer-2011-path-1",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 80
+        },
+        {
+          "x": 405,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "fischer-2011-path-2",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 80
+        },
+        {
+          "x": 575,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "fischer-2011-path-3",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 575,
+          "y": 80
+        },
+        {
+          "x": 745,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "fischer-2011-path-4",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 745,
+          "y": 80
+        },
+        {
+          "x": 915,
+          "y": 80
+        }
+      ],
+      "color": "#bf4747",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "fischer-2011-path-5",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 65,
+          "y": 305
+        },
+        {
+          "x": 235,
+          "y": 305
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "fischer-2011-path-6",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 235,
+          "y": 305
+        },
+        {
+          "x": 405,
+          "y": 305
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    },
+    {
+      "id": "fischer-2011-path-7",
+      "kind": "beam",
+      "pts": [
+        {
+          "x": 405,
+          "y": 305
+        },
+        {
+          "x": 575,
+          "y": 305
+        }
+      ],
+      "color": "#66809c",
+      "width": 1.8,
+      "dash": true,
+      "arrow": true
+    }
+  ]
+}
