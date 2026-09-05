@@ -926,6 +926,18 @@ export function newShaperLayer() {
 }
 const layersParam = { key: 'layers', label: 'Optical function', type: 'layers', def: [] };
 
+// DMD mask playback is intentionally slow and illustrative. Published devices
+// can switch patterns at kilohertz rates, which would alias into a stationary
+// blur on a 30 fps canvas; this phase advances the binary pattern at a separate
+// user-selected preview rate without claiming to reproduce controller timing.
+export function dmdPatternPhaseAt(params = {}, timeSeconds = 0) {
+  if (params.sequence !== true) return 0;
+  const hz = Math.min(10, Math.max(0.05,
+    Number.isFinite(params.sequenceHz) ? params.sequenceHz : 0.5));
+  const cycle = (Number.isFinite(timeSeconds) ? timeSeconds : 0) * hz;
+  return ((cycle % 1) + 1) % 1;
+}
+
 // object shapes for image-formation diagrams, in unit coords:
 // base at (0,0), tip at (0,-1); the traced image redraws the same shape
 // scaled by the magnification (negative m = inverted)
@@ -3325,12 +3337,22 @@ export const registry = {
       { key: 'pitch', label: 'Pattern pitch (mm)', type: 'number', min: 1, max: 40, step: 0.5, def: 8 },
       { key: 'duty', label: 'ON fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5 },
       { key: 'routeOff', label: 'Show OFF order', type: 'checkbox', def: false },
+      { key: 'sequence', label: 'Animate mask sequence', type: 'checkbox', def: false },
+      { key: 'sequenceHz', label: 'Preview rate (Hz)', type: 'number', min: 0.05, max: 10, step: 0.05, def: 0.5, show: p => p.sequence },
+      { key: 'disperseSpectrum', label: 'Dispersive carrier proxy', type: 'checkbox', def: false },
+      { key: 'carrierLinesPerMm', label: 'Equivalent carrier lines/mm', type: 'number', min: 1, max: 1000, step: 0.1, def: 92.6, show: p => p.disperseSpectrum },
+      { key: 'carrierOrder', label: 'Carrier order', type: 'number', min: -20, max: 20, step: 1, def: 1, show: p => p.disperseSpectrum },
+      { key: 'designWavelengthNm', label: 'Design wavelength (nm)', type: 'number', min: 100, max: 4000, step: 1, def: 800, show: p => p.disperseSpectrum },
     ],
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
       const L = el.params.length / 2;
+      const patternShift = dmdPatternPhaseAt(el.params, el._animationTimeS || 0) * 6;
       let mm = '';
-      for (let y = -L + 4; y < L - 2; y += 6) mm += `<line x1="-11" y1="${y + 2}" x2="-7" y2="${y - 2}" stroke="#cfd6dd" stroke-width="1.6"/>`;
+      for (let y = -L + 4 - patternShift; y < L + 4; y += 6) {
+        if (y < -L - 2 || y > L + 2) continue;
+        mm += `<line x1="-11" y1="${y + 2}" x2="-7" y2="${y - 2}" stroke="#cfd6dd" stroke-width="1.6"/>`;
+      }
       return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/>` + mm +
         `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">DMD</text>`;
     },
@@ -3341,6 +3363,11 @@ export const registry = {
         data: {
           length: el.params.length, tilt: el.params.tilt, pitch: el.params.pitch,
           duty: el.params.duty, routeOff: el.params.routeOff,
+          patternPhase: dmdPatternPhaseAt(el.params, el._animationTimeS || 0),
+          disperseSpectrum: el.params.disperseSpectrum,
+          carrierLinesPerMm: el.params.carrierLinesPerMm,
+          carrierOrder: el.params.carrierOrder,
+          designWavelengthNm: el.params.designWavelengthNm,
         },
       }, ...shaperBody(-9, 11, L, L + 3)];
     },
@@ -4815,6 +4842,8 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Focal length follows f(λ) = f₀λ₀/λ. Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
   } else if (type === 'phaseplate') {
     note = 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. A wedge near half a fringe swings the port total hardest; at a whole fringe the written phases cancel and the total stops moving while the profile still shows the pattern, which is when the readout says so.';
+  } else if (type === 'dmd' && params.disperseSpectrum) {
+    note = 'The binary mask routes sampled rays and its carrier adds bounded wavelength-dependent angles. Ordinary lenses can re-image those rays, but pulse-front tilt, temporal recompression, diffraction efficiency, a time-dependent field, and curing are not solved.';
   } else if (type === 'pmt') {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'aod') {

@@ -1,5 +1,9 @@
 # Research workspace validation — 2026-09-05
 
+Historical preservation checkpoint: `somers-2021` has since been rebuilt as an
+individual native scene with its own evidence note and tests. The no-scene
+statements below describe the pinned preservation commit before that rebuild.
+
 The generated reconstructions have been removed. Earlier scene-validation
 results describe superseded drafts and are not evidence of accepted setups.
 

@@ -234,12 +234,13 @@ function animatedChopper(el) {
 
 function animatedOpticalElements() {
   if (!hasGalvoMotion() && !hasAodScan() && !hasPhaseModulation() && !hasStageMotion()
-    && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence()) return state.elements;
+    && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence() && !hasDmdSequence()) return state.elements;
   return state.elements.map(el => {
     if (el.type === 'galvo' && el.params.scanMode !== 'static') {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
+    if (el.type === 'dmd' && el.params.sequence) return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
@@ -262,6 +263,7 @@ function animatedVisualElements() {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
+    if (el.type === 'dmd' && el.params.sequence) return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
@@ -293,6 +295,7 @@ function hasMotion() {
     || (el.type === 'delayline' && el.params.moveMode === 'linear'
       && delayLineSweepSpanMm(el.params) > 0)
     || (el.type === 'chopper' && el.params.modulate)
+    || (el.type === 'dmd' && el.params.sequence)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
     || (el.type === 'retroreflector' && el.params.moveMode === 'linear'))
     || hasAotfSequence();
@@ -304,6 +307,10 @@ function hasAotfSequence() {
   return state.elements.some(el => el.type === 'aotf'
     && el.params.modMode === 'cycle'
     && Array.isArray(el.params.channels) && el.params.channels.length > 1);
+}
+
+function hasDmdSequence() {
+  return state.elements.some(el => el.type === 'dmd' && el.params.sequence);
 }
 
 function hasGalvoMotion() {
@@ -347,7 +354,7 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
+    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence() || hasDmdSequence();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();

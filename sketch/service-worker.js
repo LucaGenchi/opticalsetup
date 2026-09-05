@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v52';
+const CACHE_NAME = 'opticalsetup-pwa-v53';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -36,6 +36,7 @@ const PRECACHE_PATHS = [
   "./js/main.js",
   "./js/markdown.js",
   "./js/objective.js",
+  "./js/paper-setups-data.js",
   "./js/polarization.js",
   "./js/polygon.js",
   "./js/proposal.js",
@@ -61,7 +62,8 @@ const PRECACHE_PATHS = [
   "../Examples/Optics%20Bench/Michelson%20interferometer.json",
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
-  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json"
+  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
+  "../collections/2pp/setups/somers-2021.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;

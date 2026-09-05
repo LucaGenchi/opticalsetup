@@ -25,6 +25,7 @@ import { initInspector, renderInspector, refreshMeasurements } from './inspector
 import { buildSVG, exportSVG, exportPNG, exportGIF } from './export.js';
 import { examples } from './examples-data.js';
 import { community } from './community-data.js';
+import { paperSetups } from './paper-setups-data.js';
 import { download, esc, manualBeamSVG } from './util.js';
 import { buildShareURL, copyText, sharedSceneFromURL } from './share.js';
 import { qrSVG } from './qr.js';
@@ -1577,11 +1578,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
+  const paperSlug = params.get('paper');
+  const paperEntry = paperSetups.find(entry => entry.slug === paperSlug);
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isPaperScene = Boolean(!isTypeDemo && !isCommunityDemo && !isExampleDemo && paperEntry);
+  const isPaperPreview = isPaperScene && params.get('preview') === '1';
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo || isPaperPreview;
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1655,6 +1660,23 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load example:', err);
     }
+  } else if (isPaperScene) {
+    // Individually reviewed paper scenes use the native save format. The
+    // collection page requests a locked preview; the main action opens the
+    // identical scene with the complete editable workbench.
+    try {
+      const res = await fetch(paperEntry.path);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      state.elements.push(...scene.elements);
+      state.beams.push(...scene.beams);
+      Object.assign(state.view, scene.view || {});
+      if (typeof scene.showGrid === 'boolean') state.showGrid = scene.showGrid;
+      if (typeof scene.snap === 'boolean') state.snap = scene.snap;
+      if (typeof scene.showFocal === 'boolean') state.showFocal = scene.showFocal;
+    } catch (err) {
+      console.error('Could not load paper setup:', err);
+    }
   } else {
     let sharedScene = null;
     try {
@@ -1707,7 +1729,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   syncPulseControls();
   syncMobileSheets();
 
-  if (isDemo) {
+  if (isDemo || isPaperScene) {
     zoomFit();
   } else {
     // Deep link from the wiki ("Open in the canvas" on a component page):
