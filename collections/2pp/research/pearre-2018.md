@@ -30,7 +30,7 @@ The enabled 780 nm pulsed source traces through the Pockels-cell/analyzer proxy,
 
 ## Control experiments
 
-1. **Laser enable/power:** select the laser and turn off **Emit traced rays**. The complete writing trace and resin arrivals disappear. Turning it on restores them. Changing the illustrative average power changes reported source power but does not calibrate curing.
+1. **Laser enable/power:** select the laser and turn off **Emit traced rays**. The complete writing trace and resin arrivals disappear. Turning it on restores them. Zero average power also removes illumination and new resin arrivals. Positive average power changes reported source power but does not calibrate curing.
 2. **Pockels intensity path:** select the EOM and change **High-state duty** from 0.1 toward 0.9. The power-monitor reading falls as more pulses occupy the analyzer-blocked state. This demonstrates a polarization-plus-analyzer intensity-control assembly, not the paper’s arbitrary 3.33 MHz PrintImage voxel waveform.
 3. **Resonant X mechanism:** set the resonant scanner’s **Peak mechanical sweep** to 0°, then back to 1.2°. The focus stops, then resumes its fast sinusoidal motion. **Mechanical resonance** changes motion rate; **Usable scan fraction** is annotation only and does not linearize the raster.
 4. **Slow Y index proxy:** set the galvo waveform to **Static**, then restore **Triangle scan**. The slower focus displacement disappears and returns. Both scanner axes are projected into the 2D workbench, so this is a topology/mechanism demonstration rather than a 3D raster calibration.
@@ -40,3 +40,14 @@ The enabled 780 nm pulsed source traces through the Pockels-cell/analyzer proxy,
 OpticalSetup calculates a qualitative 2D geometric trace, objective aperture/focus, polarization-dependent attenuation, and bounded resin arrival markers. It does not calculate resonant dynamics, sinusoidal scan correction, the 152-address spatial map, PrintImage timing, vectorial focal fields, compensation-ring aberration correction, voxel dose, threshold, polymerization kinetics, or a calibrated 3D print.
 
 The paper-level calculator handoff supports the verified 780 nm wavelength, 80 MHz repetition rate, approximately 120 fs duration, and NA 0.8. It omits power because the paper reports a 0.6–1 W laser-output range rather than one exact operating value at the sample. The live resin handoff is deliberately disabled for the same reason. The 3.33 MHz DAC rate remains a modulator command rate and is never exported as optical repetition frequency.
+
+
+## PR 125 review — 2026-09-05
+
+Re-read the supplied preprint pp. 3–4 and rendered Fig. 1 before comparing the scene. The reported 7.91 kHz resonant rate, 3.33 MHz command rate, 80 MHz optical repetition rate, approximately 120 fs duration and NA 0.8 remain distinct. The 2D projection, interpreted relay and absent PMT return signal remain explicit.
+
+The original Figure frame clipped the title, monitor and long component labels. The review reflowed the annotations, kept every component/label inside the crop, pointed the PMT entrance toward the return branch, and terminated the illustration at the resin. Zero transmission is an illustrative sample display choice, not measured absorption. The export now has no unexplained diverging fan below the specimen. Native component labels use one line; multiline explanations use the native text annotation.
+
+The new resonant helper previously overflowed for very large finite time/phase inputs; phase reduction now keeps the mirror angle finite. The shared source correction also prevents a zero-watt laser from emitting light or writing voxels.
+
+Validation: `npm test` passed (785 tests); every `sketch/js/*.js` and `serve.mjs` passed `node --check`; `git diff --check` passed. Deterministic tests cover the default route, resonant extrema, independent slow-Y motion, held scanners, Pockels duty, laser off/zero power, save/reload, supported handoff units, extreme scanner inputs and frame containment. Native SVG exports were rasterized and inspected for [default](../verification/pearre-2018-default.png), [held scanners](../verification/pearre-2018-static-galvos.png) and [laser off](../verification/pearre-2018-laser-off.png). Live browser verification is recorded separately by the collection reviewer; these exports do not claim browser UI coverage.

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-import { registry } from '../sketch/js/elements.js';
+import { registry, getVisualBounds } from '../sketch/js/elements.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { buildPaperHandoff } from '../sketch/js/two-photon-handoff.js';
@@ -47,6 +47,9 @@ test('Pearre controls remove emission and change Pockels-addressed monitor signa
   assert.equal(traceScene(scene.elements, scene.beams).writeHits.length, 0);
 
   laser.params.enabled = true;
+  laser.params.avgPowerW = 0;
+  assert.equal(traceScene(scene.elements, scene.beams).writeHits.length, 0, 'zero optical power cannot write');
+  laser.params.avgPowerW = 0.8;
   eom.params.switchDuty = 0.1;
   traceScene(scene.elements, scene.beams);
   const mostlyOpen = detectorReading('pearre-monitor').signal;
@@ -69,4 +72,33 @@ test('Pearre paper handoff exports verified fields and omits non-exact power', (
   assert.equal(query.has('switchFreqMHz'), false);
   assert.equal(query.has('resonanceFrequencyKHz'), false);
   assert.equal(loadScene().elements.find(el => el.id === 'pearre-resin').params.handoffEnabled, false);
+});
+
+
+test('Pearre labels and native components fit the exported Figure frame', () => {
+  const scene = loadScene();
+  const frame = getVisualBounds(scene.elements.find(el => el.type === 'figureframe'), { includeLabel: false });
+  for (const element of scene.elements) {
+    const bounds = getVisualBounds(element);
+    assert.ok(bounds.x0 >= frame.x0 && bounds.x1 <= frame.x1
+      && bounds.y0 >= frame.y0 && bounds.y1 <= frame.y1, `${element.id} extends outside the export crop`);
+    if (element.showLabel) assert.doesNotMatch(element.label, /\n/, 'native component labels are one line');
+  }
+});
+
+test('Pearre slow-Y control independently moves the focus while a held resonant mirror stays still', () => {
+  const scene = loadScene();
+  const resonant = scene.elements.find(el => el.type === 'resonantscanner');
+  const slowY = scene.elements.find(el => el.id === 'pearre-slow-y');
+  resonant.params.scanAmplitude = 0;
+  slowY.params.scanMode = 'triangle';
+  const hitAt = time => {
+    slowY._animationTimeS = time;
+    const result = traceScene(scene.elements, scene.beams);
+    assert.equal(result.writeHits.length, 1);
+    return result.writeHits[0].x;
+  };
+  assert.notEqual(hitAt(0.25 / 30), hitAt(0.75 / 30));
+  slowY.params.scanMode = 'static';
+  assert.equal(hitAt(0), hitAt(1));
 });

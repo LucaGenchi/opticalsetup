@@ -1824,10 +1824,11 @@ export function resonantScannerAngleAt(params = {}, timeSeconds = 0) {
     Math.max(0, Number.isFinite(params.scanAmplitude) ? params.scanAmplitude : 0));
   const frequencyKHz = Math.min(100, Math.max(0.1,
     Number.isFinite(params.resonanceFrequencyKHz) ? params.resonanceFrequencyKHz : 8));
-  const phase = (Number.isFinite(params.scanPhaseDeg) ? params.scanPhaseDeg : 0) * Math.PI / 180;
-  const time = Number.isFinite(timeSeconds) ? timeSeconds : 0;
+  const phase = (Number.isFinite(params.scanPhaseDeg) ? params.scanPhaseDeg % 360 : 0) * Math.PI / 180;
+  const period = 1 / (frequencyKHz * 1000);
+  const cycle = Number.isFinite(timeSeconds) ? (timeSeconds % period) / period : 0;
   return Math.min(45, Math.max(-45,
-    center + amplitude * Math.sin(2 * Math.PI * time * frequencyKHz * 1000 + phase)));
+    center + amplitude * Math.sin(2 * Math.PI * cycle + phase)));
 }
 
 // ---- shared laser-source building blocks --------------------------------
@@ -1875,7 +1876,11 @@ function laserAperture(el) {
 
 function laserSource(el) {
   const p = el.params;
-  if (p.enabled === false) return [];
+  // Relative ray weights remain normalized for qualitative geometry, but an
+  // explicitly powerless or malformed source cannot illuminate a detector or
+  // leave resin write markers. Missing power is a legacy sketch convention.
+  if (p.enabled === false || (p.avgPowerW !== undefined
+    && (typeof p.avgPowerW !== 'number' || !Number.isFinite(p.avgPowerW) || p.avgPowerW <= 0))) return [];
   if (p.beamMode === 'beam') {
     // sample rays across the beam width; adjacent samples with an identical
     // interaction history are filled as an envelope strip, so a lenslet

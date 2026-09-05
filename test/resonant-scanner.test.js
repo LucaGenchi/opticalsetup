@@ -60,3 +60,13 @@ test('malformed and extreme resonant inputs normalize to finite bounded values',
   assert.equal(scanner.params.usableFraction, 1);
   assert.ok(Number.isFinite(resonantScannerAngleAt(scanner.params, Infinity)));
 });
+
+
+test('finite extreme times and phase inputs never produce a non-finite mirror angle', () => {
+  for (const time of [Number.MAX_VALUE, -Number.MAX_VALUE, 1e100]) {
+    const angle = resonantScannerAngleAt({ centerAngle: 3, scanAmplitude: 2,
+      resonanceFrequencyKHz: 100, scanPhaseDeg: Number.MAX_VALUE }, time);
+    assert.ok(Number.isFinite(angle));
+    assert.ok(angle >= 1 && angle <= 5);
+  }
+});
