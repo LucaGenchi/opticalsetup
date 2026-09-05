@@ -5,18 +5,22 @@
   {
    "id": "yan-frame",
    "type": "figureframe",
-   "x": 320,
-   "y": 155,
+   "x": 470,
+   "y": 200,
    "rot": 0,
    "label": "",
    "showLabel": false,
-   "params": { "w": 560, "h": 270, "background": "white" }
+   "params": {
+    "w": 900,
+    "h": 360,
+    "background": "white"
+   }
   },
   {
    "id": "yan-laser",
    "type": "pulsedlaser",
    "x": 100,
-   "y": 220,
+   "y": 300,
    "rot": 0,
    "label": "Illustrative fs source",
    "showLabel": true,
@@ -24,8 +28,8 @@
     "enabled": true,
     "wavelength": 800,
     "avgPowerW": 0.1,
-    "beamMode": "line",
-    "beamWidth": 3,
+    "beamMode": "beam",
+    "beamWidth": 6,
     "repRateMHz": 80,
     "pulsePhaseNs": 0,
     "pulseWidthFs": 150,
@@ -36,14 +40,15 @@
     "autoColor": true,
     "color": "#ff6400",
     "showPulse": true,
-    "temporalMode": "pulsed"
+    "temporalMode": "pulsed",
+    "handoffEnabled": false
    }
   },
   {
    "id": "yan-slm",
    "type": "slm",
    "x": 260,
-   "y": 220,
+   "y": 300,
    "rot": 0,
    "label": "SLM (4 orders)",
    "showLabel": true,
@@ -53,7 +58,15 @@
     "zeroOrder": true,
     "zeroFrac": 0.1,
     "layers": [
-     { "type": "grating", "n": 4, "f": 50, "lines": 70, "orders": "-3,-1,1,3", "angle": 5, "div": 8 }
+     {
+      "type": "grating",
+      "n": 4,
+      "f": 50,
+      "lines": 70,
+      "orders": "-3,-1,1,3",
+      "angle": 5,
+      "div": 8
+     }
     ]
    }
   },
@@ -61,48 +74,62 @@
    "id": "yan-fourier-lens",
    "type": "lens",
    "x": 320,
-   "y": 220,
+   "y": 300,
    "rot": 0,
    "label": "L1",
    "showLabel": true,
-   "params": { "f": 60, "dia": 55, "transEff": 100 }
+   "params": {
+    "f": 60,
+    "dia": 55,
+    "transEff": 100
+   }
   },
   {
    "id": "yan-zero-dump",
    "type": "beamdump",
    "x": 380,
-   "y": 220,
+   "y": 300,
    "rot": 0,
    "label": "BPF stop",
    "showLabel": true,
-   "params": { "aperture": 6 }
+   "params": {
+    "aperture": 6
+   }
   },
   {
    "id": "yan-relay-lens",
    "type": "lens",
    "x": 440,
-   "y": 220,
+   "y": 300,
    "rot": 0,
    "label": "L2",
    "showLabel": true,
-   "params": { "f": 60, "dia": 55, "transEff": 100 }
+   "params": {
+    "f": 60,
+    "dia": 55,
+    "transEff": 100
+   }
   },
   {
    "id": "yan-fold",
    "type": "mirror",
    "x": 520,
-   "y": 220,
+   "y": 300,
    "rot": 45,
    "label": "M1 fold",
    "showLabel": true,
-   "params": { "length": 70, "refl": 100, "showTransmitted": false }
+   "params": {
+    "length": 70,
+    "refl": 100,
+    "showTransmitted": false
+   }
   },
   {
    "id": "yan-objective",
    "type": "objective",
    "x": 520,
-   "y": 110,
-   "rot": 90,
+   "y": 190,
+   "rot": 270,
    "label": "Objective",
    "showLabel": true,
    "params": {
@@ -114,15 +141,16 @@
     "showAcceptance": false,
     "transEff": 100,
     "frontAperture": 90
-   }
+   },
+   "labelPos": "l"
   },
   {
    "id": "yan-resin-stage",
    "type": "stage",
    "x": 520,
-   "y": 80,
+   "y": 164,
    "rot": 0,
-   "label": "Resin: 4 simultaneous hits",
+   "label": "4 focal-plane hits",
    "showLabel": true,
    "params": {
     "pzMode": "sync",
@@ -140,42 +168,55 @@
     "voxelPreview": true,
     "voxelSize": 0.8,
     "transmitExc": true,
-    "transmission": 0.2,
+    "transmission": 0,
     "mode": "none",
     "fluorWl": 520,
     "carsWl": 660,
     "signalEff": 0.1
-   }
+   },
+   "labelPos": "t"
   },
   {
    "id": "yan-title",
    "type": "textlabel",
-   "x": 55,
+   "x": 40,
    "y": 42,
    "rot": 0,
    "label": "",
    "showLabel": false,
-   "params": { "text": "## Yan et al. (2015) — mechanism interpretation", "fontSize": 13, "fill": "#26333a" }
+   "params": {
+    "text": "## Yan et al. (2015) — mechanism interpretation",
+    "fontSize": 12,
+    "fill": "#26333a"
+   }
   },
   {
    "id": "yan-limit",
    "type": "textlabel",
-   "x": 55,
-   "y": 66,
+   "x": 650,
+   "y": 95,
    "rot": 0,
    "label": "",
    "showLabel": false,
-   "params": { "text": "**Primary-source limit:** full text unavailable. 800 nm / 150 fs / 80 MHz / 0.1 W and NA 0.8 are free interpretation.\nThe reported 633 nm value belongs to optical characterization, not fabrication.", "fontSize": 9, "fill": "#7c3d12" }
+   "params": {
+    "text": "**Primary-source limit:** full text unavailable.\n800 nm / 150 fs / 80 MHz / 0.1 W; NA 0.8\nare free interpretation.\n633 nm is characterization, not fabrication.\nConfigured-value handoff is disabled.",
+    "fontSize": 8,
+    "fill": "#7c3d12"
+   }
   },
   {
    "id": "yan-projection",
    "type": "textlabel",
-   "x": 55,
-   "y": 96,
+   "x": 650,
+   "y": 185,
    "rot": 0,
    "label": "",
    "showLabel": false,
-   "params": { "text": "**Computed:** native SLM orders → L1 → BPF stop → L2 → M1 → objective → four resin hits.\n**Projection:** one 2D row represents the reported 4×4 hexagonal focal array.\n**Not solved:** CGH, vector PSF, dose, cure, or 3D mirror geometry.", "fontSize": 9, "fill": "#334155" }
+   "params": {
+    "text": "**Computed:** SLM → Fourier stop → relay\n→ fold → objective → four resin foci.\n\n**Projection:** one row of the reported 4×4\nhexagonal array; not a solved CGH.\n**Not solved:** PSF, dose, curing, 3D geometry.\n\n**Try:** orders −1,1 → two foci.\nRemove BPF stop → central order returns.\nLaser off → no paths or writing.\nStage Static → sweep stops.",
+    "fontSize": 8,
+    "fill": "#334155"
+   }
   }
  ],
  "beams": []

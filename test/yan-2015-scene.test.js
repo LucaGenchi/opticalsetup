@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { registry } from '../sketch/js/elements.js';
 import { traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
-import { buildPaperHandoff } from '../sketch/js/two-photon-handoff.js';
+import { buildPaperHandoff, twoPhotonHandoffCandidates } from '../sketch/js/two-photon-handoff.js';
 import { twoPhotonSetups } from '../sketch/js/two-photon-setups-data.js';
 
 const sceneUrl = new URL('../collections/2pp/setups/yan-2015.json', import.meta.url);
@@ -23,7 +23,7 @@ test('Yan mechanism interpretation traces four nonzero SLM orders into resin', a
   assert.ok(result.signalHits.every(hit => hit.sourceId === 'yan-laser'));
   assert.deepEqual(
     result.signalHits.map(hit => Number(hit.x.toFixed(3))),
-    [538.372, 526.046, 513.954, 501.628],
+    [526.817, 522.244, 517.756, 513.183],
   );
 });
 
@@ -57,4 +57,26 @@ test('Yan scene round-trips and exposes no invented paper handoff values', async
   assert.equal(handoff.url, null);
   assert.equal(handoff.imported.length, 0);
   assert.equal(handoff.omitted.length, 5);
+  const trace = traceScene(reloaded.elements);
+  assert.deepEqual(twoPhotonHandoffCandidates(reloaded.elements, trace.signalHits, 'yan-resin-stage'), [],
+    'invented source settings must remain excluded after native save/reload');
+});
+
+
+test('Yan focuses finite-width order bundles at the front resin plane', async () => {
+  const scene = await loadScene();
+  const stage = scene.elements.find(element => element.id === 'yan-resin-stage');
+  const objective = scene.elements.find(element => element.id === 'yan-objective');
+  assert.equal(objective.rot, 270, 'the objective front faces the sample');
+  assert.equal(stage.y, objective.y - 16 - objective.params.workingDistance);
+  const arrivals = traceScene(scene.elements).drawables.flatMap(drawable => drawable.pts || [])
+    .filter(point => Math.abs(point.y - stage.y) < 1e-7);
+  assert.ok(arrivals.length >= 4 * 25, 'sized source rays reach the resin');
+  assert.equal(new Set(arrivals.map(point => point.x.toFixed(6))).size, 4,
+    'all sampled rays converge to four distinct points, not four unfocused intersections');
+  stage.y -= 5;
+  const defocused = traceScene(scene.elements).drawables.flatMap(drawable => drawable.pts || [])
+    .filter(point => Math.abs(point.y - stage.y) < 1e-7);
+  assert.ok(new Set(defocused.map(point => point.x.toFixed(6))).size > 4,
+    'moving the resin out of focus spreads each bundle at the physical sample plane');
 });
