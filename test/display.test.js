@@ -18,7 +18,7 @@ function inspectorHTMLFor(sensor, elements) {
   state.elements = elements;
   state.beams = [];
   state.selection = { kind: 'element', id: sensor.id };
-  state.demoMode = false;
+  state.embedMode = false;
   initInspector(panel);
   renderInspector();
   return panel.innerHTML;
