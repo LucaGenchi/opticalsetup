@@ -60,8 +60,17 @@ This pass inspected the companion read-only and did not deploy it.
 
 ## Applying the common infrastructure
 
-Follow `collections/2pp/README.md` and `tools/adopt-2pp-shared-loader.py`.
+Follow `collections/2pp/SHARED-CONTRIBUTIONS.md` and
+`tools/adopt-2pp-shared-loader.py`.
 Preserve per-paper evidence, controls, records and native optical features.
 Replace singleton publication assertions with assigned-scene inclusion and
 canonical explicit editable/preview URL assertions. Rebuild after the edit.
 No setup branches, PRs or deployments were merged by this review.
+
+
+The foundation retains the original research-only per-paper HTML and README
+as historical source notes. It contributes no authored scene, and these pages
+need not be rewritten merely to add shared infrastructure. Scene branches run
+the common builder to publish their own setup pages. Zero-power regression
+coverage is in a standalone file so independent array-feature additions do
+not contend for the same end-of-file insertion.
