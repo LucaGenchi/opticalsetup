@@ -1,0 +1,49 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {"id":"saha-frame","type":"figureframe","x":325,"y":240,"rot":0,"label":"","showLabel":false,"params":{"w":630,"h":380,"background":"white"}},
+  {"id":"saha-title","type":"textlabel","x":25,"y":72,"rot":0,"label":"","showLabel":false,"params":{"text":"SAHA et al. (2019) — FEMTOSECOND PROJECTION TPL","fontSize":15,"fill":"#27313a"}},
+  {"id":"saha-subtitle","type":"textlabel","x":25,"y":94,"rot":0,"label":"","showLabel":false,"params":{"text":"Native 2D geometric mechanism view · DOI 10.1126/science.aax8760","fontSize":9,"fill":"#66717d"}},
+  {
+   "id":"saha-laser","type":"pulsedlaser","x":357.13,"y":150.04,"rot":156,
+   "label":"800 nm · 35 fs · 1 kHz (reported)","showLabel":true,"labelPos":"t",
+   "params":{"enabled":true,"wavelength":800,"avgPowerW":0.1,"beamMode":"line","beamWidth":18,"beamDivergenceDeg":0,"repRateMHz":0.001,"pulsePhaseNs":0,"pulseWidthFs":35,"transformLimited":true,"pulseShape":"gauss","bandwidth":5,"pol":0,"autoColor":true,"color":"#e02020","showPulse":true,"temporalMode":"pulsed"}
+  },
+  {
+   "id":"saha-dmd","type":"dmd","x":191.778,"y":223.661,"rot":156,
+   "label":"DMD · image mask + dispersive lattice","showLabel":true,"labelPos":"l",
+   "params":{"length":42,"tilt":12,"pitch":7,"duty":0.58,"routeOff":false,"spectralDispersion":true,"dispersionReferenceNm":800,"dispersionSlopeDegPer100Nm":6}
+  },
+  {
+   "id":"saha-l1","type":"lens","x":300,"y":220,"rot":0,
+   "label":"L1 · collimating lens","showLabel":true,"labelPos":"t",
+   "params":{"f":180,"dia":42,"transEff":100}
+  },
+  {
+   "id":"saha-fold","type":"mirror","x":400,"y":220,"rot":315,
+   "label":"Fold mirror","showLabel":true,"labelPos":"r",
+   "params":{"length":42,"refl":100}
+  },
+  {
+   "id":"saha-objective","type":"objective","x":400,"y":342,"rot":90,
+   "label":"L2 · 60× · NA 1.25 (reported)","showLabel":true,"labelPos":"l",
+   "params":{"efl":3.333,"workingDistance":0.28,"immersion":"oil","immersionIndex":1.333,"na":1.25,"showAcceptance":true,"transEff":100,"frontAperture":10}
+  },
+  {
+   "id":"saha-stage","type":"stage","x":400,"y":358.28,"rot":0,
+   "label":"Projected resin plane · XYZ stage","showLabel":true,"labelPos":"b",
+   "params":{"pzMode":"sync","pzTravelXY":12,"pzFreqXY":0.5,"pzTravelZ":4,"pzFreqZ":0.1,"pzZSteps":5,"aperture":50,"sampleKind":"generic","specimenType":"resin","channels":[],"showSignalSpot":true,"thickness":2,"voxelPreview":true,"voxelSize":0.8,"transmitExc":true,"transmission":0.8,"mode":"none","fluorWl":520,"carsWl":660,"signalEff":0.1}
+  },
+  {"id":"saha-build-plane","type":"textlabel","x":426,"y":334,"rot":0,"label":"","showLabel":false,"params":{"text":"Build plane: spectral rays re-overlap","fontSize":8,"fill":"#7c3aed"}},
+  {
+   "id":"saha-interpretation","type":"textlabel","x":470,"y":120,"rot":0,"label":"","showLabel":false,
+   "params":{"text":"**FREE INTERPRETATION — NOT SPECIFIED IN THE PAPER**\n100 mW source power enables the native trace; it is not\nthe reported per-pixel power. L1 f = 180 mm, DMD mask\npitch/duty, 6°/100 nm spectral slope, fold placement,\nobjective EFL/WD/immersion, and display-amplified stage\ntravel are layout choices. They are not instrument claims.","fontSize":7,"fill":"#7a4f00"}
+  },
+  {
+   "id":"saha-model-limit","type":"textlabel","x":470,"y":245,"rot":0,"label":"","showLabel":false,
+   "params":{"text":"**WHAT THE LIVE TRACE SHOWS**\nDMD ON/OFF routing, a wavelength-dependent angular fan,\nrelay/fold propagation, objective focusing, and real hits on\nthe moving resin stage.\n\n**WHAT IT DOES NOT PROVE**\nNo pulse-envelope propagation, temporal recompression,\naxial sheet confinement, diffraction PSF, dose, threshold,\npolymer conversion, voxel size, or calibrated throughput.","fontSize":7,"fill":"#334155"}
+  }
+ ],
+ "beams":[]
+}

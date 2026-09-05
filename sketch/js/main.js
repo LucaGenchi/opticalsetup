@@ -1577,11 +1577,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
+  const requestedCollectionId = params.get('collection');
+  const collectionId = requestedCollectionId && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(requestedCollectionId)
+    ? requestedCollectionId : null;
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo;
+  const isCollectionDemo = Boolean(!isTypeDemo && !isCommunityDemo && !isExampleDemo
+    && collectionId && params.get('locked') === '1');
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo || isCollectionDemo;
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1655,6 +1660,20 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load example:', err);
     }
+  } else if (collectionId) {
+    // Individually reviewed research scenes live with their evidence rather
+    // than in the general Examples menu. A collection page uses locked=1 for
+    // its embed; opening the same URL without it gives the full editable
+    // workbench and native save/export controls.
+    try {
+      const res = await fetch(`../collections/2pp/setups/${collectionId}.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      state.elements.push(...scene.elements);
+      state.beams.push(...scene.beams);
+    } catch (err) {
+      console.error('Could not load 2PP collection scene:', err);
+    }
   } else {
     let sharedScene = null;
     try {
@@ -1707,7 +1726,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   syncPulseControls();
   syncMobileSheets();
 
-  if (isDemo) {
+  if (isDemo || collectionId) {
     zoomFit();
   } else {
     // Deep link from the wiki ("Open in the canvas" on a component page):

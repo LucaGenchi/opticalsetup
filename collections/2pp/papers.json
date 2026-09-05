@@ -280,6 +280,8 @@
       "documents": [
         "saha-2019.pdf"
       ],
+      "scene": "setups/saha-2019.json",
+      "researchNote": "research/saha-2019.md",
       "reviewed": [
         "PDF p. 1 Fig. 1 apparatus and caption; p. 2 temporal focusing explanation; p. 3 Fig. 3 settings; p. 4 1 kHz laser discussion."
       ],

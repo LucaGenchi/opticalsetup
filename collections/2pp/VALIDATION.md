@@ -1,7 +1,10 @@
-# Research workspace validation — 2026-09-05
+# Superseded research-only baseline — 2026-09-05
 
-The generated reconstructions have been removed. Earlier scene-validation
-results describe superseded drafts and are not evidence of accepted setups.
+This file records the research-only baseline before individual paper scenes
+were rebuilt. Earlier scene-validation results describe superseded drafts and
+are not evidence for the new paper-specific reconstructions. Each new scene
+must carry its own deterministic and browser verification in its evidence note
+and pull request.
 
 - `npm test`: 774 passed, zero failures. The test specific to the removed
   apparatus scenes was removed; component and research-record tests remain.
