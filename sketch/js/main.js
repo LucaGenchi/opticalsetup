@@ -1645,8 +1645,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindKeys();
   setSelectionCallback(renderSelection);
   setMeasurementsCallback(refreshMeasurements);
+  // [scene-change-listener] test/shared-scene-reload.test.js pulls this block
+  // out and runs it, so it exercises the real listener rather than a copy that
+  // could drift from it. Keep the marker; the test finds the call by it rather
+  // than by matching the source formatting.
   onChange(() => {
-    if (!state.demoMode) clearSharedSceneURL();
+    if (!state.embedMode) clearSharedSceneURL();
     renderAll(); syncToolbar(); refreshMeasurements(); autoAdjustTimeScale(); announceIllustrativeMotion();
   });
 

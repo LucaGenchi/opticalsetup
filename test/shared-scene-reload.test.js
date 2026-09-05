@@ -6,6 +6,25 @@ import { buildShareURL, clearSharedSceneURL, sharedSceneFromURL } from '../sketc
 import { registry, createElement } from '../sketch/js/elements.js';
 import { state, changed, onChange, parseSketch, replaceScene, loadAutosave, serialize } from '../sketch/js/state.js';
 
+// The listener under test lives in main.js's bootstrap. Locating it by matching
+// the source formatting broke the moment anyone reformatted or wrapped the
+// call, and could silently match a different block; anchor on the marker
+// comment instead and balance the parentheses to find the end.
+function sceneChangeListener() {
+  const main = readFileSync(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
+  const marker = main.indexOf('// [scene-change-listener]');
+  assert.notEqual(marker, -1,
+    'main.js must keep the [scene-change-listener] marker this test anchors on');
+  const start = main.indexOf('onChange(', marker);
+  assert.notEqual(start, -1, 'the marker must sit directly above the onChange call');
+  let depth = 0;
+  for (let i = start; i < main.length; i++) {
+    if (main[i] === '(') depth++;
+    else if (main[i] === ')' && --depth === 0) return `${main.slice(start, i + 1)};`;
+  }
+  throw new Error('unbalanced parentheses in the scene-change listener');
+}
+
 test('opening, editing, and sharing a scene never reimports an old snapshot on reload', async t => {
   const storage = new Map();
   const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
@@ -20,8 +39,7 @@ test('opening, editing, and sharing a scene never reimports an old snapshot on r
   let href = await buildShareURL(JSON.stringify({ elements: [source], beams: [] }), 'https://example.org/sketch/?lang=en');
   const savedHistory = { marker: 'preserved' };
   const navigation = { state: savedHistory, replaceState(data, title, url) { assert.equal(data, savedHistory); href = url; } };
-  const main = readFileSync(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
-  const binding = main.match(/onChange\(\(\) => \{[\s\S]*?\}\);/)[0];
+  const binding = sceneChangeListener();
   // Exercise the actual bootstrap listener with drawing stubbed out.
   vm.runInNewContext(binding, {
     state, onChange, clearSharedSceneURL: () => clearSharedSceneURL(href, navigation),
@@ -47,4 +65,23 @@ test('ordinary URL fragments are preserved', () => {
   const navigation = { replaceState() { assert.fail('ordinary fragments must not be changed'); } };
   clearSharedSceneURL('https://example.org/sketch/#help', navigation);
   clearSharedSceneURL('https://example.org/sketch/?lang=en', navigation);
+});
+
+test('the scene-change listener reads only state flags that exist', () => {
+  // A renamed flag leaves a guard reading undefined, which is falsy, so
+  // `if (!state.gone)` silently becomes "always true" and the guard stops
+  // guarding. That is what happened to state.demoMode when it became
+  // state.embedMode: nothing failed, the condition just stopped meaning
+  // anything. Neither the behavioural test above nor a type-free runtime
+  // catches it, because undefined and false behave identically there.
+  const binding = sceneChangeListener();
+  const read = [...binding.matchAll(/state\.([A-Za-z_$][\w$]*)/g)].map(match => match[1]);
+  assert.ok(read.length > 0, 'the listener is expected to consult at least one state flag');
+  for (const property of read) {
+    assert.ok(Object.hasOwn(state, property),
+      `main.js reads state.${property}, which does not exist on state — `
+      + 'a renamed flag leaves a guard that is always true');
+  }
+  assert.ok(read.includes('embedMode'),
+    'the share-URL retirement must stay gated on embedMode');
 });
