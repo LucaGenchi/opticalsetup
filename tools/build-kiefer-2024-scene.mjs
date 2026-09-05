@@ -19,8 +19,8 @@ function element(id, type, x, y, rot = 0, params = {}, label = '', labelPos = 't
 }
 
 const elements = [
-  element('kiefer-frame', 'figureframe', 390, 360, 0, { w: 760, h: 680, background: 'white' }),
-  element('kiefer-title', 'textlabel', 390, 40, 0, {
+  element('kiefer-frame', 'figureframe', 390, 390, 0, { w: 760, h: 760, background: 'white' }),
+  element('kiefer-title', 'textlabel', 40, 40, 0, {
     text: '**Kiefer et al. 2024 — hybrid DOE + MLA 49-focus printer**\nNative 2D meridional mechanism proxy · DOI 10.37188/lam.2024.003',
     fontSize: 15,
     fill: '#26333a',
@@ -36,7 +36,8 @@ const elements = [
     repRateMHz: 80,
     pulsePhaseNs: 0,
     pulseWidthFs: 140,
-    transformLimited: true,
+    transformLimited: false,
+    bandwidth: 0,
     pulseShape: 'sech2',
     pol: 0,
     autoColor: true,
@@ -80,14 +81,14 @@ const elements = [
     f: 200, dia: 42, transEff: 99,
   }, 'L7 · telecentric collimation¹', 'b'),
   element('kiefer-mla', 'microlensarray', 305, 290, 180, {
-    length: 42,
+    length: 18,
     count: 7,
-    f: 45,
+    f: 15,
   }, 'Separate custom aspheric MLA\n7 lenslets shown · D0,MLA = 720 µm', 't'),
   element('kiefer-lg1', 'lens', 245, 290, 180, {
-    f: 55, dia: 48, transEff: 99,
+    f: 45, dia: 48, transEff: 99,
   }, 'LG1 scan-lens proxy¹', 'b'),
-  element('kiefer-gx', 'galvo', 160, 290, 45, {
+  element('kiefer-gx', 'galvo', 200, 290, 45, {
     length: 24,
     commandAngle: 0,
     scanMode: 'triangle',
@@ -100,10 +101,10 @@ const elements = [
 
   // Down-leg and row 3: GX-to-GY unity relay, GY, 2× pupil relay, objective,
   // resin target. Both galvos animate and alter the computed downstream trace.
-  element('kiefer-lg23', 'telescope', 160, 400, 90, {
-    f1: 40, f2: 40, dia: 50.8, transEff: 99,
+  element('kiefer-lg23', 'telescope', 200, 395, 90, {
+    f1: 52.5, f2: 52.5, dia: 70, transEff: 99,
   }, 'LG2/LG3 · 1× conjugate relay¹', 'r'),
-  element('kiefer-gy', 'galvo', 160, 500, 135, {
+  element('kiefer-gy', 'galvo', 200, 500, 135, {
     length: 24,
     commandAngle: 0,
     scanMode: 'sine',
@@ -113,8 +114,8 @@ const elements = [
     refl: 100,
     showTransmitted: false,
   }, 'GY · coordinate flip before mirror', 'l'),
-  element('kiefer-lg45', 'telescope', 365, 500, 0, {
-    f1: 50, f2: 100, dia: 60, transEff: 99,
+  element('kiefer-lg45', 'telescope', 371.3291666667, 500, 0, {
+    f1: 68.5316666667, f2: 137.0633333333, dia: 100, transEff: 99,
   }, 'LG4/LG5 · 2× pupil relay¹', 't'),
   element('kiefer-bs', 'bs', 505, 500, 0, {
     ratio: 0.96,
@@ -131,7 +132,7 @@ const elements = [
     frontAperture: 11.55,
   }, 'Zeiss Plan-Apochromat 40× / NA 1.4 oil\n11.55 mm entrance pupil · 70% assumed transmission', 't'),
   element('kiefer-stage', 'sample', 621.2, 500, 90, {
-    aperture: 54,
+    aperture: 4,
     specimenType: 'resin',
     channels: [],
     showSignalSpot: true,
@@ -159,7 +160,7 @@ const elements = [
     wavelength: 590,
     bwMode: 'band',
     bandwidth: 40,
-    spread: 8,
+    spread: 2,
     nrays: 12,
     autoColor: true,
     color: '#f1c40f',
@@ -173,22 +174,48 @@ const elements = [
     interference: false,
   }, 'CMOS camera · print monitoring', 'r'),
 
-  element('kiefer-mechanism', 'textlabel', 360, 620, 0, {
-    text: '**Why the separate MLA matters**\nThe low-angle DOE limits chromatic spread. Each diffracted beamlet then enters its own refractive lenslet, increasing focus separation without a second high-angle diffractive split and reducing clipping through the scan/pupil relays. The paper still estimates 86.5% Gaussian-pupil use—not zero vignetting.',
-    fontSize: 10,
-    fill: '#2b6471',
+  element('kiefer-mla-stop', 'slit', 306, 290, 180, { gap: 18, length: 42 }),
+  element('kiefer-led-stop', 'filter', 625, 500, 0, {
+    ftype: 'shortpass', cutoff: 700, length: 20,
   }),
-  element('kiefer-limit', 'textlabel', 225, 590, 0, {
-    text: '¹ **Free interpretation — not specified in the paper:** focal lengths, relay spacings, fold mirrors, coatings, AOM deflection/efficiency, LED condenser and display scale.\n² The canvas is not dimensionally to scale; 571 µm and 720 µm are reported **beam diameters**, while the 6 mm galvo is drawn larger for legibility.\n**Model boundary:** representative 7-order/7-lenslet meridional section only—not the custom asphere, 7×7 vector field, PSF, efficiency, dose or curing model.',
-    fontSize: 8.5,
-    fill: '#5f6670',
+  element('kiefer-return-stop', 'filter', 480, 500, 0, {
+    ftype: 'longpass', cutoff: 700, length: 160,
   }),
-  element('kiefer-power', 'textlabel', 625, 585, 0, {
-    text: '**Power plane (reported)**\n954 mW total before objective\n÷ 49 = 19.5 mW per focus before objective\n70% objective transmission is an assumption\n3.7 W is laser output—not sample power',
-    fontSize: 9,
-    fill: '#7a4b00',
+  element('kiefer-pickoff-dump', 'beamdump', 505, 440, 90, { aperture: 60 }),
+  element('kiefer-mechanism', 'textlabel', 40, 580, 0, {
+    text: '**Hybrid beam splitting**\nSeven DOE orders illuminate seven separate lenslets.\nThe MLA supplies refractive separation; both galvos\nscan the resulting focus row through the objective.\nThe paper has 49 foci in 7×7; this view shows one row.',
+    fontSize: 10, fill: '#2b6471',
+  }),
+  element('kiefer-limit', 'textlabel', 40, 695, 0, {
+    text: '**Free interpretation — not specified in the paper:**\nFocal lengths, spacings, folds, coatings, source width, galvo rates,\nAOM settings, LED condenser and isolation filters. Not to scale.\n**Model limit:** geometric routing; no custom asphere, 3D field,\nPSF, calibrated efficiency, nonlinear dose or curing.',
+    fontSize: 10, fill: '#5f6670',
+  }),
+  element('kiefer-power', 'textlabel', 555, 600, 0, {
+    text: '**Reported power planes**\n3.7 W at laser output\n954 mW total before objective\n19.5 mW per focus there\n70% objective transmission assumed',
+    fontSize: 9, fill: '#7a4b00',
+  }),
+  element('kiefer-source-note', 'textlabel', 40, 190, 0, {
+    text: '**Reported source:** 790 nm · 140 fs sech² · 80 MHz\nBeam diameters: DOE 571 µm; MLA 720 µm (not optic sizes).\n**Try:** DOE orders = 0; weaken MLA f; run Mechanics; laser off.',
+    fontSize: 10, fill: '#475569',
   }),
 ];
+
+const labels = {
+  laser: ['Chameleon Ultra II', 't'], l12: ['L1/L2 · 1.25×', 't'],
+  aom: ['AOM', 'b'], dump: ['Zero order', 't'], l34: ['L3/L4 · 1.60×', 'b'],
+  'fold-a': ['Fold¹', 'r'], 'fold-b': ['Fold¹', 'r'],
+  doe: ['DOE · 7 orders', 'b'], l56: ['L5/L6 · 3.33×', 't'],
+  l7: ['L7', 'b'], mla: ['MLA · 7 lenslets', 't'], lg1: ['LG1', 'b'],
+  gx: ['GX', 'l'], lg23: ['LG2/LG3 · 1×', 'l'], gy: ['GY', 'l'],
+  lg45: ['LG4/LG5 · 2×', 'b'], bs: ['BS', 'b'],
+  objective: ['40× / NA 1.4 oil', 't'], stage: ['Resin', 'b'],
+  'led-condenser': ['', 'b'], led: ['Yellow LED', 't'],
+  l8: ['L8', 'r'], camera: ['CMOS', 'l'],
+};
+for (const item of elements) {
+  const label = labels[item.id.replace('kiefer-', '')];
+  if (label) [item.label, item.labelPos] = label;
+}
 
 await mkdir(new URL('../collections/2pp/setups/', import.meta.url), { recursive: true });
 await writeFile(output, `${JSON.stringify({ app: 'optics2d', version: 1, elements, beams: [] }, null, 1)}\n`);

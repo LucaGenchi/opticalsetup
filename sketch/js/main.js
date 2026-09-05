@@ -31,6 +31,7 @@ import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.js';
 import { initTheme } from './theme.js';
+import { collectionSetupRequest } from './collection-loader.js';
 
 const $ = id => document.getElementById(id);
 
@@ -1577,16 +1578,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   const demoType = params.get('demo');
   const communitySlug = params.get('community');
   const exampleSlug = params.get('example');
-  const paperId = params.get('paper');
-  const validPaperId = typeof paperId === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(paperId);
   const isTypeDemo = Boolean(demoType && (FIBER_DEMOS.has(demoType) || SCENE_DEMOS.has(demoType)
     || (registry[demoType] && !registry[demoType].hidden)));
   const isCommunityDemo = Boolean(!isTypeDemo && communitySlug);
   const isExampleDemo = Boolean(!isTypeDemo && !isCommunityDemo && exampleSlug);
-  const isPaperEmbed = Boolean(!isTypeDemo && !isCommunityDemo && !isExampleDemo
-    && validPaperId && params.has('embed'));
-  const isPaperScene = Boolean(!isTypeDemo && !isCommunityDemo && !isExampleDemo && validPaperId);
-  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo || isPaperEmbed;
+  const collectionRequest = !isTypeDemo && !isCommunityDemo && !isExampleDemo
+    ? collectionSetupRequest(params) : null;
+  const isDemo = isTypeDemo || isCommunityDemo || isExampleDemo
+    || Boolean(collectionRequest && !collectionRequest.editable);
 
   initTheme($('btnTheme'));
   initCanvas($('canvas'), $('status'));
@@ -1660,22 +1659,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Could not load example:', err);
     }
-  } else if (isPaperScene) {
-    // Per-paper collection scenes use the native save format and stay outside
-    // the curated Examples menu. `embed` locks the canvas for the research
-    // page; the same URL without it opens an editable working copy.
+  } else if (collectionRequest) {
     try {
-      const res = await fetch(`../collections/2pp/setups/${paperId}.json`);
+      const res = await fetch(collectionRequest.path);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const scene = parseSketch(await res.text(), registry);
-      if (isPaperEmbed) {
-        state.elements.push(...scene.elements);
-        state.beams.push(...scene.beams);
-      } else {
-        replaceScene(scene, { resetHistory: true });
-      }
+      // Initial loading does not write autosave. The user's first actual
+      // edit uses the existing changed()/undo/save workflow; previews remain
+      // protected by demoMode throughout their lifetime.
+      state.elements.push(...scene.elements);
+      state.beams.push(...scene.beams);
     } catch (err) {
-      console.error('Could not load paper setup:', err);
+      console.error('Could not load collection setup:', err);
+      showToast('Could not open this setup. Check the collection link and try again.');
     }
   } else {
     let sharedScene = null;
@@ -1729,7 +1725,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   syncPulseControls();
   syncMobileSheets();
 
-  if (isDemo) {
+  if (isDemo || collectionRequest) {
     zoomFit();
   } else {
     // Deep link from the wiki ("Open in the canvas" on a component page):

@@ -1,6 +1,6 @@
 # Kiefer 2024 — evidence and scene controls
 
-Paper: Pascal Kiefer et al., “A multi-photon (7 × 7)-focus 3D laser printer based on a 3D-printed diffractive optical element and a 3D-printed multi-lens array,” *Light: Advanced Manufacturing* 4, 3 (2024). DOI: [10.37188/lam.2024.003](https://doi.org/10.37188/lam.2024.003).
+Paper: Pascal Kiefer et al., “A multi-photon (7 × 7)-focus 3D laser printer based on a 3D-printed diffractive optical element and a 3D-printed multi-lens array,” *Light: Advanced Manufacturing* 5, 3 (2024). DOI: [10.37188/lam.2024.003](https://doi.org/10.37188/lam.2024.003).
 
 Primary PDF checked: `LAM2023080053.pdf`, 14 pages, SHA-256 `55ac959947738f905ce52252e777686ac17609a303a6a75f167769ce4350be02`.
 
@@ -40,11 +40,24 @@ No prism pair is present. The paper discusses a dispersive-telescope alternative
 
 ## Control experiments
 
-1. **Laser enable / power.** Select the Chameleon source and turn **Emit traced rays** off. The red writing route and resin write arrivals disappear, while the yellow observation path remains. Re-enable it and reduce average power: geometry is unchanged, but relative ray power and pulse readouts fall. This proves source gating and power accounting in the tracer, not a cure threshold.
+1. **Laser enable / power.** Select the Chameleon source and turn **Emit traced rays** off. The red writing route and resin write arrivals disappear, while the yellow observation path remains. Re-enable it and reduce average power: geometry and normalized ray weights stay unchanged while the source power readout falls. At exactly zero power, writing rays and arrivals disappear. This proves source gating and bounded source readouts, not a cure threshold.
 2. **DOE-only control.** Select the diffractive beam splitter and change **Orders in this section** from `-3,-2,-1,0,1,2,3` to `0`. The seven-order fan collapses to the on-axis branch. This isolates the DOE’s routing role; it does not predict the real DOE efficiency or 2D 7×7 uniformity.
-3. **DOE-only same-field stress test.** First raise the MLA **Lenslet focal length** from `45 mm` to `3000 mm` (the weak-lens boundary); the sample-arrival span contracts because the separate refractive leverage is gone. Then raise the DOE **Equivalent grating lines/mm** from `54` to `100` to demand the separation directly from diffraction. The outer orders fan farther with wavelength and are vignetted by the compact scan/pupil relay, leaving only the axial sample arrival in this proxy. This is the distinguishing hybrid-split control: it demonstrates why the low-angle DOE plus separate MLA makes a large relayed field practical, not the paper’s `M = 300`, 1.77% PSF-spread or 86.5% Gaussian-pupil figures quantitatively.
+3. **DOE-only same-field stress test.** First raise the MLA **Lenslet focal length** from `15 mm` to `3000 mm` (the weak-lens boundary); the sample-arrival span contracts modestly as lenslet power weakens. Then raise the DOE **Equivalent grating lines/mm** from `54` to `100` to demand the separation directly from diffraction. The outer orders spread farther and are clipped by the finite MLA entrance, reducing the number of sample arrivals in this proxy. The default trace uses the center wavelength; it does not calculate spectral PSF broadening. This control separates lenslet power from diffractive angle and shows finite-aperture clipping. It does not reproduce the paper’s `M = 300`, 1.77% PSF-spread or 86.5% Gaussian-pupil figures.
 4. **Scanner motion.** Run mechanical playback, then pause it and compare GX or GY at two command angles. The actual galvo surfaces rotate and the downstream focus positions change. The 2D view superposes one meridional scan coordinate and does not reproduce the full XY trajectory or calibrated 1 m/s focus speed.
 
 ## Companion 2PP handoff
 
 The paper-based handoff supports wavelength `790 nm`, repetition rate `80 MHz`, pulse duration `140 fs`, and numerical aperture `1.4`. It omits source power because `3700 mW` exceeds the companion lab’s accepted 0–1000 mW range. The reported `954 mW` objective-plane total and `19.5 mW` per-focus values are not source power and are therefore not substituted. The companion calculator is single-focus educational tooling; it cannot accept the 49-focus apparatus, focus spacing, DOE/MLA efficiency, or this scene’s qualitative pupil clipping as a calibrated prediction.
+
+
+## PR review corrections (2026-09-05)
+
+Rechecked the publisher's [optical setup description and Fig. 2 caption](https://www.light-am.com/article/doi/10.37188/lam.2024.003). The initial scene's seven resin hits were misleading: six bypassed the objective, and the DOE orders occupied only about three lenslets. The review changes the interpreted MLA pitch and focus, places GX at the LG1 focal plane, makes the GX/GY relay conjugate, and maps GY onto the objective pupil with a 2× relay. All seven distinct orders now traverse the rated NA 1.4 objective. These remain schematic distances, not a recovered optical prescription.
+
+The MLA entrance now has an explicit finite stop; previously rays could miss the array and continue as if they had used it. The resin aperture is bounded around the focus row. Added native filters stop transmitted writing light after the resin and prevent illumination return from leaking through the printing relay; a dump terminates the unused BS port. These isolation optics are free interpretations. Short labels and wrapped notes replace clipped text and overlaps; native SVG exports were rasterized and visually checked.
+
+Removed an unsupported transform-limited assumption. The source retains the reported sech² duration and pulse rate, but the default geometric trace samples the center wavelength. The weak-MLA control demonstrates a modest change in the focus-row span; it cannot reproduce the paper's M≈300 increase, angular-dispersion benefit or PSF improvement. Increased DOE angle clips orders at the MLA entrance; this is a finite-aperture routing demonstration, not a quantitative efficiency comparison.
+
+Verification includes all seven objective-path arrivals, scanner movement, zero-source-power and source-off boundaries with the independent camera still active, DOE/MLA controls, save/reload equality, handoff units, finite traces and figure-bound annotations. Full-suite and syntax results are recorded in the review handoff.
+
+Final automated review: `npm test` passed **785/785**; `node --check` passed for every `sketch/js/*.js` and `serve.mjs`; `git diff --check` passed. Collection pages regenerated; sitemap regeneration changed only unrelated timestamps, which were excluded from the patch. Desktop browser review is coordinated separately; native SVG rendering and figure-bound trace checks passed here.
