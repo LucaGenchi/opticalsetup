@@ -4,6 +4,8 @@
 const SHARE_PREFIX = '#sketch=';
 const MAX_SHARE_HASH_CHARS = 200_000;
 const MAX_SCENE_BYTES = 1_000_000;
+const TOO_LARGE_TO_SHARE =
+  'This setup is too large to share as a link \u2014 save it as a .json file instead.';
 
 function bytesToBase64Url(bytes) {
   let binary = '';
@@ -31,7 +33,12 @@ async function transform(bytes, Transformer, format) {
 export async function encodeSharePayload(text, { compression = true } = {}) {
   const canonical = JSON.stringify(JSON.parse(text));
   const source = new TextEncoder().encode(canonical);
-  if (source.length > MAX_SCENE_BYTES) throw new Error('Sketch is too large for a share link');
+  // Both size guards on this path report the same thing to the person
+  // sharing -- this setup cannot travel in a URL -- so they say it the
+  // same way. One measures the scene, the other the finished fragment.
+  if (source.length > MAX_SCENE_BYTES) {
+    throw new Error(TOO_LARGE_TO_SHARE);
+  }
 
   if (compression && typeof CompressionStream === 'function') {
     try {
@@ -72,7 +79,7 @@ export async function buildShareURL(text, href = window.location.href, options) 
   const url = new URL(href);
   url.hash = `sketch=${payload}`;
   if (url.hash.length > MAX_SHARE_HASH_CHARS) {
-    throw new Error('Sketch is too large for a share link. Save it as a .json file instead.');
+    throw new Error(TOO_LARGE_TO_SHARE);
   }
   return url.toString();
 }
