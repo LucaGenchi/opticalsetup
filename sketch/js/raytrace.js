@@ -1912,6 +1912,28 @@ function specKey(spec) {
   return id;
 }
 
+// A quadrature node stands for a slice of the incident spectrum, not for a
+// laser line at its centre. Handing the child only the slice's bounds tells
+// detectors the truth — they read spectralLo/Hi — but nothing else: a filter
+// or a dichroic takes its !ray.bw path and judges the whole slice by the one
+// wavelength. Carrying the slice itself lets them cut inside it. Budgeting
+// makes the slices wider, so this matters more here than it used to: a
+// 400-800 nm beam across nine orders has 200 nm slices, and a 799 nm longpass
+// passed a whole half-band on the strength of its 800 nm label.
+//
+// Cached per trace: every order shares the same set of slices, so there are
+// only ever as many distinct ones as there are nodes.
+let cellSpectrumCache = new Map();
+function cellSpectrum(ray, lo, hi) {
+  if (!ray.spec || !(ray.bw > 0) || !(hi > lo)) return null;
+  const key = `${specKey(ray.spec)}|${lo}|${hi}`;
+  if (cellSpectrumCache.has(key)) return cellSpectrumCache.get(key);
+  const shaped = applyTransmission(ray.spec, ray.wl, wl => (wl >= lo && wl <= hi ? 1 : 0));
+  const cell = shaped?.spec ? { spec: shaped.spec, bw: shaped.bw } : null;
+  cellSpectrumCache.set(key, cell);
+  return cell;
+}
+
 // What each order leaves with when the whole band travels in one ray: the
 // share of the incident power, and the colours that share is made of.
 function coarseOrderPorts(ray, orders, si, groove) {
@@ -2964,6 +2986,17 @@ function interact(ray, hit) {
               SHAPER_RAY_CAP / (rays.length * orders.length * afterLayer[li])));
             const counts = propagatingOrderCounts(orders, wls, si, gd);
             const lineSpectrum = r.spec?.kind === 'lines';
+            // One slice per node, shared by every order — but only where the
+            // budget has actually forced the sampling below what the model
+            // would otherwise use. At full resolution the cells are narrow and
+            // the children stay monochromatic, which is what lets the opposite
+            // orders of two stacked gratings recombine wavelength by
+            // wavelength; a cell carries a bandwidth, and a bandwidth gets
+            // dispersed again by the next grating instead of cancelling.
+            const naturalNodes = r.bw >= 200 ? 9 : 5;
+            const cells = lineSpectrum || wls.length >= naturalNodes
+              ? wls.map(() => null)
+              : wls.map(w => cellSpectrum(r, w.spectralLo, w.spectralHi));
             // With enough orders the budget comes down to a single node, and
             // that node stands for the entire band rather than a slice of it:
             // only the direction has been collapsed, to the centroid. Such a
@@ -3018,12 +3051,18 @@ function interact(ray, hit) {
                 const c = Math.sqrt(1 - sd * sd);
                 next.push({
                   ...r, d: norm(add(mul(n, sOut * c), mul(t, sd))),
-                  wl: wls[wi].wl, bw: 0, spec: null,
-                  // A continuum sample stands for a spectral cell, so it keeps
-                  // its bounds and the detector can integrate across them. A
-                  // lamp line stands for itself: wlSamples() still hands it
-                  // midpoint bounds, and carrying those would let the detector
-                  // paint invented power across the dark gaps between lines.
+                  // The node sets the direction and the colour it is drawn
+                  // in; the cell it stands for travels with it, so a filter
+                  // downstream can cut inside the cell instead of taking or
+                  // rejecting all of it. A lamp line has no cell — it is
+                  // already the whole of what it carries.
+                  wl: wls[wi].wl,
+                  ...(cells[wi] ? { bw: cells[wi].bw, spec: cells[wi].spec } : { bw: 0, spec: null }),
+                  // A continuum sample keeps its bounds so a detector can
+                  // integrate across them. A lamp line stands for itself:
+                  // wlSamples() still hands it midpoint bounds, and carrying
+                  // those would let the detector paint invented power across
+                  // the dark gaps between lines.
                   spectralContinuum: lineSpectrum ? false : r.spectralContinuum,
                   spectralLo: lineSpectrum ? null : (wls[wi].spectralLo ?? r.spectralLo),
                   spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
@@ -3760,6 +3799,7 @@ export function traceScene(elements, beams = []) {
   metalensHits = new Map();
   gateTransmissionCache = new Map();
   coarsePortCache = new Map();
+  cellSpectrumCache = new Map();
   specimenIncident = new Map();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once

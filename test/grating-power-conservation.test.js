@@ -285,14 +285,45 @@ test('a coarsened order still knows what colours it carries', () => {
   }
 
   // Between those and full sampling the budget allows two or three nodes per
-  // order. Those are genuine spectral cells at genuinely different angles, so
-  // they stay monochromatic and the answer carries the quadrature's own
-  // coarseness -- but it must still be in the right part of the world, which
-  // is what main was not.
-  for (const orderCount of [5, 9, 11]) {
+  // order. Those are wide cells too, so each child carries the slice of
+  // spectrum it stands for and the filter cuts inside it.
+  for (const orderCount of [3, 5, 9, 11]) {
     const ratio = measure(orderCount, true) / measure(orderCount, false);
-    assert.ok(ratio > 0.25 && ratio < 0.6,
+    assert.ok(Math.abs(ratio - 0.375) < 0.01,
       `${orderCount} orders through a longpass gave ratio ${ratio.toFixed(4)}`);
+  }
+});
+
+test('a filter can cut inside a coarsened order, not just take or leave it', () => {
+  // A cutoff placed deep inside the topmost cell is the sharp version of the
+  // question: 799 nm of a 400-800 nm band leaves 1/400 of the light. If the
+  // child is monochromatic at its node, the whole cell is judged by that one
+  // number and a 200 nm-wide cell labelled 800 nm passes entirely -- roughly
+  // half the beam instead of a quarter of a percent.
+  const measure = (orderCount, cutoff) => {
+    const src = createElement('sclaser', 0, 0);
+    Object.assign(src.params, { beamMode: 'line', scMin: 400, scMax: 800 });
+    const sh = createElement('slm', 150, 0);
+    Object.assign(sh.params, {
+      transmissive: true,
+      layers: [{ type: 'grating', orders: orderList(orderCount), lines: 20 }],
+    });
+    const els = [src, sh];
+    if (cutoff) {
+      const filter = createElement('filter', 300, 0);
+      Object.assign(filter.params, { ftype: 'longpass', cutoff, length: 400 });
+      els.push(filter);
+    }
+    const det = createElement('detector', 420, 0);
+    det.params.aperture = 2400;
+    els.push(det);
+    traceAll(els, []);
+    return detectorReading(det.id)?.signal ?? 0;
+  };
+  for (const orderCount of [3, 5, 9, 11, 15, 21]) {
+    const ratio = measure(orderCount, 799) / measure(orderCount, 0);
+    assert.ok(Math.abs(ratio - 0.0025) < 0.0005,
+      `${orderCount} orders through a 799 nm longpass gave ${ratio.toFixed(4)}, expected 0.0025`);
   }
 });
 
