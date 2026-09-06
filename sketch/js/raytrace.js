@@ -892,6 +892,10 @@ const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
 // This lower budget remains finite; crossing it disables interference for
 // the whole source instead of returning a silently incomplete field sum.
 const MIN_COHERENT_INT = 1e-4;
+// How co-propagating mixed light is drawn: a band wide enough that no single
+// wavelength stands for it has no colour of its own, so it is painted as the
+// pale mix rather than as whichever wavelength happens to sit in the middle.
+const MIXED_LIGHT_COLOR = '#cbd8ea';
 const MIN_RETAINED_POWER_INT = 1e-12;
 const MAX_RETAINED_WEAK_BRANCHES = 256;
 // How many rays one shaper hit may leave with, across all of its layers. It
@@ -2449,7 +2453,15 @@ function interact(ray, hit) {
           const c = Math.sqrt(1 - sd * sd);
           const sOut = data.transmissive ? sIn : -sIn;
           out.push({
-            ...(m !== 0 ? { color: wavelengthToColor(wls[i].wl) } : {}),
+            // A separated order is no longer the source's beam but one colour
+            // pulled out of it, so it carries its own colour and outranks a
+            // custom source colour -- otherwise a supercontinuum, whose
+            // default colour is the pale mix, fans out white where a prism
+            // fans out a rainbow. Only where dispersion actually happened:
+            // recolouring an undispersed beam would repaint a monochromatic
+            // ray the user had deliberately coloured, which is the guard the
+            // prism already applies by comparing bandwidths.
+            ...(m !== 0 && ray.bw > 0 ? { color: wavelengthToColor(wls[i].wl) } : {}),
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
             intensity: ray.intensity * wls[i].weight / counts[i],
@@ -2575,7 +2587,10 @@ function interact(ray, hit) {
             // which is exactly what wlSamples warns against and what any
             // spectrometer downstream would then report.
             ...(isAod ? {
-              color: wavelengthToColor(shiftedWl),
+              // Same rule. The acousto-optic shift moves the wavelength a
+              // fraction of a nanometre even for a single line, which is not
+              // reason enough to repaint a beam the user chose the colour of.
+              ...(ray.bw > 0 ? { color: wavelengthToColor(shiftedWl) } : {}),
               bw: 0,
               spec: null,
               spectralCount: samples.length,
@@ -3034,6 +3049,17 @@ function interact(ray, hit) {
                   spec: port.spec, wl: port.wl, bw: port.bw,
                   intensity: r.intensity * port.fraction,
                   tag: r.tag + 'm' + m,
+                  // A separated order is no longer the source's beam, so it
+                  // carries its own colour and outranks a custom source
+                  // colour, the same way the diffracted orders below do. A
+                  // coarsened order can still span most of the band, though,
+                  // and then mixed light is the honest colour rather than
+                  // whichever wavelength sits in the middle of it. The
+                  // undiffracted order is still the incident beam and keeps
+                  // whatever the source is drawn in.
+                  ...(m === 0 ? {} : {
+                    color: port.bw >= 200 ? MIXED_LIGHT_COLOR : wavelengthToColor(port.wl),
+                  }),
                 });
               }
               continue;
@@ -3070,7 +3096,11 @@ function interact(ray, hit) {
                   spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
                   intensity: r.intensity * wls[wi].weight / counts[wi],
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
-                  ...(m !== 0 ? { color: wavelengthToColor(wls[wi].wl) } : r.color ? { color: r.color } : {}),
+                  // As above: its own colour where it really is one colour
+                  // pulled out of a band, and the incident beam's otherwise.
+                  ...(m !== 0 && r.bw > 0
+                    ? { color: wavelengthToColor(wls[wi].wl) }
+                    : r.color ? { color: r.color } : {}),
                 });
               }
             }
@@ -3612,7 +3642,7 @@ function assembleDrawables(paths, opts, drawables) {
     // Undispersed broadband light is co-propagating mixed light, not a rainbow
     // painted across the beam aperture. Dispersive optics split it into bw=0
     // child rays, which regain wavelength-specific color below.
-    if (r.bw >= 200) return '#cbd8ea';
+    if (r.bw >= 200) return MIXED_LIGHT_COLOR;
     return wavelengthToColor(r.wl);
   };
   const opOf = r => Math.max(0.25, Math.min(0.95, 0.35 + 0.6 * r.intensity));
