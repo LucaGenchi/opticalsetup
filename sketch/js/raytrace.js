@@ -894,6 +894,11 @@ const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
 const MIN_COHERENT_INT = 1e-4;
 const MIN_RETAINED_POWER_INT = 1e-12;
 const MAX_RETAINED_WEAK_BRANCHES = 256;
+// How many rays one shaper hit may leave with, across all of its layers. It
+// bounds a stack that multiplies rays (orders x wavelengths x speckle grains),
+// and every layer sizes its own sampling to fit rather than overflowing and
+// being truncated — see the shaper case in interact().
+const SHAPER_RAY_CAP = 24;
 const LOW_POWER_MEASUREMENT_SURFACES = new Set(['detector', 'specimen', 'attenuate', 'fluor', 'fiberin']);
 
 // Carrier phase is exact only through explicitly supported component
@@ -1769,16 +1774,30 @@ function offsetPolyline(pts, d) {
 // wavelength, not spread evenly across the box — spectrumSamples() already
 // falls back to uniform weights for a flat (supercontinuum) spectrum, so
 // that case is unchanged.
-function wlSamples(ray) {
+// maxK caps the quadrature count for callers working inside a ray budget.
+// The nodes are only a numerical device — the weights are renormalised to sum
+// to 1 whatever count comes back — so a caller that cannot afford nine rays
+// per order is far better off asking for fewer than letting the tail be
+// truncated away with its power.
+function wlSamples(ray, maxK = Infinity) {
   if (!ray.bw) return [{ wl: ray.wl, weight: 1 }];
-  const K = ray.bw >= 200 ? 9 : 5;
+  const K = Math.max(1, Math.min(maxK, ray.bw >= 200 ? 9 : 5));
+  const [lo, hi] = ray.spec
+    ? spectrumSupport(ray.spec)
+    : [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
+  // One node has to stand for the whole band, so it sits at the spectrum's
+  // centroid; the midpoint of the support would misplace a skewed profile.
+  // This case is also why the budget cannot simply be handed to
+  // spectrumSamples(), which floors at two nodes and would quietly return
+  // twice what the caller can afford.
+  if (K === 1) {
+    const center = ray.spec ? (spectrumStats(ray.spec)?.center ?? (lo + hi) / 2) : ray.wl;
+    return [{ wl: center, weight: 1, spectralLo: lo, spectralHi: hi }];
+  }
   let samples = null;
   if (ray.spec) {
     samples = spectrumSamples(ray.spec, K);
   }
-  const [lo, hi] = ray.spec
-    ? spectrumSupport(ray.spec)
-    : [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
   if (!samples) samples = Array.from({ length: K }, (_, i) => ({
     wl: lo + (hi - lo) * i / (K - 1),
     weight: 1,
@@ -1798,6 +1817,45 @@ function wlSamples(ray) {
     spectralLo: index === 0 ? lo : (samples[index - 1].wl + sample.wl) / 2,
     spectralHi: index === samples.length - 1 ? hi : (sample.wl + samples[index + 1].wl) / 2,
   }));
+}
+
+// The diffraction orders a shaper's grating layer is configured for, as
+// written in its comma-separated `orders` field.
+function shaperLayerOrders(ly) {
+  const parsed = [...new Set(String(ly.orders ?? '1').split(',')
+    .map(v => parseInt(v.trim(), 10)).filter(m => Number.isFinite(m)))].slice(0, 21);
+  return parsed.length ? parsed : [1];
+}
+
+// An order steeper than grazing is evanescent: sin(theta_out) would exceed 1,
+// so it carries no light away from the grating and must not be handed a share
+// of it either. A real grating redistributes a passing-off order's energy into
+// the orders that still propagate (the Rayleigh anomaly), and dividing by the
+// propagating count is that same bookkeeping. Without it a fine grating at a
+// long wavelength quietly loses most of the beam: 2400 l/mm asked for orders
+// -1,0,1 at 532 nm has only the zeroth order to give light to, and reported a
+// third of the beam because it still divided by three.
+//
+// The count is per wavelength sample, since an order can propagate at one end
+// of a band and pass off at the other.
+function propagatingOrderCounts(orders, wls, si, groove) {
+  return wls.map(w => orders.reduce(
+    (count, m) => count + (m === 0 || Math.abs(si + m * w.wl / groove) <= 1 ? 1 : 0), 0));
+}
+
+// The undiffracted order stays one polychromatic ray rather than splitting per
+// wavelength, so its share is the band-average of 1/N — N differs across the
+// spectrum whenever an order passes off inside the band. A sample with nothing
+// left to propagate into contributes nothing: the user listed no order that
+// could carry it.
+function zeroOrderShare(wls, counts) {
+  // No order passing off inside the band is the common case, and there the
+  // share is exactly 1/N. Taking that division directly keeps the result
+  // bit-identical to the plain 1/N this replaced, instead of accumulating
+  // rounding across a quadrature sum that is only needed when N varies.
+  const first = counts[0];
+  if (counts.every(count => count === first)) return first ? 1 / first : 0;
+  return wls.reduce((sum, w, i) => sum + (counts[i] ? w.weight / counts[i] : 0), 0);
 }
 
 // thin-lens (paraxial) bend; also used for curved mirrors after reflection.
@@ -2215,6 +2273,7 @@ function interact(ray, hit) {
       const sIn = dot(d, n) >= 0 ? 1 : -1;
       const out = [];
       const wls = wlSamples(ray);
+      const counts = propagatingOrderCounts(data.orders, wls, si, data.d);
       for (const m of data.orders) {
         // The undiffracted order keeps the incident spectrum intact. It
         // redirects the whole band specularly (or passes it straight through),
@@ -2222,7 +2281,7 @@ function interact(ray, hit) {
         if (m === 0) {
           out.push({
             d: data.transmissive ? d : reflect(d, n),
-            intensity: ray.intensity / data.orders.length,
+            intensity: ray.intensity * zeroOrderShare(wls, counts),
             tag: 'm0',
           });
           continue;
@@ -2235,7 +2294,7 @@ function interact(ray, hit) {
           out.push({
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
-            intensity: ray.intensity * wls[i].weight / data.orders.length,
+            intensity: ray.intensity * wls[i].weight / counts[i],
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
           });
         }
@@ -2712,7 +2771,32 @@ function interact(ray, hit) {
       }];
       const L = data.length;
       const mid = mul(add(s.a, s.b), 0.5);
-      for (const ly of (data.layers || []).slice(0, 4)) {
+      const layers = (data.layers || []).slice(0, 4);
+      // Size the whole stack's sampling before tracing any of it. Each layer
+      // multiplies the ray count, so a diffuser in front of a many-order
+      // grating has to scatter into fewer grains — otherwise the grating's
+      // orders, which are real directions the user asked for, get truncated
+      // away with their power. Grains are the sampling choice that gives:
+      // orders are not negotiable, and steering and lenslets are one-for-one.
+      // Grating spectral sampling is budgeted separately, per layer, below.
+      const orderCounts = layers.map(ly => ly.type === 'grating' ? shaperLayerOrders(ly).length : 1);
+      const orderProduct = orderCounts.reduce((a, b) => a * b, 1);
+      // A sized beam already traces one ray per spatial sample, so its speckle
+      // deflects rather than fans and costs nothing here.
+      const fanningLayers = ray.sample == null
+        ? layers.filter(ly => ly.type === 'speckle').length : 0;
+      // Split the room left over from the orders evenly across the diffusers:
+      // n of them each fanning by f cost f**n. The epsilon keeps an exact
+      // power (24 grains over two layers) from floor()ing down on rounding.
+      const speckleFan = fanningLayers
+        ? Math.max(1, Math.min(5, Math.floor((SHAPER_RAY_CAP / orderProduct) ** (1 / fanningLayers) + 1e-9)))
+        : 1;
+      // What one ray entering layer j still has to expand into afterwards, so
+      // each layer can leave room for the ones behind it.
+      const multipliers = layers.map((ly, j) => ly.type === 'speckle' ? speckleFan : orderCounts[j]);
+      const afterLayer = multipliers.map((_, j) => multipliers.slice(j + 1).reduce((a, b) => a * b, 1));
+      for (let li = 0; li < layers.length; li++) {
+        const ly = layers[li];
         const next = [];
         for (const r of rays) {
           if (ly.type === 'steer') {
@@ -2729,16 +2813,25 @@ function interact(ray, hit) {
             // only pair up within the same lenslet
             next.push({ ...r, d: lensBend(r.d, hit.p, s, ly.f, hc), tag: r.tag + 'L' + idx });
           } else if (ly.type === 'grating') {
-            const parsed = [...new Set(String(ly.orders ?? '1').split(',').map(v => parseInt(v.trim(), 10)).filter(m => Number.isFinite(m)))].slice(0, 21);
-            const orders = parsed.length ? parsed : [1];
+            const orders = shaperLayerOrders(ly);
             const gd = 1e6 / (ly.lines || 600);
             const si = dot(r.d, t);
             const sOut = dot(r.d, n) >= 0 ? 1 : -1;
-            const wls = wlSamples(r);
+            // Spend the budget on the orders first and the spectral sampling
+            // second. An order is a distinct direction the user asked for; a
+            // wavelength sample is only a quadrature node, and wlSamples
+            // renormalises its weights to whatever count it is given. Sampling
+            // more finely than the budget allows and letting the tail be
+            // truncated would drop whole orders and their power with them —
+            // a 400 nm band across 21 orders wants 189 rays and kept 24,
+            // reporting an eighth of the light.
+            const wls = wlSamples(r, Math.floor(
+              SHAPER_RAY_CAP / (rays.length * orders.length * afterLayer[li])));
+            const counts = propagatingOrderCounts(orders, wls, si, gd);
             const lineSpectrum = r.spec?.kind === 'lines';
             for (const m of orders) {
               if (m === 0) {
-                next.push({ ...r, intensity: r.intensity / orders.length, tag: r.tag + 'm0' });
+                next.push({ ...r, intensity: r.intensity * zeroOrderShare(wls, counts), tag: r.tag + 'm0' });
                 continue;
               }
               for (let wi = 0; wi < wls.length; wi++) {
@@ -2756,7 +2849,7 @@ function interact(ray, hit) {
                   spectralContinuum: lineSpectrum ? false : r.spectralContinuum,
                   spectralLo: lineSpectrum ? null : (wls[wi].spectralLo ?? r.spectralLo),
                   spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
-                  intensity: r.intensity * wls[wi].weight / orders.length,
+                  intensity: r.intensity * wls[wi].weight / counts[wi],
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
                 });
               }
@@ -2765,8 +2858,11 @@ function interact(ray, hit) {
             const div = (ly.div || 8) * D2R;
             const sid = hit.surface.id;
             if (ray.sample == null) {
-              for (let k = 0; k < 5; k++) {
-                next.push({ ...r, d: rotv(r.d, jitter(k * 3 + 1, sid) * div), intensity: r.intensity / 5, tag: r.tag + 's' + k, speckle: true });
+              // speckleFan was sized against the whole stack, so the grains
+              // coarsen rather than the fan being truncated and its power
+              // going with it.
+              for (let k = 0; k < speckleFan; k++) {
+                next.push({ ...r, d: rotv(r.d, jitter(k * 3 + 1, sid) * div), intensity: r.intensity / speckleFan, tag: r.tag + 's' + k, speckle: true });
               }
             } else {
               next.push({ ...r, d: rotv(r.d, jitter(ray.sample, sid) * div), speckle: true });
@@ -2775,7 +2871,18 @@ function interact(ray, hit) {
             next.push(r);
           }
         }
-        rays = next.slice(0, 24);
+        // Everything above sizes itself to the budget, so this is a last
+        // resort, and only one stack can still reach it: two grating layers,
+        // whose orders multiply and where neither side is a sampling choice
+        // that could give — 11 orders behind 11 orders is 121 real directions
+        // against a cap of 24. Drop the dimmest rays rather than whichever
+        // were generated last, so the loss is the smallest available and does
+        // not depend on the order the user typed the orders in. Such a scene
+        // then under-reports, which is the honest failure: rescaling the
+        // survivors would report the full power out of the few directions that
+        // happened to survive.
+        if (next.length > SHAPER_RAY_CAP) next.sort((a, b) => b.intensity - a.intensity);
+        rays = next.slice(0, SHAPER_RAY_CAP);
         if (!rays.length) break;
       }
       const out = rays.map(r => ({
