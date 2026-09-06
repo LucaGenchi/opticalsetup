@@ -892,6 +892,10 @@ const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
 // This lower budget remains finite; crossing it disables interference for
 // the whole source instead of returning a silently incomplete field sum.
 const MIN_COHERENT_INT = 1e-4;
+// How co-propagating mixed light is drawn: a band wide enough that no single
+// wavelength stands for it has no colour of its own, so it is painted as the
+// pale mix rather than as whichever wavelength happens to sit in the middle.
+const MIXED_LIGHT_COLOR = '#cbd8ea';
 const MIN_RETAINED_POWER_INT = 1e-12;
 const MAX_RETAINED_WEAK_BRANCHES = 256;
 // How many rays one shaper hit may leave with, across all of its layers. It
@@ -2449,6 +2453,11 @@ function interact(ray, hit) {
           const c = Math.sqrt(1 - sd * sd);
           const sOut = data.transmissive ? sIn : -sIn;
           out.push({
+            // Only where dispersion actually happened: marking an
+            // undispersed beam would repaint a monochromatic ray the user had
+            // deliberately coloured, which is the guard the prism already
+            // applies by comparing bandwidths.
+            dispersed: m !== 0 && ray.bw > 0,
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
             intensity: ray.intensity * wls[i].weight / counts[i],
@@ -2556,6 +2565,16 @@ function interact(ray, hit) {
       }
       if (efficiency > 0) {
         const samples = isAod ? wlSamples(ray) : [{ wl: ray.wl, weight: 1 }];
+        // An AOD only separates colours when its deflection depends on
+        // wavelength. Driven at zero it sends the whole band one way, so the
+        // beam leaves as the beam it arrived as and keeps the colour the user
+        // chose for it -- having a bandwidth is not the same as having been
+        // taken apart.
+        const deflections = isAod
+          ? samples.map(sample => aodDeflectionDeg(data, sample.wl, data.position))
+          : [];
+        const separates = deflections.length > 1
+          && Math.max(...deflections) - Math.min(...deflections) > 1e-9;
         samples.forEach((sample, index) => {
           const deflection = isAod
             ? aodDeflectionDeg(data, sample.wl, data.position)
@@ -2574,6 +2593,11 @@ function interact(ray, hit) {
             // which is exactly what wlSamples warns against and what any
             // spectrometer downstream would then report.
             ...(isAod ? {
+              // Same rule, and it asks whether the colours actually went
+              // different ways. The acousto-optic shift moves the wavelength a
+              // fraction of a nanometre even for a single line, which is not
+              // reason enough to repaint a beam the user chose the colour of.
+              dispersed: separates,
               bw: 0,
               spec: null,
               spectralCount: samples.length,
@@ -3032,6 +3056,13 @@ function interact(ray, hit) {
                   spec: port.spec, wl: port.wl, bw: port.bw,
                   intensity: r.intensity * port.fraction,
                   tag: r.tag + 'm' + m,
+                  // As above. A coarsened order can still span most of the
+                  // band, and colorOf paints that as mixed light on its own --
+                  // which is why this is a flag and not a colour: stamping the
+                  // pale mix here would survive a bandpass that later narrows
+                  // the ray to a single colour. The undiffracted order is
+                  // still the incident beam and keeps the source's look.
+                  dispersed: m !== 0 || r.dispersed,
                 });
               }
               continue;
@@ -3068,6 +3099,9 @@ function interact(ray, hit) {
                   spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
                   intensity: r.intensity * wls[wi].weight / counts[wi],
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
+                  // As above: its own colours where it really is a band taken
+                  // apart, and the incident beam's otherwise.
+                  dispersed: (m !== 0 && r.bw > 0) || r.dispersed,
                 });
               }
             }
@@ -3111,7 +3145,25 @@ function interact(ray, hit) {
         rays = next.slice(0, SHAPER_RAY_CAP);
         if (!rays.length) break;
       }
+      // Inverse layers put the band back: a +1 grating followed by a -1 of the
+      // same pitch sends every wavelength back along the direction it came in
+      // on, which is what a 4f pulse shaper is for. Light that leaves the way
+      // it arrived was not, in the end, separated -- the samples land on top of
+      // one another and should read as the one beam they draw, not as a stack
+      // of coincident coloured strokes.
+      // Inverse layers can bring a band back onto one direction -- a +1 grating
+      // followed by a -1 is how a 4f shaper works -- and such a beam is drawn
+      // as coincident coloured strokes rather than as the single mixed beam it
+      // physically is. Detecting that reliably turned out to need more than a
+      // direction test: it has to hold per outgoing port, tolerate a common
+      // steering layer moving the recombined port off the incident axis, and
+      // carry a rendering state of its own, because for an auto-coloured
+      // source there is no fixed colour to fall back to and each sample would
+      // still draw in its own wavelength. That is a feature, not a predicate,
+      // and it does not belong in a change about fanning colours out.
       const out = rays.map(r => ({
+        ...(r.color ? { color: r.color } : {}),
+        dispersed: r.dispersed || undefined,
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
@@ -3530,6 +3582,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           spectralHi: Number.isFinite(c.spectralHi) ? c.spectralHi
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralHi : null,
           speckle: c.speckle || r.speckle || false,
+          // Once a dispersive optic has taken a beam apart, the pieces stay
+          // apart: the flag rides along so their colour keeps being derived
+          // from the wavelength each piece actually carries. Light a specimen
+          // generates is new light rather than the pump taken apart, though --
+          // it arrives with its own sourceId and its own tint -- so it starts
+          // undispersed however the pump reached it.
+          dispersed: 'sourceId' in c ? Boolean(c.dispersed) : (c.dispersed || r.dispersed || false),
           chopped: c.chopped || r.chopped || undefined,
           // A branch that merely passed THROUGH a collector was never
           // collected, so it stays evanescent with the range it had.
@@ -3595,22 +3654,36 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
   return done;
 }
 
+// What colour a ray is drawn in. One rule, because the static stroke and the
+// pulse packet travelling along it are the same light and must never disagree
+// -- they were resolved separately once, and drifted.
+//
+// A signal generated in a specimen carries its own colour and is no longer the
+// source's light, so it outranks the source's fixed colour: otherwise a
+// custom-coloured IR pump would paint its own green SHG red. A custom source
+// colour in turn describes the user's beam. Dispersion outranks both, because
+// light a dispersive optic has separated is no longer that beam, nor an
+// emission band, but either of them taken apart -- and a band is a band, so a
+// grating spreads it into separate colours rather than repeating one tint
+// across the fan. Without that, a supercontinuum (whose default colour is the
+// pale mix) fans out white where a prism fans out a rainbow.
+//
+// Everything here is derived from what the ray carries now, never stamped on
+// it earlier, so a filter that narrows it downstream is reflected.
+function rayColor(r, fixedColor) {
+  if (r.color && !r.dispersed) return r.color;
+  if (fixedColor && !r.dispersed) return fixedColor;
+  // Undispersed broadband light is co-propagating mixed light, not a rainbow
+  // painted across the beam aperture.
+  if (r.bw >= 200) return MIXED_LIGHT_COLOR;
+  return wavelengthToColor(r.wl);
+}
+
 // turn traced polylines into drawables (strokes / envelope strips / speckle
 // grains / rainbow ribbons / chopped chunks)
 function assembleDrawables(paths, opts, drawables) {
   const { K, isBeam, fixedColor } = opts;
-  const colorOf = r => {
-    // A signal generated in a specimen carries its own color and is no longer
-    // the source's light, so it outranks the source's fixed color — otherwise
-    // a custom-colored IR pump would paint its own green SHG red.
-    if (r.color) return r.color;
-    if (fixedColor) return fixedColor;
-    // Undispersed broadband light is co-propagating mixed light, not a rainbow
-    // painted across the beam aperture. Dispersive optics split it into bw=0
-    // child rays, which regain wavelength-specific color below.
-    if (r.bw >= 200) return '#cbd8ea';
-    return wavelengthToColor(r.wl);
-  };
+  const colorOf = r => rayColor(r, fixedColor);
   const opOf = r => Math.max(0.25, Math.min(0.95, 0.35 + 0.6 * r.intensity));
   const dashOf = r => r.chopped
     ? `${(r.chopped.period * r.chopped.duty).toFixed(1)} ${(r.chopped.period * (1 - r.chopped.duty)).toFixed(1)}`
@@ -3758,7 +3831,7 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
       ...(r.gddTrace ? { gddTrace: r.gddTrace.map(event => ({ ...event })) } : {}),
       pulse: { ...r.pulse },
       bw: r.bw || 0,
-      color: r.color || fixedColor || wavelengthToColor(r.wl),
+      color: rayColor(r, fixedColor),
       intensity: r.intensity,
     });
   }
