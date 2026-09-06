@@ -599,6 +599,13 @@ const demoScenes = {
     mkDemo('galvo', 220, 200, 45, { scanMode: 'sine', scanAmplitude: 8, scanFrequencyHz: 0.4 }),
     mkDemo('box', 220, 60, 0, { text: '', w: 200, h: 2, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — the reflected beam sweeps back and forth', showLabel: true, labelPos: 't' }),
   ],
+  polygonscanner: () => [
+    mkDemo('cwlaser', 50, 180.490381, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 6 }),
+    mkDemo('polygonscanner', 240, 160, 315),
+    mkDemo('lens', 219.509619, 260, 90, { f: 100, dia: 100 }),
+    mkDemo('box', 219.509619, 360, 0, { text: '', w: 110, h: 10, behavior: 'block', fill: '#f2f3f5' },
+      { label: 'successive line sweeps; blanked between facets', showLabel: true, labelPos: 'b' }),
+  ],
   aod: () => [
     mkDemo('cwlaser', 40, 200, 0, { wavelength: 532, beamMode: 'line' }),
     mkDemo('aod', 220, 200, 0, {

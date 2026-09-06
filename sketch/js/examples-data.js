@@ -55,6 +55,12 @@ export const examples = [
     "slug": "michelson-interferometer"
   },
   {
+    "group": "Scanning",
+    "name": "Polygon scanner   line scanning",
+    "path": "../Examples/Scanning/Polygon%20scanner%20-%20line%20scanning.json",
+    "slug": "polygon-scanner-line-scanning"
+  },
+  {
     "group": "Ultrashort Pulses",
     "name": "Ultrashort pulse chirping",
     "path": "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
