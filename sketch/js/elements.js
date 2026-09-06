@@ -1,3 +1,4 @@
+import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfaces } from './conic-mirror.js';
 // Registry of optical elements.
 // Local coordinates: element centered at (0,0); default optical propagation is along +x.
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
@@ -2153,6 +2154,26 @@ export const registry = {
     },
   },
 
+
+  conicmirror: {
+    label: 'Conic mirror', category: 'Mirrors', paletteOrder: 4, size: { w: 20, h: 56 },
+    aliases: ['annular mirror', 'Cassegrain', 'Schwarzschild', 'elliptical mirror', 'hyperbolic mirror', 'reflective objective'],
+    params: [
+      { key: 'dia', label: 'Outer diameter (mm)', type: 'number', min: 1, max: 500, step: 1, def: 50 },
+      { key: 'hole', label: 'Central opening (mm)', type: 'number', min: 0, max: 500, step: 0.5, def: 0 },
+      { key: 'radius', label: 'Signed vertex radius (mm)', type: 'number', min: -5000, max: 5000, step: 0.1, def: -100, slider: false },
+      { key: 'conic', label: 'Conic constant k', type: 'number', min: -20, max: 20, step: 0.01, def: 0, slider: false },
+      { key: 'facing', label: 'Coated side (local axis)', type: 'select', def: 'left', options: [['left', '−x side'], ['right', '+x side']] },
+      { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      { key: 'realized', label: 'Geometry used', type: 'readout', readout: params => {
+        const g = conicMirrorGeometry(params);
+        return `R = ${g.R.toFixed(3)} mm; opening = ${(2 * g.inner).toFixed(2)} mm`;
+      } },
+    ],
+    size_: conicMirrorSize,
+    svg: conicMirrorSVG,
+    surfaces: conicMirrorSurfaces,
+  },
 
   cmirrorx: {
     label: 'Convex mirror', category: 'Mirrors', paletteOrder: 1, size: { w: 18, h: 56 },
@@ -4531,6 +4552,7 @@ const DIRECT = {
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
   retroreflector: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
+  conicmirror: { resize: { y: 'dia' }, tune: { key: 'conic', short: 'k' } },
   cmirrorx: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   cmirror: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   oap: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
@@ -4631,6 +4653,7 @@ const ELEMENT_HELP = {
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
+  conicmirror: 'Exact conic intersections and surface normals, with a real central opening. k = 0: sphere; −1: parabola; below −1: hyperbola. Radius 0: plane. The coated side reflects; the back and coating losses absorb. The opening is capped at the diameter; an impossible spherical/elliptical radius is enlarged to keep the aperture real (see Geometry used). 2D ray geometry only: no diffraction, spider vanes, coating spectrum, or calibrated IR throughput.',
   cmirrorx: 'Diverges reflected rays off a real spherical surface of radius 2f, so it carries the spherical aberration a real one does.',
   cmirror: 'Focuses reflected rays off a real spherical surface of radius 2f — marginal rays cross ahead of the paraxial focus, which is the aberration a parabolic mirror exists to avoid.',
   oap: 'Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.',

@@ -1475,6 +1475,7 @@ function rayAsphereHit(p, d, surface) {
     if (!Number.isFinite(t) || t < 0.05) return null;
     const localY = y0 + dy * t;
     if (localY < -h - 1e-7 || localY > h + 1e-7) return null;
+    if (profile.inner > 0 && Math.abs(localY) < profile.inner - 1e-7) return null;
     return {
       t,
       // The authored surface runs from +h to -h, matching surface.a -> b.
@@ -1603,7 +1604,10 @@ function rayAsphereHit(p, d, surface) {
       const leftT = lo + span * interval.u0;
       const rightT = lo + span * interval.u1;
       const candidate = polishRoot(leftT, rightT);
-      if (candidate !== null) return makeHit(candidate);
+      if (candidate !== null) {
+        const hit = makeHit(candidate);
+        if (hit) return hit;
+      }
       continue;
     }
 
@@ -1984,6 +1988,12 @@ function interact(ray, hit) {
       // added (see specimenIncidentWls).
       if (specimenProbe && data.specimen) recordProbeBeam(s, ray);
       return [{ d, intensity: ray.intensity * Math.min(1, Math.max(0, data.transmission ?? 1)) }];
+    }
+    case 'conicmirror': {
+      // n points toward local +x. Only the chosen coated side reflects.
+      if (dot(d, n) * data.frontSign >= 0) return [];
+      const R = Math.min(1, Math.max(0, (data.refl ?? 98) / 100));
+      return R > 0 ? [{ d: reflect(d, n), intensity: ray.intensity * R }] : [];
     }
     case 'mirror': {
       // partial reflectivity (cavity mirrors / output couplers): reflect R,

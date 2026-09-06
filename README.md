@@ -108,6 +108,18 @@ figures as SVG or PNG.
   bundled examples continue to load without a network connection; sketches still
   autosave locally in the browser.
 
+## Element-by-element IR objective
+
+**Examples → Microscopy Implementations → IR Cassegrain objective — element by element**
+opens an editable reflective objective with separate conic primary and secondary,
+a real central opening, pupil stops, and a sensor at the computed focus. Its
+companion example page explains the illustrative prescription and four control
+experiments. The new **Conic mirror** palette element supports spherical,
+parabolic, elliptical and hyperbolic profiles with exact intersections/normals,
+a bounded opening, a selectable coated side, and absorptive reflectivity losses.
+It models a 2D surface, not diffraction, a coating spectrum or a commercial
+Schwarzschild prescription.
+
 ## Simulation scope
 
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
