@@ -3835,8 +3835,12 @@ export const registry = {
         readout: (p, el) => {
           const reading = el ? compressorGddReading(el.id) : null;
           if (!reading) return '—';
-          const need = -reading.incoming;
-          return `${Math.round(need).toLocaleString()} fs²`;
+          // `|| 0` normalizes negative zero: nothing dispersive upstream means
+          // nothing to cancel, and that reads as "0 fs²". Without it the most
+          // ordinary scene there is -- a pulsed laser straight into a
+          // compressor -- advises "-0 fs²".
+          const need = Math.round(-reading.incoming) || 0;
+          return `${need.toLocaleString()} fs²`;
         },
       },
     ],
