@@ -130,64 +130,33 @@ test('pulse packets are drawn in the same colour as the ray they travel along', 
   }
 });
 
-test('inverse layers put the band back together, and it looks it', () => {
-  // A +1 grating layer followed by a -1 of the same pitch sends every
-  // wavelength back along the direction it arrived on -- that recombination is
-  // what a 4f pulse shaper is built from. Light that leaves the way it came in
-  // was not, in the end, separated, so it should read as the one beam its
-  // coincident samples draw rather than as a stack of coloured strokes.
-  const source = createElement('sclaser', 0, 0);
-  Object.assign(source.params, { beamMode: 'line', scMin: 400, scMax: 700, showPulse: false });
-  const shaper = createElement('slm', 150, 0);
-  Object.assign(shaper.params, {
-    transmissive: true,
-    layers: [
-      { type: 'grating', lines: 300, orders: '1' },
-      { type: 'grating', lines: 300, orders: '-1' },
-    ],
-  });
-  const { drawables } = traceScene([source, shaper], []);
-  const out = drawables.filter(d => d.pts && d.pts[0].x > 140);
-  assert.ok(out.length > 1, 'the shaper should emit a sample per wavelength');
-  // Coincident: the band really did come back together.
-  const ends = new Set(out.map(d => {
-    const p = d.pts[d.pts.length - 1];
-    return `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
-  }));
-  assert.equal(ends.size, 1, 'the inverse layer should have undone the first');
-  assert.equal(new Set(out.map(d => d.color)).size, 1,
-    `recombined light drawn in ${new Set(out.map(d => d.color)).size} colours`);
+test('an AOD driven at zero separates nothing, and paints nothing', () => {
+  // Having a bandwidth is not the same as having been taken apart. An AOD
+  // deflects by an amount that depends on wavelength, so it fans a band -- but
+  // driven at zero it sends the whole band one way, and a beam that leaves as
+  // the beam it arrived as keeps the colour the user chose for it.
+  const measure = aod => {
+    const source = createElement('cwlaser', 0, 0);
+    Object.assign(source.params, {
+      beamMode: 'line', wavelength: 550, bwMode: 'band', bandwidth: 300,
+      autoColor: false, color: '#a020f0', showPulse: false,
+    });
+    const optic = createElement('aod', 150, 0);
+    Object.assign(optic.params, aod);
+    return new Set(traceScene([source, optic], []).drawables
+      .filter(d => d.pts && d.pts[0].x > 140)
+      .map(d => d.color));
+  };
+  const still = measure({ centerDeflect: 0, scanRange: 0 });
+  assert.ok(still.has('#a020f0'),
+    `an undriven AOD repainted a hand-coloured beam: ${[...still].join(' ')}`);
 
-  // And the control: one grating layer alone still fans.
-  shaper.params.layers = [{ type: 'grating', lines: 300, orders: '1' }];
-  const fan = traceScene([source, shaper], []).drawables.filter(d => d.pts && d.pts[0].x > 140);
-  assert.ok(new Set(fan.map(d => d.color)).size > 3, 'a single layer must still fan');
-
-  // Recombination is a property of the whole band. Steering that brings one
-  // wavelength back onto the axis while its siblings still fan has put nothing
-  // back together, and that one ray must not go pale among the coloured ones.
-  shaper.params.layers = [
-    { type: 'grating', lines: 300, orders: '1' },
-    { type: 'steer', angle: -9.497 },
-  ];
-  const steered = traceScene([source, shaper], []).drawables
-    .filter(d => d.pts && d.pts[0].x > 140);
-  assert.ok(new Set(steered.map(d => d.color)).size > 3,
-    'a band that still fans must stay coloured');
-  assert.ok(!steered.some(d => d.color === '#cbd8ea'),
-    'one wavelength crossing the axis is not the band coming back together');
-
-  // Nor is it a property of the output as a whole. A stack that reassembles
-  // one order pair while another still fans has genuinely put the first back
-  // together, and that beam should look it even though the rest does not.
-  shaper.params.layers = [
-    { type: 'grating', lines: 300, orders: '1' },
-    { type: 'grating', lines: 300, orders: '-1,0' },
-  ];
-  const mixed = traceScene([source, shaper], []).drawables
-    .filter(d => d.pts && d.pts[0].x > 140);
-  assert.ok(mixed.some(d => d.color === '#cbd8ea'),
-    'the recombined port should read as one beam');
-  assert.ok(new Set(mixed.filter(d => d.color !== '#cbd8ea').map(d => d.color)).size > 3,
-    'the port that still fans should stay coloured');
+  // Driven, it really does send the colours different ways, and then they
+  // speak for themselves.
+  const driven = measure({});
+  assert.ok(!driven.has('#a020f0'), 'a fanned band should not keep one flat colour');
+  const spectral = new Set();
+  for (let wl = 380; wl <= 780; wl++) spectral.add(wavelengthToColor(wl));
+  assert.ok([...driven].filter(c => spectral.has(c)).length > 2,
+    `a driven AOD should fan: ${[...driven].join(' ')}`);
 });

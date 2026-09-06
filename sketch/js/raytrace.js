@@ -2565,6 +2565,16 @@ function interact(ray, hit) {
       }
       if (efficiency > 0) {
         const samples = isAod ? wlSamples(ray) : [{ wl: ray.wl, weight: 1 }];
+        // An AOD only separates colours when its deflection depends on
+        // wavelength. Driven at zero it sends the whole band one way, so the
+        // beam leaves as the beam it arrived as and keeps the colour the user
+        // chose for it -- having a bandwidth is not the same as having been
+        // taken apart.
+        const deflections = isAod
+          ? samples.map(sample => aodDeflectionDeg(data, sample.wl, data.position))
+          : [];
+        const separates = deflections.length > 1
+          && Math.max(...deflections) - Math.min(...deflections) > 1e-9;
         samples.forEach((sample, index) => {
           const deflection = isAod
             ? aodDeflectionDeg(data, sample.wl, data.position)
@@ -2583,10 +2593,11 @@ function interact(ray, hit) {
             // which is exactly what wlSamples warns against and what any
             // spectrometer downstream would then report.
             ...(isAod ? {
-              // Same rule. The acousto-optic shift moves the wavelength a
+              // Same rule, and it asks whether the colours actually went
+              // different ways. The acousto-optic shift moves the wavelength a
               // fraction of a nanometre even for a single line, which is not
               // reason enough to repaint a beam the user chose the colour of.
-              dispersed: ray.bw > 0,
+              dispersed: separates,
               bw: 0,
               spec: null,
               spectralCount: samples.length,
@@ -3140,32 +3151,19 @@ function interact(ray, hit) {
       // it arrived was not, in the end, separated -- the samples land on top of
       // one another and should read as the one beam they draw, not as a stack
       // of coincident coloured strokes.
-      // It is a property of a band, not of one ray and not of the output as a
-      // whole. One ray crossing the axis while its siblings fan has put
-      // nothing back together; equally, a stack that recombines one order pair
-      // while another still fans has genuinely reassembled the first, and that
-      // beam should look it even though the rest of the output does not.
-      //
-      // A port is one path through the order stack, which is what the tag
-      // records -- the same tag its spectral siblings carry, differing only in
-      // the wavelength index the layer appended. Strip that and each group is
-      // one outgoing beam, to be judged on its own.
-      const baseDir = data.transmissive ? d : reflect(d, n);
-      const portOf = r => (r.tag || '').replace(/w\d+/g, '');
-      const ports = new Map();
-      for (const r of rays) {
-        if (!r.dispersed) continue;
-        const key = portOf(r);
-        if (!ports.has(key)) ports.set(key, []);
-        ports.get(key).push(r);
-      }
-      const recombinedPorts = new Set();
-      for (const [key, group] of ports) {
-        if (group.every(r => Math.abs(dot(r.d, baseDir) - 1) < 1e-9)) recombinedPorts.add(key);
-      }
+      // Inverse layers can bring a band back onto one direction -- a +1 grating
+      // followed by a -1 is how a 4f shaper works -- and such a beam is drawn
+      // as coincident coloured strokes rather than as the single mixed beam it
+      // physically is. Detecting that reliably turned out to need more than a
+      // direction test: it has to hold per outgoing port, tolerate a common
+      // steering layer moving the recombined port off the incident axis, and
+      // carry a rendering state of its own, because for an auto-coloured
+      // source there is no fixed colour to fall back to and each sample would
+      // still draw in its own wavelength. That is a feature, not a predicate,
+      // and it does not belong in a change about fanning colours out.
       const out = rays.map(r => ({
         ...(r.color ? { color: r.color } : {}),
-        dispersed: (r.dispersed && !recombinedPorts.has(portOf(r))) || undefined,
+        dispersed: r.dispersed || undefined,
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
