@@ -38,3 +38,33 @@ for (const sourceType of ['cwlaser', 'pulsedlaser']) {
     });
   }
 }
+
+test('a sized beam keeps every sample through a long polarizer stack', () => {
+  // Retained-weak children are charged against a source-wide budget of 256.
+  // A polarizer emits exactly one child, so it continues a ray rather than
+  // widening the tree -- but it takes the branching path because its output
+  // carries a tag. Charging it there spent a slot per sample per stage: a
+  // 25-ray beam through 16 polarizers exhausted the budget and silently
+  // dropped the later samples, reporting 92% of the expected signal, and 68%
+  // after 20. A line source never showed it, having only one sample to spend.
+  for (const [count, mode] of [[16, 'beam'], [20, 'beam'], [20, 'line']]) {
+    const source = createElement('cwlaser', 0, 0);
+    Object.assign(source.params, { beamMode: mode, beamWidth: 3, pol: 0 });
+    const scene = [source];
+    for (let i = 0; i < count; i++) {
+      const polarizer = createElement('polarizer', 80 + i * 40, 0);
+      polarizer.params.pangle = 45 * (i + 1);
+      scene.push(polarizer);
+    }
+    const detector = createElement('detector', 80 + count * 40 + 60, 0);
+    detector.params.aperture = 60;
+    scene.push(detector);
+    traceAll(scene);
+
+    const reading = detectorReading(detector.id);
+    const expected = Math.pow(0.5, count);
+    assert.ok(reading, `${mode} beam must survive ${count} polarizers`);
+    assert.ok(Math.abs(reading.signal - expected) / expected < 1e-9,
+      `${count} polarizers in ${mode} mode: expected ${expected}, got ${reading.signal}`);
+  }
+});

@@ -3167,7 +3167,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       for (const c of children) {
         const childIntensity = c.intensity !== undefined ? c.intensity : r.intensity;
         const childRetainsWeak = r.retainWeak || Boolean(c.retainWeak);
-        if (childRetainsWeak && childIntensity < MIN_INT) {
+        // Only a genuine branch is charged. A lone child continues the ray it
+        // came from rather than widening the tree -- a polarizer takes this
+        // path because its output carries a tag, not because it split -- so
+        // charging it would spend the budget on work that never grew. It bit
+        // a sized beam through a long polarizer stack: every sample charged
+        // once per stage, the 256 slots ran out, and later samples were
+        // dropped, reporting 92% of the expected signal after 16 elements and
+        // 68% after 20. Depth and length still bound a continuation chain.
+        if (childRetainsWeak && childIntensity < MIN_INT && children.length > 1) {
           if (retainedWeakBranches >= MAX_RETAINED_WEAK_BRANCHES) continue;
           retainedWeakBranches++;
         }
