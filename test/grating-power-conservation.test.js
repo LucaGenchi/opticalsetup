@@ -352,3 +352,40 @@ test('equivalent order lists survive the cap identically', () => {
   assert.deepEqual(readings(descending), readings(ascending),
     `"${ascending}" and "${descending}" are the same grating and must trace alike`);
 });
+
+test('a lamp line keeps its own weight, not a quadrature endpoint weight', () => {
+  // wlSamples() halves the first and last sample's weight, which is the
+  // trapezoid rule for a quadrature across a continuum. A lamp's lines are
+  // not nodes of anything -- they are the emission -- and there is no
+  // interval outside the outermost of them to take half of. Halving them
+  // hands mercury's 365 and 1014 nm lines half the power they emit and
+  // renormalising pushes it into the lines in between.
+  //
+  // On 1000 lines/mm at normal incidence only the 1014 nm line passes off,
+  // so the zeroth order takes 1/3 of every other line and all of that one:
+  // (0.6 + 0.5 + 1 + 1 + 0.4 + 0.4)/3 + 0.2, over 3.7, is 0.36585. The
+  // trapezoid weighting gave 0.35135.
+  const share = withGrating => {
+    const src = createElement('pointsource', 0, 0);
+    Object.assign(src.params, { sourceKind: 'lamp', lampType: 'hg', spread: 20, nrays: 9 });
+    const lens = createElement('lens', 100, 0);
+    Object.assign(lens.params, { f: 100, dia: 50.8 });
+    const els = [src, lens];
+    if (withGrating) {
+      const g = createElement('grating', 260, 0);
+      Object.assign(g.params, { transmissive: true, lines: 1000, orders: '-1,0,1' });
+      els.push(g);
+    }
+    // Narrow and on axis, so only the undiffracted order reaches it. Taking
+    // the ratio against the same scene without the grating cancels out how
+    // much of the collimated fan the aperture happens to catch.
+    const det = createElement('detector', 330, 0);
+    det.params.aperture = 10;
+    els.push(det);
+    traceAll(els, []);
+    return detectorReading(det.id)?.signal ?? 0;
+  };
+  const ratio = share(true) / share(false);
+  assert.ok(Math.abs(ratio - 0.36585) < 1e-4,
+    `zeroth order took ${ratio.toFixed(5)} of the lamp, expected 0.36585`);
+});

@@ -1815,7 +1815,13 @@ function wlSamples(ray, maxK = Infinity) {
   // endpoint weights keep a flat band flat and give each child an explicit
   // spectral cell, instead of later presenting the computational nodes as
   // invented laser lines.
-  const weighted = samples.map((sample, index) => ({
+  //
+  // A lamp's lines are not nodes of anything — they are the emission itself,
+  // and there is no interval outside the outermost of them to take half of.
+  // Halving those two hands a mercury lamp's 365 and 1014 nm lines half the
+  // power they emit and, after renormalising, pushes it into the lines in
+  // between.
+  const weighted = discrete ? samples : samples.map((sample, index) => ({
     ...sample,
     weight: sample.weight * (index === 0 || index === samples.length - 1 ? 0.5 : 1),
   }));
