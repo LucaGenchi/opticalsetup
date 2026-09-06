@@ -1,0 +1,170 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 360,
+      "y": 255,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 690,
+        "h": 470,
+        "background": "white"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 45,
+      "y": 66,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# Polygon scanner — successive line sweeps\nNST / SCANLAB mechanism study · 2D geometric interpretation",
+        "fontSize": 11,
+        "fill": "#334155"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "source",
+      "type": "pulsedlaser",
+      "x": 85,
+      "y": 194.15063509461095,
+      "rot": 0,
+      "label": "532 nm · pulsed input",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "avgPowerW": 1,
+        "beamMode": "beam",
+        "beamWidth": 6,
+        "repRateMHz": 1,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 300,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "bandwidth": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": false,
+        "temporalMode": "pulsed"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "scanner",
+      "type": "polygonscanner",
+      "x": 270,
+      "y": 160,
+      "rot": 315,
+      "label": "Polygon mirror",
+      "showLabel": false,
+      "params": {
+        "diameter": 100,
+        "facets": 12,
+        "scanMode": "rotate",
+        "rpm": 1000,
+        "scanPhase": 50,
+        "dutyCycle": 71,
+        "refl": 98
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "lens",
+      "type": "lens",
+      "x": 235.84936490538905,
+      "y": 270,
+      "rot": 90,
+      "label": "Ideal lens · f = 100 mm",
+      "showLabel": true,
+      "params": {
+        "f": 100,
+        "dia": 100,
+        "transEff": 100
+      },
+      "labelPos": "r"
+    },
+    {
+      "id": "target",
+      "type": "detector",
+      "x": 235.84936490538905,
+      "y": 389,
+      "rot": 90,
+      "label": "Scan-plane detector",
+      "showLabel": true,
+      "params": {
+        "aperture": 110
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "notes",
+      "type": "textlabel",
+      "x": 390,
+      "y": 189,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "## Inspect the scan\n12 facets × 1,000 RPM / 60\n= **200 lines/s**\n\n**Green hub:** scan window open\n**Amber hub:** ideal blanking\n\nMotion is slowed for inspection.\nThe input remains visible; outgoing\nlight sweeps and resets each facet.",
+        "fontSize": 10,
+        "fill": "#334155"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "limits",
+      "type": "textlabel",
+      "x": 390,
+      "y": 365,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "## Interpretation, not an LSE replica\n71% window and 6 mm input are\nfrom the supplied LSE170 STD sheet.\nWheel, laser and lens settings are\nillustrative. The real LSE uses mirrors.\n\nNo telecentric correction, 2D feed,\nSuperSync timing or ablation model.",
+        "fontSize": 9,
+        "fill": "#475569"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "controls",
+      "type": "textlabel",
+      "x": 45,
+      "y": 453,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Try Static phase: 25% → 50% → 75%. At 95%, the beam is blanked.\nSet the scan window to 100% to inspect facet transitions, or facet reflectivity to zero to absorb the beam.",
+        "fontSize": 8,
+        "fill": "#475569"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "scanner-label",
+      "type": "textlabel",
+      "x": 220,
+      "y": 96,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Polygon mirror",
+        "fontSize": 10,
+        "fill": "#475569"
+      }
+    }
+  ],
+  "beams": []
+}

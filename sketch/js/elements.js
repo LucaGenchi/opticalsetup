@@ -8,6 +8,7 @@
 
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
+import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
@@ -2118,6 +2119,36 @@ export const registry = {
         data: { refl: el.params.refl, showTransmitted: el.params.showTransmitted },
       }];
     },
+  },
+
+  polygonscanner: {
+    label: 'Polygon scanner', category: 'Mirrors', paletteOrder: 4.5,
+    aliases: ['polygon mirror', 'rotating polygon', 'line scanner', 'raster scanner', 'NST', 'SCANLAB'],
+    directHint: 'aim the beam at a perimeter facet; the hub is the rotation axis',
+    size: { w: 68, h: 68 },
+    size_: el => {
+      const { diameter } = polygonScannerState(el.params);
+      return { w: diameter + 8, h: diameter + 8 };
+    },
+    params: [
+      { key: 'diameter', label: 'Wheel diameter (mm)', type: 'number', min: 10, max: 200, step: 1, def: 60 },
+      { key: 'facets', label: 'Mirror facets', type: 'number', min: 3, max: 72, step: 1, def: 12 },
+      { key: 'scanMode', label: 'Rotation', type: 'select', def: 'rotate', options: [['rotate', 'Continuous'], ['static', 'Static phase']] },
+      { key: 'rpm', label: 'Rotation speed (RPM)', type: 'number', min: 0, max: 60000, step: 100, def: 1000 },
+      { key: 'lineRate', label: 'Facet rate (lines/s)', type: 'readout', readout: p => p.scanMode === 'static' ? '0 (static)' : polygonScannerState(p).lineRateHz.toFixed(2) },
+      { key: 'scanPhase', label: 'Phase within one facet (%)', type: 'number', min: 0, max: 100, step: 1, def: 50 },
+      { key: 'dutyCycle', label: 'Usable scan window (%)', type: 'number', min: 0, max: 100, step: 1, def: 71 },
+      { key: 'refl', label: 'Facet reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+    ],
+    svg(el) {
+      const time = el._animationTimeS || 0;
+      const { active, diameter } = polygonScannerState(el.params, time);
+      const points = polygonScannerVertices(el.params, time).map(p => `${p.x},${p.y}`).join(' ');
+      return `<polygon points="${points}" fill="#cbd5e1" stroke="#475569" stroke-width="2"/>` +
+        `<circle r="${diameter * 0.18}" fill="#64748b" stroke="#334155" stroke-width="1"/>` +
+        `<circle r="2.5" fill="${active ? '#16a34a' : '#d97706'}"/>`;
+    },
+    surfaces: el => polygonScannerSurfaces(el.params, el._animationTimeS || 0),
   },
 
   retroreflector: {
@@ -4530,6 +4561,7 @@ const DIRECT = {
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
+  polygonscanner: { resize: { uniform: 'diameter' }, tune: { key: 'scanPhase', short: 'phase' } },
   retroreflector: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   cmirrorx: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   cmirror: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
@@ -4631,6 +4663,7 @@ const ELEMENT_HELP = {
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
+  polygonscanner: 'Traces reflection from every facet of a rotating regular polygon. Facet rate = facets × RPM / 60; fractional facet counts round to the nearest integer. The usable window applies ideal synchronized blanking (amber hub); green means open. Mechanics playback slows rotation for inspection. No telecentric scan optics, TrueRaster correction, SuperSync jitter, or material removal model.',
   cmirrorx: 'Diverges reflected rays off a real spherical surface of radius 2f, so it carries the spherical aberration a real one does.',
   cmirror: 'Focuses reflected rays off a real spherical surface of radius 2f — marginal rays cross ahead of the paraxial focus, which is the aberration a parabolic mirror exists to avoid.',
   oap: 'Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.',
