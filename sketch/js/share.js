@@ -6,6 +6,9 @@ const MAX_SHARE_HASH_CHARS = 200_000;
 const MAX_SCENE_BYTES = 1_000_000;
 const TOO_LARGE_TO_SHARE =
   'This setup is too large to share as a link \u2014 save it as a .json file instead.';
+// The opening side says something different on purpose: the person reading a
+// link someone sent them cannot act on advice about saving their own file.
+const TOO_LARGE_TO_OPEN = 'Shared sketch is too large to open safely';
 
 function bytesToBase64Url(bytes) {
   let binary = '';
@@ -26,7 +29,7 @@ function base64UrlToBytes(value) {
 }
 
 class ShareSizeError extends Error {
-  constructor() { super('Shared sketch is too large to open safely'); }
+  constructor() { super(TOO_LARGE_TO_OPEN); }
 }
 
 async function transform(bytes, Transformer, format, maxBytes = Infinity) {
@@ -93,7 +96,7 @@ export async function decodeSharePayload(payload) {
     throw new Error('Unsupported share-link encoding');
   }
 
-  if (bytes.length > MAX_SCENE_BYTES) throw new Error('Shared sketch is too large to open safely');
+  if (bytes.length > MAX_SCENE_BYTES) throw new Error(TOO_LARGE_TO_OPEN);
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   JSON.parse(text);
   return text;
