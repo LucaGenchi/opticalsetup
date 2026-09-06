@@ -3631,8 +3631,11 @@ function assembleDrawables(paths, opts, drawables) {
   const colorOf = r => {
     // A signal generated in a specimen carries its own color and is no longer
     // the source's light, so it outranks the source's fixed color — otherwise
-    // a custom-colored IR pump would paint its own green SHG red.
-    if (r.color) return r.color;
+    // a custom-colored IR pump would paint its own green SHG red. Dispersion
+    // outranks even that: a fluorescence band is a band, and once a grating
+    // has spread it the pieces are separate colours, not the emission's
+    // nominal tint repeated across the fan.
+    if (r.color && !r.dispersed) return r.color;
     // A custom source colour describes the user's beam. Light a dispersive
     // optic has separated is no longer that beam but that beam taken apart,
     // so it shows the colours it was taken apart into -- otherwise a
