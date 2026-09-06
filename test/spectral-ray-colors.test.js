@@ -162,4 +162,18 @@ test('inverse layers put the band back together, and it looks it', () => {
   shaper.params.layers = [{ type: 'grating', lines: 300, orders: '1' }];
   const fan = traceScene([source, shaper], []).drawables.filter(d => d.pts && d.pts[0].x > 140);
   assert.ok(new Set(fan.map(d => d.color)).size > 3, 'a single layer must still fan');
+
+  // Recombination is a property of the whole band. Steering that brings one
+  // wavelength back onto the axis while its siblings still fan has put nothing
+  // back together, and that one ray must not go pale among the coloured ones.
+  shaper.params.layers = [
+    { type: 'grating', lines: 300, orders: '1' },
+    { type: 'steer', angle: -9.497 },
+  ];
+  const steered = traceScene([source, shaper], []).drawables
+    .filter(d => d.pts && d.pts[0].x > 140);
+  assert.ok(new Set(steered.map(d => d.color)).size > 3,
+    'a band that still fans must stay coloured');
+  assert.ok(!steered.some(d => d.color === '#cbd8ea'),
+    'one wavelength crossing the axis is not the band coming back together');
 });

@@ -3140,11 +3140,17 @@ function interact(ray, hit) {
       // it arrived was not, in the end, separated -- the samples land on top of
       // one another and should read as the one beam they draw, not as a stack
       // of coincident coloured strokes.
+      // It is a property of the whole band, not of one ray. Steering that
+      // happens to bring a single wavelength back onto the axis while its
+      // siblings still fan has put nothing back together, and that one ray
+      // must not go pale while the rest stay coloured.
       const baseDir = data.transmissive ? d : reflect(d, n);
-      const recombined = r => Math.abs(dot(r.d, baseDir) - 1) < 1e-9;
+      const separated = rays.filter(r => r.dispersed);
+      const recombined = separated.length > 0
+        && separated.every(r => Math.abs(dot(r.d, baseDir) - 1) < 1e-9);
       const out = rays.map(r => ({
         ...(r.color ? { color: r.color } : {}),
-        dispersed: (r.dispersed && !recombined(r)) || undefined,
+        dispersed: (r.dispersed && !recombined) || undefined,
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
