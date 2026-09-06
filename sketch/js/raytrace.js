@@ -2420,16 +2420,16 @@ function interact(ray, hit) {
         const m = polModThrough(ray, s => analyzerTransmission(s, a));
         const stokes = linearStokes(a);
         if (!ray.pulse) {
-          if (m.mean < 0.02) return [];
-          return [{ d, intensity: ray.intensity * m.mean, pol: a, stokes, polMod: null, tag: 'pol' }];
+          if (m.mean <= MIN_RETAINED_POWER_INT) return [];
+          return [{ d, intensity: ray.intensity * m.mean, pol: a, stokes, polMod: null, retainWeak: true, tag: 'pol' }];
         }
-        if (Math.max(m.high, m.low) < 0.02) return [];
-        return [{ d, pol: a, stokes, polMod: null, pulse: withGate(ray.pulse, m.gate), tag: 'pol' }];
+        if (Math.max(m.high, m.low) <= MIN_RETAINED_POWER_INT) return [];
+        return [{ d, pol: a, stokes, polMod: null, pulse: withGate(ray.pulse, m.gate), retainWeak: true, tag: 'pol' }];
       }
       const f = analyzerTransmission(ray.stokes, a);
-      if (f < 0.02) return [];
+      if (f <= MIN_RETAINED_POWER_INT) return [];
       const stokes = linearStokes(a);
-      return [{ d, intensity: ray.intensity * f, pol: a, stokes, tag: 'pol' }];
+      return [{ d, intensity: ray.intensity * f, pol: a, stokes, retainWeak: true, tag: 'pol' }];
     }
     case 'wp': {
       if (!ray.stokes) return [{ d }];
@@ -2489,25 +2489,25 @@ function interact(ray, hit) {
         const m = polModThrough(ray, s => analyzerTransmission(s, 0));
         const out = [];
         if (!ray.pulse) {
-          if (m.mean > 0.02) out.push({ d, intensity: ray.intensity * m.mean, pol: 0, stokes: linearStokes(0), polMod: null, tag: 'T' });
-          if (1 - m.mean > 0.02) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - m.mean), pol: 90, stokes: linearStokes(90), polMod: null, tag: 'R' });
+          if (m.mean > MIN_RETAINED_POWER_INT) out.push({ d, intensity: ray.intensity * m.mean, pol: 0, stokes: linearStokes(0), polMod: null, retainWeak: true, tag: 'T' });
+          if (1 - m.mean > MIN_RETAINED_POWER_INT) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - m.mean), pol: 90, stokes: linearStokes(90), polMod: null, retainWeak: true, tag: 'R' });
           return out;
         }
-        if (Math.max(m.high, m.low) > 0.02) {
-          out.push({ d, pol: 0, stokes: linearStokes(0), polMod: null, pulse: withGate(ray.pulse, m.gate), tag: 'T' });
+        if (Math.max(m.high, m.low) > MIN_RETAINED_POWER_INT) {
+          out.push({ d, pol: 0, stokes: linearStokes(0), polMod: null, pulse: withGate(ray.pulse, m.gate), retainWeak: true, tag: 'T' });
         }
-        if (Math.max(1 - m.high, 1 - m.low) > 0.02) {
+        if (Math.max(1 - m.high, 1 - m.low) > MIN_RETAINED_POWER_INT) {
           out.push({
             d: reflect(d, n), pol: 90, stokes: linearStokes(90), polMod: null,
-            pulse: withGate(ray.pulse, { ...m.gate, high: 1 - m.high, low: 1 - m.low }), tag: 'R',
+            pulse: withGate(ray.pulse, { ...m.gate, high: 1 - m.high, low: 1 - m.low }), retainWeak: true, tag: 'R',
           });
         }
         return out;
       }
       const ft = analyzerTransmission(ray.stokes, 0);
       const out = [];
-      if (ft > 0.02) out.push({ d, intensity: ray.intensity * ft, pol: 0, stokes: linearStokes(0), tag: 'T' });
-      if (1 - ft > 0.02) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - ft), pol: 90, stokes: linearStokes(90), tag: 'R' });
+      if (ft > MIN_RETAINED_POWER_INT) out.push({ d, intensity: ray.intensity * ft, pol: 0, stokes: linearStokes(0), retainWeak: true, tag: 'T' });
+      if (1 - ft > MIN_RETAINED_POWER_INT) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - ft), pol: 90, stokes: linearStokes(90), retainWeak: true, tag: 'R' });
       return out;
     }
     case 'specimen': {
@@ -3167,7 +3167,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       for (const c of children) {
         const childIntensity = c.intensity !== undefined ? c.intensity : r.intensity;
         const childRetainsWeak = r.retainWeak || Boolean(c.retainWeak);
-        if (childRetainsWeak && childIntensity < MIN_INT) {
+        // Only a genuine branch is charged. A lone child continues the ray it
+        // came from rather than widening the tree -- a polarizer takes this
+        // path because its output carries a tag, not because it split -- so
+        // charging it would spend the budget on work that never grew. It bit
+        // a sized beam through a long polarizer stack: every sample charged
+        // once per stage, the 256 slots ran out, and later samples were
+        // dropped, reporting 92% of the expected signal after 16 elements and
+        // 68% after 20. Depth and length still bound a continuation chain.
+        if (childRetainsWeak && childIntensity < MIN_INT && children.length > 1) {
           if (retainedWeakBranches >= MAX_RETAINED_WEAK_BRANCHES) continue;
           retainedWeakBranches++;
         }
