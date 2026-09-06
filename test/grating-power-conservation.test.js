@@ -242,3 +242,54 @@ test('the zeroth order is reshaped when orders pass off inside the band', () => 
   assert.ok(Math.abs(flat.redFraction - alone.redFraction) < 1e-9,
     'a uniform order count must not reshape the spectrum');
 });
+
+test('a coarsened order still knows what colours it carries', () => {
+  // With enough orders the budget comes down to one spectral node per order,
+  // and that node stands for the whole band -- only the direction has been
+  // collapsed. If such a child claims to be monochromatic at the centroid,
+  // every wavelength-selective element downstream believes it: a filter takes
+  // its !ray.bw path and passes or blocks the entire order on one number.
+  //
+  // 400-800 nm through a 650 nm longpass should keep 150/400 = 0.375 of the
+  // light. Main reports 0.0000 from nine orders up, having truncated away
+  // every order carrying red.
+  const measure = (orderCount, longpass) => {
+    const src = createElement('sclaser', 0, 0);
+    Object.assign(src.params, { beamMode: 'line', scMin: 400, scMax: 800 });
+    const sh = createElement('slm', 150, 0);
+    Object.assign(sh.params, {
+      transmissive: true,
+      layers: [{ type: 'grating', orders: orderList(orderCount), lines: 20 }],
+    });
+    const els = [src, sh];
+    if (longpass) {
+      const filter = createElement('filter', 300, 0);
+      Object.assign(filter.params, { ftype: 'longpass', cutoff: 650, length: 400 });
+      els.push(filter);
+    }
+    const det = createElement('detector', 420, 0);
+    det.params.aperture = 2400;
+    els.push(det);
+    traceAll(els, []);
+    return detectorReading(det.id)?.signal ?? 0;
+  };
+
+  for (const orderCount of [15, 21]) {
+    // One node per order: the child carries the parent's spectrum whole, so
+    // the filter integrates it and lands on the analytic answer exactly.
+    assert.ok(Math.abs(measure(orderCount, false) - 1) < 1e-9);
+    assert.ok(Math.abs(measure(orderCount, true) - 0.375) < 1e-9,
+      `${orderCount} orders through a longpass gave ${measure(orderCount, true)}`);
+  }
+
+  // Between those and full sampling the budget allows two or three nodes per
+  // order. Those are genuine spectral cells at genuinely different angles, so
+  // they stay monochromatic and the answer carries the quadrature's own
+  // coarseness -- but it must still be in the right part of the world, which
+  // is what main was not.
+  for (const orderCount of [5, 9, 11]) {
+    const ratio = measure(orderCount, true) / measure(orderCount, false);
+    assert.ok(ratio > 0.25 && ratio < 0.6,
+      `${orderCount} orders through a longpass gave ratio ${ratio.toFixed(4)}`);
+  }
+});

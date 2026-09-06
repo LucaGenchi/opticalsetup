@@ -2878,6 +2878,18 @@ function interact(ray, hit) {
               SHAPER_RAY_CAP / (rays.length * orders.length * afterLayer[li])));
             const counts = propagatingOrderCounts(orders, wls, si, gd);
             const lineSpectrum = r.spec?.kind === 'lines';
+            // With enough orders the budget comes down to a single node, and
+            // that node stands for the entire band rather than a slice of it:
+            // only the direction has been collapsed, to the centroid. Such a
+            // child still carries the whole spectrum, and has to say so.
+            // Handing it bw: 0 and spec: null would tell everything
+            // downstream the order is monochromatic at the centroid, and a
+            // wavelength-selective element believes it — spectralLo/Hi are
+            // read by detectors, but a filter takes its !ray.bw path and
+            // would throw away a whole order on the strength of one number.
+            // A 400-800 nm beam through 21 orders into a 650 nm longpass
+            // passed 0.018 of the light where 0.375 of it is above the edge.
+            const coarse = r.bw > 0 && wls.length === 1;
             for (const m of orders) {
               if (m === 0) {
                 const port = zeroOrderPort(r, orders, wls, counts, si, gd);
@@ -2893,15 +2905,20 @@ function interact(ray, hit) {
                 const c = Math.sqrt(1 - sd * sd);
                 next.push({
                   ...r, d: norm(add(mul(n, sOut * c), mul(t, sd))),
-                  wl: wls[wi].wl, bw: 0, spec: null,
-                  // A continuum sample stands for a spectral cell, so it keeps
-                  // its bounds and the detector can integrate across them. A
-                  // lamp line stands for itself: wlSamples() still hands it
-                  // midpoint bounds, and carrying those would let the detector
-                  // paint invented power across the dark gaps between lines.
-                  spectralContinuum: lineSpectrum ? false : r.spectralContinuum,
-                  spectralLo: lineSpectrum ? null : (wls[wi].spectralLo ?? r.spectralLo),
-                  spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
+                  // A coarsened order keeps the parent's spectrum wholesale,
+                  // which `...r` has already supplied.
+                  ...(coarse ? {} : {
+                    wl: wls[wi].wl, bw: 0, spec: null,
+                    // A continuum sample stands for a spectral cell, so it
+                    // keeps its bounds and the detector can integrate across
+                    // them. A lamp line stands for itself: wlSamples() still
+                    // hands it midpoint bounds, and carrying those would let
+                    // the detector paint invented power across the dark gaps
+                    // between lines.
+                    spectralContinuum: lineSpectrum ? false : r.spectralContinuum,
+                    spectralLo: lineSpectrum ? null : (wls[wi].spectralLo ?? r.spectralLo),
+                    spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
+                  }),
                   intensity: r.intensity * wls[wi].weight / counts[wi],
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
                 });
