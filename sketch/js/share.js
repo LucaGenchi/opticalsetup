@@ -4,6 +4,8 @@
 const SHARE_PREFIX = '#sketch=';
 const MAX_SHARE_HASH_CHARS = 200_000;
 const MAX_SCENE_BYTES = 1_000_000;
+const TOO_LARGE_TO_SHARE =
+  'This setup is too large to share as a link \u2014 save it as a .json file instead.';
 
 function bytesToBase64Url(bytes) {
   let binary = '';
@@ -55,7 +57,12 @@ async function transform(bytes, Transformer, format, maxBytes = Infinity) {
 export async function encodeSharePayload(text, { compression = true } = {}) {
   const canonical = JSON.stringify(JSON.parse(text));
   const source = new TextEncoder().encode(canonical);
-  if (source.length > MAX_SCENE_BYTES) throw new Error('Sketch is too large for a share link');
+  // Both size guards on this path report the same thing to the person
+  // sharing -- this setup cannot travel in a URL -- so they say it the
+  // same way. One measures the scene, the other the finished fragment.
+  if (source.length > MAX_SCENE_BYTES) {
+    throw new Error(TOO_LARGE_TO_SHARE);
+  }
 
   if (compression && typeof CompressionStream === 'function') {
     try {
@@ -96,6 +103,9 @@ export async function buildShareURL(text, href = window.location.href, options) 
   const payload = await encodeSharePayload(text, options);
   const url = new URL(href);
   url.hash = `sketch=${payload}`;
+  if (url.hash.length > MAX_SHARE_HASH_CHARS) {
+    throw new Error(TOO_LARGE_TO_SHARE);
+  }
   return url.toString();
 }
 
@@ -104,6 +114,34 @@ export async function sharedSceneFromURL(href = window.location.href) {
   if (!hash.startsWith(SHARE_PREFIX)) return null;
   if (hash.length > MAX_SHARE_HASH_CHARS) throw new Error('Share link is too large to open safely');
   return decodeSharePayload(hash.slice(SHARE_PREFIX.length));
+}
+
+// After a successful import, autosave owns subsequent edits. Keeping the
+// original fragment would import the old scene again on every reload.
+export function clearSharedSceneURL(href = window.location.href, navigation = window.history) {
+  const url = new URL(href);
+  if (!url.hash.startsWith(SHARE_PREFIX)) return;
+  url.hash = '';
+  navigation.replaceState(navigation.state, '', url.toString());
+}
+
+// Building a share URL is asynchronous -- the payload is gzipped -- so the
+// canvas can move underneath it. Two things go wrong when it does: the link
+// describes a scene the visitor is no longer looking at, and the fragment the
+// caller installs holds a pre-edit snapshot that no later edit is guaranteed
+// to retire, so a reload restores the older scene over the edit.
+//
+// Rebuild once against the settled scene. `settled` reports whether the scene
+// held still long enough for the URL to describe it, so a caller can decline
+// to park a stale snapshot in the address bar while someone is mid-drag.
+export async function shareURLForScene(readScene, build) {
+  let scene = readScene();
+  let url = await build(scene);
+  if (readScene() !== scene) {
+    scene = readScene();
+    url = await build(scene);
+  }
+  return { scene, url, settled: readScene() === scene };
 }
 
 export async function copyText(text) {
