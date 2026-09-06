@@ -275,10 +275,12 @@ test('a coarsened order still knows what colours it carries', () => {
   };
 
   for (const orderCount of [15, 21]) {
-    // One node per order: the child carries the parent's spectrum whole, so
-    // the filter integrates it and lands on the analytic answer exactly.
+    // One ray per order carrying the colours that order really keeps, so the
+    // filter integrates a spectrum instead of testing a single number. What
+    // is left is the resolution of the grid the profile is rebuilt on, not a
+    // whole order's worth of light.
     assert.ok(Math.abs(measure(orderCount, false) - 1) < 1e-9);
-    assert.ok(Math.abs(measure(orderCount, true) - 0.375) < 1e-9,
+    assert.ok(Math.abs(measure(orderCount, true) - 0.375) < 0.005,
       `${orderCount} orders through a longpass gave ${measure(orderCount, true)}`);
   }
 
@@ -292,4 +294,61 @@ test('a coarsened order still knows what colours it carries', () => {
     assert.ok(ratio > 0.25 && ratio < 0.6,
       `${orderCount} orders through a longpass gave ratio ${ratio.toFixed(4)}`);
   }
+});
+
+test('a coarsened order carries only the colours it can diffract', () => {
+  // 400-800 nm on 1600 l/mm: the +-1 orders pass off at 625 nm. When the
+  // budget gives one ray per order, that ray covers the whole band, so which
+  // colours it keeps cannot be decided at a single wavelength -- doing so
+  // hands an order all of the band or none of it. Deciding at the centroid
+  // (600 nm, where +-1 still propagate) left the zeroth order on a flat 1/3.
+  const zerothOrder = orderCount => {
+    const src = createElement('sclaser', 0, 0);
+    Object.assign(src.params, { beamMode: 'line', scMin: 400, scMax: 800 });
+    const sh = createElement('slm', 150, 0);
+    Object.assign(sh.params, {
+      transmissive: true,
+      layers: [{ type: 'grating', orders: orderList(orderCount), lines: 1600 }],
+    });
+    const det = createElement('detector', 300, 0);
+    det.params.aperture = 8; // narrow and on axis: the undiffracted order only
+    traceAll([src, sh, det], []);
+    return detectorReading(det.id)?.signal ?? 0;
+  };
+  // Below 625 nm three orders share the light and above it the zeroth order
+  // has it to itself: 225/400 at a third plus 175/400 whole is 0.625.
+  for (const orderCount of [15, 21]) {
+    assert.ok(Math.abs(zerothOrder(orderCount) - 0.625) < 0.01,
+      `${orderCount} orders put ${zerothOrder(orderCount)} in the zeroth order, expected 0.625`);
+  }
+});
+
+test('equivalent order lists survive the cap identically', () => {
+  // Two grating layers is the one stack that can still overrun the cap, and a
+  // grating divides evenly, so the children that compete for the last slots
+  // usually have identical intensity. Sorting on intensity alone leaves a
+  // stable sort falling back to generation order -- which is the order the
+  // list was typed in, so the same physical grating gave different answers.
+  const readings = orders => {
+    const src = createElement('sclaser', 0, 0);
+    Object.assign(src.params, { beamMode: 'line', scMin: 400, scMax: 800 });
+    const sh = createElement('slm', 150, 0);
+    Object.assign(sh.params, {
+      transmissive: true,
+      layers: [{ type: 'grating', orders, lines: 20 }, { type: 'grating', orders, lines: 20 }],
+    });
+    // A fan of narrow detectors: a change in which directions survive shows
+    // up as light moving between them, not just as a change in the total.
+    const dets = [-120, -60, -25, 0, 25, 60, 120].map(y => {
+      const det = createElement('detector', 320, y);
+      det.params.aperture = 20;
+      return det;
+    });
+    traceAll([src, sh, ...dets], []);
+    return dets.map(det => Number((detectorReading(det.id)?.signal ?? 0).toFixed(9)));
+  };
+  const ascending = orderList(11);
+  const descending = ascending.split(',').reverse().join(',');
+  assert.deepEqual(readings(descending), readings(ascending),
+    `"${ascending}" and "${descending}" are the same grating and must trace alike`);
 });
