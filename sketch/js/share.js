@@ -71,6 +71,9 @@ export async function buildShareURL(text, href = window.location.href, options) 
   const payload = await encodeSharePayload(text, options);
   const url = new URL(href);
   url.hash = `sketch=${payload}`;
+  if (url.hash.length > MAX_SHARE_HASH_CHARS) {
+    throw new Error('Sketch is too large for a share link. Save it as a .json file instead.');
+  }
   return url.toString();
 }
 
