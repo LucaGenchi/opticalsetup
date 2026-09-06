@@ -176,4 +176,18 @@ test('inverse layers put the band back together, and it looks it', () => {
     'a band that still fans must stay coloured');
   assert.ok(!steered.some(d => d.color === '#cbd8ea'),
     'one wavelength crossing the axis is not the band coming back together');
+
+  // Nor is it a property of the output as a whole. A stack that reassembles
+  // one order pair while another still fans has genuinely put the first back
+  // together, and that beam should look it even though the rest does not.
+  shaper.params.layers = [
+    { type: 'grating', lines: 300, orders: '1' },
+    { type: 'grating', lines: 300, orders: '-1,0' },
+  ];
+  const mixed = traceScene([source, shaper], []).drawables
+    .filter(d => d.pts && d.pts[0].x > 140);
+  assert.ok(mixed.some(d => d.color === '#cbd8ea'),
+    'the recombined port should read as one beam');
+  assert.ok(new Set(mixed.filter(d => d.color !== '#cbd8ea').map(d => d.color)).size > 3,
+    'the port that still fans should stay coloured');
 });

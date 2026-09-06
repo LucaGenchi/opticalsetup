@@ -3140,17 +3140,32 @@ function interact(ray, hit) {
       // it arrived was not, in the end, separated -- the samples land on top of
       // one another and should read as the one beam they draw, not as a stack
       // of coincident coloured strokes.
-      // It is a property of the whole band, not of one ray. Steering that
-      // happens to bring a single wavelength back onto the axis while its
-      // siblings still fan has put nothing back together, and that one ray
-      // must not go pale while the rest stay coloured.
+      // It is a property of a band, not of one ray and not of the output as a
+      // whole. One ray crossing the axis while its siblings fan has put
+      // nothing back together; equally, a stack that recombines one order pair
+      // while another still fans has genuinely reassembled the first, and that
+      // beam should look it even though the rest of the output does not.
+      //
+      // A port is one path through the order stack, which is what the tag
+      // records -- the same tag its spectral siblings carry, differing only in
+      // the wavelength index the layer appended. Strip that and each group is
+      // one outgoing beam, to be judged on its own.
       const baseDir = data.transmissive ? d : reflect(d, n);
-      const separated = rays.filter(r => r.dispersed);
-      const recombined = separated.length > 0
-        && separated.every(r => Math.abs(dot(r.d, baseDir) - 1) < 1e-9);
+      const portOf = r => (r.tag || '').replace(/w\d+/g, '');
+      const ports = new Map();
+      for (const r of rays) {
+        if (!r.dispersed) continue;
+        const key = portOf(r);
+        if (!ports.has(key)) ports.set(key, []);
+        ports.get(key).push(r);
+      }
+      const recombinedPorts = new Set();
+      for (const [key, group] of ports) {
+        if (group.every(r => Math.abs(dot(r.d, baseDir) - 1) < 1e-9)) recombinedPorts.add(key);
+      }
       const out = rays.map(r => ({
         ...(r.color ? { color: r.color } : {}),
-        dispersed: (r.dispersed && !recombined) || undefined,
+        dispersed: (r.dispersed && !recombinedPorts.has(portOf(r))) || undefined,
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
