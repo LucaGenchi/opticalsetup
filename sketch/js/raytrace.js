@@ -2705,7 +2705,11 @@ function interact(ray, hit) {
       // (grating) can multiply rays; capped to keep tracing bounded.
       const zf = data.zeroOrder && (data.layers || []).length
         ? Math.min(0.95, Math.max(0, data.zeroFrac ?? 0.1)) : 0;
-      let rays = [{ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '' }];
+      let rays = [{
+        d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '',
+        wl: ray.wl, bw: ray.bw, spec: ray.spec, spectralContinuum: ray.spectralContinuum,
+        spectralLo: ray.spectralLo, spectralHi: ray.spectralHi,
+      }];
       const L = data.length;
       const mid = mul(add(s.a, s.b), 0.5);
       for (const ly of (data.layers || []).slice(0, 4)) {
@@ -2730,19 +2734,31 @@ function interact(ray, hit) {
             const gd = 1e6 / (ly.lines || 600);
             const si = dot(r.d, t);
             const sOut = dot(r.d, n) >= 0 ? 1 : -1;
-            const wls = wlSamples(ray);
+            const wls = wlSamples(r);
+            const lineSpectrum = r.spec?.kind === 'lines';
             for (const m of orders) {
+              if (m === 0) {
+                next.push({ ...r, intensity: r.intensity / orders.length, tag: r.tag + 'm0' });
+                continue;
+              }
               for (let wi = 0; wi < wls.length; wi++) {
                 const sd = si + m * wls[wi].wl / gd;
                 if (Math.abs(sd) > 1) continue;
                 const c = Math.sqrt(1 - sd * sd);
                 next.push({
-                  d: norm(add(mul(n, sOut * c), mul(t, sd))),
-                  wl: wls[wi].wl, bw: 0, spec: null, speckle: r.speckle,
-                  intensity: r.intensity * (m === 0 ? 1 : wls[wi].weight) / orders.length,
+                  ...r, d: norm(add(mul(n, sOut * c), mul(t, sd))),
+                  wl: wls[wi].wl, bw: 0, spec: null,
+                  // A continuum sample stands for a spectral cell, so it keeps
+                  // its bounds and the detector can integrate across them. A
+                  // lamp line stands for itself: wlSamples() still hands it
+                  // midpoint bounds, and carrying those would let the detector
+                  // paint invented power across the dark gaps between lines.
+                  spectralContinuum: lineSpectrum ? false : r.spectralContinuum,
+                  spectralLo: lineSpectrum ? null : (wls[wi].spectralLo ?? r.spectralLo),
+                  spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
+                  intensity: r.intensity * wls[wi].weight / orders.length,
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
                 });
-                if (m === 0 && wls.length > 1) break;
               }
             }
           } else if (ly.type === 'speckle') {
@@ -2764,7 +2780,9 @@ function interact(ray, hit) {
       }
       const out = rays.map(r => ({
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
-        wl: r.wl, bw: r.bw, speckle: r.speckle || undefined,
+        wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
+        spectralLo: r.spectralLo, spectralHi: r.spectralHi,
+        speckle: r.speckle || undefined,
       }));
       if (zf > 0) {
         out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0' });
