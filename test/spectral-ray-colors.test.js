@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from '../sketch/js/elements.js';
-import { traceAll } from '../sketch/js/raytrace.js';
+import { traceAll, traceScene } from '../sketch/js/raytrace.js';
 import { wavelengthToColor } from '../sketch/js/util.js';
 
 for (const type of ['grating', 'slm', 'metasurface', 'aod']) {
@@ -100,4 +100,32 @@ test('a filter downstream of a coarsened order repaints it', () => {
   assert.ok(past.every(d => d.color === wavelengthToColor(550)
     || Math.abs(parseInt(d.color.slice(1, 3), 16) - 0xaa) < 0x30),
     `filtered rays came out ${[...new Set(past.map(d => d.color))].join(' ')}`);
+});
+
+test('pulse packets are drawn in the same colour as the ray they travel along', () => {
+  // The static stroke and the pulse packet moving along it are the same light.
+  // They were resolved by two separate expressions, which is how they drifted:
+  // one learned that dispersion outranks an inherited tint and the other did
+  // not, so an animated export disagreed with the canvas it was exported from.
+  const source = createElement('sclaser', 0, 0);
+  Object.assign(source.params, { beamMode: 'line', scMin: 400, scMax: 700 });
+  const grating = createElement('grating', 150, 0);
+  Object.assign(grating.params, { transmissive: true, lines: 300, orders: '-1,0,1' });
+
+  const { drawables, pulseTracks } = traceScene([source, grating], []);
+  assert.ok(pulseTracks.length > 0, 'the scene must animate for this to mean anything');
+  const packetColors = new Set(pulseTracks.map(t => t.color));
+  // Compare only the colours that are a wavelength's own. Undispersed
+  // broadband light is drawn as a layered glyph in its own palette rather than
+  // as one stroke, so those colours are not comparable and are not the point.
+  const spectral = new Set();
+  for (let wl = 380; wl <= 780; wl++) spectral.add(wavelengthToColor(wl));
+  const fanned = new Set(drawables
+    .filter(d => d.pts && d.pts[0].x > 145 && spectral.has(d.color))
+    .map(d => d.color));
+  assert.ok(fanned.size > 3, 'the grating should have fanned the beam');
+  for (const color of fanned) {
+    assert.ok(packetColors.has(color),
+      `rays are drawn ${color} but no packet travelling along them is`);
+  }
 });

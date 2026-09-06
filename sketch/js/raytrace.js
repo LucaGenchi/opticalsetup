@@ -3557,8 +3557,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           speckle: c.speckle || r.speckle || false,
           // Once a dispersive optic has taken a beam apart, the pieces stay
           // apart: the flag rides along so their colour keeps being derived
-          // from the wavelength each piece actually carries.
-          dispersed: c.dispersed || r.dispersed || false,
+          // from the wavelength each piece actually carries. Light a specimen
+          // generates is new light rather than the pump taken apart, though --
+          // it arrives with its own sourceId and its own tint -- so it starts
+          // undispersed however the pump reached it.
+          dispersed: 'sourceId' in c ? Boolean(c.dispersed) : (c.dispersed || r.dispersed || false),
           chopped: c.chopped || r.chopped || undefined,
           // A branch that merely passed THROUGH a collector was never
           // collected, so it stays evanescent with the range it had.
@@ -3624,31 +3627,36 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
   return done;
 }
 
+// What colour a ray is drawn in. One rule, because the static stroke and the
+// pulse packet travelling along it are the same light and must never disagree
+// -- they were resolved separately once, and drifted.
+//
+// A signal generated in a specimen carries its own colour and is no longer the
+// source's light, so it outranks the source's fixed colour: otherwise a
+// custom-coloured IR pump would paint its own green SHG red. A custom source
+// colour in turn describes the user's beam. Dispersion outranks both, because
+// light a dispersive optic has separated is no longer that beam, nor an
+// emission band, but either of them taken apart -- and a band is a band, so a
+// grating spreads it into separate colours rather than repeating one tint
+// across the fan. Without that, a supercontinuum (whose default colour is the
+// pale mix) fans out white where a prism fans out a rainbow.
+//
+// Everything here is derived from what the ray carries now, never stamped on
+// it earlier, so a filter that narrows it downstream is reflected.
+function rayColor(r, fixedColor) {
+  if (r.color && !r.dispersed) return r.color;
+  if (fixedColor && !r.dispersed) return fixedColor;
+  // Undispersed broadband light is co-propagating mixed light, not a rainbow
+  // painted across the beam aperture.
+  if (r.bw >= 200) return MIXED_LIGHT_COLOR;
+  return wavelengthToColor(r.wl);
+}
+
 // turn traced polylines into drawables (strokes / envelope strips / speckle
 // grains / rainbow ribbons / chopped chunks)
 function assembleDrawables(paths, opts, drawables) {
   const { K, isBeam, fixedColor } = opts;
-  const colorOf = r => {
-    // A signal generated in a specimen carries its own color and is no longer
-    // the source's light, so it outranks the source's fixed color — otherwise
-    // a custom-colored IR pump would paint its own green SHG red. Dispersion
-    // outranks even that: a fluorescence band is a band, and once a grating
-    // has spread it the pieces are separate colours, not the emission's
-    // nominal tint repeated across the fan.
-    if (r.color && !r.dispersed) return r.color;
-    // A custom source colour describes the user's beam. Light a dispersive
-    // optic has separated is no longer that beam but that beam taken apart,
-    // so it shows the colours it was taken apart into -- otherwise a
-    // supercontinuum, whose default colour is the pale mix, fans out white
-    // where a prism fans out a rainbow. Derived below rather than stamped on
-    // the ray, so a filter that narrows it downstream is reflected.
-    if (fixedColor && !r.dispersed) return fixedColor;
-    // Undispersed broadband light is co-propagating mixed light, not a rainbow
-    // painted across the beam aperture. Dispersive optics split it into bw=0
-    // child rays, which regain wavelength-specific color below.
-    if (r.bw >= 200) return MIXED_LIGHT_COLOR;
-    return wavelengthToColor(r.wl);
-  };
+  const colorOf = r => rayColor(r, fixedColor);
   const opOf = r => Math.max(0.25, Math.min(0.95, 0.35 + 0.6 * r.intensity));
   const dashOf = r => r.chopped
     ? `${(r.chopped.period * r.chopped.duty).toFixed(1)} ${(r.chopped.period * (1 - r.chopped.duty)).toFixed(1)}`
@@ -3796,7 +3804,7 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
       ...(r.gddTrace ? { gddTrace: r.gddTrace.map(event => ({ ...event })) } : {}),
       pulse: { ...r.pulse },
       bw: r.bw || 0,
-      color: r.color || (r.dispersed ? null : fixedColor) || wavelengthToColor(r.wl),
+      color: rayColor(r, fixedColor),
       intensity: r.intensity,
     });
   }
