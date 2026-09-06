@@ -29,7 +29,7 @@ import {
   gaussianPulseDurationAfterGDD, glassGVD, glassIndex, isDispersiveGlass,
 } from './glass.js';
 import {
-  gaussianSpectrum, flatSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
+  gaussianSpectrum, flatSpectrum, lineSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
@@ -1790,7 +1790,16 @@ function wlSamples(ray, maxK = Infinity) {
   // This case is also why the budget cannot simply be handed to
   // spectrumSamples(), which floors at two nodes and would quietly return
   // twice what the caller can afford.
-  if (K === 1) {
+  //
+  // A line spectrum is exempt: its samples are a lamp's actual emission
+  // lines, not quadrature nodes, and a discharge lamp reaches here with a
+  // bandwidth because resolveSourceSpectrum() reports the span of its lines.
+  // Collapsing those to a centroid would trace every order at a wavelength
+  // the light does not contain and erase the lines themselves. They stay
+  // whole and the cap deals with the count: under-reporting a little through
+  // truncation is much the better failure.
+  const discrete = ray.spec?.kind === 'lines';
+  if (K === 1 && !discrete) {
     const center = ray.spec ? (spectrumStats(ray.spec)?.center ?? (lo + hi) / 2) : ray.wl;
     return [{ wl: center, weight: 1, spectralLo: lo, spectralHi: hi }];
   }
@@ -1799,7 +1808,7 @@ function wlSamples(ray, maxK = Infinity) {
     samples = spectrumSamples(ray.spec, K);
   }
   if (!samples) samples = Array.from({ length: K }, (_, i) => ({
-    wl: lo + (hi - lo) * i / (K - 1),
+    wl: K === 1 ? (lo + hi) / 2 : lo + (hi - lo) * i / (K - 1),
     weight: 1,
   }));
   // These are quadrature nodes across a continuous spectrum. Trapezoidal
@@ -1843,19 +1852,55 @@ function propagatingOrderCounts(orders, wls, si, groove) {
     (count, m) => count + (m === 0 || Math.abs(si + m * w.wl / groove) <= 1 ? 1 : 0), 0));
 }
 
-// The undiffracted order stays one polychromatic ray rather than splitting per
-// wavelength, so its share is the band-average of 1/N — N differs across the
-// spectrum whenever an order passes off inside the band. A sample with nothing
-// left to propagate into contributes nothing: the user listed no order that
-// could carry it.
-function zeroOrderShare(wls, counts) {
+// The undiffracted order leaves as one polychromatic ray rather than splitting
+// per wavelength, so when N varies across the band its share is not a scalar
+// but a spectral shaping: it keeps everything where the other orders have
+// passed off, and 1/N where they still propagate. A 400-800 nm beam on a
+// 1600 l/mm grating loses its +-1 orders above 625 nm, so its zeroth order
+// comes out distinctly red-weighted — scaling by the band average alone hands
+// a spectrometer the right total power with the incident colour balance.
+//
+// Returns the fraction to scale intensity by, plus the reshaped profile to
+// carry when the spectrum really is reshaped.
+function zeroOrderPort(ray, orders, wls, counts, si, groove) {
   // No order passing off inside the band is the common case, and there the
-  // share is exactly 1/N. Taking that division directly keeps the result
-  // bit-identical to the plain 1/N this replaced, instead of accumulating
-  // rounding across a quadrature sum that is only needed when N varies.
+  // share is exactly 1/N with the spectrum untouched. Taking that division
+  // directly keeps the result bit-identical to the plain 1/N this replaced,
+  // instead of accumulating rounding across a quadrature sum.
   const first = counts[0];
-  if (counts.every(count => count === first)) return first ? 1 / first : 0;
-  return wls.reduce((sum, w, i) => sum + (counts[i] ? w.weight / counts[i] : 0), 0);
+  if (counts.every(count => count === first)) return { fraction: first ? 1 / first : 0 };
+
+  // The fraction stays on the same quadrature nodes the diffracted orders are
+  // weighted by, so the shares still telescope to exactly the incident power:
+  // each node contributes w/N once for the zeroth order and once per
+  // propagating order, N of them in total. The reshaped profile below is only
+  // the colour balance, and is deliberately not allowed to set the fraction —
+  // a finer grid there would conserve power slightly less than exactly.
+  const fraction = wls.reduce((sum, w, i) => sum + (counts[i] ? w.weight / counts[i] : 0), 0);
+  const share = wl => {
+    const live = orders.reduce((count, m) =>
+      count + (m === 0 || Math.abs(si + m * wl / groove) <= 1 ? 1 : 0), 0);
+    return live ? 1 / live : 0;
+  };
+
+  // A lamp's lines each take their own share exactly. Re-gridding them the way
+  // a continuum is re-gridded would smear them into a profile that is no
+  // longer a line spectrum, inventing light between the lines.
+  if (ray.spec?.kind === 'lines') {
+    const scaled = lineSpectrum(ray.spec.lines.map(l => ({ nm: l.nm, w: l.w * share(l.nm) })));
+    const stats = scaled && spectrumStats(scaled);
+    if (!scaled || !stats) return { fraction: 0 };
+    const brightest = scaled.lines.reduce((best, l) => (l.w > best.w ? l : best));
+    return { fraction, spec: scaled, wl: brightest.nm, bw: stats.fwhm };
+  }
+
+  // For a continuum this is exactly what a filter does to a spectrum, so it
+  // goes through the same machinery, on a grid fine enough to place the
+  // pass-off edge properly rather than on the handful of quadrature nodes.
+  const shaped = ray.spec && applyTransmission(ray.spec, ray.wl, share);
+  if (shaped) return { fraction, spec: shaped.spec, wl: shaped.wl, bw: shaped.bw };
+  // No profile to reshape: the band-averaged fraction is all there is.
+  return { fraction };
 }
 
 // thin-lens (paraxial) bend; also used for curved mirrors after reflection.
@@ -2279,9 +2324,13 @@ function interact(ray, hit) {
         // redirects the whole band specularly (or passes it straight through),
         // rather than turning the first spectral sample into a laser line.
         if (m === 0) {
+          const port = zeroOrderPort(ray, data.orders, wls, counts, si, data.d);
           out.push({
             d: data.transmissive ? d : reflect(d, n),
-            intensity: ray.intensity * zeroOrderShare(wls, counts),
+            intensity: ray.intensity * port.fraction,
+            // Only carried when the band really is reshaped; otherwise the
+            // ray inherits the incident spectrum untouched.
+            ...(port.spec !== undefined ? { spec: port.spec, wl: port.wl, bw: port.bw } : {}),
             tag: 'm0',
           });
           continue;
@@ -2831,7 +2880,11 @@ function interact(ray, hit) {
             const lineSpectrum = r.spec?.kind === 'lines';
             for (const m of orders) {
               if (m === 0) {
-                next.push({ ...r, intensity: r.intensity * zeroOrderShare(wls, counts), tag: r.tag + 'm0' });
+                const port = zeroOrderPort(r, orders, wls, counts, si, gd);
+                next.push({
+                  ...r, intensity: r.intensity * port.fraction, tag: r.tag + 'm0',
+                  ...(port.spec !== undefined ? { spec: port.spec, wl: port.wl, bw: port.bw } : {}),
+                });
                 continue;
               }
               for (let wi = 0; wi < wls.length; wi++) {

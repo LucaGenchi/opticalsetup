@@ -21,6 +21,7 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import '../sketch/js/detector-instruments.js';
 import { createElement } from '../sketch/js/elements.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
 
@@ -63,7 +64,7 @@ test('a band whose orders pass off partway through still conserves power', () =>
 });
 
 test('the zeroth order alone still carries everything', () => {
-  // The narrow path through zeroOrderShare: one order, always propagating.
+  // The narrow path through zeroOrderPort: one order, always propagating.
   assert.equal(grating({ lines: 600, orders: '0' }), 1);
   assert.equal(grating({ lines: 600, orders: '0' }, { bwMode: 'band', bandwidth: 400 }), 1);
 });
@@ -151,4 +152,93 @@ test('a beam samples the same total as a single line ray', () => {
     const signal = shaper(layers, { beamMode: 'beam', beamWidth: 4, bwMode: 'band', bandwidth: 400 });
     assert.ok(Math.abs(signal - 1) < 1e-9, `${layers.map(l => l.type).join('+')} in beam mode`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// The spectrum, not just the total. Conserving power is necessary but not
+// sufficient: light has to leave at wavelengths that were actually in it, and
+// in the proportions the grating actually sends them.
+
+// A gas-discharge lamp is a point emitter, so it needs collimating before it
+// reaches anything dispersive. It is also the only source that arrives with a
+// discrete spectrum AND a bandwidth -- resolveSourceSpectrum() reports the
+// span of its lines as bw -- which is exactly what makes it the awkward case.
+function lampThrough(layers, { detector = 'spectrometer' } = {}) {
+  const src = createElement('pointsource', 0, 0);
+  Object.assign(src.params, { sourceKind: 'lamp', lampType: 'hg', spread: 20, nrays: 9 });
+  const lens = createElement('lens', 100, 0);
+  Object.assign(lens.params, { f: 100, dia: 50.8 });
+  const sh = createElement('slm', 260, 0);
+  Object.assign(sh.params, { transmissive: true, layers });
+  const det = createElement(detector, 420, 0);
+  det.params.aperture = detector === 'spectrometer' ? 900 : 1400;
+  traceAll([src, lens, sh, det], []);
+  return detectorReading(det.id);
+}
+
+const HG_LINES = [365.0146, 404.6561, 435.8343, 546.074, 576.96, 579.066, 1014.0];
+
+test('a lamp keeps its own lines when the ray budget is tightest', () => {
+  // 21 orders leaves room for a single wavelength per order. A continuum can
+  // answer that by coarsening its quadrature to one node at the centroid; a
+  // lamp cannot -- its samples are real emission lines, and a centroid would
+  // be a wavelength the light does not contain. Whatever survives the budget
+  // must be lines the lamp actually emits.
+  for (const n of [1, 3, 11, 21]) {
+    const reading = lampThrough([{ type: 'grating', orders: orderList(n), lines: 20 }]);
+    const seen = (reading?.spectrum ?? []).filter(s => s.power > 1e-6);
+    assert.ok(seen.length > 0, `${n} orders produced no spectrum`);
+    for (const peak of seen) {
+      assert.ok(HG_LINES.some(nm => Math.abs(nm - peak.wavelength) < 1.5),
+        `${n} orders reported ${peak.wavelength.toFixed(1)} nm, which is not a mercury line`);
+    }
+  }
+});
+
+test('a lamp through a wide order fan keeps most of its power', () => {
+  // Seven lines across twenty-one orders is 147 rays against a cap of 24, so
+  // this scene cannot be complete. It can still be far better than dropping
+  // whichever rays were generated last: the budget keeps the brightest.
+  const reference = lampThrough([], { detector: 'detector' }).signal;
+  const wide = lampThrough([{ type: 'grating', orders: orderList(21), lines: 20 }],
+    { detector: 'detector' }).signal;
+  assert.ok(wide / reference > 0.3, `kept only ${(100 * wide / reference).toFixed(1)}% of the lamp`);
+});
+
+test('the zeroth order is reshaped when orders pass off inside the band', () => {
+  // 400-800 nm on 1600 l/mm: the +-1 orders exist below 625 nm and are
+  // evanescent above it, so the zeroth order keeps a third of the blue and
+  // all of the red. It leaves as one polychromatic ray, so that has to show
+  // up as a reshaped spectrum -- scaling by the band average alone would give
+  // a spectrometer the right total with the incident colour balance.
+  const measure = (lines, orders) => {
+    const src = createElement('sclaser', 0, 0);
+    Object.assign(src.params, { beamMode: 'line', scMin: 400, scMax: 800 });
+    const g = createElement('grating', 150, 0);
+    Object.assign(g.params, { transmissive: true, lines, orders });
+    // A narrow aperture on axis sees the undiffracted order alone.
+    const det = createElement('spectrometer', 300, 0);
+    det.params.aperture = 20;
+    traceAll([src, g, det], []);
+    const reading = detectorReading(det.id);
+    const bins = (reading?.spectrum ?? []).filter(s => s.power > 1e-9);
+    const total = bins.reduce((sum, s) => sum + s.power, 0);
+    const red = bins.filter(s => s.wavelength >= 625).reduce((sum, s) => sum + s.power, 0);
+    return { signal: reading?.signal ?? 0, redFraction: red / total };
+  };
+
+  // 225 nm of blue at 1/3 against 175 nm of red at 1 puts 70% of what leaves
+  // in the red half, up from the incident 43.6%.
+  const shaped = measure(1600, '-1,0,1');
+  assert.ok(Math.abs(shaped.signal - 0.625) < 1e-9, `total was ${shaped.signal}`);
+  assert.ok(Math.abs(shaped.redFraction - 0.70) < 0.02,
+    `zeroth order came out ${(100 * shaped.redFraction).toFixed(1)}% red, expected ~70%`);
+
+  // Controls: with no order passing off inside the band the count is uniform,
+  // the share is a plain 1/N, and the spectrum must be left alone.
+  const flat = measure(800, '-1,0,1');
+  const alone = measure(1600, '0');
+  assert.ok(Math.abs(flat.signal - 1 / 3) < 1e-9);
+  assert.ok(Math.abs(flat.redFraction - alone.redFraction) < 1e-9,
+    'a uniform order count must not reshape the spectrum');
 });
