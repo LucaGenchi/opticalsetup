@@ -129,3 +129,37 @@ test('pulse packets are drawn in the same colour as the ray they travel along', 
       `rays are drawn ${color} but no packet travelling along them is`);
   }
 });
+
+test('inverse layers put the band back together, and it looks it', () => {
+  // A +1 grating layer followed by a -1 of the same pitch sends every
+  // wavelength back along the direction it arrived on -- that recombination is
+  // what a 4f pulse shaper is built from. Light that leaves the way it came in
+  // was not, in the end, separated, so it should read as the one beam its
+  // coincident samples draw rather than as a stack of coloured strokes.
+  const source = createElement('sclaser', 0, 0);
+  Object.assign(source.params, { beamMode: 'line', scMin: 400, scMax: 700, showPulse: false });
+  const shaper = createElement('slm', 150, 0);
+  Object.assign(shaper.params, {
+    transmissive: true,
+    layers: [
+      { type: 'grating', lines: 300, orders: '1' },
+      { type: 'grating', lines: 300, orders: '-1' },
+    ],
+  });
+  const { drawables } = traceScene([source, shaper], []);
+  const out = drawables.filter(d => d.pts && d.pts[0].x > 140);
+  assert.ok(out.length > 1, 'the shaper should emit a sample per wavelength');
+  // Coincident: the band really did come back together.
+  const ends = new Set(out.map(d => {
+    const p = d.pts[d.pts.length - 1];
+    return `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
+  }));
+  assert.equal(ends.size, 1, 'the inverse layer should have undone the first');
+  assert.equal(new Set(out.map(d => d.color)).size, 1,
+    `recombined light drawn in ${new Set(out.map(d => d.color)).size} colours`);
+
+  // And the control: one grating layer alone still fans.
+  shaper.params.layers = [{ type: 'grating', lines: 300, orders: '1' }];
+  const fan = traceScene([source, shaper], []).drawables.filter(d => d.pts && d.pts[0].x > 140);
+  assert.ok(new Set(fan.map(d => d.color)).size > 3, 'a single layer must still fan');
+});

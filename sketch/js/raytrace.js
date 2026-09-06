@@ -3134,9 +3134,17 @@ function interact(ray, hit) {
         rays = next.slice(0, SHAPER_RAY_CAP);
         if (!rays.length) break;
       }
+      // Inverse layers put the band back: a +1 grating followed by a -1 of the
+      // same pitch sends every wavelength back along the direction it came in
+      // on, which is what a 4f pulse shaper is for. Light that leaves the way
+      // it arrived was not, in the end, separated -- the samples land on top of
+      // one another and should read as the one beam they draw, not as a stack
+      // of coincident coloured strokes.
+      const baseDir = data.transmissive ? d : reflect(d, n);
+      const recombined = r => Math.abs(dot(r.d, baseDir) - 1) < 1e-9;
       const out = rays.map(r => ({
         ...(r.color ? { color: r.color } : {}),
-        dispersed: r.dispersed || undefined,
+        dispersed: (r.dispersed && !recombined(r)) || undefined,
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
