@@ -2453,15 +2453,11 @@ function interact(ray, hit) {
           const c = Math.sqrt(1 - sd * sd);
           const sOut = data.transmissive ? sIn : -sIn;
           out.push({
-            // A separated order is no longer the source's beam but one colour
-            // pulled out of it, so it carries its own colour and outranks a
-            // custom source colour -- otherwise a supercontinuum, whose
-            // default colour is the pale mix, fans out white where a prism
-            // fans out a rainbow. Only where dispersion actually happened:
-            // recolouring an undispersed beam would repaint a monochromatic
-            // ray the user had deliberately coloured, which is the guard the
-            // prism already applies by comparing bandwidths.
-            ...(m !== 0 && ray.bw > 0 ? { color: wavelengthToColor(wls[i].wl) } : {}),
+            // Only where dispersion actually happened: marking an
+            // undispersed beam would repaint a monochromatic ray the user had
+            // deliberately coloured, which is the guard the prism already
+            // applies by comparing bandwidths.
+            dispersed: m !== 0 && ray.bw > 0,
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
             intensity: ray.intensity * wls[i].weight / counts[i],
@@ -2590,7 +2586,7 @@ function interact(ray, hit) {
               // Same rule. The acousto-optic shift moves the wavelength a
               // fraction of a nanometre even for a single line, which is not
               // reason enough to repaint a beam the user chose the colour of.
-              ...(ray.bw > 0 ? { color: wavelengthToColor(shiftedWl) } : {}),
+              dispersed: ray.bw > 0,
               bw: 0,
               spec: null,
               spectralCount: samples.length,
@@ -3049,17 +3045,13 @@ function interact(ray, hit) {
                   spec: port.spec, wl: port.wl, bw: port.bw,
                   intensity: r.intensity * port.fraction,
                   tag: r.tag + 'm' + m,
-                  // A separated order is no longer the source's beam, so it
-                  // carries its own colour and outranks a custom source
-                  // colour, the same way the diffracted orders below do. A
-                  // coarsened order can still span most of the band, though,
-                  // and then mixed light is the honest colour rather than
-                  // whichever wavelength sits in the middle of it. The
-                  // undiffracted order is still the incident beam and keeps
-                  // whatever the source is drawn in.
-                  ...(m === 0 ? {} : {
-                    color: port.bw >= 200 ? MIXED_LIGHT_COLOR : wavelengthToColor(port.wl),
-                  }),
+                  // As above. A coarsened order can still span most of the
+                  // band, and colorOf paints that as mixed light on its own --
+                  // which is why this is a flag and not a colour: stamping the
+                  // pale mix here would survive a bandpass that later narrows
+                  // the ray to a single colour. The undiffracted order is
+                  // still the incident beam and keeps the source's look.
+                  dispersed: m !== 0 || r.dispersed,
                 });
               }
               continue;
@@ -3096,11 +3088,9 @@ function interact(ray, hit) {
                   spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
                   intensity: r.intensity * wls[wi].weight / counts[wi],
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
-                  // As above: its own colour where it really is one colour
-                  // pulled out of a band, and the incident beam's otherwise.
-                  ...(m !== 0 && r.bw > 0
-                    ? { color: wavelengthToColor(wls[wi].wl) }
-                    : r.color ? { color: r.color } : {}),
+                  // As above: its own colours where it really is a band taken
+                  // apart, and the incident beam's otherwise.
+                  dispersed: (m !== 0 && r.bw > 0) || r.dispersed,
                 });
               }
             }
@@ -3146,6 +3136,7 @@ function interact(ray, hit) {
       }
       const out = rays.map(r => ({
         ...(r.color ? { color: r.color } : {}),
+        dispersed: r.dispersed || undefined,
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
@@ -3564,6 +3555,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           spectralHi: Number.isFinite(c.spectralHi) ? c.spectralHi
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralHi : null,
           speckle: c.speckle || r.speckle || false,
+          // Once a dispersive optic has taken a beam apart, the pieces stay
+          // apart: the flag rides along so their colour keeps being derived
+          // from the wavelength each piece actually carries.
+          dispersed: c.dispersed || r.dispersed || false,
           chopped: c.chopped || r.chopped || undefined,
           // A branch that merely passed THROUGH a collector was never
           // collected, so it stays evanescent with the range it had.
@@ -3638,7 +3633,13 @@ function assembleDrawables(paths, opts, drawables) {
     // the source's light, so it outranks the source's fixed color — otherwise
     // a custom-colored IR pump would paint its own green SHG red.
     if (r.color) return r.color;
-    if (fixedColor) return fixedColor;
+    // A custom source colour describes the user's beam. Light a dispersive
+    // optic has separated is no longer that beam but that beam taken apart,
+    // so it shows the colours it was taken apart into -- otherwise a
+    // supercontinuum, whose default colour is the pale mix, fans out white
+    // where a prism fans out a rainbow. Derived below rather than stamped on
+    // the ray, so a filter that narrows it downstream is reflected.
+    if (fixedColor && !r.dispersed) return fixedColor;
     // Undispersed broadband light is co-propagating mixed light, not a rainbow
     // painted across the beam aperture. Dispersive optics split it into bw=0
     // child rays, which regain wavelength-specific color below.
@@ -3792,7 +3793,7 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
       ...(r.gddTrace ? { gddTrace: r.gddTrace.map(event => ({ ...event })) } : {}),
       pulse: { ...r.pulse },
       bw: r.bw || 0,
-      color: r.color || fixedColor || wavelengthToColor(r.wl),
+      color: r.color || (r.dispersed ? null : fixedColor) || wavelengthToColor(r.wl),
       intensity: r.intensity,
     });
   }
