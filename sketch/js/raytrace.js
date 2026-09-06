@@ -2216,6 +2216,17 @@ function interact(ray, hit) {
       const out = [];
       const wls = wlSamples(ray);
       for (const m of data.orders) {
+        // The undiffracted order keeps the incident spectrum intact. It
+        // redirects the whole band specularly (or passes it straight through),
+        // rather than turning the first spectral sample into a laser line.
+        if (m === 0) {
+          out.push({
+            d: data.transmissive ? d : reflect(d, n),
+            intensity: ray.intensity / data.orders.length,
+            tag: 'm0',
+          });
+          continue;
+        }
         for (let i = 0; i < wls.length; i++) {
           const sd = si + m * wls[i].wl / data.d;
           if (Math.abs(sd) > 1) continue;
@@ -2224,10 +2235,9 @@ function interact(ray, hit) {
           out.push({
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
-            intensity: ray.intensity * (m === 0 ? 1 : wls[i].weight) / data.orders.length,
+            intensity: ray.intensity * wls[i].weight / data.orders.length,
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
           });
-          if (m === 0 && wls.length > 1) break; // 0th order is undispersed
         }
       }
       return out;
@@ -2410,16 +2420,16 @@ function interact(ray, hit) {
         const m = polModThrough(ray, s => analyzerTransmission(s, a));
         const stokes = linearStokes(a);
         if (!ray.pulse) {
-          if (m.mean < 0.02) return [];
-          return [{ d, intensity: ray.intensity * m.mean, pol: a, stokes, polMod: null, tag: 'pol' }];
+          if (m.mean <= MIN_RETAINED_POWER_INT) return [];
+          return [{ d, intensity: ray.intensity * m.mean, pol: a, stokes, polMod: null, retainWeak: true, tag: 'pol' }];
         }
-        if (Math.max(m.high, m.low) < 0.02) return [];
-        return [{ d, pol: a, stokes, polMod: null, pulse: withGate(ray.pulse, m.gate), tag: 'pol' }];
+        if (Math.max(m.high, m.low) <= MIN_RETAINED_POWER_INT) return [];
+        return [{ d, pol: a, stokes, polMod: null, pulse: withGate(ray.pulse, m.gate), retainWeak: true, tag: 'pol' }];
       }
       const f = analyzerTransmission(ray.stokes, a);
-      if (f < 0.02) return [];
+      if (f <= MIN_RETAINED_POWER_INT) return [];
       const stokes = linearStokes(a);
-      return [{ d, intensity: ray.intensity * f, pol: a, stokes, tag: 'pol' }];
+      return [{ d, intensity: ray.intensity * f, pol: a, stokes, retainWeak: true, tag: 'pol' }];
     }
     case 'wp': {
       if (!ray.stokes) return [{ d }];
@@ -2479,25 +2489,25 @@ function interact(ray, hit) {
         const m = polModThrough(ray, s => analyzerTransmission(s, 0));
         const out = [];
         if (!ray.pulse) {
-          if (m.mean > 0.02) out.push({ d, intensity: ray.intensity * m.mean, pol: 0, stokes: linearStokes(0), polMod: null, tag: 'T' });
-          if (1 - m.mean > 0.02) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - m.mean), pol: 90, stokes: linearStokes(90), polMod: null, tag: 'R' });
+          if (m.mean > MIN_RETAINED_POWER_INT) out.push({ d, intensity: ray.intensity * m.mean, pol: 0, stokes: linearStokes(0), polMod: null, retainWeak: true, tag: 'T' });
+          if (1 - m.mean > MIN_RETAINED_POWER_INT) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - m.mean), pol: 90, stokes: linearStokes(90), polMod: null, retainWeak: true, tag: 'R' });
           return out;
         }
-        if (Math.max(m.high, m.low) > 0.02) {
-          out.push({ d, pol: 0, stokes: linearStokes(0), polMod: null, pulse: withGate(ray.pulse, m.gate), tag: 'T' });
+        if (Math.max(m.high, m.low) > MIN_RETAINED_POWER_INT) {
+          out.push({ d, pol: 0, stokes: linearStokes(0), polMod: null, pulse: withGate(ray.pulse, m.gate), retainWeak: true, tag: 'T' });
         }
-        if (Math.max(1 - m.high, 1 - m.low) > 0.02) {
+        if (Math.max(1 - m.high, 1 - m.low) > MIN_RETAINED_POWER_INT) {
           out.push({
             d: reflect(d, n), pol: 90, stokes: linearStokes(90), polMod: null,
-            pulse: withGate(ray.pulse, { ...m.gate, high: 1 - m.high, low: 1 - m.low }), tag: 'R',
+            pulse: withGate(ray.pulse, { ...m.gate, high: 1 - m.high, low: 1 - m.low }), retainWeak: true, tag: 'R',
           });
         }
         return out;
       }
       const ft = analyzerTransmission(ray.stokes, 0);
       const out = [];
-      if (ft > 0.02) out.push({ d, intensity: ray.intensity * ft, pol: 0, stokes: linearStokes(0), tag: 'T' });
-      if (1 - ft > 0.02) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - ft), pol: 90, stokes: linearStokes(90), tag: 'R' });
+      if (ft > MIN_RETAINED_POWER_INT) out.push({ d, intensity: ray.intensity * ft, pol: 0, stokes: linearStokes(0), retainWeak: true, tag: 'T' });
+      if (1 - ft > MIN_RETAINED_POWER_INT) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - ft), pol: 90, stokes: linearStokes(90), retainWeak: true, tag: 'R' });
       return out;
     }
     case 'specimen': {
@@ -2695,7 +2705,11 @@ function interact(ray, hit) {
       // (grating) can multiply rays; capped to keep tracing bounded.
       const zf = data.zeroOrder && (data.layers || []).length
         ? Math.min(0.95, Math.max(0, data.zeroFrac ?? 0.1)) : 0;
-      let rays = [{ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '' }];
+      let rays = [{
+        d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '',
+        wl: ray.wl, bw: ray.bw, spec: ray.spec, spectralContinuum: ray.spectralContinuum,
+        spectralLo: ray.spectralLo, spectralHi: ray.spectralHi,
+      }];
       const L = data.length;
       const mid = mul(add(s.a, s.b), 0.5);
       for (const ly of (data.layers || []).slice(0, 4)) {
@@ -2720,19 +2734,31 @@ function interact(ray, hit) {
             const gd = 1e6 / (ly.lines || 600);
             const si = dot(r.d, t);
             const sOut = dot(r.d, n) >= 0 ? 1 : -1;
-            const wls = wlSamples(ray);
+            const wls = wlSamples(r);
+            const lineSpectrum = r.spec?.kind === 'lines';
             for (const m of orders) {
+              if (m === 0) {
+                next.push({ ...r, intensity: r.intensity / orders.length, tag: r.tag + 'm0' });
+                continue;
+              }
               for (let wi = 0; wi < wls.length; wi++) {
                 const sd = si + m * wls[wi].wl / gd;
                 if (Math.abs(sd) > 1) continue;
                 const c = Math.sqrt(1 - sd * sd);
                 next.push({
-                  d: norm(add(mul(n, sOut * c), mul(t, sd))),
-                  wl: wls[wi].wl, bw: 0, spec: null, speckle: r.speckle,
-                  intensity: r.intensity * (m === 0 ? 1 : wls[wi].weight) / orders.length,
+                  ...r, d: norm(add(mul(n, sOut * c), mul(t, sd))),
+                  wl: wls[wi].wl, bw: 0, spec: null,
+                  // A continuum sample stands for a spectral cell, so it keeps
+                  // its bounds and the detector can integrate across them. A
+                  // lamp line stands for itself: wlSamples() still hands it
+                  // midpoint bounds, and carrying those would let the detector
+                  // paint invented power across the dark gaps between lines.
+                  spectralContinuum: lineSpectrum ? false : r.spectralContinuum,
+                  spectralLo: lineSpectrum ? null : (wls[wi].spectralLo ?? r.spectralLo),
+                  spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
+                  intensity: r.intensity * wls[wi].weight / orders.length,
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
                 });
-                if (m === 0 && wls.length > 1) break;
               }
             }
           } else if (ly.type === 'speckle') {
@@ -2754,7 +2780,9 @@ function interact(ray, hit) {
       }
       const out = rays.map(r => ({
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
-        wl: r.wl, bw: r.bw, speckle: r.speckle || undefined,
+        wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
+        spectralLo: r.spectralLo, spectralHi: r.spectralHi,
+        speckle: r.speckle || undefined,
       }));
       if (zf > 0) {
         out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0' });
@@ -3139,7 +3167,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       for (const c of children) {
         const childIntensity = c.intensity !== undefined ? c.intensity : r.intensity;
         const childRetainsWeak = r.retainWeak || Boolean(c.retainWeak);
-        if (childRetainsWeak && childIntensity < MIN_INT) {
+        // Only a genuine branch is charged. A lone child continues the ray it
+        // came from rather than widening the tree -- a polarizer takes this
+        // path because its output carries a tag, not because it split -- so
+        // charging it would spend the budget on work that never grew. It bit
+        // a sized beam through a long polarizer stack: every sample charged
+        // once per stage, the 256 slots ran out, and later samples were
+        // dropped, reporting 92% of the expected signal after 16 elements and
+        // 68% after 20. Depth and length still bound a continuation chain.
+        if (childRetainsWeak && childIntensity < MIN_INT && children.length > 1) {
           if (retainedWeakBranches >= MAX_RETAINED_WEAK_BRANCHES) continue;
           retainedWeakBranches++;
         }
