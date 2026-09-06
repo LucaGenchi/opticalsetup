@@ -243,20 +243,20 @@ ${header(base)}
         </div>
       </div>
       <p class="tagline">${esc(tagline)}</p>
-      <a class="place-cta" href="${base}/sketch/?place=${entry.type}">Open in the canvas →</a>
+      <a class="place-cta" href="${base}/sketch/?demo=${entry.type}">Open in the canvas →</a>
 
       <div class="embed-wrap">
-        <iframe class="embed-frame" src="${base}/sketch/?demo=${entry.type}"
-          title="Interactive ${esc(entry.title)} — click it to see its live specs and try its parameters"
-          loading="lazy"></iframe>
+        <iframe class="embed-frame" src="${base}/sketch/?demo=${entry.type}&amp;embed=1"
+          title="${esc(entry.title)} — a live trace of the scene described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
-      <p class="embed-caption">Click the ${esc(entry.title).toLowerCase()} to see its live specs and try its parameters — this mini canvas can't be moved, deleted, or added to.</p>
+      <p class="embed-caption">A live trace, not a picture of one — but this preview is not interactive. Open it in the canvas to move things, change parameters, and save or export your own version.</p>
 ${(entry.extraDemos || []).map(extra => `
       <h3 class="extra-demo-head">${esc(extra.heading)}</h3>
       <div class="embed-wrap">
-        <iframe class="embed-frame" src="${base}/sketch/?demo=${esc(extra.demo)}"
+        <iframe class="embed-frame" src="${base}/sketch/?demo=${esc(extra.demo)}&amp;embed=1"
           title="${esc(extra.heading)}"
-          loading="lazy"></iframe>
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
       <p class="embed-caption">${extra.caption}</p>`).join('')}
 
