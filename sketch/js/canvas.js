@@ -385,15 +385,15 @@ function renderGrid() {
 
   // The smaller grid lines stay hairline-thin on screen: zoom reveals spatial
   // detail rather than turning the workbench into heavy graph paper.
-  if (level === 'micro') s += gridLines(x0, y0, x1, y1, microStep, '#eef1f4', lineWidth);
-  if (level !== 'table') s += gridLines(x0, y0, x1, y1, FINE_GRID_PITCH, '#e2e7ec', lineWidth);
+  if (level === 'micro') s += gridLines(x0, y0, x1, y1, microStep, 'var(--grid-micro)', lineWidth);
+  if (level !== 'table') s += gridLines(x0, y0, x1, y1, FINE_GRID_PITCH, 'var(--grid-fine)', lineWidth);
 
   const majorStartX = Math.floor(x0 / TABLE_HOLE_PITCH) * TABLE_HOLE_PITCH;
   const majorStartY = Math.floor(y0 / TABLE_HOLE_PITCH) * TABLE_HOLE_PITCH;
   const holeRadius = 1.35 / v.z;
   for (let x = majorStartX; x <= x1; x += TABLE_HOLE_PITCH) {
     for (let y = majorStartY; y <= y1; y += TABLE_HOLE_PITCH) {
-      s += `<circle cx="${x}" cy="${y}" r="${holeRadius}" fill="#cbd3dc"/>`;
+      s += `<circle cx="${x}" cy="${y}" r="${holeRadius}" fill="var(--grid-dot)"/>`;
     }
   }
   gridLayer.innerHTML = s;
