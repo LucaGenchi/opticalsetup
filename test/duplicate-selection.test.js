@@ -52,7 +52,7 @@ test('duplicating a screen alone retains its original detector', () => {
   assert.equal(state.selection.id, state.elements[2].id);
 });
 
-test('duplicate ignores singleton-only selections and locked demos', () => {
+test('duplicate ignores a singleton-only selection', () => {
   const singleton = Object.keys(registry).find(type => registry[type].singleton);
   assert.ok(singleton);
   const el = createElement(singleton, 0, 0);
@@ -60,10 +60,26 @@ test('duplicate ignores singleton-only selections and locked demos', () => {
   state.selection = { kind: 'element', id: el.id };
   duplicate();
   assert.equal(state.elements.length, 1);
-  state.demoMode = true;
+  state.selection = { kind: 'multi', els: [el.id], beams: [] };
+  duplicate();
+  assert.equal(state.elements.length, 1);
+});
+
+test('duplicate does nothing in an embedded preview', () => {
+  // Deliberately a duplicable element: asserting this against a singleton
+  // proves nothing, because the singleton filter would drop it whatever the
+  // mode flag said, and the assertion would pass with the guard removed.
+  const el = createElement('mirror', 0, 0);
+  replaceScene({ elements: [el], beams: [] }, { resetHistory: true });
+  state.selection = { kind: 'element', id: el.id };
+  duplicate();
+  assert.equal(state.elements.length, 2, 'the element must be duplicable to begin with');
+
+  replaceScene({ elements: [createElement('mirror', 0, 0)], beams: [] }, { resetHistory: true });
+  state.selection = { kind: 'element', id: state.elements[0].id };
+  state.embedMode = true;
   try {
-    state.selection = { kind: 'multi', els: [el.id], beams: [] };
     duplicate();
-    assert.equal(state.elements.length, 1);
-  } finally { state.demoMode = false; }
+    assert.equal(state.elements.length, 1, 'an embed must not duplicate anything');
+  } finally { state.embedMode = false; }
 });
