@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v50';
+const CACHE_NAME = 'opticalsetup-pwa-v57';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -91,8 +91,13 @@ async function networkFirst(request) {
   try {
     const response = await fetch(request);
     if (response.ok && response.type === 'basic') {
-      const cache = await caches.open(CACHE_NAME);
-      await cache.put(request, response.clone());
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      } catch (_) {
+        // Storage may be full or unavailable. The network response is still
+        // usable and must not be replaced by stale content or an error.
+      }
     }
     return response;
   } catch {
