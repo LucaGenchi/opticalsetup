@@ -47,7 +47,7 @@ test('creating a share link rejects payloads that its own loader cannot open', a
   const source = JSON.stringify({ ...JSON.parse(scene), note: 'x'.repeat(160_000) });
   await assert.rejects(
     () => buildShareURL(source, 'https://example.org/sketch/', { compression: false }),
-    /too large.*share link/i,
+    /too large to share as a link/i,
   );
 });
 
