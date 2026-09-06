@@ -2735,6 +2735,7 @@ function interact(ray, hit) {
             const si = dot(r.d, t);
             const sOut = dot(r.d, n) >= 0 ? 1 : -1;
             const wls = wlSamples(r);
+            const lineSpectrum = r.spec?.kind === 'lines';
             for (const m of orders) {
               if (m === 0) {
                 next.push({ ...r, intensity: r.intensity / orders.length, tag: r.tag + 'm0' });
@@ -2747,8 +2748,14 @@ function interact(ray, hit) {
                 next.push({
                   ...r, d: norm(add(mul(n, sOut * c), mul(t, sd))),
                   wl: wls[wi].wl, bw: 0, spec: null,
-                  spectralLo: wls[wi].spectralLo ?? r.spectralLo,
-                  spectralHi: wls[wi].spectralHi ?? r.spectralHi,
+                  // A continuum sample stands for a spectral cell, so it keeps
+                  // its bounds and the detector can integrate across them. A
+                  // lamp line stands for itself: wlSamples() still hands it
+                  // midpoint bounds, and carrying those would let the detector
+                  // paint invented power across the dark gaps between lines.
+                  spectralContinuum: lineSpectrum ? false : r.spectralContinuum,
+                  spectralLo: lineSpectrum ? null : (wls[wi].spectralLo ?? r.spectralLo),
+                  spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
                   intensity: r.intensity * wls[wi].weight / orders.length,
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
                 });
