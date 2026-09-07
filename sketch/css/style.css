@@ -745,6 +745,13 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
   background: var(--surface-hover); color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+/* A readout holding a sentence rather than a number takes the whole row: in
+   the 112px value column the same text wraps into a tall, narrow ribbon. */
+.field.field-wide { display: grid; grid-template-columns: 1fr; gap: 5px; }
+.field.field-wide .readout {
+  flex: none; width: 100%; min-height: 0; display: block;
+  padding: 6px 8px; line-height: 1.4;
+}
 .field input[type="color"] { flex: 0 0 40px; width: 40px; height: 26px; padding: 1px; border: 1px solid var(--border); border-radius: 5px; background: none; }
 .field input[type="checkbox"] {
   appearance: none; position: relative; flex: 0 0 34px; width: 34px; height: 19px;
