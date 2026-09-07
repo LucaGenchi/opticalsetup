@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Acousto-optic modulator (AOM) — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation. A square gate can draw the diffracted beam chopped, so the switching stays visible on a beam that is not showing pulse packets. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw the diffracted beam chopped, so the switching stays visible on a beam drawn as a steady line. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/aom/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Acousto-optic modulator (AOM) — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation. A square gate can draw the diffracted beam chopped, so the switching stays visible on a beam that is not showing pulse packets.">
+<meta property="og:description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw the diffracted beam chopped, so the switching stays visible on a beam drawn as a steady line.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/aom/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -121,7 +121,7 @@
           <h1>Acousto-optic modulator (AOM)</h1>
         </div>
       </div>
-      <p class="tagline">Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation. A square gate can draw the diffracted beam chopped, so the switching stays visible on a beam that is not showing pulse packets.</p>
+      <p class="tagline">Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw the diffracted beam chopped, so the switching stays visible on a beam drawn as a steady line.</p>
       <a class="place-cta" href="../../sketch/?demo=aom">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -155,18 +155,22 @@
         wavelength, which is what makes an AOM in a pulse-timing setup actually change
         color. Deflection and diffraction efficiency, though, are direct configurable
         parameters rather than quantities derived from crystal or drive properties.
-        Gating support (square or graded sinusoidal) lets the modeled RF drive turn on
-        and off in time, which the pulse-timing overlay reads as a temporal gate on the
-        beam.</p>
+        Gating support lets the modeled RF drive vary in time, which the pulse-timing
+        overlay reads as a temporal gate on the beam. Three waveforms are offered, named
+        for the drive a function generator would supply: <strong>square</strong> switches
+        the diffracted order fully on and off and is the only one with an
+        <em>on fraction</em>; <strong>sine</strong> and <strong>sawtooth</strong> sweep the
+        drive continuously and are described by a <em>modulation depth</em> instead,
+        swinging between 1&minus;depth and full transmission. Both continuous shapes
+        therefore average 1&nbsp;&minus;&nbsp;depth/2 over a period, which is the power a
+        detector with no temporal resolution reads.</p>
         <p>A square gate switches the diffracted order fully on and off, so it can be
         drawn in chunks rather than as a uniformly dimmed line &mdash; the same schematic
         footprint the <a href="../chopper/">chopper</a> already uses for gated CW light.
-        The chunks appear whenever the beam is drawn steady: for a CW source always, and
-        for a pulsed one once <em>Show pulse dynamics</em> is off, since a visible packet
-        train already shows the same gating. <em>Draw gated beam chopped</em> controls it,
-        and it is a drawing choice alone: the traced power stays duty-averaged and every
-        detector reading is identical either way. A sinusoidal drive is never chunked,
-        because it has no on/off edges to draw.</p>
+        <em>Draw gated beam chopped</em> controls it, and it is a drawing choice alone:
+        the traced power stays duty-averaged and every detector reading is identical
+        either way. The continuous waveforms are never chunked, because they have no
+        on/off edges to draw.</p>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Deflection angle and diffraction efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
         is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency

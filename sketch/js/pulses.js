@@ -41,7 +41,15 @@ export function gateTransmissionAt(gate, emissionTimeNs) {
   const arrivalNs = emissionTimeNs + gate.opl / C_MM_PER_NS;
   const phase = positiveMod(arrivalNs - (gate.phaseNs || 0), periodNs) / periodNs;
   let transmission;
-  if (gate.shape === 'sine') {
+  if (gate.shape === 'sawtooth') {
+    // A linear ramp across the period, low to high -- the drive an AOM gets
+    // from a sawtooth generator, and what a raster line looks like in time.
+    // Same low/high pair as the other shapes so the swing is described once.
+    const depth = Math.min(1, Math.max(0, gate.depth ?? 1));
+    const high = Number.isFinite(gate.high) ? gate.high : 1;
+    const low = Number.isFinite(gate.low) ? gate.low : 1 - depth;
+    transmission = low + (high - low) * phase;
+  } else if (gate.shape === 'sine') {
     const depth = Math.min(1, Math.max(0, gate.depth ?? 1));
     // A sine gate swings between two levels the same way a square one does;
     // when both are given explicitly it can also express gain (high > 1),
@@ -77,7 +85,10 @@ export function pulseTransmissionAt(pulse, emissionTimeNs) {
     const frequencyMHz = Math.min(1e6, Math.max(0.000001, gate.frequencyMHz || 1));
     const periodNs = 1000 / frequencyMHz;
     const duty = Math.min(1, Math.max(0, gate.duty ?? 0.5));
-    return gate.shape === 'sine'
+    // A continuously varying gate has no narrow feature to resolve, so a
+    // quarter period is the scale that matters; a square one is only as fine
+    // as its shorter phase.
+    return gate.shape === 'sine' || gate.shape === 'sawtooth'
       ? periodNs / 4
       : periodNs * Math.max(1e-6, Math.min(duty, 1 - duty));
   });

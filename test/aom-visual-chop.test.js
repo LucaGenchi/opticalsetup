@@ -38,24 +38,31 @@ test('the flag turns the chunks off without touching anything else', () => {
   assert.equal(bench({ drawChopped: false }).dashes.length, 0);
 });
 
-// A sinusoidal drive dims the beam smoothly; there are no on/off edges to
-// draw, and chunking it would claim a gating that is not happening.
-test('a sinusoidal drive is never chunked', () => {
-  assert.equal(bench({ modShape: 'sine' }).dashes.length, 0);
-  assert.equal(bench({ modShape: 'sine', drawChopped: true }).dashes.length, 0);
+// The continuous drives sweep the beam smoothly; there are no on/off edges to
+// draw, and chunking them would claim a gating that is not happening.
+test('only a square drive is chunked', () => {
+  for (const modShape of ['sine', 'sawtooth']) {
+    assert.equal(bench({ modShape }).dashes.length, 0, modShape);
+    assert.equal(bench({ modShape, drawChopped: true }).dashes.length, 0, modShape);
+  }
+  assert.equal(bench({ modShape: 'square' }).dashes.length, 1);
 });
 
 test('an unmodulated AOM is never chunked', () => {
   assert.equal(bench({ modulate: false }).dashes.length, 0);
 });
 
-// A pulse train animates its own packets being gated. Drawing chunks as well
-// would describe the same modulation twice, so the chunks wait until the
-// packet overlay is switched off.
-test('a pulsed beam is chunked only once its packets are hidden', () => {
-  assert.equal(bench({ source: 'pulsedlaser', showPulse: true }).dashes.length, 0);
+// Whether packets are on screen is live playback state -- the overlay is
+// dropped in mechanics mode and whenever the time scale sits far from the
+// pulse rate -- and the tracer cannot see any of it. So the flag alone
+// decides, and a pulsed beam chunks in every case a CW one would. Making this
+// conditional on `showPulse` is what hid the chunks from a pulsed source
+// whose packets the canvas had already suppressed.
+test('a pulsed beam is chunked whenever the flag asks for it', () => {
+  assert.equal(bench({ source: 'pulsedlaser', showPulse: true }).dashes.length, 1);
   assert.equal(bench({ source: 'pulsedlaser', showPulse: false }).dashes.length, 1);
   assert.equal(bench({ source: 'pulsedlaser', showPulse: false, drawChopped: false }).dashes.length, 0);
+  assert.equal(bench({ source: 'pulsedlaser', showPulse: true, drawChopped: false }).dashes.length, 0);
 });
 
 // The zeroth order is only ever partially depleted -- it drops to 1-efficiency
@@ -97,7 +104,25 @@ test('the control is offered only where it means something', () => {
   assert.equal(spec.def, true);
   assert.ok(!spec.show({ modulate: false, modShape: 'square' }), 'hidden with no modulation');
   assert.ok(spec.show({ modulate: true, modShape: 'square' }), 'shown for a square gate');
-  assert.ok(!spec.show({ modulate: true, modShape: 'sine' }), 'hidden for a sinusoidal drive');
+  for (const modShape of ['sine', 'sawtooth']) {
+    assert.ok(!spec.show({ modulate: true, modShape }), `hidden for a ${modShape} drive`);
+  }
+});
+
+// On fraction belongs to the square drive alone; the continuous shapes are
+// described by a depth instead. Offering both at once was the confusion.
+test('each waveform offers only the control that describes it', () => {
+  const duty = registry.aom.params.find(p => p.key === 'chopDuty');
+  const depth = registry.aom.params.find(p => p.key === 'modDepth');
+  assert.ok(duty.show({ modulate: true, modShape: 'square' }));
+  assert.ok(!depth.show({ modulate: true, modShape: 'square' }));
+  for (const modShape of ['sine', 'sawtooth']) {
+    assert.ok(!duty.show({ modulate: true, modShape }), `${modShape} has no on fraction`);
+    assert.ok(depth.show({ modulate: true, modShape }), `${modShape} is set by depth`);
+  }
+  const shape = registry.aom.params.find(p => p.key === 'modShape');
+  assert.deepEqual(shape.options.map(o => o[0]), ['square', 'sine', 'sawtooth']);
+  assert.deepEqual(shape.options.map(o => o[1]), ['Square', 'Sine', 'Sawtooth']);
 });
 
 // Saved sketches predate the flag and have no `drawChopped` key at all; the

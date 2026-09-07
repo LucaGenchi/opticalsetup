@@ -2549,9 +2549,14 @@ function interact(ray, hit) {
       // to shift the optical carrier with; a modulator still has one.
       const driveMHz = isAod ? 0 : (Number(data.rfMHz) || 0);
       const duty = data.gate ? Math.min(0.99, Math.max(0.01, data.gate.duty ?? 0.5)) : 1;
-      const shape = data.gate?.shape === 'sine' ? 'sine' : 'square';
+      const shape = data.gate?.shape === 'sine' || data.gate?.shape === 'sawtooth'
+        ? data.gate.shape : 'square';
       const depth = Math.min(1, Math.max(0, data.gate?.depth ?? 1));
-      const averageTransmission = data.gate ? (shape === 'sine' ? 1 - depth / 2 : duty) : 1;
+      // A square gate passes `duty` of the time; both continuous shapes sweep
+      // symmetrically between 1-depth and 1, so each averages 1 - depth/2 --
+      // a sine over its cosine and a sawtooth over its ramp.
+      const averageTransmission = data.gate
+        ? (shape === 'square' ? duty : 1 - depth / 2) : 1;
       // A square RF gate switches the diffracted order fully on and off, so it
       // can be drawn in chunks the way a chopper's CW output already is. This
       // is a drawing hint alone -- the intensities below are unchanged, and so
@@ -3690,15 +3695,17 @@ function rayColor(r, fixedColor) {
 // turn traced polylines into drawables (strokes / envelope strips / speckle
 // grains / rainbow ribbons / chopped chunks)
 function assembleDrawables(paths, opts, drawables) {
-  const { K, isBeam, fixedColor, staticBeam } = opts;
+  const { K, isBeam, fixedColor } = opts;
   const colorOf = r => rayColor(r, fixedColor);
   const opOf = r => Math.max(0.25, Math.min(0.95, 0.35 + 0.6 * r.intensity));
-  // Chunks stand in for gating the drawing cannot otherwise show. A pulse
-  // train already animates its own packets being gated, so a ray still
-  // carrying one is only drawn chunked once those packets are hidden ("Show
-  // pulse dynamics" off) -- otherwise the two conventions would describe the
-  // same modulation twice. CW light has no packets, so it always qualifies.
-  const drawChopped = r => Boolean(r.chopped) && (!r.pulse || staticBeam === true);
+  // Whether a ray is chunked is decided where the chunking is asked for -- by
+  // the element's own flag -- and not from whether pulse packets happen to be
+  // on screen. Packet drawing is live playback state: the overlay is dropped
+  // in mechanics mode and whenever the time scale sits far from the pulse
+  // rate, neither of which the tracer can see. Conditioning on it here made
+  // the chunks vanish in exactly the case they exist for, a pulsed beam being
+  // drawn as a steady line.
+  const drawChopped = r => Boolean(r.chopped);
   const dashOf = r => (drawChopped(r)
     ? `${(r.chopped.period * r.chopped.duty).toFixed(1)} ${(r.chopped.period * (1 - r.chopped.duty)).toFixed(1)}`
     : undefined);
@@ -3985,10 +3992,6 @@ export function traceScene(elements, beams = []) {
     assembleDrawables(paths, {
       K, isBeam: p.beamMode === 'beam',
       fixedColor: p.autoColor === false && p.color ? baseColor : null,
-      // Without the packet overlay below, a gated pulse train is drawn as a
-      // steady line; the chunk pattern is then the only thing that shows the
-      // beam is being switched at all.
-      staticBeam: p.showPulse === false,
     }, drawables);
     // "Show pulse dynamics" is a rendering choice only: the pulse train above
     // is still traced and still gates temporal overlap downstream — skipping

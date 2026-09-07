@@ -3500,10 +3500,18 @@ export const registry = {
       { key: 'zero', label: 'Keep 0th order', type: 'checkbox', def: false },
       { key: 'eff', label: 'Efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.85 },
       { key: 'modulate', label: 'Modulate RF drive', type: 'checkbox', def: false },
-      { key: 'modShape', label: 'Modulation waveform', type: 'select', def: 'square', options: [['square', 'RF on/off'], ['sine', 'Sinusoidal intensity']], show: p => p.modulate },
+      // Named for the waveform driving the RF, the way a function generator
+      // labels them. A square drive switches the diffracted order fully on and
+      // off, so it alone has an on fraction; the two continuous shapes sweep
+      // the drive amplitude instead and are described by a depth.
+      {
+        key: 'modShape', label: 'Modulation waveform', type: 'select', def: 'square',
+        options: [['square', 'Square'], ['sine', 'Sine'], ['sawtooth', 'Sawtooth']],
+        show: p => p.modulate,
+      },
       { key: 'modFreqMHz', label: 'Modulation frequency (MHz)', type: 'number', min: 0.000001, max: 1000, step: 0.001, def: 1, show: p => p.modulate },
-      { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape !== 'sine' },
-      { key: 'modDepth', label: 'Modulation depth (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape === 'sine' },
+      { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
+      { key: 'modDepth', label: 'Modulation depth (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape !== 'square' },
       { key: 'phaseNs', label: 'Modulation offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate },
       // A beam drawn as a steady line says nothing about an RF drive being
       // switched on and off -- the gating is real, but at megahertz it lives
@@ -3511,10 +3519,11 @@ export const registry = {
       // chunks is the same schematic footprint the chopper already uses for
       // gated CW light, and it only affects the drawing: the traced power and
       // every detector reading are untouched either way. Square gating only;
-      // a sinusoidal drive dims the beam smoothly and has no chunks to draw.
+      // the continuous shapes sweep the drive smoothly and have no on/off
+      // edges to chunk.
       {
         key: 'drawChopped', label: 'Draw gated beam chopped', type: 'checkbox', def: true,
-        show: p => p.modulate && p.modShape !== 'sine',
+        show: p => p.modulate && p.modShape === 'square',
       },
     ],
     svg(el) { return boxSVG(40, el.params.aperture || 26, '#c9b458', '#8a7a2e', 'AOM', '#3d3616', isFlipped(el)); },
@@ -4730,7 +4739,7 @@ const ELEMENT_HELP = {
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
-  aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation. A square gate can draw the diffracted beam chopped, so the switching stays visible on a beam that is not showing pulse packets.',
+  aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw the diffracted beam chopped, so the switching stays visible on a beam drawn as a steady line.',
   phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',
   aod: 'Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.',
   aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',

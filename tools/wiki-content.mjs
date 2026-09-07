@@ -2148,18 +2148,22 @@ export const wikiEntries = [
         wavelength, which is what makes an AOM in a pulse-timing setup actually change
         color. Deflection and diffraction efficiency, though, are direct configurable
         parameters rather than quantities derived from crystal or drive properties.
-        Gating support (square or graded sinusoidal) lets the modeled RF drive turn on
-        and off in time, which the pulse-timing overlay reads as a temporal gate on the
-        beam.</p>
+        Gating support lets the modeled RF drive vary in time, which the pulse-timing
+        overlay reads as a temporal gate on the beam. Three waveforms are offered, named
+        for the drive a function generator would supply: <strong>square</strong> switches
+        the diffracted order fully on and off and is the only one with an
+        <em>on fraction</em>; <strong>sine</strong> and <strong>sawtooth</strong> sweep the
+        drive continuously and are described by a <em>modulation depth</em> instead,
+        swinging between 1&minus;depth and full transmission. Both continuous shapes
+        therefore average 1&nbsp;&minus;&nbsp;depth/2 over a period, which is the power a
+        detector with no temporal resolution reads.</p>
         <p>A square gate switches the diffracted order fully on and off, so it can be
         drawn in chunks rather than as a uniformly dimmed line &mdash; the same schematic
         footprint the <a href="../chopper/">chopper</a> already uses for gated CW light.
-        The chunks appear whenever the beam is drawn steady: for a CW source always, and
-        for a pulsed one once <em>Show pulse dynamics</em> is off, since a visible packet
-        train already shows the same gating. <em>Draw gated beam chopped</em> controls it,
-        and it is a drawing choice alone: the traced power stays duty-averaged and every
-        detector reading is identical either way. A sinusoidal drive is never chunked,
-        because it has no on/off edges to draw.</p>`,
+        <em>Draw gated beam chopped</em> controls it, and it is a drawing choice alone:
+        the traced power stays duty-averaged and every detector reading is identical
+        either way. The continuous waveforms are never chunked, because they have no
+        on/off edges to draw.</p>`,
       formulas: [],
       limitations: `<p>Deflection angle and diffraction efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
