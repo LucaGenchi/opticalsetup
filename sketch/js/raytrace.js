@@ -2652,20 +2652,21 @@ function interact(ray, hit) {
               }],
             },
           });
-        } else if (choppedZero) {
-          // Same split for CW, so the drawing can show the two parts the
-          // zeroth order is actually made of: a residual that is always
-          // there, and the diffracted light handed back while the RF is off.
-          // The two intensities still sum to the single duty-averaged value
-          // the branch below produces.
-          const residual = ray.intensity * (1 - efficiency);
-          if (residual > 0) out.push({ d, intensity: residual, tag: 'd0r' });
-          out.push({
-            d, intensity: ray.intensity * efficiency * (1 - duty),
-            chopped: choppedZero, tag: 'd0off',
-          });
         } else {
-          out.push({ d, intensity: ray.intensity * (1 - efficiency * averageTransmission), tag: 'd0' });
+          // One ray, exactly as before -- the anti-phase chunks are a drawing
+          // hint on it and nothing more. Splitting it into a residual plus
+          // the light handed back during the off phase would have drawn the
+          // zeroth order more honestly, but at high efficiency the residual
+          // falls under the tracer's weak-branch floor and is culled at the
+          // next ordinary optic, so a display flag would have moved a
+          // detector reading (efficiency 0.99 through a lens: 0.505 -> 0.495).
+          // A drawing choice must never do that. The cost is that the drawn
+          // beam extinguishes fully while the RF is on even though a real
+          // zeroth order keeps 1-efficiency; the wiki says so.
+          out.push({
+            d, intensity: ray.intensity * (1 - efficiency * averageTransmission),
+            ...(choppedZero ? { chopped: choppedZero } : {}), tag: 'd0',
+          });
         }
       }
       return out;

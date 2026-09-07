@@ -105,9 +105,38 @@ test('an uneven duty keeps the two orders exactly complementary', () => {
   }
 });
 
-// Splitting the CW zeroth order into a constant residual plus the part handed
-// back while the RF is off must not invent or lose power.
-test('splitting the zeroth order conserves the beam', () => {
+// The flag must not move a reading, and a detector placed directly in the
+// beam cannot prove that: measurement surfaces deliberately retain rays below
+// the weak-branch floor (LOW_POWER_MEASUREMENT_SURFACES), so a branch that
+// would be culled at an ordinary optic still lands on them. An earlier cut
+// split the zeroth order into a residual plus the light returned during the
+// off phase; at efficiency 0.99 the residual fell under MIN_INT and was
+// dropped by any lens in the way, so enabling a *drawing* flag changed the
+// detector from 0.505 to 0.495. Route through a real optic to catch that.
+test('chunking cannot move a reading taken through downstream optics', () => {
+  for (const eff of [0.3, 0.85, 0.99, 1]) {
+    const read = drawChopped => {
+      const laser = createElement('cwlaser', 0, 0);
+      laser.params.beamMode = 'line';
+      const aom = createElement('aom', 200, 0);
+      Object.assign(aom.params, {
+        modulate: true, modShape: 'square', zero: true, eff, chopDuty: 0.5, deflect: 8, drawChopped,
+      });
+      const lens = createElement('lens', 400, 0);
+      const detector = createElement('detector', 600, 0);
+      detector.params.size = 60;
+      traceAll([laser, aom, lens, detector], []);
+      return detectorReading(detector.id)?.signal;
+    };
+    const on = read(true);
+    assert.equal(on, read(false), `efficiency ${eff}: the drawing flag moved the reading`);
+    assert.ok(Math.abs(on - (1 - eff * 0.5)) < 1e-9,
+      `efficiency ${eff}: zeroth order should read 1 - eff*duty, got ${on}`);
+  }
+});
+
+// Both orders together still carry the whole beam, chunks or not.
+test('the two orders sum to the incident power', () => {
   for (const [eff, chopDuty] of [[0.85, 0.5], [1, 0.5], [0.6, 0.25], [0.3, 0.75]]) {
     const laser = createElement('cwlaser', 0, 0);
     laser.params.beamMode = 'line';
@@ -121,6 +150,7 @@ test('splitting the zeroth order conserves the beam', () => {
     const first = detectorReading(diffracted.id).signal;
     const zeroth = detectorReading(straight.id).signal;
     assert.ok(Math.abs(first - eff * chopDuty) < 1e-9, `eff ${eff} duty ${chopDuty}: diffracted power`);
+    assert.ok(Math.abs(zeroth - (1 - eff * chopDuty)) < 1e-9, `eff ${eff} duty ${chopDuty}: zeroth power`);
     assert.ok(Math.abs(first + zeroth - 1) < 1e-9,
       `eff ${eff} duty ${chopDuty}: orders summed to ${first + zeroth}, not 1`);
   }
