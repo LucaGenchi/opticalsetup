@@ -1,8 +1,11 @@
-const CACHE_NAME = 'opticalsetup-pwa-v67';
+const CACHE_NAME = 'opticalsetup-pwa-v69';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
 const PRECACHE_PATHS = [
+  "./js/fiber.js",
+  "./js/pulse-field.js",
+  "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
   "./",
   "./index.html",
   "./manifest.webmanifest",

@@ -56,6 +56,12 @@ export const examples = [
   },
   {
     "group": "Ultrashort Pulses",
+    "name": "Hollow core pulse compressor",
+    "path": "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
+    "slug": "hollow-core-pulse-compressor"
+  },
+  {
+    "group": "Ultrashort Pulses",
     "name": "Ultrashort pulse chirping",
     "path": "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
     "slug": "ultrashort-pulse-chirping"

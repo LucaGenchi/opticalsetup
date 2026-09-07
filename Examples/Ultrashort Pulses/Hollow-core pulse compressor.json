@@ -1,0 +1,252 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 450,
+      "y": 360,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 860,
+        "h": 700,
+        "background": "#ffffff"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 55,
+      "y": 45,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Hollow-core pulse compressor",
+        "fontSize": 22,
+        "fill": "#183e64"
+      }
+    },
+    {
+      "id": "subtitle",
+      "type": "textlabel",
+      "x": 55,
+      "y": 80,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Argon broadens the spectrum. Negative GDD compresses the pulse.",
+        "fontSize": 14,
+        "fill": "#333333"
+      }
+    },
+    {
+      "id": "hcf-laser",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 160,
+      "rot": 0,
+      "label": "100 fs \u00b7 30 \u00b5J \u00b7 1 kHz",
+      "showLabel": true,
+      "params": {
+        "wavelength": 800,
+        "avgPowerW": 0.03,
+        "beamMode": "beam",
+        "beamWidth": 2,
+        "repRateMHz": 0.001,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 100,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "bandwidth": 5,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "fiber-label",
+      "type": "textlabel",
+      "x": 355,
+      "y": 225,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1 m argon capillary\n250 \u00b5m core \u00b7 2 bar\nSelect the cable to change pressure / diameter.",
+        "fontSize": 14,
+        "fill": "#775500"
+      }
+    },
+    {
+      "id": "hcf-tap",
+      "type": "bs",
+      "x": 560,
+      "y": 300,
+      "rot": 0,
+      "label": "10% diagnostic tap",
+      "showLabel": true,
+      "params": {
+        "ratio": 0.9,
+        "size": 25.4
+      }
+    },
+    {
+      "id": "hcf-compressor",
+      "type": "pulsecompressor",
+      "x": 390,
+      "y": 300,
+      "rot": 180,
+      "label": "Tune GDD \u00b7 \u2212650 fs\u00b2",
+      "showLabel": true,
+      "params": {
+        "gddFs2": -650,
+        "aperture": 24,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "hcf-output",
+      "type": "generaldetector",
+      "x": 170,
+      "y": 300,
+      "rot": 180,
+      "label": "After compressor",
+      "showLabel": true,
+      "params": {
+        "aperture": 30
+      }
+    },
+    {
+      "id": "hcf-before",
+      "type": "generaldetector",
+      "x": 560,
+      "y": 405,
+      "rot": 90,
+      "label": "Before compressor",
+      "showLabel": false,
+      "params": {
+        "aperture": 30
+      }
+    },
+    {
+      "id": "hcf-before-screen",
+      "type": "display",
+      "x": 700,
+      "y": 500,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "hcf-before",
+        "displayScale": 1.05,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    },
+    {
+      "id": "hcf-after-screen",
+      "type": "display",
+      "x": 405,
+      "y": 500,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "sensorId": "hcf-output",
+        "displayScale": 1.05,
+        "screenOn": true,
+        "displayView": "main"
+      }
+    },
+    {
+      "id": "instructions",
+      "type": "textlabel",
+      "x": 60,
+      "y": 615,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "CONTROLS \u00b7 Pressure 0: vacuum. Kerr off: linear. Increase pulse energy: stronger broadening.\nCOMPRESSION \u00b7 Tune GDD to minimize pulse FWHM.\nREADOUTS \u00b7 Select detectors for pulse curves. Switch screens to Spectrum for bandwidth.",
+        "fontSize": 13,
+        "fill": "#334155"
+      }
+    },
+    {
+      "id": "scope",
+      "type": "textlabel",
+      "x": 60,
+      "y": 690,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Single-mode \u03b2\u2082 + Kerr + loss model. No ionization, higher modes or wall resonances. Illustrative setup, not a paper reconstruction.",
+        "fontSize": 11,
+        "fill": "#475569"
+      }
+    }
+  ],
+  "beams": [
+    {
+      "id": "hcf-fiber",
+      "kind": "fiber",
+      "bare": true,
+      "propagate": true,
+      "pts": [
+        {
+          "x": 220,
+          "y": 160
+        },
+        {
+          "x": 295,
+          "y": 160
+        },
+        {
+          "x": 765,
+          "y": 160
+        },
+        {
+          "x": 820,
+          "y": 195
+        },
+        {
+          "x": 820,
+          "y": 260
+        },
+        {
+          "x": 765,
+          "y": 300
+        },
+        {
+          "x": 670,
+          "y": 300
+        }
+      ],
+      "color": "#c69516",
+      "width": 4,
+      "inputNA": 0.22,
+      "fiberModel": "argon",
+      "lengthM": 1,
+      "coreDiameterUm": 250,
+      "gasPressureBar": 2,
+      "kerrEnabled": true,
+      "lossDbPerM": 0.1,
+      "out0": {
+        "mode": "diverge",
+        "na": 0.01
+      },
+      "out1": {
+        "mode": "diverge",
+        "na": 0.01
+      }
+    }
+  ]
+}

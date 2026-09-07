@@ -9,8 +9,9 @@ import {
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec,
 } from './elements.js';
-import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
+import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
+import { FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion, HOLLOW_CORE_FIELDS, normalizeHollowCore } from './fiber.js';
 import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
   bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS,
@@ -290,6 +291,7 @@ function autocorrelatorRows(rd, source) {
       <dt>Autocorrelation</dt><dd>Continuous wave — no pulse to measure</dd>`;
   if (rd.pulse.mixed) return `
       <dt>Autocorrelation</dt><dd>Mixed pulse trains — one trace cannot separate them</dd>`;
+  if (rd.pulse.pulseShape === 'sampled' || rd.pulse.fieldIssue) return `<dt>Autocorrelation</dt><dd>Sampled-envelope autocorrelation is not modeled; inspect the computed pulse intensity.</dd>`;
   const assumed = source?.params?.assumedShape || 'gauss';
   const actual = rd.pulse.pulseShape || 'gauss';
   const derived = Number.isFinite(rd.pulse.stretchedPulseWidthFs)
@@ -305,6 +307,33 @@ function autocorrelatorRows(rd, source) {
       <dt>Inferred duration</dt><dd>${fs(reading.inferredPulseWidthFs)} · assuming ${shapeName(assumed)} (÷${reading.assumedFactor.toFixed(3)})</dd>
       ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}
       ${derived === null ? `<dt>Note</dt><dd>Shows the configured duration: a chirped or non-Gaussian input has no derivable stretch</dd>` : ''}`;
+}
+
+export function pulseEnvelopeHTML(envelope) {
+  if (!envelope) return '';
+  const { timeFs, intensity } = envelope;
+  const active = intensity.map((v, i) => v > 0.002 ? i : -1).filter(i => i >= 0);
+  if (!active.length) return '';
+  const lo = Math.max(0, active[0] - 5), hi = Math.min(intensity.length - 1, active.at(-1) + 5);
+  const points = [];
+  for (let i = lo; i <= hi; i++) points.push(`${(12 + 236 * (i - lo) / (hi - lo)).toFixed(2)},${(88 - 72 * intensity[i]).toFixed(2)}`);
+  return `<svg viewBox="0 0 260 114" role="img" aria-label="Computed pulse intensity versus time" style="width:100%;color:inherit">
+    <path d="M12 16V88H248" fill="none" stroke="currentColor" opacity="0.3"/>
+    <polyline points="${points.join(' ')}" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <text x="12" y="108" fill="currentColor" font-size="12">${timeFs[lo].toFixed(0)} fs</text>
+    <text x="248" y="108" fill="currentColor" font-size="12" text-anchor="end">${timeFs[hi].toFixed(0)} fs</text></svg>`;
+}
+
+export function fiberMeasurementHTML(beam) {
+  const rd = fiberReading(beam.id);
+  if (!rd) return `<div class="measurement-card" data-measurements>Couple a pulsed laser into this fiber to calculate its output.</div>`;
+  if (!rd.ok) return `<div class="measurement-card" data-measurements><strong>Envelope unavailable</strong><p>${esc(rd.reason)}</p></div>`;
+  return `<div class="measurement-card" data-measurements><strong>Argon capillary · computed envelope</strong>
+    <dl class="measurement-grid"><dt>Coupled energy</dt><dd>${(rd.energyJ * 1e6).toFixed(2)} µJ</dd>
+    <dt>β₂</dt><dd>${rd.coefficients.beta2Fs2PerM.toFixed(2)} fs²/m</dd>
+    <dt>Nonlinear phase</dt><dd>${rd.bIntegral.toFixed(2)} rad</dd>
+    <dt>Output FWHM</dt><dd>${rd.metrics.fwhmFs.toFixed(1)} fs</dd>
+    <dt>Spectrum RMS</dt><dd>${rd.spectralRmsTHz.toFixed(2)} THz</dd></dl>${pulseEnvelopeHTML(rd.metrics)}</div>`;
 }
 
 function measurementHTML(el) {
@@ -348,9 +377,10 @@ function measurementHTML(el) {
     : '';
   let stretchText = '';
   if (rd.pulse && !rd.pulse.mixed) {
-    if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
+    if (rd.pulse.fieldIssue) stretchText = rd.pulse.fieldIssue;
+    else if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
       const factor = rd.pulse.stretchedPulseWidthFs / rd.pulse.pulseWidthFs;
-      stretchText = factor <= 1.01
+      stretchText = !rd.pulse.envelope && factor >= 0.99 && factor <= 1.01
         ? 'Negligible at this pulse duration'
         : `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}×)`;
     } else {
@@ -361,10 +391,10 @@ function measurementHTML(el) {
       <dt>Pulse train</dt><dd>${pulseTrain}</dd>
       ${rd.pulse.mixed ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
       <dt>Accumulated GDD</dt><dd>${gddText}</dd>
-      ${stretchText ? `<dt>Stretched duration</dt><dd>${stretchText}</dd>` : ''}
+      ${stretchText ? `<dt>${rd.pulse.envelope ? 'Computed FWHM' : 'Stretched duration'}</dt><dd>${stretchText}</dd>` : ''}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
-  const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color);
+  const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color) + pulseEnvelopeHTML(rd.pulse?.envelope);
   const isCamera = readoutKind === 'camera';
   const cameraState = isCamera ? cameraReadingState(rd) : null;
   const cancelled = cameraState?.kind === 'cancellation';
@@ -449,8 +479,13 @@ function screenLinkHTML(el) {
 }
 
 export function refreshMeasurements() {
-  if (!panel || state.selection?.kind !== 'element') return;
+  if (!panel) return;
   const sel = findSelected();
+  if (sel?.kind === 'fiber' && sel.fiberModel === 'argon') {
+    const current = panel.querySelector('[data-measurements]');
+    if (current) { const holder = document.createElement('div'); holder.innerHTML = fiberMeasurementHTML(sel); current.replaceWith(holder.firstElementChild); }
+    return;
+  }
   if (!sel || (!registry[sel.type]?.readoutKind && sel.type !== 'display')) return;
   const current = panel.querySelector('[data-measurements]');
   if (!current) return;
@@ -953,11 +988,24 @@ export function renderInspector() {
       h += inspectorSection('path-appearance', 'Appearance', appearanceFields);
     } else {
       h += inspectorSection('path-appearance', 'Appearance', appearanceFields);
+      if (b.fiberModel === 'argon') h += fiberMeasurementHTML(b);
       let propagationFields = field('Beam propagates', `<input type="checkbox" data-k="propagate" ${b.propagate ? 'checked' : ''}>`);
       if (b.propagate) {
+        propagationFields += field('Fiber model', `<select data-k="fiberModel"><option value="linear" ${b.fiberModel !== 'argon' ? 'selected' : ''}>Linear dispersion</option><option value="argon" ${b.fiberModel === 'argon' ? 'selected' : ''}>Hollow core · argon</option></select>`);
         propagationFields += numberField('Input NA', 'data-k="inputNA"', b.inputNA ?? 0.22, { min: 0.01, max: 0.95, step: 0.01 });
-        propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
+        if (b.fiberModel !== 'argon') propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
         propagationFields += field('Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
+        const dispersion = normalizeFiberDispersion(b);
+        for (const spec of FIBER_PROPAGATION_FIELDS) {
+          if (b.fiberModel === 'argon' && spec.key === 'beta2Ps2PerKm') continue;
+          propagationFields += field(spec.label, `<input type="number" data-k="${spec.key}" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${dispersion[spec.key]}">`);
+        }
+        if (b.fiberModel === 'argon') {
+          const hollow = normalizeHollowCore(b);
+          for (const spec of HOLLOW_CORE_FIELDS) propagationFields += field(spec.label, `<input type="number" data-k="${spec.key}" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${hollow[spec.key]}">`);
+          propagationFields += field('Kerr nonlinearity', `<input type="checkbox" data-k="kerrEnabled" ${hollow.kerrEnabled ? 'checked' : ''}>`);
+          propagationFields += `<div class="hint">Single-mode argon capillary at 20 °C. Pressure and core size determine dispersion and nonlinearity. Coupled pulse energy comes from the laser power and repetition rate. β₂ + Kerr + loss only; no ionization, higher modes, resonances or self-steepening. FWHM spans all peaks above half maximum.</div>`;
+        } else propagationFields += `<div class="hint">Physical length sets delay, loss and dispersion without changing the drawing. GDD = 1000 × β₂ × length in metres (fs²). Enter β₂ at your laser wavelength; 0 disables added dispersion. Gaussian transform-limited pulses stretch or recompress downstream according to total GDD. No higher-order, modal or nonlinear propagation.</div>`;
         // one output spec per fiber end; migrate legacy single-spec fibers
         for (const end of [0, 1]) {
           if (!b['out' + end]) b['out' + end] = { mode: b.outMode || 'diverge', na: b.na ?? 0.12, focal: b.focal ?? 20, dia: b.outDia ?? 6 };
@@ -1376,7 +1424,7 @@ export function applyInput(inp, rebuild = false) {
     renderInspector();
     return;
   }
-  if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
+  if (rebuild && (key === 'fiberModel' || key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // The objective's coupling status is derived from its placed pose. Keep the
   // hint in step with committed coordinate/rotation edits just as the canvas
   // layer already is; otherwise the panel can describe the previous target.

@@ -724,7 +724,7 @@ function formatPower(watts, signal) {
 }
 
 function pulseRate(pulse) { return !pulse ? 'CW' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.repRateMHz)} MHz`; }
-function pulseDuration(pulse) { return !pulse ? '—' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.pulseWidthFs)} fs`; }
+function pulseDuration(pulse) { return !pulse ? '—' : pulse.mixed ? 'MIXED' : pulse.fieldIssue ? 'UNAVAILABLE' : `${compactNumber(pulse.stretchedPulseWidthFs ?? pulse.pulseWidthFs)} fs`; }
 
 // The cross-correlation screen, built to behave like the scope you actually
 // watch while hunting time zero. The axis here is LABORATORY ARRIVAL TIME, not
@@ -828,7 +828,7 @@ function autocorrelationPlot(sensor, reading) {
   const actual = reading.pulse.pulseShape || 'gauss';
   const arriving = Number.isFinite(reading.pulse.stretchedPulseWidthFs)
     ? reading.pulse.stretchedPulseWidthFs : reading.pulse.pulseWidthFs;
-  const ac = autocorrelationReading(arriving, assumed, actual);
+  const ac = actual === 'sampled' || reading.pulse?.fieldIssue ? null : autocorrelationReading(arriving, assumed, actual);
   if (!ac) return null;
   const fsLabel = v => (v < 1000 ? `${Math.round(v)} FS` : `${(v / 1000).toFixed(2)} PS`);
 
