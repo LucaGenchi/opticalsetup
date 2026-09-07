@@ -42,13 +42,20 @@ export function gateTransmissionAt(gate, emissionTimeNs) {
   const phase = positiveMod(arrivalNs - (gate.phaseNs || 0), periodNs) / periodNs;
   let transmission;
   if (gate.shape === 'sawtooth') {
-    // A linear ramp across the period, low to high -- the drive an AOM gets
-    // from a sawtooth generator, and what a raster line looks like in time.
-    // Same low/high pair as the other shapes so the swing is described once.
+    // A ramp across the period, with `symmetry` giving the fraction of it
+    // spent rising -- the symmetry knob a function generator puts on its ramp
+    // output. 1 is the rising sawtooth, 0 the falling one, and 0.5 a
+    // triangle; everything between is an asymmetric triangle. The mean is
+    // (low + high) / 2 whatever the symmetry, so the average transmission
+    // does not move as the shape is swept.
     const depth = Math.min(1, Math.max(0, gate.depth ?? 1));
     const high = Number.isFinite(gate.high) ? gate.high : 1;
     const low = Number.isFinite(gate.low) ? gate.low : 1 - depth;
-    transmission = low + (high - low) * phase;
+    const rise = Math.min(1, Math.max(0, gate.symmetry ?? 1));
+    const wave = rise <= 0 ? 1 - phase
+      : rise >= 1 ? phase
+        : (phase < rise ? phase / rise : (1 - phase) / (1 - rise));
+    transmission = low + (high - low) * wave;
   } else if (gate.shape === 'sine') {
     const depth = Math.min(1, Math.max(0, gate.depth ?? 1));
     // A sine gate swings between two levels the same way a square one does;

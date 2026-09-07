@@ -431,15 +431,39 @@ function scopePlot(reading, window = null) {
   let spikes = '';
   if (live.length) {
     const steps = 220;
+    const sampleNs = trace.spanNs / steps;
+    // A photodiode impulse is routinely narrower than one sample of this
+    // 70-unit-wide plot. Sampling it on the uniform grid alone lands each
+    // sample at a different point on each spike, and the drawn heights beat
+    // against the pulse spacing into a slow ripple that is not in the signal:
+    // a 1 ns response on an 80 MHz train over 400 ns drew peaks running
+    // 1.00, 0.87, 0.56, 0.28, 0.10, 0.28 ... which reads as a second, faster
+    // modulation riding on the real gate. So the grid is not left to find the
+    // peaks by luck -- every pulse contributes its own centre and shoulders.
     const at = t => live.reduce((sum, p) => {
       const d = (t - p.tNs) / responseNs;
       // Beyond a few response widths the contribution is numerically nothing;
       // skipping it keeps a 240-pulse train from being O(n^2) for no gain.
       return Math.abs(d) > 4 ? sum : sum + p.amplitude * Math.exp(-4 * Math.LN2 * d * d);
     }, 0);
+    const times = [];
+    for (let i = 0; i <= steps; i++) times.push(from + trace.spanNs * i / steps);
+    // Only worth doing while the spikes are actually separate on screen. Once
+    // they are closer together than a couple of samples they merge into the
+    // solid band an unresolvable train should look like, and adding points
+    // per pulse would only inflate the path.
+    const spacingNs = live.length > 1
+      ? (live[live.length - 1].tNs - live[0].tNs) / (live.length - 1) : Infinity;
+    if (spacingNs > 2 * sampleNs) {
+      for (const p of live) {
+        times.push(p.tNs, p.tNs - 0.7 * responseNs, p.tNs + 0.7 * responseNs);
+      }
+    }
+    times.sort((a, b) => a - b);
     const pts = [];
-    for (let i = 0; i <= steps; i++) {
-      const t = from + trace.spanNs * i / steps;
+    for (const t of times) {
+      if (t < from - 1e-9 || t > from + trace.spanNs + 1e-9) continue;
+      if (pts.length && Math.abs(t - pts[pts.length - 1].t) < 1e-9) continue;
       pts.push({ t, v: at(t) });
     }
     // Scaled so that ONE resolved pulse reaches full height -- not so that the
@@ -451,7 +475,7 @@ function scopePlot(reading, window = null) {
     const single = Math.max(...live.map(p => p.amplitude), 1e-9);
     const scale = 1 / single;
     const path = pts.map(pt => `${xAt(pt.t).toFixed(2)},${yAt(pt.v * scale * (peak || 1)).toFixed(2)}`).join(' ');
-    spikes = `<polyline data-scope-trace="${steps + 1}" points="${path}" fill="none" ` +
+    spikes = `<polyline data-scope-trace="${pts.length}" points="${path}" fill="none" ` +
       `stroke="${reading.color || '#8fd3ff'}" stroke-width="1.3" stroke-linejoin="round"/>`;
   }
 

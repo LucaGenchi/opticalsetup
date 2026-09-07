@@ -92,3 +92,48 @@ test('an unknown waveform falls back to square', () => {
   assert.equal(readAom({ modShape: 'triangle', chopDuty: 0.25 }), 0.8 * 0.25);
   assert.equal(at('triangle', 0.75), 0);
 });
+
+// The symmetry knob a function generator puts on its ramp output: how much of
+// the period is spent rising. 1 is the rising sawtooth, 0 the falling one,
+// and 0.5 a triangle.
+const ramp = (phase, symmetry) =>
+  gateTransmissionAt({ opl: 0, frequencyMHz: 1, phaseNs: 0, shape: 'sawtooth', depth: 1, symmetry }, phase * 1000);
+
+test('rise fraction sweeps the ramp from falling through triangular to rising', () => {
+  // Rising: climbs across the whole period.
+  assert.ok(Math.abs(ramp(0.25, 1) - 0.25) < 1e-9);
+  assert.ok(Math.abs(ramp(0.75, 1) - 0.75) < 1e-9);
+  // Falling: the mirror image.
+  assert.ok(Math.abs(ramp(0.25, 0) - 0.75) < 1e-9);
+  assert.ok(Math.abs(ramp(0.75, 0) - 0.25) < 1e-9);
+  // Triangle: peaks at the half period and returns.
+  assert.ok(Math.abs(ramp(0.5, 0.5) - 1) < 1e-9, 'triangle peaks mid-period');
+  assert.ok(Math.abs(ramp(0.25, 0.5) - 0.5) < 1e-9);
+  assert.ok(Math.abs(ramp(0.75, 0.5) - 0.5) < 1e-9);
+  assert.ok(ramp(0, 0.5) < 1e-9 && ramp(0.999, 0.5) < 0.01, 'triangle starts and ends low');
+});
+
+test('an asymmetric ramp still peaks exactly at its rise fraction', () => {
+  for (const symmetry of [0.2, 0.35, 0.8]) {
+    assert.ok(Math.abs(ramp(symmetry, symmetry) - 1) < 1e-9, `peak at ${symmetry}`);
+    assert.ok(ramp(symmetry / 2, symmetry) < 1, 'still climbing before the peak');
+    assert.ok(ramp((symmetry + 1) / 2, symmetry) < 1, 'falling after it');
+  }
+});
+
+// Sweeping the shape must not change how much light gets through, or the
+// symmetry control would double as a brightness control.
+test('rise fraction does not move the average transmission', () => {
+  for (const symmetry of [0, 0.25, 0.5, 0.75, 1]) {
+    let sum = 0;
+    const N = 20000;
+    for (let i = 0; i < N; i++) sum += ramp((i + 0.5) / N, symmetry);
+    assert.ok(Math.abs(sum / N - 0.5) < 1e-3, `symmetry ${symmetry} averaged ${sum / N}`);
+  }
+});
+
+test('an omitted rise fraction keeps the plain rising sawtooth', () => {
+  for (const phase of [0.1, 0.5, 0.9]) {
+    assert.ok(Math.abs(ramp(phase, undefined) - phase) < 1e-9, 'defaults to rising');
+  }
+});

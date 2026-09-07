@@ -58,8 +58,9 @@ figures as SVG or PNG.
   envelope length follows the GDD accumulated at its current position, so glass
   visibly stretches it and an opposite-GDD pulse compressor shortens it again.
   Mechanical delay lines add folded optical path, while AOMs
-  support square, sine, or sawtooth RF modulation — the square drive by its on
-  fraction, the two continuous ones by a modulation depth. A square-gated AOM can
+  support square, sine, or sawtooth RF modulation — the square drive by its duty
+  cycle, the two continuous ones by a modulation depth. A ramp's rise fraction
+  sweeps it from a falling sawtooth through a triangle to a rising one. A square-gated AOM can
   also draw both diffraction orders chunked in opposition, so the switching stays
   visible on a beam drawn as a steady line; it is a drawing choice only, and
   detector readings are identical either way. Playback can be

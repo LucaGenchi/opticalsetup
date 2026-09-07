@@ -237,7 +237,14 @@ test('each waveform offers only the control that describes it', () => {
   }
   const shape = registry.aom.params.find(p => p.key === 'modShape');
   assert.deepEqual(shape.options.map(o => o[0]), ['square', 'sine', 'sawtooth']);
-  assert.deepEqual(shape.options.map(o => o[1]), ['Square', 'Sine', 'Sawtooth']);
+  assert.deepEqual(shape.options.map(o => o[1]), ['Square', 'Sine', 'Sawtooth / triangle']);
+  // Rise fraction shapes the ramp and means nothing to the other two.
+  const rise = registry.aom.params.find(p => p.key === 'modSymmetry');
+  assert.ok(rise.show({ modulate: true, modShape: 'sawtooth' }));
+  for (const modShape of ['square', 'sine']) {
+    assert.ok(!rise.show({ modulate: true, modShape }), `${modShape} has no ramp to shape`);
+  }
+  assert.ok(!rise.show({ modulate: false, modShape: 'sawtooth' }));
 });
 
 // Saved sketches predate the flag and have no `drawChopped` key at all; the

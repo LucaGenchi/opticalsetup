@@ -3506,11 +3506,17 @@ export const registry = {
       // the drive amplitude instead and are described by a depth.
       {
         key: 'modShape', label: 'Modulation waveform', type: 'select', def: 'square',
-        options: [['square', 'Square'], ['sine', 'Sine'], ['sawtooth', 'Sawtooth']],
+        options: [['square', 'Square'], ['sine', 'Sine'], ['sawtooth', 'Sawtooth / triangle']],
         show: p => p.modulate,
       },
       { key: 'modFreqMHz', label: 'Modulation frequency (MHz)', type: 'number', min: 0.000001, max: 1000, step: 0.001, def: 1, show: p => p.modulate },
-      { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
+      // Duty cycle is a square-wave property: the fraction of the period the
+      // drive is on. A sine has no such thing, and a ramp's shape is set by
+      // how much of the period it spends rising instead.
+      { key: 'chopDuty', label: 'Duty cycle (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
+      // The symmetry knob a function generator puts on its ramp output:
+      // 1 is the rising sawtooth, 0 the falling one, 0.5 a triangle.
+      { key: 'modSymmetry', label: 'Rise fraction (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape === 'sawtooth' },
       { key: 'modDepth', label: 'Modulation depth (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape !== 'square' },
       { key: 'phaseNs', label: 'Modulation offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate },
       // A beam drawn as a steady line says nothing about an RF drive being
@@ -3535,7 +3541,7 @@ export const registry = {
           deflect: p.deflect, rfMHz: p.rfMHz, zero: p.zero, eff: p.eff,
           gate: p.modulate ? {
             frequencyMHz: p.modFreqMHz, duty: p.chopDuty, phaseNs: p.phaseNs,
-            shape: p.modShape, depth: p.modDepth,
+            shape: p.modShape, depth: p.modDepth, symmetry: p.modSymmetry,
             drawChopped: p.drawChopped !== false,
           } : null,
         },
@@ -4739,7 +4745,7 @@ const ELEMENT_HELP = {
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
-  aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
+  aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
   phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',
   aod: 'Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.',
   aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',

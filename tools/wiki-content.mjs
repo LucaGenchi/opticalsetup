@@ -2151,12 +2151,18 @@ export const wikiEntries = [
         Gating support lets the modeled RF drive vary in time, which the pulse-timing
         overlay reads as a temporal gate on the beam. Three waveforms are offered, named
         for the drive a function generator would supply: <strong>square</strong> switches
-        the diffracted order fully on and off and is the only one with an
-        <em>on fraction</em>; <strong>sine</strong> and <strong>sawtooth</strong> sweep the
+        the diffracted order fully on and off and is the only one with a
+        <em>duty cycle</em>; <strong>sine</strong> and <strong>sawtooth</strong> sweep the
         drive continuously and are described by a <em>modulation depth</em> instead,
         swinging between 1&minus;depth and full transmission. Both continuous shapes
         therefore average 1&nbsp;&minus;&nbsp;depth/2 over a period, which is the power a
         detector with no temporal resolution reads.</p>
+        <p>The ramp carries the symmetry control a function generator puts on its own
+        ramp output. <em>Rise fraction</em> is how much of the period is spent climbing:
+        1 is the rising sawtooth, 0 the falling one, 0.5 a triangle, and anything
+        between an asymmetric triangle peaking at exactly that point in the period.
+        Sweeping it changes the shape without changing the average, so it never doubles
+        as a brightness control.</p>
         <p>A square gate switches the diffracted order fully on and off, so it can be
         drawn in chunks rather than as a uniformly dimmed line &mdash; the same schematic
         footprint the <a href="../chopper/">chopper</a> already uses for gated CW light.
