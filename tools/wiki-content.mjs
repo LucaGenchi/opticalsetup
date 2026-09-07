@@ -2150,12 +2150,26 @@ export const wikiEntries = [
         parameters rather than quantities derived from crystal or drive properties.
         Gating support (square or graded sinusoidal) lets the modeled RF drive turn on
         and off in time, which the pulse-timing overlay reads as a temporal gate on the
-        beam.</p>`,
+        beam.</p>
+        <p>A square gate switches the diffracted order fully on and off, so it can be
+        drawn in chunks rather than as a uniformly dimmed line &mdash; the same schematic
+        footprint the <a href="../chopper/">chopper</a> already uses for gated CW light.
+        The chunks appear whenever the beam is drawn steady: for a CW source always, and
+        for a pulsed one once <em>Show pulse dynamics</em> is off, since a visible packet
+        train already shows the same gating. <em>Draw gated beam chopped</em> controls it,
+        and it is a drawing choice alone: the traced power stays duty-averaged and every
+        detector reading is identical either way. A sinusoidal drive is never chunked,
+        because it has no on/off edges to draw.</p>`,
       formulas: [],
       limitations: `<p>Deflection angle and diffraction efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
         is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency
-        shift is first-principles physics.</p>`,
+        shift is first-principles physics. The chunk spacing is schematic too: a real
+        megahertz gate would put its chunks micrometres apart, so a fixed on-screen
+        period is drawn instead, exactly as pulse markers are spaced for legibility
+        rather than to scale. Only the diffracted order is chunked — the zeroth order
+        falls to 1−efficiency while the RF is on rather than to zero, so hard on/off
+        chunks would overstate how deeply it is modulated.</p>`,
     },
     related: ['aod', 'aotf', 'eom', 'chopper'],
     resources: [

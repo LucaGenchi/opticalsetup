@@ -2552,6 +2552,13 @@ function interact(ray, hit) {
       const shape = data.gate?.shape === 'sine' ? 'sine' : 'square';
       const depth = Math.min(1, Math.max(0, data.gate?.depth ?? 1));
       const averageTransmission = data.gate ? (shape === 'sine' ? 1 - depth / 2 : duty) : 1;
+      // A square RF gate switches the diffracted order fully on and off, so it
+      // can be drawn in chunks the way a chopper's CW output already is. This
+      // is a drawing hint alone -- the intensities below are unchanged, and so
+      // is every detector reading. A sinusoidal drive has no on/off edges to
+      // chunk, so it is never marked.
+      const chopped = data.gate && shape === 'square' && data.gate.drawChopped !== false
+        ? { period: CHOP_SCHEMATIC_PERIOD_MM, duty } : null;
       const efficiency = Math.min(1, Math.max(0, Number(data.eff) || 0));
       let pulse = ray.pulse;
       if (data.gate && ray.pulse) {
@@ -2609,6 +2616,7 @@ function interact(ray, hit) {
                 : null,
             } : {}),
             intensity: ray.intensity * efficiency * sample.weight * (ray.pulse ? 1 : averageTransmission),
+            ...(chopped ? { chopped } : {}),
             tag: isAod && samples.length > 1 ? `d1w${index}` : 'd1', pulse,
           });
         });
@@ -3682,12 +3690,18 @@ function rayColor(r, fixedColor) {
 // turn traced polylines into drawables (strokes / envelope strips / speckle
 // grains / rainbow ribbons / chopped chunks)
 function assembleDrawables(paths, opts, drawables) {
-  const { K, isBeam, fixedColor } = opts;
+  const { K, isBeam, fixedColor, staticBeam } = opts;
   const colorOf = r => rayColor(r, fixedColor);
   const opOf = r => Math.max(0.25, Math.min(0.95, 0.35 + 0.6 * r.intensity));
-  const dashOf = r => r.chopped
+  // Chunks stand in for gating the drawing cannot otherwise show. A pulse
+  // train already animates its own packets being gated, so a ray still
+  // carrying one is only drawn chunked once those packets are hidden ("Show
+  // pulse dynamics" off) -- otherwise the two conventions would describe the
+  // same modulation twice. CW light has no packets, so it always qualifies.
+  const drawChopped = r => Boolean(r.chopped) && (!r.pulse || staticBeam === true);
+  const dashOf = r => (drawChopped(r)
     ? `${(r.chopped.period * r.chopped.duty).toFixed(1)} ${(r.chopped.period * (1 - r.chopped.duty)).toFixed(1)}`
-    : undefined;
+    : undefined);
 
   const pushRay = (r, w, opacity, thin) => {
     if (r.pts.length < 2) return;
@@ -3798,7 +3812,7 @@ function assembleDrawables(paths, opts, drawables) {
         const [A, B] = ra.renderEvent === rb.renderEvent
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
-        if (ra.chopped) {
+        if (drawChopped(ra)) {
           for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty)) {
             drawables.push({ type: 'poly', pts: q, color: colorOf(ra), opacity: op });
           }
@@ -3971,6 +3985,10 @@ export function traceScene(elements, beams = []) {
     assembleDrawables(paths, {
       K, isBeam: p.beamMode === 'beam',
       fixedColor: p.autoColor === false && p.color ? baseColor : null,
+      // Without the packet overlay below, a gated pulse train is drawn as a
+      // steady line; the chunk pattern is then the only thing that shows the
+      // beam is being switched at all.
+      staticBeam: p.showPulse === false,
     }, drawables);
     // "Show pulse dynamics" is a rendering choice only: the pulse train above
     // is still traced and still gates temporal overlap downstream — skipping
