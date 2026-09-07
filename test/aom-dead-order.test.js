@@ -96,3 +96,40 @@ test('the RF carrier is always offered, and named apart from the modulation', ()
   assert.ok(modulation.show({ modulate: true }) && !modulation.show({ modulate: false }),
     'the modulation rate is the one that only applies while modulating');
 });
+
+// The cut has to be a cut, not a rejection. A beam extinguished part way
+// along is still lit up to that point, and its packets belong on the lit
+// stretch: judging the whole path by its final intensity threw away the train
+// between a laser and a fully blocking filter, where the beam is drawn.
+test('packets survive on the lit stretch of a path that is extinguished later', () => {
+  const laser = createElement('pulsedlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'line', repRateMHz: 80, showPulse: true });
+  const shutter = createElement('filter', 300, 0);
+  Object.assign(shutter.params, { ftype: 'nd', trans: 0 });
+  const { pulseTracks } = traceScene([laser, shutter], []);
+  assert.equal(pulseTracks.length, 1, 'the lit run from the laser to the filter keeps its train');
+  const track = pulseTracks[0];
+  assert.ok(track.intensity > 1e-9, 'and it is recorded at the intensity it actually carries');
+  // Truncated at the filter, not carried on past it.
+  assert.ok(track.pts.at(-1).x <= 305, `the train should stop at the filter, ended at x=${track.pts.at(-1).x}`);
+  assert.equal(track.pts.length, track.opls.length, 'points and optical paths stay in step');
+});
+
+// A drawing threshold must never decide what exists. The tracer deliberately
+// walks weak positive rays to detectors, so the emitters hand over whatever
+// they carry and only the overlay applies the visual floor.
+test('a nearly extinguished zeroth order still reaches a detector', () => {
+  for (const residual of [1e-9, 1e-10, 1e-11]) {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'line';
+    const aom = createElement('aom', 200, 0);
+    Object.assign(aom.params, { modulate: false, eff: 1 - residual, zero: true, deflect: 10 });
+    const detector = createElement('detector', 400, 0);
+    detector.params.aperture = 40;
+    traceAll([laser, aom, detector], []);
+    const reading = detectorReading(detector.id);
+    assert.ok(reading, `a zeroth order of ${residual.toExponential(0)} should still be measured`);
+    assert.ok(Math.abs(reading.signal - residual) / residual < 1e-6,
+      `expected ${residual.toExponential(0)}, read ${reading.signal.toExponential(3)}`);
+  }
+});

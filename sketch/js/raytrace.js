@@ -2694,14 +2694,11 @@ function interact(ray, hit) {
           // stroke straight through the gaps and the zeroth order never went
           // dark. The branches themselves -- their intensities and gates --
           // are untouched.
-          const residual = ray.intensity * (1 - efficiency);
-          if (residual > MIN_DRAWN_INTENSITY) {
-            out.push({
-              d, intensity: residual, tag: 'd0r',
-              ...(choppedZero ? { chopped: choppedZero } : {}),
-            });
-          }
-          if (ray.intensity * efficiency > MIN_DRAWN_INTENSITY) out.push({
+          out.push({
+            d, intensity: ray.intensity * (1 - efficiency), tag: 'd0r',
+            ...(choppedZero ? { chopped: choppedZero } : {}),
+          });
+          out.push({
             d, intensity: ray.intensity * efficiency, tag: 'd0off',
             ...(choppedZero ? { chopped: choppedZero } : {}),
             pulse: {
@@ -2723,18 +2720,15 @@ function interact(ray, hit) {
           // A drawing choice must never do that. The cost is that the drawn
           // beam extinguishes fully while the RF is on even though a real
           // zeroth order keeps 1-efficiency; the wiki says so.
-          // An AOM at full efficiency sends everything into the first order,
-          // so there is no zeroth order to emit. Pushing it anyway left a
-          // ray of exactly zero intensity on the straight path: the beam fill
-          // skips it, but the pulse overlay used to draw packets along it, so
-          // a train appeared to travel down a beam that was not there.
-          const straight = ray.intensity * (1 - efficiency * averageTransmission);
-          if (straight > MIN_DRAWN_INTENSITY) {
-            out.push({
-              d, intensity: straight,
-              ...(choppedZero ? { chopped: choppedZero } : {}), tag: 'd0',
-            });
-          }
+          // Emitted whatever it carries, including a sliver: the tracer
+          // deliberately walks weak positive rays to detectors and other
+          // low-power measurement surfaces, so dropping one here would change
+          // a reading rather than only what is drawn. Whether it is DRAWN is
+          // decided later, where drawing is decided.
+          out.push({
+            d, intensity: ray.intensity * (1 - efficiency * averageTransmission),
+            ...(choppedZero ? { chopped: choppedZero } : {}), tag: 'd0',
+          });
         }
       }
       return out;
@@ -3942,18 +3936,27 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
   const centreSample = Math.floor((Math.max(1, K) - 1) / 2);
   for (const r of paths) {
     if (!r.pulse || r.pts.length < 2 || r.opls?.length !== r.pts.length) continue;
-    // The beam fill already skips a segment carrying no light; the packets
-    // have to agree, or a train draws along a path with no beam under it.
-    if (!(r.intensity > MIN_DRAWN_INTENSITY)) continue;
     if (r.sample !== null && r.sample !== undefined && r.sample !== centreSample) continue;
+    // The beam fill skips any SEGMENT carrying no light, and the packets have
+    // to agree or a train draws along a path with no beam under it. Judging
+    // the whole path by its final intensity is too blunt, though: a beam
+    // extinguished part way along -- by a shutter, or an AOM sending
+    // everything into its other order -- is still lit up to that point, and
+    // its packets belong on the lit stretch. So the track is cut where the
+    // light stops rather than dropped.
+    let lit = 0;
+    while (lit < r.pts.length - 1
+      && (r.segmentIntensities?.[lit] ?? r.intensity) > MIN_DRAWN_INTENSITY) lit++;
+    if (lit < 1) continue;
     pulseTracks.push({
-      pts: r.pts.map(p => ({ x: p.x, y: p.y })),
-      opls: [...r.opls],
+      pts: r.pts.slice(0, lit + 1).map(p => ({ x: p.x, y: p.y })),
+      opls: r.opls.slice(0, lit + 1),
       ...(r.gddTrace ? { gddTrace: r.gddTrace.map(event => ({ ...event })) } : {}),
       pulse: { ...r.pulse },
       bw: r.bw || 0,
       color: rayColor(r, fixedColor),
-      intensity: r.intensity,
+      // The intensity of the stretch kept, not the path's final one.
+      intensity: r.segmentIntensities?.[lit - 1] ?? r.intensity,
     });
   }
 }
