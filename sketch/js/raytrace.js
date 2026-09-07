@@ -2555,6 +2555,12 @@ function interact(ray, hit) {
       const shape = data.gate?.shape === 'sine' || data.gate?.shape === 'sawtooth'
         ? data.gate.shape : 'square';
       const depth = Math.min(1, Math.max(0, data.gate?.depth ?? 1));
+      // How much of the ramp's period is spent rising: 1 a rising sawtooth,
+      // 0 a falling one, 0.5 a triangle. It shapes the gate without changing
+      // its mean, so it only ever shows in the time domain -- which is why it
+      // has to be carried onto the gate itself rather than folded into
+      // averageTransmission below.
+      const symmetry = Math.min(1, Math.max(0, Number(data.gate?.symmetry ?? 1)));
       // A square gate passes `duty` of the time; both continuous shapes sweep
       // symmetrically between 1-depth and 1, so each averages 1 - depth/2 --
       // a sine over its cosine and a sawtooth over its ramp.
@@ -2580,7 +2586,7 @@ function interact(ray, hit) {
           ...ray.pulse,
           gates: [...(ray.pulse.gates || []), {
             opl: ray.opl, frequencyMHz: data.gate.frequencyMHz || 1, duty,
-            phaseNs: data.gate.phaseNs || 0, shape, depth,
+            phaseNs: data.gate.phaseNs || 0, shape, depth, symmetry,
           }],
         };
       }
@@ -2658,7 +2664,7 @@ function interact(ray, hit) {
               ...ray.pulse,
               gates: [...(ray.pulse.gates || []), {
                 opl: ray.opl, frequencyMHz: data.gate.frequencyMHz || 1, duty,
-                phaseNs: data.gate.phaseNs || 0, shape, depth, invert: true,
+                phaseNs: data.gate.phaseNs || 0, shape, depth, symmetry, invert: true,
               }],
             },
           });

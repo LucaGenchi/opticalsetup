@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement } from '../sketch/js/elements.js';
-import { gateTransmissionAt } from '../sketch/js/pulses.js';
+import { createElement, registry } from '../sketch/js/elements.js';
+import { gateTransmissionAt, scopeTrace } from '../sketch/js/pulses.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
 
 const gate = (shape, depth = 1) => ({ opl: 0, frequencyMHz: 1, phaseNs: 0, shape, depth, duty: 0.5 });
@@ -136,4 +136,109 @@ test('an omitted rise fraction keeps the plain rising sawtooth', () => {
   for (const phase of [0.1, 0.5, 0.9]) {
     assert.ok(Math.abs(ramp(phase, undefined) - phase) < 1e-9, 'defaults to rising');
   }
+});
+
+// The tests above call gateTransmissionAt directly, which is exactly how a
+// broken `symmetry` went unnoticed: the ramp shape worked in the gate model
+// while the AOM never carried the setting onto the gate it built, so the
+// control did nothing in the app. These go through the whole path -- element
+// params, surface data, traced pulse gate, scope trace -- and are the ones
+// that would have caught it.
+function amplitudes({ modShape = 'sawtooth', modSymmetry = 1, modDepth = 1, modFreqMHz = 5 } = {}) {
+  const laser = createElement('pulsedlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'line', repRateMHz: 80 });
+  const aom = createElement('aom', 200, 0);
+  Object.assign(aom.params, { modulate: true, modShape, modSymmetry, modDepth, modFreqMHz, eff: 1, deflect: 0 });
+  const detector = createElement('detector', 400, 0);
+  traceAll([laser, aom, detector], []);
+  const reading = detectorReading(detector.id);
+  const gates = (reading.pulse.trains ?? [reading.pulse]).flatMap(t => t?.gates || []);
+  // One gate period is 16 pulses at 80 MHz through a 5 MHz gate.
+  return { gates, values: scopeTrace(reading.pulse, {}).pulses.slice(0, 16).map(p => p.amplitude) };
+}
+
+test('the rise fraction set on the element reaches the traced gate', () => {
+  for (const modSymmetry of [0, 0.25, 0.5, 1]) {
+    const { gates } = amplitudes({ modSymmetry });
+    assert.equal(gates.length, 1);
+    assert.equal(gates[0].symmetry, modSymmetry,
+      'the AOM must carry its rise fraction onto the gate it builds');
+  }
+});
+
+test('changing the rise fraction changes the pulse train it produces', () => {
+  const rising = amplitudes({ modSymmetry: 1 }).values;
+  const triangle = amplitudes({ modSymmetry: 0.5 }).values;
+  const falling = amplitudes({ modSymmetry: 0 }).values;
+  assert.notDeepEqual(rising, triangle, 'a triangle must not trace like a rising ramp');
+  assert.notDeepEqual(rising, falling, 'a falling ramp must not trace like a rising one');
+
+  // Rising: climbs across the whole period.
+  assert.ok(rising.at(-1) > rising[0], 'rising ramp should end higher than it starts');
+  assert.ok(rising.every((v, i) => i === 0 || v > rising[i - 1]), 'rising ramp is monotonic');
+
+  // Falling: the mirror image.
+  assert.ok(falling[0] > falling.at(-1), 'falling ramp should end lower than it starts');
+  assert.ok(falling.every((v, i) => i === 0 || v < falling[i - 1]), 'falling ramp is monotonic');
+
+  // Triangle: peaks in the middle of the period, not at either end.
+  const peak = triangle.indexOf(Math.max(...triangle));
+  assert.ok(peak > 2 && peak < triangle.length - 3,
+    `a triangle should peak mid-period, peaked at index ${peak} of ${triangle.length}`);
+});
+
+test('an asymmetric ramp peaks where its rise fraction says, through the whole path', () => {
+  for (const [modSymmetry, expected] of [[0.25, 4], [0.75, 12]]) {
+    const { values } = amplitudes({ modSymmetry });
+    const peak = values.indexOf(Math.max(...values));
+    assert.ok(Math.abs(peak - expected) <= 1,
+      `rise fraction ${modSymmetry} should peak near pulse ${expected}, peaked at ${peak}`);
+  }
+});
+
+// The other two waveforms have no ramp, so the setting must not leak into them.
+test('rise fraction does not disturb the square or sine gates', () => {
+  for (const modShape of ['square', 'sine']) {
+    const a = amplitudes({ modShape, modSymmetry: 0 }).values;
+    const b = amplitudes({ modShape, modSymmetry: 1 }).values;
+    assert.deepEqual(a, b, `${modShape} must ignore the rise fraction`);
+  }
+});
+
+// The general form of the same defect: a control the surface publishes on
+// data.gate that the tracer forgets to copy onto the gate it builds. The
+// setting then exists, is editable, and does nothing. Rather than trust each
+// one, compare the two objects.
+test('every gate setting the AOM publishes reaches the gate it builds', () => {
+  const aom = createElement('aom', 200, 0);
+  Object.assign(aom.params, {
+    modulate: true, modShape: 'sawtooth', modSymmetry: 0.25,
+    modDepth: 0.6, chopDuty: 0.3, modFreqMHz: 7, phaseNs: 3, eff: 1, deflect: 0,
+  });
+  const published = registry.aom.surfaces(aom)[0].data.gate;
+
+  const laser = createElement('pulsedlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'line', repRateMHz: 80 });
+  const detector = createElement('detector', 400, 0);
+  traceAll([laser, aom, detector], []);
+  const reading = detectorReading(detector.id);
+  const built = (reading.pulse.trains ?? [reading.pulse]).flatMap(t => t?.gates || [])[0];
+  assert.ok(built, 'the AOM should have gated the train');
+
+  // `drawChopped` is a drawing hint that deliberately stops at the renderer,
+  // and `frequencyMHz`/`phaseNs` are renamed onto the gate; everything else
+  // has to arrive with its value intact.
+  const carried = ['duty', 'shape', 'depth', 'symmetry'];
+  for (const key of carried) {
+    assert.equal(built[key], published[key],
+      `'${key}' is set on the AOM but never reaches the gate, so the control does nothing`);
+  }
+  assert.equal(built.frequencyMHz, published.frequencyMHz);
+  assert.equal(built.phaseNs, published.phaseNs);
+  // Guard the list itself: a newly published setting must be added above or
+  // consciously excluded, rather than silently going nowhere.
+  const known = new Set([...carried, 'frequencyMHz', 'phaseNs', 'drawChopped']);
+  const unchecked = Object.keys(published).filter(k => !known.has(k));
+  assert.deepEqual(unchecked, [],
+    `new gate settings need to be checked here or excluded on purpose: ${unchecked.join(', ')}`);
 });
