@@ -119,3 +119,43 @@ test('the control says what it controls', () => {
   const spec = registry.aom.params.find(p => p.key === 'eff');
   assert.match(spec.label, /Modulation efficiency/);
 });
+
+// The vertical scale is fixed at one source beam, so it must not quietly
+// rescale when more than one beam arrives. Rescaling to the summed peak made
+// one source and two draw identically, and made two half-strength beams look
+// like two full ones.
+test('the vertical scale stays fixed when several beams share a detector', () => {
+  const height = (sources, attenuate) => {
+    const scene = [];
+    for (let i = 0; i < sources; i++) {
+      const laser = createElement('pulsedlaser', 0, i * 40);
+      Object.assign(laser.params, { beamMode: 'line', repRateMHz: 80 });
+      scene.push(laser);
+      if (attenuate) {
+        const nd = createElement('filter', 200, i * 40);
+        Object.assign(nd.params, { ftype: 'nd', trans: 0.5 });
+        scene.push(nd);
+      }
+    }
+    const detector = createElement('detector', 400, 0);
+    detector.params.aperture = 200;
+    const screen = createElement('display', 520, 0);
+    Object.assign(screen.params, { sensorId: detector.id, screenOn: true });
+    scene.push(detector, screen);
+    traceAll(scene, []);
+    const values = /data-scope-trace="\d+" points="([^"]+)"/.exec(registry.display.svg(screen, scene))[1]
+      .split(' ').map(p => (6 - Number(p.split(',')[1])) / 17);
+    return Math.max(...values);
+  };
+  // One whole beam is exactly full height.
+  assert.ok(Math.abs(height(1, false) - 1) < 0.02, 'one source fills the screen');
+  // Half a beam is half height -- this is the case a peak rescale destroyed.
+  assert.ok(Math.abs(height(1, true) - 0.5) < 0.02,
+    `an attenuated source must draw short, drew ${height(1, true).toFixed(3)}`);
+  // Two halves make one beam's worth, so they reach full height honestly.
+  assert.ok(Math.abs(height(2, true) - 1) < 0.02, 'two half beams sum to one');
+  // Above one beam's worth the axis stretches to fit rather than clipping, so
+  // a modulation riding over full scale stays visible. That costs the absolute
+  // reading for multi-source scenes, which is recorded in scopePlot.
+  assert.ok(Math.abs(height(2, false) - 1) < 0.02, 'two sources still fill the screen');
+});

@@ -94,3 +94,33 @@ test('a slow detector still integrates the train into a level', () => {
   assert.ok(peaks.length <= 4 && spread < 0.35,
     `a 40 ns detector should not resolve an 80 MHz train: ${peaks.length} spikes, spread ${spread.toFixed(2)}`);
 });
+
+// A train can be too dense to draw pulse by pulse while still being well
+// within the detector's reach. Skipping the per-pulse sample points there is
+// right -- 160 spikes cannot be drawn across 70 units -- but leaving a
+// response narrower than the grid alongside is not: the samples then intersect
+// a few impulses and miss the rest, aliasing an 800 MHz train read by a
+// 0.01 ns detector into nine tall spikes instead of a band.
+test('a train too dense to draw pulse by pulse merges into a band, not a beat', () => {
+  const laser = createElement('pulsedlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'line', repRateMHz: 800 });
+  const aom = createElement('aom', 200, 0);
+  Object.assign(aom.params, { modulate: true, modShape: 'square', modFreqMHz: 5, eff: 1, deflect: 0 });
+  const detector = createElement('detector', 400, 0);
+  detector.params.riseTimeNs = 0.01;
+  const screen = createElement('display', 520, 0);
+  Object.assign(screen.params, { sensorId: detector.id, screenOn: true });
+  const scene = [laser, aom, detector, screen];
+  traceAll(scene, []);
+  const values = /data-scope-trace="\d+" points="([^"]+)"/.exec(registry.display.svg(screen, scene))[1]
+    .split(' ').map(p => (6 - Number(p.split(',')[1])) / 17);
+  const peaks = [];
+  for (let i = 1; i < values.length - 1; i++) {
+    if (values[i] > values[i - 1] && values[i] >= values[i + 1] && values[i] > 0.02) peaks.push(values[i]);
+  }
+  // One lit region per gate-on window, not a scatter of aliased spikes.
+  assert.ok(peaks.length <= 3, `expected a merged band, got ${peaks.length} separate spikes`);
+  // ...and it is genuinely lit rather than a flat line.
+  assert.ok(Math.max(...values) > 0.9, 'the band should reach full height while the gate is open');
+  assert.ok(Math.min(...values) < 0.1, 'and fall away while it is shut');
+});
