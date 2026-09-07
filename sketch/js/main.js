@@ -554,7 +554,7 @@ const demoScenes = {
       repRateMHz: 80, pulseWidthFs: 100,
     }),
     mkDemo('aom', 220, 200, 0, {
-      deflect: 15, rfMHz: 80, zero: true, eff: 1,
+      deflect: 15, zero: true, eff: 1,
       modulate: true, modShape: 'square', modFreqMHz: 40,
     }),
     mkDemo('box', 370, 200, 0, { text: '', w: 10, h: 90, behavior: 'block', fill: '#f2f3f5' }, { label: '1st order (deflected) + 0th order', showLabel: true, labelPos: 'r' }),
