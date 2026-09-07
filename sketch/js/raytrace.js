@@ -1376,11 +1376,14 @@ function fiberEmissionRays(c) {
 }
 
 // slice the envelope strip between polylines A and B into "on" quads
-function chopStrip(A, B, period, duty) {
+// `startMm` slides the on-window along the beam, so two strips sharing a
+// period can be drawn in anti-phase: the second is lit exactly where the
+// first is dark.
+function chopStrip(A, B, period, duty, startMm = 0) {
   const lerpP = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
   const polys = [];
   const n = Math.min(A.length, B.length);
-  let phase = 0;
+  let phase = ((-startMm % period) + period) % period;
   for (let j = 0; j < n - 1 && polys.length < 300; j++) {
     const a0 = A[j], a1 = A[j + 1], b0 = B[j], b1 = B[j + 1];
     const L = Math.hypot(a1.x - a0.x, a1.y - a0.y);
@@ -2563,7 +2566,13 @@ function interact(ray, hit) {
       // is every detector reading. A sinusoidal drive has no on/off edges to
       // chunk, so it is never marked.
       const chopped = data.gate && shape === 'square' && data.gate.drawChopped !== false
-        ? { period: CHOP_SCHEMATIC_PERIOD_MM, duty } : null;
+        ? { period: CHOP_SCHEMATIC_PERIOD_MM, duty, startMm: 0 } : null;
+      // The zeroth order is the complement: light returns to it exactly while
+      // the RF is off, so its chunks start where the diffracted order's stop
+      // and one beam is lit wherever the other is dark.
+      const choppedZero = chopped
+        ? { period: CHOP_SCHEMATIC_PERIOD_MM, duty: 1 - duty, startMm: CHOP_SCHEMATIC_PERIOD_MM * duty }
+        : null;
       const efficiency = Math.min(1, Math.max(0, Number(data.eff) || 0));
       let pulse = ray.pulse;
       if (data.gate && ray.pulse) {
@@ -2634,6 +2643,7 @@ function interact(ray, hit) {
           out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'd0r' });
           out.push({
             d, intensity: ray.intensity * efficiency, tag: 'd0off',
+            ...(choppedZero ? { chopped: choppedZero } : {}),
             pulse: {
               ...ray.pulse,
               gates: [...(ray.pulse.gates || []), {
@@ -2641,6 +2651,18 @@ function interact(ray, hit) {
                 phaseNs: data.gate.phaseNs || 0, shape, depth, invert: true,
               }],
             },
+          });
+        } else if (choppedZero) {
+          // Same split for CW, so the drawing can show the two parts the
+          // zeroth order is actually made of: a residual that is always
+          // there, and the diffracted light handed back while the RF is off.
+          // The two intensities still sum to the single duty-averaged value
+          // the branch below produces.
+          const residual = ray.intensity * (1 - efficiency);
+          if (residual > 0) out.push({ d, intensity: residual, tag: 'd0r' });
+          out.push({
+            d, intensity: ray.intensity * efficiency * (1 - duty),
+            chopped: choppedZero, tag: 'd0off',
           });
         } else {
           out.push({ d, intensity: ray.intensity * (1 - efficiency * averageTransmission), tag: 'd0' });
@@ -3709,6 +3731,12 @@ function assembleDrawables(paths, opts, drawables) {
   const dashOf = r => (drawChopped(r)
     ? `${(r.chopped.period * r.chopped.duty).toFixed(1)} ${(r.chopped.period * (1 - r.chopped.duty)).toFixed(1)}`
     : undefined);
+  // A dash pattern starts at the path origin, so sliding the on-window along
+  // the beam is a negative offset: with the pattern shifted back by P - start,
+  // the first dash lands at `start` instead of at zero.
+  const dashOffsetOf = r => (drawChopped(r) && r.chopped.startMm
+    ? Number((r.chopped.period - (r.chopped.startMm % r.chopped.period)).toFixed(3))
+    : undefined);
 
   const pushRay = (r, w, opacity, thin) => {
     if (r.pts.length < 2) return;
@@ -3742,12 +3770,12 @@ function assembleDrawables(paths, opts, drawables) {
     if (r.bw >= 200 && r.sample == null) {
       // Coincident spectral halo: spectrum is visible without implying spatial
       // separation before a prism or grating.
-      drawables.push({ type: 'path', pts: r.pts, color: '#7c3aed', w: 5, opacity: 0.24, dash: dashOf(r) });
-      drawables.push({ type: 'path', pts: r.pts, color: '#f97316', w: 3.2, opacity: 0.28, dash: dashOf(r) });
-      drawables.push({ type: 'path', pts: r.pts, color: '#dbe7f5', w: 1.8, opacity: 0.95, dash: dashOf(r) });
+      drawables.push({ type: 'path', pts: r.pts, color: '#7c3aed', w: 5, opacity: 0.24, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
+      drawables.push({ type: 'path', pts: r.pts, color: '#f97316', w: 3.2, opacity: 0.28, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
+      drawables.push({ type: 'path', pts: r.pts, color: '#dbe7f5', w: 1.8, opacity: 0.95, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
       return;
     }
-    drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w, opacity, dash: dashOf(r) });
+    drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w, opacity, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
   };
 
   if (!isBeam) {
@@ -3820,7 +3848,7 @@ function assembleDrawables(paths, opts, drawables) {
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
         if (drawChopped(ra)) {
-          for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty)) {
+          for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty, ra.chopped.startMm || 0)) {
             drawables.push({ type: 'poly', pts: q, color: colorOf(ra), opacity: op });
           }
         } else {
@@ -3836,7 +3864,7 @@ function assembleDrawables(paths, opts, drawables) {
   // outline strokes on the outer edges of the beam only
   for (const i of [0, K - 1]) {
     for (const r of bySample.get(i) || []) {
-      if (!r.speckle && !r.evanFade) drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w: 1.2, opacity: 0.7, dash: dashOf(r) });
+      if (!r.speckle && !r.evanFade) drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w: 1.2, opacity: 0.7, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
     }
   }
 }

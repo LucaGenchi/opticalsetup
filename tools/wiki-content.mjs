@@ -2163,7 +2163,16 @@ export const wikiEntries = [
         <em>Draw gated beam chopped</em> controls it, and it is a drawing choice alone:
         the traced power stays duty-averaged and every detector reading is identical
         either way. The continuous waveforms are never chunked, because they have no
-        on/off edges to draw.</p>`,
+        on/off edges to draw.</p>
+        <p>With <em>Keep 0th order</em> on, both orders are chunked <strong>in
+        opposition</strong>: light returns to the undiffracted beam exactly while the RF
+        is off, so one is lit wherever the other is dark. The zeroth order is drawn as
+        the two parts it is really made of &mdash; a residual that is present whatever
+        the drive is doing, carrying 1&minus;efficiency of the beam, plus the diffracted
+        light handed back during the off phase. At perfect efficiency the residual
+        vanishes and the two orders alternate cleanly; below it, the undiffracted beam
+        never fully extinguishes, which the drawing shows rather than hides. The two
+        orders always sum to the incident power.</p>`,
       formulas: [],
       limitations: `<p>Deflection angle and diffraction efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
@@ -2171,9 +2180,8 @@ export const wikiEntries = [
         shift is first-principles physics. The chunk spacing is schematic too: a real
         megahertz gate would put its chunks micrometres apart, so a fixed on-screen
         period is drawn instead, exactly as pulse markers are spaced for legibility
-        rather than to scale. Only the diffracted order is chunked — the zeroth order
-        falls to 1−efficiency while the RF is on rather than to zero, so hard on/off
-        chunks would overstate how deeply it is modulated.</p>`,
+        rather than to scale, and the two orders share that period rather than each
+        following its own RF timing.</p>`,
     },
     related: ['aod', 'aotf', 'eom', 'chopper'],
     resources: [

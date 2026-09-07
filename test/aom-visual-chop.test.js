@@ -21,6 +21,12 @@ function bench({
   return { drawables, dashes: drawables.filter(d => d.dash), signal: detectorReading(detector.id)?.signal };
 }
 
+// Where a dashed stroke's lit window opens, in mm along the beam. SVG shifts
+// a dash pattern backwards by the offset, so the window starts at
+// period - offset rather than at the offset itself.
+const CHOP_PERIOD_MM = 14;
+const litStart = d => (CHOP_PERIOD_MM - (d.dashOffset || 0)) % CHOP_PERIOD_MM;
+
 test('a square-gated CW beam is drawn in chunks', () => {
   const { dashes } = bench();
   assert.equal(dashes.length, 1);
@@ -65,12 +71,59 @@ test('a pulsed beam is chunked whenever the flag asks for it', () => {
   assert.equal(bench({ source: 'pulsedlaser', showPulse: true, drawChopped: false }).dashes.length, 0);
 });
 
-// The zeroth order is only ever partially depleted -- it drops to 1-efficiency
-// while the RF is on rather than to zero -- so drawing it as hard on/off
-// chunks would overstate its modulation.
-test('only the diffracted order is chunked, never the zeroth', () => {
+// Light returns to the zeroth order exactly while the RF is off, so the two
+// orders are gated in opposition: one is lit wherever the other is dark.
+test('the zeroth order is chunked in anti-phase with the diffracted one', () => {
   const { dashes } = bench({ zero: true });
-  assert.equal(dashes.length, 1);
+  assert.equal(dashes.length, 2);
+  const first = dashes.find(d => !d.dashOffset);
+  const zeroth = dashes.find(d => d.dashOffset);
+  assert.ok(first && zeroth, 'one order carries a dash offset and the other does not');
+  // Complementary patterns: the on and off lengths swap.
+  assert.equal(first.dash, '7.0 7.0');
+  assert.equal(zeroth.dash, '7.0 7.0');
+  // ...and the zeroth order's lit window starts where the diffracted one's
+  // ends. A dash offset shifts the pattern backwards, so the window opens at
+  // period - offset.
+  assert.equal(litStart(zeroth), 7);
+});
+
+test('an uneven duty keeps the two orders exactly complementary', () => {
+  for (const chopDuty of [0.25, 0.75]) {
+    const { dashes } = bench({ zero: true, chopDuty });
+    const first = dashes.find(d => !d.dashOffset);
+    const zeroth = dashes.find(d => d.dashOffset);
+    const [on, off] = first.dash.split(' ').map(Number);
+    const [zeroOn, zeroOff] = zeroth.dash.split(' ').map(Number);
+    // The diffracted order is lit for `on`; the zeroth for the rest.
+    assert.ok(Math.abs(zeroOn - off) < 1e-9, `duty ${chopDuty}: on windows must swap`);
+    assert.ok(Math.abs(zeroOff - on) < 1e-9, `duty ${chopDuty}: off windows must swap`);
+    // The zeroth order's lit window begins exactly where the diffracted one
+    // stops, which is what puts the two beams in opposition rather than
+    // merely giving them complementary lengths.
+    assert.ok(Math.abs(litStart(zeroth) - on) < 1e-9, `duty ${chopDuty}: wrong phase`);
+  }
+});
+
+// Splitting the CW zeroth order into a constant residual plus the part handed
+// back while the RF is off must not invent or lose power.
+test('splitting the zeroth order conserves the beam', () => {
+  for (const [eff, chopDuty] of [[0.85, 0.5], [1, 0.5], [0.6, 0.25], [0.3, 0.75]]) {
+    const laser = createElement('cwlaser', 0, 0);
+    laser.params.beamMode = 'line';
+    const aom = createElement('aom', 200, 0);
+    Object.assign(aom.params, { modulate: true, modShape: 'square', zero: true, eff, chopDuty, deflect: 8 });
+    const diffracted = createElement('detector', 400, Math.round(200 * Math.tan(8 * Math.PI / 180)));
+    const straight = createElement('detector', 400, 0);
+    diffracted.params.size = 40;
+    straight.params.size = 40;
+    traceAll([laser, aom, diffracted, straight], []);
+    const first = detectorReading(diffracted.id).signal;
+    const zeroth = detectorReading(straight.id).signal;
+    assert.ok(Math.abs(first - eff * chopDuty) < 1e-9, `eff ${eff} duty ${chopDuty}: diffracted power`);
+    assert.ok(Math.abs(first + zeroth - 1) < 1e-9,
+      `eff ${eff} duty ${chopDuty}: orders summed to ${first + zeroth}, not 1`);
+  }
 });
 
 // The whole point of the flag being a drawing hint: it must not move a number.

@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Acousto-optic modulator (AOM) — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw the diffracted beam chopped, so the switching stays visible on a beam drawn as a steady line. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/aom/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Acousto-optic modulator (AOM) — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw the diffracted beam chopped, so the switching stays visible on a beam drawn as a steady line.">
+<meta property="og:description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/aom/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -121,7 +121,7 @@
           <h1>Acousto-optic modulator (AOM)</h1>
         </div>
       </div>
-      <p class="tagline">Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw the diffracted beam chopped, so the switching stays visible on a beam drawn as a steady line.</p>
+      <p class="tagline">Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.</p>
       <a class="place-cta" href="../../sketch/?demo=aom">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -171,15 +171,23 @@
         the traced power stays duty-averaged and every detector reading is identical
         either way. The continuous waveforms are never chunked, because they have no
         on/off edges to draw.</p>
+        <p>With <em>Keep 0th order</em> on, both orders are chunked <strong>in
+        opposition</strong>: light returns to the undiffracted beam exactly while the RF
+        is off, so one is lit wherever the other is dark. The zeroth order is drawn as
+        the two parts it is really made of &mdash; a residual that is present whatever
+        the drive is doing, carrying 1&minus;efficiency of the beam, plus the diffracted
+        light handed back during the off phase. At perfect efficiency the residual
+        vanishes and the two orders alternate cleanly; below it, the undiffracted beam
+        never fully extinguishes, which the drawing shows rather than hides. The two
+        orders always sum to the incident power.</p>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Deflection angle and diffraction efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
         is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency
         shift is first-principles physics. The chunk spacing is schematic too: a real
         megahertz gate would put its chunks micrometres apart, so a fixed on-screen
         period is drawn instead, exactly as pulse markers are spaced for legibility
-        rather than to scale. Only the diffracted order is chunked — the zeroth order
-        falls to 1−efficiency while the RF is on rather than to zero, so hard on/off
-        chunks would overstate how deeply it is modulated.</p></div>
+        rather than to scale, and the two orders share that period rather than each
+        following its own RF timing.</p></div>
       </div>
 
       

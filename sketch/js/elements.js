@@ -4739,7 +4739,7 @@ const ELEMENT_HELP = {
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
-  aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw the diffracted beam chopped, so the switching stays visible on a beam drawn as a steady line.',
+  aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square, sine or sawtooth RF modulation. A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
   phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',
   aod: 'Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.',
   aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
