@@ -1899,6 +1899,49 @@ export function formatPower(watts) {
   return `${Number((watts * 1e9).toPrecision(3))} nW`;
 }
 
+// One GDD number for the compressor's readout rows. The unit lives in the row
+// label, so the value is bare. Sub-10 fs² residuals keep a decimal — the
+// difference between "cancelled to 0.2" and "cancelled to 6" is worth seeing —
+// and `|| 0` normalizes JavaScript's negative zero, which would print "-0".
+export function formatGdd(fs2) {
+  if (!Number.isFinite(fs2)) return '—';
+  if (Math.abs(fs2) < 10) return (fs2 || 0).toFixed(1);
+  return (Math.round(fs2) || 0).toLocaleString();
+}
+
+// Which side of zero the pulse leaves on, and how it got there. Sign is the
+// part that carries intent: driving the output negative is a destination, not
+// a failed cancellation. Pre-chirping a pulse so it arrives transform-limited
+// *after* the dispersion of whatever follows — an objective, a long glass
+// path — is an ordinary reason to reach for a compressor, and describing that
+// only as a percentage change in |GDD| hides what the user was aiming for.
+export function compressorFinalState({ incoming, outgoing }) {
+  if (!Number.isFinite(incoming) || !Number.isFinite(outgoing)) return '—';
+  // Anything that rounds away is "no chirp left", not a vanishingly small
+  // chirp with a sign, so it is reported before any sign is claimed.
+  if (Math.round(outgoing) === 0) {
+    return incoming !== 0 ? 'Cancelled — no net chirp left' : 'No chirp';
+  }
+  const side = outgoing < 0 ? 'Negative dispersion' : 'Positive dispersion';
+  if (incoming === 0) {
+    return outgoing < 0
+      ? `${side} — nothing upstream to cancel, so this is pure pre-compensation`
+      : `${side} — applied by this element alone`;
+  }
+  const applied = outgoing - incoming;
+  if (Math.round(applied) === 0) return `${side} — passed through unchanged`;
+  if (Math.sign(outgoing) === Math.sign(incoming)) {
+    return Math.abs(outgoing) < Math.abs(incoming)
+      ? `${side} — the upstream GDD is partly cancelled`
+      : `${side} — this element adds to the upstream GDD`;
+  }
+  // Past the null: the upstream chirp is gone and the opposite one is applied.
+  const upstream = incoming > 0 ? 'positive' : 'negative';
+  const chirp = outgoing < 0 ? 'negative' : 'positive';
+  return `${side} — the upstream ${upstream} GDD is completely cancelled `
+    + `and a ${chirp} chirp is applied`;
+}
+
 export const registry = {
 
   // ---------------- Sources ----------------
@@ -3813,28 +3856,35 @@ export const registry = {
       },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-      // A compressor set far below what the scene already accumulated looks
-      // like it is doing nothing. Showing what arrives — and what is left —
-      // is what turns "it seems inert" into "it is cancelling 5% of it".
+      // Three plain rows rather than one composite string: what arrives, what
+      // leaves, and which side of zero the pulse ends up on. The sign is the
+      // part that carries intent. A negative output is not a failed
+      // cancellation -- it is the ordinary way a pulse is pre-chirped so that
+      // it arrives transform-limited *after* the dispersion of whatever
+      // follows, an objective or a long glass path. Reporting only how the
+      // magnitude moved hides exactly what the user was aiming for.
+      //
+      // There is deliberately no "setting that would null it" row: with the
+      // input shown as its own number, that advice is just its negation.
       {
-        key: 'gddBalance', label: 'GDD in → out', type: 'readout',
+        key: 'gddIn', label: 'GDD at input (fs²)', type: 'readout',
         readout: (p, el) => {
           const reading = el ? compressorGddReading(el.id) : null;
-          if (!reading) return 'No pulse through it yet';
-          const fmt = v => `${Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs²`;
-          const share = reading.incoming !== 0
-            ? Math.abs((reading.incoming - reading.outgoing) / reading.incoming) * 100 : 0;
-          return `${fmt(reading.incoming)} → ${fmt(reading.outgoing)}` +
-            (reading.incoming !== 0 ? ` · cancels ${share.toFixed(0)}%` : '');
+          return reading ? formatGdd(reading.incoming) : 'No pulse through it yet';
         },
       },
       {
-        key: 'gddToNull', label: 'Setting that would null it', type: 'readout',
+        key: 'gddOut', label: 'GDD at output (fs²)', type: 'readout',
         readout: (p, el) => {
           const reading = el ? compressorGddReading(el.id) : null;
-          if (!reading) return '—';
-          const need = -(reading.incoming - (Number(p.gddFs2) || 0));
-          return `${Math.round(need).toLocaleString()} fs²`;
+          return reading ? formatGdd(reading.outgoing) : '\u2014';
+        },
+      },
+      {
+        key: 'gddState', label: 'Final state', type: 'readout', wide: true,
+        readout: (p, el) => {
+          const reading = el ? compressorGddReading(el.id) : null;
+          return reading ? compressorFinalState(reading) : '\u2014';
         },
       },
     ],
