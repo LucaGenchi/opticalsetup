@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement, registry } from '../sketch/js/elements.js';
+import { createElement, registry, getElementMeta } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { traceScene, traceAll, detectorReading } from '../sketch/js/raytrace.js';
 
@@ -146,5 +146,25 @@ test('a nearly extinguished zeroth order still reaches a detector', () => {
     assert.ok(reading, `a zeroth order of ${residual.toExponential(0)} should still be measured`);
     assert.ok(Math.abs(reading.signal - residual) / residual < 1e-6,
       `expected ${residual.toExponential(0)}, read ${reading.signal.toExponential(3)}`);
+  }
+});
+
+// The registry description is the one string that reaches the palette, the
+// inspector, the wiki tagline and the page metadata, so a stale capability
+// claim there contradicts the tracer in four places at once. It said the AOM
+// "frequency-shifts" light for one commit after the shift was removed.
+test('the AOM description does not claim a capability the tracer dropped', () => {
+  // Exactly the path the palette, inspector and wiki build all take.
+  const { description } = getElementMeta('aom', createElement('aom', 0, 0).params);
+  assert.ok(description, 'the AOM should carry a description');
+  // Not even to deny it: this one line is the "what it does" summary shown in
+  // the palette and as the wiki tagline, and what the model leaves out belongs
+  // in the wiki's limitations, which says so.
+  assert.doesNotMatch(description, /frequency.{0,3}shift/i,
+    'the tracer applies no frequency shift, so the description must not mention one');
+  // The controls it does name must exist.
+  assert.match(description, /modulation efficiency/i);
+  for (const key of ['eff', 'modShape', 'zero']) {
+    assert.ok(registry.aom.params.some(p => p.key === key), `${key} should still exist`);
   }
 });
