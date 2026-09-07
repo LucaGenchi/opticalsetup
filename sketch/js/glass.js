@@ -215,6 +215,7 @@ export function crossCorrelationPair(reading) {
   if (!reading?.pulse) return { reason: 'NO PULSE' };
   if (trains.length < 2) return { reason: 'ONLY ONE BEAM PRESENT' };
   if (trains.length > 2) return { reason: `${trains.length} TRAINS — NEEDS EXACTLY 2` };
+  if (trains.some(train => train.pulseShape === 'sampled' || train.fieldIssue)) return { reason: 'SAMPLED-ENVELOPE CORRELATION NOT MODELED' };
   const arm = train => ({
     pulseWidthFs: Number.isFinite(train.stretchedPulseWidthFs)
       ? train.stretchedPulseWidthFs : train.pulseWidthFs,

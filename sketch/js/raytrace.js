@@ -14,6 +14,12 @@ import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToCo
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
 import { acoustoOpticShiftedWavelength, aodDeflectionDeg } from './acousto-optic.js';
+import { fiberPropagation, hollowCoreCoefficients } from './fiber.js';
+import { propagateEnvelope, fieldMetrics } from './pulse-field.js';
+
+const hollowReadings = new Map();
+const hollowCache = new Map();
+export const fiberReading = id => hollowReadings.get(id) || null;
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -30,7 +36,7 @@ import {
 } from './glass.js';
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
-  applyTransmission, fringeVisibility, resolveSourceSpectrum,
+  applyTransmission, fringeVisibility, resolveSourceSpectrum, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
 import { asphereSag, asphereSlope } from './asphere.js';
@@ -769,6 +775,10 @@ export function detectorReading(elementId) {
       const arrivingCenterNm = arrivingWeight > 0
         ? sourceHits.reduce((sum, h) => sum + h.wl * Math.max(0, h.power || 0), 0) / arrivingWeight
         : sourceHits[0]?.wl;
+      const fieldIssue = p.fieldIssue || (p.field && sourceHits.some(h => h.pulse.field !== p.field || Math.abs(h.gddFs2 - gddFs2) > 1e-6) ? 'Multiple temporal paths reach this sensor; their combined envelope is not modeled.' : null);
+      const rawEnvelope = p.field && !fieldIssue ? fieldMetrics(p.field, gddFs2) : null;
+      const envelopeScale = p.fieldReferencePower > 0 ? sourceHits.reduce((sum, h) => sum + Math.max(0, h.power || 0), 0) / p.fieldReferencePower : 1;
+      const envelope = rawEnvelope ? { ...rawEnvelope, energyJ: rawEnvelope.energyJ * envelopeScale, peakPowerW: rawEnvelope.peakPowerW * envelopeScale } : null;
       const canBroaden = p.transformLimited === true && (p.pulseShape || 'gauss') === 'gauss';
       return {
         repRateMHz: p.repRateMHz,
@@ -777,9 +787,10 @@ export function detectorReading(elementId) {
         gates: Array.isArray(p.gates) ? p.gates.map(g => ({ ...g })) : [],
         pathDelayNs: Math.min(...sourceHits.map(h => h.pathDelayNs)),
         gddFs2,
-        stretchedPulseWidthFs: canBroaden
-          ? gaussianPulseDurationAfterGDD(p.pulseWidthFs, gddFs2)
-          : null,
+        stretchedPulseWidthFs: envelope ? envelope.fwhmFs : canBroaden
+          ? gaussianPulseDurationAfterGDD(p.pulseWidthFs, gddFs2) : null,
+        envelope,
+        fieldIssue: fieldIssue || (p.field && !envelope ? 'Pulse exceeds the numerical time window.' : null),
         // A cross-correlation is between two specific trains, so it needs each
         // one's own shape and colour rather than the aggregate's -- the whole
         // point is that the two arms differ.
@@ -807,9 +818,10 @@ export function detectorReading(elementId) {
       trains,
       gddFs2,
       gddRangeFs2: [Math.min(...gddValues), Math.max(...gddValues)],
-      stretchedPulseWidthFs: !mixed && canBroaden
-        ? gaussianPulseDurationAfterGDD(first.pulseWidthFs, gddFs2)
-        : null,
+      stretchedPulseWidthFs: !mixed && trains.length === 1 && first.field ? trains[0].stretchedPulseWidthFs
+        : !mixed && canBroaden ? gaussianPulseDurationAfterGDD(first.pulseWidthFs, gddFs2) : null,
+      envelope: !mixed && trains.length === 1 ? trains[0].envelope : null,
+      fieldIssue: trains.find(t => t.fieldIssue)?.fieldIssue || null,
       earliestPathDelayNs: delays.length ? Math.min(...delays) : 0,
       arrivalSpreadPs: delays.length ? (Math.max(...delays) - Math.min(...delays)) * 1000 : 0,
     };
@@ -871,7 +883,7 @@ export function probeAt(x, y, tol = 16) {
     sourceId: best.sourceId || null,
     pulse: best.pulse ? {
       repRateMHz: best.pulse.repRateMHz,
-      pulseWidthFs: best.pulse.pulseWidthFs,
+      pulseWidthFs: best.pulse.field || best.pulse.fieldIssue ? null : best.pulse.pulseWidthFs,
       phaseNs: best.pulse.phaseNs,
       pulseShape: best.pulse.pulseShape || 'gauss',
       gates: (best.pulse.gates || []).map(g => ({ ...g })),
@@ -1341,19 +1353,55 @@ function fiberEmissionRays(c) {
   const o = add(e, mul(dir, 0.1));
   const cfg = b['out' + outEnd] || { mode: b.outMode || 'diverge', na: b.na, focal: b.focal, dia: b.outDia };
   const K = 9, rays = [];
-  const ng = Math.min(2.2, Math.max(1, b.groupIndex || 1.468));
+  let ng = Math.min(2.2, Math.max(1, b.groupIndex || 1.468));
   const lossDbPerM = Math.min(100, Math.max(0, b.lossDbPerM ?? 0.2));
-  const lengthMm = polylineLength(pts);
+  let { lengthMm, gddFs2 } = fiberPropagation(b, polylineLength(pts));
+  let pulse = c.pulse, spec = c.spec || null, bw = c.bw || 0;
+  if (b.fiberModel === 'argon') {
+    const coefficients = hollowCoreCoefficients(b, c.wl);
+    if (coefficients) { ng = coefficients.groupIndex; gddFs2 = coefficients.beta2Fs2PerM * lengthMm / 1000; }
+    const energyJ = c.pulse?.avgPowerW * c.power / (c.pulse?.repRateMHz * 1e6);
+    if (pulse && Number.isFinite(energyJ) && energyJ <= 0) {
+      hollowReadings.set(b.id, { ok: false, reason: 'No coupled pulse energy.', energyJ, coefficients });
+      return [];
+    }
+    const expectedBandwidth = pulse ? transformLimitedBandwidthNm(pulse.pulseWidthFs, c.wl) : 0;
+    const intactSpectrum = spec?.kind === 'gauss' && Math.abs(spec.center - c.wl) < 1e-6 && Math.abs(spec.fwhm - expectedBandwidth) < 1e-6;
+    let result;
+    if (!intactSpectrum || !coefficients || !pulse || !pulse.transformLimited || pulse.pulseShape !== 'gauss' || pulse.field || c.incompatibleEnvelope) {
+      result = { ok: false, reason: 'Hollow-core model needs one unsplit, transform-limited Gaussian pulse train (500–1800 nm).' };
+    } else {
+      const input = { pulseWidthFs: pulse.pulseWidthFs, energyJ, wavelengthNm: c.wl, lengthM: lengthMm / 1000,
+        ...coefficients, lossDbPerM, inputGddFs2: c.gdd || 0 };
+      const key = JSON.stringify(input);
+      result = hollowCache.get(key);
+      if (!result) {
+        result = propagateEnvelope(input);
+        if (result.ok && result.maxPeakPowerW / coefficients.effectiveAreaM2 > 5e17) {
+          result = { ok: false, reason: 'Peak intensity exceeds the Kerr-only model bound (5 × 10¹³ W/cm²); ionization is not modeled.' };
+        }
+        if (hollowCache.size >= 24) hollowCache.clear();
+        hollowCache.set(key, result);
+      }
+    }
+    hollowReadings.set(b.id, { ...result, coefficients, energyJ });
+    if (result.ok) {
+      pulse = { ...pulse, field: result.field, fieldReferencePower: c.power * 10 ** (-(lossDbPerM * lengthMm / 1000) / 10), transformLimited: false, pulseShape: 'sampled' };
+      spec = result.spectrum; bw = spectrumStats(spec).fwhm;
+    } else {
+      // Unsupported nonlinear settings must not masquerade as an unchanged
+      // output spectrum. The fiber inspector explains why no result exists.
+      return [];
+    }
+  }
   const transmission = 10 ** (-(lossDbPerM * lengthMm / 1000) / 10);
   const common = {
-    wl: c.wl, bw: c.bw || 0, spec: c.spec || null, speckle: false, intensity: Math.min(1, c.intensity * transmission),
+    wl: c.wl, bw, spec, speckle: false, intensity: Math.min(1, c.intensity * transmission),
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
-    pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, sourceId: c.sourceId || null,
+    pol: c.pol, stokes: cloneStokes(c.stokes), pulse, sourceId: c.sourceId || null,
     originId: c.originId || null,
     oplStart: (c.opl || 0) + lengthMm * ng + 2,
-    // The fiber's own chromatic dispersion is not modelled, but dispersion
-    // already accumulated before coupling must survive the relaunch.
-    gddStart: Number.isFinite(c.gdd) ? c.gdd : 0,
+    gddStart: (Number.isFinite(c.gdd) ? c.gdd : 0) + gddFs2,
   };
   if (cfg.mode === 'focus') {
     const f = Math.max(2, cfg.focal || 20), ap = Math.max(1, cfg.dia || 6);
@@ -3228,8 +3276,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
     const gdd = Number.isFinite(r.gddStart) ? r.gddStart
       : Number.isFinite(r.gdd) ? r.gdd : 0;
-    const visualizesDispersion = r.pulse?.transformLimited === true
-      && (r.pulse?.pulseShape || 'gauss') === 'gauss';
+    const visualizesDispersion = Boolean(r.pulse?.field) || (r.pulse?.transformLimited === true
+      && (r.pulse?.pulseShape || 'gauss') === 'gauss');
     return {
       ...r, opl, gdd, pts: [{ x: r.x, y: r.y }], opls: [opl],
       // Sparse local-GDD events exist only for pulses whose duration the app
@@ -3508,6 +3556,12 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         child.fieldGroupCount = override.fieldGroupCount;
         child.retainZeroField = override.retainZeroField;
         child.coherentlySuppressed = override.coherentlySuppressed;
+      }
+      if (r.pulse?.field) for (const child of children) {
+        if (('spec' in child && child.spec !== r.spec) || ('wl' in child && child.wl !== r.wl)) {
+          child.pulse = { ...(child.pulse || r.pulse), field: null,
+            fieldIssue: 'Spectrum changed after envelope propagation; temporal field is unavailable.' };
+        }
       }
       const c0 = children[0];
       const single = children.length === 1 && !c0.tag
@@ -3862,6 +3916,7 @@ export function traceScene(elements, beams = []) {
   const signalHits = [];
   lastSignalHits = [];
   const couplings = [];
+  hollowReadings.clear();
   lastPaths = [];
   detectorHits = new Map();
   detectorMisses = new Map();
@@ -3898,6 +3953,7 @@ export function traceScene(elements, beams = []) {
     const K = local.length;
     const pulse = p.temporalMode === 'pulsed' ? {
       sourceId: el.id,
+      avgPowerW: Number.isFinite(p.avgPowerW) ? Math.max(0, p.avgPowerW) : 0,
       repRateMHz: Math.min(1000000, Math.max(0.001, p.repRateMHz || 80)),
       pulseWidthFs: Math.min(1000000000, Math.max(1, p.pulseWidthFs || 100)),
       phaseNs: Math.min(1000000, Math.max(-1000000, p.pulsePhaseNs || 0)),
@@ -4018,7 +4074,20 @@ export function traceScene(elements, beams = []) {
   const emitted = new Set();
   for (let pass = 0; pass < 3 && couplings.length; pass++) {
     const batch = couplings.splice(0, couplings.length);
+    // Gather accepted spatial samples before deriving pulse energy. Ray count
+    // must not change nonlinear strength or transmitted optical power.
+    const grouped = new Map();
     for (const c of batch) {
+      const key = c.beam.id + ':' + c.end + ':' + (c.sourceId || 'cw');
+      if (c.beam.fiberModel !== 'argon') { grouped.set(Symbol(), c); continue; }
+      const prev = grouped.get(key);
+      if (prev) {
+        prev.incompatibleEnvelope ||= c.wl !== prev.wl || c.spec !== prev.spec || Math.abs(c.gdd - prev.gdd) > 1e-6 || Math.abs(c.opl - prev.opl) > 1e-4;
+        prev.power += Number.isFinite(c.power) ? c.power : 0;
+      } else grouped.set(key, { ...c });
+    }
+    for (const c of grouped.values()) {
+      if (c.beam.fiberModel === 'argon') c.incompatibleEnvelope ||= [...grouped.values()].some(other => other.beam.id === c.beam.id && other.end === c.end && other.sourceId !== c.sourceId);
       const key = c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0);
       if (emitted.has(key)) continue;
       emitted.add(key);

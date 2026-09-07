@@ -1,3 +1,4 @@
+import { fieldMetrics } from './pulse-field.js';
 // Pure helpers for pulse timing and canvas-only packet visualization.
 // Optical path lengths are expressed in millimetres and time in nanoseconds.
 
@@ -258,8 +259,9 @@ function pulseEnvelopeAtSample(track, sample, target) {
   }
   const canDerive = track.pulse.transformLimited === true
     && (track.pulse.pulseShape || 'gauss') === 'gauss';
-  const derived = canDerive
-    ? gaussianPulseDurationAfterGDD(inputPulseWidthFs, gddFs2) : null;
+  const derived = track.pulse.field && !track.pulse.fieldIssue
+    ? fieldMetrics(track.pulse.field, gddFs2)?.fwhmFs
+    : canDerive ? gaussianPulseDurationAfterGDD(inputPulseWidthFs, gddFs2) : null;
   const pulseWidthFs = Number.isFinite(derived) ? derived : inputPulseWidthFs;
   const stretchFactor = pulseWidthFs / inputPulseWidthFs;
   return {
@@ -276,7 +278,7 @@ function pulseEnvelopeAtSample(track, sample, target) {
     // stays clearly visible while the extremes stop swamping the bench.
     // The real duration and factor remain un-clamped on the marker for
     // readback and detector reporting.
-    visualStretch: Math.min(3, Math.sqrt(Math.max(1, stretchFactor))),
+    visualStretch: Math.min(3, Math.sqrt(Math.max(track.pulse.field ? 0.12 : 1, stretchFactor))),
   };
 }
 

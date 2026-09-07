@@ -124,9 +124,40 @@ normals; its paraxial readouts still depend only on vertex curvature. It does no
   calibrated off-axis aberrations. Outside the bounded coherent cases below,
   the app does not model carrier
 phase or interference; it also does not model diffraction-limited propagation,
-higher-order pulse dispersion, arbitrary spectral phase, input chirp beyond its configured
+higher-order pulse dispersion, arbitrary user-supplied spectral phase, input chirp beyond its configured
 state, or laboratory-specific calibration. The pulse
 compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
+
+Connectorized and bare fibers expose **Physical length (m)** and signed
+**Dispersion β₂ (ps²/km)** in the Propagation inspector. Length 0 uses the drawn
+path in millimetres; a positive length represents a cable or coil independently
+of its drawing and controls delay, loss and dispersion together. β₂ defaults to
+0 to preserve existing sketches. Enter a measured or specified coefficient at
+the source wavelength: it is treated as constant, not inferred from the fiber's
+NA or group index. Added GDD in fs² is `1000 × β₂ × lengthM`.
+
+For example, set a Gaussian transform-limited pulsed laser to 100 fs, fiber
+length to 1 m and β₂ to 36 ps²/km. A downstream detector reports 36000 fs²
+GDD and approximately 1003 fs stretched duration; the output pulse markers
+also widen. Set β₂ to 0 for the 100 fs control, double length to double GDD,
+or add a −36000 fs² pulse compressor to recover 100 fs. This is an illustrative
+coefficient, not a calibrated fiber preset. Signed GDD is summed along the path
+before applying the Gaussian intensity-FWHM formula
+`τ = τ₀ sqrt(1 + (4 ln(2) GDD / τ₀²)²)`.
+The linear model preserves the spectrum and adds dispersion at the output;
+it does not animate propagation inside the cable or model third-order,
+intermodal, polarization-mode or nonlinear effects. Duration estimates are
+available only for the existing transform-limited Gaussian source model.
+See [Newport's dispersion tutorial](https://www.newport.com/n/the-effect-of-dispersion-on-ultrashort-pulses/)
+for the second-order Gaussian approximation.
+
+Fibers also offer an opt-in **Hollow core · argon** model: a bounded scalar
+Fourier-envelope calculation with capillary/gas β₂, Kerr self-phase modulation
+and loss. Pressure, core diameter and captured laser pulse energy change the
+calculated spectrum and temporal field; a downstream GDD compressor can then
+shorten the pulse. Open **Ultrashort Pulses → Hollow-core pulse compressor**
+for the native 100 fs → approximately 45 fs example, controls and detector
+screens. See [the physics, limits and validation note](docs/physics/hollow-core.md).
 
 Its bounded coherent model applies only to sized monochromatic CW sources and
 explicitly supported ideal surfaces. It carries optical path plus the unitary phase of
