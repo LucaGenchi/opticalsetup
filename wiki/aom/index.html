@@ -181,10 +181,20 @@
         opposition</strong>: light returns to the undiffracted beam exactly while the RF
         is off, so one is lit wherever the other is dark. Both beams still carry their
         duty-averaged power, and the two orders always sum to the incident power.</p>
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Deflection angle and diffraction efficiency are set directly by
+        <p>A detector's time trace shows the levels rather than just the shape. Its
+        vertical axis is absolute — full height is one whole source beam — so
+        <em>modulation efficiency</em> is visible as the contrast it really sets: at
+        &eta;&nbsp;=&nbsp;0.5 the diffracted order peaks at half height while the
+        undiffracted one only falls to half, in opposition, and the two sum to the beam at
+        every instant. At &eta;&nbsp;=&nbsp;1 both swing the whole way. Light lost
+        anywhere upstream shortens the trace in the same way, instead of being normalized
+        back to full scale.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Deflection angle and modulation efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
         is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency
-        shift is first-principles physics. The chunk spacing is schematic too: a real
+        shift is first-principles physics. <em>Modulation efficiency</em> is the crystal's
+        diffraction efficiency under another name: it is the fraction of the beam that can
+        be switched, which is exactly what limits the contrast of both orders. The chunk spacing is schematic too: a real
         megahertz gate would put its chunks micrometres apart, so a fixed on-screen
         period is drawn instead, exactly as pulse markers are spaced for legibility
         rather than to scale, and the two orders share that period rather than each

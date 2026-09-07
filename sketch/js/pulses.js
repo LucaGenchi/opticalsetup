@@ -164,16 +164,34 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs
     ? Math.min(1e6, Math.max(0.001, pulse.repRateMHz)) : null;
   if (!repRateMHz) return null;
   const pulsePeriodNs = 1000 / repRateMHz;
-  const gates = (Array.isArray(pulse?.trains) ? pulse.trains : [pulse])
-    .flatMap(train => (Array.isArray(train?.gates) ? train.gates : []))
-    .filter(g => Number.isFinite(g?.opl));
+  // What the detector sums. Each branch is one distinctly gated share of the
+  // arriving light, weighted on the scale where a whole source beam is 1, so
+  // an element that only passes half the light draws a trace that only
+  // reaches half height -- and a beam whose gates never fully close (an AOM's
+  // zeroth order below perfect efficiency) sits on the floor its residual
+  // leaves rather than dropping to zero.
+  //
+  // Falling back to one unit-weight branch keeps every reading built before
+  // branches existed, and every caller that hands in a bare pulse, working.
+  const branches = (Array.isArray(pulse?.branches) && pulse.branches.length
+    ? pulse.branches
+    : [{ weight: 1, gates: (Array.isArray(pulse?.trains) ? pulse.trains : [pulse])
+      .flatMap(train => (Array.isArray(train?.gates) ? train.gates : [])) }])
+    .map(b => ({
+      weight: Number.isFinite(b.weight) ? Math.max(0, b.weight) : 1,
+      gates: (Array.isArray(b.gates) ? b.gates : []).filter(g => Number.isFinite(g?.opl)),
+    }))
+    .filter(b => b.weight > 0);
+  const gates = branches.flatMap(b => b.gates);
   const gatePeriodsNs = gates.map(g => 1000 / Math.min(1e6, Math.max(0.000001, g.frequencyMHz || 1)));
   const slowestGateNs = gatePeriodsNs.length ? Math.max(...gatePeriodsNs) : 0;
   const spanNs = Number.isFinite(forcedSpanNs) && forcedSpanNs > 0
     ? forcedSpanNs
     : 2 * Math.max(pulsePeriodNs, slowestGateNs);
   const phaseNs = Number.isFinite(pulse.phaseNs) ? pulse.phaseNs : 0;
-  const gated = { ...pulse, gates };
+  // Level of the summed beam at one emission time, gates and weights applied.
+  const levelAt = emittedNs => branches.reduce((sum, b) => sum
+    + b.weight * (b.gates.length ? pulseTransmissionAt({ ...pulse, gates: b.gates }, emittedNs) : 1), 0);
 
   // Pulse arrivals inside the window, each scaled by what survived the gates.
   // Very dense trains are bounded so one window can't emit thousands of spikes.
@@ -188,7 +206,7 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs
     const tNs = emittedNs + lag;
     if (tNs > to + 1e-9) break;
     if (tNs < from - 1e-9) continue;
-    pulses.push({ tNs, amplitude: gates.length ? pulseTransmissionAt(gated, emittedNs) : 1 });
+    pulses.push({ tNs, amplitude: levelAt(emittedNs) });
   }
 
   const count = Math.max(2, Math.min(600, Math.round(samples)));
@@ -197,7 +215,8 @@ export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs
     const tNs = from + spanNs * i / (count - 1);
     envelope.push({
       tNs,
-      value: gates.reduce((acc, gate) => acc * gateTransmissionAt(gate, tNs - lag), 1),
+      value: branches.reduce((sum, b) => sum
+        + b.weight * b.gates.reduce((acc, gate) => acc * gateTransmissionAt(gate, tNs - lag), 1), 0),
     });
   }
 

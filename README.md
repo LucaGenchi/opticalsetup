@@ -63,7 +63,10 @@ figures as SVG or PNG.
   sweeps it from a falling sawtooth through a triangle to a rising one. A square-gated AOM can
   also draw both diffraction orders chunked in opposition, so the switching stays
   visible on a beam drawn as a steady line; it is a drawing choice only, and
-  detector readings are identical either way. Playback can be
+  detector readings are identical either way. Detector time traces use an
+  absolute vertical axis — full height is one whole source beam — so modulation
+  efficiency reads as the contrast it sets: at 0.5 the diffracted order peaks
+  halfway while the undiffracted one only falls halfway, in opposition. Playback can be
   paused, reset, and time-scaled. A chopper gates pulse trains in time and draws
   CW light as a chunked on/off pattern matching its duty cycle (in Hz, matching a
   real mechanical wheel), visible identically on the live canvas and in exports.

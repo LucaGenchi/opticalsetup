@@ -466,15 +466,14 @@ function scopePlot(reading, window = null) {
       if (pts.length && Math.abs(t - pts[pts.length - 1].t) < 1e-9) continue;
       pts.push({ t, v: at(t) });
     }
-    // Scaled so that ONE resolved pulse reaches full height -- not so that the
-    // curve's own maximum does. A detector too slow to follow the train sums
-    // many overlapping responses into something well past full scale, which
-    // clips into the flat level such a detector really outputs; normalizing to
-    // the summed peak instead would have stretched that residual ripple back
-    // across the screen and made an unresolvable train look resolved.
-    const single = Math.max(...live.map(p => p.amplitude), 1e-9);
-    const scale = 1 / single;
-    const path = pts.map(pt => `${xAt(pt.t).toFixed(2)},${yAt(pt.v * scale * (peak || 1)).toFixed(2)}`).join(' ');
+    // The axis is absolute: full height is one whole source beam, so a branch
+    // that only carries half the light only reaches half height. It is NOT
+    // normalized to the curve's own peak, which is what used to hide the
+    // diffraction efficiency -- an AOM at 20% drew exactly like one at 100%.
+    // A detector too slow to follow the train still sums many overlapping
+    // responses past full scale and clips into the flat level such a detector
+    // really outputs, because `peak` only ever rises above 1 for genuine gain.
+    const path = pts.map(pt => `${xAt(pt.t).toFixed(2)},${yAt(pt.v).toFixed(2)}`).join(' ');
     spikes = `<polyline data-scope-trace="${pts.length}" points="${path}" fill="none" ` +
       `stroke="${reading.color || '#8fd3ff'}" stroke-width="1.3" stroke-linejoin="round"/>`;
   }

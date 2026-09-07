@@ -3498,7 +3498,12 @@ export const registry = {
       { key: 'deflect', label: 'Deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 4 },
       { key: 'rfMHz', label: 'RF frequency (MHz)', type: 'number', min: -10000, max: 10000, step: 1, def: 80 },
       { key: 'zero', label: 'Keep 0th order', type: 'checkbox', def: false },
-      { key: 'eff', label: 'Efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.85 },
+      // The crystal's diffraction efficiency, named for what it does to the
+      // beam you watch: it is the fraction that can be switched, so it sets
+      // how completely each order turns on and off. At 1 both orders swing
+      // the full way; at 0.5 the diffracted order only reaches half height
+      // and the undiffracted one only falls to half.
+      { key: 'eff', label: 'Modulation efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.85 },
       { key: 'modulate', label: 'Modulate RF drive', type: 'checkbox', def: false },
       // Named for the waveform driving the RF, the way a function generator
       // labels them. A square drive switches the diffracted order fully on and

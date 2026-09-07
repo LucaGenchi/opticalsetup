@@ -512,8 +512,8 @@ function averageGateTransmission(pulse) {
   // levels, so omitting those made one port silently reuse the other's
   // cached average.
   const key = [pulse.repRateMHz, pulse.pulseWidthFs, pulse.phaseNs, ...pulse.gates.flatMap(g => [
-    g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1, g.invert ? 1 : 0,
-    g.high ?? 1, g.low ?? 0,
+    g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1,
+    g.symmetry ?? 1, g.invert ? 1 : 0, g.high ?? 1, g.low ?? 0,
   ])].join('|');
   if (!gateTransmissionCache.has(key)) gateTransmissionCache.set(key, pulseGateTransmission(pulse));
   return gateTransmissionCache.get(key);
@@ -523,6 +523,11 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
   const gateDuty = averageGateTransmission(ray.pulse);
   return {
     power: (Number.isFinite(ray.power) ? ray.power : ray.intensity) * gateDuty,
+    // What this branch carries with its gates wide open. `power` above is
+    // already duty-averaged, so a time trace built on it would apply the gate
+    // a second time. Kept as the factor rather than the product so it stays
+    // correct when power is rescaled later (coherent groups do that).
+    gateDuty,
     intensity: ray.intensity,
     wl: ray.wl,
     bw: ray.bw || 0,
@@ -787,6 +792,36 @@ export function detectorReading(elementId) {
         centerWavelengthNm: Number.isFinite(arrivingCenterNm) ? arrivingCenterNm : centerWavelength,
       };
     });
+    // What a photodiode actually sums. `trains` groups by source, which is
+    // what a correlator needs -- two arms, two trains -- but it keeps one
+    // representative pulse per source, so branches of the same beam that are
+    // gated DIFFERENTLY collapse into whichever arrived first. An AOM's
+    // zeroth order is exactly that: a residual that is always present plus
+    // the diffracted light handed back while the RF is off. Reported through
+    // `trains` alone it looked like it switched fully off.
+    //
+    // So the time trace gets its own view: one entry per distinct gating,
+    // each weighted by the UNGATED intensity arriving on it (the hit's own
+    // `power` is already duty-averaged, which would apply the gate twice).
+    // Summing these is what a detector does, and the weights are relative to
+    // one source beam, so an element that passes only part of the light shows
+    // up as a trace that no longer reaches full height.
+    const branchGroups = new Map();
+    for (const h of pulsed) {
+      const gates = Array.isArray(h.pulse.gates) ? h.pulse.gates : [];
+      const key = [h.pulse.sourceId || '', ...gates.map(g => [
+        g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1,
+        g.symmetry ?? 1, g.invert ? 1 : 0, g.high ?? 1, g.low ?? 0,
+      ].join(','))].join('|');
+      const group = branchGroups.get(key) || { gates: gates.map(g => ({ ...g })), weight: 0 };
+      // Undo the duty averaging already in `power` to recover the level this
+      // branch sits at while its gates are open, still on the scale where one
+      // whole source beam is 1.
+      const duty = Number.isFinite(h.gateDuty) && h.gateDuty > 1e-9 ? h.gateDuty : 1;
+      group.weight += Math.max(0, h.power || 0) / duty;
+      branchGroups.set(key, group);
+    }
+    const branches = [...branchGroups.values()];
     const sources = new Set(pulsed.map(h => h.pulse.sourceId).filter(Boolean));
     const trainSettings = new Set(trains.map(p => [p.repRateMHz, p.pulseWidthFs, p.phaseNs].join(':')));
     const mixed = trainSettings.size > 1;
@@ -805,6 +840,7 @@ export function detectorReading(elementId) {
       pulseShape: mixed ? null : (first.pulseShape || 'gauss'),
       transformLimited: mixed ? null : first.transformLimited === true,
       trains,
+      branches,
       gddFs2,
       gddRangeFs2: [Math.min(...gddValues), Math.max(...gddValues)],
       stretchedPulseWidthFs: !mixed && canBroaden
