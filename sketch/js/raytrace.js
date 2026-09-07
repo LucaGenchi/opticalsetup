@@ -3184,12 +3184,36 @@ function interact(ray, hit) {
         // cavity round trip) just transmits unconverted — without this
         // guard, resonating signal would re-split on every single pass,
         // branching exponentially and never terminating.
-        const pumpWl = data.pumpWl || 532;
+        const pumpWl = Number(data.pumpWl ?? 532);
+        const sig = Number(data.signalWl ?? 800);
+        if (!(Number.isFinite(pumpWl) && pumpWl > 0
+            && Number.isFinite(sig) && sig > 0)) {
+          return data.transmitPump ? [{ d }] : [];
+        }
         if (Math.abs(ray.wl - pumpWl) > 1) return [{ d }];
-        const sig = Math.max(1, data.signalWl || 800);
-        const out = [{ d, wl: sig, intensity: ray.intensity * efficiency / 2, tag: 's' }];
         const invIdler = 1 / pumpWl - 1 / sig;
-        if (invIdler > 1e-9) out.push({ d, wl: 1 / invIdler, intensity: ray.intensity * efficiency / 2, tag: 'i' });
+        // A signal at or above the pump frequency leaves no positive idler.
+        // Treat that as no conversion, while still honouring the user's
+        // choice about whether the unconverted pump is shown or dumped.
+        if (!(invIdler > 1e-9)) return data.transmitPump ? [{ d }] : [];
+
+        const idler = 1 / invIdler;
+        const converted = ray.intensity * efficiency;
+        let out;
+        if (Math.abs(idler - sig) <= 1e-9 * Math.max(idler, sig)) {
+          // At degeneracy signal and idler occupy the same optical mode. One
+          // ray carries their combined converted power instead of drawing two
+          // coincident branches.
+          out = [{ d, wl: sig, intensity: converted, tag: 's=i' }];
+        } else {
+          // One signal and one idler photon are created per pump photon. Their
+          // photon fluxes are equal, so P_s/P_i = nu_s/nu_i = lambda_i/lambda_s.
+          const signalShare = idler / (sig + idler);
+          out = [
+            { d, wl: sig, intensity: converted * signalShare, tag: 's' },
+            { d, wl: idler, intensity: converted * (1 - signalShare), tag: 'i' },
+          ];
+        }
         if (data.transmitPump && efficiency < 0.999) out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'p' });
         return out;
       }
