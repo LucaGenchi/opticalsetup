@@ -3822,12 +3822,20 @@ export const registry = {
           const reading = el ? compressorGddReading(el.id) : null;
           if (!reading) return 'No pulse through it yet';
           const fmt = v => `${Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs²`;
-          const share = reading.incoming !== 0
-            ? (1 - Math.abs(reading.outgoing / reading.incoming)) * 100 : 0;
-          return `${fmt(reading.incoming)} → ${fmt(reading.outgoing)}` +
-            (reading.incoming !== 0 ? (share >= 0
-              ? ` · reduces |GDD| by ${share.toFixed(0)}%`
-              : ` · increases |GDD| by ${(-share).toFixed(0)}%`) : '');
+          const flow = `${fmt(reading.incoming)} → ${fmt(reading.outgoing)}`;
+          // Name the sign of what leaves, not only how the magnitude moved.
+          // Driving the output negative is a destination, not an overshoot:
+          // pre-chirping a pulse so it arrives transform-limited *after* the
+          // dispersion of whatever follows — an objective, a long glass path —
+          // is the ordinary reason to reach for a compressor. Reporting that
+          // as "reduces |GDD| by 56%" hides the thing the user was aiming for.
+          if (Math.round(reading.outgoing) === 0) return `${flow} · dispersion cancelled`;
+          const sign = reading.outgoing < 0 ? 'negative' : 'positive';
+          if (reading.incoming === 0) return `${flow} · ${sign} dispersion`;
+          const share = (1 - Math.abs(reading.outgoing / reading.incoming)) * 100;
+          return `${flow} · ${sign} dispersion, |GDD| ` + (share >= 0
+            ? `reduced ${share.toFixed(0)}%`
+            : `increased ${(-share).toFixed(0)}%`);
         },
       },
       {
