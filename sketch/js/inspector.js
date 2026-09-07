@@ -45,8 +45,8 @@ function roundSig(value, sig = 4) {
 
 export function initInspector(el) { panel = el; }
 
-function field(labelText, inputHTML) {
-  return `<label class="field"><span>${esc(labelText)}</span>${inputHTML}</label>`;
+function field(labelText, inputHTML, className = '') {
+  return `<label class="field${className ? ` ${className}` : ''}"><span>${esc(labelText)}</span>${inputHTML}</label>`;
 }
 
 function splitFieldLabel(labelText) {
@@ -417,7 +417,7 @@ function measurementHTML(el) {
 // has no screen yet: the common case is wanting one, and a second screen on
 // the same sensor is still available from the screen's own sensor dropdown.
 function screenLinkHTML(el) {
-  if (!registry[el.type]?.readoutKind || state.demoMode) return '';
+  if (!registry[el.type]?.readoutKind || state.embedMode) return '';
   const linked = state.elements.filter(candidate => candidate.type === 'display'
     && candidate.params.sensorId === el.id);
   if (linked.length) {
@@ -686,7 +686,12 @@ function paramField(p, sel) {
   // it reads as part of the source's settings, but computed from the other
   // params on every render and never stored or saved.
   if (p.type === 'readout') {
-    return field(p.label, `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`);
+    // `wide` gives the value the whole row instead of the 112px value column.
+    // A readout that holds a sentence rather than a number wraps into a tall,
+    // unreadable ribbon otherwise.
+    return field(p.label,
+      `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`,
+      p.wide ? 'field-wide' : '');
   }
   // Editable, but backed by another param instead of its own storage:
   // displayed value comes from `get`, and a commit writes through `set`
@@ -875,7 +880,7 @@ export function renderInspector() {
       flushSection();
     }
 
-    if (!state.demoMode) {
+    if (!state.embedMode) {
       let positionFields = '';
       positionFields += field('X (mm)', `<input type="number" step="1" data-k="x" value="${Math.round(sel.x * 10) / 10}">`);
       positionFields += field('Y (mm)', `<input type="number" step="1" data-k="y" value="${Math.round(sel.y * 10) / 10}">`);
@@ -902,7 +907,7 @@ export function renderInspector() {
         h += inspectorSection('appearance', 'Label & appearance', appearanceFields, { open: false });
       }
     }
-    if (!state.demoMode) {
+    if (!state.embedMode) {
       h += `<div class="btnrow">${def.singleton ? '' : '<button type="button" id="inspDup">Duplicate</button>'}<button type="button" id="inspDel" class="danger">Delete</button></div>`;
       if (WIKI_TYPES.has(sel.type)) {
         h += `<a class="wiki-link" href="../wiki/${sel.type}/">Explore this element on the Wiki →</a>`;
