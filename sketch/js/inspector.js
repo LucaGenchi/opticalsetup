@@ -45,6 +45,26 @@ function roundSig(value, sig = 4) {
 
 export function initInspector(el) { panel = el; }
 
+// Committing one of these keys changes which controls belong on the panel, so
+// the inspector is rebuilt rather than left describing the previous mode. Most
+// of them gate a param's show() predicate; a few (sensorId, specimenType,
+// preset, mode, sync, temporalMode) swap the param list itself.
+//
+// An element whose params include a readout or derived value already rebuilds
+// on every commit (see the end of applyInput), so it can never go stale. This
+// list is what covers the rest — and test/inspector-conditional-params.test.js
+// audits the registry against it, so a new conditional param on an element
+// without a readout fails the suite instead of silently hiding its controls
+// until the user reselects the element.
+export const REBUILD_ON_COMMIT_KEYS = [
+  'dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode',
+  'raysMode', 'zeroOrder', 'modulate', 'modShape', 'mode', 'scanMode', 'moveMode',
+  'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot',
+  'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
+  'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
+  'measurementMode', 'prop', 'sync', 'sourceKind',
+];
+
 function field(labelText, inputHTML, className = '') {
   return `<label class="field${className ? ` ${className}` : ''}"><span>${esc(labelText)}</span>${inputHTML}</label>`;
 }
@@ -1362,8 +1382,7 @@ export function applyInput(inp, rebuild = false) {
   // layer already is; otherwise the panel can describe the previous target.
   if (rebuild && sel.type === 'objective' && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'modShape', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode', 'measurementMode',
-    'prop', 'sync', 'sourceKind'].includes(pkey)) { renderInspector(); return; }
+  if (rebuild && REBUILD_ON_COMMIT_KEYS.includes(pkey)) { renderInspector(); return; }
   // A readout is derived from the other params, so any committed edit can
   // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
   // peak power or a transform-limited bandwidth from going stale on screen.
