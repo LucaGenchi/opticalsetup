@@ -13,7 +13,7 @@ import {
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
-import { acoustoOpticShiftedWavelength, aodDeflectionDeg } from './acousto-optic.js';
+import { aodDeflectionDeg } from './acousto-optic.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -2589,9 +2589,6 @@ function interact(ray, hit) {
     case 'aod': {
       const out = [];
       const isAod = hit.surface.kind === 'aod';
-      // A deflector is steered by angle here, so there is no drive frequency
-      // to shift the optical carrier with; a modulator still has one.
-      const driveMHz = isAod ? 0 : (Number(data.rfMHz) || 0);
       const duty = data.gate ? Math.min(0.99, Math.max(0.01, data.gate.duty ?? 0.5)) : 1;
       const shape = data.gate?.shape === 'sine' || data.gate?.shape === 'sawtooth'
         ? data.gate.shape : 'square';
@@ -2648,11 +2645,15 @@ function interact(ray, hit) {
             ? aodDeflectionDeg(data, sample.wl, data.position)
             : Number(data.deflect) || 0;
           const a = deflection * D2R, c = Math.cos(a), sn = Math.sin(a);
-          const order = isAod ? data.order : 1;
-          const shiftedWl = acoustoOpticShiftedWavelength(sample.wl, driveMHz, order);
           out.push({
             d: { x: d.x * c - d.y * sn, y: d.x * sn + d.y * c },
-            wl: shiftedWl,
+            // Carried through untouched. Acousto-optic diffraction really does
+            // shift the optical carrier by the drive frequency, but at
+            // 7.6e-5 nm for 80 MHz at 532 nm it is a thousand times finer than
+            // any wavelength difference this workbench resolves, so applying
+            // it only ever moved a number nothing could report. The AOD
+            // already declined it for the same reason.
+            wl: sample.wl,
             // An AOD sends every wavelength to its own angle, so each child
             // really is one narrow slice travelling on its own. They are
             // quadrature nodes across a continuous spectrum all the same, and

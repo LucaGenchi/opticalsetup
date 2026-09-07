@@ -2143,14 +2143,15 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>The frequency shift is modeled exactly: the diffracted ray's optical frequency
-        is genuinely shifted by the configured <em>RF carrier frequency</em> &mdash; the
-        acoustic drive, not the rate anything is switched at, which is why it stays live
-        whether or not the drive is modulated and is what an AOM used purely as a
-        frequency shifter does &mdash; then converted back to a
-        wavelength, which is what makes an AOM in a pulse-timing setup actually change
-        color. Deflection and diffraction efficiency, though, are direct configurable
-        parameters rather than quantities derived from crystal or drive properties.
+        <p>Deflection and modulation efficiency are direct configurable parameters
+        rather than quantities derived from crystal or drive properties. The optical
+        frequency shift is <strong>not</strong> applied, and there is no drive-frequency
+        control: the shift is real &mdash; it is the whole basis of heterodyne detection
+        &mdash; but at 7.6&times;10<sup>&minus;5</sup>&nbsp;nm for 80&nbsp;MHz at
+        532&nbsp;nm it is a thousand times finer than any wavelength difference this
+        workbench resolves, since every readout here rounds to the nearest nanometre.
+        Carrying it only ever moved a number nothing could report. The
+        <a href="../aod/">AOD</a> had already declined it for the same reason.
         Gating support lets the modeled RF drive vary in time, which the pulse-timing
         overlay reads as a temporal gate on the beam. Three waveforms are offered, named
         for the drive a function generator would supply: <strong>square</strong> switches
@@ -2189,8 +2190,8 @@ export const wikiEntries = [
       formulas: [],
       limitations: `<p>Deflection angle and modulation efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
-        is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency
-        shift is first-principles physics. <em>Modulation efficiency</em> is the crystal's
+        is a schematic acousto-optic model, not a Bragg-cell simulator.
+        <em>Modulation efficiency</em> is the crystal's
         diffraction efficiency under another name: it is the fraction of the beam that can
         be switched, which is exactly what limits the contrast of both orders. The chunk spacing is schematic too: a real
         megahertz gate would put its chunks micrometres apart, so a fixed on-screen
@@ -2561,8 +2562,8 @@ export const wikiEntries = [
         between drive power and efficiency.</p>
         <p>The optical frequency shift is not applied. It is real, but at 7.6×10⁻⁵ nm for
         80 MHz at 532 nm it is more than a thousand times finer than the finest wavelength
-        difference anything in this workbench resolves; the <a href="../aom/">AOM</a>,
-        which exists for that shift, still carries it.</p>
+        difference anything in this workbench resolves. The <a href="../aom/">AOM</a> does
+        not carry it either, for the same reason.</p>
         <p>Access time is reported but not enforced: the beam jumps instantly between
         angles, with no settling and no transient while the acoustic wave refills the
         aperture. The number of resolvable spots — arguably the figure that decides a real

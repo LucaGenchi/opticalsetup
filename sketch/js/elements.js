@@ -3496,14 +3496,6 @@ export const registry = {
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
       { key: 'deflect', label: 'Deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 4 },
-      // The acoustic carrier the transducer is driven at, not the rate
-      // anything is switched at. It is what shifts the diffracted order's
-      // optical frequency, so it stays live whether or not the drive is
-      // modulated -- an AOM run unmodulated purely as a frequency shifter is
-      // an ordinary use, and the detected wavelength really does move with
-      // this number. "Carrier" rather than plain "RF" so it cannot be read as
-      // the modulation frequency two rows below.
-      { key: 'rfMHz', label: 'RF carrier frequency (MHz)', type: 'number', min: -10000, max: 10000, step: 1, def: 80 },
       { key: 'zero', label: 'Keep 0th order', type: 'checkbox', def: false },
       // The crystal's diffraction efficiency, named for what it does to the
       // beam you watch: it is the fraction that can be switched, so it sets
@@ -3550,7 +3542,7 @@ export const registry = {
       return [{
         x1: 0, y1: -(p.aperture || 26) / 2, x2: 0, y2: (p.aperture || 26) / 2, kind: 'aom',
         data: {
-          deflect: p.deflect, rfMHz: p.rfMHz, zero: p.zero, eff: p.eff,
+          deflect: p.deflect, zero: p.zero, eff: p.eff,
           gate: p.modulate ? {
             frequencyMHz: p.modFreqMHz, duty: p.chopDuty, phaseNs: p.phaseNs,
             shape: p.modShape, depth: p.modDepth, symmetry: p.modSymmetry,

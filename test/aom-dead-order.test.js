@@ -69,32 +69,47 @@ test('turning the zeroth order off draws nothing straight through at any efficie
   }
 });
 
-// The RF carrier is the acoustic drive, not the modulation rate: it shifts the
-// diffracted order's optical frequency whether or not the drive is modulated,
-// which is what an AOM used purely as a frequency shifter does. It therefore
-// stays visible, and is named so it cannot be mistaken for the modulation.
-test('the RF carrier shifts the diffracted wavelength with the drive unmodulated', () => {
-  const detected = rfMHz => {
+// The RF drive frequency is gone. Acousto-optic diffraction really does shift
+// the optical carrier by it, but at 7.6e-5 nm for 80 MHz at 532 nm that is a
+// thousand times finer than any wavelength difference this workbench resolves
+// -- every readout rounds to the nearest nanometre -- so the control only ever
+// moved a number nothing could report. The AOD had already declined it.
+test('the AOM carries the wavelength through untouched', () => {
+  const laser = createElement('pulsedlaser', 0, 0);
+  laser.params.beamMode = 'line';
+  laser.params.wavelength = 532;
+  const aom = createElement('aom', 200, 0);
+  Object.assign(aom.params, { modulate: false, eff: 1, deflect: 10 });
+  const detector = createElement('detector', 400, Math.round(200 * Math.tan(10 * Math.PI / 180)));
+  detector.params.aperture = 40;
+  traceAll([laser, aom, detector], []);
+  assert.equal(detectorReading(detector.id).wavelength, 532);
+});
+
+test('the AOM offers no drive-frequency control, and its one frequency is the modulation', () => {
+  assert.equal(registry.aom.params.find(p => p.key === 'rfMHz'), undefined);
+  const frequencies = registry.aom.params.filter(p => /frequency/i.test(p.label || ''));
+  assert.deepEqual(frequencies.map(p => p.key), ['modFreqMHz'],
+    'only the modulation rate is left, so there is nothing to confuse it with');
+  assert.ok(frequencies[0].show({ modulate: true }) && !frequencies[0].show({ modulate: false }),
+    'and it only applies while the drive is modulated');
+});
+
+// A sketch saved while the control existed still loads; the stale key is
+// carried and ignored rather than changing anything.
+test('a sketch saved with a drive frequency still traces identically', () => {
+  const build = extra => {
     const laser = createElement('pulsedlaser', 0, 0);
     laser.params.beamMode = 'line';
     const aom = createElement('aom', 200, 0);
-    Object.assign(aom.params, { modulate: false, eff: 1, deflect: 10, rfMHz });
+    Object.assign(aom.params, { modulate: false, eff: 0.8, deflect: 10 }, extra);
     const detector = createElement('detector', 400, Math.round(200 * Math.tan(10 * Math.PI / 180)));
     detector.params.aperture = 40;
     traceAll([laser, aom, detector], []);
-    return detectorReading(detector.id)?.wavelength;
+    const reading = detectorReading(detector.id);
+    return { signal: reading.signal, wavelength: reading.wavelength };
   };
-  assert.notEqual(detected(5), detected(80),
-    'the carrier must keep shifting the light while the drive is unmodulated');
-});
-
-test('the RF carrier is always offered, and named apart from the modulation', () => {
-  const carrier = registry.aom.params.find(p => p.key === 'rfMHz');
-  const modulation = registry.aom.params.find(p => p.key === 'modFreqMHz');
-  assert.equal(carrier.show, undefined, 'the carrier is live whether or not the drive is modulated');
-  assert.match(carrier.label, /carrier/i);
-  assert.ok(modulation.show({ modulate: true }) && !modulation.show({ modulate: false }),
-    'the modulation rate is the one that only applies while modulating');
+  assert.deepEqual(build({ rfMHz: 80 }), build({}));
 });
 
 // The cut has to be a cut, not a rejection. A beam extinguished part way
