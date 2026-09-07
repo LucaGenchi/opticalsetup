@@ -135,6 +135,38 @@ test('chunking cannot move a reading taken through downstream optics', () => {
   }
 });
 
+// A pulsed source splits the zeroth order into two branches for the pulse
+// calculation -- a residual present while the RF is on, and the diffracted
+// light returned while it is off -- but they draw as one beam on one path. If
+// only the gated branch is chunked, the residual keeps drawing a solid stroke
+// through the gaps and the zeroth order never goes dark, contradicting the
+// opposition the whole feature is for.
+test('every branch of a pulsed zeroth order is chunked, leaving no solid stroke', () => {
+  const paths = drawables => drawables.filter(d => d.type === 'path');
+  for (const eff of [0.5, 0.85]) {
+    const build = drawChopped => {
+      const laser = createElement('pulsedlaser', 0, 0);
+      laser.params.beamMode = 'line';
+      const aom = createElement('aom', 200, 0);
+      Object.assign(aom.params, {
+        modulate: true, modShape: 'square', zero: true, eff, chopDuty: 0.5, deflect: 8, drawChopped,
+      });
+      return traceAll([laser, aom], []);
+    };
+    const on = build(true);
+    const off = build(false);
+    // The flag adds no strokes and removes none -- it only dashes them.
+    assert.equal(paths(on).length, paths(off).length, `efficiency ${eff}: stroke count changed`);
+    assert.equal(paths(off).filter(d => d.dash).length, 0);
+    // Diffracted order, plus both branches of the zeroth.
+    assert.equal(paths(on).filter(d => d.dash).length, 3, `efficiency ${eff}: a branch was left solid`);
+    // Both zeroth-order branches must share the anti-phase offset, or they
+    // would chunk against each other instead of against the diffracted order.
+    const offsets = paths(on).filter(d => d.dash).map(d => d.dashOffset || 0).sort();
+    assert.deepEqual(offsets, [0, 7, 7], `efficiency ${eff}: branches disagree on phase`);
+  }
+});
+
 // Both orders together still carry the whole beam, chunks or not.
 test('the two orders sum to the incident power', () => {
   for (const [eff, chopDuty] of [[0.85, 0.5], [1, 0.5], [0.6, 0.25], [0.3, 0.75]]) {

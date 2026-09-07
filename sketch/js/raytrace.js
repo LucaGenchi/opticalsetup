@@ -2640,7 +2640,17 @@ function interact(ray, hit) {
           // Residual zero order exists while RF is on; the diffracted fraction
           // returns to zero order while RF is off. Together the instantaneous
           // first + zero order remains energy-bounded.
-          out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'd0r' });
+          //
+          // These two branches exist for the pulse calculation, but they draw
+          // as one beam on one path, so the chunk hint belongs on both: with
+          // it on the gated branch alone, the residual kept drawing a solid
+          // stroke straight through the gaps and the zeroth order never went
+          // dark. The branches themselves -- their intensities and gates --
+          // are untouched.
+          out.push({
+            d, intensity: ray.intensity * (1 - efficiency), tag: 'd0r',
+            ...(choppedZero ? { chopped: choppedZero } : {}),
+          });
           out.push({
             d, intensity: ray.intensity * efficiency, tag: 'd0off',
             ...(choppedZero ? { chopped: choppedZero } : {}),
