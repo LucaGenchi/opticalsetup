@@ -20,6 +20,11 @@ import { acoustoOpticShiftedWavelength, aodDeflectionDeg } from './acousto-optic
 // mirrors the same schematic-spacing convention already used by pulse
 // markers: an on-screen-legible constant, not a physically scaled distance.
 const CHOP_SCHEMATIC_PERIOD_MM = 14;
+
+// Below this a ray carries no light worth drawing. The beam fill has always
+// used it per segment; the pulse overlay and the branch emitters use it too so
+// the three cannot disagree about whether a beam exists.
+const MIN_DRAWN_INTENSITY = 1e-12;
 import {
   linearStokes, cloneStokes, retarder as applyRetarder, analyzerTransmission,
   legacyPolarization, polarizationDescription,
@@ -2689,11 +2694,14 @@ function interact(ray, hit) {
           // stroke straight through the gaps and the zeroth order never went
           // dark. The branches themselves -- their intensities and gates --
           // are untouched.
-          out.push({
-            d, intensity: ray.intensity * (1 - efficiency), tag: 'd0r',
-            ...(choppedZero ? { chopped: choppedZero } : {}),
-          });
-          out.push({
+          const residual = ray.intensity * (1 - efficiency);
+          if (residual > MIN_DRAWN_INTENSITY) {
+            out.push({
+              d, intensity: residual, tag: 'd0r',
+              ...(choppedZero ? { chopped: choppedZero } : {}),
+            });
+          }
+          if (ray.intensity * efficiency > MIN_DRAWN_INTENSITY) out.push({
             d, intensity: ray.intensity * efficiency, tag: 'd0off',
             ...(choppedZero ? { chopped: choppedZero } : {}),
             pulse: {
@@ -2715,10 +2723,18 @@ function interact(ray, hit) {
           // A drawing choice must never do that. The cost is that the drawn
           // beam extinguishes fully while the RF is on even though a real
           // zeroth order keeps 1-efficiency; the wiki says so.
-          out.push({
-            d, intensity: ray.intensity * (1 - efficiency * averageTransmission),
-            ...(choppedZero ? { chopped: choppedZero } : {}), tag: 'd0',
-          });
+          // An AOM at full efficiency sends everything into the first order,
+          // so there is no zeroth order to emit. Pushing it anyway left a
+          // ray of exactly zero intensity on the straight path: the beam fill
+          // skips it, but the pulse overlay used to draw packets along it, so
+          // a train appeared to travel down a beam that was not there.
+          const straight = ray.intensity * (1 - efficiency * averageTransmission);
+          if (straight > MIN_DRAWN_INTENSITY) {
+            out.push({
+              d, intensity: straight,
+              ...(choppedZero ? { chopped: choppedZero } : {}), tag: 'd0',
+            });
+          }
         }
       }
       return out;
@@ -3926,6 +3942,9 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
   const centreSample = Math.floor((Math.max(1, K) - 1) / 2);
   for (const r of paths) {
     if (!r.pulse || r.pts.length < 2 || r.opls?.length !== r.pts.length) continue;
+    // The beam fill already skips a segment carrying no light; the packets
+    // have to agree, or a train draws along a path with no beam under it.
+    if (!(r.intensity > MIN_DRAWN_INTENSITY)) continue;
     if (r.sample !== null && r.sample !== undefined && r.sample !== centreSample) continue;
     pulseTracks.push({
       pts: r.pts.map(p => ({ x: p.x, y: p.y })),

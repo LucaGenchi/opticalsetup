@@ -2144,7 +2144,10 @@ export const wikiEntries = [
     inOpticalSetup: {
       html: `
         <p>The frequency shift is modeled exactly: the diffracted ray's optical frequency
-        is genuinely shifted by the configured RF frequency, then converted back to a
+        is genuinely shifted by the configured <em>RF carrier frequency</em> &mdash; the
+        acoustic drive, not the rate anything is switched at, which is why it stays live
+        whether or not the drive is modulated and is what an AOM used purely as a
+        frequency shifter does &mdash; then converted back to a
         wavelength, which is what makes an AOM in a pulse-timing setup actually change
         color. Deflection and diffraction efficiency, though, are direct configurable
         parameters rather than quantities derived from crystal or drive properties.
