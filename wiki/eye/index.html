@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Human eye — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/eye/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Human eye — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/eye/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+
+        <div class="cat">
+          <div class="cat-name">Annotations</div>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/textlabel/" class="">Text label</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li><li><a href="../../wiki/objarrow/" class="">Object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul><li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <div class="cat-sub">Ideal lenses</div><ul><li><a href="../../wiki/lens/" class="">Thin convex lens</a></li><li><a href="../../wiki/lensc/" class="">Thin concave lens</a></li><li><a href="../../wiki/telescope/" class="">Conjugated thin lens pair</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li></ul><div class="cat-sub">Real lenses</div><ul><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group</a></li><li><a href="../../wiki/asphericlens/" class="">Aspheric lens</a></li></ul><div class="cat-sub">Metalenses</div><ul><li><a href="../../wiki/metalens/" class="">Metalens</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul><li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul><li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul><li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul><li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li><li><a href="../../wiki/generaldetector/" class="">General detector</a></li><li><a href="../../wiki/display/" class="">Detector screen</a></li><li><a href="../../wiki/eye/" class="current">Human eye</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <ul><li><a href="../../wiki/chopper/" class="">Chopper</a></li></ul><div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul><li><a href="../../wiki/delayline/" class="">Mechanical delay line</a></li><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Nonlinear Optics</div>
+          <ul><li><a href="../../wiki/crystal/" class="">Crystal</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul><li><a href="../../wiki/sample/" class="">Sample</a></li><li><a href="../../wiki/stage/" class="">Sample on piezo stage</a></li><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Custom</div>
+          <ul><li><a href="../../wiki/box/" class="">Custom box</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lab elements</div>
+          <ul><li><a href="../../wiki/gascell/" class="">Gas cell</a></li><li><a href="../../wiki/window/" class="">Optical window</a></li></ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#detectors">Detectors</a> / Human eye</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-24 -24 48 48" aria-hidden="true"><g transform="scale(1)"><circle r="15" fill="#fff" stroke="#4d565f" stroke-width="1.5"/><path d="M -14.2,-7 Q -21,0 -14.2,7" fill="rgba(160,200,240,0.45)" stroke="#4a7fa8" stroke-width="1.2"/><path d="M -14.5,-9 L -10.5,-5.5" stroke="#7a5230" stroke-width="2.4" stroke-linecap="round"/><path d="M -14.5,9 L -10.5,5.5" stroke="#7a5230" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="-8.5" cy="0" rx="3" ry="6.5" fill="#cfe4f5" stroke="#4a7fa8" stroke-width="1"/><path d="M 7,-13 A 15 15 0 0 1 7,13" fill="none" stroke="#c86a6a" stroke-width="2.5"/></g></svg></div>
+        <div>
+          <h1>Human eye</h1>
+        </div>
+      </div>
+      <p class="tagline">Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.</p>
+      <a class="place-cta" href="../../sketch/?demo=eye">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=eye&amp;embed=1"
+          title="Human eye — a live trace of the scene described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace, not a picture of one — but this preview is not interactive. Open it in the canvas to move things, change parameters, and save or export your own version.</p>
+
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      <p>The eye forms an image on the retina using the refractive power of the cornea and crystalline lens. The iris controls the pupil opening, while accommodation changes the lens shape to bring different object distances into focus.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        <p>The pupil clips incoming rays, an equivalent thin lens bends the accepted light, and a retinal detector records the resulting signal. Adjust <em>Eye diameter</em>, <em>Pupil diameter</em>, and <em>Lens focal length</em> to compare the illuminated spot. A linked detector screen makes the retinal reading visible beside the eye.</p><p>In the example, a parallel beam enters the pupil. Change the focal length to move the best focus relative to the retinal plane, or narrow the pupil to admit less of the beam.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is a geometric teaching model, not an anatomical eye prescription. It does not predict visual acuity, diffraction, accommodation dynamics, retinal physiology, or laser exposure limits.</p></div>
+      </div>
+
+
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/lens/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Thin convex lens</a><a href="../../wiki/camera/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Camera</a><a href="../../wiki/display/"><svg viewBox="-104 -104 208 208" aria-hidden="true"><g transform="scale(2)" data-display-density="expanded"><rect x="-49" y="-36" width="98" height="72" rx="6" fill="#24313b" stroke="#111b22" stroke-width="1.7"/><path d="M -43,-32 H 43" stroke="#40515d" stroke-width="0.8" opacity="0.7"/><rect x="-43" y="-29" width="86" height="47" rx="3" fill="#061822" stroke="#45606f" stroke-width="1.2"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace"><text x="0" y="-2" text-anchor="middle" font-size="9" font-weight="760" letter-spacing="0.8" fill="#94a3b8">SELECT INPUT</text><text x="0" y="10" text-anchor="middle" font-size="5.4" fill="#607887">Press INPUT to connect</text></g><circle cx="-49" cy="19" r="3.6" fill="#13212a" stroke="#89a2b2" stroke-width="1"/><circle cx="-49" cy="19" r="1.3" fill="#52636f"/><g class="display-control" data-display-action="power" role="button" aria-label="Toggle display power"><title>Power</title><circle class="display-control-face" cx="-40" cy="27" r="4.4" fill="#14232c" stroke="#6ee7b7" stroke-width="1.1"/><path d="M -40,23.8 L -40,27.1 M -42.2,25.2 A 3,3 0 1 0 -37.8,25.2" fill="none" stroke="#6ee7b7" stroke-width="0.9" stroke-linecap="round"/></g><g class="display-control" data-display-action="input" role="button" aria-label="Cycle sensor input"><title>Cycle sensor input</title><rect class="display-control-face" x="-30" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="-18.5" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">INPUT</text></g><g class="display-control" data-display-action="view" role="button" aria-label="Cycle display view"><title>Cycle display view</title><rect class="display-control-face" x="-3.5" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="8" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">VIEW</text></g><circle cx="41" cy="27" r="2.3" fill="#596b76"/><text x="33" y="29" text-anchor="end" font-size="3.6" font-weight="700" letter-spacing="0.35" fill="#708692">QUAL</text></g></svg>Detector screen</a>
+      </div>
+
+
+
+
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>

@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Phase modulator — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Writes a voltage-driven optical path across the whole beam without touching its polarization — invisible alone, and an amplitude modulator in one arm of an interferometer. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Changes optical path without changing polarization, making a driven phase shift visible as intensity modulation when placed in a supported interferometer. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/phasemodulator/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Phase modulator — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Writes a voltage-driven optical path across the whole beam without touching its polarization — invisible alone, and an amplitude modulator in one arm of an interferometer.">
+<meta property="og:description" content="Changes optical path without changing polarization, making a driven phase shift visible as intensity modulation when placed in a supported interferometer.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/phasemodulator/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -56,13 +56,17 @@
     </div>
   </header>
   <div class="wiki-shell">
-    
+
     <nav class="wiki-nav" aria-label="Component wiki index">
       <h2>Components</h2>
-      
+
+        <div class="cat">
+          <div class="cat-name">Annotations</div>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/textlabel/" class="">Text label</a></li></ul>
+        </div>
         <div class="cat">
           <div class="cat-name">Sources</div>
-          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li></ul>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li><li><a href="../../wiki/objarrow/" class="">Object</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Mirrors</div>
@@ -98,19 +102,31 @@
         </div>
         <div class="cat">
           <div class="cat-name">Detectors</div>
-          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li></ul>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li><li><a href="../../wiki/generaldetector/" class="">General detector</a></li><li><a href="../../wiki/display/" class="">Detector screen</a></li><li><a href="../../wiki/eye/" class="">Human eye</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Modulators</div>
-          <div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="current">Phase modulator</a></li></ul>
+          <ul><li><a href="../../wiki/chopper/" class="">Chopper</a></li></ul><div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="current">Phase modulator</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Pulse Timing</div>
-          <ul><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+          <ul><li><a href="../../wiki/delayline/" class="">Mechanical delay line</a></li><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Nonlinear Optics</div>
+          <ul><li><a href="../../wiki/crystal/" class="">Crystal</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Specimens</div>
-          <ul><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+          <ul><li><a href="../../wiki/sample/" class="">Sample</a></li><li><a href="../../wiki/stage/" class="">Sample on piezo stage</a></li><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Custom</div>
+          <ul><li><a href="../../wiki/box/" class="">Custom box</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lab elements</div>
+          <ul><li><a href="../../wiki/gascell/" class="">Gas cell</a></li><li><a href="../../wiki/window/" class="">Optical window</a></li></ul>
         </div>
     </nav>
     <main class="wiki-article">
@@ -121,7 +137,7 @@
           <h1>Phase modulator</h1>
         </div>
       </div>
-      <p class="tagline">Writes a voltage-driven optical path across the whole beam without touching its polarization — invisible alone, and an amplitude modulator in one arm of an interferometer.</p>
+      <p class="tagline">Changes optical path without changing polarization, making a driven phase shift visible as intensity modulation when placed in a supported interferometer.</p>
       <a class="place-cta" href="../../sketch/?demo=phasemodulator">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -133,7 +149,7 @@
 
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-      
+
         <p>A phase modulator is the simplest electro-optic device there is: a Pockels
         cell with the input polarisation aligned to one of the crystal's optical axes, so
         the polarisation state is untouched and the voltage moves only the
@@ -190,7 +206,7 @@
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        
+
         <p>The modulator writes one optical path across the whole beam — uniform, unlike
         the <a href="../phaseplate/">phase object</a>, which varies its path across the
         aperture. It does not touch polarisation, intensity, or direction, so on its own it
@@ -233,19 +249,19 @@
         devices reach gigahertz, have no counterpart.</p></div>
       </div>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
         <a href="../../wiki/eom/"><svg viewBox="-30 -30 60 60" aria-hidden="true"><rect x="-22" y="-12" width="44" height="24" rx="3" fill="#b8c9a3" stroke="#66794a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#2f3a20">EOM</text></svg>EOM</a><a href="../../wiki/phaseplate/"><svg viewBox="-13 -13 26 26" aria-hidden="true"><rect x="-5" y="-6" width="10" height="12" rx="2" fill="#dbeafe" stroke="#5b7fb5" stroke-width="1.3" opacity="0.55"/><path d="M -4,-1 L 4,-1 L 4,1 L -4,1 Z" fill="#93b4de" stroke="#41618f" stroke-width="1.1" opacity="0.9"/><text x="0" y="4" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="700" fill="#33507a">φ</text></svg>Phase object</a><a href="../../wiki/bs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg>Beamsplitter</a><a href="../../wiki/camera/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Camera</a><a href="../../wiki/aom/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-13" width="40" height="26" rx="3" fill="#c9b458" stroke="#8a7a2e" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3616">AOM</text></svg>AOM</a>
       </div>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>References</h2>
       <ol class="reference-list">
         <li id="ref-1"><a href="https://www.rp-photonics.com/electro_optic_modulators.html" target="_blank" rel="noopener">“Electro-optic Modulators,” RP Photonics Encyclopedia (DOI 10.61835/7rv)</a></li><li id="ref-2"><a href="https://en.wikipedia.org/wiki/Electro-optic_modulator" target="_blank" rel="noopener">Electro-optic modulator — Wikipedia</a></li><li id="ref-3"><a href="https://www.accessengineeringlibrary.com/browse/handbook-of-optics-volume-v-atmospheric-optics-modulators-fiber-optics-x-ray-and-neutron-optics-third-edition" target="_blank" rel="noopener">T. A. Maldonado, “Electro-Optic Modulators,” ch. 13 in M. Bass (ed.), Handbook of Optics, Vol. 2, McGraw-Hill (1995)</a></li>
       </ol>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
         <li><a href="https://www.rp-photonics.com/phase_modulators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Phase Modulators</a></li><li><a href="https://www.rp-photonics.com/pound_drever_hall_technique.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Pound–Drever–Hall Technique</a></li>
