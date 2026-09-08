@@ -1,4 +1,4 @@
-// Structured content for the OpticalSetup wiki. One entry per flagship
+// Structured content for the OpticalSetup wiki. One entry per visible
 // component. `tools/build-wiki.mjs` turns this into static pages, pulling
 // the live icon and current defaults straight from the component registry
 // so the wiki can never silently drift from what the app actually ships.
@@ -43,6 +43,7 @@ export const wikiToolSubjects = [
 export const wikiEntries = [
   {
     type: 'cwlaser',
+    summary: "Emits a steady, collimated beam with a chosen wavelength and power, for tracing continuous illumination through an optical setup.",
     title: 'CW Laser',
     category: 'Sources',
     realWorld: {
@@ -186,6 +187,7 @@ export const wikiEntries = [
 
   {
     type: 'pulsedlaser',
+    summary: "Emits a train of short laser pulses with adjustable duration and repetition rate, for exploring bandwidth, dispersion, and arrival timing.",
     title: 'Pulsed Laser',
     category: 'Sources',
     realWorld: {
@@ -263,6 +265,7 @@ export const wikiEntries = [
 
   {
     type: 'pulsecompressor',
+    summary: "Adds positive or negative group-delay dispersion to a pulse, shortening it when the correction cancels dispersion accumulated earlier in the setup.",
     title: 'Pulse Compressor',
     category: 'Pulse Timing',
     realWorld: {
@@ -313,6 +316,7 @@ export const wikiEntries = [
 
   {
     type: 'sclaser',
+    summary: "Emits a pulsed beam across a configurable spectral band, for exploring wavelength separation, filtering, and broadband illumination in one setup.",
     title: 'Supercontinuum laser',
     category: 'Sources',
     realWorld: {
@@ -375,6 +379,7 @@ export const wikiEntries = [
 
   {
     type: 'pointsource',
+    summary: "Emits light in all directions with a monochromatic, broadband, or gas-discharge spectrum, for exploring collection and collimation by nearby optics.",
     title: 'Point source',
     category: 'Sources',
     realWorld: {
@@ -491,6 +496,7 @@ export const wikiEntries = [
 
   {
     type: 'mirror',
+    summary: "Reflects light from a flat surface with adjustable size and reflectivity, for folding beam paths and controlling the power sent onward.",
     title: 'Mirror',
     category: 'Mirrors',
     realWorld: {
@@ -529,6 +535,7 @@ export const wikiEntries = [
 
   {
     type: 'lens',
+    summary: "Focuses light with a positive thin-lens focal length, providing a simple paraxial model for collimation, image formation, and beam relays.",
     title: 'Thin convex lens',
     category: 'Lenses',
     realWorld: {
@@ -573,6 +580,7 @@ export const wikiEntries = [
 
   {
     type: 'metalens',
+    summary: "Focuses light through a flat phase-gradient model with adjustable efficiency, using either diffractive chromatic focusing or an idealized achromatic band.",
     title: 'Metalens',
     category: 'Lenses',
     realWorld: {
@@ -644,6 +652,7 @@ export const wikiEntries = [
 
   {
     type: 'lensc',
+    summary: "Spreads light with a negative thin-lens focal length, for exploring virtual foci, beam expansion, and the behavior of diverging optical systems.",
     title: 'Thin concave lens',
     category: 'Lenses',
     realWorld: {
@@ -685,6 +694,7 @@ export const wikiEntries = [
 
   {
     type: 'thicklens',
+    summary: "Refracts light through two separated spherical or flat glass surfaces, exposing the effects of thickness, spherical aberration, chromatic focus, and dispersion.",
     title: 'Thick spherical lens',
     category: 'Lenses',
     realWorld: {
@@ -774,6 +784,7 @@ export const wikiEntries = [
 
   {
     type: 'asphericlens',
+    summary: "Refracts light through conic and polynomial lens surfaces, so changing the surface shape directly changes ray intersections, focusing, and spherical aberration.",
     title: 'Aspheric lens',
     category: 'Lenses',
     realWorld: {
@@ -903,6 +914,7 @@ export const wikiEntries = [
 
   {
     type: 'lensgroup',
+    summary: "Traces an editable sequence of glass surfaces and air gaps, for exploring compound lenses, achromatic doublets, aperture stops, and material dispersion.",
     title: 'Lens group',
     category: 'Lenses',
     realWorld: {
@@ -994,6 +1006,7 @@ export const wikiEntries = [
 
   {
     type: 'telescope',
+    summary: "Combines two thin lenses separated by their focal lengths, for changing beam diameter and comparing the geometry of afocal optical relays.",
     title: 'Conjugated thin lens pair',
     category: 'Lenses',
     realWorld: {
@@ -1035,6 +1048,7 @@ export const wikiEntries = [
 
   {
     type: 'objective',
+    summary: "Focuses light through an equivalent lens and pupil model, with adjustable working distance, numerical aperture, immersion medium, and generic objective presets.",
     title: 'Objective',
     category: 'Lenses',
     realWorld: {
@@ -1265,6 +1279,7 @@ export const wikiEntries = [
 
   {
     type: 'fiber',
+    summary: "Guides light along a drawn path between connectorized ends, with configurable acceptance, propagation loss, group delay, and an output cone at each end.",
     title: 'Optical fiber',
     category: 'Fibers',
     realWorld: {
@@ -1388,6 +1403,7 @@ export const wikiEntries = [
   },
   {
     type: 'barefiber',
+    summary: "Guides light along a drawn path with exposed, flat-cleaved ends, using the same acceptance, loss, delay, and output controls as connectorized fiber.",
     title: 'Bare fiber',
     category: 'Fibers',
     realWorld: {
@@ -1516,6 +1532,7 @@ export const wikiEntries = [
   },
   {
     type: 'prism',
+    summary: "Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion and adding pulse dispersion according to the traced path.",
     title: 'Prism',
     category: 'Dispersive elements',
     realWorld: {
@@ -1558,6 +1575,7 @@ export const wikiEntries = [
 
   {
     type: 'grating',
+    summary: "Separates light into selected diffraction orders using the grating equation, with adjustable groove density, order efficiency, and a choice of spectral illumination.",
     title: 'Diffraction grating',
     category: 'Dispersive elements',
     realWorld: {
@@ -1599,6 +1617,7 @@ export const wikiEntries = [
 
   {
     type: 'freeglass',
+    summary: "Refracts light through an editable outline of straight edges and circular arcs, with a constant refractive index or wavelength-dependent catalogue glass.",
     title: 'Freeform glass',
     category: 'Dispersive elements',
     realWorld: {
@@ -1648,6 +1667,7 @@ export const wikiEntries = [
 
   {
     type: 'diffuser',
+    summary: "Spreads incident light into an adjustable angular fan, providing a qualitative model for comparing illumination coverage and the light collected downstream.",
     title: 'Diffuser',
     category: 'Dispersive elements',
     realWorld: {
@@ -1700,6 +1720,7 @@ export const wikiEntries = [
 
   {
     type: 'glassrod',
+    summary: "Refracts light through a glass rod with adjustable dimensions and material, including total internal reflection and pulse dispersion along the traced path.",
     title: 'Glass rod',
     category: 'Dispersive elements',
     realWorld: {
@@ -1758,6 +1779,7 @@ export const wikiEntries = [
 
   {
     type: 'bs',
+    summary: "Divides incident light into transmitted and reflected paths with an adjustable splitting ratio, for building beam pickoffs, interferometers, and parallel optical branches.",
     title: 'Beamsplitter',
     category: 'Filters & Splitters',
     realWorld: {
@@ -1791,6 +1813,7 @@ export const wikiEntries = [
 
   {
     type: 'polarizer',
+    summary: "Selects a linear polarization direction and attenuates light according to its input state, for exploring Malus’s law and polarization-dependent optical transmission.",
     title: 'Polarizer',
     category: 'Polarization',
     realWorld: {
@@ -1828,6 +1851,7 @@ export const wikiEntries = [
 
   {
     type: 'hwp',
+    summary: "Applies half-wave retardance around an adjustable fast axis, for rotating linear polarization and controlling how light divides at a polarizing beamsplitter.",
     title: 'Half-wave plate',
     category: 'Polarization',
     realWorld: {
@@ -1909,6 +1933,7 @@ export const wikiEntries = [
   },
   {
     type: 'qwp',
+    summary: "Applies quarter-wave retardance around an adjustable fast axis, for converting input polarization between linear, elliptical, and circular states in an optical setup.",
     title: 'Quarter-wave plate',
     category: 'Polarization',
     realWorld: {
@@ -1980,6 +2005,7 @@ export const wikiEntries = [
   },
   {
     type: 'pbs',
+    summary: "Separates orthogonal polarization components into transmitted and reflected paths, for examining polarization routing and power control with waveplates or electro-optic modulators.",
     title: 'Polarizing beamsplitter',
     category: 'Polarization',
     realWorld: {
@@ -2057,6 +2083,7 @@ export const wikiEntries = [
   },
   {
     type: 'isolator',
+    summary: "Passes light along its forward direction and blocks reverse propagation, providing an idealized way to isolate a source from returning optical paths.",
     title: 'Optical isolator',
     category: 'Polarization',
     realWorld: {
@@ -2127,6 +2154,7 @@ export const wikiEntries = [
   },
   {
     type: 'aom',
+    summary: "Deflects light into a first diffraction order with adjustable efficiency, optional zero order, and square, sine, or sawtooth modulation of the drive.",
     title: 'Acousto-optic modulator (AOM)',
     category: 'Modulators',
     realWorld: {
@@ -2212,6 +2240,7 @@ export const wikiEntries = [
 
   {
     type: 'eom',
+    summary: "Changes polarization through voltage-controlled retardance, held fixed or switched periodically, so a downstream analyzer can convert the change into intensity modulation.",
     title: 'Electro-optic modulator (EOM)',
     category: 'Modulators',
     realWorld: {
@@ -2332,6 +2361,7 @@ export const wikiEntries = [
 
   {
     type: 'phasemodulator',
+    summary: "Changes optical path without changing polarization, making a driven phase shift visible as intensity modulation when placed in a supported interferometer.",
     title: 'Phase modulator',
     category: 'Modulators',
     realWorld: {
@@ -2445,6 +2475,7 @@ export const wikiEntries = [
 
   {
     type: 'aod',
+    summary: "Steers diffracted light through a fixed or swept angle with wavelength-dependent deflection, for exploring angular scanning and optional zero-order beam routing.",
     title: 'Acousto-optic deflector (AOD)',
     category: 'Modulators',
     realWorld: {
@@ -2585,6 +2616,7 @@ export const wikiEntries = [
 
   {
     type: 'beamdump',
+    summary: "Absorbs light that reaches its active surface, terminating unwanted beams and providing a visible endpoint for discarded branches of an optical setup.",
     title: 'Beam dump',
     category: 'Beam Block',
     realWorld: {
@@ -2690,6 +2722,7 @@ export const wikiEntries = [
   },
   {
     type: 'slit',
+    summary: "Passes light through an adjustable aperture gap and blocks rays outside it, for exploring spatial selection, clipping, and transmission through narrow openings.",
     title: 'Slit',
     category: 'Beam Block',
     realWorld: {
@@ -2762,6 +2795,7 @@ export const wikiEntries = [
   },
   {
     type: 'blocker',
+    summary: "Stops rays inside an adjustable rectangular region while remaining hidden in exported figures, for controlling beam endpoints without adding visible hardware.",
     title: 'Invisible blocker',
     category: 'Beam Block',
     realWorld: {
@@ -2812,6 +2846,7 @@ export const wikiEntries = [
   },
   {
     type: 'slm',
+    summary: "Reflects light through configurable lens-array, grating, steering, and speckle functions, offering a qualitative model of spatial wavefront shaping and beam routing.",
     title: 'Spatial light modulator',
     category: 'Wavefront Shaping',
     realWorld: {
@@ -2945,6 +2980,7 @@ export const wikiEntries = [
   },
   {
     type: 'metasurface',
+    summary: "Transmits light through a patterned layer with lens-array, grating, steering, or speckle functions, representing a fixed optical pattern with optional zero-order light.",
     title: 'Metasurface',
     category: 'Wavefront Shaping',
     realWorld: {
@@ -3033,6 +3069,7 @@ export const wikiEntries = [
   },
   {
     type: 'dmd',
+    summary: "Routes light through a configurable binary micromirror pattern into ON and optional OFF orders, for exploring spatial switching and reflected beam selection.",
     title: 'Digital micromirror device',
     category: 'Wavefront Shaping',
     realWorld: {
@@ -3131,6 +3168,7 @@ export const wikiEntries = [
   },
   {
     type: 'dm',
+    summary: "Reflects light with adjustable tip, tilt, and paraxial defocus, providing a simple model for steering a beam and changing its wavefront curvature.",
     title: 'Deformable mirror',
     category: 'Wavefront Shaping',
     realWorld: {
@@ -3232,6 +3270,7 @@ export const wikiEntries = [
   },
   {
     type: 'aotf',
+    summary: "Selects spectral lines from incoming light, either simultaneously or sequentially, and routes the remaining spectrum toward a separately configurable deflected output.",
     title: 'Acousto-optic tunable filter',
     category: 'Modulators',
     realWorld: {
@@ -3354,6 +3393,7 @@ export const wikiEntries = [
   },
   {
     type: 'detector',
+    summary: "Measures the relative light signal reaching its active surface, for comparing transmitted power and attenuation along different paths in an optical setup.",
     title: 'Photodetector',
     category: 'Detectors',
     realWorld: {
@@ -3489,6 +3529,7 @@ export const wikiEntries = [
 
   {
     type: 'pmt',
+    summary: "Amplifies weak incident light with adjustable gain, dark floor, and saturation, for exploring qualitative signal detection in fluorescence and other low-light setups.",
     title: 'Photomultiplier (PMT)',
     category: 'Detectors',
     realWorld: {
@@ -3619,6 +3660,7 @@ export const wikiEntries = [
 
   {
     type: 'powermeter',
+    summary: "Reports optical power from the configured source watts and traced losses, for comparing how filters, splitters, and apertures affect power at the sensor.",
     title: 'Power meter',
     category: 'Detectors',
     realWorld: {
@@ -3714,6 +3756,7 @@ export const wikiEntries = [
 
   {
     type: 'wavefrontdetector',
+    summary: "Estimates beam convergence from ray angle versus position, reporting whether light is collimated, converging, or diverging and the corresponding full cone angle.",
     title: 'Wavefront detector',
     category: 'Detectors',
     realWorld: {
@@ -3867,6 +3910,7 @@ export const wikiEntries = [
 
   {
     type: 'camera',
+    summary: "Integrates light across a one-dimensional array of sensor pixels, showing intensity profiles, wavelength mixtures, and interference for supported coherent optical paths.",
     title: 'Camera',
     category: 'Detectors',
     realWorld: {
@@ -4063,6 +4107,7 @@ export const wikiEntries = [
   },
   {
     type: 'phaseplate',
+    summary: "Adds optical path across part of a beam without deflecting it, creating a spatial phase pattern that a supported interferometer can reveal.",
     title: 'Phase object',
     category: 'Specimens',
     realWorld: {
@@ -4204,6 +4249,7 @@ export const wikiEntries = [
   },
   {
     type: 'spectrometer',
+    summary: "Reports the wavelength range, centre wavelength, and bandwidth of arriving light, with a qualitative spectrum for comparing sources and spectral filtering.",
     title: 'Spectrometer',
     category: 'Detectors',
     realWorld: {
@@ -4335,6 +4381,7 @@ export const wikiEntries = [
 
   {
     type: 'polarimeter',
+    summary: "Reports the polarization of arriving light using normalized Stokes parameters and a visual state display, for comparing linear, elliptical, circular, and unpolarized illumination.",
     title: 'Polarimeter',
     category: 'Detectors',
     realWorld: {
@@ -4477,6 +4524,7 @@ export const wikiEntries = [
   },
   {
     type: 'autocorrelator',
+    summary: "Calculates an intensity autocorrelation and infers pulse duration using a selected pulse-shape assumption, for examining temporal broadening and the limits of duration estimates.",
     title: 'Autocorrelator',
     category: 'Detectors',
     realWorld: {
@@ -4829,6 +4877,7 @@ export const wikiEntries = [
 
   {
     type: 'dichroic',
+    summary: "Splits light by wavelength around an adjustable cutoff, transmitting one spectral region and reflecting another for excitation routing and emission collection.",
     title: 'Dichroic mirror',
     category: 'Filters & Splitters',
     realWorld: {
@@ -4865,6 +4914,7 @@ export const wikiEntries = [
 
   {
     type: 'filter',
+    summary: "Transmits a selected wavelength band or attenuates light as a neutral-density filter, for isolating spectral signals and controlling power along a beam path.",
     title: 'Filter',
     category: 'Filters & Splitters',
     realWorld: {
@@ -4921,6 +4971,7 @@ export const wikiEntries = [
 
   {
     type: 'etalon',
+    summary: "Uses repeated reflections between closely spaced coatings to produce periodic transmission resonances, with angle tuning and configurable spectral resolution and free spectral range.",
     title: 'Etalon (Fabry–Pérot)',
     category: 'Filters & Splitters',
     realWorld: {
@@ -4984,6 +5035,7 @@ export const wikiEntries = [
 
   {
     type: 'vipa',
+    summary: "Produces spatially offset leakage beams through repeated reflections inside a tilted plate, providing a geometric model of the walk-off used in VIPA dispersers.",
     title: 'VIPA (Virtually Imaged Phased Array)',
     category: 'Filters & Splitters',
     realWorld: {
@@ -5046,6 +5098,7 @@ export const wikiEntries = [
 
   {
     type: 'cmirrorx',
+    summary: "Spreads reflected light from a convex spherical surface, with curvature-dependent divergence and the spherical aberration that follows from the actual mirror geometry.",
     title: 'Convex mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5084,6 +5137,7 @@ export const wikiEntries = [
 
   {
     type: 'cmirror',
+    summary: "Focuses reflected light from a concave spherical surface, showing how marginal rays cross ahead of the paraxial focus because of spherical aberration.",
     title: 'Concave mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5137,6 +5191,7 @@ export const wikiEntries = [
 
   {
     type: 'oap',
+    summary: "Reflects light from an exact parabolic surface, collimating a source at its focus and illustrating the difference between parabolic and spherical mirrors.",
     title: 'Parabolic mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5183,6 +5238,7 @@ export const wikiEntries = [
 
   {
     type: 'galvo',
+    summary: "Steers reflected light with a fixed or animated mechanical mirror angle, for exploring scan geometry with a slowed preview at high drive frequencies.",
     title: 'Galvo mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5228,6 +5284,7 @@ export const wikiEntries = [
 
   {
     type: 'retroreflector',
+    summary: "Returns light antiparallel through a right-angle mirror pair, with optional translation that lengthens the round-trip optical path for mechanical delay demonstrations.",
     title: 'Retroreflector',
     category: 'Mirrors',
     realWorld: {
@@ -5291,5 +5348,153 @@ export const wikiEntries = [
     resources: [
       { label: 'RP Photonics Encyclopedia — Retroreflectors', url: 'https://www.rp-photonics.com/retroreflectors.html' },
     ],
+  },
+  {
+    type: 'eye', title: 'Human eye', category: 'Detectors',
+    summary: 'Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.',
+    realWorld: { html: `<p>The eye forms an image on the retina using the refractive power of the cornea and crystalline lens. The iris controls the pupil opening, while accommodation changes the lens shape to bring different object distances into focus.</p>` },
+    inOpticalSetup: {
+      html: `<p>The pupil clips incoming rays, an equivalent thin lens bends the accepted light, and a retinal detector records the resulting signal. Adjust <em>Eye diameter</em>, <em>Pupil diameter</em>, and <em>Lens focal length</em> to compare the illuminated spot. A linked detector screen makes the retinal reading visible beside the eye.</p><p>In the example, a parallel beam enters the pupil. Change the focal length to move the best focus relative to the retinal plane, or narrow the pupil to admit less of the beam.</p>`,
+      limitations: `<p>This is a geometric teaching model, not an anatomical eye prescription. It does not predict visual acuity, diffraction, accommodation dynamics, retinal physiology, or laser exposure limits.</p>`,
+    }, related: ['lens', 'camera', 'display'],
+  },
+  {
+    type: 'generaldetector', title: 'General detector', category: 'Detectors',
+    summary: 'Collects light at one sensor face and reports multiple beam properties, combining power, spectrum, polarization, wavefront, and pulse information in one instrument.',
+    realWorld: { html: `<p>A laboratory normally measures optical power, spectrum, polarization, beam shape, and pulse timing with different instruments. Each instrument has its own acceptance, resolution, and calibration; no single generic detector replaces all of them.</p>` },
+    inOpticalSetup: {
+      html: `<p>The general detector combines the workbench's supported readings at one active face. Point the face toward the incoming beam and attach a detector screen to inspect the available views. The example uses a pulsed source so both spectral and temporal properties are present.</p><p>Reduce the active height or move the detector off-axis to see how clipping changes the collected signal. Power in watts depends on the source power specified in the scene.</p>`,
+      limitations: `<p>This is a convenient composite diagnostic, not a model of one physical instrument. Its wavefront and spectral readings inherit the ray tracer's approximations; it does not add a calibrated noise floor or independent laboratory measurements.</p>`,
+    }, related: ['detector', 'powermeter', 'spectrometer', 'polarimeter', 'display'],
+  },
+  {
+    type: 'display', title: 'Detector screen', category: 'Detectors',
+    summary: 'Shows the live readings of a linked detector on the canvas, with sensor-specific views and a data cable that never changes optical propagation.',
+    realWorld: { html: `<p>A detector's readout electronics turn its electrical output into numbers or plots. A display shows the information measured by the connected instrument; a cable to the display is a signal connection, not another optical path.</p>` },
+    inOpticalSetup: {
+      html: `<p>Select <em>Sensor input</em> to link the screen to a detector. Available views follow that sensor's capabilities, and the display adapts its information density to its drawn size. The cable carries data only: moving the screen or routing its cable across a beam cannot attenuate or deflect the light.</p><p>The example links a screen to a power meter behind a neutral-density filter. Change the filter transmission to change the reading, then move the screen to see that its position has no optical effect.</p>`,
+      limitations: `<p>The screen does not measure light itself or add properties absent from the linked sensor. It models no electronics noise, cable delay, or acquisition hardware.</p>`,
+    }, related: ['generaldetector', 'powermeter', 'camera', 'probe'],
+  },
+  {
+    type: 'delayline', title: 'Mechanical delay line', category: 'Pulse Timing',
+    summary: 'Adds an adjustable folded optical path while preserving the outgoing beam axis, for comparing pulse arrival times at fixed or periodically swept delays.',
+    realWorld: {
+      html: `<p>A mechanical optical delay line changes the distance traveled by light using a translation stage and folding mirrors or a retroreflector. Time-resolved experiments use this change to vary the arrival of one pulse relative to another. The path multiplier depends on the number of passes through the moving section${cite(1)}.</p>`,
+      formulas: [{ tex: String.raw`\Delta t = \frac{\Delta L}{c}`, caption: 'For an extra optical path ΔL in vacuum. A simple double-pass stage moving by x adds ΔL = 2x.' }],
+    },
+    inOpticalSetup: {
+      html: `<p><em>Extra optical path</em> specifies the added path directly, in millimetres. Do not multiply it by two again. Static mode holds one value; periodic sweep moves between the configured path limits. The outgoing beam keeps its axis while downstream pulse timing includes the added path.</p><p>The example adds 100 mm, corresponding to about 334 ps in vacuum. Compare the beam probes before and after the element, then change the path to see the timing offset change.</p>`,
+      limitations: `<p>The folded path is represented by a compact element, not individually traced moving mirrors. It does not calculate carriage vibration, alignment drift, or stage acceleration. It delays pulses; it does not compensate their dispersion.</p>`,
+    }, citations: [{ label: 'Newport — Selecting delay lines for optical time-resolved measurements', url: 'https://api.p1.mks.com/medias/sys_master/images/images/hda/h0d/8797261398046/Selecting-delay-lines-for-optical-measurements.pdf' }],
+    related: ['retroreflector', 'pulsecompressor', 'pulsedlaser', 'autocorrelator'],
+  },
+  {
+    type: 'chopper', title: 'Chopper', category: 'Modulators',
+    summary: 'Periodically interrupts light with an adjustable frequency and duty cycle, showing gated pulse trains and a schematic chopped pattern for continuous beams.',
+    realWorld: { html: `<p>An optical chopper uses a rotating slotted wheel to interrupt a beam. Chopping frequency describes how often the beam is interrupted, while duty cycle describes the fraction of each cycle that remains open. Commercial systems offer different wheel patterns and frequency ranges${cite(1)}.</p>` },
+    inOpticalSetup: {
+      html: `<p>Enable <em>Modulate on/off</em>, set <em>Chop frequency</em> in hertz, and adjust the on fraction and gate offset. Pulsed illumination is gated in time. CW light is drawn in visible chunks, while its detector reading uses duty-averaged power.</p><p>The example sends CW light through a 50% gate to a detector. Lower the on fraction to shorten the drawn illuminated sections and reduce the average reading. Disable modulation to restore uninterrupted transmission.</p>`,
+      limitations: `<p>The chunk spacing is schematic, not the physical distance traveled between openings. Blade-edge transit, motor jitter, and diffraction are omitted; the drawn wheel is not a specification for a particular commercial chopper.</p>`,
+    }, citations: [{ label: 'Thorlabs — Optical Chopper System and Chopper Wheels', url: 'https://www.thorlabs.com/optical-chopper-system-and-chopper-wheels' }], related: ['aom', 'pulsedlaser', 'detector', 'probe'],
+  },
+  {
+    type: 'crystal', title: 'Crystal', category: 'Nonlinear Optics',
+    summary: 'Converts a chosen fraction of incident light into harmonic, parametric, supercontinuum, or custom output, with an option to retain the residual pump.',
+    realWorld: { html: `<p>Nonlinear optical crystals can generate light at frequencies different from the input. For example, second-harmonic generation doubles frequency and halves vacuum wavelength. Efficient conversion depends on excitation intensity and phase matching, rather than a freely chosen conversion percentage${cite(1)}.</p>` },
+    inOpticalSetup: {
+      html: `<p>Choose a conversion mode before expecting an output: the default <em>None</em> passes light unchanged. SHG and THG set the wavelength to one half or one third of the input. Custom output uses the entered wavelength; supercontinuum creates a fixed illustrative band. Conversion efficiency sets the converted ray weight, and residual-pump transmission retains the unconverted branch.</p><p>OPO mode uses the configured pump and signal wavelengths to calculate a positive idler wavelength when possible, assigning equal converted weights to signal and idler. Use a signal wavelength longer than the pump. The example doubles 1064 nm to 532 nm and separates it from the remaining pump with a dichroic.</p>`,
+      limitations: `<p>Conversion is a wavelength-and-power proxy. It does not solve phase matching, nonlinear propagation, gain, threshold, cavity oscillation, or crystal dispersion. OPO branch weights are schematic, not a photon-flux calculation.</p>`,
+    }, citations: [{ label: 'Thorlabs — BBO Crystals for Second Harmonic Generation', url: 'https://www.thorlabs.com/bbo-crystals-for-second-harmonic-generation' }], related: ['sample', 'dichroic', 'filter', 'pulsedlaser'],
+  },
+  {
+    type: 'sample', title: 'Sample', category: 'Specimens',
+    summary: 'Represents an illuminated specimen with configurable transmission and signal channels, for exploring excitation delivery, fluorescence collection, and qualitative nonlinear optical emission.',
+    realWorld: { html: `<p>A specimen can transmit or absorb excitation light and generate an optical signal. Fluorescence and coherent nonlinear signals arise through different processes; nonlinear microscopy includes two-photon fluorescence, second-harmonic generation, and coherent anti-Stokes Raman scattering${cite(1)}.</p>` },
+    inOpticalSetup: {
+      html: `<p>Orient the sample across the beam: at zero rotation its long axis is horizontal, so a horizontal incoming beam needs a 90° sample rotation. Choose the specimen mode, excitation transmission, and desired channels. The model supports stacked fluorescence, SHG, THG, SFG, and CARS signals; SFG and CARS require two different excitation wavelengths meeting at the same spot.</p><p>The example produces a fluorescent signal under 488 nm illumination. Adjust its emission and transmission, then use a filter and detector to distinguish emitted light from the excitation. Parametric channels use a forward lobe with an optional weaker backward contribution.</p>`,
+      limitations: `<p>Signals are bounded qualitative proxies, not measured cross-sections or calibrated conversion efficiencies. The model does not reconstruct a three-dimensional specimen or predict photochemistry, bleaching, or a diffraction-limited point-spread function.</p>`,
+    }, citations: [{ label: 'Boston University Biomicroscopy Lab — Nonlinear microscopy', url: 'https://sites.bu.edu/biomicroscopy/research/nonlinear/' }], related: ['stage', 'crystal', 'objective', 'filter', 'pmt'],
+  },
+  {
+    type: 'stage', title: 'Sample on piezo stage', category: 'Specimens',
+    summary: 'Moves a mounted sample through a static position, lateral scan, depth scan, or raster, with optional pulsed writing marks for photocurable resin.',
+    realWorld: { html: `<p>A sample stage translates the specimen relative to the illumination and collection optics. Lateral motion samples different positions across a specimen; axial motion changes its position along the optical axis. A physical stage has finite travel, response time, and positioning accuracy.</p>` },
+    inOpticalSetup: {
+      html: `<p>The stage combines a mounting aperture with the sample's optical modes. Select a static position, long-axis scan, beam-axis depth scan, or synchronized raster, then set the travel and frequency. At 90° rotation, a horizontal beam crosses the sample and a long-axis scan moves it vertically on the canvas.</p><p>The example moves an illuminated sample laterally. For a writing demonstration, choose photocurable resin, enable voxel preview, and use a pulsed source. Marks record traced pulse arrivals in the moving sample.</p>`,
+      limitations: `<p>The workbench shows a two-dimensional projection. Resin marks are a visual arrival history, not a prediction of dose, polymerization threshold, cure kinetics, voxel size, or three-dimensional fabrication. Piezo hysteresis and mechanical settling are not simulated.</p>`,
+    }, related: ['sample', 'objective', 'pulsedlaser', 'galvo'],
+  },
+  {
+    type: 'objarrow', title: 'Object', category: 'Sources',
+    summary: 'Places an arrow, letter, or tree as an imaging object, with an optional ray fan and computed paraxial image for lens demonstrations.',
+    realWorld: { html: `<p>Ray diagrams represent an extended object with a recognizable shape so that image position, orientation, and magnification can be compared. A converging lens can form a real inverted image or a virtual upright image depending on object distance.</p>` },
+    inOpticalSetup: {
+      html: `<p>Choose an arrow, letter F, or tree, set its height, and enable the image marker. The optional ray fan originates at the object's on-axis anchor; it is not a full collection of rays from every point of the shape. The paraxial image marker is calculated separately.</p><p>The example places an object 200 mm before a 100 mm lens. Its paraxial image appears 200 mm beyond the lens with equal size and inverted orientation. Move the lens to explore magnification and virtual images.</p>`,
+      limitations: `<p>The image marker does not account for downstream clipping or represent a rendered camera image. The model does not calculate diffraction, image texture, or radiometric brightness across the object.</p>`,
+    }, related: ['lens', 'lensc', 'telescope', 'camera'],
+  },
+  {
+    type: 'probe', title: 'Beam probe', category: 'Annotations',
+    summary: 'Reads the nearby traced beam without intercepting it, showing a selected spectrum, wavelength, power, polarization, pulse duration, or intensity-over-time view.',
+    realWorld: { html: `<p>Laboratory beam diagnostics normally require a sensor or pickoff that interacts with the light. A non-intercepting label in a ray diagram instead communicates a property already known from the model; it is not a physical measuring instrument.</p>` },
+    inOpticalSetup: {
+      html: `<p>Place the crosshair near a traced beam and select the property to show. Spectrum and time views provide range controls; pulse duration requires suitable pulsed light. The probe reads the nearest traced beam rather than integrating all light over a detector face.</p><p>The example puts a spectrum probe between a broadband source and a detector. Move it away from the beam, then back, to see its dependence on the selected location. It never absorbs light or creates a new optical branch.</p>`,
+      limitations: `<p>This is a diagnostic annotation with direct access to traced properties. It does not represent a laboratory probe's aperture, calibration, noise, or disturbance of the beam.</p>`,
+    }, related: ['display', 'spectrometer', 'polarimeter', 'detector'],
+  },
+  {
+    type: 'figureframe', title: 'Figure frame', category: 'Annotations',
+    summary: 'Defines a rectangular export crop directly on the canvas, keeping a chosen composition while hiding the frame border and handles from the final figure.',
+    realWorld: { html: `<p>A figure's crop determines which parts of a setup appear in a publication or presentation. It is a composition choice, separate from any optical aperture or physical enclosure shown in the drawing.</p>` },
+    inOpticalSetup: {
+      html: `<p>Place a frame around the desired composition and resize its edges or corners. The frame controls the export bounds, while its own border and editing handles remain canvas-only. Leave room inside the crop for component names, probe readouts, and any beam endpoints you want to show.</p><p>The example frames a small lens bench. Resize the frame and export the scene to compare the crop. Light continues to propagate beyond the frame on the workbench.</p>`,
+      limitations: `<p>The frame never clips traced rays or acts as an optical stop. Content outside its bounds can be omitted from the exported picture while still contributing to the simulation.</p>`,
+    }, related: ['highlight', 'textlabel', 'blocker'],
+  },
+  {
+    type: 'highlight', title: 'Highlight', category: 'Annotations',
+    summary: 'Adds a colored background region behind the optical setup, for grouping components or calling attention to a section without changing any traced rays.',
+    realWorld: { html: `<p>Shaded regions in optical diagrams can identify a subsystem, distinguish experimental stages, or mark an area of interest. Such visual grouping has no physical optical meaning unless the caption explicitly assigns one.</p>` },
+    inOpticalSetup: {
+      html: `<p>Resize and position the highlight behind the components you want to group, then choose its appearance. It remains behind both rays and elements, so the beam path and hardware stay visible. Use a text label to explain what the shaded region means.</p><p>The example marks the lens area on a simple bench. Move or resize the highlight across the incoming and outgoing beam to confirm that only the composition changes.</p>`,
+      limitations: `<p>A highlight is diagram-only. Its color and shape do not represent refractive index, absorption, an aperture, or a boundary between optical media.</p>`,
+    }, related: ['textlabel', 'figureframe', 'box'],
+  },
+  {
+    type: 'box', title: 'Custom box', category: 'Custom',
+    summary: 'Draws a labeled rectangular enclosure with explicit beam-blocking or pass-through behavior, for representing equipment whose internal optics are outside the current setup.',
+    realWorld: { html: `<p>An enclosure in an optical diagram can stand for a housing or a device whose internal optical train is not shown. The drawing alone does not specify whether the real device transmits, absorbs, focuses, or converts light.</p>` },
+    inOpticalSetup: {
+      html: `<p>Set the label, width, height, and fill, then choose the beam behavior. <em>Blocks beam</em>, the default, absorbs rays at the rectangular boundary. <em>Beam passes through</em> adds no optical interaction.</p><p>The example places a blocking box in a laser path. Switch it to pass-through and the detector receives light again. If the box is meant to focus, split, or convert light, use the corresponding native optical elements to represent that behavior.</p>`,
+      limitations: `<p>The enclosure does not simulate hidden internal components. Pass-through mode adds no optical delay or material properties; blocking mode does not model thermal loading or scattered light.</p>`,
+    }, related: ['beamdump', 'blocker', 'textlabel', 'highlight'],
+  },
+  {
+    type: 'textlabel', title: 'Text label', category: 'Annotations',
+    summary: 'Adds formatted notes directly to the canvas using Markdown, with headings, lists, emphasis, code, and clickable web or DOI links for supporting references.',
+    realWorld: { html: `<p>Labels explain component roles, operating conditions, and the assumptions behind a diagram. Keeping interpretation beside the relevant hardware helps readers distinguish measured parameters from illustrative choices.</p>` },
+    inOpticalSetup: {
+      html: `<p>Place a text label and double-click it, press Enter when selected, or use <em>Edit text</em> to edit on the canvas. Markdown supports headings, lists, emphasis, and code; web and DOI addresses become clickable links. The font-size and color controls set its base appearance.</p><p>The example demonstrates several formatting styles. Keep a short explanation beside the setup and use a link for longer background material. Text grows from its left anchor, while resizing changes the base font size.</p>`,
+      limitations: `<p>Text is diagram-only and never changes traced rays or scene parameters. Writing a wavelength, efficiency, or model claim in a label does not configure the corresponding optical element.</p>`,
+    }, related: ['highlight', 'figureframe', 'probe'],
+  },
+  {
+    type: 'gascell', title: 'Gas cell', category: 'Lab elements',
+    summary: 'Draws a gas-cell housing with optional windows, extension tube, and gas port, providing laboratory context without adding absorption, refraction, or gas dynamics.',
+    realWorld: { html: `<p>A gas cell contains a gas along an optical path. Its physical behavior depends on the gas, pressure, path length, and windows. A housing may also provide connections for gas flow or for a fiber passing through the cell.</p>` },
+    inOpticalSetup: {
+      html: `<p>The gas cell is deliberately diagram-only. Set its dimensions, optional windows, extension side, gas-port appearance, and transparency to show the hardware context. The transparency control changes the drawing, not optical transmission.</p><p>The example sends a beam through the housing. Toggle its windows or change its appearance and the traced path stays the same. A fiber drawn through a gas cell remains an independent fiber path; the housing does not bind to it or change its propagation settings.</p>`,
+      limitations: `<p>No pressure, gas absorption, nonlinear response, window refraction, or flow is calculated. The housing must not be interpreted as a gas-filled-fiber or spectroscopy solver.</p>`,
+    }, related: ['window', 'barefiber', 'freeglass', 'textlabel'],
+  },
+  {
+    type: 'window', title: 'Optical window', category: 'Lab elements',
+    summary: 'Draws an optical window as laboratory hardware, with adjustable appearance and dimensions while leaving all beam directions, powers, and arrival times unchanged.',
+    realWorld: { html: `<p>An optical window separates environments while admitting light. A real window can introduce refraction, reflection, absorption, and dispersion depending on its material, thickness, coatings, and incidence angle.</p>` },
+    inOpticalSetup: {
+      html: `<p>This window is a diagram-only symbol. Adjust its size, orientation, and transparency to place it in the drawing. It never bends, blocks, or absorbs a ray, and it adds no optical path or pulse dispersion.</p><p>The example shows uninterrupted light through the symbol. Rotate it to confirm that the beam stays unchanged. To study the optical effects of a glass plate, use a rectangular freeform-glass boundary with a suitable material instead.</p>`,
+      limitations: `<p>The visible symbol is not a traced glass plate. Its transparency is a drawing setting, not a transmission coefficient; it does not model Fresnel losses, coatings, or a change of medium.</p>`,
+    }, related: ['gascell', 'freeglass', 'glassrod'],
   },
 ];

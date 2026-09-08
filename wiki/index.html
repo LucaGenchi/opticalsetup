@@ -61,297 +61,381 @@
         <p>Real-world physics and formulas for each component, paired with exactly how OpticalSetup models it — including where the simulation simplifies reality. Open any page straight into the live canvas.</p>
       </div>
       <div class="hub-groups">
-        
+
+        <div class="hub-group" id="annotations">
+          <h2>Annotations</h2>
+
+
+            <div class="hub-grid">
+              <a class="hub-card" href="../wiki/figureframe/">
+                <span class="ic"><svg viewBox="-166 -166 332 332" aria-hidden="true"><rect x="-160" y="-100" width="320" height="200" fill="none" stroke="#7d8ca3" stroke-width="1.2" stroke-dasharray="7 5"/><path d="M -160,-88 V -100 H -148 M 148,-100 H 160 V -88 M 160,88 V 100 H 148 M -148,100 H -160 V 88" fill="none" stroke="#50637d" stroke-width="2"/><text x="-153" y="-85" font-size="9" font-weight="700" letter-spacing="0.7" fill="#64748b">FIGURE</text></svg></span>
+                <span class="info"><span class="name">Figure frame</span><span class="desc">Defines a rectangular export crop directly on the canvas, keeping a chosen composition while hiding the frame border and handles from the final figure.</span></span>
+              </a><a class="hub-card" href="../wiki/probe/">
+                <span class="ic"><svg viewBox="-24 -24 48 48" aria-hidden="true"><circle r="4.5" fill="none" stroke="#e07020" stroke-width="1.6"/><line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/><line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/><line x1="0" y1="-9" x2="0" y2="-22" stroke="#e07020" stroke-width="1"/><g transform="rotate(0) translate(-42.00,-58.00) scale(1.5)"><rect x="0" y="0" width="56" height="24" rx="4" fill="#fff" stroke="#c9ced6"/><text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text></g></svg></span>
+                <span class="info"><span class="name">Beam probe</span><span class="desc">Reads the nearby traced beam without intercepting it, showing a selected spectrum, wavelength, power, polarization, pulse duration, or intensity-over-time view.</span></span>
+              </a><a class="hub-card" href="../wiki/highlight/">
+                <span class="ic"><svg viewBox="-66 -66 132 132" aria-hidden="true"><rect x="-60" y="-40" width="120" height="80" fill="#fde047" fill-opacity="0.35"/></svg></span>
+                <span class="info"><span class="name">Highlight</span><span class="desc">Adds a colored background region behind the optical setup, for grouping components or calling attention to a section without changing any traced rays.</span></span>
+              </a><a class="hub-card" href="../wiki/textlabel/">
+                <span class="ic"><svg viewBox="-24.270000000000003 -24.270000000000003 48.540000000000006 48.540000000000006" aria-hidden="true"><g class="markdown-label" data-markdown="true"><text x="0" y="3.64" text-anchor="start" font-size="14.00" fill="#333333" xml:space="preserve"><tspan>Label</tspan></text></g></svg></span>
+                <span class="info"><span class="name">Text label</span><span class="desc">Adds formatted notes directly to the canvas using Markdown, with headings, lists, emphasis, code, and clickable web or DOI links for supporting references.</span></span>
+              </a>
+            </div>
+        </div>
         <div class="hub-group" id="sources">
           <h2>Sources</h2>
-          
-            
+
+
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/cwlaser/">
                 <span class="ic"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg></span>
-                <span class="info"><span class="name">CW Laser</span><span class="desc">Emits a steady monochromatic collimated beam at one wavelength.</span></span>
+                <span class="info"><span class="name">CW Laser</span><span class="desc">Emits a steady, collimated beam with a chosen wavelength and power, for tracing continuous illumination through an optical setup.</span></span>
               </a><a class="hub-card" href="../wiki/pulsedlaser/">
                 <span class="ic"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg></span>
-                <span class="info"><span class="name">Pulsed Laser</span><span class="desc">Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.</span></span>
+                <span class="info"><span class="name">Pulsed Laser</span><span class="desc">Emits a train of short laser pulses with adjustable duration and repetition rate, for exploring bandwidth, dispersion, and arrival timing.</span></span>
               </a><a class="hub-card" href="../wiki/sclaser/">
                 <span class="ic"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#24233a" stroke="#171629" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.1" fill="#fff">SC LASER</text><g stroke="#c4b5fd" stroke-width="1.1"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="1" height="9" fill="#7c3aed"/><rect x="46.85" y="-4.5" width="1" height="9" fill="#2563eb"/><rect x="47.7" y="-4.5" width="1" height="9" fill="#10b981"/><rect x="48.55" y="-4.5" width="1" height="9" fill="#eab308"/><rect x="49.4" y="-4.5" width="1" height="9" fill="#f97316"/><rect x="50.25" y="-4.5" width="1" height="9" fill="#ef4444"/></svg></span>
-                <span class="info"><span class="name">Supercontinuum laser</span><span class="desc">Emits a configurable pulsed supercontinuum band as a collimated beam.</span></span>
+                <span class="info"><span class="name">Supercontinuum laser</span><span class="desc">Emits a pulsed beam across a configurable spectral band, for exploring wavelength separation, filtering, and broadband illumination in one setup.</span></span>
               </a><a class="hub-card" href="../wiki/pointsource/">
                 <span class="ic"><svg viewBox="-21 -21 42 42" aria-hidden="true"><g transform="scale(1)"><circle r="4.5" fill="#65ff00" stroke="#333" stroke-width="1"/><line x1="6.0" y1="0.0" x2="11.0" y2="0.0" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="4.2" y1="4.2" x2="7.8" y2="7.8" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="0.0" y1="6.0" x2="0.0" y2="11.0" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="-4.2" y1="4.2" x2="-7.8" y2="7.8" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="-6.0" y1="0.0" x2="-11.0" y2="0.0" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="-4.2" y1="-4.2" x2="-7.8" y2="-7.8" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="-0.0" y1="-6.0" x2="-0.0" y2="-11.0" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/><line x1="4.2" y1="-4.2" x2="7.8" y2="-7.8" stroke="#65ff00" stroke-width="1.6" stroke-linecap="round"/></g></svg></span>
-                <span class="info"><span class="name">Point source</span><span class="desc">Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.</span></span>
+                <span class="info"><span class="name">Point source</span><span class="desc">Emits light in all directions with a monochromatic, broadband, or gas-discharge spectrum, for exploring collection and collimation by nearby optics.</span></span>
+              </a><a class="hub-card" href="../wiki/objarrow/">
+                <span class="ic"><svg viewBox="-33 -33 66 66" aria-hidden="true"><line x1="-7" y1="0" x2="7" y2="0" stroke="#888" stroke-width="1.2"/><polyline points="0.0,11.0 0.0,-4.8" fill="none" stroke="#ff7700" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polygon points="0.0,-11.0 -3.7,-3.5 3.7,-3.5" fill="#ff7700"/></svg></span>
+                <span class="info"><span class="name">Object</span><span class="desc">Places an arrow, letter, or tree as an imaging object, with an optional ray fan and computed paraxial image for lens demonstrations.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="mirrors">
           <h2>Mirrors</h2>
-          
-            
+
+
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/mirror/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg></span>
-                <span class="info"><span class="name">Mirror</span><span class="desc">Reflects rays with configurable size and reflectivity.</span></span>
+                <span class="info"><span class="name">Mirror</span><span class="desc">Reflects light from a flat surface with adjustable size and reflectivity, for folding beam paths and controlling the power sent onward.</span></span>
               </a><a class="hub-card" href="../wiki/cmirrorx/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0.40,-12.70 L 0.34,-11.64 L 0.28,-10.58 L 0.23,-9.53 L 0.18,-8.47 L 0.14,-7.41 L 0.10,-6.35 L 0.07,-5.29 L 0.04,-4.23 L 0.03,-3.17 L 0.01,-2.12 L 0.00,-1.06 L 0.00,-0.00 L 0.00,1.06 L 0.01,2.12 L 0.03,3.18 L 0.04,4.23 L 0.07,5.29 L 0.10,6.35 L 0.14,7.41 L 0.18,8.47 L 0.23,9.52 L 0.28,10.58 L 0.34,11.64 L 0.40,12.70" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg></span>
-                <span class="info"><span class="name">Convex mirror</span><span class="desc">Diverges reflected rays off a real spherical surface of radius 2f, so it carries the spherical aberration a real one does.</span></span>
+                <span class="info"><span class="name">Convex mirror</span><span class="desc">Spreads reflected light from a convex spherical surface, with curvature-dependent divergence and the spherical aberration that follows from the actual mirror geometry.</span></span>
               </a><a class="hub-card" href="../wiki/cmirror/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -0.40,-12.70 L -0.34,-11.64 L -0.28,-10.58 L -0.23,-9.53 L -0.18,-8.47 L -0.14,-7.41 L -0.10,-6.35 L -0.07,-5.29 L -0.04,-4.23 L -0.03,-3.17 L -0.01,-2.12 L -0.00,-1.06 L 0.00,-0.00 L -0.00,1.06 L -0.01,2.12 L -0.03,3.18 L -0.04,4.23 L -0.07,5.29 L -0.10,6.35 L -0.14,7.41 L -0.18,8.47 L -0.23,9.52 L -0.28,10.58 L -0.34,11.64 L -0.40,12.70" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg></span>
-                <span class="info"><span class="name">Concave mirror</span><span class="desc">Focuses reflected rays off a real spherical surface of radius 2f — marginal rays cross ahead of the paraxial focus, which is the aberration a parabolic mirror exists to avoid.</span></span>
+                <span class="info"><span class="name">Concave mirror</span><span class="desc">Focuses reflected light from a concave spherical surface, showing how marginal rays cross ahead of the paraxial focus because of spherical aberration.</span></span>
               </a><a class="hub-card" href="../wiki/oap/">
                 <span class="ic"><svg viewBox="-49 -49 98 98" aria-hidden="true"><path d="M -8.0,-40.0 L -6.8,-36.9 L -5.7,-33.8 L -4.7,-30.8 L -3.8,-27.7 L -3.0,-24.6 L -2.3,-21.5 L -1.7,-18.5 L -1.2,-15.4 L -0.8,-12.3 L -0.4,-9.2 L -0.2,-6.2 L -0.0,-3.1 L 0.0,0.0 L -0.0,3.1 L -0.2,6.2 L -0.4,9.2 L -0.8,12.3 L -1.2,15.4 L -1.7,18.5 L -2.3,21.5 L -3.0,24.6 L -3.8,27.7 L -4.7,30.8 L -5.7,33.8 L -6.8,36.9 L -8.0,40.0" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/><line x1="-5.0" y1="-36.0" x2="0.5" y2="-31.0" stroke="#888" stroke-width="1"/><line x1="-2.4" y1="-28.0" x2="3.1" y2="-23.0" stroke="#888" stroke-width="1"/><line x1="-0.5" y1="-20.0" x2="5.0" y2="-15.0" stroke="#888" stroke-width="1"/><line x1="0.8" y1="-12.0" x2="6.3" y2="-7.0" stroke="#888" stroke-width="1"/><line x1="1.4" y1="-4.0" x2="6.9" y2="1.0" stroke="#888" stroke-width="1"/><line x1="1.4" y1="4.0" x2="6.9" y2="9.0" stroke="#888" stroke-width="1"/><line x1="0.8" y1="12.0" x2="6.3" y2="17.0" stroke="#888" stroke-width="1"/><line x1="-0.5" y1="20.0" x2="5.0" y2="25.0" stroke="#888" stroke-width="1"/><line x1="-2.4" y1="28.0" x2="3.1" y2="33.0" stroke="#888" stroke-width="1"/><line x1="-5.0" y1="36.0" x2="0.5" y2="41.0" stroke="#888" stroke-width="1"/></svg></span>
-                <span class="info"><span class="name">Parabolic mirror</span><span class="desc">Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.</span></span>
+                <span class="info"><span class="name">Parabolic mirror</span><span class="desc">Reflects light from an exact parabolic surface, collimating a source at its focus and illustrating the difference between parabolic and spherical mirrors.</span></span>
               </a><a class="hub-card" href="../wiki/galvo/">
                 <span class="ic"><svg viewBox="-26 -26 52 52" aria-hidden="true"><circle r="4.5" fill="#777" stroke="#444" stroke-width="1.2"/><g transform="rotate(0)"><line x1="0" y1="-10" x2="0" y2="10" stroke="#444" stroke-width="3"/></g><path d="M -9,-13 A 15 15 0 0 1 9,-13" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/><path d="M -9,13 A 15 15 0 0 0 9,13" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/></svg></span>
-                <span class="info"><span class="name">Galvo mirror</span><span class="desc">Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.</span></span>
+                <span class="info"><span class="name">Galvo mirror</span><span class="desc">Steers reflected light with a fixed or animated mechanical mirror angle, for exploring scan geometry with a slowed preview at high drive frequencies.</span></span>
               </a><a class="hub-card" href="../wiki/retroreflector/">
                 <span class="ic"><svg viewBox="-23.7 -23.7 47.4 47.4" aria-hidden="true"><path d="M -12.7,12.7 L 0,0 L -12.7,-12.7" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"/></svg></span>
-                <span class="info"><span class="name">Retroreflector</span><span class="desc">A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.</span></span>
+                <span class="info"><span class="name">Retroreflector</span><span class="desc">Returns light antiparallel through a right-angle mirror pair, with optional translation that lengthens the round-trip optical path for mechanical delay demonstrations.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="lenses">
           <h2>Lenses</h2>
-          
+
             <h3 class="hub-sub">Ideal lenses</h3>
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/lens/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0,-12.7 Q 9,0 0,12.7 Q -9,0 0,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Thin convex lens</span><span class="desc">Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.</span></span>
+                <span class="info"><span class="name">Thin convex lens</span><span class="desc">Focuses light with a positive thin-lens focal length, providing a simple paraxial model for collimation, image formation, and beam relays.</span></span>
               </a><a class="hub-card" href="../wiki/lensc/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -6,-12.7 L 6,-12.7 Q 0,0 6,12.7 L -6,12.7 Q 0,0 -6,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Thin concave lens</span><span class="desc">Diverges rays with a negative thin-lens focal length. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.</span></span>
+                <span class="info"><span class="name">Thin concave lens</span><span class="desc">Spreads light with a negative thin-lens focal length, for exploring virtual foci, beam expansion, and the behavior of diverging optical systems.</span></span>
               </a><a class="hub-card" href="../wiki/telescope/">
                 <span class="ic"><svg viewBox="-94 -94 188 188" aria-hidden="true"><line x1="-75" y1="0" x2="75" y2="0" stroke="#b6bdc6" stroke-width="1" stroke-dasharray="4 4"/><path d="M -75,-12.7 Q -66,0 -75,12.7 Q -84,0 -75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><path d="M 75,-12.7 Q 84,0 75,12.7 Q 66,0 75,-12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Conjugated thin lens pair</span><span class="desc">Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.</span></span>
+                <span class="info"><span class="name">Conjugated thin lens pair</span><span class="desc">Combines two thin lenses separated by their focal lengths, for changing beam diameter and comparing the geometry of afocal optical relays.</span></span>
               </a><a class="hub-card" href="../wiki/objective/">
                 <span class="ic"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-5.5 L 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5 L 16,5.5 Z" fill="#8d98a5" stroke="none"/><path d="M 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/><line x1="7" y1="-12.5" x2="7" y2="12.5" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-12.5" width="2.4" height="8.50" fill="#2f3e4d"/><rect x="-21" y="4.00" width="2.4" height="8.50" fill="#2f3e4d"/></svg></span>
-                <span class="info"><span class="name">Objective</span><span class="desc">Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.</span></span>
+                <span class="info"><span class="name">Objective</span><span class="desc">Focuses light through an equivalent lens and pupil model, with adjustable working distance, numerical aperture, immersion medium, and generic objective presets.</span></span>
               </a>
             </div>
             <h3 class="hub-sub">Real lenses</h3>
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/thicklens/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -1.64 12.7 A 60 60 0 0 1 -1.64 -12.7 L 1.64 -12.7 A 60 60 0 0 1 1.64 12.7 L -1.64 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
-                <span class="info"><span class="name">Thick spherical lens</span><span class="desc">Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.</span></span>
+                <span class="info"><span class="name">Thick spherical lens</span><span class="desc">Refracts light through two separated spherical or flat glass surfaces, exposing the effects of thickness, spherical aberration, chromatic focus, and dispersion.</span></span>
               </a><a class="hub-card" href="../wiki/lensgroup/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -3.44 12.7 A 60.65 60.65 0 0 1 -3.44 -12.7 L -0.12 -12.7 A 61.02 61.02 0 0 1 -0.12 12.7 L -3.44 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/><path d="M -0.06 12.7 A 61.02 61.02 0 0 0 -0.06 -12.7 L 4.17 -12.7 A 131.55 131.55 0 0 1 4.17 12.7 L -0.06 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
-                <span class="info"><span class="name">Lens group</span><span class="desc">Traces a whole prescription — one row per surface, with radius, spacing and the glass that follows — as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.</span></span>
+                <span class="info"><span class="name">Lens group</span><span class="desc">Traces an editable sequence of glass surfaces and air gaps, for exploring compound lenses, achromatic doublets, aperture stops, and material dispersion.</span></span>
               </a><a class="hub-card" href="../wiki/asphericlens/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -0.26 12.7 L -0.7 11.64 L -1.11 10.58 L -1.47 9.53 L -1.8 8.47 L -2.08 7.41 L -2.32 6.35 L -2.53 5.29 L -2.7 4.23 L -2.83 3.17 L -2.93 2.12 L -2.98 1.06 L -3 0 L -2.98 -1.06 L -2.93 -2.12 L -2.83 -3.18 L -2.7 -4.23 L -2.53 -5.29 L -2.32 -6.35 L -2.08 -7.41 L -1.8 -8.47 L -1.47 -9.52 L -1.11 -10.58 L -0.7 -11.64 L -0.26 -12.7 L 3 -12.7 L 3 -11.64 L 3 -10.58 L 3 -9.53 L 3 -8.47 L 3 -7.41 L 3 -6.35 L 3 -5.29 L 3 -4.23 L 3 -3.17 L 3 -2.12 L 3 -1.06 L 3 0 L 3 1.06 L 3 2.12 L 3 3.18 L 3 4.23 L 3 5.29 L 3 6.35 L 3 7.41 L 3 8.47 L 3 9.52 L 3 10.58 L 3 11.64 L 3 12.7 L -0.26 12.7 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
-                <span class="info"><span class="name">Aspheric lens</span><span class="desc">Refracts through exact conic-plus-even-polynomial faces, so changing k or A₄/A₆/A₈ changes the physical ray intersections and aberration rather than only the drawing.</span></span>
+                <span class="info"><span class="name">Aspheric lens</span><span class="desc">Refracts light through conic and polynomial lens surfaces, so changing the surface shape directly changes ray intersections, focusing, and spherical aberration.</span></span>
               </a>
             </div>
             <h3 class="hub-sub">Metalenses</h3>
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/metalens/">
                 <span class="ic"><svg viewBox="-15.35 -15.35 30.7 30.7" aria-hidden="true"><rect x="-1.5" y="-6.35" width="3" height="12.7" rx="0.8" fill="#c9edf0" stroke="#247d87" stroke-width="1.2"/><g stroke="#247d87" stroke-width="0.9" stroke-linecap="round"><line x1="-2" y1="-2.839806331424733" x2="2" y2="-2.839806331424733"/><line x1="-2" y1="2.839806331424733" x2="2" y2="2.839806331424733"/><line x1="-2.5" y1="-4.016092628413841" x2="2.5" y2="-4.016092628413841"/><line x1="-2.5" y1="4.016092628413841" x2="2.5" y2="4.016092628413841"/><line x1="-3" y1="-4.918688849683419" x2="3" y2="-4.918688849683419"/><line x1="-3" y1="4.918688849683419" x2="3" y2="4.918688849683419"/><line x1="-3.5" y1="-5.679612662849466" x2="3.5" y2="-5.679612662849466"/><line x1="-3.5" y1="5.679612662849466" x2="3.5" y2="5.679612662849466"/><line x1="-4" y1="-6.35" x2="4" y2="-6.35"/><line x1="-4" y1="6.35" x2="4" y2="6.35"/></g></svg></span>
-                <span class="info"><span class="name">Metalens</span><span class="desc">A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency.</span></span>
+                <span class="info"><span class="name">Metalens</span><span class="desc">Focuses light through a flat phase-gradient model with adjustable efficiency, using either diffractive chromatic focusing or an idealized achromatic band.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="fibers">
           <h2>Fibers</h2>
-          
-            
+
+
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/fiber/">
                 <span class="ic"><svg viewBox="-24 -24 48 48" aria-hidden="true"><path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="round"/><g transform="translate(-20 6) rotate(-20)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g><g transform="translate(20 -6) rotate(160)"><rect x="-11" y="-5" width="11" height="10" rx="1.5" fill="#4d565f"/><rect x="-15" y="-2.5" width="4" height="5" fill="#8d98a5"/></g></svg></span>
-                <span class="info"><span class="name">Optical fiber</span><span class="desc">Routes light along a drawn path between two connectorized ends, with its own acceptance angle, loss, and output cone.</span></span>
+                <span class="info"><span class="name">Optical fiber</span><span class="desc">Guides light along a drawn path between connectorized ends, with configurable acceptance, propagation loss, group delay, and an output cone at each end.</span></span>
               </a><a class="hub-card" href="../wiki/barefiber/">
                 <span class="ic"><svg viewBox="-24 -24 48 48" aria-hidden="true"><path d="M -20,6 Q -4,6 0,0 Q 4,-6 20,-6" fill="none" stroke="#e8a800" stroke-width="4" stroke-linecap="butt"/></svg></span>
-                <span class="info"><span class="name">Bare fiber</span><span class="desc">The same guided path with the connector plugs omitted and flat-cleaved ends, for custom laboratory assemblies.</span></span>
+                <span class="info"><span class="name">Bare fiber</span><span class="desc">Guides light along a drawn path with exposed, flat-cleaved ends, using the same acceptance, loss, delay, and output controls as connectorized fiber.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="filters-splitters">
           <h2>Filters &amp; Splitters</h2>
-          
-            
+
+
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/bs/">
                 <span class="ic"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Beamsplitter</span><span class="desc">Splits incident light into transmitted and reflected branches.</span></span>
+                <span class="info"><span class="name">Beamsplitter</span><span class="desc">Divides incident light into transmitted and reflected paths with an adjustable splitting ratio, for building beam pickoffs, interferometers, and parallel optical branches.</span></span>
               </a><a class="hub-card" href="../wiki/filter/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#bfe3c9" stroke="#557" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Filter</span><span class="desc">Passes a spectral band or attenuates intensity as a neutral-density filter.</span></span>
+                <span class="info"><span class="name">Filter</span><span class="desc">Transmits a selected wavelength band or attenuates light as a neutral-density filter, for isolating spectral signals and controlling power along a beam path.</span></span>
               </a><a class="hub-card" href="../wiki/dichroic/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-3" y="-12.7" width="6" height="25.4" fill="#dfeef7" stroke="#5d7f96" stroke-width="1.5"/><line x1="-3" y1="-12.7" x2="-3" y2="12.7" stroke="#b04ad0" stroke-width="2"/></svg></span>
-                <span class="info"><span class="name">Dichroic mirror</span><span class="desc">Transmits or reflects wavelength bands around its configured cutoff.</span></span>
+                <span class="info"><span class="name">Dichroic mirror</span><span class="desc">Splits light by wavelength around an adjustable cutoff, transmitting one spectral region and reflecting another for excitation routing and emission collection.</span></span>
               </a><a class="hub-card" href="../wiki/etalon/">
                 <span class="ic"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><rect x="-3" y="-17.5" width="6" height="35" fill="#eaf4fb" fill-opacity="0.75" stroke="#4a90c4" stroke-width="1.2"/><line x1="-3" y1="-17.5" x2="-3" y2="17.5" stroke="#2f6690" stroke-width="1.6"/><line x1="3" y1="-17.5" x2="3" y2="17.5" stroke="#2f6690" stroke-width="1.6"/></svg></span>
-                <span class="info"><span class="name">Etalon (Fabry–Pérot)</span><span class="desc">Two closely spaced, matched partially reflective coatings. Multi-beam interference gives narrow, periodic high-transmission peaks (the free spectral range) rather than a flat partial reflection — light off-resonance reflects, light at a resonance transmits at up to the coating-limited peak. Rotating the element shifts the resonance wavelength, like tilting a real etalon.</span></span>
+                <span class="info"><span class="name">Etalon (Fabry–Pérot)</span><span class="desc">Uses repeated reflections between closely spaced coatings to produce periodic transmission resonances, with angle tuning and configurable spectral resolution and free spectral range.</span></span>
               </a><a class="hub-card" href="../wiki/vipa/">
                 <span class="ic"><svg viewBox="-27.457370879546925 -27.457370879546925 54.91474175909385 54.91474175909385" aria-hidden="true"><path d="M -2.63,-17.36 L -0.19,17.56 L 2.63,17.36 L 0.19,-17.56 Z" fill="#c9e4f5" fill-opacity="0.62" stroke="#4a90c4" stroke-width="1.1"/><line x1="-2.63" y1="-17.36" x2="-1.52" y2="-1.40" stroke="#353b44" stroke-width="2.8"/><line x1="-1.31" y1="1.60" x2="-0.19" y2="17.56" stroke="#353b44" stroke-width="2.8"/><line x1="0.19" y1="-17.56" x2="2.63" y2="17.36" stroke="#5d5575" stroke-width="2.1" stroke-dasharray="3 1.5"/><line x1="-10.39" y1="0.73" x2="-2.81" y2="0.20" stroke="#7c3aed" stroke-width="1.5"/><path d="M -2.81,0.20 l -3,-2 l 0,4 Z" fill="#7c3aed"/></svg></span>
-                <span class="info"><span class="name">VIPA (Virtually Imaged Phased Array)</span><span class="desc">A tilted plate with a high-reflectivity entrance face (except a small entrance window) and a partially transmitting output face. Produces a fan of spatially offset leakage beams from repeated internal bounces — the geometric walk-off a real VIPA disperser relies on. Specified by center wavelength, spectral resolution and free spectral range, the same as the Etalon.</span></span>
+                <span class="info"><span class="name">VIPA (Virtually Imaged Phased Array)</span><span class="desc">Produces spatially offset leakage beams through repeated reflections inside a tilted plate, providing a geometric model of the walk-off used in VIPA dispersers.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="dispersive-elements">
           <h2>Dispersive elements</h2>
-          
-            
+
+
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/freeglass/">
                 <span class="ic"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -36 -24 L 30 -24 L 38 20 L -26 26 L -36 -24 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
-                <span class="info"><span class="name">Freeform glass</span><span class="desc">Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion and traced GDD; overlapping glass bodies are not surface-merged.</span></span>
+                <span class="info"><span class="name">Freeform glass</span><span class="desc">Refracts light through an editable outline of straight edges and circular arcs, with a constant refractive index or wavelength-dependent catalogue glass.</span></span>
               </a><a class="hub-card" href="../wiki/grating/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="0" y="-12.7" width="6" height="25.4" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/><line x1="0" y1="-9.7" x2="4" y2="-9.7" stroke="#333" stroke-width="1"/><line x1="0" y1="-4.699999999999999" x2="4" y2="-4.699999999999999" stroke="#333" stroke-width="1"/><line x1="0" y1="0.3000000000000007" x2="4" y2="0.3000000000000007" stroke="#333" stroke-width="1"/><line x1="0" y1="5.300000000000001" x2="4" y2="5.300000000000001" stroke="#333" stroke-width="1"/></svg></span>
-                <span class="info"><span class="name">Diffraction grating</span><span class="desc">Creates selected diffraction orders using the grating equation.</span></span>
+                <span class="info"><span class="name">Diffraction grating</span><span class="desc">Separates light into selected diffraction orders using the grating equation, with adjustable groove density, order efficiency, and a choice of spectral illumination.</span></span>
               </a><a class="hub-card" href="../wiki/prism/">
                 <span class="ic"><svg viewBox="-23.664696837416493 -23.664696837416493 47.329393674832986 47.329393674832986" aria-hidden="true"><path d="M 0,-12.7 L -14.664696837416493,12.7 L 14.664696837416493,12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Prism</span><span class="desc">Refracts through all three drawn boundaries with selectable catalogue-glass dispersion and traced path-length GDD.</span></span>
+                <span class="info"><span class="name">Prism</span><span class="desc">Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion and adding pulse dispersion according to the traced path.</span></span>
               </a><a class="hub-card" href="../wiki/diffuser/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-3" y="-12.7" width="6" height="25.4" fill="#eceef1" stroke="#6b7280" stroke-width="1.3"/><path d="M -3,-12.7 L -3.4,-11.2 L -3.4,-8.2 L -3.4,-5.199999999999999 L -3.4,-2.1999999999999993 L -3.4,0.8000000000000007 L -3.4,3.8000000000000007 L -3.4,6.800000000000001 L -3.4,9.8 L -3.4,12.8 L -3,12.7" fill="none" stroke="#6b7280" stroke-width="1"/></svg></span>
-                <span class="info"><span class="name">Diffuser</span><span class="desc">Spreads incident light into a configurable angular fan.</span></span>
+                <span class="info"><span class="name">Diffuser</span><span class="desc">Spreads incident light into an adjustable angular fan, providing a qualitative model for comparing illumination coverage and the light collected downstream.</span></span>
               </a><a class="hub-card" href="../wiki/glassrod/">
                 <span class="ic"><svg viewBox="-38 -38 76 76" aria-hidden="true"><rect x="-30" y="-6.35" width="60" height="12.7" rx="4" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Glass rod</span><span class="desc">Refracts at every glass-air boundary and supports total internal reflection. Catalogue materials add traced path-length GDD; constant index keeps legacy behavior.</span></span>
+                <span class="info"><span class="name">Glass rod</span><span class="desc">Refracts light through a glass rod with adjustable dimensions and material, including total internal reflection and pulse dispersion along the traced path.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="polarization">
           <h2>Polarization</h2>
-          
-            
+
+
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/polarizer/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/><g transform="rotate(0)"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/><path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g></svg></span>
-                <span class="info"><span class="name">Polarizer</span><span class="desc">Applies a linear polarization axis and Malus-law attenuation.</span></span>
+                <span class="info"><span class="name">Polarizer</span><span class="desc">Selects a linear polarization direction and attenuates light according to its input state, for exploring Malus’s law and polarization-dependent optical transmission.</span></span>
               </a><a class="hub-card" href="../wiki/hwp/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#f3e3c3" stroke="#a08340" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#7a6430" >λ/2</text></svg></span>
-                <span class="info"><span class="name">Half-wave plate</span><span class="desc">Rotates linear polarization around the configured fast axis.</span></span>
+                <span class="info"><span class="name">Half-wave plate</span><span class="desc">Applies half-wave retardance around an adjustable fast axis, for rotating linear polarization and controlling how light divides at a polarizing beamsplitter.</span></span>
               </a><a class="hub-card" href="../wiki/qwp/">
                 <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" >λ/4</text></svg></span>
-                <span class="info"><span class="name">Quarter-wave plate</span><span class="desc">Applies quarter-wave retardance, producing linear, elliptical, or circular polarization from the input state.</span></span>
+                <span class="info"><span class="name">Quarter-wave plate</span><span class="desc">Applies quarter-wave retardance around an adjustable fast axis, for converting input polarization between linear, elliptical, and circular states in an optical setup.</span></span>
               </a><a class="hub-card" href="../wiki/pbs/">
                 <span class="ic"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#d5e3f0" stroke="#3f6a92" stroke-width="1.6"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#3f6a92" stroke-width="1.6"/><text x="-12.7" y="20.7" text-anchor="start" dominant-baseline="central" font-size="8.5" fill="#3f6a92" font-weight="600" >PBS</text></svg></span>
-                <span class="info"><span class="name">Polarizing beamsplitter</span><span class="desc">Separates orthogonal polarization states into two paths.</span></span>
+                <span class="info"><span class="name">Polarizing beamsplitter</span><span class="desc">Separates orthogonal polarization components into transmitted and reflected paths, for examining polarization routing and power control with waveplates or electro-optic modulators.</span></span>
               </a><a class="hub-card" href="../wiki/isolator/">
                 <span class="ic"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-23" y="-11" width="46" height="22" rx="11" fill="#6b7280" stroke="#3f4650" stroke-width="1.5"/><path d="M -12,0 L 10,0 M 10,0 L 3,-5 M 10,0 L 3,5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg></span>
-                <span class="info"><span class="name">Optical isolator</span><span class="desc">Passes light in one direction and blocks reverse propagation.</span></span>
+                <span class="info"><span class="name">Optical isolator</span><span class="desc">Passes light along its forward direction and blocks reverse propagation, providing an idealized way to isolate a source from returning optical paths.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="beam-block">
           <h2>Beam Block</h2>
-          
-            
+
+
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/slit/">
                 <span class="ic"><svg viewBox="-34.4 -34.4 68.8 68.8" aria-hidden="true"><rect x="-2.5" y="-25.4" width="5" height="21.4" fill="#333"/><rect x="-2.5" y="4" width="5" height="21.4" fill="#333"/></svg></span>
-                <span class="info"><span class="name">Slit</span><span class="desc">Blocks rays outside the configured aperture gap.</span></span>
+                <span class="info"><span class="name">Slit</span><span class="desc">Passes light through an adjustable aperture gap and blocks rays outside it, for exploring spatial selection, clipping, and transmission through narrow openings.</span></span>
               </a><a class="hub-card" href="../wiki/beamdump/">
                 <span class="ic"><svg viewBox="-19 -19 38 38" aria-hidden="true"><path d="M -10,-11 L 10,-11 L 10,11 L -10,11 Z M -10,-11 L 4,0 L -10,11" fill="#26292e" stroke="#111" stroke-width="1.5"/></svg></span>
-                <span class="info"><span class="name">Beam dump</span><span class="desc">Absorbs incident rays.</span></span>
+                <span class="info"><span class="name">Beam dump</span><span class="desc">Absorbs light that reaches its active surface, terminating unwanted beams and providing a visible endpoint for discarded branches of an optical setup.</span></span>
               </a><a class="hub-card" href="../wiki/blocker/">
                 <span class="ic"><svg viewBox="-38 -38 76 76" aria-hidden="true"><rect x="-8" y="-30" width="16" height="60" rx="2" fill="rgba(208,96,96,0.07)" stroke="#d89c9c" stroke-width="1" stroke-dasharray="4 3"/><text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="9" fill="#c98080">✂</text></svg></span>
-                <span class="info"><span class="name">Invisible blocker</span><span class="desc">Absorbs rays but stays hidden in exported figures.</span></span>
+                <span class="info"><span class="name">Invisible blocker</span><span class="desc">Stops rays inside an adjustable rectangular region while remaining hidden in exported figures, for controlling beam endpoints without adding visible hardware.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="wavefront-shaping">
           <h2>Wavefront Shaping</h2>
-          
-            
+
+
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/slm/">
                 <span class="ic"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/><line x1="-11" y1="-18" x2="-7" y2="-18" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-13" x2="-7" y2="-13" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-8" x2="-7" y2="-8" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-3" x2="-7" y2="-3" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="2" x2="-7" y2="2" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="7" x2="-7" y2="7" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="12" x2="-7" y2="12" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="17" x2="-7" y2="17" stroke="#4ac0b0" stroke-width="2.5"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">SLM</text></svg></span>
-                <span class="info"><span class="name">Spatial light modulator</span><span class="desc">Reflects by default and can overlay lens-array, grating, steering, or speckle functions.</span></span>
+                <span class="info"><span class="name">Spatial light modulator</span><span class="desc">Reflects light through configurable lens-array, grating, steering, and speckle functions, offering a qualitative model of spatial wavefront shaping and beam routing.</span></span>
               </a><a class="hub-card" href="../wiki/metasurface/">
                 <span class="ic"><svg viewBox="-25 -25 50 50" aria-hidden="true"><rect x="-1.4" y="-15" width="2.8" height="30" fill="#c9e4f5" stroke="#4a90c4" stroke-width="0.9"/><rect x="-2.9" y="-15" width="1.5" height="30" fill="#f2c230" stroke="#a67c06" stroke-width="0.7"/><line x1="-2.6" y1="-13.80" x2="-1.7" y2="-13.80" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-11.60" x2="-1.7" y2="-11.60" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-9.40" x2="-1.7" y2="-9.40" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-7.20" x2="-1.7" y2="-7.20" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-5.00" x2="-1.7" y2="-5.00" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-2.80" x2="-1.7" y2="-2.80" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="-0.60" x2="-1.7" y2="-0.60" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="1.60" x2="-1.7" y2="1.60" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="3.80" x2="-1.7" y2="3.80" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="6.00" x2="-1.7" y2="6.00" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="8.20" x2="-1.7" y2="8.20" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="10.40" x2="-1.7" y2="10.40" stroke="#7a5a04" stroke-width="0.5"/><line x1="-2.6" y1="12.60" x2="-1.7" y2="12.60" stroke="#7a5a04" stroke-width="0.5"/></svg></span>
-                <span class="info"><span class="name">Metasurface</span><span class="desc">A patterned layer on a thin transparent carrier, working in transmission by default. Overlays the same lens-array, grating, steering, and speckle functions as the SLM, with an optional undiffracted zeroth order — but the phase profile is fixed at fabrication rather than programmable.</span></span>
+                <span class="info"><span class="name">Metasurface</span><span class="desc">Transmits light through a patterned layer with lens-array, grating, steering, or speckle functions, representing a fixed optical pattern with optional zero-order light.</span></span>
               </a><a class="hub-card" href="../wiki/dmd/">
                 <span class="ic"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/><line x1="-11" y1="-14" x2="-7" y2="-18" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-8" x2="-7" y2="-12" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-2" x2="-7" y2="-6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="4" x2="-7" y2="0" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="10" x2="-7" y2="6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="16" x2="-7" y2="12" stroke="#cfd6dd" stroke-width="1.6"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">DMD</text></svg></span>
-                <span class="info"><span class="name">Digital micromirror device</span><span class="desc">Routes a configurable binary micromirror pattern into ON and optional OFF orders.</span></span>
+                <span class="info"><span class="name">Digital micromirror device</span><span class="desc">Routes light through a configurable binary micromirror pattern into ON and optional OFF orders, for exploring spatial switching and reflected beam selection.</span></span>
               </a><a class="hub-card" href="../wiki/dm/">
                 <span class="ic"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="8" y="-25" width="4" height="50" fill="#4d565f"/><rect x="4" y="-23" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-16" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-9" width="4" height="4" fill="#8d98a5"/><rect x="4" y="-2" width="4" height="4" fill="#8d98a5"/><rect x="4" y="5" width="4" height="4" fill="#8d98a5"/><rect x="4" y="12" width="4" height="4" fill="#8d98a5"/><rect x="4" y="19" width="4" height="4" fill="#8d98a5"/><path d="M 0,-25 Q 3,-18.75 0,-12.5 Q -3,-6.25 0,0 Q 3,6.25 0,12.5 Q -3,18.75 0,25" fill="none" stroke="#444" stroke-width="2.5"/></svg></span>
-                <span class="info"><span class="name">Deformable mirror</span><span class="desc">Applies continuous reflective tip, tilt, and paraxial defocus.</span></span>
+                <span class="info"><span class="name">Deformable mirror</span><span class="desc">Reflects light with adjustable tip, tilt, and paraxial defocus, providing a simple model for steering a beam and changing its wavefront curvature.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="detectors">
           <h2>Detectors</h2>
-          
-            
+
+
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/detector/">
                 <span class="ic"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></span>
-                <span class="info"><span class="name">Photodetector</span><span class="desc">Measures the relative intensity incident on its active surface.</span></span>
+                <span class="info"><span class="name">Photodetector</span><span class="desc">Measures the relative light signal reaching its active surface, for comparing transmitted power and attenuation along different paths in an optical setup.</span></span>
               </a><a class="hub-card" href="../wiki/camera/">
                 <span class="ic"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></span>
-                <span class="info"><span class="name">Camera</span><span class="desc">Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.</span></span>
+                <span class="info"><span class="name">Camera</span><span class="desc">Integrates light across a one-dimensional array of sensor pixels, showing intensity profiles, wavelength mixtures, and interference for supported coherent optical paths.</span></span>
               </a><a class="hub-card" href="../wiki/pmt/">
                 <span class="ic"><svg viewBox="-33 -33 66 66" aria-hidden="true"><rect x="-25" y="-13" width="50" height="26" rx="13" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><rect x="-27" y="-9" width="4" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><text x="2" y="0"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text><circle cx="16" cy="-7" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></span>
-                <span class="info"><span class="name">Photomultiplier (PMT)</span><span class="desc">Amplifies a faint signal — fluorescence, microscopy, single-point detection — into a readable one, and reports whether it clears the tube’s own dark floor.</span></span>
+                <span class="info"><span class="name">Photomultiplier (PMT)</span><span class="desc">Amplifies weak incident light with adjustable gain, dark floor, and saturation, for exploring qualitative signal detection in fluorescence and other low-light setups.</span></span>
               </a><a class="hub-card" href="../wiki/powermeter/">
                 <span class="ic"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#86efac" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">PWR</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></span>
-                <span class="info"><span class="name">Power meter</span><span class="desc">Reports absolute optical power by carrying each source’s configured watts through everything that attenuated it on the way here.</span></span>
+                <span class="info"><span class="name">Power meter</span><span class="desc">Reports optical power from the configured source watts and traced losses, for comparing how filters, splitters, and apertures affect power at the sensor.</span></span>
               </a><a class="hub-card" href="../wiki/wavefrontdetector/">
                 <span class="ic"><svg viewBox="-33 -33 66 66" aria-hidden="true"><rect x="-26" y="-15" width="52" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-27.7" y="-11" width="3.4" height="22" rx="1" fill="#c4b5fd" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">WF</text><circle cx="18" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></span>
-                <span class="info"><span class="name">Wavefront detector</span><span class="desc">Fits ray angle against position across its face to report whether the beam is collimated, converging or diverging, and its full cone angle.</span></span>
+                <span class="info"><span class="name">Wavefront detector</span><span class="desc">Estimates beam convergence from ray angle versus position, reporting whether light is collimated, converging, or diverging and the corresponding full cone angle.</span></span>
               </a><a class="hub-card" href="../wiki/polarimeter/">
                 <span class="ic"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-25.7" y="-11" width="3.4" height="22" rx="1" fill="#f9a8d4" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">POL</text><circle cx="16" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></span>
-                <span class="info"><span class="name">Polarimeter</span><span class="desc">Reports polarization state, normalized Stokes parameters, and a visual linear, circular, elliptical, or unpolarized representation.</span></span>
+                <span class="info"><span class="name">Polarimeter</span><span class="desc">Reports the polarization of arriving light using normalized Stokes parameters and a visual state display, for comparing linear, elliptical, circular, and unpolarized illumination.</span></span>
               </a><a class="hub-card" href="../wiki/spectrometer/">
                 <span class="ic"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-27" y="-15" width="54" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-28.7" y="-11" width="3.4" height="22" rx="1" fill="#fde68a" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">SPEC</text><circle cx="19" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></span>
-                <span class="info"><span class="name">Spectrometer</span><span class="desc">Reports centre wavelength, detected spectral range, bandwidth, and a qualitative spectrum.</span></span>
+                <span class="info"><span class="name">Spectrometer</span><span class="desc">Reports the wavelength range, centre wavelength, and bandwidth of arriving light, with a qualitative spectrum for comparing sources and spectral filtering.</span></span>
               </a><a class="hub-card" href="../wiki/autocorrelator/">
                 <span class="ic"><svg viewBox="-35 -35 70 70" aria-hidden="true"><rect x="-28" y="-15" width="56" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-29.7" y="-11" width="3.4" height="22" rx="1" fill="#fca5a5" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">AC</text><circle cx="20" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></span>
-                <span class="info"><span class="name">Autocorrelator</span><span class="desc">Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one.</span></span>
+                <span class="info"><span class="name">Autocorrelator</span><span class="desc">Calculates an intensity autocorrelation and infers pulse duration using a selected pulse-shape assumption, for examining temporal broadening and the limits of duration estimates.</span></span>
+              </a><a class="hub-card" href="../wiki/generaldetector/">
+                <span class="ic"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-27" y="-15" width="54" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-28.7" y="-11" width="3.4" height="22" rx="1" fill="#67e8f9" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">DET</text><circle cx="19" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg></span>
+                <span class="info"><span class="name">General detector</span><span class="desc">Collects light at one sensor face and reports multiple beam properties, combining power, spectrum, polarization, wavefront, and pulse information in one instrument.</span></span>
+              </a><a class="hub-card" href="../wiki/display/">
+                <span class="ic"><svg viewBox="-104 -104 208 208" aria-hidden="true"><g transform="scale(2)" data-display-density="expanded"><rect x="-49" y="-36" width="98" height="72" rx="6" fill="#24313b" stroke="#111b22" stroke-width="1.7"/><path d="M -43,-32 H 43" stroke="#40515d" stroke-width="0.8" opacity="0.7"/><rect x="-43" y="-29" width="86" height="47" rx="3" fill="#061822" stroke="#45606f" stroke-width="1.2"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace"><text x="0" y="-2" text-anchor="middle" font-size="9" font-weight="760" letter-spacing="0.8" fill="#94a3b8">SELECT INPUT</text><text x="0" y="10" text-anchor="middle" font-size="5.4" fill="#607887">Press INPUT to connect</text></g><circle cx="-49" cy="19" r="3.6" fill="#13212a" stroke="#89a2b2" stroke-width="1"/><circle cx="-49" cy="19" r="1.3" fill="#52636f"/><g class="display-control" data-display-action="power" role="button" aria-label="Toggle display power"><title>Power</title><circle class="display-control-face" cx="-40" cy="27" r="4.4" fill="#14232c" stroke="#6ee7b7" stroke-width="1.1"/><path d="M -40,23.8 L -40,27.1 M -42.2,25.2 A 3,3 0 1 0 -37.8,25.2" fill="none" stroke="#6ee7b7" stroke-width="0.9" stroke-linecap="round"/></g><g class="display-control" data-display-action="input" role="button" aria-label="Cycle sensor input"><title>Cycle sensor input</title><rect class="display-control-face" x="-30" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="-18.5" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">INPUT</text></g><g class="display-control" data-display-action="view" role="button" aria-label="Cycle display view"><title>Cycle display view</title><rect class="display-control-face" x="-3.5" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/><text x="8" y="28.6" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">VIEW</text></g><circle cx="41" cy="27" r="2.3" fill="#596b76"/><text x="33" y="29" text-anchor="end" font-size="3.6" font-weight="700" letter-spacing="0.35" fill="#708692">QUAL</text></g></svg></span>
+                <span class="info"><span class="name">Detector screen</span><span class="desc">Shows the live readings of a linked detector on the canvas, with sensor-specific views and a data cable that never changes optical propagation.</span></span>
+              </a><a class="hub-card" href="../wiki/eye/">
+                <span class="ic"><svg viewBox="-24 -24 48 48" aria-hidden="true"><g transform="scale(1)"><circle r="15" fill="#fff" stroke="#4d565f" stroke-width="1.5"/><path d="M -14.2,-7 Q -21,0 -14.2,7" fill="rgba(160,200,240,0.45)" stroke="#4a7fa8" stroke-width="1.2"/><path d="M -14.5,-9 L -10.5,-5.5" stroke="#7a5230" stroke-width="2.4" stroke-linecap="round"/><path d="M -14.5,9 L -10.5,5.5" stroke="#7a5230" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="-8.5" cy="0" rx="3" ry="6.5" fill="#cfe4f5" stroke="#4a7fa8" stroke-width="1"/><path d="M 7,-13 A 15 15 0 0 1 7,13" fill="none" stroke="#c86a6a" stroke-width="2.5"/></g></svg></span>
+                <span class="info"><span class="name">Human eye</span><span class="desc">Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="modulators">
           <h2>Modulators</h2>
-          
+
+
+            <div class="hub-grid">
+              <a class="hub-card" href="../wiki/chopper/">
+                <span class="ic"><svg viewBox="-28 -28 56 56" aria-hidden="true"><g transform="rotate(0)"><path d="M 0,0 L 18,0 A 18 18 0 0 1 15.588457268119896,8.999999999999998 Z" fill="#8d98a5"/><path d="M 0,0 L 9.000000000000002,15.588457268119894 A 18 18 0 0 1 1.102182119232618e-15,18 Z" fill="#8d98a5"/><path d="M 0,0 L -8.999999999999996,15.588457268119896 A 18 18 0 0 1 -15.588457268119896,8.999999999999998 Z" fill="#8d98a5"/><path d="M 0,0 L -18,2.204364238465236e-15 A 18 18 0 0 1 -15.588457268119894,-9.000000000000002 Z" fill="#8d98a5"/><path d="M 0,0 L -9.000000000000007,-15.588457268119893 A 18 18 0 0 1 -3.3065463576978533e-15,-18 Z" fill="#8d98a5"/><path d="M 0,0 L 9.000000000000002,-15.588457268119894 A 18 18 0 0 1 15.58845726811989,-9.000000000000007 Z" fill="#8d98a5"/></g><circle r="3.5" fill="#4d565f"/><circle r="18.5" fill="none" stroke="#4d565f" stroke-width="1" stroke-dasharray="2 3"/></svg></span>
+                <span class="info"><span class="name">Chopper</span><span class="desc">Periodically interrupts light with an adjustable frequency and duty cycle, showing gated pulse trains and a schematic chopped pattern for continuous beams.</span></span>
+              </a>
+            </div>
             <h3 class="hub-sub">Acousto-optic</h3>
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/aom/">
                 <span class="ic"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-13" width="40" height="26" rx="3" fill="#c9b458" stroke="#8a7a2e" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3616">AOM</text></svg></span>
-                <span class="info"><span class="name">Acousto-optic modulator (AOM)</span><span class="desc">Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.</span></span>
+                <span class="info"><span class="name">Acousto-optic modulator (AOM)</span><span class="desc">Deflects light into a first diffraction order with adjustable efficiency, optional zero order, and square, sine, or sawtooth modulation of the drive.</span></span>
               </a><a class="hub-card" href="../wiki/aod/">
                 <span class="ic"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-5" width="40" height="10" rx="3" fill="#d7bd68" stroke="#8a6f24" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3012">AOD</text></svg></span>
-                <span class="info"><span class="name">Acousto-optic deflector (AOD)</span><span class="desc">Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.</span></span>
+                <span class="info"><span class="name">Acousto-optic deflector (AOD)</span><span class="desc">Steers diffracted light through a fixed or swept angle with wavelength-dependent deflection, for exploring angular scanning and optional zero-order beam routing.</span></span>
               </a><a class="hub-card" href="../wiki/aotf/">
                 <span class="ic"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-26" y="-13" width="52" height="26" rx="3" fill="#7fc7c4" stroke="#397b78" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#153b39">AOTF</text></svg></span>
-                <span class="info"><span class="name">Acousto-optic tunable filter</span><span class="desc">Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.</span></span>
+                <span class="info"><span class="name">Acousto-optic tunable filter</span><span class="desc">Selects spectral lines from incoming light, either simultaneously or sequentially, and routes the remaining spectrum toward a separately configurable deflected output.</span></span>
               </a>
             </div>
             <h3 class="hub-sub">Electro-optic</h3>
             <div class="hub-grid">
               <a class="hub-card" href="../wiki/eom/">
                 <span class="ic"><svg viewBox="-30 -30 60 60" aria-hidden="true"><rect x="-22" y="-12" width="44" height="24" rx="3" fill="#b8c9a3" stroke="#66794a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#2f3a20">EOM</text></svg></span>
-                <span class="info"><span class="name">Electro-optic modulator (EOM)</span><span class="desc">Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.</span></span>
+                <span class="info"><span class="name">Electro-optic modulator (EOM)</span><span class="desc">Changes polarization through voltage-controlled retardance, held fixed or switched periodically, so a downstream analyzer can convert the change into intensity modulation.</span></span>
               </a><a class="hub-card" href="../wiki/phasemodulator/">
                 <span class="ic"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-17" y="-6" width="34" height="12" rx="3" fill="#c9b3d8" stroke="#6b4f85" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#33224a">φ~</text><path d="M -20,-10 h 4 v -3 h 4 v 3 h 4" fill="none" stroke="#6b4f85" stroke-width="1.1" stroke-linecap="round"/></svg></span>
-                <span class="info"><span class="name">Phase modulator</span><span class="desc">Writes a voltage-driven optical path across the whole beam without touching its polarization — invisible alone, and an amplitude modulator in one arm of an interferometer.</span></span>
+                <span class="info"><span class="name">Phase modulator</span><span class="desc">Changes optical path without changing polarization, making a driven phase shift visible as intensity modulation when placed in a supported interferometer.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="pulse-timing">
           <h2>Pulse Timing</h2>
-          
-            
+
+
             <div class="hub-grid">
-              <a class="hub-card" href="../wiki/pulsecompressor/">
+              <a class="hub-card" href="../wiki/delayline/">
+                <span class="ic"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-15" width="36" height="30" rx="3" fill="#d8d1ec" stroke="#69588f" stroke-width="1.4"/><g  fill="none" stroke="#514171" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M -15,0 H -6 L 4,-7 H 11 L 4,0 L 11,7 H 4 L -6,0"/><path d="M -1,-10 V 10" stroke-dasharray="2 2" opacity="0.65"/></g><text x="0" y="13"  text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="700" fill="#44365f">ΔL</text></svg></span>
+                <span class="info"><span class="name">Mechanical delay line</span><span class="desc">Adds an adjustable folded optical path while preserving the outgoing beam axis, for comparing pulse arrival times at fixed or periodically swept delays.</span></span>
+              </a><a class="hub-card" href="../wiki/pulsecompressor/">
                 <span class="ic"><svg viewBox="-32 -32 64 64" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/><g  fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round"><path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/><path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">−GDD</text></svg></span>
-                <span class="info"><span class="name">Pulse Compressor</span><span class="desc">Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.</span></span>
+                <span class="info"><span class="name">Pulse Compressor</span><span class="desc">Adds positive or negative group-delay dispersion to a pulse, shortening it when the correction cancels dispersion accumulated earlier in the setup.</span></span>
+              </a>
+            </div>
+        </div>
+        <div class="hub-group" id="nonlinear-optics">
+          <h2>Nonlinear Optics</h2>
+
+
+            <div class="hub-grid">
+              <a class="hub-card" href="../wiki/crystal/">
+                <span class="ic"><svg viewBox="-24 -24 48 48" aria-hidden="true"><path d="M -12,-11 L 16,-11 L 12,11 L -16,11 Z" fill="#e4d5f2" stroke="#8a5fb0" stroke-width="1.5"/></svg></span>
+                <span class="info"><span class="name">Crystal</span><span class="desc">Converts a chosen fraction of incident light into harmonic, parametric, supercontinuum, or custom output, with an option to retain the residual pump.</span></span>
               </a>
             </div>
         </div>
         <div class="hub-group" id="specimens">
           <h2>Specimens</h2>
-          
-            
+
+
             <div class="hub-grid">
-              <a class="hub-card" href="../wiki/phaseplate/">
+              <a class="hub-card" href="../wiki/sample/">
+                <span class="ic"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-25" y="-3.00" width="50" height="6" fill="#c9e4f5" stroke="none"/></svg></span>
+                <span class="info"><span class="name">Sample</span><span class="desc">Represents an illuminated specimen with configurable transmission and signal channels, for exploring excitation delivery, fluorescence collection, and qualitative nonlinear optical emission.</span></span>
+              </a><a class="hub-card" href="../wiki/stage/">
+                <span class="ic"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -37,-8 L -37,6 L -15,6" fill="none" stroke="#4d565f" stroke-width="4"/><path d="M 37,-8 L 37,6 L 15,6" fill="none" stroke="#4d565f" stroke-width="4"/><rect x="-25" y="-3.00" width="50" height="6" fill="#c9e4f5" fill-opacity="0.75" stroke="none"/></svg></span>
+                <span class="info"><span class="name">Sample on piezo stage</span><span class="desc">Moves a mounted sample through a static position, lateral scan, depth scan, or raster, with optional pulsed writing marks for photocurable resin.</span></span>
+              </a><a class="hub-card" href="../wiki/phaseplate/">
                 <span class="ic"><svg viewBox="-13 -13 26 26" aria-hidden="true"><rect x="-5" y="-6" width="10" height="12" rx="2" fill="#dbeafe" stroke="#5b7fb5" stroke-width="1.3" opacity="0.55"/><path d="M -4,-1 L 4,-1 L 4,1 L -4,1 Z" fill="#93b4de" stroke="#41618f" stroke-width="1.1" opacity="0.9"/><text x="0" y="4" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="700" fill="#33507a">φ</text></svg></span>
-                <span class="info"><span class="name">Phase object</span><span class="desc">Retards part of the beam without bending it — invisible on its own, and the thing an interferometer exists to reveal.</span></span>
+                <span class="info"><span class="name">Phase object</span><span class="desc">Adds optical path across part of a beam without deflecting it, creating a spatial phase pattern that a supported interferometer can reveal.</span></span>
+              </a>
+            </div>
+        </div>
+        <div class="hub-group" id="custom">
+          <h2>Custom</h2>
+
+
+            <div class="hub-grid">
+              <a class="hub-card" href="../wiki/box/">
+                <span class="ic"><svg viewBox="-43 -43 86 86" aria-hidden="true"><rect x="-35" y="-20" width="70" height="40" rx="3" fill="#eef0f3" stroke="#7a828c" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d444d">Device</text></svg></span>
+                <span class="info"><span class="name">Custom box</span><span class="desc">Draws a labeled rectangular enclosure with explicit beam-blocking or pass-through behavior, for representing equipment whose internal optics are outside the current setup.</span></span>
+              </a>
+            </div>
+        </div>
+        <div class="hub-group" id="lab-elements">
+          <h2>Lab elements</h2>
+
+
+            <div class="hub-grid">
+              <a class="hub-card" href="../wiki/gascell/">
+                <span class="ic"><svg viewBox="-53 -53 106 106" aria-hidden="true"><rect x="-45" y="-27.5" width="90" height="55" rx="6" fill="#b8933f" fill-opacity="0.00"/><rect x="-45" y="-27.5" width="90" height="9.350000000000001" rx="6" fill="#d9b968" fill-opacity="0.00"/><path d="M -39 -27.5 L 39 -27.5 A 6 6 0 0 1 45 -21.5 L 45 21.5 A 6 6 0 0 1 39 27.5 L -39 27.5 A 6 6 0 0 1 -45 21.5 L -45 -21.5 A 6 6 0 0 1 -39 -27.5 " fill="none" stroke="#7a5f28" stroke-width="2"/><circle cx="-36.9" cy="-19.8" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/><circle cx="36.9" cy="-19.8" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/><circle cx="-36.9" cy="19.8" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/><circle cx="36.9" cy="19.8" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/><circle cx="0" cy="-27.5" r="8.8" fill="#fff" stroke="#4d565f" stroke-width="1.5"/><line x1="0" y1="-27.5" x2="3.5200000000000005" y2="-32.34" stroke="#c0392b" stroke-width="1.5" stroke-linecap="round"/><rect x="18.5" y="-37.5" width="8" height="10" fill="#6b7280" stroke="#3f4650" stroke-width="1"/><line x1="22.5" y1="-49.5" x2="22.5" y2="-37.5" stroke="#1361fa" stroke-width="2.2"/><polygon points="22.5,-54.5 18.5,-47.5 26.5,-47.5" fill="#1361fa"/></svg></span>
+                <span class="info"><span class="name">Gas cell</span><span class="desc">Draws a gas-cell housing with optional windows, extension tube, and gas port, providing laboratory context without adding absorption, refraction, or gas dynamics.</span></span>
+              </a><a class="hub-card" href="../wiki/window/">
+                <span class="ic"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-3" y="-12.7" width="6" height="25.4" fill="#c9e4f5" fill-opacity="0.00" stroke="#4a90c4" stroke-width="1.5"/></svg></span>
+                <span class="info"><span class="name">Optical window</span><span class="desc">Draws an optical window as laboratory hardware, with adjustable appearance and dimensions while leaving all beam directions, powers, and arrival times unchanged.</span></span>
               </a>
             </div>
         </div>
       </div>
     </div>
   </div>
-  <footer class="wiki-footer">More components are added to the encyclopedia over time — <a href="../sketch/">open the full component library in the canvas</a> to see everything available today.</footer>
+  <footer class="wiki-footer">Explore every component in the encyclopedia, or <a href="../sketch/">open the full component library in the canvas</a> to see everything available today.</footer>
 </body>
 </html>

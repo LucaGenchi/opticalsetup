@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import katex from 'katex';
 import {
-  registry, categories, createElement, getSize, getElementMeta, paletteOrderedTypes,
+  registry, categories, createElement, getSize, paletteOrderedTypes,
 } from '../sketch/js/elements.js';
 // Some registry entries (etalon, vipa, and the detector-instruments variants)
 // register themselves as a side effect of import rather than living in
@@ -46,14 +46,15 @@ function iconSVG(type) {
   return `<svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}" aria-hidden="true">${def.svg(el)}</svg>`;
 }
 
+// Wiki summaries are editorial introductions, deliberately shorter than the
+// inspector's detailed capability help. Keep the same complete sentence on
+// cards, article headers, and social metadata; never clip it with an ellipsis.
 function taglineOf(entry) {
-  const tool = toolEntries.get(entry.type);
-  if (tool) return tool.tagline;
-  return getElementMeta(entry.type, createElement(entry.type).params).description;
+  return entry.summary;
 }
 
 function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 const brandMark = () => `
@@ -211,7 +212,7 @@ function pageHTML(entry, entries) {
   const base = '../..';
   const tagline = taglineOf(entry);
   const related = (entry.related || [])
-    .filter(t => toolEntries.has(t) || (registry[t] && !registry[t].hidden));
+    .filter(t => entries.some(e => e.type === t));
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -339,7 +340,7 @@ ${header(base)}
       </div>
     </div>
   </div>
-  <footer class="wiki-footer">More components are added to the encyclopedia over time — <a href="${base}/sketch/">open the full component library in the canvas</a> to see everything available today.</footer>
+  <footer class="wiki-footer">Explore every component in the encyclopedia, or <a href="${base}/sketch/">open the full component library in the canvas</a> to see everything available today.</footer>
 </body>
 </html>
 `;
@@ -356,6 +357,23 @@ async function writeWikiTypesManifest() {
 }
 
 async function main() {
+  const types = new Set(wikiEntries.map(e => e.type));
+  if (types.size !== wikiEntries.length) throw new Error('Duplicate wiki component type');
+  const missing = [...Object.keys(registry).filter(t => !registry[t].hidden), ...toolEntries.keys()]
+    .filter(t => !types.has(t));
+  if (missing.length) throw new Error(`Missing wiki entries: ${missing.join(', ')}`);
+  for (const entry of wikiEntries) {
+    const words = entry.summary?.trim().split(/\s+/).length || 0;
+    if (words < 18 || words > 28 || entry.summary.length > 190) {
+      throw new Error(`${entry.type}: write a complete 18–28 word summary, at most 190 characters`);
+    }
+    if (registry[entry.type] && entry.category !== registry[entry.type].category) {
+      throw new Error(`${entry.type}: wiki category differs from the component registry`);
+    }
+    for (const related of entry.related || []) {
+      if (!types.has(related)) throw new Error(`${entry.type}: related wiki page ${related} is missing`);
+    }
+  }
   for (const entry of wikiEntries) {
     if (!registry[entry.type] && !toolEntries.has(entry.type)) {
       throw new Error(`wiki-content references unknown type "${entry.type}"`);
@@ -365,9 +383,9 @@ async function main() {
   for (const entry of wikiEntries) {
     const pageDir = join(dir, entry.type);
     await mkdir(pageDir, { recursive: true });
-    await writeFile(join(pageDir, 'index.html'), pageHTML(entry, wikiEntries), 'utf-8');
+    await writeFile(join(pageDir, 'index.html'), pageHTML(entry, wikiEntries).replace(/[ \t]+\n/g, '\n'), 'utf-8');
   }
-  await writeFile(join(dir, 'index.html'), hubHTML(wikiEntries), 'utf-8');
+  await writeFile(join(dir, 'index.html'), hubHTML(wikiEntries).replace(/[ \t]+\n/g, '\n'), 'utf-8');
   await writeWikiTypesManifest();
   console.log(`Built ${wikiEntries.length} wiki pages + index + wiki-types.js. Run tools/build-sitemap.mjs next to update sitemap.xml.`);
 }

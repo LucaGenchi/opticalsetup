@@ -81,6 +81,100 @@ function fiberDemo({ bare }) {
 }
 
 const demoScenes = {
+  eye: () => {
+    const eye = mkDemo('eye', 280, 160, 0, { diameter: 30, pupil: 10, focus: 30 });
+    return [mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }), eye,
+      mkDemo('display', 280, 260, 0, { sensorId: eye.id, displayScale: 0.55 })];
+  },
+  generaldetector: () => {
+    const sensor = mkDemo('generaldetector', 350, 160);
+    return [mkDemo('pulsedlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }), sensor,
+      mkDemo('display', 350, 265, 0, { sensorId: sensor.id, displayScale: 0.6 })];
+  },
+  display: () => {
+    const sensor = mkDemo('powermeter', 350, 160);
+    return [mkDemo('cwlaser', 60, 160, 0, { avgPowerW: 0.2, beamMode: 'beam', beamWidth: 12 }),
+      mkDemo('filter', 210, 160, 0, { ftype: 'nd', trans: 0.25 }), sensor,
+      mkDemo('display', 350, 265, 0, { sensorId: sensor.id, displayScale: 0.65 })];
+  },
+  delayline: () => [
+    mkDemo('pulsedlaser', 60, 180),
+    mkDemo('probe', 150, 180, 0, { prop: 'time', timeSpanNs: 1 }),
+    mkDemo('delayline', 265, 180, 0, { delayMm: 100 }),
+    mkDemo('probe', 380, 180, 0, { prop: 'time', timeSpanNs: 1 }),
+    mkDemo('detector', 470, 180),
+  ],
+  chopper: () => {
+    const sensor = mkDemo('detector', 400, 160);
+    return [mkDemo('cwlaser', 60, 160),
+      mkDemo('chopper', 230, 160, 0, { frequencyHz: 1000, chopDuty: 0.5 }), sensor,
+      mkDemo('display', 400, 265, 0, { sensorId: sensor.id, displayScale: 0.55 })];
+  },
+  crystal: () => [
+    mkDemo('cwlaser', 60, 160, 0, { wavelength: 1064 }),
+    mkDemo('crystal', 220, 160, 0, { convert: 'shg', efficiency: 0.4, transmitPump: true }),
+    mkDemo('dichroic', 350, 160, 135, { cutoff: 700 }),
+    mkDemo('probe', 430, 160, 0, { prop: 'wl' }),
+    mkDemo('probe', 350, 260, 0, { prop: 'wl' }),
+    mkDemo('detector', 520, 160),
+    mkDemo('detector', 350, 350, 90),
+  ],
+  sample: () => [
+    mkDemo('cwlaser', 40, 150, 0, { wavelength: 488, beamMode: 'beam', beamWidth: 12 }),
+    mkDemo('lens', 150, 150, 0, { f: 60, dia: 25 }),
+    mkDemo('sample', 210, 150, 90, {
+      specimenType: 'linear', transmitExc: true, transmission: 0.9, aperture: 44,
+      channels: [{ kind: 'fluor', wl: 520, eff: 0.35, epi: false, epiRatio: 0.15,
+        autoWl: false, autoColor: true, color: '#22c55e', material: 'lipid',
+        fluorophore: 'custom', retardance: 90, axis: 45, transferEff: 0.1, requireOverlap: true }],
+    }),
+    mkDemo('lens', 285, 150, 0, { f: 55, dia: 50 }),
+    mkDemo('filter', 345, 150, 0, { ftype: 'longpass', cutoff: 500, length: 50 }),
+    mkDemo('pmt', 440, 150, 0, { aperture: 40, gain: 1e5, saturation: 1e6, darkInput: 1e-6 }),
+  ],
+  stage: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 8 }),
+    mkDemo('stage', 240, 160, 90, { pzMode: 'xy', pzTravelXY: 16, pzFreqXY: 0.3,
+      specimenType: 'linear', transmitExc: true, transmission: 0.8 }),
+    mkDemo('detector', 400, 160),
+  ],
+  objarrow: () => [
+    mkDemo('objarrow', 60, 160, 0, { height: 22, spread: 10, showImage: true }),
+    mkDemo('lens', 260, 160, 0, { f: 100, dia: 50.8 }),
+    mkDemo('textlabel', 395, 220, 0, { text: 'Image: 1:1, inverted', fontSize: 12 }),
+  ],
+  probe: () => [
+    mkDemo('sclaser', 60, 180),
+    mkDemo('probe', 240, 180, 0, { prop: 'spectrum' }),
+    mkDemo('detector', 430, 180),
+  ],
+  figureframe: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }),
+    mkDemo('lens', 200, 160, 0, { f: 80 }),
+    mkDemo('detector', 340, 160, 0, { aperture: 40 }),
+    mkDemo('figureframe', 205, 160, 0, { w: 370, h: 180 }),
+  ],
+  highlight: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }),
+    mkDemo('lens', 220, 160, 0, { f: 80 }),
+    mkDemo('detector', 380, 160, 0, { aperture: 40 }),
+    mkDemo('highlight', 220, 160, 0, { w: 110, h: 100 }),
+  ],
+  box: () => [
+    mkDemo('cwlaser', 60, 160),
+    mkDemo('box', 230, 160, 0, { text: 'Enclosure', behavior: 'block' }),
+    mkDemo('detector', 400, 160),
+  ],
+  gascell: () => [
+    mkDemo('cwlaser', 60, 160),
+    mkDemo('gascell', 235, 160, 0, { windowLeft: true, windowRight: true }),
+    mkDemo('detector', 400, 160),
+  ],
+  window: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 10 }),
+    mkDemo('window', 230, 160),
+    mkDemo('detector', 400, 160),
+  ],
   fiber: () => fiberDemo({ bare: false }),
   barefiber: () => fiberDemo({ bare: true }),
   mirror: () => [
