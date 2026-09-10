@@ -357,14 +357,29 @@ export const wikiEntries = [
         colour — which is why a prism turns this source into a visible rainbow even though
         the undispersed beam is drawn as a single broadband white line.</p>
         <p>It carries the same pulse train as the Pulsed Laser, since a real supercontinuum
-        inherits its pump's timing, but exposes no pulse duration of its own: that is a
-        property of whatever generated the continuum upstream, which is not modeled here.</p>`,
-      formulas: [],
+        inherits its pump's timing. Its pulse duration and envelope (Gaussian or
+        sech²) are set directly rather than derived: in a real source they depend on the
+        pump and on the nonlinear fibre that generated the continuum, neither of which is
+        modelled here, and a continuum fresh out of the fibre is typically heavily chirped
+        and picoseconds long. The autocorrelator and the beam probe report the duration
+        you set.</p>
+        <p>The one limit the setting cannot cross is the transform limit. No pulse can be
+        shorter than its own spectrum allows, so the duration has a floor set by the
+        band, which the inspector shows as <em>Transform limit</em>. For a band hundreds of
+        nanometres wide that floor is around a femtosecond and never gets in the way. A
+        narrow band raises it: 690–700&nbsp;nm cannot carry a Gaussian pulse shorter than
+        71&nbsp;fs. Narrowing the band or changing the envelope lifts a duration that has
+        fallen below the new floor. Widening the band never shortens the duration you set.</p>`,
+      formulas: [
+        { tex: '\\Delta t_{\\min} = \\frac{K}{c\\left(1/\\lambda_{\\min} - 1/\\lambda_{\\max}\\right)}', caption: 'The shortest pulse the band can carry. The denominator is the exact frequency span of the band, not the λ²/Δλ approximation, which drifts by several percent once the band is hundreds of nanometres wide. K is the time–bandwidth product of the chosen envelope: 0.441 for Gaussian, 0.315 for sech².' },
+      ],
       limitations: `<p>The spectrum is an idealized flat top, not a measured shape with the
         peaks, dips, and edge roll-off of a real continuum, and its shape does not change
         with pump power. No broadening is simulated: the band is declared, not generated
         from a pump and a nonlinear fibre. Pulse-to-pulse spectral noise, a real limitation
-        of these sources, is not represented.</p>`,
+        of these sources, is not represented. Dispersion does not yet stretch these pulses:
+        the duration stays as set through glass and compressors, although a real continuum
+        spreads strongly across its band.</p>`,
     },
     related: ['cwlaser', 'pulsedlaser', 'prism', 'filter'],
     resources: [

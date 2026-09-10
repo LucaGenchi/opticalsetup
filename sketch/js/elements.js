@@ -16,7 +16,7 @@ import {
   formatTimeAxisNs,
 } from './probe.js';
 import {
-  linewidthForCoherenceLengthNm, spectrumSamples, transformLimitedBandwidthNm,
+  linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -4570,6 +4570,33 @@ registry.lensc = {
 // rather than a line, so it replaces wavelength with a range and defaults to
 // a fixed broadband white instead of a colour derived from a centroid λ that
 // no longer means much once the band is hundreds of nm wide.
+//
+// Its pulse duration is set by hand, but never below what its band allows: a
+// pulse shorter than the transform limit of its spectrum cannot exist. The
+// floor is rounded up to three significant figures so the field shows a clean
+// number and the rounded value still honours the limit. A band so narrow its
+// limit passes the longest duration the field holds -- a zero-width band has
+// no finite limit at all -- floors at that maximum instead: the tracer and a
+// reloaded sketch clamp there too, so any higher floor could never be kept.
+const SC_PULSE_WIDTH_MIN_FS = 1;
+const SC_PULSE_WIDTH_MAX_FS = 1000000000;
+export function supercontinuumPulseWidthFloorFs(p = {}) {
+  const tl = supercontinuumTransformLimitFs(p.scMin ?? 300, p.scMax ?? 700, p.pulseShape);
+  if (!(tl > SC_PULSE_WIDTH_MIN_FS)) return SC_PULSE_WIDTH_MIN_FS;
+  if (!(tl < SC_PULSE_WIDTH_MAX_FS)) return SC_PULSE_WIDTH_MAX_FS;
+  const unit = 10 ** (Math.floor(Math.log10(tl)) - 2);
+  return Math.min(SC_PULSE_WIDTH_MAX_FS, Number((Math.ceil(tl / unit - 1e-9) * unit).toPrecision(3)));
+}
+// Narrowing the band or switching the envelope raises the floor under a
+// duration that was valid a moment ago; every path that edits those params
+// runs this so the stored duration is lifted rather than left impossible.
+// It is also what enforces the floor on a typed duration: the field's HTML
+// min stays at 1 fs so the browser's 10 fs step ladder is not rebased onto
+// an arbitrary floor like 71.5 fs, which would mark 250 fs as off-step.
+export function normalizeSupercontinuumParams(params) {
+  const floor = supercontinuumPulseWidthFloorFs(params);
+  return Number(params.pulseWidthFs) >= floor ? {} : { pulseWidthFs: floor };
+}
 registry.sclaser = {
   ...registry.pulsedlaser,
   label: 'Supercontinuum laser',
@@ -4582,6 +4609,16 @@ registry.sclaser = {
     { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
     ...beamShapeParams(3),
     ...pulseTrainParams(),
+    // Duration and envelope are configured independently of the broad spectrum;
+    // this is not a reconstruction of nonlinear continuum generation.
+    ...registry.pulsedlaser.params.filter(p => ['pulseWidthFs', 'pulseShape'].includes(p.key))
+      .map(p => p.key === 'pulseWidthFs'
+        ? { ...p, def: 100, min: supercontinuumPulseWidthFloorFs, htmlMin: SC_PULSE_WIDTH_MIN_FS, max: SC_PULSE_WIDTH_MAX_FS }
+        : { ...p }),
+    {
+      key: 'scTransformLimit', label: 'Transform limit (fs)', type: 'readout',
+      readout: p => String(supercontinuumPulseWidthFloorFs(p)),
+    },
     POL_PARAM,
     // Broadband white by default: a supercontinuum has no single colour to
     // derive, and this is the shade the tracer already paints wide-band light.
@@ -4706,7 +4743,7 @@ export function getDirectManipulation(el) {
 const ELEMENT_HELP = {
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
-  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam.',
+  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
   objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',

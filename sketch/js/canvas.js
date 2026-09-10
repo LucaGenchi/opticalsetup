@@ -5,7 +5,7 @@ import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
-  displayActionUpdate, delayLineSweepSpanMm,
+  displayActionUpdate, delayLineSweepSpanMm, normalizeSupercontinuumParams,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
@@ -1014,6 +1014,7 @@ function writeParam(el, key, value) {
   if (spec?.type === 'derived') spec.set(el.params, value);
   else el.params[key] = value;
   if (el.type === 'objective') Object.assign(el.params, normalizeObjectiveParams(el.params));
+  if (el.type === 'sclaser') Object.assign(el.params, normalizeSupercontinuumParams(el.params));
 }
 
 function boundedParam(el, key, value) {
@@ -1658,7 +1659,12 @@ function onDown(e) {
   }
   if (hitTuneHandle(sel, w)) {
     const tune = getDirectManipulation(sel).tune;
-    drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: readParam(sel, tune.key), moved: false };
+    // A supercontinuum's duration is lifted whenever its band narrows below
+    // what the duration allows. Mid-drag that would ratchet: sweeping λ max
+    // down and back would leave the pulse at the narrowest band's floor, so
+    // each step re-derives it from the duration the drag started with.
+    drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: readParam(sel, tune.key), moved: false,
+      pulseWidthFs: sel.type === 'sclaser' ? sel.params.pulseWidthFs : undefined };
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -1820,6 +1826,7 @@ function onMove(e) {
     const next = boundedParam(drag.el, drag.tune.key, drag.value + steps * step);
     if (next === readParam(drag.el, drag.tune.key)) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
+    if (drag.pulseWidthFs !== undefined) drag.el.params.pulseWidthFs = drag.pulseWidthFs;
     writeParam(drag.el, drag.tune.key, next);
     setStatus(directValueLabel(drag.el, drag.tune));
     renderAll();
