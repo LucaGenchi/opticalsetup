@@ -13,13 +13,18 @@ import {
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
-import { acoustoOpticShiftedWavelength, aodDeflectionDeg } from './acousto-optic.js';
+import { aodDeflectionDeg } from './acousto-optic.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
 // mirrors the same schematic-spacing convention already used by pulse
 // markers: an on-screen-legible constant, not a physically scaled distance.
 const CHOP_SCHEMATIC_PERIOD_MM = 14;
+
+// Below this a ray carries no light worth drawing. The beam fill has always
+// used it per segment; the pulse overlay and the branch emitters use it too so
+// the three cannot disagree about whether a beam exists.
+const MIN_DRAWN_INTENSITY = 1e-12;
 import {
   linearStokes, cloneStokes, retarder as applyRetarder, analyzerTransmission,
   legacyPolarization, polarizationDescription,
@@ -29,7 +34,7 @@ import {
   gaussianPulseDurationAfterGDD, glassGVD, glassIndex, isDispersiveGlass,
 } from './glass.js';
 import {
-  gaussianSpectrum, flatSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
+  gaussianSpectrum, flatSpectrum, lineSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
@@ -512,8 +517,8 @@ function averageGateTransmission(pulse) {
   // levels, so omitting those made one port silently reuse the other's
   // cached average.
   const key = [pulse.repRateMHz, pulse.pulseWidthFs, pulse.phaseNs, ...pulse.gates.flatMap(g => [
-    g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1, g.invert ? 1 : 0,
-    g.high ?? 1, g.low ?? 0,
+    g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1,
+    g.symmetry ?? 1, g.invert ? 1 : 0, g.high ?? 1, g.low ?? 0,
   ])].join('|');
   if (!gateTransmissionCache.has(key)) gateTransmissionCache.set(key, pulseGateTransmission(pulse));
   return gateTransmissionCache.get(key);
@@ -523,6 +528,11 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
   const gateDuty = averageGateTransmission(ray.pulse);
   return {
     power: (Number.isFinite(ray.power) ? ray.power : ray.intensity) * gateDuty,
+    // What this branch carries with its gates wide open. `power` above is
+    // already duty-averaged, so a time trace built on it would apply the gate
+    // a second time. Kept as the factor rather than the product so it stays
+    // correct when power is rescaled later (coherent groups do that).
+    gateDuty,
     intensity: ray.intensity,
     wl: ray.wl,
     bw: ray.bw || 0,
@@ -787,6 +797,36 @@ export function detectorReading(elementId) {
         centerWavelengthNm: Number.isFinite(arrivingCenterNm) ? arrivingCenterNm : centerWavelength,
       };
     });
+    // What a photodiode actually sums. `trains` groups by source, which is
+    // what a correlator needs -- two arms, two trains -- but it keeps one
+    // representative pulse per source, so branches of the same beam that are
+    // gated DIFFERENTLY collapse into whichever arrived first. An AOM's
+    // zeroth order is exactly that: a residual that is always present plus
+    // the diffracted light handed back while the RF is off. Reported through
+    // `trains` alone it looked like it switched fully off.
+    //
+    // So the time trace gets its own view: one entry per distinct gating,
+    // each weighted by the UNGATED intensity arriving on it (the hit's own
+    // `power` is already duty-averaged, which would apply the gate twice).
+    // Summing these is what a detector does, and the weights are relative to
+    // one source beam, so an element that passes only part of the light shows
+    // up as a trace that no longer reaches full height.
+    const branchGroups = new Map();
+    for (const h of pulsed) {
+      const gates = Array.isArray(h.pulse.gates) ? h.pulse.gates : [];
+      const key = [h.pulse.sourceId || '', ...gates.map(g => [
+        g.opl, g.frequencyMHz, g.duty, g.phaseNs, g.shape || 'square', g.depth ?? 1,
+        g.symmetry ?? 1, g.invert ? 1 : 0, g.high ?? 1, g.low ?? 0,
+      ].join(','))].join('|');
+      const group = branchGroups.get(key) || { gates: gates.map(g => ({ ...g })), weight: 0 };
+      // Undo the duty averaging already in `power` to recover the level this
+      // branch sits at while its gates are open, still on the scale where one
+      // whole source beam is 1.
+      const duty = Number.isFinite(h.gateDuty) && h.gateDuty > 1e-9 ? h.gateDuty : 1;
+      group.weight += Math.max(0, h.power || 0) / duty;
+      branchGroups.set(key, group);
+    }
+    const branches = [...branchGroups.values()];
     const sources = new Set(pulsed.map(h => h.pulse.sourceId).filter(Boolean));
     const trainSettings = new Set(trains.map(p => [p.repRateMHz, p.pulseWidthFs, p.phaseNs].join(':')));
     const mixed = trainSettings.size > 1;
@@ -805,6 +845,7 @@ export function detectorReading(elementId) {
       pulseShape: mixed ? null : (first.pulseShape || 'gauss'),
       transformLimited: mixed ? null : first.transformLimited === true,
       trains,
+      branches,
       gddFs2,
       gddRangeFs2: [Math.min(...gddValues), Math.max(...gddValues)],
       stretchedPulseWidthFs: !mixed && canBroaden
@@ -892,8 +933,17 @@ const MAXLEN = 6000, MAX_DEPTH = 60, MIN_INT = 0.02;
 // This lower budget remains finite; crossing it disables interference for
 // the whole source instead of returning a silently incomplete field sum.
 const MIN_COHERENT_INT = 1e-4;
+// How co-propagating mixed light is drawn: a band wide enough that no single
+// wavelength stands for it has no colour of its own, so it is painted as the
+// pale mix rather than as whichever wavelength happens to sit in the middle.
+const MIXED_LIGHT_COLOR = '#cbd8ea';
 const MIN_RETAINED_POWER_INT = 1e-12;
 const MAX_RETAINED_WEAK_BRANCHES = 256;
+// How many rays one shaper hit may leave with, across all of its layers. It
+// bounds a stack that multiplies rays (orders x wavelengths x speckle grains),
+// and every layer sizes its own sampling to fit rather than overflowing and
+// being truncated — see the shaper case in interact().
+const SHAPER_RAY_CAP = 24;
 const LOW_POWER_MEASUREMENT_SURFACES = new Set(['detector', 'specimen', 'attenuate', 'fluor', 'fiberin']);
 
 // Carrier phase is exact only through explicitly supported component
@@ -1366,30 +1416,50 @@ function fiberEmissionRays(c) {
   return rays;
 }
 
-// slice the envelope strip between polylines A and B into "on" quads
-function chopStrip(A, B, period, duty) {
-  const lerpP = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+// Slice the envelope strip between two beam edges A and B -- one propagation
+// segment each, as the beam fill is built -- into its "on" quads.
+//
+// Each edge carries its own `start`: how far into that edge the pattern's
+// on-window begins, measured unwrapped from the gate, so window n lies at
+// [start + nP, start + nP + on] along it. Pairing window n on both edges is
+// what keeps a chunk's cut where both edges are equally far from the gate.
+// Behind an oblique optic the edges arrive after different distances -- a
+// 45 degree mirror folds a 12 mm beam's edges 12 mm apart -- and cutting both
+// at one edge's positions would slant the fill across the beam while the
+// dashed outlines, which follow each edge's own phase, stay square to it.
+// An anti-phase strip is simply one whose starts sit half a period later.
+function chopStrip(A, B, period, duty, startA = 0, startB = startA) {
+  const along = (p0, p1, length, s) => (length < 1e-9 ? p0
+    : { x: p0.x + (p1.x - p0.x) * s / length, y: p0.y + (p1.y - p0.y) * s / length });
+  const [a0, a1] = A, [b0, b1] = B;
+  const lengthA = Math.hypot(a1.x - a0.x, a1.y - a0.y);
+  const lengthB = Math.hypot(b1.x - b0.x, b1.y - b0.y);
+  if (Math.max(lengthA, lengthB) < 1e-6) return [];
+  const on = period * duty;
+  const clamp = (v, length) => Math.min(length, Math.max(0, v));
+  const first = Math.floor((Math.min(-startA, -startB) - on) / period);
+  const last = Math.ceil(Math.max(lengthA - startA, lengthB - startB) / period);
   const polys = [];
-  const n = Math.min(A.length, B.length);
-  let phase = 0;
-  for (let j = 0; j < n - 1 && polys.length < 300; j++) {
-    const a0 = A[j], a1 = A[j + 1], b0 = B[j], b1 = B[j + 1];
-    const L = Math.hypot(a1.x - a0.x, a1.y - a0.y);
-    if (L < 1e-6) continue;
-    let s = 0;
-    while (s < L && polys.length < 300) {
-      const ip = (phase + s) % period;
-      const on = ip < period * duty;
-      const segEnd = Math.min(L, s + (on ? period * duty - ip : period - ip));
-      if (on) {
-        const t0 = s / L, t1 = segEnd / L;
-        polys.push([lerpP(a0, a1, t0), lerpP(a0, a1, t1), lerpP(b0, b1, t1), lerpP(b0, b1, t0)]);
-      }
-      s = segEnd + 1e-6;
-    }
-    phase = (phase + L) % period;
+  for (let n = first; n <= last && polys.length < 300; n++) {
+    const aLo = clamp(startA + n * period, lengthA), aHi = clamp(startA + n * period + on, lengthA);
+    const bLo = clamp(startB + n * period, lengthB), bHi = clamp(startB + n * period + on, lengthB);
+    // Nothing of this window falls on this segment along either edge.
+    if (aHi - aLo < 1e-6 && bHi - bLo < 1e-6) continue;
+    polys.push([along(a0, a1, lengthA, aLo), along(a0, a1, lengthA, aHi),
+      along(b0, b1, lengthB, bHi), along(b0, b1, lengthB, bLo)]);
   }
   return polys;
+}
+
+// A chop pattern is anchored where it was cut -- the chopper or AOM -- and has
+// to run on unbroken from there. Every ray object measures `startMm` from its
+// own first point, so a ray continuing a parent's pattern carries the parent's
+// phase forward by the distance the parent travelled. It is kept unwrapped:
+// two beam edges that reached an oblique optic after different distances must
+// still pair the same window, which a phase folded into one period cannot tell.
+function continuedChop(chopped, travelledMm) {
+  if (!chopped) return undefined;
+  return { ...chopped, startMm: (chopped.startMm || 0) - travelledMm };
 }
 
 function rayArcHit(p, d, surface) {
@@ -1769,25 +1839,54 @@ function offsetPolyline(pts, d) {
 // wavelength, not spread evenly across the box — spectrumSamples() already
 // falls back to uniform weights for a flat (supercontinuum) spectrum, so
 // that case is unchanged.
-function wlSamples(ray) {
+// maxK caps the quadrature count for callers working inside a ray budget.
+// The nodes are only a numerical device — the weights are renormalised to sum
+// to 1 whatever count comes back — so a caller that cannot afford nine rays
+// per order is far better off asking for fewer than letting the tail be
+// truncated away with its power.
+function wlSamples(ray, maxK = Infinity) {
   if (!ray.bw) return [{ wl: ray.wl, weight: 1 }];
-  const K = ray.bw >= 200 ? 9 : 5;
+  const K = Math.max(1, Math.min(maxK, ray.bw >= 200 ? 9 : 5));
+  const [lo, hi] = ray.spec
+    ? spectrumSupport(ray.spec)
+    : [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
+  // One node has to stand for the whole band, so it sits at the spectrum's
+  // centroid; the midpoint of the support would misplace a skewed profile.
+  // This case is also why the budget cannot simply be handed to
+  // spectrumSamples(), which floors at two nodes and would quietly return
+  // twice what the caller can afford.
+  //
+  // A line spectrum is exempt: its samples are a lamp's actual emission
+  // lines, not quadrature nodes, and a discharge lamp reaches here with a
+  // bandwidth because resolveSourceSpectrum() reports the span of its lines.
+  // Collapsing those to a centroid would trace every order at a wavelength
+  // the light does not contain and erase the lines themselves. They stay
+  // whole and the cap deals with the count: under-reporting a little through
+  // truncation is much the better failure.
+  const discrete = ray.spec?.kind === 'lines';
+  if (K === 1 && !discrete) {
+    const center = ray.spec ? (spectrumStats(ray.spec)?.center ?? (lo + hi) / 2) : ray.wl;
+    return [{ wl: center, weight: 1, spectralLo: lo, spectralHi: hi }];
+  }
   let samples = null;
   if (ray.spec) {
     samples = spectrumSamples(ray.spec, K);
   }
-  const [lo, hi] = ray.spec
-    ? spectrumSupport(ray.spec)
-    : [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
   if (!samples) samples = Array.from({ length: K }, (_, i) => ({
-    wl: lo + (hi - lo) * i / (K - 1),
+    wl: K === 1 ? (lo + hi) / 2 : lo + (hi - lo) * i / (K - 1),
     weight: 1,
   }));
   // These are quadrature nodes across a continuous spectrum. Trapezoidal
   // endpoint weights keep a flat band flat and give each child an explicit
   // spectral cell, instead of later presenting the computational nodes as
   // invented laser lines.
-  const weighted = samples.map((sample, index) => ({
+  //
+  // A lamp's lines are not nodes of anything — they are the emission itself,
+  // and there is no interval outside the outermost of them to take half of.
+  // Halving those two hands a mercury lamp's 365 and 1014 nm lines half the
+  // power they emit and, after renormalising, pushes it into the lines in
+  // between.
+  const weighted = discrete ? samples : samples.map((sample, index) => ({
     ...sample,
     weight: sample.weight * (index === 0 || index === samples.length - 1 ? 0.5 : 1),
   }));
@@ -1798,6 +1897,183 @@ function wlSamples(ray) {
     spectralLo: index === 0 ? lo : (samples[index - 1].wl + sample.wl) / 2,
     spectralHi: index === samples.length - 1 ? hi : (sample.wl + samples[index + 1].wl) / 2,
   }));
+}
+
+// The diffraction orders a shaper's grating layer is configured for, as
+// written in its comma-separated `orders` field.
+function shaperLayerOrders(ly) {
+  const parsed = [...new Set(String(ly.orders ?? '1').split(',')
+    .map(v => parseInt(v.trim(), 10)).filter(m => Number.isFinite(m)))].slice(0, 21);
+  return parsed.length ? parsed : [1];
+}
+
+// An order steeper than grazing is evanescent: sin(theta_out) would exceed 1,
+// so it carries no light away from the grating and must not be handed a share
+// of it either. A real grating redistributes a passing-off order's energy into
+// the orders that still propagate (the Rayleigh anomaly), and dividing by the
+// propagating count is that same bookkeeping. Without it a fine grating at a
+// long wavelength quietly loses most of the beam: 2400 l/mm asked for orders
+// -1,0,1 at 532 nm has only the zeroth order to give light to, and reported a
+// third of the beam because it still divided by three.
+//
+// The count is per wavelength sample, since an order can propagate at one end
+// of a band and pass off at the other.
+function propagatingOrderCounts(orders, wls, si, groove) {
+  return wls.map(w => orders.reduce(
+    (count, m) => count + (m === 0 || Math.abs(si + m * w.wl / groove) <= 1 ? 1 : 0), 0));
+}
+
+// Wavelengths used to settle propagation across a band that travels whole, in
+// one ray per order. It only has to place a pass-off edge, not resolve a
+// spectrum, and it is walked in the coarsest regime only.
+const COARSE_GRID = 129;
+
+// Whether order m leaves the grating at all at this wavelength.
+const orderPropagates = (m, wl, si, groove) =>
+  m === 0 || Math.abs(si + m * wl / groove) <= 1;
+
+// When the ray budget leaves a single spectral node, the whole band travels in
+// one ray per order and propagation cannot be settled at the centroid: an
+// order that passes off inside the band still carries everything below its
+// cutoff, and the orders alive there share what it gives up. Deciding that at
+// one wavelength gives an order either all of the band or none of it.
+//
+// Every order's share comes off the same grid, so they still sum to exactly
+// the incident power — at each wavelength the live orders divide one between
+// them. The reshaped profile each order carries is taken separately, through
+// the machinery a filter uses, and is deliberately not allowed to set the
+// share: a second grid would conserve power slightly less than exactly.
+function coarseOrderShares(ray, orders, si, groove) {
+  const [lo, hi] = ray.spec
+    ? spectrumSupport(ray.spec)
+    : [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
+  const shares = new Map(orders.map(m => [m, 0]));
+  let total = 0;
+  for (let i = 0; i < COARSE_GRID; i++) {
+    const wl = lo + (hi - lo) * i / (COARSE_GRID - 1);
+    const weight = ray.spec ? Math.max(0, spectrumWeight(ray.spec, wl)) : 1;
+    if (!(weight > 0)) continue;
+    total += weight;
+    const live = orders.filter(m => orderPropagates(m, wl, si, groove));
+    for (const m of live) shares.set(m, shares.get(m) + weight / live.length);
+  }
+  if (!(total > 0)) return null;
+  for (const m of orders) shares.set(m, shares.get(m) / total);
+  return shares;
+}
+
+// Rebuilding a profile per order costs a re-grid of the spectrum, and every
+// spatial sample of a beam meets the grating at the same angle carrying the
+// same spectrum: without this a 25-sample beam repeats identical work 25
+// times, which measured 12 ms on a 21-order layer against 0.3 ms with it.
+// Reset per trace alongside the other caches in traceScene().
+let coarsePortCache = new Map();
+const specIds = new WeakMap();
+let nextSpecId = 1;
+function specKey(spec) {
+  if (!spec) return 'none';
+  let id = specIds.get(spec);
+  if (!id) { id = nextSpecId++; specIds.set(spec, id); }
+  return id;
+}
+
+// A quadrature node stands for a slice of the incident spectrum, not for a
+// laser line at its centre. Handing the child only the slice's bounds tells
+// detectors the truth — they read spectralLo/Hi — but nothing else: a filter
+// or a dichroic takes its !ray.bw path and judges the whole slice by the one
+// wavelength. Carrying the slice itself lets them cut inside it. Budgeting
+// makes the slices wider, so this matters more here than it used to: a
+// 400-800 nm beam across nine orders has 200 nm slices, and a 799 nm longpass
+// passed a whole half-band on the strength of its 800 nm label.
+//
+// Cached per trace: every order shares the same set of slices, so there are
+// only ever as many distinct ones as there are nodes.
+let cellSpectrumCache = new Map();
+function cellSpectrum(ray, lo, hi) {
+  if (!ray.spec || !(ray.bw > 0) || !(hi > lo)) return null;
+  const key = `${specKey(ray.spec)}|${lo}|${hi}`;
+  if (cellSpectrumCache.has(key)) return cellSpectrumCache.get(key);
+  const shaped = applyTransmission(ray.spec, ray.wl, wl => (wl >= lo && wl <= hi ? 1 : 0));
+  const cell = shaped?.spec ? { spec: shaped.spec, bw: shaped.bw } : null;
+  cellSpectrumCache.set(key, cell);
+  return cell;
+}
+
+// What each order leaves with when the whole band travels in one ray: the
+// share of the incident power, and the colours that share is made of.
+function coarseOrderPorts(ray, orders, si, groove) {
+  const key = `${si.toFixed(9)}|${groove}|${orders.join(',')}|${specKey(ray.spec)}|${ray.wl}|${ray.bw}`;
+  const cached = coarsePortCache.get(key);
+  if (cached) return cached;
+  const shares = coarseOrderShares(ray, orders, si, groove);
+  if (!shares) return null;
+  const ports = new Map();
+  for (const m of orders) {
+    const fraction = shares.get(m);
+    if (!(fraction > 0)) continue;
+    const shaped = applyTransmission(ray.spec, ray.wl, wl => (orderPropagates(m, wl, si, groove)
+      ? 1 / orders.filter(k => orderPropagates(k, wl, si, groove)).length : 0));
+    // A share this order really holds must never be dropped because the
+    // re-grid declined to build a profile for it — that would lose the light
+    // rather than merely describe it coarsely. Fall back to the incident
+    // spectrum instead.
+    ports.set(m, shaped
+      ? { fraction, spec: shaped.spec, wl: shaped.wl, bw: shaped.bw }
+      : { fraction, spec: ray.spec, wl: ray.wl, bw: ray.bw });
+  }
+  coarsePortCache.set(key, ports);
+  return ports;
+}
+
+// The undiffracted order leaves as one polychromatic ray rather than splitting
+// per wavelength, so when N varies across the band its share is not a scalar
+// but a spectral shaping: it keeps everything where the other orders have
+// passed off, and 1/N where they still propagate. A 400-800 nm beam on a
+// 1600 l/mm grating loses its +-1 orders above 625 nm, so its zeroth order
+// comes out distinctly red-weighted — scaling by the band average alone hands
+// a spectrometer the right total power with the incident colour balance.
+//
+// Returns the fraction to scale intensity by, plus the reshaped profile to
+// carry when the spectrum really is reshaped.
+function zeroOrderPort(ray, orders, wls, counts, si, groove) {
+  // No order passing off inside the band is the common case, and there the
+  // share is exactly 1/N with the spectrum untouched. Taking that division
+  // directly keeps the result bit-identical to the plain 1/N this replaced,
+  // instead of accumulating rounding across a quadrature sum.
+  const first = counts[0];
+  if (counts.every(count => count === first)) return { fraction: first ? 1 / first : 0 };
+
+  // The fraction stays on the same quadrature nodes the diffracted orders are
+  // weighted by, so the shares still telescope to exactly the incident power:
+  // each node contributes w/N once for the zeroth order and once per
+  // propagating order, N of them in total. The reshaped profile below is only
+  // the colour balance, and is deliberately not allowed to set the fraction —
+  // a finer grid there would conserve power slightly less than exactly.
+  const fraction = wls.reduce((sum, w, i) => sum + (counts[i] ? w.weight / counts[i] : 0), 0);
+  const share = wl => {
+    const live = orders.reduce((count, m) =>
+      count + (m === 0 || Math.abs(si + m * wl / groove) <= 1 ? 1 : 0), 0);
+    return live ? 1 / live : 0;
+  };
+
+  // A lamp's lines each take their own share exactly. Re-gridding them the way
+  // a continuum is re-gridded would smear them into a profile that is no
+  // longer a line spectrum, inventing light between the lines.
+  if (ray.spec?.kind === 'lines') {
+    const scaled = lineSpectrum(ray.spec.lines.map(l => ({ nm: l.nm, w: l.w * share(l.nm) })));
+    const stats = scaled && spectrumStats(scaled);
+    if (!scaled || !stats) return { fraction: 0 };
+    const brightest = scaled.lines.reduce((best, l) => (l.w > best.w ? l : best));
+    return { fraction, spec: scaled, wl: brightest.nm, bw: stats.fwhm };
+  }
+
+  // For a continuum this is exactly what a filter does to a spectrum, so it
+  // goes through the same machinery, on a grid fine enough to place the
+  // pass-off edge properly rather than on the handful of quadrature nodes.
+  const shaped = ray.spec && applyTransmission(ray.spec, ray.wl, share);
+  if (shaped) return { fraction, spec: shaped.spec, wl: shaped.wl, bw: shaped.bw };
+  // No profile to reshape: the band-averaged fraction is all there is.
+  return { fraction };
 }
 
 // thin-lens (paraxial) bend; also used for curved mirrors after reflection.
@@ -2215,19 +2491,39 @@ function interact(ray, hit) {
       const sIn = dot(d, n) >= 0 ? 1 : -1;
       const out = [];
       const wls = wlSamples(ray);
+      const counts = propagatingOrderCounts(data.orders, wls, si, data.d);
       for (const m of data.orders) {
+        // The undiffracted order keeps the incident spectrum intact. It
+        // redirects the whole band specularly (or passes it straight through),
+        // rather than turning the first spectral sample into a laser line.
+        if (m === 0) {
+          const port = zeroOrderPort(ray, data.orders, wls, counts, si, data.d);
+          out.push({
+            d: data.transmissive ? d : reflect(d, n),
+            intensity: ray.intensity * port.fraction,
+            // Only carried when the band really is reshaped; otherwise the
+            // ray inherits the incident spectrum untouched.
+            ...(port.spec !== undefined ? { spec: port.spec, wl: port.wl, bw: port.bw } : {}),
+            tag: 'm0',
+          });
+          continue;
+        }
         for (let i = 0; i < wls.length; i++) {
           const sd = si + m * wls[i].wl / data.d;
           if (Math.abs(sd) > 1) continue;
           const c = Math.sqrt(1 - sd * sd);
           const sOut = data.transmissive ? sIn : -sIn;
           out.push({
+            // Only where dispersion actually happened: marking an
+            // undispersed beam would repaint a monochromatic ray the user had
+            // deliberately coloured, which is the guard the prism already
+            // applies by comparing bandwidths.
+            dispersed: m !== 0 && ray.bw > 0,
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
-            intensity: ray.intensity * (m === 0 ? 1 : wls[i].weight) / data.orders.length,
+            intensity: ray.intensity * wls[i].weight / counts[i],
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
           });
-          if (m === 0 && wls.length > 1) break; // 0th order is undispersed
         }
       }
       return out;
@@ -2310,13 +2606,34 @@ function interact(ray, hit) {
     case 'aod': {
       const out = [];
       const isAod = hit.surface.kind === 'aod';
-      // A deflector is steered by angle here, so there is no drive frequency
-      // to shift the optical carrier with; a modulator still has one.
-      const driveMHz = isAod ? 0 : (Number(data.rfMHz) || 0);
       const duty = data.gate ? Math.min(0.99, Math.max(0.01, data.gate.duty ?? 0.5)) : 1;
-      const shape = data.gate?.shape === 'sine' ? 'sine' : 'square';
+      const shape = data.gate?.shape === 'sine' || data.gate?.shape === 'sawtooth'
+        ? data.gate.shape : 'square';
       const depth = Math.min(1, Math.max(0, data.gate?.depth ?? 1));
-      const averageTransmission = data.gate ? (shape === 'sine' ? 1 - depth / 2 : duty) : 1;
+      // How much of the ramp's period is spent rising: 1 a rising sawtooth,
+      // 0 a falling one, 0.5 a triangle. It shapes the gate without changing
+      // its mean, so it only ever shows in the time domain -- which is why it
+      // has to be carried onto the gate itself rather than folded into
+      // averageTransmission below.
+      const symmetry = Math.min(1, Math.max(0, Number(data.gate?.symmetry ?? 1)));
+      // A square gate passes `duty` of the time; both continuous shapes sweep
+      // symmetrically between 1-depth and 1, so each averages 1 - depth/2 --
+      // a sine over its cosine and a sawtooth over its ramp.
+      const averageTransmission = data.gate
+        ? (shape === 'square' ? duty : 1 - depth / 2) : 1;
+      // A square RF gate switches the diffracted order fully on and off, so it
+      // can be drawn in chunks the way a chopper's CW output already is. This
+      // is a drawing hint alone -- the intensities below are unchanged, and so
+      // is every detector reading. A sinusoidal drive has no on/off edges to
+      // chunk, so it is never marked.
+      const chopped = data.gate && shape === 'square' && data.gate.drawChopped !== false
+        ? { period: CHOP_SCHEMATIC_PERIOD_MM, duty, startMm: 0 } : null;
+      // The zeroth order is the complement: light returns to it exactly while
+      // the RF is off, so its chunks start where the diffracted order's stop
+      // and one beam is lit wherever the other is dark.
+      const choppedZero = chopped
+        ? { period: CHOP_SCHEMATIC_PERIOD_MM, duty: 1 - duty, startMm: CHOP_SCHEMATIC_PERIOD_MM * duty }
+        : null;
       const efficiency = Math.min(1, Math.max(0, Number(data.eff) || 0));
       let pulse = ray.pulse;
       if (data.gate && ray.pulse) {
@@ -2324,22 +2641,36 @@ function interact(ray, hit) {
           ...ray.pulse,
           gates: [...(ray.pulse.gates || []), {
             opl: ray.opl, frequencyMHz: data.gate.frequencyMHz || 1, duty,
-            phaseNs: data.gate.phaseNs || 0, shape, depth,
+            phaseNs: data.gate.phaseNs || 0, shape, depth, symmetry,
           }],
         };
       }
       if (efficiency > 0) {
         const samples = isAod ? wlSamples(ray) : [{ wl: ray.wl, weight: 1 }];
+        // An AOD only separates colours when its deflection depends on
+        // wavelength. Driven at zero it sends the whole band one way, so the
+        // beam leaves as the beam it arrived as and keeps the colour the user
+        // chose for it -- having a bandwidth is not the same as having been
+        // taken apart.
+        const deflections = isAod
+          ? samples.map(sample => aodDeflectionDeg(data, sample.wl, data.position))
+          : [];
+        const separates = deflections.length > 1
+          && Math.max(...deflections) - Math.min(...deflections) > 1e-9;
         samples.forEach((sample, index) => {
           const deflection = isAod
             ? aodDeflectionDeg(data, sample.wl, data.position)
             : Number(data.deflect) || 0;
           const a = deflection * D2R, c = Math.cos(a), sn = Math.sin(a);
-          const order = isAod ? data.order : 1;
-          const shiftedWl = acoustoOpticShiftedWavelength(sample.wl, driveMHz, order);
           out.push({
             d: { x: d.x * c - d.y * sn, y: d.x * sn + d.y * c },
-            wl: shiftedWl,
+            // Carried through untouched. Acousto-optic diffraction really does
+            // shift the optical carrier by the drive frequency, but at
+            // 7.6e-5 nm for 80 MHz at 532 nm it is a thousand times finer than
+            // any wavelength difference this workbench resolves, so applying
+            // it only ever moved a number nothing could report. The AOD
+            // already declined it for the same reason.
+            wl: sample.wl,
             // An AOD sends every wavelength to its own angle, so each child
             // really is one narrow slice travelling on its own. They are
             // quadrature nodes across a continuous spectrum all the same, and
@@ -2348,6 +2679,11 @@ function interact(ray, hit) {
             // which is exactly what wlSamples warns against and what any
             // spectrometer downstream would then report.
             ...(isAod ? {
+              // Same rule, and it asks whether the colours actually went
+              // different ways. The acousto-optic shift moves the wavelength a
+              // fraction of a nanometre even for a single line, which is not
+              // reason enough to repaint a beam the user chose the colour of.
+              dispersed: separates,
               bw: 0,
               spec: null,
               spectralCount: samples.length,
@@ -2359,6 +2695,7 @@ function interact(ray, hit) {
                 : null,
             } : {}),
             intensity: ray.intensity * efficiency * sample.weight * (ray.pulse ? 1 : averageTransmission),
+            ...(chopped ? { chopped } : {}),
             tag: isAod && samples.length > 1 ? `d1w${index}` : 'd1', pulse,
           });
         });
@@ -2368,19 +2705,48 @@ function interact(ray, hit) {
           // Residual zero order exists while RF is on; the diffracted fraction
           // returns to zero order while RF is off. Together the instantaneous
           // first + zero order remains energy-bounded.
-          out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'd0r' });
+          //
+          // These two branches exist for the pulse calculation, but they draw
+          // as one beam on one path, so the chunk hint belongs on both: with
+          // it on the gated branch alone, the residual kept drawing a solid
+          // stroke straight through the gaps and the zeroth order never went
+          // dark. The branches themselves -- their intensities and gates --
+          // are untouched.
+          out.push({
+            d, intensity: ray.intensity * (1 - efficiency), tag: 'd0r',
+            ...(choppedZero ? { chopped: choppedZero } : {}),
+          });
           out.push({
             d, intensity: ray.intensity * efficiency, tag: 'd0off',
+            ...(choppedZero ? { chopped: choppedZero } : {}),
             pulse: {
               ...ray.pulse,
               gates: [...(ray.pulse.gates || []), {
                 opl: ray.opl, frequencyMHz: data.gate.frequencyMHz || 1, duty,
-                phaseNs: data.gate.phaseNs || 0, shape, depth, invert: true,
+                phaseNs: data.gate.phaseNs || 0, shape, depth, symmetry, invert: true,
               }],
             },
           });
         } else {
-          out.push({ d, intensity: ray.intensity * (1 - efficiency * averageTransmission), tag: 'd0' });
+          // One ray, exactly as before -- the anti-phase chunks are a drawing
+          // hint on it and nothing more. Splitting it into a residual plus
+          // the light handed back during the off phase would have drawn the
+          // zeroth order more honestly, but at high efficiency the residual
+          // falls under the tracer's weak-branch floor and is culled at the
+          // next ordinary optic, so a display flag would have moved a
+          // detector reading (efficiency 0.99 through a lens: 0.505 -> 0.495).
+          // A drawing choice must never do that. The cost is that the drawn
+          // beam extinguishes fully while the RF is on even though a real
+          // zeroth order keeps 1-efficiency; the wiki says so.
+          // Emitted whatever it carries, including a sliver: the tracer
+          // deliberately walks weak positive rays to detectors and other
+          // low-power measurement surfaces, so dropping one here would change
+          // a reading rather than only what is drawn. Whether it is DRAWN is
+          // decided later, where drawing is decided.
+          out.push({
+            d, intensity: ray.intensity * (1 - efficiency * averageTransmission),
+            ...(choppedZero ? { chopped: choppedZero } : {}), tag: 'd0',
+          });
         }
       }
       return out;
@@ -2410,16 +2776,16 @@ function interact(ray, hit) {
         const m = polModThrough(ray, s => analyzerTransmission(s, a));
         const stokes = linearStokes(a);
         if (!ray.pulse) {
-          if (m.mean < 0.02) return [];
-          return [{ d, intensity: ray.intensity * m.mean, pol: a, stokes, polMod: null, tag: 'pol' }];
+          if (m.mean <= MIN_RETAINED_POWER_INT) return [];
+          return [{ d, intensity: ray.intensity * m.mean, pol: a, stokes, polMod: null, retainWeak: true, tag: 'pol' }];
         }
-        if (Math.max(m.high, m.low) < 0.02) return [];
-        return [{ d, pol: a, stokes, polMod: null, pulse: withGate(ray.pulse, m.gate), tag: 'pol' }];
+        if (Math.max(m.high, m.low) <= MIN_RETAINED_POWER_INT) return [];
+        return [{ d, pol: a, stokes, polMod: null, pulse: withGate(ray.pulse, m.gate), retainWeak: true, tag: 'pol' }];
       }
       const f = analyzerTransmission(ray.stokes, a);
-      if (f < 0.02) return [];
+      if (f <= MIN_RETAINED_POWER_INT) return [];
       const stokes = linearStokes(a);
-      return [{ d, intensity: ray.intensity * f, pol: a, stokes, tag: 'pol' }];
+      return [{ d, intensity: ray.intensity * f, pol: a, stokes, retainWeak: true, tag: 'pol' }];
     }
     case 'wp': {
       if (!ray.stokes) return [{ d }];
@@ -2479,25 +2845,25 @@ function interact(ray, hit) {
         const m = polModThrough(ray, s => analyzerTransmission(s, 0));
         const out = [];
         if (!ray.pulse) {
-          if (m.mean > 0.02) out.push({ d, intensity: ray.intensity * m.mean, pol: 0, stokes: linearStokes(0), polMod: null, tag: 'T' });
-          if (1 - m.mean > 0.02) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - m.mean), pol: 90, stokes: linearStokes(90), polMod: null, tag: 'R' });
+          if (m.mean > MIN_RETAINED_POWER_INT) out.push({ d, intensity: ray.intensity * m.mean, pol: 0, stokes: linearStokes(0), polMod: null, retainWeak: true, tag: 'T' });
+          if (1 - m.mean > MIN_RETAINED_POWER_INT) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - m.mean), pol: 90, stokes: linearStokes(90), polMod: null, retainWeak: true, tag: 'R' });
           return out;
         }
-        if (Math.max(m.high, m.low) > 0.02) {
-          out.push({ d, pol: 0, stokes: linearStokes(0), polMod: null, pulse: withGate(ray.pulse, m.gate), tag: 'T' });
+        if (Math.max(m.high, m.low) > MIN_RETAINED_POWER_INT) {
+          out.push({ d, pol: 0, stokes: linearStokes(0), polMod: null, pulse: withGate(ray.pulse, m.gate), retainWeak: true, tag: 'T' });
         }
-        if (Math.max(1 - m.high, 1 - m.low) > 0.02) {
+        if (Math.max(1 - m.high, 1 - m.low) > MIN_RETAINED_POWER_INT) {
           out.push({
             d: reflect(d, n), pol: 90, stokes: linearStokes(90), polMod: null,
-            pulse: withGate(ray.pulse, { ...m.gate, high: 1 - m.high, low: 1 - m.low }), tag: 'R',
+            pulse: withGate(ray.pulse, { ...m.gate, high: 1 - m.high, low: 1 - m.low }), retainWeak: true, tag: 'R',
           });
         }
         return out;
       }
       const ft = analyzerTransmission(ray.stokes, 0);
       const out = [];
-      if (ft > 0.02) out.push({ d, intensity: ray.intensity * ft, pol: 0, stokes: linearStokes(0), tag: 'T' });
-      if (1 - ft > 0.02) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - ft), pol: 90, stokes: linearStokes(90), tag: 'R' });
+      if (ft > MIN_RETAINED_POWER_INT) out.push({ d, intensity: ray.intensity * ft, pol: 0, stokes: linearStokes(0), retainWeak: true, tag: 'T' });
+      if (1 - ft > MIN_RETAINED_POWER_INT) out.push({ d: reflect(d, n), intensity: ray.intensity * (1 - ft), pol: 90, stokes: linearStokes(90), retainWeak: true, tag: 'R' });
       return out;
     }
     case 'specimen': {
@@ -2695,10 +3061,39 @@ function interact(ray, hit) {
       // (grating) can multiply rays; capped to keep tracing bounded.
       const zf = data.zeroOrder && (data.layers || []).length
         ? Math.min(0.95, Math.max(0, data.zeroFrac ?? 0.1)) : 0;
-      let rays = [{ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '' }];
+      let rays = [{
+        d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '',
+        wl: ray.wl, bw: ray.bw, spec: ray.spec, spectralContinuum: ray.spectralContinuum,
+        spectralLo: ray.spectralLo, spectralHi: ray.spectralHi,
+      }];
       const L = data.length;
       const mid = mul(add(s.a, s.b), 0.5);
-      for (const ly of (data.layers || []).slice(0, 4)) {
+      const layers = (data.layers || []).slice(0, 4);
+      // Size the whole stack's sampling before tracing any of it. Each layer
+      // multiplies the ray count, so a diffuser in front of a many-order
+      // grating has to scatter into fewer grains — otherwise the grating's
+      // orders, which are real directions the user asked for, get truncated
+      // away with their power. Grains are the sampling choice that gives:
+      // orders are not negotiable, and steering and lenslets are one-for-one.
+      // Grating spectral sampling is budgeted separately, per layer, below.
+      const orderCounts = layers.map(ly => ly.type === 'grating' ? shaperLayerOrders(ly).length : 1);
+      const orderProduct = orderCounts.reduce((a, b) => a * b, 1);
+      // A sized beam already traces one ray per spatial sample, so its speckle
+      // deflects rather than fans and costs nothing here.
+      const fanningLayers = ray.sample == null
+        ? layers.filter(ly => ly.type === 'speckle').length : 0;
+      // Split the room left over from the orders evenly across the diffusers:
+      // n of them each fanning by f cost f**n. The epsilon keeps an exact
+      // power (24 grains over two layers) from floor()ing down on rounding.
+      const speckleFan = fanningLayers
+        ? Math.max(1, Math.min(5, Math.floor((SHAPER_RAY_CAP / orderProduct) ** (1 / fanningLayers) + 1e-9)))
+        : 1;
+      // What one ray entering layer j still has to expand into afterwards, so
+      // each layer can leave room for the ones behind it.
+      const multipliers = layers.map((ly, j) => ly.type === 'speckle' ? speckleFan : orderCounts[j]);
+      const afterLayer = multipliers.map((_, j) => multipliers.slice(j + 1).reduce((a, b) => a * b, 1));
+      for (let li = 0; li < layers.length; li++) {
+        const ly = layers[li];
         const next = [];
         for (const r of rays) {
           if (ly.type === 'steer') {
@@ -2715,32 +3110,126 @@ function interact(ray, hit) {
             // only pair up within the same lenslet
             next.push({ ...r, d: lensBend(r.d, hit.p, s, ly.f, hc), tag: r.tag + 'L' + idx });
           } else if (ly.type === 'grating') {
-            const parsed = [...new Set(String(ly.orders ?? '1').split(',').map(v => parseInt(v.trim(), 10)).filter(m => Number.isFinite(m)))].slice(0, 21);
-            const orders = parsed.length ? parsed : [1];
+            const orders = shaperLayerOrders(ly);
             const gd = 1e6 / (ly.lines || 600);
             const si = dot(r.d, t);
             const sOut = dot(r.d, n) >= 0 ? 1 : -1;
-            const wls = wlSamples(ray);
+            // Spend the budget on the orders first and the spectral sampling
+            // second. An order is a distinct direction the user asked for; a
+            // wavelength sample is only a quadrature node, and wlSamples
+            // renormalises its weights to whatever count it is given. Sampling
+            // more finely than the budget allows and letting the tail be
+            // truncated would drop whole orders and their power with them —
+            // a 400 nm band across 21 orders wants 189 rays and kept 24,
+            // reporting an eighth of the light.
+            const wls = wlSamples(r, Math.floor(
+              SHAPER_RAY_CAP / (rays.length * orders.length * afterLayer[li])));
+            const counts = propagatingOrderCounts(orders, wls, si, gd);
+            const lineSpectrum = r.spec?.kind === 'lines';
+            // One slice per node, shared by every order — but only where the
+            // budget has actually forced the sampling below what the model
+            // would otherwise use. At full resolution the cells are narrow and
+            // the children stay monochromatic, which is what lets the opposite
+            // orders of two stacked gratings recombine wavelength by
+            // wavelength; a cell carries a bandwidth, and a bandwidth gets
+            // dispersed again by the next grating instead of cancelling.
+            const naturalNodes = r.bw >= 200 ? 9 : 5;
+            const cells = lineSpectrum || wls.length >= naturalNodes
+              ? wls.map(() => null)
+              : wls.map(w => cellSpectrum(r, w.spectralLo, w.spectralHi));
+            // With enough orders the budget comes down to a single node, and
+            // that node stands for the entire band rather than a slice of it:
+            // only the direction has been collapsed, to the centroid. Such a
+            // child still carries the whole spectrum, and has to say so.
+            // Handing it bw: 0 and spec: null would tell everything
+            // downstream the order is monochromatic at the centroid, and a
+            // wavelength-selective element believes it — spectralLo/Hi are
+            // read by detectors, but a filter takes its !ray.bw path and
+            // would throw away a whole order on the strength of one number.
+            // A 400-800 nm beam through 21 orders into a 650 nm longpass
+            // passed 0.018 of the light where 0.375 of it is above the edge.
+            //
+            // Which colours each order carries then has to be settled across
+            // the band rather than at one wavelength, or an order that passes
+            // off inside the band takes all of it or none of it.
+            // A line spectrum is excluded: re-gridding lines would smear them.
+            const ports = r.bw > 0 && wls.length === 1 && !lineSpectrum
+              ? coarseOrderPorts(r, orders, si, gd) : null;
+            if (ports) {
+              for (const [m, port] of ports) {
+                // The representative angle comes from the centroid of what
+                // this order actually keeps, not of the incident band: the
+                // +-1 orders of a 400-800 nm beam that pass off at 625 nm
+                // travel as their surviving blue half and point accordingly.
+                // Clamped rather than skipped — the share is real even where
+                // the rebuilt centroid lands a hair past grazing.
+                const sd = m === 0 ? si
+                  : Math.max(-1, Math.min(1, si + m * port.wl / gd));
+                const c = Math.sqrt(1 - sd * sd);
+                next.push({
+                  ...r,
+                  d: m === 0 ? r.d : norm(add(mul(n, sOut * c), mul(t, sd))),
+                  spec: port.spec, wl: port.wl, bw: port.bw,
+                  intensity: r.intensity * port.fraction,
+                  tag: r.tag + 'm' + m,
+                  // As above. A coarsened order can still span most of the
+                  // band, and colorOf paints that as mixed light on its own --
+                  // which is why this is a flag and not a colour: stamping the
+                  // pale mix here would survive a bandpass that later narrows
+                  // the ray to a single colour. The undiffracted order is
+                  // still the incident beam and keeps the source's look.
+                  dispersed: m !== 0 || r.dispersed,
+                });
+              }
+              continue;
+            }
             for (const m of orders) {
+              if (m === 0) {
+                const port = zeroOrderPort(r, orders, wls, counts, si, gd);
+                next.push({
+                  ...r, intensity: r.intensity * port.fraction, tag: r.tag + 'm0',
+                  ...(port.spec !== undefined ? { spec: port.spec, wl: port.wl, bw: port.bw } : {}),
+                });
+                continue;
+              }
               for (let wi = 0; wi < wls.length; wi++) {
                 const sd = si + m * wls[wi].wl / gd;
                 if (Math.abs(sd) > 1) continue;
                 const c = Math.sqrt(1 - sd * sd);
                 next.push({
-                  d: norm(add(mul(n, sOut * c), mul(t, sd))),
-                  wl: wls[wi].wl, bw: 0, spec: null, speckle: r.speckle,
-                  intensity: r.intensity * (m === 0 ? 1 : wls[wi].weight) / orders.length,
+                  ...r, d: norm(add(mul(n, sOut * c), mul(t, sd))),
+                  // The node sets the direction and the colour it is drawn
+                  // in; the cell it stands for travels with it, so a filter
+                  // downstream can cut inside the cell instead of taking or
+                  // rejecting all of it. A lamp line has no cell — it is
+                  // already the whole of what it carries.
+                  wl: wls[wi].wl,
+                  ...(cells[wi] ? { bw: cells[wi].bw, spec: cells[wi].spec } : { bw: 0, spec: null }),
+                  // A continuum sample keeps its bounds so a detector can
+                  // integrate across them. A lamp line stands for itself:
+                  // wlSamples() still hands it midpoint bounds, and carrying
+                  // those would let the detector paint invented power across
+                  // the dark gaps between lines.
+                  spectralContinuum: lineSpectrum ? false : r.spectralContinuum,
+                  spectralLo: lineSpectrum ? null : (wls[wi].spectralLo ?? r.spectralLo),
+                  spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
+                  intensity: r.intensity * wls[wi].weight / counts[wi],
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
+                  // As above: its own colours where it really is a band taken
+                  // apart, and the incident beam's otherwise.
+                  dispersed: (m !== 0 && r.bw > 0) || r.dispersed,
                 });
-                if (m === 0 && wls.length > 1) break;
               }
             }
           } else if (ly.type === 'speckle') {
             const div = (ly.div || 8) * D2R;
             const sid = hit.surface.id;
             if (ray.sample == null) {
-              for (let k = 0; k < 5; k++) {
-                next.push({ ...r, d: rotv(r.d, jitter(k * 3 + 1, sid) * div), intensity: r.intensity / 2.5, tag: r.tag + 's' + k, speckle: true });
+              // speckleFan was sized against the whole stack, so the grains
+              // coarsen rather than the fan being truncated and its power
+              // going with it.
+              for (let k = 0; k < speckleFan; k++) {
+                next.push({ ...r, d: rotv(r.d, jitter(k * 3 + 1, sid) * div), intensity: r.intensity / speckleFan, tag: r.tag + 's' + k, speckle: true });
               }
             } else {
               next.push({ ...r, d: rotv(r.d, jitter(ray.sample, sid) * div), speckle: true });
@@ -2749,12 +3238,52 @@ function interact(ray, hit) {
             next.push(r);
           }
         }
-        rays = next.slice(0, 24);
+        // Everything above sizes itself to the budget, so this is a last
+        // resort, and only one stack can still reach it: two grating layers,
+        // whose orders multiply and where neither side is a sampling choice
+        // that could give — 11 orders behind 11 orders is 121 real directions
+        // against a cap of 24. Drop the dimmest rays rather than whichever
+        // were generated last, so the loss is the smallest available and does
+        // not depend on the order the user typed the orders in. Such a scene
+        // then under-reports, which is the honest failure: rescaling the
+        // survivors would report the full power out of the few directions that
+        // happened to survive.
+        // Equal-power children are the norm here — a grating divides evenly —
+        // so intensity alone leaves the comparator returning 0 and a stable
+        // sort falls back to generation order, which is the order the user
+        // typed. The tag is built from the order numbers themselves, so
+        // breaking ties on it makes the same set of orders survive however
+        // the list was written.
+        if (next.length > SHAPER_RAY_CAP) {
+          next.sort((a, b) => b.intensity - a.intensity
+            || (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0));
+        }
+        rays = next.slice(0, SHAPER_RAY_CAP);
         if (!rays.length) break;
       }
+      // Inverse layers put the band back: a +1 grating followed by a -1 of the
+      // same pitch sends every wavelength back along the direction it came in
+      // on, which is what a 4f pulse shaper is for. Light that leaves the way
+      // it arrived was not, in the end, separated -- the samples land on top of
+      // one another and should read as the one beam they draw, not as a stack
+      // of coincident coloured strokes.
+      // Inverse layers can bring a band back onto one direction -- a +1 grating
+      // followed by a -1 is how a 4f shaper works -- and such a beam is drawn
+      // as coincident coloured strokes rather than as the single mixed beam it
+      // physically is. Detecting that reliably turned out to need more than a
+      // direction test: it has to hold per outgoing port, tolerate a common
+      // steering layer moving the recombined port off the incident axis, and
+      // carry a rendering state of its own, because for an auto-coloured
+      // source there is no fixed colour to fall back to and each sample would
+      // still draw in its own wavelength. That is a feature, not a predicate,
+      // and it does not belong in a change about fanning colours out.
       const out = rays.map(r => ({
+        ...(r.color ? { color: r.color } : {}),
+        dispersed: r.dispersed || undefined,
         d: r.d, intensity: r.intensity, tag: r.tag || undefined,
-        wl: r.wl, bw: r.bw, speckle: r.speckle || undefined,
+        wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
+        spectralLo: r.spectralLo, spectralHi: r.spectralHi,
+        speckle: r.speckle || undefined,
       }));
       if (zf > 0) {
         out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0' });
@@ -3139,7 +3668,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       for (const c of children) {
         const childIntensity = c.intensity !== undefined ? c.intensity : r.intensity;
         const childRetainsWeak = r.retainWeak || Boolean(c.retainWeak);
-        if (childRetainsWeak && childIntensity < MIN_INT) {
+        // Only a genuine branch is charged. A lone child continues the ray it
+        // came from rather than widening the tree -- a polarizer takes this
+        // path because its output carries a tag, not because it split -- so
+        // charging it would spend the budget on work that never grew. It bit
+        // a sized beam through a long polarizer stack: every sample charged
+        // once per stage, the 256 slots ran out, and later samples were
+        // dropped, reporting 92% of the expected signal after 16 elements and
+        // 68% after 20. Depth and length still bound a continuation chain.
+        if (childRetainsWeak && childIntensity < MIN_INT && children.length > 1) {
           if (retainedWeakBranches >= MAX_RETAINED_WEAK_BRANCHES) continue;
           retainedWeakBranches++;
         }
@@ -3161,7 +3698,16 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           spectralHi: Number.isFinite(c.spectralHi) ? c.spectralHi
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralHi : null,
           speckle: c.speckle || r.speckle || false,
-          chopped: c.chopped || r.chopped || undefined,
+          // Once a dispersive optic has taken a beam apart, the pieces stay
+          // apart: the flag rides along so their colour keeps being derived
+          // from the wavelength each piece actually carries. Light a specimen
+          // generates is new light rather than the pump taken apart, though --
+          // it arrives with its own sourceId and its own tint -- so it starts
+          // undispersed however the pump reached it.
+          dispersed: 'sourceId' in c ? Boolean(c.dispersed) : (c.dispersed || r.dispersed || false),
+          // A pattern the optic cut here starts here; one inherited from
+          // upstream continues from where the parent's pattern had reached.
+          chopped: c.chopped || continuedChop(r.chopped, polylineLength(r.pts)),
           // A branch that merely passed THROUGH a collector was never
           // collected, so it stays evanescent with the range it had.
           evan: c.evan || Boolean(c.tag === 'T' && carriedEvan),
@@ -3226,26 +3772,58 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
   return done;
 }
 
+// What colour a ray is drawn in. One rule, because the static stroke and the
+// pulse packet travelling along it are the same light and must never disagree
+// -- they were resolved separately once, and drifted.
+//
+// A signal generated in a specimen carries its own colour and is no longer the
+// source's light, so it outranks the source's fixed colour: otherwise a
+// custom-coloured IR pump would paint its own green SHG red. A custom source
+// colour in turn describes the user's beam. Dispersion outranks both, because
+// light a dispersive optic has separated is no longer that beam, nor an
+// emission band, but either of them taken apart -- and a band is a band, so a
+// grating spreads it into separate colours rather than repeating one tint
+// across the fan. Without that, a supercontinuum (whose default colour is the
+// pale mix) fans out white where a prism fans out a rainbow.
+//
+// Everything here is derived from what the ray carries now, never stamped on
+// it earlier, so a filter that narrows it downstream is reflected.
+function rayColor(r, fixedColor) {
+  if (r.color && !r.dispersed) return r.color;
+  if (fixedColor && !r.dispersed) return fixedColor;
+  // Undispersed broadband light is co-propagating mixed light, not a rainbow
+  // painted across the beam aperture.
+  if (r.bw >= 200) return MIXED_LIGHT_COLOR;
+  return wavelengthToColor(r.wl);
+}
+
 // turn traced polylines into drawables (strokes / envelope strips / speckle
 // grains / rainbow ribbons / chopped chunks)
 function assembleDrawables(paths, opts, drawables) {
   const { K, isBeam, fixedColor } = opts;
-  const colorOf = r => {
-    // A signal generated in a specimen carries its own color and is no longer
-    // the source's light, so it outranks the source's fixed color — otherwise
-    // a custom-colored IR pump would paint its own green SHG red.
-    if (r.color) return r.color;
-    if (fixedColor) return fixedColor;
-    // Undispersed broadband light is co-propagating mixed light, not a rainbow
-    // painted across the beam aperture. Dispersive optics split it into bw=0
-    // child rays, which regain wavelength-specific color below.
-    if (r.bw >= 200) return '#cbd8ea';
-    return wavelengthToColor(r.wl);
-  };
+  const colorOf = r => rayColor(r, fixedColor);
   const opOf = r => Math.max(0.25, Math.min(0.95, 0.35 + 0.6 * r.intensity));
-  const dashOf = r => r.chopped
+  // Whether a ray is chunked is decided where the chunking is asked for -- by
+  // the element's own flag -- and not from whether pulse packets happen to be
+  // on screen. Packet drawing is live playback state: the overlay is dropped
+  // in mechanics mode and whenever the time scale sits far from the pulse
+  // rate, neither of which the tracer can see. Conditioning on it here made
+  // the chunks vanish in exactly the case they exist for, a pulsed beam being
+  // drawn as a steady line.
+  const drawChopped = r => Boolean(r.chopped);
+  const dashOf = r => (drawChopped(r)
     ? `${(r.chopped.period * r.chopped.duty).toFixed(1)} ${(r.chopped.period * (1 - r.chopped.duty)).toFixed(1)}`
-    : undefined;
+    : undefined);
+  // A dash pattern starts at the path origin, so sliding the on-window along
+  // the beam is a negative offset: with the pattern shifted back by P - start,
+  // the first dash lands at `start` instead of at zero.
+  // `startMm` is unwrapped (see continuedChop), so fold it into one period.
+  const dashOffsetOf = r => {
+    if (!drawChopped(r)) return undefined;
+    const P = r.chopped.period;
+    const start = (((r.chopped.startMm || 0) % P) + P) % P;
+    return start > 1e-9 ? Number((P - start).toFixed(3)) : undefined;
+  };
 
   const pushRay = (r, w, opacity, thin) => {
     if (r.pts.length < 2) return;
@@ -3279,12 +3857,12 @@ function assembleDrawables(paths, opts, drawables) {
     if (r.bw >= 200 && r.sample == null) {
       // Coincident spectral halo: spectrum is visible without implying spatial
       // separation before a prism or grating.
-      drawables.push({ type: 'path', pts: r.pts, color: '#7c3aed', w: 5, opacity: 0.24, dash: dashOf(r) });
-      drawables.push({ type: 'path', pts: r.pts, color: '#f97316', w: 3.2, opacity: 0.28, dash: dashOf(r) });
-      drawables.push({ type: 'path', pts: r.pts, color: '#dbe7f5', w: 1.8, opacity: 0.95, dash: dashOf(r) });
+      drawables.push({ type: 'path', pts: r.pts, color: '#7c3aed', w: 5, opacity: 0.24, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
+      drawables.push({ type: 'path', pts: r.pts, color: '#f97316', w: 3.2, opacity: 0.28, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
+      drawables.push({ type: 'path', pts: r.pts, color: '#dbe7f5', w: 1.8, opacity: 0.95, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
       return;
     }
-    drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w, opacity, dash: dashOf(r) });
+    drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w, opacity, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
   };
 
   if (!isBeam) {
@@ -3296,20 +3874,29 @@ function assembleDrawables(paths, opts, drawables) {
   // finite optic. Pairing complete paths would erase their valid common strip;
   // segment histories let that strip continue exactly to the first differing
   // interaction without inventing a connection beyond it.
+  // A chopped ray's fill is cut one segment at a time, while its dashed
+  // outline runs along the whole polyline; each segment therefore carries the
+  // pattern forward by the distance before it, or the fill would restart at
+  // every bend the outline passes straight through.
   const bySample = new Map();
   for (const r of paths) {
     if (r.sample === null || r.sample === undefined || r.pts.length < 2) continue;
     if (!bySample.has(r.sample)) bySample.set(r.sample, []);
+    let travelled = 0;
     for (let j = 0; j < r.pts.length - 1; j++) {
+      const segmentLength = Math.hypot(r.pts[j + 1].x - r.pts[j].x, r.pts[j + 1].y - r.pts[j].y);
       const intensity = r.segmentIntensities?.[j] ?? r.intensity;
-      if (!(intensity > 1e-12)) continue;
-      bySample.get(r.sample).push({
-        ...r,
-        pts: [r.pts[j], r.pts[j + 1]],
-        intensity,
-        renderHistory: r.segmentHistories?.[j] ?? r.sig,
-        renderEvent: r.segmentEvents?.[j] ?? null,
-      });
+      if (intensity > 1e-12) {
+        bySample.get(r.sample).push({
+          ...r,
+          pts: [r.pts[j], r.pts[j + 1]],
+          intensity,
+          renderHistory: r.segmentHistories?.[j] ?? r.sig,
+          renderEvent: r.segmentEvents?.[j] ?? null,
+          chopped: continuedChop(r.chopped, travelled),
+        });
+      }
+      travelled += segmentLength;
     }
   }
   const clippedPair = (ra, rb) => {
@@ -3356,8 +3943,10 @@ function assembleDrawables(paths, opts, drawables) {
         const [A, B] = ra.renderEvent === rb.renderEvent
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
-        if (ra.chopped) {
-          for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty)) {
+        if (drawChopped(ra)) {
+          const startA = ra.chopped.startMm || 0;
+          const startB = rb.chopped ? rb.chopped.startMm || 0 : startA;
+          for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty, startA, startB)) {
             drawables.push({ type: 'poly', pts: q, color: colorOf(ra), opacity: op });
           }
         } else {
@@ -3373,7 +3962,7 @@ function assembleDrawables(paths, opts, drawables) {
   // outline strokes on the outer edges of the beam only
   for (const i of [0, K - 1]) {
     for (const r of bySample.get(i) || []) {
-      if (!r.speckle && !r.evanFade) drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w: 1.2, opacity: 0.7, dash: dashOf(r) });
+      if (!r.speckle && !r.evanFade) drawables.push({ type: 'path', pts: r.pts, color: colorOf(r), w: 1.2, opacity: 0.7, dash: dashOf(r), dashOffset: dashOffsetOf(r) });
     }
   }
 }
@@ -3383,14 +3972,26 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
   for (const r of paths) {
     if (!r.pulse || r.pts.length < 2 || r.opls?.length !== r.pts.length) continue;
     if (r.sample !== null && r.sample !== undefined && r.sample !== centreSample) continue;
+    // The beam fill skips any SEGMENT carrying no light, and the packets have
+    // to agree or a train draws along a path with no beam under it. Judging
+    // the whole path by its final intensity is too blunt, though: a beam
+    // extinguished part way along -- by a shutter, or an AOM sending
+    // everything into its other order -- is still lit up to that point, and
+    // its packets belong on the lit stretch. So the track is cut where the
+    // light stops rather than dropped.
+    let lit = 0;
+    while (lit < r.pts.length - 1
+      && (r.segmentIntensities?.[lit] ?? r.intensity) > MIN_DRAWN_INTENSITY) lit++;
+    if (lit < 1) continue;
     pulseTracks.push({
-      pts: r.pts.map(p => ({ x: p.x, y: p.y })),
-      opls: [...r.opls],
+      pts: r.pts.slice(0, lit + 1).map(p => ({ x: p.x, y: p.y })),
+      opls: r.opls.slice(0, lit + 1),
       ...(r.gddTrace ? { gddTrace: r.gddTrace.map(event => ({ ...event })) } : {}),
       pulse: { ...r.pulse },
       bw: r.bw || 0,
-      color: r.color || fixedColor || wavelengthToColor(r.wl),
-      intensity: r.intensity,
+      color: rayColor(r, fixedColor),
+      // The intensity of the stretch kept, not the path's final one.
+      intensity: r.segmentIntensities?.[lit - 1] ?? r.intensity,
     });
   }
 }
@@ -3429,6 +4030,8 @@ export function traceScene(elements, beams = []) {
   compressorGdd = new Map();
   metalensHits = new Map();
   gateTransmissionCache = new Map();
+  coarsePortCache = new Map();
+  cellSpectrumCache = new Map();
   specimenIncident = new Map();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
