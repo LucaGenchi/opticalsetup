@@ -369,7 +369,10 @@ export const wikiEntries = [
         nanometres wide that floor is around a femtosecond and never gets in the way. A
         narrow band raises it: 690–700&nbsp;nm cannot carry a Gaussian pulse shorter than
         71&nbsp;fs. Narrowing the band or changing the envelope lifts a duration that has
-        fallen below the new floor. Widening the band never shortens the duration you set.</p>`,
+        fallen below the new floor. Widening the band never shortens the duration you set.
+        The two endpoints are kept at least 10&nbsp;nm apart: typing one past the other
+        stops it a step short, because a band of zero width has no transform limit at
+        all.</p>`,
       formulas: [
         { tex: '\\Delta t_{\\min} = \\frac{K}{c\\left(1/\\lambda_{\\min} - 1/\\lambda_{\\max}\\right)}', caption: 'The shortest pulse the band can carry. The denominator is the exact frequency span of the band, not the λ²/Δλ approximation, which drifts by several percent once the band is hundreds of nanometres wide. K is the time–bandwidth product of the chosen envelope: 0.441 for Gaussian, 0.315 for sech².' },
       ],

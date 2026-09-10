@@ -1024,8 +1024,6 @@ function boundedParam(el, key, value) {
   const resolve = bound => typeof bound === 'function' ? bound(el.params) : bound;
   let lo = resolve(spec.min) ?? (spec.type === 'optsize' ? 1 : -Number.MAX_SAFE_INTEGER);
   let hi = resolve(spec.max) ?? (spec.type === 'optsize' ? 500 : Number.MAX_SAFE_INTEGER);
-  if (el.type === 'sclaser' && key === 'scMax') lo = Math.max(lo, el.params.scMin);
-  if (el.type === 'sclaser' && key === 'scMin') hi = Math.min(hi, el.params.scMax);
   const step = Number.isFinite(spec.step) && spec.step > 0 ? spec.step : (spec.type === 'optsize' ? 0.5 : 1);
   let magnitude = negative ? Math.abs(value) : value;
   magnitude = Math.min(hi, Math.max(lo, magnitude));
