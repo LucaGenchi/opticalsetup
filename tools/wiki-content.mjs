@@ -1134,9 +1134,9 @@ export const wikiEntries = [
         <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
         length EFL, but it does <em>not</em> put that plane at the front tip. It sits one
         focal length short of the nominal focus — at the front tip plus
-        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for a real objective means
-        somewhere inside the barrel. That single choice is what makes three things true at
-        once:</p>
+        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for most objectives means
+        somewhere inside the barrel, and for long-working-distance designs ahead of the front
+        tip (see below). That single choice is what makes three things true at once:</p>
         <ul>
           <li>Collimated light from the tube-lens side focuses <em>exactly</em> one working
           distance beyond the physical front tip, so the drawn focus is the working
