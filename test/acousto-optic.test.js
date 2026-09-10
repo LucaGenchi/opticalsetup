@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  acoustoOpticShiftedWavelength, aodDeflectionDeg, aodScanPosition,
+  aodDeflectionDeg, aodScanPosition,
   aodAccessTimeUs, aodMaxScanRateKHz,
 } from '../sketch/js/acousto-optic.js';
 import { createElement, getElementMeta, registry } from '../sketch/js/elements.js';
