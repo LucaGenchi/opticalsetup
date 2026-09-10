@@ -2748,8 +2748,10 @@ export const registry = {
           if (ratio <= 1.001) {
             return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — ${(ratio * 100).toFixed(0)}% filled, all through`;
           }
+          // The fraction is a round-pupil area ratio; the 2D tracer clips a
+          // line through the pupil instead, so its traced power can differ.
           return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — overfilled, ` +
-            `${(fill.transmitted * 100).toFixed(0)}% circular-area estimate (2D traced power can differ)`;
+            `about ${(fill.transmitted * 100).toFixed(0)}% through a round pupil (area estimate; the 2D trace can differ)`;
         },
       },
       // Underfilling the pupil does not just waste the rating — it hands you a
