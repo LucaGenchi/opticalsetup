@@ -4195,7 +4195,7 @@ export const registry = {
     params: [
       { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
       { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree']] },
-      { key: 'raysMode', label: 'Rays from tip', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
+      { key: 'raysMode', label: 'Rays from axis', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
       { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' },
       { key: 'nrays', label: 'Rays', type: 'number', min: 2, max: 9, step: 1, def: 3, show: p => p.raysMode === 'fan' },
       { key: 'showImage', label: 'Draw image formed', type: 'checkbox', def: true },
@@ -4599,6 +4599,12 @@ export function normalizeSupercontinuumParams(params) {
   const floor = supercontinuumPulseWidthFloorFs(params);
   return Number(params.pulseWidthFs) >= floor ? {} : { pulseWidthFs: floor };
 }
+// The two endpoints stay at least one field step apart. A zero-width band is
+// not a continuum at all, and it has no finite transform limit: clamping a
+// crossed entry to equal endpoints lifted the pulse duration to the field's
+// 1e9 fs ceiling, where it stayed after the band was put right. At 10 nm the
+// narrowest band still admits a 71 fs pulse at 700 nm.
+const SC_MIN_SEPARATION_NM = 10;
 registry.sclaser = {
   ...registry.pulsedlaser,
   label: 'Supercontinuum laser',
@@ -4606,8 +4612,10 @@ registry.sclaser = {
   aliases: ['super continuum', 'white laser', 'broadband pulsed source', 'sc laser'],
   params: [
     { ...P.wavelength, def: 500, show: () => false },
-    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200, max: 11999, step: 10, def: 300 },
-    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number', min: 201, max: 12000, step: 10, def: 700 },
+    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200,
+      max: p => Math.max(200, Math.min(12000 - SC_MIN_SEPARATION_NM, (p.scMax ?? 700) - SC_MIN_SEPARATION_NM)), step: 10, def: 300 },
+    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number',
+      min: p => Math.min(12000, Math.max(200 + SC_MIN_SEPARATION_NM, (p.scMin ?? 300) + SC_MIN_SEPARATION_NM)), max: 12000, step: 10, def: 700 },
     { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
     ...beamShapeParams(3),
     ...pulseTrainParams(),
@@ -4747,7 +4755,7 @@ const ELEMENT_HELP = {
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
-  objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',
+  objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
