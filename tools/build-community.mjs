@@ -144,11 +144,11 @@ ${header(base)}
       ${referenceHTML(entry.reference)}
 
       <div class="embed-wrap">
-        <iframe class="embed-frame" src="${base}/sketch/?community=${encodeURIComponent(entry.slug)}"
-          title="${esc(entry.name)} — click any component to see its live specs"
-          loading="lazy"></iframe>
+        <iframe class="embed-frame" src="${base}/sketch/?community=${encodeURIComponent(entry.slug)}&amp;embed=1"
+          title="${esc(entry.name)} — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
-      <p class="embed-caption">Click any component to see its live specs — this embedded canvas can't be moved, deleted, or added to.</p>
+      <p class="embed-caption">A live trace of the submitted setup, shown as a picture. Open it in the canvas to explore it, change it, and save or export your own copy.</p>
       <a class="place-cta" href="${base}/sketch/?community=${encodeURIComponent(entry.slug)}">Open in the full canvas →</a>
     </main>
   </div>
