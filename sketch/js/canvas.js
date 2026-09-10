@@ -5,7 +5,7 @@ import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
-  displayActionUpdate, delayLineSweepSpanMm,
+  displayActionUpdate, delayLineSweepSpanMm, normalizeSupercontinuumParams,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
@@ -1014,6 +1014,7 @@ function writeParam(el, key, value) {
   if (spec?.type === 'derived') spec.set(el.params, value);
   else el.params[key] = value;
   if (el.type === 'objective') Object.assign(el.params, normalizeObjectiveParams(el.params));
+  if (el.type === 'sclaser') Object.assign(el.params, normalizeSupercontinuumParams(el.params));
 }
 
 function boundedParam(el, key, value) {

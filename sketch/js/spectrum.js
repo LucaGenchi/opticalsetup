@@ -246,6 +246,19 @@ export function transformLimitedDurationFs(bandwidthNm, wavelengthNm, shape = 'g
   return (lambda * lambda * K) / (C_NM_PER_FS * dl);
 }
 
+// The shortest pulse a supercontinuum band could form: the transform limit of
+// the frequency span it covers. The span is taken exactly, c(1/λmin − 1/λmax),
+// not through the λ²/Δλ small-band approximation above, which is off by
+// several percent once the band is hundreds of nm wide. A zero-width band has
+// no span to limit anything, so it imposes no floor.
+export function supercontinuumTransformLimitFs(scMin, scMax, shape = 'gauss') {
+  const K = TBP_K[shape] ?? TBP_K.gauss;
+  const lo = Math.max(1, Math.min(scMin, scMax));
+  const hi = Math.max(1, scMin, scMax);
+  const spanPerFs = C_NM_PER_FS * (1 / lo - 1 / hi);
+  return spanPerFs > 0 ? K / spanPerFs : 0;
+}
+
 // Every emitting element resolves to the same three-value spectral contract
 // the tracer consumes: a centroid wavelength, an FWHM-style width, and the
 // true spectral shape (null = exactly monochromatic). Each source type

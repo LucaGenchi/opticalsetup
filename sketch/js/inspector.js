@@ -7,7 +7,7 @@ import {
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
-  FLUOROPHORES, fluorophoreSpec,
+  FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
@@ -1361,6 +1361,10 @@ export function applyInput(inp, rebuild = false) {
     if (sel.type === 'autocorrelator' && pkey === 'measurementMode') applyScopeSpanForMode(sel);
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }
+  // Only on commit: mid-keystroke, typing "700" into the band maximum passes
+  // through "7", and lifting the duration to that momentary band's floor
+  // would outlive the edit.
+  if (rebuild && sel.type === 'sclaser') Object.assign(sel.params, normalizeSupercontinuumParams(sel.params));
   changed();
   if (pkey) {
     refreshReadouts(sel);
