@@ -86,3 +86,31 @@ test('the inspector shows the limit it enforces', () => {
   assert.equal(spec.type, 'readout');
   assert.equal(spec.readout({ scMin: 690, scMax: 700, pulseShape: 'gauss' }), '71.1');
 });
+
+// A zero-width band is monochromatic: no finite pulse is transform-limited on
+// no bandwidth, so it must not be treated as imposing no floor at all.
+test('a zero-width band floors the duration at its maximum rather than at nothing', () => {
+  const max = registry.sclaser.params.find(p => p.key === 'pulseWidthFs').max;
+  assert.equal(supercontinuumTransformLimitFs(700, 700, 'gauss'), Infinity);
+  assert.equal(supercontinuumPulseWidthFloorFs({ scMin: 700, scMax: 700 }), max);
+  assert.deepEqual(normalizeSupercontinuumParams({ scMin: 700, scMax: 700, pulseWidthFs: 1 }), { pulseWidthFs: max });
+});
+
+// A limit past the longest duration the field holds could never be stored:
+// the tracer and a reloaded sketch clamp to that maximum, so editing, tracing
+// and reopening would each disagree about the pulse.
+test('a floor never exceeds the longest duration the field can hold', () => {
+  const max = registry.sclaser.params.find(p => p.key === 'pulseWidthFs').max;
+  const params = { scMin: 700, scMax: 700.0000001, pulseShape: 'gauss', pulseWidthFs: 100 };
+  assert.ok(supercontinuumTransformLimitFs(params.scMin, params.scMax, 'gauss') > max, 'the case really is beyond the field');
+  assert.equal(supercontinuumPulseWidthFloorFs(params), max);
+  Object.assign(params, normalizeSupercontinuumParams(params));
+  assert.equal(params.pulseWidthFs, max);
+  const source = createElement('sclaser', 0, 0);
+  Object.assign(source.params, params, { beamMode: 'line' });
+  const ac = createElement('autocorrelator', 300, 0);
+  const parsed = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [source, ac], beams: [] }), registry);
+  assert.equal(parsed.elements[0].params.pulseWidthFs, max, 'reopening keeps it');
+  traceAll(parsed.elements, []);
+  assert.equal(detectorReading(parsed.elements[1].id).pulse.pulseWidthFs, max, 'and the tracer carries it unchanged');
+});

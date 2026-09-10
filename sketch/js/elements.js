@@ -4574,13 +4574,18 @@ registry.lensc = {
 // Its pulse duration is set by hand, but never below what its band allows: a
 // pulse shorter than the transform limit of its spectrum cannot exist. The
 // floor is rounded up to three significant figures so the field shows a clean
-// number and the rounded value still honours the limit.
+// number and the rounded value still honours the limit. A band so narrow its
+// limit passes the longest duration the field holds -- a zero-width band has
+// no finite limit at all -- floors at that maximum instead: the tracer and a
+// reloaded sketch clamp there too, so any higher floor could never be kept.
 const SC_PULSE_WIDTH_MIN_FS = 1;
+const SC_PULSE_WIDTH_MAX_FS = 1000000000;
 export function supercontinuumPulseWidthFloorFs(p = {}) {
   const tl = supercontinuumTransformLimitFs(p.scMin ?? 300, p.scMax ?? 700, p.pulseShape);
   if (!(tl > SC_PULSE_WIDTH_MIN_FS)) return SC_PULSE_WIDTH_MIN_FS;
+  if (!(tl < SC_PULSE_WIDTH_MAX_FS)) return SC_PULSE_WIDTH_MAX_FS;
   const unit = 10 ** (Math.floor(Math.log10(tl)) - 2);
-  return Number((Math.ceil(tl / unit - 1e-9) * unit).toPrecision(3));
+  return Math.min(SC_PULSE_WIDTH_MAX_FS, Number((Math.ceil(tl / unit - 1e-9) * unit).toPrecision(3)));
 }
 // Narrowing the band or switching the envelope raises the floor under a
 // duration that was valid a moment ago; every path that edits those params
@@ -4607,7 +4612,9 @@ registry.sclaser = {
     // Duration and envelope are configured independently of the broad spectrum;
     // this is not a reconstruction of nonlinear continuum generation.
     ...registry.pulsedlaser.params.filter(p => ['pulseWidthFs', 'pulseShape'].includes(p.key))
-      .map(p => p.key === 'pulseWidthFs' ? { ...p, def: 100, min: supercontinuumPulseWidthFloorFs, htmlMin: SC_PULSE_WIDTH_MIN_FS } : { ...p }),
+      .map(p => p.key === 'pulseWidthFs'
+        ? { ...p, def: 100, min: supercontinuumPulseWidthFloorFs, htmlMin: SC_PULSE_WIDTH_MIN_FS, max: SC_PULSE_WIDTH_MAX_FS }
+        : { ...p }),
     {
       key: 'scTransformLimit', label: 'Transform limit (fs)', type: 'readout',
       readout: p => String(supercontinuumPulseWidthFloorFs(p)),
