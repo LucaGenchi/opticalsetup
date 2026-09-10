@@ -1445,6 +1445,17 @@ function chopStrip(A, B, period, duty, startMm = 0) {
   return polys;
 }
 
+// A chop pattern is anchored where it was cut -- the chopper or AOM -- and has
+// to run on unbroken from there. Every ray object measures `startMm` from its
+// own first point, so a ray continuing a parent's pattern carries the parent's
+// phase forward by the distance the parent travelled, wrapped into one period.
+function continuedChop(chopped, travelledMm) {
+  if (!chopped) return undefined;
+  const P = chopped.period;
+  const startMm = (((chopped.startMm || 0) - travelledMm) % P + P) % P;
+  return { ...chopped, startMm };
+}
+
 function rayArcHit(p, d, surface) {
   const arc = surface.data.arc;
   const dx = p.x - arc.cx, dy = p.y - arc.cy;
@@ -3688,7 +3699,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // it arrives with its own sourceId and its own tint -- so it starts
           // undispersed however the pump reached it.
           dispersed: 'sourceId' in c ? Boolean(c.dispersed) : (c.dispersed || r.dispersed || false),
-          chopped: c.chopped || r.chopped || undefined,
+          // A pattern the optic cut here starts here; one inherited from
+          // upstream continues from where the parent's pattern had reached.
+          chopped: c.chopped || continuedChop(r.chopped, polylineLength(r.pts)),
           // A branch that merely passed THROUGH a collector was never
           // collected, so it stays evanescent with the range it had.
           evan: c.evan || Boolean(c.tag === 'T' && carriedEvan),
@@ -3851,20 +3864,29 @@ function assembleDrawables(paths, opts, drawables) {
   // finite optic. Pairing complete paths would erase their valid common strip;
   // segment histories let that strip continue exactly to the first differing
   // interaction without inventing a connection beyond it.
+  // A chopped ray's fill is cut one segment at a time, while its dashed
+  // outline runs along the whole polyline; each segment therefore carries the
+  // pattern forward by the distance before it, or the fill would restart at
+  // every bend the outline passes straight through.
   const bySample = new Map();
   for (const r of paths) {
     if (r.sample === null || r.sample === undefined || r.pts.length < 2) continue;
     if (!bySample.has(r.sample)) bySample.set(r.sample, []);
+    let travelled = 0;
     for (let j = 0; j < r.pts.length - 1; j++) {
+      const segmentLength = Math.hypot(r.pts[j + 1].x - r.pts[j].x, r.pts[j + 1].y - r.pts[j].y);
       const intensity = r.segmentIntensities?.[j] ?? r.intensity;
-      if (!(intensity > 1e-12)) continue;
-      bySample.get(r.sample).push({
-        ...r,
-        pts: [r.pts[j], r.pts[j + 1]],
-        intensity,
-        renderHistory: r.segmentHistories?.[j] ?? r.sig,
-        renderEvent: r.segmentEvents?.[j] ?? null,
-      });
+      if (intensity > 1e-12) {
+        bySample.get(r.sample).push({
+          ...r,
+          pts: [r.pts[j], r.pts[j + 1]],
+          intensity,
+          renderHistory: r.segmentHistories?.[j] ?? r.sig,
+          renderEvent: r.segmentEvents?.[j] ?? null,
+          chopped: continuedChop(r.chopped, travelled),
+        });
+      }
+      travelled += segmentLength;
     }
   }
   const clippedPair = (ra, rb) => {
