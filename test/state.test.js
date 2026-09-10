@@ -231,15 +231,15 @@ test('interactive demo edits never replace the workbench autosave', () => {
   const writes = [];
   globalThis.localStorage = { setItem: (...args) => writes.push(args) };
   try {
-    state.demoMode = true;
+    state.embedMode = true;
     changed();
     assert.equal(writes.length, 0);
 
-    state.demoMode = false;
+    state.embedMode = false;
     changed();
     assert.equal(writes.length, 1, 'normal workbench edits still autosave');
   } finally {
-    state.demoMode = false;
+    state.embedMode = false;
     if (previousStorage === undefined) delete globalThis.localStorage;
     else globalThis.localStorage = previousStorage;
   }

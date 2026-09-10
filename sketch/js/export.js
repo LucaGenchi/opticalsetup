@@ -11,6 +11,9 @@ import { encodeGIF, imageDataToRGB332, validateGIFOptions } from './gif.js';
 import { immersionLayerSVG } from './immersion.js';
 import { download, manualBeamSVG, rotPt } from './util.js';
 
+// Millimetres. Past this a figure is not a bench, it is bad data.
+const FIGURE_LIMIT = 1e6;
+
 function sceneBounds(elements = state.elements, drawables = null) {
   const frame = [...elements].reverse().find(el => registry[el.type]?.exportFrame);
   if (frame) {
@@ -30,13 +33,14 @@ function sceneBounds(elements = state.elements, drawables = null) {
   }
   for (const b of state.beams) pts.push(...b.pts);
   const traced = drawables || traceScene(elements, state.beams).drawables;
+  const rayPts = [];
   for (const d of traced) {
     // beams can extend far; clamp their contribution so an unterminated ray
     // doesn't blow up the export canvas
-    if (d.pts) pts.push(...d.pts);
-    if (d.dots) pts.push(...d.dots);
+    if (d.pts) rayPts.push(...d.pts);
+    if (d.dots) rayPts.push(...d.dots);
   }
-  if (!pts.length) return { x: 0, y: 0, w: 400, h: 300 };
+  if (!pts.length && !rayPts.length) return { x: 0, y: 0, w: 400, h: 300 };
   // clamp runaway rays to the element bounding box + margin
   const elPts = clampPts;
   let bx0, bx1, by0, by1;
@@ -44,8 +48,24 @@ function sceneBounds(elements = state.elements, drawables = null) {
     bx0 = Math.min(...elPts.map(p => p.x)) - 150; bx1 = Math.max(...elPts.map(p => p.x)) + 150;
     by0 = Math.min(...elPts.map(p => p.y)) - 150; by1 = Math.max(...elPts.map(p => p.y)) + 150;
   } else { bx0 = -1e9; bx1 = 1e9; by0 = -1e9; by1 = 1e9; }
-  const xs = pts.map(p => Math.min(bx1, Math.max(bx0, p.x)));
-  const ys = pts.map(p => Math.min(by1, Math.max(by0, p.y)));
+  // Authored geometry must always fit. Only simulated rays may be clipped
+  // to keep an unterminated beam from making the export enormous.
+  //
+  // Everything then passes through a finite window. Nothing clips authored
+  // points to the element box any more, so a hand-edited or corrupted sketch
+  // carrying coordinates near the float limit would reach `max - min` and
+  // overflow it to Infinity, handing the SVG and PNG exports a non-finite
+  // size. FIGURE_LIMIT sits far past any real bench -- the largest bundled
+  // setup spans about 5 m -- so it only ever catches nonsense.
+  // A coordinate that is already NaN -- tracing from an absurd position can
+  // produce Infinity - Infinity -- is dropped rather than clamped, because
+  // clamping NaN yields NaN and one such point poisons the whole figure.
+  const inWindow = value => Math.min(FIGURE_LIMIT, Math.max(-FIGURE_LIMIT, value));
+  const xs = [...pts.map(p => p.x), ...rayPts.map(p => Math.min(bx1, Math.max(bx0, p.x)))]
+    .map(inWindow).filter(Number.isFinite);
+  const ys = [...pts.map(p => p.y), ...rayPts.map(p => Math.min(by1, Math.max(by0, p.y)))]
+    .map(inWindow).filter(Number.isFinite);
+  if (!xs.length || !ys.length) return { x: 0, y: 0, w: 400, h: 300 };
   const m = 30;
   const x0 = Math.min(...xs) - m, y0 = Math.min(...ys) - m;
   return { x: x0, y: y0, w: Math.max(...xs) + m - x0, h: Math.max(...ys) + m - y0 };
@@ -132,7 +152,7 @@ export function buildSVG({ whiteBg = false, animation = null, bounds = null } = 
   for (const d of traced.drawables) {
     if (d.type === 'poly') body += `<polygon points="${ptsAttr(d.pts)}" fill="${d.color}" opacity="${d.opacity}"/>`;
     else if (d.type === 'dots') body += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
-    else body += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}/>`;
+    else body += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
   }
 
   if (animation) {

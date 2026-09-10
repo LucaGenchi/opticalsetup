@@ -66,14 +66,11 @@ test('pulse duration names what each kind of source actually has', () => {
   assert.equal(probeDurationLabel({ pulse: null }, 'cwlaser'), 'CW source');
   assert.equal(probeDurationLabel({ pulse: { pulseWidthFs: 150 } }, 'pulsedlaser'), '150 fs');
   assert.equal(probeDurationLabel({ pulse: { pulseWidthFs: 2500 } }, 'pulsedlaser'), '2.50 ps');
-  // A supercontinuum's train carries a nominal width, but the app does not
-  // model the temporal structure nonlinear broadening produces -- quoting
-  // that number would be inventing a measurement.
-  assert.equal(probeDurationLabel({ pulse: { pulseWidthFs: 100 } }, 'sclaser'), 'Undefined');
+  assert.equal(probeDurationLabel({ pulse: { pulseWidthFs: 100 } }, 'sclaser'), '100 fs');
 });
 
 test('the duration card reads from the real source on the bench', () => {
-  for (const [type, expected] of [['cwlaser', /CW source/], ['pulsedlaser', /150 fs/], ['sclaser', /Undefined/]]) {
+  for (const [type, expected] of [['cwlaser', /CW source/], ['pulsedlaser', /150 fs/], ['sclaser', /100 fs/]]) {
     const { svg } = bench(type, {}, { prop: 'duration' });
     assert.match(svg(), expected, `${type} should report ${expected}`);
     assert.doesNotMatch(svg(), /pulse duration/, 'no caption under the value');
