@@ -34,7 +34,7 @@ function inspectorFor(objective, extras = []) {
   state.elements = [objective, ...extras];
   state.beams = [];
   state.selection = { kind: 'element', id: objective.id };
-  state.demoMode = false;
+  state.embedMode = false;
   initInspector(panel);
   renderInspector();
   return panel;
@@ -205,7 +205,7 @@ test('the theta readout follows NA during live input without rebuilding the insp
   state.elements = [objective];
   state.beams = [];
   state.selection = { kind: 'element', id: objective.id };
-  state.demoMode = false;
+  state.embedMode = false;
   initInspector(panel);
   renderInspector();
 
