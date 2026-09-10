@@ -58,7 +58,15 @@ figures as SVG or PNG.
   envelope length follows the GDD accumulated at its current position, so glass
   visibly stretches it and an opposite-GDD pulse compressor shortens it again.
   Mechanical delay lines add folded optical path, while AOMs
-  support square gating or graded sinusoidal intensity modulation. Playback can be
+  support square, sine, or sawtooth RF modulation — the square drive by its duty
+  cycle, the two continuous ones by a modulation depth. A ramp's rise fraction
+  sweeps it from a falling sawtooth through a triangle to a rising one. A square-gated AOM can
+  also draw both diffraction orders chunked in opposition, so the switching stays
+  visible on a beam drawn as a steady line; it is a drawing choice only, and
+  detector readings are identical either way. Detector time traces use an
+  absolute vertical axis — full height is one whole source beam — so modulation
+  efficiency reads as the contrast it sets: at 0.5 the diffracted order peaks
+  halfway while the undiffracted one only falls halfway, in opposition. Playback can be
   paused, reset, and time-scaled. A chopper gates pulse trains in time and draws
   CW light as a chunked on/off pattern matching its duty cycle (in Hz, matching a
   real mechanical wheel), visible identically on the live canvas and in exports.
@@ -151,8 +159,10 @@ limited spot size, field angle, aberrations, or fabrication tolerances.
 
 The AOM, AOD, and AOTF are separate user-facing tools built around a shared
 qualitative acousto-optic interaction. The AOD couples RF frequency to a calibrated
-angular scan range, scales that deflection with wavelength, applies the matching
-optical frequency shift, and can animate triangle or sawtooth scans. Its centre
+angular scan range, scales that deflection with wavelength, and can animate triangle
+or sawtooth scans. Neither it nor the AOM applies the optical frequency shift: at
+7.6e-5 nm for 80 MHz at 532 nm it is far finer than the nearest-nanometre resolution
+every wavelength readout here uses, so the AOM has no drive-frequency control. Its centre
 angle and scan range are user-supplied device specifications; the model does not
 derive them from a crystal cut, acoustic velocity, transducer geometry, RF power,
 or Bragg-efficiency curve.

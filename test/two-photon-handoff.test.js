@@ -194,7 +194,7 @@ function stageInspectorHTML(laser, stage, between = []) {
   state.elements = [laser, ...between, stage];
   state.beams = [];
   state.selection = { kind: 'element', id: stage.id };
-  state.demoMode = false;
+  state.embedMode = false;
   traceScene(state.elements, state.beams);
   initInspector(panel);
   renderInspector();
