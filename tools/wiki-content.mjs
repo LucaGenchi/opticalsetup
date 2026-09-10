@@ -1579,12 +1579,17 @@ export const wikiEntries = [
         for every configured diffraction order, in either reflective or transmissive
         mode. Orders where the equation has no real solution (<span class="w">|sinθₘ| &gt;
         1</span>) are simply dropped, matching a real grating's behavior of only lighting
-        up the orders that geometrically exist.</p>`,
+        up the orders that geometrically exist. Their light is not dropped with them: it
+        goes to the orders that do exist, as it does on a real grating when an order
+        passes off. A 2400&nbsp;lines/mm grating at 532&nbsp;nm has nowhere to send the
+        beam but the zeroth order, and sends all of it there.</p>`,
       formulas: [],
       limitations: `<p>Diffraction efficiency is split evenly across the configured
-        orders rather than computed from the groove profile (a real blazed grating
-        concentrates most of the light into one order by design) — order existence and
-        angle are exact, relative brightness between orders is not.</p>`,
+        orders that propagate, rather than computed from the groove profile (a real
+        blazed grating concentrates most of the light into one order by design) — order
+        existence and angle are exact, relative brightness between orders is not. Since
+        which orders propagate depends on wavelength, a broadband beam whose orders pass
+        off inside its band divides its power differently at each end of the band.</p>`,
     },
     related: ['prism', 'dmd', 'slm'],
     resources: [
@@ -2138,19 +2143,66 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>The frequency shift is modeled exactly: the diffracted ray's optical frequency
-        is genuinely shifted by the configured RF frequency, then converted back to a
-        wavelength, which is what makes an AOM in a pulse-timing setup actually change
-        color. Deflection and diffraction efficiency, though, are direct configurable
-        parameters rather than quantities derived from crystal or drive properties.
-        Gating support (square or graded sinusoidal) lets the modeled RF drive turn on
-        and off in time, which the pulse-timing overlay reads as a temporal gate on the
-        beam.</p>`,
+        <p>Deflection and modulation efficiency are direct configurable parameters
+        rather than quantities derived from crystal or drive properties. The optical
+        frequency shift is <strong>not</strong> applied, and there is no drive-frequency
+        control: the shift is real &mdash; it is the whole basis of heterodyne detection
+        &mdash; but at 7.6&times;10<sup>&minus;5</sup>&nbsp;nm for 80&nbsp;MHz at
+        532&nbsp;nm it is a thousand times finer than any wavelength difference this
+        workbench resolves, since every readout here rounds to the nearest nanometre.
+        Carrying it only ever moved a number nothing could report. The
+        <a href="../aod/">AOD</a> had already declined it for the same reason.
+        Gating support lets the modeled RF drive vary in time, which the pulse-timing
+        overlay reads as a temporal gate on the beam. Three waveforms are offered, named
+        for the drive a function generator would supply: <strong>square</strong> switches
+        the diffracted order fully on and off and is the only one with a
+        <em>duty cycle</em>; <strong>sine</strong> and <strong>sawtooth</strong> sweep the
+        drive continuously and are described by a <em>modulation depth</em> instead,
+        swinging between 1&minus;depth and full transmission. Both continuous shapes
+        therefore average 1&nbsp;&minus;&nbsp;depth/2 over a period, which is the power a
+        detector with no temporal resolution reads.</p>
+        <p>The ramp carries the symmetry control a function generator puts on its own
+        ramp output. <em>Rise fraction</em> is how much of the period is spent climbing:
+        1 is the rising sawtooth, 0 the falling one, 0.5 a triangle, and anything
+        between an asymmetric triangle peaking at exactly that point in the period.
+        Sweeping it changes the shape without changing the average, so it never doubles
+        as a brightness control.</p>
+        <p>A square gate switches the diffracted order fully on and off, so it can be
+        drawn in chunks rather than as a uniformly dimmed line &mdash; the same schematic
+        footprint the <a href="../chopper/">chopper</a> already uses for gated CW light.
+        <em>Draw gated beam chopped</em> controls it, and it is a drawing choice alone:
+        the traced power stays duty-averaged and every detector reading is identical
+        either way. The continuous waveforms are never chunked, because they have no
+        on/off edges to draw.</p>
+        <p>With <em>Keep 0th order</em> on, both orders are chunked <strong>in
+        opposition</strong>: light returns to the undiffracted beam exactly while the RF
+        is off, so one is lit wherever the other is dark. Both beams still carry their
+        duty-averaged power, and the two orders always sum to the incident power.</p>
+        <p>A detector's time trace shows the levels rather than just the shape. Its
+        vertical axis is absolute for a single beam — full height is one whole source
+        beam, and light lost upstream draws short rather than being rescaled back — so
+        <em>modulation efficiency</em> is visible as the contrast it really sets: at
+        &eta;&nbsp;=&nbsp;0.5 the diffracted order peaks at half height while the
+        undiffracted one only falls to half, in opposition, and the two sum to the beam at
+        every instant. At &eta;&nbsp;=&nbsp;1 both swing the whole way. Light lost
+        anywhere upstream shortens the trace in the same way, instead of being normalized
+        back to full scale.</p>`,
       formulas: [],
-      limitations: `<p>Deflection angle and diffraction efficiency are set directly by
+      limitations: `<p>Deflection angle and modulation efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
-        is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency
-        shift is first-principles physics.</p>`,
+        is a schematic acousto-optic model, not a Bragg-cell simulator.
+        <em>Modulation efficiency</em> is the crystal's
+        diffraction efficiency under another name: it is the fraction of the beam that can
+        be switched, which is exactly what limits the contrast of both orders. The chunk spacing is schematic too: a real
+        megahertz gate would put its chunks micrometres apart, so a fixed on-screen
+        period is drawn instead, exactly as pulse markers are spaced for legibility
+        rather than to scale, and the two orders share that period rather than each
+        following its own RF timing. The chunks are also idealized in depth: both
+        orders are drawn fully dark between chunks, while a real diffracted order
+        only reaches the configured efficiency and a real zeroth order keeps
+        1&minus;efficiency of the beam rather than extinguishing. Drawing that
+        residual as its own branch would have let a display setting change a detector
+        reading, which the chunks must never do.</p>`,
     },
     related: ['aod', 'aotf', 'eom', 'chopper'],
     resources: [
@@ -2510,8 +2562,8 @@ export const wikiEntries = [
         between drive power and efficiency.</p>
         <p>The optical frequency shift is not applied. It is real, but at 7.6×10⁻⁵ nm for
         80 MHz at 532 nm it is more than a thousand times finer than the finest wavelength
-        difference anything in this workbench resolves; the <a href="../aom/">AOM</a>,
-        which exists for that shift, still carries it.</p>
+        difference anything in this workbench resolves. The <a href="../aom/">AOM</a> does
+        not carry it either, for the same reason.</p>
         <p>Access time is reported but not enforced: the beam jumps instantly between
         angles, with no settling and no transient while the acoustic wave refills the
         aperture. The number of resolvable spots — arguably the figure that decides a real
