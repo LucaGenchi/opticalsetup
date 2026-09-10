@@ -114,3 +114,43 @@ test('a mechanical chopper pattern also runs on through a downstream optic', () 
   const startMm = chunks.map(([a]) => a).sort((x, y) => x - y)[0];
   assertChunksOnPattern(chunks, startMm, 'chopper');
 });
+
+// Behind an oblique optic the two beam edges have travelled different
+// distances: a 45 degree mirror 100 mm past the gate folds a 12 mm beam's
+// edges after 106 and 94 mm. The fill used to cut both edges at one edge's
+// positions, slanting every chunk parallel to the mirror while the dashed
+// outlines, following each edge's own phase, stayed square to the beam.
+test('behind a 45 degree mirror the chunks stay square to the beam and agree with both outlines', () => {
+  const laser = createElement('cwlaser', 0, 0);
+  Object.assign(laser.params, { beamMode: 'beam', beamWidth: 12 });
+  const aom = createElement('aom', AOM_X, 0);
+  Object.assign(aom.params, { modulate: true, modShape: 'square', chopDuty: 0.5, eff: 1, deflect: 0, zero: false, drawChopped: true });
+  const mirror = createElement('mirror', AOM_X + 100, 0);
+  mirror.rot = 45;
+  mirror.params.length = 40;
+  const drawables = traceScene([laser, aom, mirror], []).drawables;
+  // The folded beam runs towards -y between x = 244 and 256; keep clear of
+  // the mirror's own footprint, where chunks are legitimately cut by it.
+  const folded = drawables.filter(d => d.type === 'poly' && d.pts.every(p => p.y < -8));
+  assert.ok(folded.length >= 20, `expected a chopped folded beam, got ${folded.length} quads`);
+  for (const q of folded) {
+    // Quads are [A(lo), A(hi), B(hi), B(lo)]: each cut joins equal y.
+    assert.ok(Math.abs(q.pts[0].y - q.pts[3].y) < 1e-6 && Math.abs(q.pts[1].y - q.pts[2].y) < 1e-6,
+      `chunk cut is slanted: ${q.pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}`);
+  }
+  // Every fill chunk along each outer edge must sit on that edge's dashes.
+  const outlines = drawables.filter(d => d.type === 'path' && d.dash && d.pts[0].x > AOM_X + 50);
+  assert.equal(outlines.length, 2, 'one dashed outline per edge after the fold');
+  for (const path of outlines) {
+    const edgeX = path.pts[0].x, startY = path.pts[0].y;
+    const offset = Number(path.dashOffset || 0);
+    const onEdge = folded.filter(q => q.pts.some(p => Math.abs(p.x - edgeX) < 1e-6));
+    assert.ok(onEdge.length >= 5, `expected fill chunks along the edge at x=${edgeX}`);
+    for (const q of onEdge) {
+      const ys = q.pts.filter(p => Math.abs(p.x - edgeX) < 1e-6).map(p => p.y);
+      const s = startY - (Math.min(...ys) + Math.max(...ys)) / 2;
+      assert.ok(((s + offset) % PERIOD) < ON,
+        `fill chunk at x=${edgeX}, y=${Math.max(...ys).toFixed(1)}..${Math.min(...ys).toFixed(1)} falls in a gap of that edge's outline`);
+    }
+  }
+});

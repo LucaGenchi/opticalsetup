@@ -1416,31 +1416,37 @@ function fiberEmissionRays(c) {
   return rays;
 }
 
-// slice the envelope strip between polylines A and B into "on" quads
-// `startMm` slides the on-window along the beam, so two strips sharing a
-// period can be drawn in anti-phase: the second is lit exactly where the
-// first is dark.
-function chopStrip(A, B, period, duty, startMm = 0) {
-  const lerpP = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+// Slice the envelope strip between two beam edges A and B -- one propagation
+// segment each, as the beam fill is built -- into its "on" quads.
+//
+// Each edge carries its own `start`: how far into that edge the pattern's
+// on-window begins, measured unwrapped from the gate, so window n lies at
+// [start + nP, start + nP + on] along it. Pairing window n on both edges is
+// what keeps a chunk's cut where both edges are equally far from the gate.
+// Behind an oblique optic the edges arrive after different distances -- a
+// 45 degree mirror folds a 12 mm beam's edges 12 mm apart -- and cutting both
+// at one edge's positions would slant the fill across the beam while the
+// dashed outlines, which follow each edge's own phase, stay square to it.
+// An anti-phase strip is simply one whose starts sit half a period later.
+function chopStrip(A, B, period, duty, startA = 0, startB = startA) {
+  const along = (p0, p1, length, s) => (length < 1e-9 ? p0
+    : { x: p0.x + (p1.x - p0.x) * s / length, y: p0.y + (p1.y - p0.y) * s / length });
+  const [a0, a1] = A, [b0, b1] = B;
+  const lengthA = Math.hypot(a1.x - a0.x, a1.y - a0.y);
+  const lengthB = Math.hypot(b1.x - b0.x, b1.y - b0.y);
+  if (Math.max(lengthA, lengthB) < 1e-6) return [];
+  const on = period * duty;
+  const clamp = (v, length) => Math.min(length, Math.max(0, v));
+  const first = Math.floor((Math.min(-startA, -startB) - on) / period);
+  const last = Math.ceil(Math.max(lengthA - startA, lengthB - startB) / period);
   const polys = [];
-  const n = Math.min(A.length, B.length);
-  let phase = ((-startMm % period) + period) % period;
-  for (let j = 0; j < n - 1 && polys.length < 300; j++) {
-    const a0 = A[j], a1 = A[j + 1], b0 = B[j], b1 = B[j + 1];
-    const L = Math.hypot(a1.x - a0.x, a1.y - a0.y);
-    if (L < 1e-6) continue;
-    let s = 0;
-    while (s < L && polys.length < 300) {
-      const ip = (phase + s) % period;
-      const on = ip < period * duty;
-      const segEnd = Math.min(L, s + (on ? period * duty - ip : period - ip));
-      if (on) {
-        const t0 = s / L, t1 = segEnd / L;
-        polys.push([lerpP(a0, a1, t0), lerpP(a0, a1, t1), lerpP(b0, b1, t1), lerpP(b0, b1, t0)]);
-      }
-      s = segEnd + 1e-6;
-    }
-    phase = (phase + L) % period;
+  for (let n = first; n <= last && polys.length < 300; n++) {
+    const aLo = clamp(startA + n * period, lengthA), aHi = clamp(startA + n * period + on, lengthA);
+    const bLo = clamp(startB + n * period, lengthB), bHi = clamp(startB + n * period + on, lengthB);
+    // Nothing of this window falls on this segment along either edge.
+    if (aHi - aLo < 1e-6 && bHi - bLo < 1e-6) continue;
+    polys.push([along(a0, a1, lengthA, aLo), along(a0, a1, lengthA, aHi),
+      along(b0, b1, lengthB, bHi), along(b0, b1, lengthB, bLo)]);
   }
   return polys;
 }
@@ -1448,12 +1454,12 @@ function chopStrip(A, B, period, duty, startMm = 0) {
 // A chop pattern is anchored where it was cut -- the chopper or AOM -- and has
 // to run on unbroken from there. Every ray object measures `startMm` from its
 // own first point, so a ray continuing a parent's pattern carries the parent's
-// phase forward by the distance the parent travelled, wrapped into one period.
+// phase forward by the distance the parent travelled. It is kept unwrapped:
+// two beam edges that reached an oblique optic after different distances must
+// still pair the same window, which a phase folded into one period cannot tell.
 function continuedChop(chopped, travelledMm) {
   if (!chopped) return undefined;
-  const P = chopped.period;
-  const startMm = (((chopped.startMm || 0) - travelledMm) % P + P) % P;
-  return { ...chopped, startMm };
+  return { ...chopped, startMm: (chopped.startMm || 0) - travelledMm };
 }
 
 function rayArcHit(p, d, surface) {
@@ -3811,9 +3817,13 @@ function assembleDrawables(paths, opts, drawables) {
   // A dash pattern starts at the path origin, so sliding the on-window along
   // the beam is a negative offset: with the pattern shifted back by P - start,
   // the first dash lands at `start` instead of at zero.
-  const dashOffsetOf = r => (drawChopped(r) && r.chopped.startMm
-    ? Number((r.chopped.period - (r.chopped.startMm % r.chopped.period)).toFixed(3))
-    : undefined);
+  // `startMm` is unwrapped (see continuedChop), so fold it into one period.
+  const dashOffsetOf = r => {
+    if (!drawChopped(r)) return undefined;
+    const P = r.chopped.period;
+    const start = (((r.chopped.startMm || 0) % P) + P) % P;
+    return start > 1e-9 ? Number((P - start).toFixed(3)) : undefined;
+  };
 
   const pushRay = (r, w, opacity, thin) => {
     if (r.pts.length < 2) return;
@@ -3934,7 +3944,9 @@ function assembleDrawables(paths, opts, drawables) {
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
         if (drawChopped(ra)) {
-          for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty, ra.chopped.startMm || 0)) {
+          const startA = ra.chopped.startMm || 0;
+          const startB = rb.chopped ? rb.chopped.startMm || 0 : startA;
+          for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty, startA, startB)) {
             drawables.push({ type: 'poly', pts: q, color: colorOf(ra), opacity: op });
           }
         } else {
