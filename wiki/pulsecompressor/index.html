@@ -171,16 +171,19 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         loss. A negative setting compresses only when it cancels positive GDD already on
         the path — placed before any glass, the same negative magnitude broadens a
         transform-limited pulse instead.</p>
-        <p>For a transform-limited Gaussian source, the travelling packet overlay reads the
-        local accumulated GDD along each traced segment. Its envelope grows continuously
-        through catalogue glass and changes at the compressor, so the same pulse can be
-        watched stretching and then returning toward its input length. The true duration,
-        GDD, and stretch factor remain available numerically at a downstream detector.</p>
+        <p>For Gaussian and sech² sources, the travelling packet overlay reads the local
+        accumulated GDD along each traced segment. A chirped source also carries a signed
+        input GDD inferred from its bandwidth and duration, so a compressor can shorten it
+        to the transform limit and further GDD stretches it again. Flat-top supercontinua
+        use the endpoint group-delay difference across their full band. The true duration,
+        model name, GDD, and stretch or compression factor remain available numerically at a
+        downstream detector.</p>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>This is a lumped second-order phase proxy, not a physical compressor
         prescription. It does not trace the compressor's internal grating, prism, or
         chirped-mirror geometry; it does not model carrier phase, third-order dispersion,
-        spatial chirp, pulse-front tilt, nonlinear phase, or an independently authored
-        input chirp. On-screen packet length is a qualitative glyph with an 8× display cap;
+        spatial chirp, pulse-front tilt, nonlinear phase, or arbitrary spectral phase. Input
+        chirp is limited to the positive/negative quadratic-phase estimate implied by the
+        authored duration and bandwidth. On-screen packet length is a qualitative glyph;
         detector numbers retain the unclamped second-order result.</p></div>
       </div>
 

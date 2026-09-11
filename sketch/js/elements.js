@@ -2020,6 +2020,11 @@ export const registry = {
         key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 0, max: 400, step: 0.5, def: 5,
         show: p => !p.transformLimited,
       },
+      {
+        key: 'inputChirp', label: 'Input chirp', type: 'select', def: 'positive',
+        options: [['positive', 'Positive (up-chirped)'], ['negative', 'Negative (down-chirped)']],
+        show: p => !p.transformLimited && Number(p.bandwidth) > 0,
+      },
       POL_PARAM,
       P.autoColor, P.color,
       { key: 'peakPower', label: 'Peak power', type: 'readout', readout: p => formatPower(peakPowerW(p)) },
