@@ -380,7 +380,7 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">â
         reading changes â€” a Gaussian assumption on a sechÂ² source reads about 9% long, and
         the inspector says so explicitly, naming the true duration beside the inferred one.
         That disagreement is the lesson the component exists to teach.</p>
-        <p>For a transform-limited Gaussian source, the reading is taken from the pulse that
+        <p>The reading is taken from the pulse that
         <em>arrives</em> rather than the one that was emitted. Put a
         <a href="../glassrod/">glass rod</a> in the path and the autocorrelator measures the
         stretched duration; add a <a href="../pulsecompressor/">pulse compressor</a> with the
@@ -388,12 +388,12 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">â
         <em>Ultrashort pulse chirping</em> example is built around exactly that comparison,
         with three autocorrelators reading the same pulse under three different dispersion
         conditions.</p>
-        <p>That qualification is not decoration. The broadening is computed from a closed-form
-        Gaussian result, so it is only derived when the source is both transform-limited and
-        Gaussian. Switch the source to sech&sup2;, or clear its transform-limited box, and no
-        stretched duration exists to report: the instrument falls back to the duration
-        configured on the source, and the inspector says so in as many words rather than
-        letting a dispersion measurement be read out of a number that never moved.</p>
+        <p>The duration-model row states where that arriving width came from: closed-form
+        Gaussian GDD, numerically tabulated sechÂ² GDD, a bandwidth-derived positive or negative
+        input chirp, a flat-band endpoint group-delay spread, or the explicit 0&nbsp;nm
+        bandwidth exception. The autocorrelation still cannot determine chirp itself; it is
+        displaying the scene's propagation model and then applying the instrument's chosen
+        deconvolution factor.</p>
         <h3>Cross-correlation mode</h3>
         <p><strong>Measurement mode</strong> switches the same box between correlating one
         source against itself and correlating <em>two</em> sources against each other. In

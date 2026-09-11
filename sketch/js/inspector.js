@@ -304,7 +304,7 @@ function autocorrelatorRows(rd, source) {
       <dt>Autocorrelation FWHM</dt><dd>${fs(reading.traceFwhmFs)}</dd>
       <dt>Inferred duration</dt><dd>${fs(reading.inferredPulseWidthFs)} · assuming ${shapeName(assumed)} (÷${reading.assumedFactor.toFixed(3)})</dd>
       ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}
-      ${derived === null ? `<dt>Note</dt><dd>Shows the configured duration: a chirped or non-Gaussian input has no derivable stretch</dd>` : ''}`;
+      ${rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}`;
 }
 
 function measurementHTML(el) {
@@ -350,18 +350,19 @@ function measurementHTML(el) {
   if (rd.pulse && !rd.pulse.mixed) {
     if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
       const factor = rd.pulse.stretchedPulseWidthFs / rd.pulse.pulseWidthFs;
-      stretchText = factor <= 1.01
+      stretchText = factor < 0.99
+        ? `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}× · compressed)`
+        : factor <= 1.01
         ? 'Negligible at this pulse duration'
         : `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}×)`;
-    } else {
-      stretchText = 'Needs a transform-limited Gaussian input';
     }
   }
   const pulseRows = rd.pulse ? `
       <dt>Pulse train</dt><dd>${pulseTrain}</dd>
       ${rd.pulse.mixed ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
       <dt>Accumulated GDD</dt><dd>${gddText}</dd>
-      ${stretchText ? `<dt>Stretched duration</dt><dd>${stretchText}</dd>` : ''}
+      ${stretchText ? `<dt>Dispersed duration</dt><dd>${stretchText}</dd>` : ''}
+      ${!rd.pulse.mixed && rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
   const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color);
