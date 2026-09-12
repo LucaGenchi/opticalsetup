@@ -55,6 +55,20 @@ test('malformed arrays normalize to finite bounded geometry and branching', () =
   assert.ok(result.drawables.every(s => (s.pts || []).every(p => [p.x, p.y].every(Number.isFinite))));
 });
 
+test('square-focus CGH layers normalize to a bounded in-plane section', () => {
+  const slm = mk('slm', 100, 0, {
+    transmissive: true,
+    layers: [{ type: 'focusgrid', n: 1e9, f: Infinity }],
+  });
+  const normalized = parseSketch(JSON.stringify({ elements: [slm] }), registry).elements[0];
+  assert.deepEqual(normalized.params.layers, [{
+    type: 'focusgrid', n: 8, f: 50, lines: 600, orders: '1', angle: 5, div: 8,
+  }]);
+  const result = traceScene([mk('cwlaser', 0, 0), normalized]);
+  assert.ok(result.drawables.every(path => (path.pts || []).every(point =>
+    Number.isFinite(point.x) && Number.isFinite(point.y))));
+});
+
 test('disabled paper sources emit no rays; legacy sources still emit', () => {
   for (const type of ['cwlaser', 'pulsedlaser']) {
     const source = mk(type, 0, 0, { enabled: false });
@@ -87,4 +101,45 @@ test('metalens array retains independent axes and inverse-wavelength focal lengt
   const normalized=parseSketch(JSON.stringify({elements:[bad]}),registry).elements[0];
   assert.equal(registry.metalensarray.surfaces(normalized).length,8);
   assert.equal(normalized.params.f,1);
+});
+
+
+test('zero or invalid source power cannot illuminate resin or detectors', () => {
+  for (const type of ['cwlaser', 'pulsedlaser', 'sclaser']) {
+    const source = mk(type, 0, 0, { beamMode: 'line' });
+    const stage = mk('stage', 150, 0, { specimenType: 'resin', voxelPreview: true });
+    stage.rot = 90;
+    const detector = mk('detector', 120, 0);
+    for (const avgPowerW of [0, -1, NaN, Infinity, -Infinity, null, '0']) {
+      source.params.avgPowerW = avgPowerW;
+      const resinTrace = traceScene([source, stage]);
+      assert.equal(resinTrace.drawables.length, 0, `${type} at ${avgPowerW}: no rays`);
+      assert.equal(resinTrace.writeHits.length, 0, `${type} at ${avgPowerW}: no writing`);
+      assert.equal(resinTrace.signalHits.length, 0, `${type} at ${avgPowerW}: no sample signal`);
+      traceScene([source, detector]);
+      assert.equal((detectorReading(detector.id)?.signal || 0), 0, `${type} at ${avgPowerW}: dark detector`);
+    }
+    // Positive power changes watt readouts, not the normalized geometric ray
+    // weights. A legacy file with no power field keeps that qualitative path.
+    for (const avgPowerW of [1e-12, 0.1, 1000, undefined]) {
+      source.params.avgPowerW = avgPowerW;
+      const result = traceScene([source, stage]);
+      assert.ok(result.drawables.length > 0, `${type} at ${avgPowerW}: active path`);
+      assert.ok(result.drawables.every(path => (path.pts || []).every(p => Number.isFinite(p.x) && Number.isFinite(p.y))));
+    }
+  }
+});
+
+
+test('focus grid conserves power including weak selected branches and residual zero order', () => {
+  const source = mk('cwlaser', 0, 0, { beamMode: 'line' });
+  const slm = mk('slm', 100, 0, {
+    transmissive: true, length: 48, zeroOrder: true, zeroFrac: 0.9,
+    layers: [{ type: 'focusgrid', n: 8, f: 40 }],
+  });
+  const detector = mk('detector', 131, 0, { aperture: 100 });
+  const result = traceScene([source, slm, detector]);
+  const branches = result.drawables.filter(item => item.type === 'path' && Math.abs(item.pts[0].x - 91) < 0.01);
+  assert.equal(branches.length, 9, 'eight 1.25% selected branches survive alongside the 90% zero order');
+  assert.ok(Math.abs(detectorReading(detector.id).signal - 1) < 1e-8, 'selected plus residual-order power is conserved');
 });

@@ -1,9 +1,9 @@
 # Two-photon lithography research workspace
 
 References, figure reviews and optical reasoning for the throughput-scaling
-benchmark. The generated setups have been removed at the user's request.
-Future reconstruction work should give each apparatus its own focused agent.
-No new reconstruction is started by this workspace.
+benchmark. The rejected generated setups were removed at the user's request.
+Verified native reconstructions are now added one apparatus at a time, with a
+paper-specific evidence note and explicit model limits.
 
 ## Preserved material
 
@@ -25,17 +25,24 @@ supplement and public apparatus figures, but no main article PDF. The GT
 source is a 2016 datasheet revision for a benchmark labelled 2014. Dong's
 correct DOI is `10.1063/1.2789661`; the benchmark DOI identifies another paper.
 
-## Removed material
+## Working setups
+
+- `setups/<paper-id>.json` contains a native OpticalSetup save file.
+- `research/<paper-id>.md` records primary evidence, interpretations, controls
+  and handoff limits.
+- The collection builder validates each available scene and gives its paper
+  page an editable native share link. Papers without a scene remain notes only.
+
+## Previously removed material
 
 The 15 generated apparatus drawings and the array demonstration scene are gone,
 along with their scene manifest, native layout recipes, scene generators,
 embedded previews, edit/download links, Examples entries, offline cache entries
 and lab preset links. Rebuilding these pages cannot recreate a setup.
 
-Reusable component code and its tests remain available for future work: the
-three array elements, optional source emission and 3% AOM gating. The bounded
-cross-site import helpers and companion PR are retained as infrastructure;
-the research pages offer no numerical preset links.
+Reusable component code and its tests remain available for focused paper work.
+The bounded cross-site import helpers remain infrastructure; only a paper with
+a verified working setup receives a paper-basis handoff link.
 
 ## Continue one reference at a time
 

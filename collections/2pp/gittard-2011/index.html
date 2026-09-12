@@ -61,8 +61,15 @@
       <div class="crumb"><a href="../../../collections/">Collections</a> / <a href="../../../collections/2pp/">Two-photon lithography</a> / Gittard 2011</div>
       <div class="article-head"><div><h1>Fabrication of microscale medical devices by two-photon polymerization with multiple foci via a spatial light modulator</h1></div></div>
       <p class="paper-meta">SLM holography · 2011 · <a href="https://doi.org/10.1364/BOE.2.003167">10.1364/BOE.2.003167</a></p>
-      <div class="sim-block"><strong>Research notes · native setup pending</strong>
-      <p>The source review below is preserved for an individual reconstruction.</p></div>
+      <div class="sim-block"><strong>Native optical setup · qualitative model</strong>
+      <p>Read the companion evidence note for reported facts, design choices, control experiments and model limits.</p></div>
+      <div class="collection-actions"><a class="place-cta" href="../../../sketch/?paper=gittard-2011&amp;edit=1">Open editable setup</a><a class="plain" href="../setups/gittard-2011.json" download>Download native scene</a><a class="plain" href="../research/gittard-2011.md">Evidence and controls</a></div>
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../../sketch/?paper=gittard-2011&amp;embed=1"
+          title="Gittard 2011 — a live native trace of the setup described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live native trace, not a picture of one — this preview is not interactive. Open the editable setup to inspect components, change controls and save your own copy.</p>
       <h2 class="section-head real"><span class="sw"></span>Current understanding</h2>
       <p>The SLM generates multiple independently located foci; the galvos move that pattern. The representative Venus array uses 4×4 foci, with 8–12 mW per spot and 1 mm/s scanning.</p>
       <h3>Reported optical sequence</h3><ol><li>Chameleon: 780 nm, &lt;150 fs, 80 MHz; 4 W source specification</li><li>Liquid-crystal attenuator and PBS</li><li>Beam expander</li><li>Reflective LC-R2500 SLM with tiled CGH</li><li>Fourier-plane order selection; zero order removed at plane P</li><li>XY galvo scanner</li><li>Microscope objective; representative 100×, NA 1.40 oil</li><li>Resin on XYZ positioning stage</li></ol>
@@ -73,6 +80,10 @@
       <h2 class="section-head sim"><span class="sw"></span>Limits and unresolved details</h2>
       <div class="limitations"><p>No CGH calculation, diffraction efficiency or 3D multi-focus field is solved. The 150 fs value is an upper bound and is deliberately not exported as an exact pulse duration.</p><ul><li>Relay distances and lens focal lengths are not all specified.</li><li>4 W source output is not 8–12 mW per-focus writing power.</li><li>Fig. 1 labels the attenuator as a half-wave plate/polarizer and the source as &lt;140 fs; prose describes a liquid-crystal modulator/PBS and &lt;150 fs. The drawing follows the prose and retains this discrepancy.</li></ul></div>
       <div class="table-wrap"><table><thead><tr><th>Reported input</th><th>Value</th></tr></thead><tbody><tr><th>wavelengthNm</th><td>780</td></tr><tr><th>repetitionRateMHz</th><td>80</td></tr><tr><th>numericalAperture</th><td>1.4</td></tr><tr><th>sourcePowerMw</th><td>4000</td></tr></tbody></table></div>
+      <h2 class="section-head sim"><span class="sw"></span>Companion calculator</h2>
+      <p><a href="https://twophotonlithography.com/lab?from=opticalsetup&amp;v=1&amp;basis=paper&amp;wavelengthNm=780&amp;repetitionRateMHz=80&amp;numericalAperture=1.4">Open the explicitly reviewed paper subset</a></p><div class="handoff"><div><h3>Transferred</h3><ul><li>Wavelength: 780 nm</li><li>Repetition rate: 80 MHz</li><li>Numerical aperture: 1.4 </li></ul></div><div><h3>Not transferred</h3><ul><li>Source power: No verified exact value</li><li>Pulse duration: No verified exact value</li></ul></div></div>
+      <p>Source ratings are not sample or per-focus power. The destination keeps defaults for missing quantities. Literature provenance requires the companion paper-handoff support; verify its import notice before using these values.</p>
+      <p class="embed-caption">The workbench writing preview does not calibrate dose, curing or three-dimensional focal volume.</p>
     </main>
   </div>
   <footer class="wiki-footer">Paper-specific research and qualitative optical models. Source PDFs remain with their authors and publishers. <a href="/collections/2pp/sources.json">Source manifest</a> · <a href="/collections/2pp/papers.json">Research records</a></footer>

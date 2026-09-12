@@ -1,0 +1,439 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "gittard-frame",
+   "type": "figureframe",
+   "x": 395,
+   "y": 245,
+   "rot": 0,
+   "params": {
+    "w": 780,
+    "h": 490,
+    "background": "white"
+   }
+  },
+  {
+   "id": "gittard-title",
+   "type": "textlabel",
+   "x": 30,
+   "y": 28,
+   "rot": 0,
+   "params": {
+    "text": "**Gittard et al. 2011 — SLM multifocus 2PP**\nNative 2D section · DOI 10.1364/BOE.2.003167",
+    "fontSize": 15,
+    "fill": "#263238"
+   }
+  },
+  {
+   "id": "gittard-model-note",
+   "type": "textlabel",
+   "x": 30,
+   "y": 92,
+   "rot": 0,
+   "params": {
+    "text": "**Reported Venus run:** 4×4 foci; 8–12 mW/spot; 1 mm/s\n**Try:** SLM foci per side = 1; animate galvos; laser power = 0.\nFour in-plane branches use the full illuminated SLM aperture.",
+    "fontSize": 10,
+    "fill": "#334155"
+   }
+  },
+  {
+   "id": "gittard-source-note",
+   "type": "textlabel",
+   "x": 30,
+   "y": 397,
+   "rot": 0,
+   "params": {
+    "text": "**Reported source:** 4 W · 780 nm · 80 MHz\n150 fs is an upper-bound scene proxy: prose says <150 fs; figure says <140 fs.\nNo CGH optimization, 3D PSF, diffraction efficiency, calibrated dose or curing.",
+    "fontSize": 10,
+    "fill": "#475569"
+   }
+  },
+  {
+   "id": "gittard-interpretation-key",
+   "type": "textlabel",
+   "x": 30,
+   "y": 463,
+   "rot": 0,
+   "params": {
+    "text": "**Free interpretation — not specified in the paper:**\nFocal lengths, distances, carrier angle, relay ratios, scan rates, attenuation,\nobservation pickoff, isolation filters and illumination spectrum.",
+    "fontSize": 10,
+    "fill": "#7c3aed"
+   }
+  },
+  {
+   "id": "gittard-laser",
+   "type": "pulsedlaser",
+   "x": 80,
+   "y": 300,
+   "rot": 0,
+   "label": "Chameleon",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "enabled": true,
+    "wavelength": 780,
+    "avgPowerW": 4,
+    "beamMode": "beam",
+    "beamWidth": 8,
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "transformLimited": false,
+    "bandwidth": 0,
+    "pulseShape": "gauss",
+    "pol": 0,
+    "showPulse": true
+   }
+  },
+  {
+   "id": "gittard-attenuator",
+   "type": "eom",
+   "x": 160,
+   "y": 300,
+   "rot": 0,
+   "label": "LC proxy¹",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "aperture": 20,
+    "modulate": true,
+    "driveMode": "static",
+    "retardance": 135,
+    "a": 45
+   }
+  },
+  {
+   "id": "gittard-pbs",
+   "type": "pbs",
+   "x": 200,
+   "y": 300,
+   "rot": 0,
+   "label": "PBS",
+   "showLabel": false,
+   "labelPos": "t",
+   "params": {
+    "size": 20
+   }
+  },
+  {
+   "id": "gittard-expander",
+   "type": "telescope",
+   "x": 270,
+   "y": 300,
+   "rot": 0,
+   "label": "Expander¹",
+   "showLabel": true,
+   "labelPos": "b",
+   "params": {
+    "f1": 20,
+    "f2": 40,
+    "dia": 30,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "gittard-slm",
+   "type": "slm",
+   "x": 360,
+   "y": 306.3639610307,
+   "rot": 45,
+   "label": "LC-R2500 SLM",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "transmissive": false,
+    "length": 28,
+    "zeroOrder": true,
+    "zeroFrac": 0.7,
+    "layers": [
+     {
+      "type": "steer",
+      "angle": 8
+     },
+     {
+      "type": "focusgrid",
+      "n": 4,
+      "f": 500
+     }
+    ]
+   }
+  },
+  {
+   "id": "gittard-zero-dump",
+   "type": "beamdump",
+   "x": 361.16,
+   "y": 180,
+   "rot": 90,
+   "label": "P: zero order",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "aperture": 6
+   }
+  },
+  {
+   "id": "gittard-order-stop",
+   "type": "slit",
+   "x": 371,
+   "y": 180,
+   "rot": 90,
+   "label": "Selected order",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "gap": 4,
+    "length": 16
+   }
+  },
+  {
+   "id": "gittard-galvo-x",
+   "type": "galvo",
+   "x": 373,
+   "y": 140,
+   "rot": 229,
+   "label": "GX",
+   "showLabel": true,
+   "labelPos": "l",
+   "params": {
+    "length": 60,
+    "commandAngle": 0,
+    "scanMode": "triangle",
+    "scanAmplitude": 0.02,
+    "scanFrequencyHz": 100,
+    "scanPhaseDeg": 0
+   }
+  },
+  {
+   "id": "gittard-scan-relay",
+   "type": "telescope",
+   "x": 481.75,
+   "y": 140,
+   "rot": 0,
+   "label": "GX→GY relay¹",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "f1": 66.8,
+    "f2": 16.7,
+    "dia": 50,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "gittard-galvo-y",
+   "type": "galvo",
+   "x": 540,
+   "y": 140,
+   "rot": 315,
+   "label": "GY",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "length": 60,
+    "commandAngle": 0,
+    "scanMode": "triangle",
+    "scanAmplitude": 0.02,
+    "scanFrequencyHz": 80,
+    "scanPhaseDeg": 0
+   }
+  },
+  {
+   "id": "gittard-observation-pickoff",
+   "type": "bs",
+   "x": 540,
+   "y": 220,
+   "rot": 0,
+   "label": "BS¹",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "ratio": 0.8,
+    "size": 30
+   }
+  },
+  {
+   "id": "gittard-camera-filter",
+   "type": "filter",
+   "x": 620,
+   "y": 220,
+   "rot": 0,
+   "label": "Visible filter¹",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "ftype": "shortpass",
+    "cutoff": 650,
+    "length": 30
+   }
+  },
+  {
+   "id": "gittard-cmos",
+   "type": "camera",
+   "x": 700,
+   "y": 220,
+   "rot": 0,
+   "label": "CMOS",
+   "showLabel": true,
+   "labelPos": "t",
+   "params": {
+    "ch": 40,
+    "pixels": 32,
+    "interference": false,
+    "profileScale": "fit"
+   }
+  },
+  {
+   "id": "gittard-objective",
+   "type": "objective",
+   "x": 540,
+   "y": 270,
+   "rot": 90,
+   "label": "100× / NA 1.4 oil",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "efl": 2,
+    "workingDistance": 0.13,
+    "immersion": "oil",
+    "na": 1.4,
+    "frontAperture": 6,
+    "showAcceptance": false,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "gittard-stage",
+   "type": "stage",
+   "x": 540,
+   "y": 286.13,
+   "rot": 0,
+   "label": "Resin",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "pzMode": "static",
+    "aperture": 4,
+    "specimenType": "resin",
+    "transmitExc": true,
+    "transmission": 0.8,
+    "showSignalSpot": true,
+    "voxelPreview": true,
+    "voxelSize": 0.1
+   }
+  },
+  {
+   "id": "gittard-illumination-lens",
+   "type": "lens",
+   "x": 540,
+   "y": 330,
+   "rot": 90,
+   "label": "Condenser¹",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "f": 30,
+    "dia": 50,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "gittard-illumination",
+   "type": "pointsource",
+   "x": 540,
+   "y": 360,
+   "rot": 270,
+   "label": "Illumination",
+   "showLabel": true,
+   "labelPos": "r",
+   "params": {
+    "displayScale": 0.7,
+    "sourceKind": "point",
+    "wavelength": 550,
+    "bwMode": "mono",
+    "spread": 2,
+    "nrays": 9,
+    "autoColor": true
+   }
+  },
+  {
+   "id": "gittard-fourier-lens",
+   "type": "lens",
+   "x": 361.2,
+   "y": 250,
+   "rot": 278,
+   "params": {
+    "f": 70,
+    "dia": 35,
+    "transEff": 100
+   },
+   "label": "Fourier lens¹",
+   "showLabel": true,
+   "labelPos": "l"
+  },
+  {
+   "id": "gittard-pupil-relay",
+   "type": "telescope",
+   "x": 540,
+   "y": 211.065,
+   "rot": 90,
+   "params": {
+    "f1": 35.5325,
+    "f2": 35.5325,
+    "dia": 40,
+    "transEff": 100
+   },
+   "label": "Pupil relay¹",
+   "showLabel": false,
+   "labelPos": "l"
+  },
+  {
+   "id": "gittard-pbs-dump",
+   "type": "beamdump",
+   "x": 200,
+   "y": 225,
+   "rot": 90,
+   "params": {
+    "aperture": 25
+   },
+   "label": "Attenuated port",
+   "showLabel": true,
+   "labelPos": "t"
+  },
+  {
+   "id": "gittard-pickoff-dump",
+   "type": "beamdump",
+   "x": 470,
+   "y": 220,
+   "rot": 0,
+   "params": {
+    "aperture": 45
+   }
+  },
+  {
+   "id": "gittard-return-filter",
+   "type": "filter",
+   "x": 540,
+   "y": 195,
+   "rot": 90,
+   "params": {
+    "ftype": "longpass",
+    "cutoff": 700,
+    "length": 60
+   }
+  },
+  {
+   "id": "gittard-postsample-filter",
+   "type": "filter",
+   "x": 540,
+   "y": 289.5,
+   "rot": 90,
+   "params": {
+    "ftype": "shortpass",
+    "cutoff": 700,
+    "length": 25
+   }
+  }
+ ],
+ "beams": []
+}
