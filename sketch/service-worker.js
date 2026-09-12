@@ -54,6 +54,7 @@ const PRECACHE_PATHS = [
   "./js/vipa.js",
   "./js/viewport.js",
   "./js/wiki-types.js",
+  "../collections/2pp/setups/nanoscribe-gt.json",
   "../Examples/OPTICAL%20SETUP%20%E2%80%94%20pulsed%20component%20panorama.json",
   "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20ideal%20lens%20vs%20spherical%20singlet.json",

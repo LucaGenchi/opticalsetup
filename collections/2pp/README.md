@@ -1,9 +1,10 @@
 # Two-photon lithography research workspace
 
 References, figure reviews and optical reasoning for the throughput-scaling
-benchmark. The generated setups have been removed at the user's request.
-Future reconstruction work should give each apparatus its own focused agent.
-No new reconstruction is started by this workspace.
+benchmark. The rejected generated setups were removed at the user's request.
+New work is added one apparatus at a time after source verification.
+`nanoscribe-gt` is the first individually rebuilt native teaching scene; no
+sibling setup is restored.
 
 ## Preserved material
 
@@ -45,6 +46,10 @@ the research pages offer no numerical preset links.
 4. Separate reported values from inferred layout and unknown prescriptions.
 5. Only then reconstruct and validate that single setup, documenting remaining
    limits and any independently justified component changes.
+
+Individually accepted work lives in `setups/<paper-id>.json`, with its evidence
+and control experiments in `research/<paper-id>.md`. A paper record opts into a
+scene through its own `setup` field; the builder does not synthesize siblings.
 
 ## Rebuild research pages
 
