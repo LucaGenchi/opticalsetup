@@ -3065,6 +3065,10 @@ function interact(ray, hit) {
         d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '',
         wl: ray.wl, bw: ray.bw, spec: ray.spec, spectralContinuum: ray.spectralContinuum,
         spectralLo: ray.spectralLo, spectralHi: ray.spectralHi,
+        d: data.transmissive ? d : reflect(d, n),
+        intensity: ray.intensity * (1 - zf),
+        tag: '',
+        writeGroup: ray.writeGroup,
       }];
       const L = data.length;
       const mid = mul(add(s.a, s.b), 0.5);
@@ -3108,7 +3112,16 @@ function interact(ray, hit) {
             const hc = -L / 2 + (idx + 0.5) * pitch;
             // lenslet index goes into the branch signature so beam strips
             // only pair up within the same lenslet
-            next.push({ ...r, d: lensBend(r.d, hit.p, s, ly.f, hc), tag: r.tag + 'L' + idx });
+            next.push({
+              ...r,
+              d: lensBend(r.d, hit.p, s, ly.f, hc),
+              tag: r.tag + 'L' + idx,
+              // Keep one writing-preview group per illuminated lenslet. The
+              // stage collapses all sampled rays in that group to their
+              // centroid, so a focused beamlet leaves one marker rather than
+              // either 25 overlapping markers or only the source's centre ray.
+              writeGroup: `${r.writeGroup || ''}|${s.id}:L${idx}`,
+            });
           } else if (ly.type === 'grating') {
             const orders = shaperLayerOrders(ly);
             const gd = 1e6 / (ly.lines || 600);
@@ -3218,6 +3231,7 @@ function interact(ray, hit) {
                   // As above: its own colours where it really is a band taken
                   // apart, and the incident beam's otherwise.
                   dispersed: (m !== 0 && r.bw > 0) || r.dispersed,
+                  writeGroup: r.writeGroup,
                 });
               }
             }
@@ -3284,6 +3298,8 @@ function interact(ray, hit) {
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
         speckle: r.speckle || undefined,
+        wl: r.wl, bw: r.bw, speckle: r.speckle || undefined,
+        writeGroup: r.writeGroup,
       }));
       if (zf > 0) {
         out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0' });
@@ -3490,10 +3506,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // sample can draw its excitation spot too; only the piezo stage writes
       // 2PP voxel marks, which its own writeVoxel flag already gates.
       const holder = hit.surface.el?.type;
-      if ((holder === 'stage' || holder === 'sample') && r.writeReference) {
-        if (writeHits && hit.surface.data.writeVoxel && r.pulse) {
+      if (holder === 'stage' || holder === 'sample') {
+        const groupedWrite = typeof r.writeGroup === 'string' && r.writeGroup.length > 0;
+        if (writeHits && hit.surface.data.writeVoxel && r.pulse && (r.writeReference || groupedWrite)) {
           writeHits.push({
             stageId: hit.surface.el.id,
+            sourceId: r.sourceId,
+            writeGroup: groupedWrite ? `${r.writeGroup}|${r.sig}` : null,
             x: hit.p.x,
             y: hit.p.y,
             opl: r.opl,
@@ -3501,7 +3520,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             intensity: Math.min(1, Math.max(0, r.intensity || 0)),
           });
         }
-        if (signalHits && hit.surface.data.reportHit) {
+        if (r.writeReference && signalHits && hit.surface.data.reportHit) {
           // The generated-signal wavelength, when this surface actually
           // converts light (fluorescence emission, or SHG/THG/CARS forward
           // conversion) — used to color the excitation-spot indicator by
@@ -3652,6 +3671,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         else if (Number.isFinite(c0.phaseShift)) r.phaseOffset = (r.phaseOffset || 0) + c0.phaseShift;
         if (Number.isInteger(c0.fieldGroupCount)) r.fieldGroupCount = c0.fieldGroupCount;
         if ('retainZeroField' in c0) r.retainZeroField = Boolean(c0.retainZeroField);
+        if ('writeGroup' in c0) r.writeGroup = c0.writeGroup;
         if (c0.phaseValid === false) {
           r.phaseValid = false;
           r.phaseIssue = c0.phaseIssue || r.phaseIssue || 'carrier phase became unavailable';
@@ -3752,6 +3772,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             : undefined,
           sample: r.sample, sampleCount: r.sampleCount, sampleGrid: r.sampleGrid,
           writeReference: r.writeReference,
+          writeGroup: 'writeGroup' in c ? c.writeGroup : r.writeGroup,
           objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),
           retainWeak: childRetainsWeak,
@@ -4272,8 +4293,38 @@ export function traceScene(elements, beams = []) {
   }
 
   invalidateIncompleteCameraFields();
+  // A sized source is sampled by many rays. Array beamlets deliberately carry
+  // a writeGroup, and every ray in one ideal lenslet converges to the same
+  // focus. Average the group at the target so the preview exposes the actual
+  // number and placement of illuminated lenslet foci without making the
+  // marker count depend on source sampling density.
+  const groupedWrites = new Map();
+  const collapsedWriteHits = [];
+  for (const hit of writeHits) {
+    if (!hit.writeGroup) {
+      collapsedWriteHits.push(hit);
+      continue;
+    }
+    const key = `${hit.stageId}|${hit.sourceId || ''}|${hit.writeGroup}`;
+    const aggregate = groupedWrites.get(key) || { ...hit, x: 0, y: 0, opl: 0, intensity: 0, count: 0 };
+    aggregate.x += hit.x;
+    aggregate.y += hit.y;
+    aggregate.opl += hit.opl;
+    aggregate.intensity += hit.intensity;
+    aggregate.count++;
+    groupedWrites.set(key, aggregate);
+  }
+  for (const aggregate of groupedWrites.values()) {
+    const { count, ...hit } = aggregate;
+    hit.x /= count;
+    hit.y /= count;
+    hit.opl /= count;
+    hit.intensity /= count;
+    collapsedWriteHits.push(hit);
+  }
+
   lastSignalHits = signalHits;
-  return { drawables, pulseTracks, writeHits, signalHits };
+  return { drawables, pulseTracks, writeHits: collapsedWriteHits, signalHits };
 }
 
 export function traceAll(elements, beams = []) {

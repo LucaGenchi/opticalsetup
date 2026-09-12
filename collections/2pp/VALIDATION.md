@@ -1,5 +1,14 @@
 # Research workspace validation — 2026-09-05
 
+## Dong 2007 individual rebuild
+
+The historical validation below describes the clean research-only baseline.
+Since that baseline, `dong-2007` has been implemented independently as an
+explicitly labelled mechanism interpretation with a native scene, evidence
+note, deterministic controls and native SVG evidence exports. It does not
+restore any rejected batch-generated setup and does not resolve the missing
+full article or apparatus figure.
+
 The generated reconstructions have been removed. Earlier scene-validation
 results describe superseded drafts and are not evidence of accepted setups.
 
