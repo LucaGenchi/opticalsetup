@@ -28,7 +28,7 @@ export function buildTwoPhotonHandoffUrl(laser, baseUrl = TWO_PHOTON_LAB_URL, op
   url.searchParams.set('repetitionRateMHz', formatQueryNumber(p.repRateMHz));
   url.searchParams.set('pulseDurationFs', formatQueryNumber(p.pulseWidthFs));
   if (finite(options.numericalAperture)
-    && options.numericalAperture >= 0.7 && options.numericalAperture <= 1.49) {
+    && options.numericalAperture >= 0.01 && options.numericalAperture <= 1.49) {
     url.searchParams.set('numericalAperture', formatQueryNumber(options.numericalAperture));
   }
   return url.toString();
@@ -66,4 +66,37 @@ export function twoPhotonHandoffCandidates(elements = [], signalHits = [], stage
       gddFs2: gdds.length ? gdds.reduce((sum, value) => sum + value, 0) / gdds.length : 0,
     };
   });
+}
+
+// Published setups may specify only some quantities, or operate outside the
+// educational lab's ranges. Export exactly the accepted subset: never fill
+// unknowns with source defaults or clamp kHz amplifiers into MHz oscillators.
+export const PAPER_HANDOFF_FIELDS = Object.freeze([
+  { key: 'wavelengthNm', label: 'Wavelength', unit: 'nm', min: 500, max: 1064 },
+  { key: 'sourcePowerMw', label: 'Source power', unit: 'mW', min: 0, max: 1000 },
+  { key: 'repetitionRateMHz', label: 'Repetition rate', unit: 'MHz', min: 10, max: 100 },
+  { key: 'pulseDurationFs', label: 'Pulse duration', unit: 'fs', min: 50, max: 400 },
+  { key: 'numericalAperture', label: 'Numerical aperture', unit: '', min: 0.01, max: 1.49 },
+]);
+
+export function buildPaperHandoff(settings = {}, baseUrl = TWO_PHOTON_LAB_URL) {
+  const url = new URL(baseUrl);
+  url.searchParams.set('from', 'opticalsetup');
+  url.searchParams.set('v', '1');
+  url.searchParams.set('basis', 'paper');
+  const imported = [], omitted = [];
+  for (const field of PAPER_HANDOFF_FIELDS) {
+    // A reused URL must not retain a value that this paper cannot support.
+    url.searchParams.delete(field.key);
+    const value = settings?.[field.key];
+    if (!finite(value)) {
+      omitted.push({ ...field, value: null, reason: 'No verified exact value' });
+    } else if (value < field.min || value > field.max) {
+      omitted.push({ ...field, value, reason: `Outside lab range ${field.min}–${field.max} ${field.unit}`.trim() });
+    } else {
+      imported.push({ ...field, value });
+      url.searchParams.set(field.key, formatQueryNumber(value));
+    }
+  }
+  return { url: imported.length ? url.toString() : null, imported, omitted };
 }

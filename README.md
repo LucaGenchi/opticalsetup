@@ -279,3 +279,16 @@ npm test               # runs the regression suite
 ```
 
 (Any static file server works; ES modules require http(s), not file://.)
+
+### Collections
+
+A collection follows one subject through its literature. `/collections/` is the
+hub that lists them, built by `tools/build-collections-index.mjs`; each
+collection builds its own pages and is linked from there.
+
+The first is the [two-photon lithography workspace](collections/2pp/README.md),
+which preserves the references, figure reviews, reported parameters, optical
+sequences and open questions for 17 benchmark references. Generated setups and
+preset links have been removed. Reconstructions are handled individually from
+the source documents. Rebuild it with `tools/build-2pp-collection.mjs`, then the
+hub, then `tools/build-sitemap.mjs`.

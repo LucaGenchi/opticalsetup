@@ -31,6 +31,7 @@ import { qrSVG } from './qr.js';
 import { buildExampleProposalIssueURL } from './proposal.js';
 import { recommendedTimeScale, TIME_SCALES, elementDriveHz } from './timescale.js';
 import { initTheme } from './theme.js';
+import { collectionSetupRequest } from './collection-loader.js';
 
 const $ = id => document.getElementById(id);
 
@@ -1601,8 +1602,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Any of the three scene params can be opened either way: bare, the scene
   // becomes the visitor's own workbench with the full toolbar behind it;
   // with ?embed=1 it is a flat, non-interactive picture for a page to frame.
-  const hasLinkedScene = isTypeDemo || isCommunityScene || isExampleScene;
-  const isEmbed = hasLinkedScene && params.get('embed') === '1';
+  const collectionRequest = !isTypeDemo && !isCommunityScene && !isExampleScene
+    ? collectionSetupRequest(params) : null;
+  const hasLinkedScene = isTypeDemo || isCommunityScene || isExampleScene || Boolean(collectionRequest);
+  // Collection URLs retain their explicit edit contract and historical
+  // preview aliases; other linked scenes keep the main workbench behavior.
+  const isEmbed = collectionRequest ? !collectionRequest.editable
+    : hasLinkedScene && params.get('embed') === '1';
 
   // The mode has to be set before initCanvas(), which synchronously registers
   // the pointer, wheel and key handlers: deciding afterwards would leave them
@@ -1700,6 +1706,20 @@ window.addEventListener('DOMContentLoaded', async () => {
       state.beams.push(...scene.beams);
     } catch (err) {
       console.error('Could not load example:', err);
+    }
+  } else if (collectionRequest && loadLinked) {
+    try {
+      const res = await fetch(collectionRequest.path);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const scene = parseSketch(await res.text(), registry);
+      // Editable collection links use the same consent and undo protection
+      // as other linked scenes. Loading itself never writes autosave, and
+      // embedMode protects previews throughout their lifetime.
+      state.elements.push(...scene.elements);
+      state.beams.push(...scene.beams);
+    } catch (err) {
+      console.error('Could not load collection setup:', err);
+      showToast('Could not open this setup. Check the collection link and try again.');
     }
   } else if (!hasLinkedScene) {
     let sharedScene = null;

@@ -1857,6 +1857,11 @@ function laserAperture(el) {
 
 function laserSource(el) {
   const p = el.params;
+  // Relative ray weights remain normalized for qualitative geometry, but an
+  // explicitly powerless or malformed source cannot illuminate a detector or
+  // leave resin write markers. Missing power is a legacy sketch convention.
+  if (p.enabled === false || (p.avgPowerW !== undefined
+    && (typeof p.avgPowerW !== 'number' || !Number.isFinite(p.avgPowerW) || p.avgPowerW <= 0))) return [];
   if (p.beamMode === 'beam') {
     // sample rays across the beam width; adjacent samples with an identical
     // interaction history are filled as an envelope strip, so a lenslet
@@ -1897,6 +1902,12 @@ export function formatPower(watts) {
     if (watts >= scale) return `${Number((watts / scale).toPrecision(3))} ${unit}`;
   }
   return `${Number((watts * 1e9).toPrecision(3))} nW`;
+}
+
+function arraySection(params) {
+  const count = Math.min(8, Math.max(1, Math.round(Number(params.count) || 4)));
+  const length = Math.min(100, Math.max(4, Number(params.length) || 48));
+  return { count, pitch: length / count };
 }
 
 // One GDD number for the compressor's readout rows. The unit lives in the row
@@ -1951,6 +1962,7 @@ export const registry = {
     snapPt: { x: 52, y: 0 }, // beam exit aperture
     size_: el => ({ w: 104, h: laserH(el) + 4 }),
     params: [
+      { key: 'enabled', label: 'Emit traced rays', type: 'checkbox', def: true },
       P.wavelength,
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
       ...beamShapeParams(3),
@@ -1978,7 +1990,7 @@ export const registry = {
     ],
     svg(el) {
       const h = laserH(el), hh = h / 2, ap = laserAperture(el);
-      return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
+      return (el.params.enabled === false ? `<text x="0" y="${-hh - 6}" text-anchor="middle" font-size="8" fill="#775b25">TRACE OFF</text>` : '') + `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
         `<text x="0" y="0" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text>` +
         `<rect x="46" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`;
     },
@@ -1992,6 +2004,7 @@ export const registry = {
     snapPt: { x: 52, y: 0 },
     size_: el => ({ w: 104, h: laserH(el) + 4 }),
     params: [
+      { key: 'enabled', label: 'Emit traced rays', type: 'checkbox', def: true },
       P.wavelength,
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
       ...beamShapeParams(3),
@@ -2028,7 +2041,7 @@ export const registry = {
     ],
     svg(el) {
       const h = laserH(el), hh = h / 2, ap = laserAperture(el);
-      return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
+      return (el.params.enabled === false ? `<text x="0" y="${-hh - 6}" text-anchor="middle" font-size="8" fill="#775b25">TRACE OFF</text>` : '') + `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
         `<text x="0" y="-3" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text>` +
         `<g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>` +
         `<rect x="46" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`;
@@ -3224,6 +3237,87 @@ export const registry = {
     },
   },
 
+  microlensarray: {
+    label: 'Microlens array', category: 'Wavefront Shaping', size: { w: 16, h: 58 },
+    aliases: ['MLA', 'lenslet array', 'multi-lens array'],
+    description: 'A row of ideal paraxial lenslets with independent optical axes. This is a 1D section, not a 2D focus grid or a custom aspheric prescription.',
+    params: [
+      { key: 'length', label: 'Array height (mm)', type: 'number', min: 4, max: 100, step: 1, def: 48 },
+      { key: 'count', label: 'Lenslets in this section', type: 'number', min: 1, max: 8, step: 1, def: 4 },
+      { key: 'f', label: 'Lenslet focal length (mm)', type: 'number', min: 1, max: 3000, step: 1, def: 40 },
+    ],
+    size_: el => ({ w: 16, h: el.params.length + 6 }),
+    svg(el) {
+      const count = Math.min(8, Math.max(1, Math.round(Number(el.params.count) || 4)));
+      const length = Math.min(100, Math.max(4, Number(el.params.length) || 48));
+      const pitch = length / count;
+      return Array.from({ length: count }, (_, i) =>
+        `<g transform="translate(0 ${-length / 2 + pitch * (i + 0.5)})">${lensShape(0, pitch / 2, el.params.f)}</g>`).join('');
+    },
+    surfaces(el) {
+      const length = Math.min(100, Math.max(4, Number(el.params.length) || 48));
+      return [{ x1: 0, y1: -length / 2, x2: 0, y2: length / 2, kind: 'shaper',
+        data: { length, transmissive: true, layers: [{ type: 'lensarray',
+          n: Math.min(8, Math.max(1, Math.round(Number(el.params.count) || 4))),
+          f: Math.min(3000, Math.max(1, Number(el.params.f) || 40)) }] } }];
+    },
+  },
+
+  metalensarray: {
+    label: 'Metalens array', category: 'Wavefront Shaping', size: { w: 12, h: 54 },
+    aliases: ['flat lens array', 'metasurface lens array'],
+    description: 'A 1D row of independent diffractive metalenses using the single-metalens geometric law. Only a representative section is drawn; high-NA vector fields, meta-atom coupling and 2D arrays are not solved.',
+    params: [
+      { key: 'length', label: 'Array height (mm)', type: 'number', min: 4, max: 100, step: 1, def: 48 },
+      { key: 'count', label: 'Metalenses in this section', type: 'number', min: 1, max: 8, step: 1, def: 4 },
+      { key: 'f', label: 'Nominal focal length (mm)', type: 'number', min: 1, max: 3000, step: 1, def: 40 },
+      { key: 'designWavelength', label: 'Design wavelength (nm)', type: 'number', min: 100, max: 12000, step: 1, def: 800 },
+      { key: 'focusEff', label: 'Focusing efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 70 },
+    ],
+    size_: el => ({ w: 12, h: el.params.length + 6 }),
+    svg(el) {
+      const { count, pitch } = arraySection(el.params);
+      return Array.from({ length: count }, (_, i) => {
+        const y = pitch * (i + 0.5 - count / 2);
+        return `<g transform="translate(0 ${y})">${registry.metalens.svg({ ...el, params: { ...el.params, dia: pitch } })}</g>`;
+      }).join('');
+    },
+    surfaces(el) {
+      const { count, pitch } = arraySection(el.params);
+      return Array.from({ length: count }, (_, i) => {
+        const y = pitch * (i + 0.5 - count / 2);
+        const surface = registry.metalens.surfaces({ ...el, params: {
+          ...el.params, dia: pitch, designType: 'chromatic',
+        } })[0];
+        return { ...surface, y1: surface.y1 + y, y2: surface.y2 + y };
+      });
+    },
+  },
+
+  diffractivesplitter: {
+    label: 'Diffractive beam splitter', category: 'Wavefront Shaping', size: { w: 12, h: 52 },
+    aliases: ['DOE splitter', 'static DOE', 'diffractive optical element'],
+    description: 'A static 1D grating proxy. Equal power is assigned to selected orders; evanescent orders are lost. It does not design a hologram, predict blaze efficiency, or reproduce a 2D DOE spot grid.',
+    params: [
+      { key: 'length', label: 'Aperture (mm)', type: 'number', min: 4, max: 100, step: 1, def: 40 },
+      { key: 'lines', label: 'Equivalent grating lines/mm', type: 'number', min: 1, max: 3000, step: 1, def: 60 },
+      { key: 'orders', label: 'Orders in this section', type: 'text', def: '-1,0,1' },
+    ],
+    size_: el => ({ w: 12, h: el.params.length + 6 }),
+    svg(el) {
+      const L = el.params.length / 2;
+      let ticks = '';
+      for (let y = -L; y <= L; y += 3) ticks += `<path d="M -3,${y} h 6" stroke="#8068aa" stroke-width="1.3"/>`;
+      return `<rect x="-4" y="${-L}" width="8" height="${2 * L}" fill="#efe6fc" stroke="#8068aa"/>` + ticks;
+    },
+    surfaces(el) {
+      const length = Math.min(100, Math.max(4, Number(el.params.length) || 40));
+      return [{ x1: 0, y1: -length / 2, x2: 0, y2: length / 2, kind: 'grating',
+        data: { d: 1e6 / Math.min(3000, Math.max(1, Number(el.params.lines) || 60)),
+          orders: [...new Set(String(el.params.orders || '0').split(',').map(v => Number(v.trim())).filter(Number.isSafeInteger))].slice(0, 21), transmissive: true } }];
+    },
+  },
+
   // The same phase-shaping engine as the SLM, but built the way a metasurface
   // actually is: a patterned layer on a thin transparent carrier, working in
   // transmission. The optics are shared deliberately -- a metasurface and an
@@ -3519,7 +3613,7 @@ export const registry = {
       // Duty cycle is a square-wave property: the fraction of the period the
       // drive is on. A sine has no such thing, and a ramp's shape is set by
       // how much of the period it spends rising instead.
-      { key: 'chopDuty', label: 'Duty cycle (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
+      { key: 'chopDuty', label: 'Duty cycle (0–1)', type: 'number', min: 0.01, max: 0.99, step: 0.01, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
       // The symmetry knob a function generator puts on its ramp output:
       // 1 is the rising sawtooth, 0 the falling one, 0.5 a triangle.
       { key: 'modSymmetry', label: 'Rise fraction (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape === 'sawtooth' },
@@ -4009,7 +4103,7 @@ export const registry = {
       { key: 'modulate', label: 'Modulate on/off', type: 'checkbox', def: true },
       { key: 'diameter', label: 'Wheel diameter (mm)', type: 'number', min: 20, max: 120, step: 2, def: 40 },
       { key: 'frequencyHz', label: 'Chop frequency (Hz)', type: 'number', min: 0.1, max: 20000, step: 0.1, def: 1000, show: p => p.modulate },
-      { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate },
+      { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.01, max: 0.99, step: 0.01, def: 0.5, show: p => p.modulate },
       { key: 'phaseNs', label: 'Gate offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate },
     ],
     svg(el) {
@@ -4691,6 +4785,9 @@ const DIRECT = {
   freeglass: { resize: { uniform: 'scale' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   diffuser: { resize: { y: 'length' }, tune: { key: 'div', short: 'spread' } },
   slm: { resize: { y: 'length' }, tune: { key: 'zeroFrac', short: '0th', when: p => p.zeroOrder } },
+  microlensarray: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
+  metalensarray: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
+  diffractivesplitter: { resize: { y: 'length' }, tune: { key: 'lines', short: 'lines' } },
   metasurface: { resize: { y: 'length' }, tune: { key: 'zeroFrac', short: '0th', when: p => p.zeroOrder } },
   dmd: { resize: { y: 'length' }, tune: { key: 'tilt', short: 'tilt' } },
   dm: { resize: { y: 'length' }, tune: { key: 'steer', short: 'steer' } },
@@ -4834,7 +4931,10 @@ export function getElementMeta(type, params = {}, context = {}) {
     && context.element && Array.isArray(context.elements)
     && !resolveDisplaySensor(context.element, context.elements);
 
-  if (type === 'objective' && objectiveMediumKey(params) === 'legacy') {
+  if ((type === 'cwlaser' || type === 'pulsedlaser') && params.enabled === false) {
+    tier = 'configurable';
+    note = 'Ray emission is off. Any manual beam lines are annotations; enable emission only after choosing simulation parameters.';
+  } else if (type === 'objective' && objectiveMediumKey(params) === 'legacy') {
     tier = 'configurable';
     note = 'This older high-NA sketch did not record a front medium. Choose air, water, oil, or a custom index before treating its rated NA as configured.';
   } else if (type === 'objective' && objectiveMediumKey(params) !== 'air') {
