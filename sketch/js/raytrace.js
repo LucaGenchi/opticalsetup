@@ -1,3 +1,4 @@
+import { dmdPatternOnAt } from './dmd-pattern.js';
 // 2D ray-tracing engine.
 // Builds world-space surfaces from elements, propagates rays from every source,
 // and returns drawables: stroked polylines (line-mode / beam edges) and filled
@@ -3040,14 +3041,31 @@ function interact(ray, hit) {
     }
     case 'dmd': {
       const mid = mul(add(s.a, s.b), 0.5);
-      const pitch = Math.max(0.1, data.pitch || 8);
-      const h = dot(sub(hit.p, mid), t) + (data.length || 40) / 2 + pitch / 2;
-      const phase = ((h % pitch) + pitch) % pitch / pitch;
-      const on = phase < Math.min(0.95, Math.max(0.05, data.duty ?? 0.5));
+      const on = dmdPatternOnAt(data, dot(sub(hit.p, mid), t), data.patternPhase || 0);
       if (!on && !data.routeOff) return [];
       const base = reflect(d, n);
-      const angle = (on ? 1 : -1) * 2 * (data.tilt || 12) * D2R;
-      return [{ d: rotv(base, angle), tag: on ? 'on' : 'off' }];
+      const referenceNm = Number.isFinite(data.dispersionReferenceNm) ? data.dispersionReferenceNm : 800;
+      const slope = Number.isFinite(data.dispersionSlopeDegPer100Nm)
+        ? Math.min(60, Math.max(-60, data.dispersionSlopeDegPer100Nm)) : 0;
+      // A DMD's periodic mirror lattice is also a grating. This optional,
+      // deliberately bounded proxy adds the wavelength-dependent exit angle
+      // needed to lay out temporal-focusing relays without pretending to
+      // know a device pitch, diffraction order, blaze efficiency, or pulse
+      // envelope. It changes geometric ray direction only; it never changes
+      // pulse duration or claims temporal compression at a later plane.
+      if (!data.spectralDispersion) {
+        const angle = (on ? 1 : -1) * 2 * (data.tilt || 12) * D2R;
+        return [{ d: rotv(base, angle), tag: on ? 'on' : 'off' }];
+      }
+      return wlSamples(ray).map((sample, index) => {
+        const spectralAngle = slope * (sample.wl - referenceNm) / 100;
+        const angle = ((on ? 1 : -1) * 2 * (data.tilt || 12) + spectralAngle) * D2R;
+        return {
+          d: rotv(base, angle), wl: sample.wl, bw: 0, spec: null,
+          intensity: ray.intensity * sample.weight, keepWeak: true,
+          tag: `${on ? 'on' : 'off'}w${index}`,
+        };
+      });
     }
     case 'dm': {
       let out = reflect(d, n);

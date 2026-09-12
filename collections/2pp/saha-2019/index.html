@@ -61,8 +61,15 @@
       <div class="crumb"><a href="../../../collections/">Collections</a> / <a href="../../../collections/2pp/">Two-photon lithography</a> / Saha 2019</div>
       <div class="article-head"><div><h1>Scalable submicrometer additive manufacturing</h1></div></div>
       <p class="paper-meta">Temporal focusing projection · 2019 · <a href="https://doi.org/10.1126/science.aax8760">10.1126/science.aax8760</a></p>
-      <div class="sim-block"><strong>Research notes · native setup pending</strong>
-      <p>The source review below is preserved for an individual reconstruction.</p></div>
+      <div class="sim-block"><strong>Native optical setup · qualitative model</strong>
+      <p>Read the companion evidence note for reported facts, design choices, control experiments and model limits.</p></div>
+      <div class="collection-actions"><a class="place-cta" href="../../../sketch/?paper=saha-2019&amp;edit=1">Open editable setup</a><a class="plain" href="../setups/saha-2019.json" download>Download native scene</a><a class="plain" href="../research/saha-2019.md">Evidence and controls</a></div>
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../../sketch/?paper=saha-2019&amp;embed=1"
+          title="Saha 2019 — a live native trace of the setup described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live native trace, not a picture of one — this preview is not interactive. Open the editable setup to inspect components, change controls and save your own copy.</p>
       <h2 class="section-head real"><span class="sw"></span>Current understanding</h2>
       <p>A 4f-like arrangement images the DMD mask to the build plane. Spectral path lengths are equal at that plane, where the pulse is shortest; adjacent planes have lower peak intensity.</p>
       <h3>Reported optical sequence</h3><ol><li>Amplified femtosecond source: 800 nm, nominal 35 fs, 1 kHz</li><li>DMD image mask and angular dispersion</li><li>Collimating lens L1</li><li>Fold mirror</li><li>60×, NA 1.25 objective L2</li><li>Projected resin plane on XYZ stage</li></ol>
@@ -72,6 +79,10 @@
       <h2 class="section-head sim"><span class="sw"></span>Limits and unresolved details</h2>
       <div class="limitations"><p>Geometric rays cannot establish temporal focusing, sheet confinement, voxel size or polymer conversion. No generic pulse compressor is substituted for this effect.</p><ul><li>35/39/42 nW per projected pixel are measured before the objective; they are not total source power.</li><li>Supplementary instrument prescription has not been downloaded.</li><li>1 kHz and 35 fs fall outside the current lab input ranges.</li></ul></div>
       <div class="table-wrap"><table><thead><tr><th>Reported input</th><th>Value</th></tr></thead><tbody><tr><th>wavelengthNm</th><td>800</td></tr><tr><th>repetitionRateMHz</th><td>0.001</td></tr><tr><th>pulseDurationFs</th><td>35</td></tr><tr><th>numericalAperture</th><td>1.25</td></tr></tbody></table></div>
+      <h2 class="section-head sim"><span class="sw"></span>Companion calculator</h2>
+      <p><a href="https://twophotonlithography.com/lab?from=opticalsetup&amp;v=1&amp;basis=paper&amp;wavelengthNm=800&amp;numericalAperture=1.25">Open the explicitly reviewed paper subset</a></p><div class="handoff"><div><h3>Transferred</h3><ul><li>Wavelength: 800 nm</li><li>Numerical aperture: 1.25 </li></ul></div><div><h3>Not transferred</h3><ul><li>Source power: No verified exact value</li><li>Repetition rate: No verified exact value</li><li>Pulse duration: No verified exact value</li></ul></div></div>
+      <p>Source ratings are not sample or per-focus power. The destination keeps defaults for missing quantities. Literature provenance requires the companion paper-handoff support; verify its import notice before using these values.</p>
+      <p class="embed-caption">The workbench writing preview does not calibrate dose, curing or three-dimensional focal volume.</p>
     </main>
   </div>
   <footer class="wiki-footer">Paper-specific research and qualitative optical models. Source PDFs remain with their authors and publishers. <a href="/collections/2pp/sources.json">Source manifest</a> · <a href="/collections/2pp/papers.json">Research records</a></footer>

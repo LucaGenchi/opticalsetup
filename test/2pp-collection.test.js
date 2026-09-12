@@ -15,6 +15,17 @@ test('paper identities and source files have explicit provenance and unresolved 
  const zhang=papers.find(p=>p.id==='zhang-2024');assert.equal(zhang.settings.sourcePowerMw,undefined,'maximum capacity is not operating power');
 });
 
+test('the reviewed Saha apparatus is included as a working collection scene',async()=>{
+ const {papers}=await load('../collections/2pp/papers.json');
+ const working=papers.filter(p=>p.scene);
+ assert.ok(working.some(p=>p.id==='saha-2019'));
+ const assigned = working.find(p=>p.id==='saha-2019');
+ assert.equal(assigned.scene,'setups/saha-2019.json');
+ assert.equal(assigned.researchNote,'research/saha-2019.md');
+ await readFile(new URL(`../collections/2pp/${assigned.scene}`,import.meta.url),'utf8');
+ await readFile(new URL(`../collections/2pp/${assigned.researchNote}`,import.meta.url),'utf8');
+});
+
 // The site lists collections under one hub rather than promoting a single
 // subject in the header, and a collection page is dressed like every other
 // section: the shared wiki shell, the shared header, one name for the canvas.
