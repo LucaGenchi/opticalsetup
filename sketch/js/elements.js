@@ -2007,6 +2007,7 @@ export const registry = {
       { key: 'enabled', label: 'Emit traced rays', type: 'checkbox', def: true },
       P.wavelength,
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
+      { key: 'handoffEnabled', label: 'Allow configured-value 2PP handoff', type: 'checkbox', def: true },
       ...beamShapeParams(3),
       ...pulseTrainParams(),
       { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150 },

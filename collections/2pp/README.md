@@ -1,9 +1,15 @@
 # Two-photon lithography research workspace
 
 References, figure reviews and optical reasoning for the throughput-scaling
-benchmark. The generated setups have been removed at the user's request.
-Future reconstruction work should give each apparatus its own focused agent.
-No new reconstruction is started by this workspace.
+benchmark. The rejected batch-generated setups were removed at the user's
+request. New apparatus work is added one reference at a time.
+
+## Individual rebuilds
+
+- `dong-2007` is a native, working mechanism interpretation. The full article
+  and apparatus figure remain unavailable, so its configurable lens set and
+  aperture-mask mechanism is explicitly separated from free design choices in
+  the scene and companion note. It is not claimed as an exact reconstruction.
 
 ## Preserved material
 
@@ -27,7 +33,8 @@ correct DOI is `10.1063/1.2789661`; the benchmark DOI identifies another paper.
 
 ## Removed material
 
-The 15 generated apparatus drawings and the array demonstration scene are gone,
+The 15 rejected batch-generated apparatus drawings and the array demonstration
+scene are gone,
 along with their scene manifest, native layout recipes, scene generators,
 embedded previews, edit/download links, Examples entries, offline cache entries
 and lab preset links. Rebuilding these pages cannot recreate a setup.
@@ -37,7 +44,7 @@ three array elements, optional source emission and 3% AOM gating. The bounded
 cross-site import helpers and companion PR are retained as infrastructure;
 the research pages offer no numerical preset links.
 
-## Continue one reference at a time
+## Continue with another reference
 
 1. Read that reference's entry in `papers.json` and open its primary documents.
 2. Inspect the cited figures, captions and methods directly. Recheck the notes.
