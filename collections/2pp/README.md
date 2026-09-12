@@ -1,9 +1,10 @@
 # Two-photon lithography research workspace
 
 References, figure reviews and optical reasoning for the throughput-scaling
-benchmark. The generated setups have been removed at the user's request.
-Future reconstruction work should give each apparatus its own focused agent.
-No new reconstruction is started by this workspace.
+benchmark. The earlier generated setups were removed at the user's request.
+New working scenes are now reconstructed one paper at a time with
+source-specific evidence, tests, and explicit interpretation labels. Saha
+2019 is the first reviewed native scene restored through that process.
 
 ## Preserved material
 
@@ -25,12 +26,14 @@ supplement and public apparatus figures, but no main article PDF. The GT
 source is a 2016 datasheet revision for a benchmark labelled 2014. Dong's
 correct DOI is `10.1063/1.2789661`; the benchmark DOI identifies another paper.
 
-## Removed material
+## Earlier removed material
 
-The 15 generated apparatus drawings and the array demonstration scene are gone,
+The earlier 15 generated apparatus drawings and the array demonstration scene are gone,
 along with their scene manifest, native layout recipes, scene generators,
 embedded previews, edit/download links, Examples entries, offline cache entries
-and lab preset links. Rebuilding these pages cannot recreate a setup.
+and lab preset links. Rebuilding those historical pages cannot recreate a
+setup. Individually reviewed successors live under `setups/` with companion
+notes under `research/`.
 
 Reusable component code and its tests remain available for future work: the
 three array elements, optional source emission and 3% AOM gating. The bounded

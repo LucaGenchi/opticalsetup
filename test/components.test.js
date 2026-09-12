@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry, retroOffsetAt } from '../sketch/js/elements.js';
 import { detectorReading, traceAll, traceScene } from '../sketch/js/raytrace.js';
+import { parseSketch } from '../sketch/js/state.js';
 import { C_MM_PER_NS } from '../sketch/js/pulses.js';
 
 const paths = elements => traceAll(elements).filter(d => d.type === 'path');
@@ -10,6 +11,7 @@ const angleOfLastSegment = path => {
   const a = path.pts.at(-2), b = path.pts.at(-1);
   return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
 };
+const signedAngleDelta = (from, to) => ((to - from + 540) % 360) - 180;
 
 test('galvo command changes the physical mirror surface', () => {
   const galvo = createElement('galvo');
@@ -51,6 +53,44 @@ test('DMD routes ON and OFF micromirror stripes into distinct orders', () => {
 
   dmd.params.routeOff = false;
   assert.equal(paths([offLaser, dmd]).filter(p => Math.abs(p.pts[0].x - 171) < 1e-6).length, 0);
+});
+
+test('DMD spectral-dispersion proxy separates wavelengths without changing the reference ray', () => {
+  const dmd = createElement('dmd', 180, 0);
+  Object.assign(dmd.params, {
+    spectralDispersion: true,
+    dispersionReferenceNm: 800,
+    dispersionSlopeDegPer100Nm: 10,
+  });
+  const exitAngle = wavelength => {
+    const laser = createElement('cwlaser', 0, 0);
+    Object.assign(laser.params, { beamMode: 'line', wavelength });
+    const ray = paths([laser, dmd]).find(p => Math.abs(p.pts[0].x - 171) < 1e-6);
+    assert.ok(ray);
+    return angleOfLastSegment(ray);
+  };
+  const blue = exitAngle(700), reference = exitAngle(800), red = exitAngle(900);
+  assert.ok(Math.abs(signedAngleDelta(reference, red) - 10) < 1e-7);
+  assert.ok(Math.abs(signedAngleDelta(reference, blue) + 10) < 1e-7);
+
+  dmd.params.spectralDispersion = false;
+  assert.ok(Math.abs(signedAngleDelta(exitAngle(700), exitAngle(900))) < 1e-7,
+    'turning the proxy off must restore wavelength-independent micromirror routing');
+});
+
+test('malformed DMD dispersion settings normalize to finite bounded values', () => {
+  const dmd = createElement('dmd', 180, 0);
+  Object.assign(dmd.params, {
+    spectralDispersion: true,
+    dispersionReferenceNm: Infinity,
+    dispersionSlopeDegPer100Nm: 1e9,
+  });
+  const normalized = parseSketch(JSON.stringify({ elements: [dmd] }), registry).elements[0];
+  assert.equal(normalized.params.dispersionReferenceNm, 800);
+  assert.equal(normalized.params.dispersionSlopeDegPer100Nm, 60);
+  const scene = traceScene([createElement('cwlaser', 0, 0), normalized]);
+  assert.ok(scene.drawables.every(item => (item.pts || []).every(point =>
+    Number.isFinite(point.x) && Number.isFinite(point.y))));
 });
 
 test('deformable mirror defocuses an off-axis reflected ray through its focus', () => {

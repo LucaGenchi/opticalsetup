@@ -14,3 +14,14 @@ test('paper identities and source files have explicit provenance and unresolved 
  const gittard=papers.find(p=>p.id==='gittard-2011');assert.equal(gittard.settings.pulseDurationFs,undefined,'an upper bound is not an exact value');
  const zhang=papers.find(p=>p.id==='zhang-2024');assert.equal(zhang.settings.sourcePowerMw,undefined,'maximum capacity is not operating power');
 });
+
+test('the reviewed Saha apparatus is included as a working collection scene',async()=>{
+ const {papers}=await load('../collections/2pp/papers.json');
+ const working=papers.filter(p=>p.scene);
+ assert.ok(working.some(p=>p.id==='saha-2019'));
+ const assigned = working.find(p=>p.id==='saha-2019');
+ assert.equal(assigned.scene,'setups/saha-2019.json');
+ assert.equal(assigned.researchNote,'research/saha-2019.md');
+ await readFile(new URL(`../collections/2pp/${assigned.scene}`,import.meta.url),'utf8');
+ await readFile(new URL(`../collections/2pp/${assigned.researchNote}`,import.meta.url),'utf8');
+});
