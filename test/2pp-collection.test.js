@@ -75,7 +75,8 @@ test('Nanoscribe discovery includes its scene with canonical collection links an
   const page = await readFile(new URL('../collections/2pp/nanoscribe-gt/index.html', import.meta.url), 'utf8');
   assert.match(page, /Open editable setup/);
   assert.match(page, /\/sketch\/\?paper=nanoscribe-gt&amp;edit=1/);
-  assert.match(page, /src="\/sketch\/\?paper=nanoscribe-gt&amp;embed=1"/);
+  // Collection pages link the canvas relatively, as every other section does.
+  assert.match(page, /src="[^"]*sketch\/\?paper=nanoscribe-gt&amp;embed=1"/);
   assert.match(page, /setups\/nanoscribe-gt\.json/);
   assert.match(page, /research\/nanoscribe-gt\.md/);
   assert.match(page, /No calculator preset is supplied/);
