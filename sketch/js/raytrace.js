@@ -98,17 +98,24 @@ function recordObjectivePupil(elementId, radius, pupilRadius) {
 // camera -- and a wide plate in a narrow beam writes almost none of them.
 let phasePlateSpans = new Map();
 
-function recordPhasePlateSpan(elementId, u) {
+function recordPhasePlateSpan(elementId, u, phaseFraction) {
   if (!elementId || !Number.isFinite(u)) return;
   const seen = phasePlateSpans.get(elementId);
-  if (!seen) phasePlateSpans.set(elementId, { lo: u, hi: u });
-  else { seen.lo = Math.min(seen.lo, u); seen.hi = Math.max(seen.hi, u); }
+  if (!seen) phasePlateSpans.set(elementId, { lo: u, hi: u, phaseLo: phaseFraction, phaseHi: phaseFraction });
+  else {
+    seen.lo = Math.min(seen.lo, u); seen.hi = Math.max(seen.hi, u);
+    seen.phaseLo = Math.min(seen.phaseLo, phaseFraction);
+    seen.phaseHi = Math.max(seen.phaseHi, phaseFraction);
+  }
 }
 
 export function phasePlateIllumination(elementId) {
   const seen = phasePlateSpans.get(elementId);
   if (!seen) return null;
-  return { span: Math.max(0, Math.min(1, seen.hi - seen.lo)) };
+  return {
+    span: Math.max(0, Math.min(1, seen.hi - seen.lo)),
+    phaseSpan: Math.max(0, Math.min(1, seen.phaseHi - seen.phaseLo)),
+  };
 }
 
 // pulse-compressor element id -> the GDD the beam arrives carrying, and what
@@ -3548,8 +3555,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // where this particular ray crossed the aperture -- which is what turns
         // a uniform port into a fringe pattern once the arms recombine.
         const peak = Math.min(20000, Math.max(0, Number(hit.surface.data.opdUm) || 0)) * 1e-3;
-        if (!coherent?.dryRun) recordPhasePlateSpan(hit.surface.el?.id, hit.u);
-        const extraOpl = peak * phasePlateOpdFraction(hit.surface.data.profile, hit.u);
+        const phaseFraction = phasePlateOpdFraction(
+          hit.surface.data.profile, hit.u, hit.surface.data.centralAreaFraction,
+        );
+        if (!coherent?.dryRun) recordPhasePlateSpan(hit.surface.el?.id, hit.u, phaseFraction);
+        const extraOpl = peak * phaseFraction;
         if (extraOpl > 0) {
           r.segmentIntensities.push(r.intensity);
           r.segmentHistories.push(r.sig);

@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createElement, phasePlateOpdFraction, registry } from '../sketch/js/elements.js';
+import {
+  createElement, phasePlateCentralDiameterFraction, phasePlateOpdFraction, registry,
+} from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
@@ -99,6 +101,17 @@ test('the path profile is the shape it claims to be', () => {
   assert.equal(phasePlateOpdFraction('step', 0.75), 1);
   assert.equal(phasePlateOpdFraction('bar', 0.5), 1, 'the bar covers the middle');
   assert.equal(phasePlateOpdFraction('bar', 0.05), 0, 'and not the edges');
+  assert.equal(phasePlateCentralDiameterFraction(0.5), Math.sqrt(0.5));
+  assert.equal(phasePlateOpdFraction('pupil', 0.5, 0.5), 1,
+    'the central pupil zone is retarded');
+  assert.equal(phasePlateOpdFraction('pupil', 0.1, 0.5), 0,
+    'the outer pupil remains unretarded');
+  assert.equal(phasePlateOpdFraction('pupil', 0.1, 1), 1,
+    'a full-area central zone covers the complete meridional pupil');
+  assert.equal(phasePlateOpdFraction('pupil', 0.5, -4), 0,
+    'malformed negative area clamps to an empty zone');
+  assert.equal(phasePlateOpdFraction('pupil', 0.5, Infinity), 0,
+    'non-finite area cannot create a non-finite phase profile');
   assert.equal(phasePlateOpdFraction('bump', 0.5), 1);
   assert.equal(phasePlateOpdFraction('bump', 0), 0);
   // Out-of-range crossings are clamped rather than extrapolated.
@@ -306,4 +319,3 @@ test('the swing hint is not fooled by a profile whose extremes sit off 0 and pi'
   assert.ok(Math.abs(at(532e-6 / 4) - at(0)) > 0.25);
   assert.doesNotMatch(spec.readout(plate.params, plate), /stays put/);
 });
-
