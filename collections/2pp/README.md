@@ -1,9 +1,9 @@
 # Two-photon lithography research workspace
 
 References, figure reviews and optical reasoning for the throughput-scaling
-benchmark. The generated setups have been removed at the user's request.
-Future reconstruction work should give each apparatus its own focused agent.
-No new reconstruction is started by this workspace.
+benchmark. The rejected batch-generated setups were removed at the user's
+request. Apparatuses are now reconstructed individually; `somers-2021` is the
+first reviewed native scene rebuilt under that workflow.
 
 ## Preserved material
 
@@ -16,9 +16,9 @@ No new reconstruction is started by this workspace.
 - `sources.json`: source URLs, byte counts, SHA-256 hashes and page counts.
 - Research pages for every reference, including explicit access gaps.
 
-The notes remain working research to check against the PDFs. They are not an
-accepted apparatus reconstruction. Some limitations describe the removed draft;
-these are retained as useful cautions for future work.
+The notes remain working research to check against the PDFs. They are not by
+themselves an accepted apparatus reconstruction. Some limitations describe the
+removed draft; these are retained as useful cautions for future work.
 
 Dong 2007, Yang 2015 and Yan 2015 still lack full text. Gu has an official
 supplement and public apparatus figures, but no main article PDF. The GT
