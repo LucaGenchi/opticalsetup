@@ -61,8 +61,15 @@
       <div class="crumb"><a href="../../../collections/">Collections</a> / <a href="../../../collections/2pp/">Two-photon lithography</a> / Somers 2021</div>
       <div class="article-head"><div><h1>Rapid, continuous projection multi-photon 3D printing enabled by spatiotemporal focusing of femtosecond pulses</h1></div></div>
       <p class="paper-meta">Temporal focusing projection · 2021 · <a href="https://doi.org/10.1038/s41377-021-00645-z">10.1038/s41377-021-00645-z</a></p>
-      <div class="sim-block"><strong>Research notes · native setup pending</strong>
-      <p>The source review below is preserved for an individual reconstruction.</p></div>
+      <div class="sim-block"><strong>Native optical setup · qualitative model</strong>
+      <p>Read the companion evidence note for reported facts, design choices, control experiments and model limits.</p></div>
+      <div class="collection-actions"><a class="place-cta" href="../../../sketch/?paper=somers-2021&amp;edit=1">Open editable setup</a><a class="plain" href="../setups/somers-2021.json" download>Download native scene</a><a class="plain" href="../research/somers-2021.md">Evidence and controls</a></div>
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../../sketch/?paper=somers-2021&amp;embed=1"
+          title="Somers 2021 — a live native trace of the setup described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live native trace, not a picture of one — this preview is not interactive. Open the editable setup to inspect components, change controls and save your own copy.</p>
       <h2 class="section-head real"><span class="sw"></span>Current understanding</h2>
       <p>Stage-synchronized image masks and continuous Z translation remove interlayer dead time. The dispersive DMD and objective establish a temporal focus at the projected image plane.</p>
       <h3>Reported optical sequence</h3><ol><li>Spitfire amplifier: 800 nm, 65 fs, 5 kHz, approximately 22 nm bandwidth</li><li>HWP and PBS power control</li><li>Galilean expansion: −75 mm / +100 mm</li><li>πShaper 6_6_TiS flat-top shaping</li><li>L1=100 mm and L2=150 mm expansion</li><li>DLP3000 DMD, approximately 24° incidence; up to 4 kHz masks</li><li>L3=300 mm collecting diffracted light along the DMD normal</li><li>100×, NA 1.49 Nikon dip-in objective</li><li>BBK/PETA resin on 3-axis air-bearing stage</li></ol>
@@ -73,6 +80,10 @@
       <h2 class="section-head sim"><span class="sw"></span>Limits and unresolved details</h2>
       <div class="limitations"><p>No time-dependent field or curing model is solved. The drawing identifies the spatial conjugate planes without replacing the DMD with a generic periodic amplitude mask simulation.</p><ul><li>5 kHz is outside the lab repetition-rate range.</li><li>Total operating source power is not a single value.</li></ul></div>
       <div class="table-wrap"><table><thead><tr><th>Reported input</th><th>Value</th></tr></thead><tbody><tr><th>wavelengthNm</th><td>800</td></tr><tr><th>repetitionRateMHz</th><td>0.005</td></tr><tr><th>pulseDurationFs</th><td>65</td></tr><tr><th>numericalAperture</th><td>1.49</td></tr></tbody></table></div>
+      <h2 class="section-head sim"><span class="sw"></span>Companion calculator</h2>
+      <p><a href="https://twophotonlithography.com/lab?from=opticalsetup&amp;v=1&amp;basis=paper&amp;wavelengthNm=800&amp;pulseDurationFs=65&amp;numericalAperture=1.49">Open the explicitly reviewed paper subset</a></p><div class="handoff"><div><h3>Transferred</h3><ul><li>Wavelength: 800 nm</li><li>Pulse duration: 65 fs</li><li>Numerical aperture: 1.49 </li></ul></div><div><h3>Not transferred</h3><ul><li>Source power: No verified exact value</li><li>Repetition rate: No verified exact value</li></ul></div></div>
+      <p>Source ratings are not sample or per-focus power. The destination keeps defaults for missing quantities. Literature provenance requires the companion paper-handoff support; verify its import notice before using these values.</p>
+      <p class="embed-caption">The workbench writing preview does not calibrate dose, curing or three-dimensional focal volume.</p>
     </main>
   </div>
   <footer class="wiki-footer">Paper-specific research and qualitative optical models. Source PDFs remain with their authors and publishers. <a href="/collections/2pp/sources.json">Source manifest</a> · <a href="/collections/2pp/papers.json">Research records</a></footer>

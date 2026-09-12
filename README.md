@@ -290,5 +290,5 @@ The first is the [two-photon lithography workspace](collections/2pp/README.md),
 which preserves the references, figure reviews, reported parameters, optical
 sequences and open questions for 17 benchmark references. Generated setups and
 preset links have been removed. Reconstructions are handled individually from
-the source documents. Rebuild it with `tools/build-2pp-collection.mjs`, then the
+the source documents, beginning with the reviewed Somers 2021 native scene. Rebuild it with `tools/build-2pp-collection.mjs`, then the
 hub, then `tools/build-sitemap.mjs`.

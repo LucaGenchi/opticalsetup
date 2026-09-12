@@ -63,6 +63,9 @@ export const REBUILD_ON_COMMIT_KEYS = [
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind',
+  // the DMD's sequence and dispersion switches reveal their rate, carrier and design-wavelength controls,
+  // so committing one has to rebuild the panel.
+  'sequence', 'disperseSpectrum',
 ];
 
 function field(labelText, inputHTML, className = '') {
