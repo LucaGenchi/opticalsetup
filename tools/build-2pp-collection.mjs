@@ -17,15 +17,15 @@ const head = (title, canonical) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · OpticalSetup</title>
 <meta name="description" content="Two-photon lithography research: primary references, native optical setups, source evidence, reported parameters and unresolved details.">
-<link rel="canonical" href="https://opticalsetup.com${canonical}"><link rel="stylesheet" href="/collections/2pp/style.css"></head>
-<body><header><a class="brand" href="/">OpticalSetup</a><nav aria-label="Main"><a href="/sketch/">Workbench</a><a href="/example-setups/">Examples</a><a href="/collections/2pp/">2PP research</a></nav></header>`;
+<link rel="canonical" href="https://opticalsetup.com${canonical}"><link rel="stylesheet" href="/collections/style.css"></head>
+<body><header><a class="brand" href="/">OpticalSetup</a><nav aria-label="Main"><a href="/sketch/">Workbench</a><a href="/example-setups/">Examples</a><a href="/collections/">Collections</a></nav></header>`;
 const end = `<footer>Paper-specific research and qualitative optical models. Source PDFs remain with their authors and publishers.<br>
 <a href="/collections/2pp/sources.json">Download source manifest</a> · <a href="/collections/2pp/papers.json">Download research records</a></footer></body></html>\n`;
 // Keep the shared index independent of the scenes present on an individual
 // feature branch. Each paper page owns its availability and preview links.
 const rows = records.papers.map(p => `<tr><td>${p.year}</td><th scope="row"><a href="${esc(p.id)}/">${esc(pretty(p.id))}</a><span>${esc(p.title)}</span></th><td>${esc(p.family)}</td><td>${p.status === 'reviewed' ? 'Source notes available' : 'Evidence incomplete'}</td></tr>`).join('\n');
 await writeFile(join(DIR, 'index.html'), head('2PP research workspace', '/collections/2pp/') + `<main>
-<p class="eyebrow">Research workspace · ${esc(records.reviewDate)}</p><h1>Two-photon lithography,<br>paper by paper.</h1>
+<a class="back" href="/collections/">← All collections</a><p class="eyebrow">Research workspace · ${esc(records.reviewDate)}</p><h1>Two-photon lithography,<br>paper by paper.</h1>
 <p class="lead">Primary references, optical reasoning and individually reviewed native setups.</p>
 <div class="summary"><strong>${records.papers.length} references · source notes and optical models</strong><p>Open a reference to find its evidence, unresolved details and available native setup. Each scene identifies reported values, free interpretation and simulation limits in its companion note.</p></div>
 <section aria-labelledby="papers"><h2 id="papers">References and understanding</h2><div class="table-wrap"><table><thead><tr><th>Year</th><th>Reference</th><th>Method</th><th>Evidence</th></tr></thead><tbody>${rows}</tbody></table></div></section>
