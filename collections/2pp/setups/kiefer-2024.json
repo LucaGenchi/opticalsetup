@@ -1,0 +1,551 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "kiefer-frame",
+   "type": "figureframe",
+   "x": 390,
+   "y": 390,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "w": 760,
+    "h": 760,
+    "background": "white"
+   }
+  },
+  {
+   "id": "kiefer-title",
+   "type": "textlabel",
+   "x": 40,
+   "y": 40,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Kiefer et al. 2024 — hybrid DOE + MLA 49-focus printer**\nNative 2D meridional mechanism proxy · DOI 10.37188/lam.2024.003",
+    "fontSize": 15,
+    "fill": "#26333a"
+   }
+  },
+  {
+   "id": "kiefer-laser",
+   "type": "pulsedlaser",
+   "x": 75,
+   "y": 100,
+   "rot": 0,
+   "label": "Chameleon Ultra II",
+   "showLabel": true,
+   "params": {
+    "enabled": true,
+    "wavelength": 790,
+    "avgPowerW": 3.7,
+    "beamMode": "beam",
+    "beamWidth": 4,
+    "repRateMHz": 80,
+    "pulsePhaseNs": 0,
+    "pulseWidthFs": 140,
+    "transformLimited": false,
+    "pulseShape": "sech2",
+    "bandwidth": 0,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#c90000",
+    "showPulse": true,
+    "temporalMode": "pulsed"
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "kiefer-l12",
+   "type": "telescope",
+   "x": 210,
+   "y": 100,
+   "rot": 0,
+   "label": "L1/L2 · 1.25×",
+   "showLabel": true,
+   "params": {
+    "f1": 30,
+    "f2": 24,
+    "dia": 18,
+    "transEff": 99
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "kiefer-aom",
+   "type": "aom",
+   "x": 290,
+   "y": 100,
+   "rot": 0,
+   "label": "AOM",
+   "showLabel": true,
+   "params": {
+    "aperture": 18,
+    "deflect": 8,
+    "rfMHz": 80,
+    "zero": true,
+    "eff": 0.82,
+    "modulate": false,
+    "modShape": "square",
+    "modFreqMHz": 1,
+    "chopDuty": 0.5,
+    "modDepth": 1,
+    "phaseNs": 0
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "kiefer-dump",
+   "type": "beamdump",
+   "x": 390,
+   "y": 100,
+   "rot": 0,
+   "label": "Zero order",
+   "showLabel": true,
+   "params": {
+    "aperture": 16
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "kiefer-l34",
+   "type": "telescope",
+   "x": 420,
+   "y": 118.3,
+   "rot": 8,
+   "label": "L3/L4 · 1.60×",
+   "showLabel": true,
+   "params": {
+    "f1": 25,
+    "f2": 40,
+    "dia": 18,
+    "transEff": 99
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "kiefer-fold-a",
+   "type": "mirror",
+   "x": 540,
+   "y": 135.1,
+   "rot": 139,
+   "label": "Fold¹",
+   "showLabel": true,
+   "params": {
+    "length": 28,
+    "refl": 100,
+    "showTransmitted": false
+   },
+   "labelPos": "r"
+  },
+  {
+   "id": "kiefer-fold-b",
+   "type": "mirror",
+   "x": 540,
+   "y": 290,
+   "rot": 45,
+   "label": "Fold¹",
+   "showLabel": true,
+   "params": {
+    "length": 28,
+    "refl": 100,
+    "showTransmitted": false
+   },
+   "labelPos": "r"
+  },
+  {
+   "id": "kiefer-doe",
+   "type": "diffractivesplitter",
+   "x": 505,
+   "y": 290,
+   "rot": 180,
+   "label": "DOE · 7 orders",
+   "showLabel": true,
+   "params": {
+    "length": 34,
+    "lines": 54,
+    "orders": "-3,-2,-1,0,1,2,3"
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "kiefer-l56",
+   "type": "telescope",
+   "x": 440,
+   "y": 290,
+   "rot": 180,
+   "label": "L5/L6 · 3.33×",
+   "showLabel": true,
+   "params": {
+    "f1": 15,
+    "f2": 50,
+    "dia": 38,
+    "transEff": 99
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "kiefer-l7",
+   "type": "lens",
+   "x": 370,
+   "y": 290,
+   "rot": 180,
+   "label": "L7",
+   "showLabel": true,
+   "params": {
+    "f": 200,
+    "dia": 42,
+    "transEff": 99
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "kiefer-mla",
+   "type": "microlensarray",
+   "x": 305,
+   "y": 290,
+   "rot": 180,
+   "label": "MLA · 7 lenslets",
+   "showLabel": true,
+   "params": {
+    "length": 18,
+    "count": 7,
+    "f": 15
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "kiefer-lg1",
+   "type": "lens",
+   "x": 245,
+   "y": 290,
+   "rot": 180,
+   "label": "LG1",
+   "showLabel": true,
+   "params": {
+    "f": 45,
+    "dia": 48,
+    "transEff": 99
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "kiefer-gx",
+   "type": "galvo",
+   "x": 200,
+   "y": 290,
+   "rot": 45,
+   "label": "GX",
+   "showLabel": true,
+   "params": {
+    "length": 24,
+    "commandAngle": 0,
+    "scanMode": "triangle",
+    "scanAmplitude": 0.8,
+    "scanFrequencyHz": 100,
+    "scanPhaseDeg": 0,
+    "refl": 100,
+    "showTransmitted": false
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "kiefer-lg23",
+   "type": "telescope",
+   "x": 200,
+   "y": 395,
+   "rot": 90,
+   "label": "LG2/LG3 · 1×",
+   "showLabel": true,
+   "params": {
+    "f1": 52.5,
+    "f2": 52.5,
+    "dia": 70,
+    "transEff": 99
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "kiefer-gy",
+   "type": "galvo",
+   "x": 200,
+   "y": 500,
+   "rot": 135,
+   "label": "GY",
+   "showLabel": true,
+   "params": {
+    "length": 24,
+    "commandAngle": 0,
+    "scanMode": "sine",
+    "scanAmplitude": 0.5,
+    "scanFrequencyHz": 73,
+    "scanPhaseDeg": 90,
+    "refl": 100,
+    "showTransmitted": false
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "kiefer-lg45",
+   "type": "telescope",
+   "x": 371.3291666667,
+   "y": 500,
+   "rot": 0,
+   "label": "LG4/LG5 · 2×",
+   "showLabel": true,
+   "params": {
+    "f1": 68.5316666667,
+    "f2": 137.0633333333,
+    "dia": 100,
+    "transEff": 99
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "kiefer-bs",
+   "type": "bs",
+   "x": 505,
+   "y": 500,
+   "rot": 0,
+   "label": "BS",
+   "showLabel": true,
+   "params": {
+    "ratio": 0.96,
+    "size": 25.4
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "kiefer-objective",
+   "type": "objective",
+   "x": 605,
+   "y": 500,
+   "rot": 0,
+   "label": "40× / NA 1.4 oil",
+   "showLabel": true,
+   "params": {
+    "efl": 5,
+    "workingDistance": 0.19,
+    "immersion": "oil",
+    "immersionIndex": 1.49,
+    "na": 1.4,
+    "showAcceptance": true,
+    "transEff": 70,
+    "frontAperture": 11.55
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "kiefer-stage",
+   "type": "sample",
+   "x": 621.2,
+   "y": 500,
+   "rot": 90,
+   "label": "Resin",
+   "showLabel": true,
+   "params": {
+    "aperture": 4,
+    "specimenType": "resin",
+    "channels": [],
+    "showSignalSpot": true,
+    "thickness": 0.15,
+    "voxelPreview": true,
+    "voxelSize": 0.8,
+    "transmitExc": true,
+    "transmission": 0.8,
+    "mode": "none",
+    "fluorWl": 520,
+    "carsWl": 660,
+    "signalEff": 0.1
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "kiefer-led-condenser",
+   "type": "lens",
+   "x": 650,
+   "y": 500,
+   "rot": 180,
+   "label": "",
+   "showLabel": true,
+   "params": {
+    "f": 30,
+    "dia": 20,
+    "transEff": 95
+   },
+   "labelPos": "b"
+  },
+  {
+   "id": "kiefer-led",
+   "type": "pointsource",
+   "x": 680,
+   "y": 500,
+   "rot": 180,
+   "label": "Yellow LED",
+   "showLabel": true,
+   "params": {
+    "displayScale": 0.7,
+    "sourceKind": "point",
+    "wavelength": 590,
+    "bwMode": "band",
+    "bandwidth": 40,
+    "lampType": "hg",
+    "spread": 2,
+    "nrays": 12,
+    "autoColor": true,
+    "color": "#f1c40f"
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "kiefer-l8",
+   "type": "lens",
+   "x": 505,
+   "y": 565,
+   "rot": 90,
+   "label": "L8",
+   "showLabel": true,
+   "params": {
+    "f": 45,
+    "dia": 30,
+    "transEff": 95
+   },
+   "labelPos": "r"
+  },
+  {
+   "id": "kiefer-camera",
+   "type": "camera",
+   "x": 505,
+   "y": 635,
+   "rot": 90,
+   "label": "CMOS",
+   "showLabel": true,
+   "params": {
+    "ch": 36,
+    "pixels": 64,
+    "interference": false,
+    "profileScale": "absolute"
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "kiefer-mla-stop",
+   "type": "slit",
+   "x": 306,
+   "y": 290,
+   "rot": 180,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "gap": 18,
+    "length": 42
+   }
+  },
+  {
+   "id": "kiefer-led-stop",
+   "type": "filter",
+   "x": 625,
+   "y": 500,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "ftype": "shortpass",
+    "cutoff": 700,
+    "center": 525,
+    "band": 40,
+    "trans": 0.5,
+    "length": 20
+   }
+  },
+  {
+   "id": "kiefer-return-stop",
+   "type": "filter",
+   "x": 480,
+   "y": 500,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "ftype": "longpass",
+    "cutoff": 700,
+    "center": 525,
+    "band": 40,
+    "trans": 0.5,
+    "length": 160
+   }
+  },
+  {
+   "id": "kiefer-pickoff-dump",
+   "type": "beamdump",
+   "x": 505,
+   "y": 440,
+   "rot": 90,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "aperture": 60
+   }
+  },
+  {
+   "id": "kiefer-mechanism",
+   "type": "textlabel",
+   "x": 40,
+   "y": 580,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Hybrid beam splitting**\nSeven DOE orders illuminate seven separate lenslets.\nThe MLA supplies refractive separation; both galvos\nscan the resulting focus row through the objective.\nThe paper has 49 foci in 7×7; this view shows one row.",
+    "fontSize": 10,
+    "fill": "#2b6471"
+   }
+  },
+  {
+   "id": "kiefer-limit",
+   "type": "textlabel",
+   "x": 40,
+   "y": 695,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Free interpretation — not specified in the paper:**\nFocal lengths, spacings, folds, coatings, source width, galvo rates,\nAOM settings, LED condenser and isolation filters. Not to scale.\n**Model limit:** geometric routing; no custom asphere, 3D field,\nPSF, calibrated efficiency, nonlinear dose or curing.",
+    "fontSize": 10,
+    "fill": "#5f6670"
+   }
+  },
+  {
+   "id": "kiefer-power",
+   "type": "textlabel",
+   "x": 555,
+   "y": 600,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Reported power planes**\n3.7 W at laser output\n954 mW total before objective\n19.5 mW per focus there\n70% objective transmission assumed",
+    "fontSize": 9,
+    "fill": "#7a4b00"
+   }
+  },
+  {
+   "id": "kiefer-source-note",
+   "type": "textlabel",
+   "x": 40,
+   "y": 190,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Reported source:** 790 nm · 140 fs sech² · 80 MHz\nBeam diameters: DOE 571 µm; MLA 720 µm (not optic sizes).\n**Try:** DOE orders = 0; weaken MLA f; run Mechanics; laser off.",
+    "fontSize": 10,
+    "fill": "#475569"
+   }
+  }
+ ],
+ "beams": []
+}

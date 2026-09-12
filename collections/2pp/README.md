@@ -1,9 +1,9 @@
 # Two-photon lithography research workspace
 
 References, figure reviews and optical reasoning for the throughput-scaling
-benchmark. The generated setups have been removed at the user's request.
-Future reconstruction work should give each apparatus its own focused agent.
-No new reconstruction is started by this workspace.
+benchmark. The earlier batch-generated setups were removed at the user's
+request. Individually verified reconstructions may now be added one apparatus
+at a time under `setups/`, with paper-specific evidence under `research/`.
 
 ## Preserved material
 
@@ -27,15 +27,15 @@ correct DOI is `10.1063/1.2789661`; the benchmark DOI identifies another paper.
 
 ## Removed material
 
-The 15 generated apparatus drawings and the array demonstration scene are gone,
+The 15 earlier generated apparatus drawings and the array demonstration scene are gone,
 along with their scene manifest, native layout recipes, scene generators,
 embedded previews, edit/download links, Examples entries, offline cache entries
 and lab preset links. Rebuilding these pages cannot recreate a setup.
 
-Reusable component code and its tests remain available for future work: the
+Reusable component code and its tests remain available for focused reconstructions: the
 three array elements, optional source emission and 3% AOM gating. The bounded
 cross-site import helpers and companion PR are retained as infrastructure;
-the research pages offer no numerical preset links.
+paper pages without an individual reconstruction offer no numerical preset links.
 
 ## Continue one reference at a time
 
