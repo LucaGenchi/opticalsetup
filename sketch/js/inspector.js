@@ -63,6 +63,9 @@ export const REBUILD_ON_COMMIT_KEYS = [
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind',
+  // the DMD's spectral-dispersion switch reveals its reference wavelength and slope,
+  // so committing one has to rebuild the panel.
+  'spectralDispersion',
 ];
 
 function field(labelText, inputHTML, className = '') {
