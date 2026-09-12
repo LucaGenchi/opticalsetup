@@ -42,6 +42,13 @@ test('keeps user-authored laser labels out of the numeric-only URL contract', ()
   assert.doesNotMatch(buildTwoPhotonHandoffUrl(laser), /img|onerror|label/i);
 });
 
+test('blocks interpreted source values until the destination preserves their provenance', () => {
+  const interpreted = pulsedLaser();
+  interpreted.params.handoffBasis = 'interpretation';
+  assert.equal(buildTwoPhotonHandoffUrl(interpreted), null);
+  assert.equal(new URL(buildTwoPhotonHandoffUrl(pulsedLaser())).searchParams.has('basis'), false);
+});
+
 test('preserves an allowed destination base URL while replacing handoff keys', () => {
   const url = new URL(buildTwoPhotonHandoffUrl(
     pulsedLaser(),
@@ -240,4 +247,17 @@ test('the inspector explains missing pulse illumination and stays hidden for oth
 
   stage.params.specimenType = 'absorbing';
   assert.doesNotMatch(stageInspectorHTML(laser, stage), /Continue the 2PP workflow/);
+});
+
+
+test('the resin inspector explains the unsupported interpretation handoff', () => {
+  const laser = pulsedLaser();
+  laser.params.handoffBasis = 'interpretation';
+  const stage = createElement('stage', 150, 0);
+  stage.rot = 90;
+  stage.params.specimenType = 'resin';
+  const html = stageInspectorHTML(laser, stage);
+  assert.match(html, /free-interpretation values/);
+  assert.match(html, /numeric transfer is disabled/);
+  assert.doesNotMatch(html, /class="two-photon-link"/);
 });

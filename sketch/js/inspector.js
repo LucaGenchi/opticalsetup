@@ -848,7 +848,12 @@ export function renderInspector() {
         );
         sectionFields += `<div class="two-photon-handoff"><div class="lsechead">Continue the 2PP workflow</div>`;
         if (!candidates.length) {
-          sectionFields += `<div class="hint">Aim a compatible ordinary pulsed Laser at this resin sample (500–1064 nm, up to 1 W source power, 10–100 MHz, 50–400 fs) to open the dedicated lithography lab with its settings.</div>`;
+          const incidentSourceIds = new Set(signalHitsFromLastTrace(sel.id).map(hit => hit.sourceId));
+          const interpretedSource = state.elements.some(element => incidentSourceIds.has(element.id)
+            && element.params?.handoffBasis === 'interpretation');
+          sectionFields += interpretedSource
+            ? `<div class="hint">This source uses free-interpretation values, not reported optical settings. The destination does not yet preserve this provenance, so numeric transfer is disabled.</div>`
+            : `<div class="hint">Aim a compatible ordinary pulsed Laser at this resin sample (500–1064 nm, up to 1 W source power, 10–100 MHz, 50–400 fs) to open the dedicated lithography lab with its settings.</div>`;
         } else {
           const multiple = candidates.length > 1;
           sectionFields += candidates.map(({ laser, numericalAperture, gddFs2, stretchedPulseWidthFs }, index) => {
