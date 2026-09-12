@@ -156,7 +156,16 @@
     },
     {
       "paper": "gu-2025",
-      "filename": "gu-2025.pdf",
+      "filename": "gu-2025-author-manuscript.pdf",
+      "url": "https://www.osti.gov/pages/servlets/purl/3018599",
+      "bytes": 7114469,
+      "sha256": "fd69848665b34e7a675366daff33e210669b96536893f729bae21538fc9cd8cf",
+      "pages": 34,
+      "kind": "author manuscript"
+    },
+    {
+      "paper": "gu-2025",
+      "filename": "gu-2025-supplement.pdf",
       "url": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-025-09842-x/MediaObjects/41586_2025_9842_MOESM1_ESM.pdf",
       "bytes": 3576087,
       "sha256": "638eaae37d600d6e77b379218af9f61ed914d5874e7df9cec468267d3b67d979",

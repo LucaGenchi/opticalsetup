@@ -46,7 +46,7 @@ function freshId(prefix, candidate, used) {
 
 function normalizeLayers(value) {
   if (!Array.isArray(value)) return [];
-  const types = new Set(['lensarray', 'grating', 'steer', 'speckle']);
+  const types = new Set(['lensarray', 'grating', 'steer', 'speckle', 'amplitude']);
   return value.slice(0, 4).filter(record).map(raw => {
     const type = types.has(raw.type) ? raw.type : 'lensarray';
     const n = finite(raw.n) ? raw.n : 3;
@@ -54,7 +54,11 @@ function normalizeLayers(value) {
     const lines = finite(raw.lines) ? raw.lines : 600;
     const angle = finite(raw.angle) ? raw.angle : 5;
     const div = finite(raw.div) ? raw.div : 8;
-    return {
+    const levels = String(raw.levels ?? '1')
+      .split(',').slice(0, 8)
+      .map(Number).filter(Number.isFinite)
+      .map(v => clamp(v, 0, 1));
+    const layer = {
       type,
       n: Math.round(clamp(n, 1, 8)),
       f: clamp(f, -3000, 3000),
@@ -63,6 +67,8 @@ function normalizeLayers(value) {
       angle: clamp(angle, -360, 360),
       div: clamp(div, 0.5, 40),
     };
+    if (type === 'amplitude') layer.levels = (levels.length ? levels : [1]).join(',');
+    return layer;
   });
 }
 
