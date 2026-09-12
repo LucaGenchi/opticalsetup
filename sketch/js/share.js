@@ -4,6 +4,11 @@
 const SHARE_PREFIX = '#sketch=';
 const MAX_SHARE_HASH_CHARS = 200_000;
 const MAX_SCENE_BYTES = 1_000_000;
+const TOO_LARGE_TO_SHARE =
+  'This setup is too large to share as a link \u2014 save it as a .json file instead.';
+// The opening side says something different on purpose: the person reading a
+// link someone sent them cannot act on advice about saving their own file.
+const TOO_LARGE_TO_OPEN = 'Shared sketch is too large to open safely';
 
 function bytesToBase64Url(bytes) {
   let binary = '';
@@ -23,15 +28,44 @@ function base64UrlToBytes(value) {
   return bytes;
 }
 
-async function transform(bytes, Transformer, format) {
+class ShareSizeError extends Error {
+  constructor() { super(TOO_LARGE_TO_OPEN); }
+}
+
+async function transform(bytes, Transformer, format, maxBytes = Infinity) {
   const stream = new Blob([bytes]).stream().pipeThrough(new Transformer(format));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const reader = stream.getReader();
+  const chunks = [];
+  let length = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw new ShareSizeError();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const result = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.byteLength; }
+  return result;
 }
 
 export async function encodeSharePayload(text, { compression = true } = {}) {
   const canonical = JSON.stringify(JSON.parse(text));
   const source = new TextEncoder().encode(canonical);
-  if (source.length > MAX_SCENE_BYTES) throw new Error('Sketch is too large for a share link');
+  // Both size guards on this path report the same thing to the person
+  // sharing -- this setup cannot travel in a URL -- so they say it the
+  // same way. One measures the scene, the other the finished fragment.
+  if (source.length > MAX_SCENE_BYTES) {
+    throw new Error(TOO_LARGE_TO_SHARE);
+  }
 
   if (compression && typeof CompressionStream === 'function') {
     try {
@@ -53,15 +87,16 @@ export async function decodeSharePayload(payload) {
       throw new Error('This browser cannot open compressed share links');
     }
     try {
-      bytes = await transform(bytes, DecompressionStream, 'gzip');
-    } catch (_) {
+      bytes = await transform(bytes, DecompressionStream, 'gzip', MAX_SCENE_BYTES);
+    } catch (error) {
+      if (error instanceof ShareSizeError) throw error;
       throw new Error('Share link is damaged or incomplete');
     }
   } else if (encoding !== 'j') {
     throw new Error('Unsupported share-link encoding');
   }
 
-  if (bytes.length > MAX_SCENE_BYTES) throw new Error('Shared sketch is too large to open safely');
+  if (bytes.length > MAX_SCENE_BYTES) throw new Error(TOO_LARGE_TO_OPEN);
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   JSON.parse(text);
   return text;
@@ -71,6 +106,9 @@ export async function buildShareURL(text, href = window.location.href, options) 
   const payload = await encodeSharePayload(text, options);
   const url = new URL(href);
   url.hash = `sketch=${payload}`;
+  if (url.hash.length > MAX_SHARE_HASH_CHARS) {
+    throw new Error(TOO_LARGE_TO_SHARE);
+  }
   return url.toString();
 }
 

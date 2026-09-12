@@ -247,18 +247,22 @@ test('detector signal follows overlap of chained pulse gates', () => {
   assert.equal(detectorReading(detector.id), null);
 });
 
-test('AOM deflects, frequency-shifts, and attenuates first-order light', () => {
+test('AOM deflects and attenuates first-order light, leaving its colour alone', () => {
   const laser = createElement('cwlaser', 0, 0);
   const aom = createElement('aom', 150, 0);
   aom.params.deflect = 4;
   aom.params.eff = 0.85;
-  aom.params.rfMHz = 80;
   const detectorX = 300, faceX = detectorX - 19;
   const detector = createElement('detector', detectorX, Math.tan(4 * Math.PI / 180) * (faceX - 150));
   traceAll([laser, aom, detector]);
   const reading = detectorReading(detector.id);
   assert.ok(Math.abs(reading.signal - 0.85) < 1e-9);
-  assert.ok(reading.wavelength < laser.params.wavelength);
+  // The acousto-optic frequency shift is real but a thousand times finer than
+  // anything here reports, so it is not applied and the wavelength comes
+  // through as it went in. This used to assert `< 532` and, once the shift was
+  // dropped, still passed on the 1e-13 residue of a power-weighted mean.
+  assert.ok(Math.abs(reading.wavelength - laser.params.wavelength) < 1e-9,
+    `expected 532 nm through, got ${reading.wavelength}`);
 });
 
 test('mechanical delay line adds bounded optical path without steering the beam', () => {

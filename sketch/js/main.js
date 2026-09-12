@@ -226,7 +226,7 @@ const demoScenes = {
   // something on the far side that stops receiving it.
   beamdump: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
-    mkDemo('bs', 200, 200, 0, { ratio: 0.5 }),
+    mkDemo('bs', 200, 200, 90, { ratio: 0.5 }),
     mkDemo('detector', 380, 200, 0, {}, { label: 'kept port', showLabel: true }),
     mkDemo('beamdump', 200, 330, 90, { aperture: 22 }, { label: 'unused port ends here', showLabel: true, labelPos: 'b' }),
   ],
@@ -237,7 +237,7 @@ const demoScenes = {
   ],
   blocker: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
-    mkDemo('bs', 220, 200, 0, { ratio: 0.5 }),
+    mkDemo('bs', 220, 200, 90, { ratio: 0.5 }),
     mkDemo('detector', 400, 200, 0, {}, { label: 'the branch you want', showLabel: true }),
     mkDemo('blocker', 220, 320, 0, { w: 40, h: 16 }, { label: 'absorbs, but never drawn in an export', showLabel: true, labelPos: 'b' }),
   ],
@@ -555,7 +555,7 @@ const demoScenes = {
       repRateMHz: 80, pulseWidthFs: 100,
     }),
     mkDemo('aom', 220, 200, 0, {
-      deflect: 15, rfMHz: 80, zero: true, eff: 1,
+      deflect: 15, zero: true, eff: 1,
       modulate: true, modShape: 'square', modFreqMHz: 40,
     }),
     mkDemo('box', 370, 200, 0, { text: '', w: 10, h: 90, behavior: 'block', fill: '#f2f3f5' }, { label: '1st order (deflected) + 0th order', showLabel: true, labelPos: 'r' }),
@@ -860,51 +860,16 @@ const newId = pre => pre + Math.random().toString(36).slice(2, 9);
 
 function duplicateSelected() {
   if (state.embedMode) return;
-  const s = state.selection;
-  if (s?.kind === 'multi') {
-    const hasDuplicable = s.beams.length || s.els.some(id => {
-      const el = state.elements.find(item => item.id === id);
-      return el && !registry[el.type]?.singleton;
-    });
-    if (!hasDuplicable) return;
-    pushUndo();
-    const els = [], bms = [];
-    for (const id of s.els) {
-      const src = state.elements.find(e => e.id === id);
-      if (!src || registry[src.type]?.singleton) continue;
-      const copy = JSON.parse(JSON.stringify(src));
-      copy.id = newId('e'); copy.x += 30; copy.y += 30;
-      state.elements.push(copy); els.push(copy.id);
-    }
-    for (const id of s.beams) {
-      const src = state.beams.find(b => b.id === id);
-      if (!src) continue;
-      const copy = JSON.parse(JSON.stringify(src));
-      copy.id = newId('b');
-      for (const p of copy.pts) { p.x += 30; p.y += 30; }
-      state.beams.push(copy); bms.push(copy.id);
-    }
-    state.selection = { kind: 'multi', els, beams: bms };
-    changed();
-    renderInspector();
-    return;
-  }
-  const sel = findSelected();
-  if (!sel) return;
-  if (state.selection.kind === 'element' && registry[sel.type]?.singleton) return;
+  const copied = copyableSelection(selectionContents(), isSingleton);
+  const duplicated = pasteObjects(copied, { offset: 30, newId });
+  if (!duplicated) return;
   pushUndo();
-  const copy = JSON.parse(JSON.stringify(sel));
-  if (state.selection.kind === 'element') {
-    copy.id = newId('e');
-    copy.x += 30; copy.y += 30;
-    state.elements.push(copy);
-    state.selection = { kind: 'element', id: copy.id };
-  } else {
-    copy.id = newId('b');
-    for (const p of copy.pts) { p.x += 30; p.y += 30; }
-    state.beams.push(copy);
-    state.selection = { kind: 'beam', id: copy.id };
-  }
+  state.elements.push(...duplicated.els);
+  state.beams.push(...duplicated.beams);
+  const els = duplicated.els.map(el => el.id), beams = duplicated.beams.map(beam => beam.id);
+  state.selection = state.selection?.kind === 'multi'
+    ? { kind: 'multi', els, beams }
+    : els.length ? { kind: 'element', id: els[0] } : { kind: 'beam', id: beams[0] };
   changed();
   renderInspector();
 }

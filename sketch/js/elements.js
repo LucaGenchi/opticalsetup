@@ -16,7 +16,7 @@ import {
   formatTimeAxisNs,
 } from './probe.js';
 import {
-  linewidthForCoherenceLengthNm, spectrumSamples, transformLimitedBandwidthNm,
+  linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -1910,6 +1910,49 @@ function arraySection(params) {
   return { count, pitch: length / count };
 }
 
+// One GDD number for the compressor's readout rows. The unit lives in the row
+// label, so the value is bare. Sub-10 fs² residuals keep a decimal — the
+// difference between "cancelled to 0.2" and "cancelled to 6" is worth seeing —
+// and `|| 0` normalizes JavaScript's negative zero, which would print "-0".
+export function formatGdd(fs2) {
+  if (!Number.isFinite(fs2)) return '—';
+  if (Math.abs(fs2) < 10) return (fs2 || 0).toFixed(1);
+  return (Math.round(fs2) || 0).toLocaleString();
+}
+
+// Which side of zero the pulse leaves on, and how it got there. Sign is the
+// part that carries intent: driving the output negative is a destination, not
+// a failed cancellation. Pre-chirping a pulse so it arrives transform-limited
+// *after* the dispersion of whatever follows — an objective, a long glass
+// path — is an ordinary reason to reach for a compressor, and describing that
+// only as a percentage change in |GDD| hides what the user was aiming for.
+export function compressorFinalState({ incoming, outgoing }) {
+  if (!Number.isFinite(incoming) || !Number.isFinite(outgoing)) return '—';
+  // Anything that rounds away is "no chirp left", not a vanishingly small
+  // chirp with a sign, so it is reported before any sign is claimed.
+  if (Math.round(outgoing) === 0) {
+    return incoming !== 0 ? 'Cancelled — no net chirp left' : 'No chirp';
+  }
+  const side = outgoing < 0 ? 'Negative dispersion' : 'Positive dispersion';
+  if (incoming === 0) {
+    return outgoing < 0
+      ? `${side} — nothing upstream to cancel, so this is pure pre-compensation`
+      : `${side} — applied by this element alone`;
+  }
+  const applied = outgoing - incoming;
+  if (Math.round(applied) === 0) return `${side} — passed through unchanged`;
+  if (Math.sign(outgoing) === Math.sign(incoming)) {
+    return Math.abs(outgoing) < Math.abs(incoming)
+      ? `${side} — the upstream GDD is partly cancelled`
+      : `${side} — this element adds to the upstream GDD`;
+  }
+  // Past the null: the upstream chirp is gone and the opposite one is applied.
+  const upstream = incoming > 0 ? 'positive' : 'negative';
+  const chirp = outgoing < 0 ? 'negative' : 'positive';
+  return `${side} — the upstream ${upstream} GDD is completely cancelled `
+    + `and a ${chirp} chirp is applied`;
+}
+
 export const registry = {
 
   // ---------------- Sources ----------------
@@ -2676,8 +2719,8 @@ export const registry = {
     // collimated light) is the wide barrel and carries the back pupil; front
     // (sample side) is the narrow tip at local x=+16, the physical boundary
     // the working distance is measured from. The equivalent refracting plane
-    // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
-    // because WD is capped at EFL. It is never drawn — an objective is an
+    // of focal length EFL sits at x = 16 + WD - EFL. This equivalent plane
+    // can lie outside the barrel for long-WD designs. It is never drawn — an
     // opaque barrel, not a visible singlet. See objective.js.
     label: 'Objective', category: 'Lenses',
     paletteGroup: 'Ideal lenses', paletteOrder: 3, size: { w: 36, h: 40 },
@@ -2718,8 +2761,10 @@ export const registry = {
           if (ratio <= 1.001) {
             return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — ${(ratio * 100).toFixed(0)}% filled, all through`;
           }
+          // The fraction is a round-pupil area ratio; the 2D tracer clips a
+          // line through the pupil instead, so its traced power can differ.
           return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — overfilled, ` +
-            `${(fill.transmitted * 100).toFixed(0)}% through (${((1 - fill.transmitted) * 100).toFixed(0)}% lost)`;
+            `about ${(fill.transmitted * 100).toFixed(0)}% through a round pupil (area estimate; the 2D trace can differ)`;
         },
       },
       // Underfilling the pupil does not just waste the rating — it hands you a
@@ -3547,15 +3592,45 @@ export const registry = {
     params: [
       { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
       { key: 'deflect', label: 'Deflection (°)', type: 'number', min: -45, max: 45, step: 0.5, def: 4 },
-      { key: 'rfMHz', label: 'RF frequency (MHz)', type: 'number', min: -10000, max: 10000, step: 1, def: 80 },
       { key: 'zero', label: 'Keep 0th order', type: 'checkbox', def: false },
-      { key: 'eff', label: 'Efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.85 },
+      // The crystal's diffraction efficiency, named for what it does to the
+      // beam you watch: it is the fraction that can be switched, so it sets
+      // how completely each order turns on and off. At 1 both orders swing
+      // the full way; at 0.5 the diffracted order only reaches half height
+      // and the undiffracted one only falls to half.
+      { key: 'eff', label: 'Modulation efficiency (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.85 },
       { key: 'modulate', label: 'Modulate RF drive', type: 'checkbox', def: false },
-      { key: 'modShape', label: 'Modulation waveform', type: 'select', def: 'square', options: [['square', 'RF on/off'], ['sine', 'Sinusoidal intensity']], show: p => p.modulate },
+      // Named for the waveform driving the RF, the way a function generator
+      // labels them. A square drive switches the diffracted order fully on and
+      // off, so it alone has an on fraction; the two continuous shapes sweep
+      // the drive amplitude instead and are described by a depth.
+      {
+        key: 'modShape', label: 'Modulation waveform', type: 'select', def: 'square',
+        options: [['square', 'Square'], ['sine', 'Sine'], ['sawtooth', 'Sawtooth / triangle']],
+        show: p => p.modulate,
+      },
       { key: 'modFreqMHz', label: 'Modulation frequency (MHz)', type: 'number', min: 0.000001, max: 1000, step: 0.001, def: 1, show: p => p.modulate },
-      { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.01, max: 0.99, step: 0.01, def: 0.5, show: p => p.modulate && p.modShape !== 'sine' },
-      { key: 'modDepth', label: 'Modulation depth (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape === 'sine' },
+      // Duty cycle is a square-wave property: the fraction of the period the
+      // drive is on. A sine has no such thing, and a ramp's shape is set by
+      // how much of the period it spends rising instead.
+      { key: 'chopDuty', label: 'Duty cycle (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
+      // The symmetry knob a function generator puts on its ramp output:
+      // 1 is the rising sawtooth, 0 the falling one, 0.5 a triangle.
+      { key: 'modSymmetry', label: 'Rise fraction (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape === 'sawtooth' },
+      { key: 'modDepth', label: 'Modulation depth (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape !== 'square' },
       { key: 'phaseNs', label: 'Modulation offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate },
+      // A beam drawn as a steady line says nothing about an RF drive being
+      // switched on and off -- the gating is real, but at megahertz it lives
+      // entirely in the temporal model. Drawing the diffracted order in
+      // chunks is the same schematic footprint the chopper already uses for
+      // gated CW light, and it only affects the drawing: the traced power and
+      // every detector reading are untouched either way. Square gating only;
+      // the continuous shapes sweep the drive smoothly and have no on/off
+      // edges to chunk.
+      {
+        key: 'drawChopped', label: 'Draw gated beam chopped', type: 'checkbox', def: true,
+        show: p => p.modulate && p.modShape === 'square',
+      },
     ],
     svg(el) { return boxSVG(40, el.params.aperture || 26, '#c9b458', '#8a7a2e', 'AOM', '#3d3616', isFlipped(el)); },
     surfaces(el) {
@@ -3563,10 +3638,11 @@ export const registry = {
       return [{
         x1: 0, y1: -(p.aperture || 26) / 2, x2: 0, y2: (p.aperture || 26) / 2, kind: 'aom',
         data: {
-          deflect: p.deflect, rfMHz: p.rfMHz, zero: p.zero, eff: p.eff,
+          deflect: p.deflect, zero: p.zero, eff: p.eff,
           gate: p.modulate ? {
             frequencyMHz: p.modFreqMHz, duty: p.chopDuty, phaseNs: p.phaseNs,
-            shape: p.modShape, depth: p.modDepth,
+            shape: p.modShape, depth: p.modDepth, symmetry: p.modSymmetry,
+            drawChopped: p.drawChopped !== false,
           } : null,
         },
       }];
@@ -3907,28 +3983,35 @@ export const registry = {
       },
       { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
       { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-      // A compressor set far below what the scene already accumulated looks
-      // like it is doing nothing. Showing what arrives — and what is left —
-      // is what turns "it seems inert" into "it is cancelling 5% of it".
+      // Three plain rows rather than one composite string: what arrives, what
+      // leaves, and which side of zero the pulse ends up on. The sign is the
+      // part that carries intent. A negative output is not a failed
+      // cancellation -- it is the ordinary way a pulse is pre-chirped so that
+      // it arrives transform-limited *after* the dispersion of whatever
+      // follows, an objective or a long glass path. Reporting only how the
+      // magnitude moved hides exactly what the user was aiming for.
+      //
+      // There is deliberately no "setting that would null it" row: with the
+      // input shown as its own number, that advice is just its negation.
       {
-        key: 'gddBalance', label: 'GDD in → out', type: 'readout',
+        key: 'gddIn', label: 'GDD at input (fs²)', type: 'readout',
         readout: (p, el) => {
           const reading = el ? compressorGddReading(el.id) : null;
-          if (!reading) return 'No pulse through it yet';
-          const fmt = v => `${Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs²`;
-          const share = reading.incoming !== 0
-            ? Math.abs((reading.incoming - reading.outgoing) / reading.incoming) * 100 : 0;
-          return `${fmt(reading.incoming)} → ${fmt(reading.outgoing)}` +
-            (reading.incoming !== 0 ? ` · cancels ${share.toFixed(0)}%` : '');
+          return reading ? formatGdd(reading.incoming) : 'No pulse through it yet';
         },
       },
       {
-        key: 'gddToNull', label: 'Setting that would null it', type: 'readout',
+        key: 'gddOut', label: 'GDD at output (fs²)', type: 'readout',
         readout: (p, el) => {
           const reading = el ? compressorGddReading(el.id) : null;
-          if (!reading) return '—';
-          const need = -(reading.incoming - (Number(p.gddFs2) || 0));
-          return `${Math.round(need).toLocaleString()} fs²`;
+          return reading ? formatGdd(reading.outgoing) : '\u2014';
+        },
+      },
+      {
+        key: 'gddState', label: 'Final state', type: 'readout', wide: true,
+        readout: (p, el) => {
+          const reading = el ? compressorGddReading(el.id) : null;
+          return reading ? compressorFinalState(reading) : '\u2014';
         },
       },
     ],
@@ -4206,7 +4289,7 @@ export const registry = {
     params: [
       { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
       { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree']] },
-      { key: 'raysMode', label: 'Rays from tip', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
+      { key: 'raysMode', label: 'Rays from axis', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
       { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' },
       { key: 'nrays', label: 'Rays', type: 'number', min: 2, max: 9, step: 1, def: 3, show: p => p.raysMode === 'fan' },
       { key: 'showImage', label: 'Draw image formed', type: 'checkbox', def: true },
@@ -4292,7 +4375,7 @@ export const registry = {
         `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>` +
         `<line x1="0" y1="-9" x2="0" y2="${-PROBE_LEADER}" stroke="#e07020" stroke-width="1"/>`;
       return crosshair +
-        `<g transform="rotate(${-place.rot}) translate(${place.x.toFixed(2)},${place.y.toFixed(2)}) scale(${scale})">` +
+        `<g class="probe-card" transform="rotate(${-place.rot}) translate(${place.x.toFixed(2)},${place.y.toFixed(2)}) scale(${scale})">` +
         card.body + `</g>`;
     },
     surfaces: () => [],
@@ -4583,6 +4666,39 @@ registry.lensc = {
 // rather than a line, so it replaces wavelength with a range and defaults to
 // a fixed broadband white instead of a colour derived from a centroid λ that
 // no longer means much once the band is hundreds of nm wide.
+//
+// Its pulse duration is set by hand, but never below what its band allows: a
+// pulse shorter than the transform limit of its spectrum cannot exist. The
+// floor is rounded up to three significant figures so the field shows a clean
+// number and the rounded value still honours the limit. A band so narrow its
+// limit passes the longest duration the field holds -- a zero-width band has
+// no finite limit at all -- floors at that maximum instead: the tracer and a
+// reloaded sketch clamp there too, so any higher floor could never be kept.
+const SC_PULSE_WIDTH_MIN_FS = 1;
+const SC_PULSE_WIDTH_MAX_FS = 1000000000;
+export function supercontinuumPulseWidthFloorFs(p = {}) {
+  const tl = supercontinuumTransformLimitFs(p.scMin ?? 300, p.scMax ?? 700, p.pulseShape);
+  if (!(tl > SC_PULSE_WIDTH_MIN_FS)) return SC_PULSE_WIDTH_MIN_FS;
+  if (!(tl < SC_PULSE_WIDTH_MAX_FS)) return SC_PULSE_WIDTH_MAX_FS;
+  const unit = 10 ** (Math.floor(Math.log10(tl)) - 2);
+  return Math.min(SC_PULSE_WIDTH_MAX_FS, Number((Math.ceil(tl / unit - 1e-9) * unit).toPrecision(3)));
+}
+// Narrowing the band or switching the envelope raises the floor under a
+// duration that was valid a moment ago; every path that edits those params
+// runs this so the stored duration is lifted rather than left impossible.
+// It is also what enforces the floor on a typed duration: the field's HTML
+// min stays at 1 fs so the browser's 10 fs step ladder is not rebased onto
+// an arbitrary floor like 71.5 fs, which would mark 250 fs as off-step.
+export function normalizeSupercontinuumParams(params) {
+  const floor = supercontinuumPulseWidthFloorFs(params);
+  return Number(params.pulseWidthFs) >= floor ? {} : { pulseWidthFs: floor };
+}
+// The two endpoints stay at least one field step apart. A zero-width band is
+// not a continuum at all, and it has no finite transform limit: clamping a
+// crossed entry to equal endpoints lifted the pulse duration to the field's
+// 1e9 fs ceiling, where it stayed after the band was put right. At 10 nm the
+// narrowest band still admits a 71 fs pulse at 700 nm.
+const SC_MIN_SEPARATION_NM = 10;
 registry.sclaser = {
   ...registry.pulsedlaser,
   label: 'Supercontinuum laser',
@@ -4590,11 +4706,23 @@ registry.sclaser = {
   aliases: ['super continuum', 'white laser', 'broadband pulsed source', 'sc laser'],
   params: [
     { ...P.wavelength, def: 500, show: () => false },
-    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200, max: 11999, step: 10, def: 300 },
-    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number', min: 201, max: 12000, step: 10, def: 700 },
+    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200,
+      max: p => Math.max(200, Math.min(12000 - SC_MIN_SEPARATION_NM, (p.scMax ?? 700) - SC_MIN_SEPARATION_NM)), step: 10, def: 300 },
+    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number',
+      min: p => Math.min(12000, Math.max(200 + SC_MIN_SEPARATION_NM, (p.scMin ?? 300) + SC_MIN_SEPARATION_NM)), max: 12000, step: 10, def: 700 },
     { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
     ...beamShapeParams(3),
     ...pulseTrainParams(),
+    // Duration and envelope are configured independently of the broad spectrum;
+    // this is not a reconstruction of nonlinear continuum generation.
+    ...registry.pulsedlaser.params.filter(p => ['pulseWidthFs', 'pulseShape'].includes(p.key))
+      .map(p => p.key === 'pulseWidthFs'
+        ? { ...p, def: 100, min: supercontinuumPulseWidthFloorFs, htmlMin: SC_PULSE_WIDTH_MIN_FS, max: SC_PULSE_WIDTH_MAX_FS }
+        : { ...p }),
+    {
+      key: 'scTransformLimit', label: 'Transform limit (fs)', type: 'readout',
+      readout: p => String(supercontinuumPulseWidthFloorFs(p)),
+    },
     POL_PARAM,
     // Broadband white by default: a supercontinuum has no single colour to
     // derive, and this is the shade the tracer already paints wide-band light.
@@ -4722,9 +4850,9 @@ export function getDirectManipulation(el) {
 const ELEMENT_HELP = {
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
-  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam.',
+  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
-  objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',
+  objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
@@ -4738,7 +4866,7 @@ const ELEMENT_HELP = {
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
   asphericlens: 'Refracts through exact conic-plus-even-polynomial faces, so changing k or A₄/A₆/A₈ changes the physical ray intersections and aberration rather than only the drawing.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
-  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
+  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane is placed so light focuses one working distance past the front tip. It can lie outside the drawn barrel for long-working-distance designs; it represents the whole objective, not a physical glass surface. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
@@ -4765,7 +4893,7 @@ const ELEMENT_HELP = {
   camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
   eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
   display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
-  aom: 'Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.',
+  aom: 'Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
   phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',
   aod: 'Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.',
   aotf: 'Selects one or more spectral lines and passes them straight through — multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',

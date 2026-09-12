@@ -5,7 +5,7 @@ import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
-  displayActionUpdate, delayLineSweepSpanMm,
+  displayActionUpdate, delayLineSweepSpanMm, normalizeSupercontinuumParams,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
@@ -385,15 +385,15 @@ function renderGrid() {
 
   // The smaller grid lines stay hairline-thin on screen: zoom reveals spatial
   // detail rather than turning the workbench into heavy graph paper.
-  if (level === 'micro') s += gridLines(x0, y0, x1, y1, microStep, '#eef1f4', lineWidth);
-  if (level !== 'table') s += gridLines(x0, y0, x1, y1, FINE_GRID_PITCH, '#e2e7ec', lineWidth);
+  if (level === 'micro') s += gridLines(x0, y0, x1, y1, microStep, 'var(--grid-micro)', lineWidth);
+  if (level !== 'table') s += gridLines(x0, y0, x1, y1, FINE_GRID_PITCH, 'var(--grid-fine)', lineWidth);
 
   const majorStartX = Math.floor(x0 / TABLE_HOLE_PITCH) * TABLE_HOLE_PITCH;
   const majorStartY = Math.floor(y0 / TABLE_HOLE_PITCH) * TABLE_HOLE_PITCH;
   const holeRadius = 1.35 / v.z;
   for (let x = majorStartX; x <= x1; x += TABLE_HOLE_PITCH) {
     for (let y = majorStartY; y <= y1; y += TABLE_HOLE_PITCH) {
-      s += `<circle cx="${x}" cy="${y}" r="${holeRadius}" fill="#cbd3dc"/>`;
+      s += `<circle cx="${x}" cy="${y}" r="${holeRadius}" fill="var(--grid-dot)"/>`;
     }
   }
   gridLayer.innerHTML = s;
@@ -425,7 +425,7 @@ function renderBeams() {
     } else if (d.type === 'dots') {
       s += `<g fill="${d.color}">` + d.dots.map(o => `<circle cx="${o.x.toFixed(1)}" cy="${o.y.toFixed(1)}" r="${o.r.toFixed(2)}" opacity="${o.o.toFixed(2)}"/>`).join('') + `</g>`;
     } else {
-      s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}/>`;
+      s += `<polyline points="${ptsAttr(d.pts)}" fill="none" stroke="${d.color}" stroke-width="${d.w}" opacity="${d.opacity}" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" ${d.dash ? `stroke-dasharray="${d.dash === true ? '6 4' : d.dash}"` : ''}${d.dash && d.dashOffset ? ` stroke-dashoffset="${d.dashOffset}"` : ''}/>`;
     }
   }
   beamLayer.innerHTML = s;
@@ -1014,6 +1014,7 @@ function writeParam(el, key, value) {
   if (spec?.type === 'derived') spec.set(el.params, value);
   else el.params[key] = value;
   if (el.type === 'objective') Object.assign(el.params, normalizeObjectiveParams(el.params));
+  if (el.type === 'sclaser') Object.assign(el.params, normalizeSupercontinuumParams(el.params));
 }
 
 function boundedParam(el, key, value) {
@@ -1023,8 +1024,6 @@ function boundedParam(el, key, value) {
   const resolve = bound => typeof bound === 'function' ? bound(el.params) : bound;
   let lo = resolve(spec.min) ?? (spec.type === 'optsize' ? 1 : -Number.MAX_SAFE_INTEGER);
   let hi = resolve(spec.max) ?? (spec.type === 'optsize' ? 500 : Number.MAX_SAFE_INTEGER);
-  if (el.type === 'sclaser' && key === 'scMax') lo = Math.max(lo, el.params.scMin);
-  if (el.type === 'sclaser' && key === 'scMin') hi = Math.min(hi, el.params.scMax);
   const step = Number.isFinite(spec.step) && spec.step > 0 ? spec.step : (spec.type === 'optsize' ? 0.5 : 1);
   let magnitude = negative ? Math.abs(value) : value;
   magnitude = Math.min(hi, Math.max(lo, magnitude));
@@ -1658,7 +1657,12 @@ function onDown(e) {
   }
   if (hitTuneHandle(sel, w)) {
     const tune = getDirectManipulation(sel).tune;
-    drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: readParam(sel, tune.key), moved: false };
+    // A supercontinuum's duration is lifted whenever its band narrows below
+    // what the duration allows. Mid-drag that would ratchet: sweeping λ max
+    // down and back would leave the pulse at the narrowest band's floor, so
+    // each step re-derives it from the duration the drag started with.
+    drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: readParam(sel, tune.key), moved: false,
+      pulseWidthFs: sel.type === 'sclaser' ? sel.params.pulseWidthFs : undefined };
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -1820,6 +1824,7 @@ function onMove(e) {
     const next = boundedParam(drag.el, drag.tune.key, drag.value + steps * step);
     if (next === readParam(drag.el, drag.tune.key)) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
+    if (drag.pulseWidthFs !== undefined) drag.el.params.pulseWidthFs = drag.pulseWidthFs;
     writeParam(drag.el, drag.tune.key, next);
     setStatus(directValueLabel(drag.el, drag.tune));
     renderAll();
