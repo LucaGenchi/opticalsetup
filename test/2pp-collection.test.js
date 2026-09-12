@@ -26,21 +26,29 @@ test('paper identities and source files have explicit provenance and unresolved 
 });
 
 // The site lists collections under one hub rather than promoting a single
-// subject in the header: 2PP is one collection, not a top-level destination.
-test('the collections hub lists 2PP and the landing page links to the hub, not into it', async () => {
+// subject in the header, and a collection page is dressed like every other
+// section: the shared wiki shell, the shared header, one name for the canvas.
+test('the collections hub lists 2PP, and collection pages wear the site chrome', async () => {
  const read = async p => readFile(new URL(p, import.meta.url), 'utf8');
  const hub = await read('../collections/index.html');
- assert.match(hub, /href="\/collections\/2pp\/"/, 'the hub links to the 2PP collection');
+ assert.match(hub, /href="\.\.\/collections\/2pp\/"/, 'the hub links to the 2PP collection');
  const {papers} = await load('../collections/2pp/papers.json');
  assert.ok(hub.includes(`${papers.length} references`), 'the hub counts the references it links to');
  const landing = await read('../index.html');
  assert.match(landing, /href="\/collections\/">Collections</, 'the landing header offers Collections');
  assert.doesNotMatch(landing, /href="\/collections\/2pp\//, 'and does not link a single collection directly');
- // Every generated collection page navigates back to the hub and shares its stylesheet.
- for (const page of ['../collections/2pp/index.html', '../collections/2pp/pearre-2018/index.html']) {
+ for (const page of ['../collections/index.html', '../collections/2pp/index.html', '../collections/2pp/pearre-2018/index.html']) {
   const html = await read(page);
-  assert.match(html, /href="\/collections\/">Collections</, `${page} keeps the hub in its nav`);
-  assert.match(html, /href="\/collections\/style\.css"/, `${page} uses the shared collections stylesheet`);
+  assert.match(html, /wiki\/assets\/wiki\.css/, `${page} uses the shared site stylesheet`);
+  assert.match(html, /collections\/assets\/collections\.css/, `${page} adds the collections sheet`);
+  assert.match(html, /class="site-header"/, `${page} uses the shared header`);
+  assert.match(html, /class="btn" href="[^"]*\/sketch\/">Open the canvas</, `${page} names the canvas the way the rest of the site does`);
+  assert.doesNotMatch(html, />Workbench</, `${page} does not invent another name for the canvas`);
+  assert.match(html, /href="[^"]*\/collections\/">Collections</, `${page} keeps the hub in its nav`);
+ }
+ // Every generated section shares that header, so the nav cannot drift apart.
+ for (const page of ['../wiki/index.html', '../example-setups/index.html', '../community/index.html']) {
+  assert.match(await read(page), /href="[^"]*\/collections\/">Collections</, `${page} lists Collections too`);
  }
  assert.match(await read('../sitemap.xml'), /<loc>https:\/\/opticalsetup\.com\/collections\/<\/loc>/);
 });
