@@ -1,0 +1,223 @@
+{
+ "app": "optics2d",
+ "version": 1,
+ "elements": [
+  {
+   "id": "yan-frame",
+   "type": "figureframe",
+   "x": 470,
+   "y": 200,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "w": 900,
+    "h": 360,
+    "background": "white"
+   }
+  },
+  {
+   "id": "yan-laser",
+   "type": "pulsedlaser",
+   "x": 100,
+   "y": 300,
+   "rot": 0,
+   "label": "Illustrative fs source",
+   "showLabel": true,
+   "params": {
+    "enabled": true,
+    "wavelength": 800,
+    "avgPowerW": 0.1,
+    "beamMode": "beam",
+    "beamWidth": 6,
+    "repRateMHz": 80,
+    "pulsePhaseNs": 0,
+    "pulseWidthFs": 150,
+    "transformLimited": false,
+    "pulseShape": "gauss",
+    "bandwidth": 0,
+    "pol": 0,
+    "autoColor": true,
+    "color": "#ff6400",
+    "showPulse": true,
+    "temporalMode": "pulsed",
+    "handoffEnabled": false
+   }
+  },
+  {
+   "id": "yan-slm",
+   "type": "slm",
+   "x": 260,
+   "y": 300,
+   "rot": 0,
+   "label": "SLM (4 orders)",
+   "showLabel": true,
+   "params": {
+    "transmissive": true,
+    "length": 50,
+    "zeroOrder": true,
+    "zeroFrac": 0.1,
+    "layers": [
+     {
+      "type": "grating",
+      "n": 4,
+      "f": 50,
+      "lines": 70,
+      "orders": "-3,-1,1,3",
+      "angle": 5,
+      "div": 8
+     }
+    ]
+   }
+  },
+  {
+   "id": "yan-fourier-lens",
+   "type": "lens",
+   "x": 320,
+   "y": 300,
+   "rot": 0,
+   "label": "L1",
+   "showLabel": true,
+   "params": {
+    "f": 60,
+    "dia": 55,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "yan-zero-dump",
+   "type": "beamdump",
+   "x": 380,
+   "y": 300,
+   "rot": 0,
+   "label": "BPF stop",
+   "showLabel": true,
+   "params": {
+    "aperture": 6
+   }
+  },
+  {
+   "id": "yan-relay-lens",
+   "type": "lens",
+   "x": 440,
+   "y": 300,
+   "rot": 0,
+   "label": "L2",
+   "showLabel": true,
+   "params": {
+    "f": 60,
+    "dia": 55,
+    "transEff": 100
+   }
+  },
+  {
+   "id": "yan-fold",
+   "type": "mirror",
+   "x": 520,
+   "y": 300,
+   "rot": 45,
+   "label": "M1 fold",
+   "showLabel": true,
+   "params": {
+    "length": 70,
+    "refl": 100,
+    "showTransmitted": false
+   }
+  },
+  {
+   "id": "yan-objective",
+   "type": "objective",
+   "x": 520,
+   "y": 190,
+   "rot": 270,
+   "label": "Objective",
+   "showLabel": true,
+   "params": {
+    "efl": 40,
+    "workingDistance": 10,
+    "immersion": "air",
+    "immersionIndex": 1,
+    "na": 0.8,
+    "showAcceptance": false,
+    "transEff": 100,
+    "frontAperture": 90
+   },
+   "labelPos": "l"
+  },
+  {
+   "id": "yan-resin-stage",
+   "type": "stage",
+   "x": 520,
+   "y": 164,
+   "rot": 0,
+   "label": "4 focal-plane hits",
+   "showLabel": true,
+   "params": {
+    "pzMode": "sync",
+    "pzTravelXY": 8,
+    "pzFreqXY": 0.2,
+    "pzTravelZ": 4,
+    "pzFreqZ": 0.1,
+    "pzZSteps": 5,
+    "aperture": 100,
+    "sampleKind": "resin",
+    "specimenType": "resin",
+    "channels": [],
+    "showSignalSpot": true,
+    "thickness": 2,
+    "voxelPreview": true,
+    "voxelSize": 0.8,
+    "transmitExc": true,
+    "transmission": 0,
+    "mode": "none",
+    "fluorWl": 520,
+    "carsWl": 660,
+    "signalEff": 0.1
+   },
+   "labelPos": "t"
+  },
+  {
+   "id": "yan-title",
+   "type": "textlabel",
+   "x": 40,
+   "y": 42,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "## Yan et al. (2015) — mechanism interpretation",
+    "fontSize": 12,
+    "fill": "#26333a"
+   }
+  },
+  {
+   "id": "yan-limit",
+   "type": "textlabel",
+   "x": 650,
+   "y": 95,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Primary-source limit:** full text unavailable.\n800 nm / 150 fs / 80 MHz / 0.1 W; NA 0.8\nare free interpretation.\n633 nm is characterization, not fabrication.\nConfigured-value handoff is disabled.",
+    "fontSize": 8,
+    "fill": "#7c3d12"
+   }
+  },
+  {
+   "id": "yan-projection",
+   "type": "textlabel",
+   "x": 650,
+   "y": 185,
+   "rot": 0,
+   "label": "",
+   "showLabel": false,
+   "params": {
+    "text": "**Computed:** SLM → Fourier stop → relay\n→ fold → objective → four resin foci.\n\n**Projection:** one row of the reported 4×4\nhexagonal array; not a solved CGH.\n**Not solved:** PSF, dose, curing, 3D geometry.\n\n**Try:** orders −1,1 → two foci.\nRemove BPF stop → central order returns.\nLaser off → no paths or writing.\nStage Static → sweep stops.",
+    "fontSize": 8,
+    "fill": "#334155"
+   }
+  }
+ ],
+ "beams": []
+}
