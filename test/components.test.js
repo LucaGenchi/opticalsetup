@@ -464,6 +464,53 @@ test('configured SLM steering changes the reflected ray direction', () => {
   assert.ok(Math.abs(angleOfLastSegment(ray)) > 160 && Math.abs(angleOfLastSegment(ray)) < 180);
 });
 
+test('SLM square-focus CGH proxy renders its grid and focuses the in-plane rows', () => {
+  const slm = createElement('slm', 180, 0);
+  slm.params.transmissive = true;
+  slm.params.length = 48;
+  slm.params.layers = [{ type: 'focusgrid', n: 4, f: 40 }];
+  const svg = registry.slm.svg(slm);
+  assert.equal((svg.match(/<circle /g) || []).length, 16, 'a 4×4 target is visible on the SLM');
+
+  for (const y of [-22, -13, -1, 11, 22]) {
+    const source = createElement('cwlaser', 0, y);
+    source.params.beamMode = 'line';
+    const outgoing = paths([source, slm]).filter(candidate => Math.abs(candidate.pts[0].x - 171) < 0.01);
+    assert.equal(outgoing.length, 4, 'each illuminated aperture point contributes to every target');
+    const foci = outgoing.map(path => {
+      const [a, b] = path.pts.slice(-2);
+      return a.y + (211 - a.x) * (b.y - a.y) / (b.x - a.x);
+    }).sort((a, b) => a - b);
+    for (const [index, expected] of [-18, -6, 6, 18].entries()) {
+      assert.ok(Math.abs(foci[index] - expected) < 0.01);
+    }
+  }
+});
+
+test('SLM square-focus rows create one bounded 2PP write reference per in-plane focus', () => {
+  const source = createElement('pulsedlaser', 0, 0);
+  source.params.beamMode = 'beam';
+  source.params.beamWidth = 48;
+  const slm = createElement('slm', 180, 0);
+  Object.assign(slm.params, {
+    transmissive: true,
+    length: 48,
+    layers: [{ type: 'focusgrid', n: 4, f: 40 }],
+  });
+  const stage = createElement('stage', 212, 0);
+  stage.rot = 90;
+  Object.assign(stage.params, {
+    specimenType: 'resin', voxelPreview: true, transmitExc: true, aperture: 100,
+  });
+
+  const result = traceScene([source, slm, stage]);
+  assert.deepEqual(result.writeHits.map(hit => hit.focusRow).sort(), [0, 1, 2, 3]);
+  assert.equal(new Set(result.writeHits.map(hit => hit.focusRow)).size, 4);
+
+  source.params.enabled = false;
+  assert.equal(traceScene([source, slm, stage]).writeHits.length, 0);
+});
+
 test('retroreflector returns a beam antiparallel to its incidence, mirrored about its axis', () => {
   const laser = createElement('cwlaser', 0, 10);
   laser.params.beamMode = 'line';

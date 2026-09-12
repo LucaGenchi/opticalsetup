@@ -3099,6 +3099,24 @@ function interact(ray, hit) {
           if (ly.type === 'steer') {
             const a = (ly.angle || 0) * D2R, c = Math.cos(a), sn = Math.sin(a);
             next.push({ ...r, d: { x: r.d.x * c - r.d.y * sn, y: r.d.x * sn + r.d.y * c } });
+          } else if (ly.type === 'focusgrid') {
+            // A holographic focus pattern uses the illuminated aperture for
+            // every target. It must not behave like disjoint lenslet zones:
+            // even a narrow ray produces all configured in-plane branches.
+            const count = Math.min(8, Math.max(1, Math.round(Number(ly.n) || 1)));
+            const pitch = L / count;
+            for (let row = 0; row < count; row++) {
+              const center = -L / 2 + (row + 0.5) * pitch;
+              next.push({
+                ...r,
+                d: lensBend(r.d, hit.p, s, ly.f, center),
+                intensity: r.intensity / count,
+                retainWeak: true,
+                tag: r.tag + 'F' + row,
+                writeReference: ray.writeReference,
+                focusRow: row,
+              });
+            }
           } else if (ly.type === 'lensarray') {
             const nL = Math.min(8, Math.max(1, Math.round(ly.n || 1)));
             const pitch = L / nL;
@@ -3106,8 +3124,6 @@ function interact(ray, hit) {
             let idx = Math.floor((h + L / 2) / pitch);
             idx = Math.max(0, Math.min(nL - 1, idx));
             const hc = -L / 2 + (idx + 0.5) * pitch;
-            // lenslet index goes into the branch signature so beam strips
-            // only pair up within the same lenslet
             next.push({ ...r, d: lensBend(r.d, hit.p, s, ly.f, hc), tag: r.tag + 'L' + idx });
           } else if (ly.type === 'grating') {
             const orders = shaperLayerOrders(ly);
@@ -3284,6 +3300,10 @@ function interact(ray, hit) {
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
         speckle: r.speckle || undefined,
+        wl: r.wl, bw: r.bw, speckle: r.speckle || undefined,
+        ...(r.retainWeak ? { retainWeak: true } : {}),
+        ...('writeReference' in r ? { writeReference: r.writeReference } : {}),
+        ...('focusRow' in r ? { focusRow: r.focusRow } : {}),
       }));
       if (zf > 0) {
         out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0' });
@@ -3491,9 +3511,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // 2PP voxel marks, which its own writeVoxel flag already gates.
       const holder = hit.surface.el?.type;
       if ((holder === 'stage' || holder === 'sample') && r.writeReference) {
-        if (writeHits && hit.surface.data.writeVoxel && r.pulse) {
+        const sameFocusRow = candidate => r.pulse && Number.isInteger(r.focusRow)
+          && candidate.stageId === hit.surface.el.id
+          && candidate.sourceId === r.pulse?.sourceId
+          && candidate.focusRow === r.focusRow;
+        if (writeHits && hit.surface.data.writeVoxel && r.pulse && !writeHits.some(sameFocusRow)) {
           writeHits.push({
             stageId: hit.surface.el.id,
+            sourceId: r.pulse.sourceId,
+            ...(Number.isInteger(r.focusRow) ? { focusRow: r.focusRow } : {}),
             x: hit.p.x,
             y: hit.p.y,
             opl: r.opl,
@@ -3501,7 +3527,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             intensity: Math.min(1, Math.max(0, r.intensity || 0)),
           });
         }
-        if (signalHits && hit.surface.data.reportHit) {
+        if (signalHits && hit.surface.data.reportHit && !signalHits.some(sameFocusRow)) {
           // The generated-signal wavelength, when this surface actually
           // converts light (fluorescence emission, or SHG/THG/CARS forward
           // conversion) — used to color the excitation-spot indicator by
@@ -3525,6 +3551,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           }
           signalHits.push({
             stageId: hit.surface.el.id,
+            ...(Number.isInteger(r.focusRow) ? { focusRow: r.focusRow } : {}),
             x: hit.p.x,
             y: hit.p.y,
             wl: signalWl,
@@ -3751,7 +3778,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
             : undefined,
           sample: r.sample, sampleCount: r.sampleCount, sampleGrid: r.sampleGrid,
-          writeReference: r.writeReference,
+          writeReference: 'writeReference' in c ? c.writeReference : r.writeReference,
+          focusRow: 'focusRow' in c ? c.focusRow : r.focusRow,
           objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),
           retainWeak: childRetainsWeak,
