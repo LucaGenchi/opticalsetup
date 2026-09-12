@@ -9,6 +9,7 @@ import {
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
   fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength,
+  amplitudeMaskLevels,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
@@ -2300,6 +2301,10 @@ function interact(ray, hit) {
         recordMetalensHit(s.el?.id, sample.wl, focalLength);
         return {
           d: lensBend(d, hit.p, s, focalLength),
+          // An array's off-axis incident samples illuminate independent
+          // lenslets. Keep those physical arrivals in the resin preview;
+          // following only the source's centre sample loses every other lens.
+          ...(s.el?.type === 'metalensarray' ? { writeReference: true } : {}),
           wl: sample.wl,
           bw: sampled ? 0 : ray.bw,
           ...(sampled ? {
@@ -3234,6 +3239,12 @@ function interact(ray, hit) {
             } else {
               next.push({ ...r, d: rotv(r.d, jitter(ray.sample, sid) * div), speckle: true });
             }
+          } else if (ly.type === 'amplitude') {
+            const levels = amplitudeMaskLevels(ly.levels);
+            const h = dot(sub(hit.p, mid), t);
+            const u = Math.min(1 - Number.EPSILON, Math.max(0, (h + L / 2) / L));
+            const idx = Math.min(levels.length - 1, Math.floor(u * levels.length));
+            next.push({ ...r, intensity: r.intensity * levels[idx], tag: r.tag + 'a' + idx });
           } else {
             next.push(r);
           }
@@ -3647,6 +3658,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if ('stokes' in c0) r.stokes = cloneStokes(c0.stokes);
         if ('medium' in c0) r.medium = c0.medium;
         if ('mediumMaterial' in c0) r.mediumMaterial = c0.mediumMaterial;
+        if (c0.writeReference === true) r.writeReference = true;
         if ('ior' in c0) r.ior = c0.ior;
         if (Number.isFinite(c0.phaseOffset)) r.phaseOffset = c0.phaseOffset;
         else if (Number.isFinite(c0.phaseShift)) r.phaseOffset = (r.phaseOffset || 0) + c0.phaseShift;
@@ -3751,7 +3763,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
             : undefined,
           sample: r.sample, sampleCount: r.sampleCount, sampleGrid: r.sampleGrid,
-          writeReference: r.writeReference,
+          writeReference: c.writeReference === true || r.writeReference,
           objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),
           retainWeak: childRetainsWeak,
@@ -3971,7 +3983,7 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
   const centreSample = Math.floor((Math.max(1, K) - 1) / 2);
   for (const r of paths) {
     if (!r.pulse || r.pts.length < 2 || r.opls?.length !== r.pts.length) continue;
-    if (r.sample !== null && r.sample !== undefined && r.sample !== centreSample) continue;
+    if (!r.writeReference && r.sample !== null && r.sample !== undefined && r.sample !== centreSample) continue;
     // The beam fill skips any SEGMENT carrying no light, and the packets have
     // to agree or a train draws along a path with no beam under it. Judging
     // the whole path by its final intensity is too blunt, though: a beam
