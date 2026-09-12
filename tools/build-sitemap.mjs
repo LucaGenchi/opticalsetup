@@ -37,6 +37,7 @@ async function main() {
     ...exampleSlugs.map(slug => ({ loc: `${SITE_URL}/example-setups/${slug}/`, priority: '0.7', freq: 'monthly' })),
     { loc: `${SITE_URL}/community/`, priority: '0.7', freq: 'weekly' },
     ...community.map(e => ({ loc: `${SITE_URL}/community/${e.slug}/`, priority: '0.6', freq: 'monthly' })),
+    { loc: `${SITE_URL}/collections/`, priority: '0.8', freq: 'monthly' },
     { loc: `${SITE_URL}/collections/2pp/`, priority: '0.8', freq: 'monthly' },
     ...papers.map(p => ({ loc: `${SITE_URL}/collections/2pp/${p.id}/`, priority: '0.7', freq: 'monthly' })),
   ];
