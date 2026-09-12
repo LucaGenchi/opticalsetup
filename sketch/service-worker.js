@@ -28,6 +28,7 @@ const PRECACHE_PATHS = [
   "./js/elements.js",
   "./js/etalon.js",
   "./js/examples-data.js",
+  "../collections/2pp/setups/fischer-2011.json",
   "./js/export.js",
   "./js/gif.js",
   "./js/glass.js",
