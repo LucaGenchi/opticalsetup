@@ -3613,7 +3613,7 @@ export const registry = {
       // Duty cycle is a square-wave property: the fraction of the period the
       // drive is on. A sine has no such thing, and a ramp's shape is set by
       // how much of the period it spends rising instead.
-      { key: 'chopDuty', label: 'Duty cycle (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
+      { key: 'chopDuty', label: 'Duty cycle (0–1)', type: 'number', min: 0.01, max: 0.99, step: 0.01, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
       // The symmetry knob a function generator puts on its ramp output:
       // 1 is the rising sawtooth, 0 the falling one, 0.5 a triangle.
       { key: 'modSymmetry', label: 'Rise fraction (0–1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape === 'sawtooth' },
@@ -4103,7 +4103,7 @@ export const registry = {
       { key: 'modulate', label: 'Modulate on/off', type: 'checkbox', def: true },
       { key: 'diameter', label: 'Wheel diameter (mm)', type: 'number', min: 20, max: 120, step: 2, def: 40 },
       { key: 'frequencyHz', label: 'Chop frequency (Hz)', type: 'number', min: 0.1, max: 20000, step: 0.1, def: 1000, show: p => p.modulate },
-      { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate },
+      { key: 'chopDuty', label: 'On fraction (0–1)', type: 'number', min: 0.01, max: 0.99, step: 0.01, def: 0.5, show: p => p.modulate },
       { key: 'phaseNs', label: 'Gate offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate },
     ],
     svg(el) {

@@ -22,7 +22,7 @@ test('microlens array focuses each lenslet onto its own axis', () => {
   }
 });
 
-test('diffractive splitter makes three angular orders and rejects evanescent orders', () => {
+test('diffractive splitter makes three angular orders and keeps the power it cannot diffract', () => {
   const source = mk('cwlaser', 0, 0, { wavelength: 800, beamMode: 'line' });
   const doe = mk('diffractivesplitter', 100, 0, { lines: 60, orders: '-1,0,1' });
   const detector = mk('detector', 180, 0, { aperture: 100 });
@@ -34,8 +34,12 @@ test('diffractive splitter makes three angular orders and rejects evanescent ord
   assert.ok(Math.abs(Math.sin(angles[2]) - 0.048) < 1e-8);
   doe.params.orders = '0,1000';
   out = traceScene([source, doe, detector]).drawables.filter(s => s.type === 'path' && Math.abs(s.pts[0].x - 100) < 0.01);
-  assert.equal(out.length, 1);
-  assert.ok(Math.abs(detectorReading(detector.id).signal - 0.5) < 1e-8, 'non-propagating power is not redistributed');
+  assert.equal(out.length, 1, 'an order steeper than one wavelength per line cannot propagate');
+  // Light a splitter cannot send into an evanescent order is not destroyed:
+  // it stays in the orders that do propagate, the same rule gratings follow
+  // since #139. Here only the zeroth order survives, so it carries the lot.
+  assert.ok(Math.abs(detectorReading(detector.id).signal - 1) < 1e-8,
+    'power that cannot diffract stays with the propagating orders');
 });
 
 test('malformed arrays normalize to finite bounded geometry and branching', () => {
