@@ -396,7 +396,7 @@
         "ouyang-2023-si.pdf"
       ],
       "reviewed": [
-        "Main PDF p. 2 Fig. 1; supplement pp. 2–3, 8; p. 12 Fig. S1."
+        "Main PDF p. 2 Fig. 1 and system description; p. 3 Fig. 2 single-pulse results; supplement pp. 2–5 Methods, p. 8 Table S1, p. 12 Fig. S1, and p. 15 Fig. S4/Note 2 nonlinear coefficients."
       ],
       "opticalTrain": [
         "Spitfire Pro: 800 nm, 100 fs, 1 kHz, 4 W",
@@ -422,7 +422,16 @@
         "Supplement compensation prose swaps the L1/L2 values; the drawing follows the explicit Fig. S1 caption (225/250 mm).",
         "4 W is source output; reported 5 nJ per focus at 1 kHz is not source power."
       ],
-      "auxiliaryPath": "589 nm fibre LED below the substrate reflects from M1 through the objective and dichroic to L6=100 mm and CCD."
+      "auxiliaryPath": "589 nm fibre LED below the substrate reflects from M1 through the objective and dichroic to L6=100 mm and CCD.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 800,
+          "pulseDurationFs": 100,
+          "numericalAperture": 1.3
+        }
+      }
     },
     {
       "id": "jiao-2023",

@@ -63,6 +63,9 @@ export const REBUILD_ON_COMMIT_KEYS = [
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind',
+  // The DMD's pattern choice reveals the hologram's focus count, span and
+  // scan angle, so committing it has to rebuild the panel.
+  'pattern',
 ];
 
 function field(labelText, inputHTML, className = '') {
