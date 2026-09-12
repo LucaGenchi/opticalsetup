@@ -518,7 +518,7 @@
         "kiefer-2024.pdf"
       ],
       "reviewed": [
-        "PDF pp. 3–4, especially Fig. 2 with complete beamline and relay labels."
+        "PDF pp. 3–5, especially Fig. 2 with complete beamline, relay labels, power planes and observation path."
       ],
       "opticalTrain": [
         "Chameleon Ultra II: 790 nm, 140 fs sech², 80 MHz, 3.7 W",
@@ -546,7 +546,17 @@
         "19.5 mW per focus is before the objective; 70% objective transmission is assumed in the paper.",
         "No prism pair is added merely because Hahn uses one."
       ],
-      "auxiliaryPath": "LED transmission illumination above the specimen; a beam splitter (BS) and L8 feed the camera through the writing objective."
+      "auxiliaryPath": "LED transmission illumination above the specimen; a beam splitter (BS) and L8 feed the camera through the writing objective.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 790,
+          "repetitionRateMHz": 80,
+          "pulseDurationFs": 140,
+          "numericalAperture": 1.4
+        }
+      }
     },
     {
       "id": "gu-2025",
