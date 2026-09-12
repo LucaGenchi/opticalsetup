@@ -61,8 +61,15 @@
       <div class="crumb"><a href="../../../collections/">Collections</a> / <a href="../../../collections/2pp/">Two-photon lithography</a> / Pearre 2018</div>
       <div class="article-head"><div><h1>Fast micron-scale 3D printing with a resonant-scanning two-photon microscope</h1></div></div>
       <p class="paper-meta">Resonant scanning · 2018 · <a href="https://arxiv.org/abs/1803.07135">arXiv:1803.07135</a></p>
-      <div class="sim-block"><strong>Research notes · native setup pending</strong>
-      <p>The source review below is preserved for an individual reconstruction.</p></div>
+      <div class="sim-block"><strong>Native optical setup · qualitative model</strong>
+      <p>Read the companion evidence note for reported facts, design choices, control experiments and model limits.</p></div>
+      <div class="collection-actions"><a class="place-cta" href="../../../sketch/?paper=pearre-2018&amp;edit=1">Open editable setup</a><a class="plain" href="../setups/pearre-2018.json" download>Download native scene</a><a class="plain" href="../research/pearre-2018.md">Evidence and controls</a></div>
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../../sketch/?paper=pearre-2018&amp;embed=1"
+          title="Pearre 2018 — a live native trace of the setup described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live native trace, not a picture of one — this preview is not interactive. Open the editable setup to inspect components, change controls and save your own copy.</p>
       <h2 class="section-head real"><span class="sw"></span>Current understanding</h2>
       <p>A fast resonant raster is intensity-addressed by the Pockels cell. The 3.33 MHz command stream is not the optical repetition frequency.</p>
       <h3>Reported optical sequence</h3><ol><li>Ti:sapphire: typically 780 nm, approximately 120 fs, 80 MHz</li><li>Pockels-cell intensity control (ConOptics 350-80/302RM)</li><li>Power-monitor pickoff</li><li>2× Galilean beam expander</li><li>7.91 kHz resonant X scanner and slow Y galvo</li><li>Scan/tube relay</li><li>25×, NA 0.8 objective with immersion compensation ring</li><li>Resin; objective piezo Z and positioning stage</li></ol>
@@ -73,6 +80,10 @@
       <h2 class="section-head sim"><span class="sw"></span>Limits and unresolved details</h2>
       <div class="limitations"><p>Pockels intensity control is represented by the documented assembly, not a standalone phase-only modulator. Resonance, scan linearization and PrintImage software are not reproduced.</p><ul><li>Laser output is approximately 0.6–1 W, not a single fixed setting.</li><li>6–10 W is pump power, not the printing beam.</li></ul></div>
       <div class="table-wrap"><table><thead><tr><th>Reported input</th><th>Value</th></tr></thead><tbody><tr><th>wavelengthNm</th><td>780</td></tr><tr><th>repetitionRateMHz</th><td>80</td></tr><tr><th>pulseDurationFs</th><td>120</td></tr><tr><th>numericalAperture</th><td>0.8</td></tr></tbody></table></div>
+      <h2 class="section-head sim"><span class="sw"></span>Companion calculator</h2>
+      <p><a href="https://twophotonlithography.com/lab?from=opticalsetup&amp;v=1&amp;basis=paper&amp;repetitionRateMHz=80&amp;numericalAperture=0.8">Open the explicitly reviewed paper subset</a></p><div class="handoff"><div><h3>Transferred</h3><ul><li>Repetition rate: 80 MHz</li><li>Numerical aperture: 0.8 </li></ul></div><div><h3>Not transferred</h3><ul><li>Wavelength: No verified exact value</li><li>Source power: No verified exact value</li><li>Pulse duration: No verified exact value</li></ul></div></div>
+      <p>Source ratings are not sample or per-focus power. The destination keeps defaults for missing quantities. Literature provenance requires the companion paper-handoff support; verify its import notice before using these values.</p>
+      <p class="embed-caption">The workbench writing preview does not calibrate dose, curing or three-dimensional focal volume.</p>
     </main>
   </div>
   <footer class="wiki-footer">Paper-specific research and qualitative optical models. Source PDFs remain with their authors and publishers. <a href="/collections/2pp/sources.json">Source manifest</a> · <a href="/collections/2pp/papers.json">Research records</a></footer>

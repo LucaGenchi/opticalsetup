@@ -230,7 +230,15 @@
         "Laser output is approximately 0.6–1 W, not a single fixed setting.",
         "6–10 W is pump power, not the printing beam."
       ],
-      "auxiliaryPath": "Dichroic/PMT imaging shares the objective path; PMT is an imaging return detector, not a writing source."
+      "auxiliaryPath": "Dichroic/PMT imaging shares the objective path; PMT is an imaging return detector, not a writing source.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "repetitionRateMHz": 80,
+          "numericalAperture": 0.8
+        }
+      }
     },
     {
       "id": "geng-2019",
