@@ -50,6 +50,10 @@ import {
   normalizeAotfPassband, AOTF_BAND_MIN, AOTF_BAND_MAX, AOTF_BAND_DEFAULT,
 } from './aotf.js';
 import { aodScanPosition, aodAccessTimeUs, aodMaxScanRateKHz } from './acousto-optic.js';
+import {
+  programmableMaskParams, programmableEffectParams, programmableMaskFrame,
+  programmableFrameSVG, programmableMaskEffects,
+} from './programmable-mask.js';
 import { phaseModulatorOpdMm, phaseModulatorPeakOpdMm } from './electro-optic.js';
 import {
   ASPHERE_LIMITS, asphereSag, asphereSlope, asphericLensAdjustment, asphericLensCardinals,
@@ -1482,8 +1486,8 @@ function sampleModeParams() {
     } },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
     { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
-    { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
-    { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
+    { key: 'voxelPreview', label: 'Qualitative arrival preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
+    { key: 'voxelSize', label: 'Arrival marker size (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
     { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
     // An absorbing specimen is exactly this one dial: full transmission down
     // to zero, where it blocks the beam outright.
@@ -2962,7 +2966,15 @@ export const registry = {
       ...(stopOuter > edge + 0.01 ? [
         { x1: stopX, y1: edge, x2: stopX, y2: stopOuter, kind: 'absorb', data: { ...shared, pupilRadius: pupil, pupilSpan: [edge, stopOuter] } },
         { x1: stopX, y1: -edge, x2: stopX, y2: -stopOuter, kind: 'absorb', data: { ...shared, pupilRadius: pupil, pupilSpan: [-edge, -stopOuter] } },
-      ] : [])];
+      ] : []),
+      // Close the finite acceptance envelope between the stop and the
+      // equivalent plane. Otherwise a tilted ray admitted by the stop can
+      // walk beyond the lens segment and reach the sample unrefracted. This
+      // conservatively absorbs that walk-off; it is not a resolved internal
+      // barrel prescription. For long-WD objectives the equivalent plane and
+      // this model envelope can extend beyond the drawn front tip.
+      { x1: stopX, y1: edge, x2: lensX, y2: edge, kind: 'absorb', data: { ...shared } },
+      { x1: stopX, y1: -edge, x2: lensX, y2: -edge, kind: 'absorb', data: { ...shared } }];
     },
   },
 
@@ -3269,24 +3281,29 @@ export const registry = {
       { key: 'length', label: 'Active size (mm)', type: 'number', min: 10, max: 100, step: 2, def: 40 },
       { key: 'zeroOrder', label: '0th-order reflection', type: 'checkbox', def: false },
       { key: 'zeroFrac', label: '0th-order fraction (0–1)', type: 'number', min: 0.01, max: 0.9, step: 0.01, def: 0.1, show: p => p.zeroOrder },
+      ...programmableMaskParams('slm'),
+      ...programmableEffectParams,
       layersParam,
     ],
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
-      const L = el.params.length / 2;
-      let px = '';
-      for (let y = -L + 2; y < L - 1; y += 5) px += `<line x1="-11" y1="${y}" x2="-7" y2="${y}" stroke="#4ac0b0" stroke-width="2.5"/>`;
-      return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/>` + px +
-        `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">SLM</text>`;
+      const frame = programmableMaskFrame(el.params, 'slm', el._animationTimeS);
+      const L = frame.length / 2;
+      return `<rect x="-9" y="${-L - 3}" width="20" height="${frame.length + 6}" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/>`
+        + programmableFrameSVG(frame, { x: -6, y: -L + 1, width: 14, height: frame.length - 6 })
+        + `<line x1="-9" y1="${-L}" x2="-9" y2="${L}" stroke="#65d4c2" stroke-width="1.6"/>`
+        + `<text x="1" y="${L - 1}" text-anchor="middle" font-size="4.5" font-weight="600" fill="#fff">SLM</text>`;
     },
     surfaces(el) {
-      const L = el.params.length / 2;
+      const mask = programmableMaskFrame(el.params, 'slm', el._animationTimeS);
+      const L = mask.length / 2;
       const body = el.params.transmissive ? [] : shaperBody(-9, 11, L, L + 3);
       return [{
         x1: -9, y1: -L, x2: -9, y2: L, kind: 'shaper',
         data: {
-          layers: el.params.layers || [], length: el.params.length, transmissive: !!el.params.transmissive,
+          layers: el.params.layers || [], length: mask.length, transmissive: !!el.params.transmissive,
           zeroOrder: !!el.params.zeroOrder, zeroFrac: el.params.zeroFrac || 0.1,
+          mask, effects: programmableMaskEffects(el.params),
         },
       }, ...body];
     },
@@ -3344,7 +3361,8 @@ export const registry = {
         const surface = registry.metalens.surfaces({ ...el, params: {
           ...el.params, dia: pitch, designType: 'chromatic',
         } })[0];
-        return { ...surface, y1: surface.y1 + y, y2: surface.y2 + y };
+        return { ...surface, y1: surface.y1 + y, y2: surface.y2 + y,
+          data: { ...surface.data, arrayIndex: i, arrayCount: count, arrayPitch: pitch } };
       });
     },
   },
@@ -3352,7 +3370,7 @@ export const registry = {
   diffractivesplitter: {
     label: 'Diffractive beam splitter', category: 'Wavefront Shaping', size: { w: 12, h: 52 },
     aliases: ['DOE splitter', 'static DOE', 'diffractive optical element'],
-    description: 'A static 1D grating proxy. Equal power is assigned to selected orders; evanescent orders are lost. It does not design a hologram, predict blaze efficiency, or reproduce a 2D DOE spot grid.',
+    description: 'A lossless 1D grating proxy. Power is shared equally among the selected propagating orders; if none propagate, the light remains in the zeroth order. This is not a prediction of real DOE efficiency, a hologram design, or a 2D spot grid.',
     params: [
       { key: 'length', label: 'Aperture (mm)', type: 'number', min: 4, max: 100, step: 1, def: 40 },
       { key: 'lines', label: 'Equivalent grating lines/mm', type: 'number', min: 1, max: 3000, step: 1, def: 60 },
@@ -3426,25 +3444,28 @@ export const registry = {
     params: [
       { key: 'length', label: 'Active size (mm)', type: 'number', min: 10, max: 100, step: 2, def: 40 },
       { key: 'tilt', label: 'Micromirror tilt (°)', type: 'number', min: 1, max: 20, step: 0.5, def: 12 },
-      { key: 'pitch', label: 'Pattern pitch (mm)', type: 'number', min: 1, max: 40, step: 0.5, def: 8 },
-      { key: 'duty', label: 'ON fraction (0–1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5 },
       { key: 'routeOff', label: 'Show OFF order', type: 'checkbox', def: false },
+      ...programmableMaskParams('dmd'),
+      ...programmableEffectParams,
     ],
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
-      const L = el.params.length / 2;
-      let mm = '';
-      for (let y = -L + 4; y < L - 2; y += 6) mm += `<line x1="-11" y1="${y + 2}" x2="-7" y2="${y - 2}" stroke="#cfd6dd" stroke-width="1.6"/>`;
-      return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/>` + mm +
-        `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">DMD</text>`;
+      const frame = programmableMaskFrame(el.params, 'dmd', el._animationTimeS);
+      const L = frame.length / 2;
+      return `<rect x="-9" y="${-L - 3}" width="20" height="${frame.length + 6}" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/>`
+        + programmableFrameSVG(frame, { x: -6, y: -L + 1, width: 14, height: frame.length - 6 })
+        + `<line x1="-9" y1="${-L}" x2="-9" y2="${L}" stroke="#dbe8ee" stroke-width="1.6"/>`
+        + `<text x="1" y="${L - 1}" text-anchor="middle" font-size="4.5" font-weight="600" fill="#fff">DMD</text>`;
     },
     surfaces(el) {
-      const L = el.params.length / 2;
+      const mask = programmableMaskFrame(el.params, 'dmd', el._animationTimeS);
+      const L = mask.length / 2;
       return [{
         x1: -9, y1: -L, x2: -9, y2: L, kind: 'dmd',
         data: {
-          length: el.params.length, tilt: el.params.tilt, pitch: el.params.pitch,
-          duty: el.params.duty, routeOff: el.params.routeOff,
+          length: mask.length, tilt: Math.min(20, Math.max(1, Number.isFinite(el.params.tilt) ? el.params.tilt : 12)),
+          routeOff: el.params.routeOff === true, mask,
+          effects: programmableMaskEffects(el.params),
         },
       }, ...shaperBody(-9, 11, L, L + 3)];
     },
@@ -4164,7 +4185,7 @@ export const registry = {
     svg(el) {
       let blades = '';
       const p = el.params, r = (p.diameter || 40) / 2 - 2;
-      const bladeSpan = 60 * (1 - Math.min(0.95, Math.max(0.05, p.chopDuty ?? 0.5)));
+      const bladeSpan = 60 * (1 - Math.min(0.99, Math.max(0.01, p.chopDuty ?? 0.5)));
       // Six identical blade/slot pairs make one gate period a 60° wheel step.
       // The positive rotation also places the fixed horizontal ray in a slot
       // for phase < duty and behind a blade for the remainder of the cycle.
@@ -4943,9 +4964,9 @@ const ELEMENT_HELP = {
   beamdump: 'Absorbs incident rays.',
   blocker: 'Absorbs rays but stays hidden in exported figures.',
   phaseplate: 'Retards part of the beam without bending it \u2014 invisible on its own, and the thing an interferometer exists to reveal.',
-  slm: 'Reflects by default and can overlay lens-array, grating, steering, or speckle functions.',
+  slm: 'Displays discrete 2D phase or grayscale pixel frames and samples one column for the geometric tracer. Optional lens, grating and focus-order functions are configured separately.',
   metasurface: 'A patterned layer on a thin transparent carrier, working in transmission by default. Overlays the same lens-array, grating, steering, and speckle functions as the SLM, with an optional undiffracted zeroth order — but the phase profile is fixed at fabrication rather than programmable.',
-  dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
+  dmd: 'Displays programmable 2D binary frames, routing the sampled column into ON and optional OFF ports. Optional geometric holographic orders and spectral angles are independent of the displayed pattern.',
   dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
   detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
   pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
@@ -5010,6 +5031,12 @@ export function getElementMeta(type, params = {}, context = {}) {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'aod') {
     note = 'Deflection is set directly in degrees, not derived from a crystal and an acoustic velocity, so the angles here need not belong to any real device \u2014 a real deflector reaches a few degrees at most. Efficiency is flat across the scan, where a real one falls away toward both ends, and the optical frequency shift a deflector applies is not carried: at 80 MHz it moves 532 nm by 7.6\u00d710\u207b\u2075 nm, far below anything this workbench resolves.';
+  } else if (type === 'dmd' || type === 'slm') {
+    const configured = type === 'dmd' || params.maskMode === 'amplitude'
+      || params.holographicOrders || params.spectralMode && params.spectralMode !== 'none'
+      || Array.isArray(params.layers) && params.layers.length;
+    if (!configured) tier = 'configurable';
+    note = 'One column of the displayed 2D frame gates traced rays. Grayscale values are intensity transmission; phase colors alone do not change rays. Geometric order and spectral-angle controls do not solve CGH fields, diffraction efficiency, temporal focusing, or curing. Frame playback is illustrative.';
   } else if (type === 'eom' && !params.modulate) {
     tier = 'configurable';
     note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
@@ -5056,7 +5083,7 @@ export function getElementMeta(type, params = {}, context = {}) {
       note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
     }
   } else if (type === 'stage' && params.voxelPreview) {
-    note = 'Pulsed arrivals leave canvas-only 2PP voxel markers in the mounted sample; marker size/opacity qualitatively broadens with Z (depth) offset from focus. This is a 2D scan preview, not a threshold, dose, curing, or true 3D fabrication simulation.';
+    note = 'Qualitative arrival preview: each array or programmed order marks one actual traced arrival and shows its full traced spread as a line. A marker is not a calculated focus or voxel; marker size is illustrative. Threshold, dose, curing and 3D fabrication are not calculated.';
   } else if (type === 'stage' && params.pzMode && params.pzMode !== 'static') {
     note = 'The piezo stage motion is a display-time animation of the mounted sample — "sync" is a simple serpentine raster, not a calibrated piezo trajectory.';
   } else if (type === 'display') {
@@ -5144,18 +5171,19 @@ export function getVisualBounds(el, { includeLabel = true } = {}) {
   }
 
   if (includeLabel && el.showLabel && el.label) {
-    const width = Math.max(8, String(el.label).length * 6.2);
+    const fontSize = elementLabelSize(el), scale = fontSize / 11;
+    const width = Math.max(8, String(el.label).length * 6.2 * scale);
     const pos = el.labelPos || 'b';
     if (pos === 'b') {
-      const y = el.y + ey + 13;
-      x0 = Math.min(x0, el.x - width / 2); x1 = Math.max(x1, el.x + width / 2); y1 = Math.max(y1, y + 3);
+      const y = el.y + ey + fontSize + 2;
+      x0 = Math.min(x0, el.x - width / 2); x1 = Math.max(x1, el.x + width / 2); y1 = Math.max(y1, y + 3 * scale);
     } else if (pos === 't') {
       const y = el.y - ey - 7;
-      x0 = Math.min(x0, el.x - width / 2); x1 = Math.max(x1, el.x + width / 2); y0 = Math.min(y0, y - 11);
+      x0 = Math.min(x0, el.x - width / 2); x1 = Math.max(x1, el.x + width / 2); y0 = Math.min(y0, y - fontSize);
     } else if (pos === 'l') {
-      x0 = Math.min(x0, el.x - ex - 7 - width); y0 = Math.min(y0, el.y - 7); y1 = Math.max(y1, el.y + 7);
+      x0 = Math.min(x0, el.x - ex - 7 - width); y0 = Math.min(y0, el.y - 7 * scale); y1 = Math.max(y1, el.y + 7 * scale);
     } else {
-      x1 = Math.max(x1, el.x + ex + 7 + width); y0 = Math.min(y0, el.y - 7); y1 = Math.max(y1, el.y + 7);
+      x1 = Math.max(x1, el.x + ex + 7 + width); y0 = Math.min(y0, el.y - 7 * scale); y1 = Math.max(y1, el.y + 7 * scale);
     }
   }
   return { x0, y0, x1, y1 };
@@ -5226,6 +5254,10 @@ export function findFreePlacement(el, elements, near, prefer = { x: 1, y: 0 }) {
 
 // element label, drawn OUTSIDE the rotated group: always upright, positioned
 // around the element's rotated bounding box (labelPos: b/t/l/r)
+export function elementLabelSize(el) {
+  return Number.isFinite(el.labelFontSize) ? Math.min(32, Math.max(6, el.labelFontSize)) : 11;
+}
+
 export function labelSVG(el) {
   if (!el.showLabel || !el.label) return '';
   const sz = getSize(el);
@@ -5234,18 +5266,19 @@ export function labelSVG(el) {
   const ey = (Math.abs(sz.w * Math.sin(a)) + Math.abs(sz.h * Math.cos(a))) / 2;
   const pos = el.labelPos || 'b';
   let x = el.x, y = el.y, anchor = 'middle', base = '';
-  if (pos === 'b') y += ey + 13;
+  const fontSize = elementLabelSize(el);
+  if (pos === 'b') y += ey + fontSize + 2;
   else if (pos === 't') y -= ey + 7;
   else if (pos === 'l') { x -= ex + 7; anchor = 'end'; base = 'dominant-baseline="central"'; }
   else { x += ex + 7; anchor = 'start'; base = 'dominant-baseline="central"'; }
-  return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}" ${base} font-size="11" fill="#444">${esc(el.label)}</text>`;
+  return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}" ${base} font-size="${fontSize}" fill="#444">${esc(el.label)}</text>`;
 }
 
 export function createElement(type, x = 0, y = 0) {
   const d = registry[type];
   const params = {};
   for (const p of d.params || []) {
-    if (p.type === 'readout' || p.type === 'derived' || p.type === 'derived-select' || p.type === 'section') continue;
+    if (p.type === 'readout' || p.type === 'derived' || p.type === 'derived-select' || p.type === 'section' || p.type === 'maskpreview') continue;
     params[p.key] = Array.isArray(p.def) ? JSON.parse(JSON.stringify(p.def)) : p.def;
   }
   return { id: uid(), type, x, y, rot: 0, label: '', showLabel: false, params };

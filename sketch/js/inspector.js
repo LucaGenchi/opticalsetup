@@ -2,6 +2,7 @@
 
 import { state, changed, pushUndo, findSelected } from './state.js';
 import { MAX_AOTF_CHANNELS, newAotfChannel, normalizeAotfChannels } from './aotf.js';
+import { MASK_JSON_LIMIT, normalizeMaskFrames, programmableMaskFrame, programmableFrameSVG } from './programmable-mask.js';
 import {
   registry, cameraProfileSVG, cameraReadingState, newShaperLayer, MAX_SHAPER_LAYERS, getElementMeta, getDirectManipulation, resolveDisplaySensor,
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
@@ -63,6 +64,8 @@ export const REBUILD_ON_COMMIT_KEYS = [
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind',
+  'maskPattern', 'maskMode', 'maskPlayback', 'maskFrame', 'maskSlice', 'maskLevel',
+  'holographicOrders', 'spectralMode',
 ];
 
 function field(labelText, inputHTML, className = '') {
@@ -137,7 +140,7 @@ function inspectorSection(key, title, content, { open = true, meta = '' } = {}) 
   </details>`;
 }
 
-const LAYER_TYPES = [['lensarray', 'Lens array'], ['grating', 'Grating'], ['steer', 'Beam steer'], ['speckle', 'Speckle / diffuser']];
+const LAYER_TYPES = [['lensarray', 'Lens array'], ['focusgrid', 'Focus orders (geometric)'], ['grating', 'Grating'], ['steer', 'Beam steer'], ['speckle', 'Speckle / diffuser']];
 
 const positiveMod = (value, modulus) => ((value % modulus) + modulus) % modulus;
 
@@ -450,9 +453,18 @@ function screenLinkHTML(el) {
   return `<div class="btnrow screen-link"><button type="button" id="inspConnectScreen">Connect to a detector screen</button></div>`;
 }
 
-export function refreshMeasurements() {
+export function refreshMeasurements(animationTimeS = 0) {
   if (!panel || state.selection?.kind !== 'element') return;
   const sel = findSelected();
+  if (sel?.type === 'dmd' || sel?.type === 'slm') {
+    const preview = panel.querySelector('[data-mask-preview]');
+    const frame = programmableMaskFrame(sel.params, sel.type, animationTimeS);
+    if (preview && preview.dataset.maskIndex !== String(frame.index)) {
+      preview.innerHTML = maskPreviewBody(frame);
+      preview.dataset.maskIndex = String(frame.index);
+    }
+    return;
+  }
   if (!sel || (!registry[sel.type]?.readoutKind && sel.type !== 'display')) return;
   const current = panel.querySelector('[data-measurements]');
   if (!current) return;
@@ -468,8 +480,8 @@ function layersHTML(layers) {
       <select data-li="${i}" data-lk="type" aria-label="Structure ${i + 1} type">` +
       LAYER_TYPES.map(([v, l]) => `<option value="${v}" ${v === ly.type ? 'selected' : ''}>${l}</option>`).join('') +
       `</select><button type="button" class="layerdel" data-ldel="${i}" title="Remove this structure" aria-label="Remove structure ${i + 1}">✕</button></div>`;
-    if (ly.type === 'lensarray') {
-      h += numberField('Nr. of lenses (1–8)', `data-li="${i}" data-lk="n"`, ly.n, { min: 1, max: 8, step: 1 });
+    if (ly.type === 'lensarray' || ly.type === 'focusgrid') {
+      h += numberField(ly.type === 'focusgrid' ? 'Focus orders (1–8)' : 'Nr. of lenses (1–8)', `data-li="${i}" data-lk="n"`, ly.n, { min: 1, max: 8, step: 1 });
       h += field('Focal length (mm)', `<input type="number" data-li="${i}" data-lk="f" min="-3000" max="3000" step="5" value="${ly.f}">`);
     } else if (ly.type === 'grating') {
       h += field('Lines / mm', `<input type="number" data-li="${i}" data-lk="lines" min="10" max="3600" step="10" value="${ly.lines}">`);
@@ -646,6 +658,12 @@ function signalsHTML(sel) {
 // Label & appearance block, so a checkbox is a checkbox wherever it sits —
 // the appearance block previously assumed everything routed to it was
 // numeric and drew "Show excitation spot" as a number box.
+function maskPreviewBody(frame) {
+  return `<span>Frame ${frame.index + 1} / ${frame.count}</span>`
+    + `<svg viewBox="0 0 160 160" width="160" height="160" style="max-width:100%;align-self:center" role="img" aria-label="Programmed 2D pixel frame"><rect width="160" height="160" fill="#26333a"/>`
+    + programmableFrameSVG(frame, { x: 5, y: 5, width: 150, height: 150, markSlice: true }) + '</svg>';
+}
+
 function paramField(p, sel) {
   const v = sel.params[p.key];
   if (p.type === 'number') return numberField(p.label, `data-p="${p.key}"`, v, resolvedParam(p, sel.params));
@@ -701,6 +719,14 @@ function paramField(p, sel) {
       + (sensors.length ? '' : `<div class="hint">Add a detector, PMT, camera, or human eye, then return here to connect it.</div>`);
   }
   if (p.type === 'layers') return layersHTML(Array.isArray(v) ? v : []);
+  if (p.type === 'maskframes') return field(p.label,
+    `<textarea data-p="${p.key}" data-mask-frames="1" rows="5" maxlength="${MASK_JSON_LIMIT}" aria-label="Custom mask frame grids">${esc(JSON.stringify(v || []))}</textarea>`, 'field-wide')
+    + `<div class="hint">One grid [[0,1],[1,0]], or a list of grids. Up to 16 frames of 32 × 32 pixels. DMD values threshold at 0.5; SLM grayscale is intensity transmission. Bad or missing pixels are dark.</div>`;
+  if (p.type === 'maskpreview') {
+    const frame = programmableMaskFrame(sel.params, sel.type);
+    return `<div class="field field-wide" data-mask-preview data-mask-index="${frame.index}">${maskPreviewBody(frame)}</div>`
+      + `<div class="hint">Orange line: sampled tracer column. Playback uses an illustrative frame clock. Phase colors show programmed cycles; optical orders are configured separately.</div>`;
+  }
   if (p.type === 'aotfchannels') return aotfChannelsHTML(v);
   if (p.type === 'surfacetable') return surfaceTableHTML(sel);
   if (p.type === 'signals') return signalsHTML(sel);
@@ -837,8 +863,8 @@ export function renderInspector() {
         voxelHintInserted = true;
         if (sel.type !== 'stage' || specimenTypeOf(sel.params) !== 'resin') return;
         if (sel.params.voxelPreview) {
-          sectionFields += `<div class="hint">Each visible pulsed arrival deposits a bounded square marker at the traced hit. The marker follows the moving sample and broadens/fades with X (depth) offset from focus; it is a 2D writing preview, not a dose, threshold, curing, or true 3D-volume calculation.</div>`;
-          sectionFields += `<button type="button" id="inspClearVoxels">Clear voxel preview</button>`;
+          sectionFields += `<div class="hint">Qualitative arrival preview: an array or programmed order marks one actual sampled arrival and draws a line across its full traced spread. The marker follows the moving sample; its size is illustrative. No focus field, voxel volume, dose, threshold, or curing is calculated.</div>`;
+          sectionFields += `<button type="button" id="inspClearVoxels">Clear arrival preview</button>`;
         }
 
         const candidates = twoPhotonHandoffCandidates(
@@ -922,6 +948,7 @@ export function renderInspector() {
         appearanceFields += field('Label', `<input type="text" data-k="label" value="${esc(sel.label || '')}">`);
         appearanceFields += field('Show label', `<input type="checkbox" data-k="showLabel" ${sel.showLabel ? 'checked' : ''}>`);
         if (sel.showLabel) {
+          appearanceFields += numberField('Label size', 'data-k="labelFontSize"', sel.labelFontSize ?? 11, { min: 6, max: 32, step: 1 });
           const lp = sel.labelPos || 'b';
           appearanceFields += field('Label position', `<select data-k="labelPos">` +
             [['b', 'Below'], ['t', 'Above'], ['l', 'Left'], ['r', 'Right']].map(([v, l]) => `<option value="${v}" ${v === lp ? 'selected' : ''}>${l}</option>`).join('') + `</select>`);
@@ -988,7 +1015,7 @@ export function renderInspector() {
     panel.innerHTML = h;
   }
 
-  panel.querySelectorAll('input,select').forEach(inp => {
+  panel.querySelectorAll('input,select,textarea[data-mask-frames]').forEach(inp => {
     inp.addEventListener('input', () => applyInput(inp));
     inp.addEventListener('change', () => applyInput(inp, true));
   });
@@ -1205,6 +1232,24 @@ export function applyInput(inp, rebuild = false) {
   const sel = findSelected();
   if (!sel) return;
   const key = inp.dataset.k, pkey = inp.dataset.p;
+  if (inp.dataset.maskFrames) {
+    if (!rebuild) return; // accept only a complete JSON edit, never partial typing
+    try {
+      if (inp.value.length > MASK_JSON_LIMIT) throw new Error('too large');
+      const value = JSON.parse(inp.value);
+      if (!Array.isArray(value)) throw new Error('expected grids');
+      inp.setCustomValidity?.('');
+      pushUndo();
+      sel.params.maskFrames = normalizeMaskFrames(value, sel.type);
+      sel.params.maskLegacyBands = [];
+      changed();
+      renderInspector();
+    } catch {
+      inp.setCustomValidity?.('Enter a JSON grid or list of grids within the size limit.');
+      inp.reportValidity?.();
+    }
+    return;
+  }
   let val;
   if (inp.type === 'checkbox') val = inp.checked;
   else if (inp.type === 'number' || inp.type === 'range') {

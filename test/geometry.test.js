@@ -179,8 +179,13 @@ test('objectives expose EFL, WD and immersion, and place the equivalent lens so 
   // is a real stop rather than something light sails through — and it sits at
   // the back focal plane, where an infinity objective's entrance pupil is.
   const stops = registry.objective.surfaces(objective).filter(s => s.kind === 'absorb');
-  assert.equal(stops.length, 2, 'the metal either side of the pupil blocks');
-  assert.ok(stops.every(s => s.x1 === objectiveStopX(objective.params)));
+  const annulus = stops.filter(s => s.x1 === s.x2);
+  const boreEdges = stops.filter(s => s.x1 !== s.x2);
+  assert.equal(annulus.length, 2, 'the metal either side of the pupil blocks');
+  assert.ok(annulus.every(s => s.x1 === objectiveStopX(objective.params)));
+  assert.equal(boreEdges.length, 2, 'finite boundaries catch rays walking out before the equivalent plane');
+  assert.ok(boreEdges.every(s => s.x1 === objectiveStopX(objective.params) && s.x2 === surface.x1));
+  assert.deepEqual(boreEdges.map(s => [s.y1, s.y2]), [[surface.y2, surface.y2], [surface.y1, surface.y1]]);
   assert.equal(objectiveStopX(objective.params), objectiveBackFocalPlaneX(objective.params));
   assert.ok(objectiveStopX(objective.params) > objectiveBackX(objective.params), 'and inside the housing');
 });

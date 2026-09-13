@@ -14,6 +14,8 @@ import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToCo
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
+import { sampleProgrammableFrame, programmableSpectralAngle } from './programmable-mask.js';
+import { groupArrivalHits } from './arrival-preview.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -2305,13 +2307,20 @@ function interact(ray, hit) {
     }
     case 'metalens': {
       const efficiency = Math.min(1, Math.max(0, Number(data.focusEff) / 100 || 0));
+      // Adjacent metalenses share an exact boundary. Use the same half-open
+      // pixel/lenslet convention as masks and microlens arrays, so a dark
+      // channel cannot acquire a spurious marker from its neighbour's edge.
+      const nextLenslet = s.el?.type === 'metalensarray' && hit.u >= 1 - 1e-12
+        && data.arrayIndex < data.arrayCount - 1;
+      const lensletIndex = data.arrayIndex + Number(nextLenslet);
       const sampled = ray.bw > 0;
       const samples = wlSamples(ray);
       return samples.map((sample, i) => {
         const focalLength = metalensFocalLength(data, sample.wl);
         recordMetalensHit(s.el?.id, sample.wl, focalLength);
         return {
-          d: lensBend(d, hit.p, s, focalLength),
+          d: lensBend(d, hit.p, s, focalLength, nextLenslet ? data.arrayPitch : 0),
+          ...(s.el?.type === 'metalensarray' ? { arrivalGroup: `${ray.arrivalGroup || ''}/${s.el.id}:M${lensletIndex}` } : {}),
           wl: sample.wl,
           bw: sampled ? 0 : ray.bw,
           ...(sampled ? {
@@ -3050,36 +3059,35 @@ function interact(ray, hit) {
       const fwd = rotPt(1, 0, (s.el && s.el.rot) || 0);
       return dot(d, fwd) > 0 ? [{ d }] : [];
     }
-    case 'dmd': {
-      const mid = mul(add(s.a, s.b), 0.5);
-      const pitch = Math.max(0.1, data.pitch || 8);
-      const h = dot(sub(hit.p, mid), t) + (data.length || 40) / 2 + pitch / 2;
-      const phase = ((h % pitch) + pitch) % pitch / pitch;
-      const on = phase < Math.min(0.95, Math.max(0.05, data.duty ?? 0.5));
-      if (!on && !data.routeOff) return [];
-      const base = reflect(d, n);
-      const angle = (on ? 1 : -1) * 2 * (data.tilt || 12) * D2R;
-      return [{ d: rotv(base, angle), tag: on ? 'on' : 'off' }];
-    }
     case 'dm': {
       let out = reflect(d, n);
       if (data.f) out = lensBend(out, hit.p, s, data.f);
       if (data.steer) out = rotv(out, data.steer * D2R);
       return [{ d: out }];
     }
+    case 'dmd':
     case 'shaper': {
-      // SLM / DMD / deformable mirror: base reflection (or transmission),
-      // then apply each function layer in order. Layers that diffract
-      // (grating) can multiply rays; capped to keep tracing bounded.
-      const zf = data.zeroOrder && (data.layers || []).length
-        ? Math.min(0.95, Math.max(0, data.zeroFrac ?? 0.1)) : 0;
-      let rays = [{
-        d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * (1 - zf), tag: '',
-        wl: ray.wl, bw: ray.bw, spec: ray.spec, spectralContinuum: ray.spectralContinuum,
-        spectralLo: ray.spectralLo, spectralHi: ray.spectralHi,
-      }];
+      // Both programmable devices sample one column of their current 2D
+      // frame. Routing effects remain separate from that pixel image.
       const L = data.length;
       const mid = mul(add(s.a, s.b), 0.5);
+      const maskSample = data.mask ? sampleProgrammableFrame(data.mask, dot(sub(hit.p, mid), t)) : null;
+      const isDmd = s.kind === 'dmd';
+      let base = data.transmissive ? d : reflect(d, n);
+      if (isDmd) {
+        const on = (maskSample?.transmission ?? 0) > 0;
+        base = rotv(base, (on ? 1 : -1) * 2 * data.tilt * D2R);
+        if (!on) return data.routeOff ? [{ d: base, tag: 'off' }] : [];
+      }
+      const zf = data.zeroOrder && ((data.layers || []).length || data.effects?.holographic || data.mask)
+        ? Math.min(0.95, Math.max(0, data.zeroFrac ?? 0.1)) : 0;
+      let rays = [{
+        d: base, intensity: ray.intensity * (1 - zf) * (maskSample?.transmission ?? 1), tag: isDmd ? 'on' : '',
+        wl: ray.wl, bw: ray.bw, spec: ray.spec, spectralContinuum: ray.spectralContinuum,
+        spectralLo: ray.spectralLo, spectralHi: ray.spectralHi,
+        retainWeak: ray.retainWeak || isDmd || data.mask?.mode === 'amplitude', keepWeak: ray.keepWeak,
+        arrivalGroup: ray.arrivalGroup,
+      }].filter(r => r.intensity > 0);
       const layers = (data.layers || []).slice(0, 4);
       // Size the whole stack's sampling before tracing any of it. Each layer
       // multiplies the ray count, so a diffuser in front of a many-order
@@ -3088,8 +3096,42 @@ function interact(ray, hit) {
       // away with their power. Grains are the sampling choice that gives:
       // orders are not negotiable, and steering and lenslets are one-for-one.
       // Grating spectral sampling is budgeted separately, per layer, below.
-      const orderCounts = layers.map(ly => ly.type === 'grating' ? shaperLayerOrders(ly).length : 1);
+      const orderCounts = layers.map(ly => ly.type === 'grating' ? shaperLayerOrders(ly).length
+        : ly.type === 'focusgrid' ? Math.min(8, Math.max(1, Math.round(Number(ly.n) || 1))) : 1);
       const orderProduct = orderCounts.reduce((a, b) => a * b, 1);
+      const effects = data.effects;
+      if (effects && rays.length) {
+        const angles = effects.angles;
+        const hasSpectrum = effects.spectralMode === 'linear' ? effects.slope !== 0
+          : effects.spectralMode === 'carrier' && effects.order !== 0;
+        const incident = rays[0];
+        const samples = hasSpectrum ? wlSamples(ray, Math.floor(SHAPER_RAY_CAP / (angles.length * orderProduct))) : [];
+        rays = angles.flatMap((angle, orderIndex) => {
+          const routed = rotv(incident.d, angle * D2R);
+          const orderRay = { ...incident, d: routed, intensity: incident.intensity / angles.length,
+            tag: incident.tag + (effects.holographic ? `H${orderIndex}` : ''),
+            arrivalGroup: effects.holographic ? `${incident.arrivalGroup || ''}/${s.id}:H${orderIndex}` : incident.arrivalGroup,
+            retainWeak: incident.retainWeak || effects.holographic, keepWeak: incident.keepWeak || hasSpectrum };
+          if (!hasSpectrum) return [orderRay];
+          const lineSpectrum = ray.spec?.kind === 'lines';
+          return samples.map((sample, sampleIndex) => {
+            // At a coarsened sampling resolution each direction still carries
+            // its spectral cell so filters do not discard an entire band.
+            const cell = !lineSpectrum && ray.bw > 0 && samples.length < (ray.bw >= 200 ? 9 : 5)
+              ? cellSpectrum(ray, sample.spectralLo, sample.spectralHi) : null;
+            return { ...orderRay,
+              d: rotv(routed, programmableSpectralAngle(effects, sample.wl)),
+              wl: sample.wl, bw: cell?.bw ?? 0, spec: cell?.spec ?? null,
+              spectralContinuum: lineSpectrum ? false : ray.spectralContinuum,
+              spectralLo: lineSpectrum ? null : sample.spectralLo ?? ray.spectralLo,
+              spectralHi: lineSpectrum ? null : sample.spectralHi ?? ray.spectralHi,
+              intensity: orderRay.intensity * sample.weight,
+              tag: orderRay.tag + (samples.length > 1 ? `w${sampleIndex}` : ''),
+              dispersed: ray.bw > 0 || ray.dispersed,
+            };
+          });
+        });
+      }
       // A sized beam already traces one ray per spatial sample, so its speckle
       // deflects rather than fans and costs nothing here.
       const fanningLayers = ray.sample == null
@@ -3098,7 +3140,7 @@ function interact(ray, hit) {
       // n of them each fanning by f cost f**n. The epsilon keeps an exact
       // power (24 grains over two layers) from floor()ing down on rounding.
       const speckleFan = fanningLayers
-        ? Math.max(1, Math.min(5, Math.floor((SHAPER_RAY_CAP / orderProduct) ** (1 / fanningLayers) + 1e-9)))
+        ? Math.max(1, Math.min(5, Math.floor((SHAPER_RAY_CAP / Math.max(1, rays.length) / orderProduct) ** (1 / fanningLayers) + 1e-9)))
         : 1;
       // What one ray entering layer j still has to expand into afterwards, so
       // each layer can leave room for the ones behind it.
@@ -3111,6 +3153,19 @@ function interact(ray, hit) {
           if (ly.type === 'steer') {
             const a = (ly.angle || 0) * D2R, c = Math.cos(a), sn = Math.sin(a);
             next.push({ ...r, d: { x: r.d.x * c - r.d.y * sn, y: r.d.x * sn + r.d.y * c } });
+          } else if (ly.type === 'focusgrid') {
+            // All illuminated aperture samples contribute to every selected
+            // geometric focus order. This differs from disjoint lenslets and
+            // is not a calculated CGH field or a diffraction-efficiency model.
+            const count = orderCounts[li];
+            const f = Number.isFinite(ly.f) ? Math.min(3000, Math.max(-3000, ly.f)) : 50;
+            for (let row = 0; row < count; row++) {
+              const center = -L / 2 + (row + 0.5) * L / count;
+              next.push({ ...r, d: lensBend(r.d, hit.p, s, f, center),
+                intensity: r.intensity / count, retainWeak: true,
+                arrivalGroup: `${r.arrivalGroup || ''}/${s.id}:F${row}`,
+                tag: r.tag + 'F' + row });
+            }
           } else if (ly.type === 'lensarray') {
             const nL = Math.min(8, Math.max(1, Math.round(ly.n || 1)));
             const pitch = L / nL;
@@ -3120,7 +3175,8 @@ function interact(ray, hit) {
             const hc = -L / 2 + (idx + 0.5) * pitch;
             // lenslet index goes into the branch signature so beam strips
             // only pair up within the same lenslet
-            next.push({ ...r, d: lensBend(r.d, hit.p, s, ly.f, hc), tag: r.tag + 'L' + idx });
+            next.push({ ...r, d: lensBend(r.d, hit.p, s, ly.f, hc), tag: r.tag + 'L' + idx,
+              arrivalGroup: `${r.arrivalGroup || ''}/${s.id}:L${idx}` });
           } else if (ly.type === 'grating') {
             const orders = shaperLayerOrders(ly);
             const gd = 1e6 / (ly.lines || 600);
@@ -3296,9 +3352,11 @@ function interact(ray, hit) {
         wl: r.wl, bw: r.bw, spec: r.spec, spectralContinuum: r.spectralContinuum,
         spectralLo: r.spectralLo, spectralHi: r.spectralHi,
         speckle: r.speckle || undefined,
+        retainWeak: r.retainWeak || undefined, keepWeak: r.keepWeak || undefined,
+        ...(r.arrivalGroup ? { arrivalGroup: r.arrivalGroup } : {}),
       }));
       if (zf > 0) {
-        out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0' });
+        out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0', retainWeak: true });
       }
       return out;
     }
@@ -3502,7 +3560,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // sample can draw its excitation spot too; only the piezo stage writes
       // 2PP voxel marks, which its own writeVoxel flag already gates.
       const holder = hit.surface.el?.type;
-      if ((holder === 'stage' || holder === 'sample') && r.writeReference) {
+      if ((holder === 'stage' || holder === 'sample') && (r.writeReference || r.arrivalGroup)) {
         if (writeHits && hit.surface.data.writeVoxel && r.pulse) {
           writeHits.push({
             stageId: hit.surface.el.id,
@@ -3511,6 +3569,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             opl: r.opl,
             pulse: { ...r.pulse },
             intensity: Math.min(1, Math.max(0, r.intensity || 0)),
+            ...(r.arrivalGroup ? { arrivalGroup: r.arrivalGroup, weight: r.power } : {}),
           });
         }
         if (signalHits && hit.surface.data.reportHit) {
@@ -3659,6 +3718,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if ('stokes' in c0) r.stokes = cloneStokes(c0.stokes);
         if ('medium' in c0) r.medium = c0.medium;
         if ('mediumMaterial' in c0) r.mediumMaterial = c0.mediumMaterial;
+        if ('arrivalGroup' in c0) r.arrivalGroup = c0.arrivalGroup;
         if ('ior' in c0) r.ior = c0.ior;
         if (Number.isFinite(c0.phaseOffset)) r.phaseOffset = c0.phaseOffset;
         else if (Number.isFinite(c0.phaseShift)) r.phaseOffset = (r.phaseOffset || 0) + c0.phaseShift;
@@ -3764,6 +3824,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             : undefined,
           sample: r.sample, sampleCount: r.sampleCount, sampleGrid: r.sampleGrid,
           writeReference: r.writeReference,
+          arrivalGroup: c.arrivalGroup || r.arrivalGroup,
           objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),
           retainWeak: childRetainsWeak,
@@ -4285,7 +4346,7 @@ export function traceScene(elements, beams = []) {
 
   invalidateIncompleteCameraFields();
   lastSignalHits = signalHits;
-  return { drawables, pulseTracks, writeHits, signalHits };
+  return { drawables, pulseTracks, writeHits: groupArrivalHits(writeHits), signalHits };
 }
 
 export function traceAll(elements, beams = []) {

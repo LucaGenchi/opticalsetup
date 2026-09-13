@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "protocol": "Nine independent native collimated probe rays across 2 mm, injected before each scanner pivot; downstream scanner/relay/objective only; each original worktree supplies its own tracer and objective model.",
+  "probeInputRadiusMm": 1,
+  "sampleCount": 9,
+  "limitations": "One meridional geometric plane. Full source illumination, other branches, hologram orders, high-NA PSF, dose and curing are outside this audit.",
+  "results": [
+    {
+      "paper": "pearre-2018",
+      "head": "6b02bbfdb5db9273bf38915f3592e71fd124ca60",
+      "scenePath": "collections/2pp/setups/pearre-2018.json",
+      "opticalChanges": null,
+      "pivot": "pearre-resonant-x",
+      "incomingDeg": 90,
+      "elementIds": [
+        "pearre-resonant-x",
+        "pearre-slow-y",
+        "pearre-relay",
+        "pearre-objective"
+      ],
+      "rows": [
+        {
+          "mechanicalAngleDeg": -0.2,
+          "opticalAngleDeg": -0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": -0.6953504708769742,
+            "widthMm": 2.0000487397769575
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": -0.05585144344388482,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        },
+        {
+          "mechanicalAngleDeg": 0,
+          "opticalAngleDeg": 0,
+          "pupil": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 2
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        },
+        {
+          "mechanicalAngleDeg": 0.2,
+          "opticalAngleDeg": 0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": 0.6953504708771447,
+            "widthMm": 2.000048739776844
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0.05585144344388482,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        }
+      ]
+    },
+    {
+      "paper": "pearre-2018",
+      "head": "6b02bbfdb5db9273bf38915f3592e71fd124ca60",
+      "scenePath": "collections/2pp/setups/pearre-2018.json",
+      "opticalChanges": null,
+      "pivot": "pearre-slow-y",
+      "incomingDeg": 0,
+      "elementIds": [
+        "pearre-slow-y",
+        "pearre-relay",
+        "pearre-objective"
+      ],
+      "rows": [
+        {
+          "mechanicalAngleDeg": -0.2,
+          "opticalAngleDeg": -0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": -0.002792572172211294,
+            "widthMm": 2.0000487397769575
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0.055851443443998505,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        },
+        {
+          "mechanicalAngleDeg": 0,
+          "opticalAngleDeg": 0,
+          "pupil": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 2
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        },
+        {
+          "mechanicalAngleDeg": 0.2,
+          "opticalAngleDeg": 0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": 0.002792572172211294,
+            "widthMm": 2.0000487397769575
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": -0.055851443443998505,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        }
+      ]
+    },
+    {
+      "paper": "kiefer-2024",
+      "head": "72f0323d38ff8afa3e375e87e861c262b1399456",
+      "scenePath": "collections/2pp/setups/kiefer-2024.json",
+      "opticalChanges": null,
+      "pivot": "kiefer-gx",
+      "incomingDeg": 180,
+      "elementIds": [
+        "kiefer-gx",
+        "kiefer-lg23",
+        "kiefer-gy",
+        "kiefer-lg45",
+        "kiefer-objective"
+      ],
+      "rows": [
+        {
+          "mechanicalAngleDeg": -0.2,
+          "opticalAngleDeg": -0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 4.000097479551073
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0.017453576076263744,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        },
+        {
+          "mechanicalAngleDeg": 0,
+          "opticalAngleDeg": 0,
+          "pupil": {
+            "count": 9,
+            "centerMm": 2.842170943040401e-14,
+            "widthMm": 3.999999999997101
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        },
+        {
+          "mechanicalAngleDeg": 0.2,
+          "opticalAngleDeg": 0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": 2.842170943040401e-14,
+            "widthMm": 4.000097479551016
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": -0.017453576076263744,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        }
+      ]
+    },
+    {
+      "paper": "kiefer-2024",
+      "head": "72f0323d38ff8afa3e375e87e861c262b1399456",
+      "scenePath": "collections/2pp/setups/kiefer-2024.json",
+      "opticalChanges": null,
+      "pivot": "kiefer-gy",
+      "incomingDeg": 90,
+      "elementIds": [
+        "kiefer-gy",
+        "kiefer-lg45",
+        "kiefer-objective"
+      ],
+      "rows": [
+        {
+          "mechanicalAngleDeg": -0.2,
+          "opticalAngleDeg": -0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": -2.842170943040401e-14,
+            "widthMm": 4.00009747955113
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0.017453576076263744,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        },
+        {
+          "mechanicalAngleDeg": 0,
+          "opticalAngleDeg": 0,
+          "pupil": {
+            "count": 9,
+            "centerMm": 2.842170943040401e-14,
+            "widthMm": 3.999999999997101
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        },
+        {
+          "mechanicalAngleDeg": 0.2,
+          "opticalAngleDeg": 0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": 2.842170943040401e-14,
+            "widthMm": 4.000097479551243
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": -0.017453576076263744,
+            "widthMm": 0
+          },
+          "stopClamped": false
+        }
+      ]
+    },
+    {
+      "paper": "gittard-2011",
+      "head": "039b7726ca6363a4d721e722963077f03ce1a3f4",
+      "scenePath": "collections/2pp/setups/gittard-2011.json",
+      "opticalChanges": null,
+      "pivot": "gittard-galvo-x",
+      "incomingDeg": 278,
+      "elementIds": [
+        "gittard-galvo-x",
+        "gittard-scan-relay",
+        "gittard-galvo-y",
+        "gittard-pupil-relay",
+        "gittard-objective"
+      ],
+      "rows": [
+        {
+          "mechanicalAngleDeg": -0.2,
+          "opticalAngleDeg": -0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": -0.005236072822981441,
+            "widthMm": 0.5000121849441257
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0.055851443443998505,
+            "widthMm": 0
+          },
+          "stopClamped": true
+        },
+        {
+          "mechanicalAngleDeg": 0,
+          "opticalAngleDeg": 0,
+          "pupil": {
+            "count": 9,
+            "centerMm": 5.684341886080802e-14,
+            "widthMm": 0.5000000000001137
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 0
+          },
+          "stopClamped": true
+        },
+        {
+          "mechanicalAngleDeg": 0.2,
+          "opticalAngleDeg": 0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": 0.005236072822924598,
+            "widthMm": 0.5000121849442394
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": -0.055851443443998505,
+            "widthMm": 0
+          },
+          "stopClamped": true
+        }
+      ]
+    },
+    {
+      "paper": "gittard-2011",
+      "head": "039b7726ca6363a4d721e722963077f03ce1a3f4",
+      "scenePath": "collections/2pp/setups/gittard-2011.json",
+      "opticalChanges": null,
+      "pivot": "gittard-galvo-y",
+      "incomingDeg": 0,
+      "elementIds": [
+        "gittard-galvo-y",
+        "gittard-pupil-relay",
+        "gittard-objective"
+      ],
+      "rows": [
+        {
+          "mechanicalAngleDeg": -0.2,
+          "opticalAngleDeg": -0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 2.0000487397769575
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0.013962860860942783,
+            "widthMm": 0
+          },
+          "stopClamped": true
+        },
+        {
+          "mechanicalAngleDeg": 0,
+          "opticalAngleDeg": 0,
+          "pupil": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 2
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": 0,
+            "widthMm": 0
+          },
+          "stopClamped": true
+        },
+        {
+          "mechanicalAngleDeg": 0.2,
+          "opticalAngleDeg": 0.4,
+          "pupil": {
+            "count": 9,
+            "centerMm": -5.684341886080802e-14,
+            "widthMm": 2.000048739776844
+          },
+          "focus": {
+            "count": 9,
+            "centerMm": -0.013962860860942783,
+            "widthMm": 0
+          },
+          "stopClamped": true
+        }
+      ]
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './object
 import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
 import { normalizeSurfaceTable } from './lensgroup.js';
 import { normalizeAotfChannels } from './aotf.js';
+import { migrateProgrammableMaskParams, normalizeMaskFrames, normalizeMaskLegacyBands } from './programmable-mask.js';
 
 // Elements whose boundary refracts and therefore carries per-surface
 // transmission of its own.
@@ -46,7 +47,7 @@ function freshId(prefix, candidate, used) {
 
 function normalizeLayers(value) {
   if (!Array.isArray(value)) return [];
-  const types = new Set(['lensarray', 'grating', 'steer', 'speckle']);
+  const types = new Set(['lensarray', 'focusgrid', 'grating', 'steer', 'speckle']);
   return value.slice(0, 4).filter(record).map(raw => {
     const type = types.has(raw.type) ? raw.type : 'lensarray';
     const n = finite(raw.n) ? raw.n : 3;
@@ -98,6 +99,8 @@ function resolveBound(bound, params, fallback) {
 }
 
 function normalizeParam(value, spec, params = {}) {
+  if (spec.type === 'maskframes') return normalizeMaskFrames(value);
+  if (spec.type === 'maskbands') return normalizeMaskLegacyBands(value);
   if (spec.type === 'signals') return normalizeChannels(value);
   if (spec.type === 'layers') return normalizeLayers(value);
   if (spec.type === 'surfacetable') return value == null ? null : normalizeSurfaceTable(value);
@@ -183,6 +186,7 @@ function normalizeElement(raw, definitions, used) {
   // list, this needs the raw legacy values before they'd otherwise be
   // silently dropped for not matching any current spec.
   let rawParams = record(raw.params) ? raw.params : {};
+  if (raw.type === 'dmd' || raw.type === 'slm') rawParams = migrateProgrammableMaskParams(rawParams, raw.type);
   if (raw.type === 'objective') {
     rawParams = migrateLegacyObjectiveParams(rawParams);
   }
@@ -213,7 +217,7 @@ function normalizeElement(raw, definitions, used) {
       // `readout`/`derived` params have no storage of their own — always
       // computed fresh from other params — so there is nothing to normalize
       // or persist for them.
-      if (spec.type === 'readout' || spec.type === 'derived' || spec.type === 'derived-select' || spec.type === 'section') continue;
+      if (spec.type === 'readout' || spec.type === 'derived' || spec.type === 'derived-select' || spec.type === 'section' || spec.type === 'maskpreview') continue;
       // Earlier normalized params override raw input so dependent bounds can
       // safely read the medium/index selected just above the objective's NA.
       params[spec.key] = normalizeParam(rawParams[spec.key], spec, { ...rawParams, ...params });
@@ -232,7 +236,7 @@ function normalizeElement(raw, definitions, used) {
   // that reads a retired field — the AOTF's old single `center`/`band` pair,
   // say — can only find it in the raw object.
   for (const spec of def?.params || []) {
-    if (spec.type === 'readout' || spec.type === 'derived' || spec.type === 'derived-select' || spec.type === 'section') continue;
+    if (spec.type === 'readout' || spec.type === 'derived' || spec.type === 'derived-select' || spec.type === 'section' || spec.type === 'maskpreview') continue;
     if (spec.migrate && raw.params?.[spec.key] === undefined) params[spec.key] = spec.migrate(params, raw.params || {});
   }
   if (raw.type === 'objective') Object.assign(params, normalizeObjectiveParams(params));
@@ -240,6 +244,7 @@ function normalizeElement(raw, definitions, used) {
   // taken the device's passband from them; normalizing here drops the retired
   // key rather than carrying it forward into every future save of the file.
   if (raw.type === 'aotf') params.channels = normalizeAotfChannels(params.channels);
+  if (raw.type === 'dmd' || raw.type === 'slm') params.maskFrames = normalizeMaskFrames(params.maskFrames, raw.type);
   const rot = def?.rotatable === false ? 0 : finite(raw.rot) ? ((raw.rot % 360) + 360) % 360 : 0;
   let x = raw.x, y = raw.y;
   // Keep editable polygon bounds centered on the element transform. This makes
@@ -259,6 +264,7 @@ function normalizeElement(raw, definitions, used) {
     id: freshId('e', raw.id, used), type: raw.type, x, y, rot,
     label: typeof raw.label === 'string' ? raw.label : '',
     showLabel: raw.showLabel === true,
+    ...(finite(raw.labelFontSize) ? { labelFontSize: Math.min(32, Math.max(6, raw.labelFontSize)) } : {}),
     ...(raw.labelPos && ['b', 't', 'l', 'r'].includes(raw.labelPos) ? { labelPos: raw.labelPos } : {}),
     params,
   };

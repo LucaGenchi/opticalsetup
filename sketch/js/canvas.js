@@ -35,6 +35,7 @@ let writeHits = [];
 let signalHits = [];
 const sampleHitPositions = new Map();
 let pulseFrame = null;
+import { programmableMaskPlaying } from './programmable-mask.js';
 let motionFrame = null;
 let motionStartMs = null;
 let motionTimeSeconds = 0;
@@ -236,12 +237,13 @@ function animatedChopper(el) {
 
 function animatedOpticalElements() {
   if (!hasGalvoMotion() && !hasAodScan() && !hasPhaseModulation() && !hasStageMotion()
-    && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence()) return state.elements;
+    && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence() && !hasMaskPlayback()) return state.elements;
   return state.elements.map(el => {
     if (isScanningMirror(el)) {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params, el.type === 'polygonscanner') };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
+    if (programmableMaskPlaying(el)) return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
@@ -264,6 +266,7 @@ function animatedVisualElements() {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params, el.type === 'polygonscanner') };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
+    if (programmableMaskPlaying(el)) return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
@@ -297,7 +300,11 @@ function hasMotion() {
     || (el.type === 'chopper' && el.params.modulate)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
     || (el.type === 'retroreflector' && el.params.moveMode === 'linear'))
-    || hasAotfSequence();
+    || hasAotfSequence() || hasMaskPlayback();
+}
+
+function hasMaskPlayback() {
+  return state.elements.some(programmableMaskPlaying);
 }
 
 // A sequential AOTF steps between its selected lines, so the traced spectrum
@@ -355,14 +362,15 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
+    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence() || hasMaskPlayback();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();
     renderVoxels();
     renderOverlay();
     const selected = findSelected();
-    if (opticalMotion && selected && (registry[selected.type]?.readoutKind || selected.type === 'display')) onMeasurementsChange();
+    if (opticalMotion && selected && (registry[selected.type]?.readoutKind || selected.type === 'display'
+      || selected.type === 'dmd' || selected.type === 'slm')) onMeasurementsChange(motionTimeSeconds);
   }
   motionFrame = requestAnimationFrame(animateMotion);
 }
@@ -456,6 +464,7 @@ function renderVoxels() {
       const size = Math.max(0.1, mark.size);
       const half = size / 2;
       s += `<g transform="translate(${point.x.toFixed(2)} ${point.y.toFixed(2)}) rotate(${displayedStage.rot || 0})">` +
+        (mark.spreadStart && mark.spreadEnd ? `<line x1="${(mark.spreadStart.x - mark.x).toFixed(2)}" y1="${(mark.spreadStart.y - mark.y).toFixed(2)}" x2="${(mark.spreadEnd.x - mark.x).toFixed(2)}" y2="${(mark.spreadEnd.y - mark.y).toFixed(2)}" stroke="#a855f7" stroke-width="1.2" opacity="0.75" vector-effect="non-scaling-stroke"/>` : '') +
         `<rect x="${(-half).toFixed(2)}" y="${(-half).toFixed(2)}" width="${size.toFixed(2)}" height="${size.toFixed(2)}" rx="${Math.min(0.16, half).toFixed(2)}" fill="#b15cff" opacity="${mark.opacity.toFixed(2)}" stroke="#5b21b6" stroke-width="${(0.55 / z).toFixed(2)}" vector-effect="non-scaling-stroke"/>` +
         `</g>`;
     }
@@ -484,17 +493,21 @@ function recordVoxelHits(fromTimeNs, toTimeNs) {
     // from the stage's nominal Z=0 focal plane (the local-y axis — see
     // stageOffsetAt), the more the voxel broadens and fades — a 2D stand-in
     // for real axial defocus, not a calculated point-spread function.
-    const depthFactor = voxelDepthFactor(offset.y, stage.params.pzTravelZ ?? 8);
+    const depthFactor = hit.arrivalGroup ? 0 : voxelDepthFactor(offset.y, stage.params.pzTravelZ ?? 8);
     const baseSize = Math.min(6, Math.max(0.1, stage.params.voxelSize ?? 0.6));
     const size = Math.min(10, baseSize * (1 + depthFactor * 1.5));
     for (const arrival of arrivals) {
-      const key = `${hit.stageId}:${hit.pulse.sourceId || 'pulse'}:${Math.round(hit.opl * 1000)}:${Math.round(arrival.timeNs * 1e6)}`;
+      const key = `${hit.stageId}:${hit.pulse.sourceId || 'pulse'}:${hit.arrivalGroup || ''}:${Math.round(hit.opl * 1000)}:${Math.round(arrival.timeNs * 1e6)}`;
       if (voxelEventKeys.has(key)) continue;
       voxelEventKeys.add(key);
       const marks = voxelMarks.get(hit.stageId) || [];
       marks.push({
         x: local.x,
         y: local.y,
+        ...(hit.spreadStart && hit.spreadEnd ? {
+          spreadStart: toLocal(animatedStageElement(stage), hit.spreadStart.x, hit.spreadStart.y),
+          spreadEnd: toLocal(animatedStageElement(stage), hit.spreadEnd.x, hit.spreadEnd.y),
+        } : {}),
         size,
         opacity: Math.min(0.9, 0.3 + 0.5 * Math.sqrt(Math.max(0, hit.intensity * arrival.transmission))) * (1 - depthFactor * 0.6),
       });
