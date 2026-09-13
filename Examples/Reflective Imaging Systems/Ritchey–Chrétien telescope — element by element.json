@@ -151,7 +151,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "A 2D meridional section: no sagittal plane, so astigmatism and field curvature are not shown as a real instrument\nwould show them, and nothing here is diffractive — no Airy disc, and none of the ring redistribution the central\nobstruction really causes. The secondary blocks the middle of the aperture because it is genuinely in the way.",
+        "text": "A 2D meridional section: no sagittal plane, so astigmatism and field curvature are not shown as a real instrument\nwould show them, and nothing here is diffractive — no Airy disc, and none of the ring redistribution the central\nobstruction really causes. The secondary blocks the middle of the aperture because it is genuinely in the way.\nSignal is a relative sum over this 2D ray section, not transmitted power through a circular pupil, so what the\nobstruction costs here is not the fraction a 3D area calculation would give.",
         "fontSize": 9,
         "fill": "#34454d"
       }

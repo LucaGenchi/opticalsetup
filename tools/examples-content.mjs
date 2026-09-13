@@ -22,7 +22,7 @@ function cite(...nums) {
 export const exampleEntries = [
   {
     match: 'Gregorian telescope — element by element',
-    title: 'The Gregorian, and why two conics are exact',
+    title: 'Gregorian telescope',
     tagline: 'A parabola and an ellipse, each placed at the one pair of points it images perfectly, and a traced spot seven ten-millionths of a millimetre across.',
     html: `
       <p>A spherical mirror does not focus. Rays near its rim cross the axis ahead of
@@ -81,7 +81,7 @@ export const exampleEntries = [
 
   {
     match: 'Ritchey–Chrétien telescope — element by element',
-    title: 'Ritchey–Chrétien: giving up a perfect axis',
+    title: 'Ritchey–Chrétien telescope',
     tagline: 'Two hyperboloids that are measurably worse on the optical axis than a classical Cassegrain, and better everywhere else — the trade behind Hubble, the VLT and Keck.',
     html: `
       <p>A classical Cassegrain is exact on its axis. A parabolic primary brings starlight
@@ -187,8 +187,24 @@ export const exampleEntries = [
         The ray focus stays put because the modeled reflection geometry is achromatic.</li>
         <li><strong>Change loss:</strong> reduce primary reflectivity from 98% to 49%.
         The relative detected signal halves; at 0% the primary absorbs the beam.</li>
-      </ol>`,
-    limitations: `
+      </ol>
+      <p><strong>Why this pairing, and not a classical Cassegrain.</strong> The choice is
+      a directly derivable on-axis teaching construction, not a claim of better
+      performance. A convex paraboloid creates a virtual source; an ellipsoid images that
+      source to the chosen sample position. The generous spacing exists to make the folded
+      path readable. Note also the order: here the collimated beam meets the
+      <em>convex paraboloid</em> first, whereas a conventional classical Cassegrain sends
+      it to the concave parabolic primary first and then to a convex hyperbolic secondary.
+      Swapping the conic constants in this scene would not reproduce that arrangement.</p>
+      <p><strong>On the reported signal.</strong> It is a relative sum over this 2D ray
+      section, not transmitted power through a circular pupil, so central-obstruction
+      losses here differ from a 3D area calculation. With the scene's 14.4&nbsp;mm central
+      stop and 32&nbsp;mm illuminated width, a continuous 1D blocked fraction would be
+      <span class="w">14.4/32 = 45%</span>, while the corresponding area fraction for a
+      uniformly illuminated circular pupil would be
+      <span class="w">(14.4/32)² = 20.25%</span>. The figure the scene reports is the
+      sampled result for these rays, and the two 98% mirror reflections reduce it
+      further.</p>`,    limitations: `
       <p>This is a 2D meridional ray trace, not a 3D objective design or electromagnetic
       calculation. The mirror is a zero-thickness, one-sided coated conic with an opaque
       back and absorptive coating losses. No substrate thickness, mounting spiders,

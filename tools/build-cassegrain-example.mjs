@@ -60,7 +60,7 @@ text('route', 24, 382,
 text('controls', 355, 382,
   '**Try it in the inspector**\n• Primary opening: 36 → 20 mm clips the input.\n• Both conic constants: set k = 0 to see aberration.\n• Laser wavelength: 3000 → 10000 nm, same focus.\n• Primary reflectivity: 0% removes the focus.', 10.5);
 text('limits', 24, 480,
-  'Geometry only: no Airy rings, spider diffraction, coating spectrum or calibrated IR sensitivity.\nThe point focus is geometric. The scale and conics are teaching choices, not catalogue specifications.', 9);
+  'Geometry only: no Airy rings, spider diffraction, coating spectrum or calibrated IR sensitivity.\nThe point focus is geometric. The scale and conics are teaching choices, not catalogue specifications.\nSignal is a relative sum over this 2D ray section, not transmitted power through a circular pupil, so the\ncentral obstruction costs a different fraction here than a 3D area calculation would give.', 9);
 
 const scene = { app: 'optics2d', version: 1, elements, beams: [] };
 await writeFile(new URL('../Examples/Reflective Imaging Systems/IR Cassegrain objective — element by element.json', import.meta.url), JSON.stringify(scene, null, 2) + '\n');

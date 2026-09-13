@@ -78,7 +78,9 @@ function telescope({ title, subtitle, secX, secDia, R2, k2, k1, notes, controls 
       text('limits', 60, 476,
         'A 2D meridional section: no sagittal plane, so astigmatism and field curvature are not shown as a real instrument\n'
         + 'would show them, and nothing here is diffractive — no Airy disc, and none of the ring redistribution the central\n'
-        + 'obstruction really causes. The secondary blocks the middle of the aperture because it is genuinely in the way.', 9),
+        + 'obstruction really causes. The secondary blocks the middle of the aperture because it is genuinely in the way.\n'
+        + 'Signal is a relative sum over this 2D ray section, not transmitted power through a circular pupil, so what the\n'
+        + 'obstruction costs here is not the fraction a 3D area calculation would give.', 9),
     ],
     beams: [],
   };
