@@ -599,6 +599,16 @@ const demoScenes = {
     mkDemo('galvo', 220, 200, 45, { scanMode: 'sine', scanAmplitude: 8, scanFrequencyHz: 0.4 }),
     mkDemo('box', 220, 60, 0, { text: '', w: 200, h: 2, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — the reflected beam sweeps back and forth', showLabel: true, labelPos: 't' }),
   ],
+  // The beam enters at the facet midpoint (one apothem from the hub along the
+  // 315 degree normal), and the window is the widest one this 25.9 mm facet can
+  // scan before the 6 mm beam starts to straddle two facets at a transition.
+  polygonscanner: () => [
+    mkDemo('cwlaser', 50, 194.150635, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 6 }),
+    mkDemo('polygonscanner', 240, 160, 315, { diameter: 100, dutyCycle: 56 }),
+    mkDemo('lens', 205.849365, 260, 90, { f: 100, dia: 100 }),
+    mkDemo('box', 205.849365, 360, 0, { text: '', w: 110, h: 10, behavior: 'block', fill: '#f2f3f5' },
+      { label: 'successive line sweeps; blanked between facets', showLabel: true, labelPos: 'b' }),
+  ],
   aod: () => [
     mkDemo('cwlaser', 40, 200, 0, { wavelength: 532, beamMode: 'line' }),
     mkDemo('aod', 220, 200, 0, {
