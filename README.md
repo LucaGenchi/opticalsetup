@@ -54,9 +54,11 @@ figures as SVG or PNG.
 - **Pulsed timing**: pulsed lasers animate wavelength-colored packets along the
   traced path. Physical mode uses optical-path delay and the configured repetition
   rate; schematic mode keeps packets visible at workbench scale while detector
-  delays remain physical. For transform-limited Gaussian pulses, each packet's
-  envelope length follows the GDD accumulated at its current position, so glass
-  visibly stretches it and an opposite-GDD pulse compressor shortens it again.
+  delays remain physical. Gaussian and sech² packet envelopes follow the GDD
+  accumulated at their current position, including an authored input-chirp sign;
+  flat-top supercontinua use the Sellmeier endpoint group-delay spread. Glass can
+  therefore stretch or compress a pulse, and an opposite-GDD pulse compressor can
+  return it toward its bandwidth-limited duration.
   Mechanical delay lines add folded optical path, while AOMs
   support square, sine, or sawtooth RF modulation — the square drive by its duty
   cycle, the two continuous ones by a modulation depth. A ramp's rise fraction
@@ -132,8 +134,10 @@ normals; its paraxial readouts still depend only on vertex curvature. It does no
   calibrated off-axis aberrations. Outside the bounded coherent cases below,
   the app does not model carrier
 phase or interference; it also does not model diffraction-limited propagation,
-higher-order pulse dispersion, arbitrary spectral phase, input chirp beyond its configured
-state, or laboratory-specific calibration. The pulse
+higher-order pulse dispersion, arbitrary spectral phase or pulse-shape distortion, or
+laboratory-specific calibration. Input chirp is a signed quadratic-phase estimate derived
+from duration and bandwidth; broad flat-top supercontinua instead use endpoint group-delay
+spread. The pulse
 compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
 
 Its bounded coherent model applies only to sized monochromatic CW sources and

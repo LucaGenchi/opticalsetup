@@ -239,22 +239,37 @@ export const wikiEntries = [
         <p>Every pulsed detector reports accumulated group-delay dispersion (GDD) in
         fs². Catalogue-glass bodies add their traced distance through the selected
         Sellmeier material; zero-thickness lenses and objectives add the clearly marked
-        estimates described on their own pages. For a transform-limited Gaussian input,
-        the detector also reports the corresponding broadened duration, and the travelling
-        packet length follows that duration locally: it grows through glass and contracts
-        when a Pulse Compressor cancels the accumulated GDD. GDD remains the
+        estimates described on their own pages. For a Gaussian input, the configured
+        bandwidth sets the transform-limited duration. When the authored pulse is longer,
+        OpticalSetup interprets the difference as quadratic spectral phase; <em>Input
+        chirp</em> supplies the sign that duration and bandwidth alone cannot reveal. Glass
+        of the opposite sign can therefore compress the pulse to its transform limit before
+        stretching it again.</p>
+        <p>Sech² pulses use the same signed-phase construction, but their dispersed FWHM is
+        read from a deterministic numerical Fourier-propagation table rather than the
+        Gaussian formula. Interpolation was checked against a denser calculation to 0.12%
+        over |GDD|/τ₀² ≤ 20 and continues with the 2π·0.315 large-dispersion asymptote.
+        Detector, autocorrelator, probe, scope, and travelling packet all consume this one
+        duration model. GDD remains the
         primary number because it is additive and meaningful even when a 150&nbsp;fs pulse
         changes too little to notice.</p>`,
       formulas: [
-        { tex: '\\tau_{out}=\\tau_{in}\\sqrt{1+\\left(4\\ln 2\\,\\mathrm{GDD}/\\tau_{in}^{2}\\right)^2}', caption: 'Second-order broadening of a transform-limited Gaussian pulse.' },
+        { tex: '\\tau_{out}=\\tau_0\\sqrt{1+\\left(4\\ln 2\\,(\\phi_{in}+\\mathrm{GDD})/\\tau_0^{2}\\right)^2}', caption: 'Gaussian duration from the bandwidth-limited width τ₀ and the signed sum of input and path GDD.' },
+        { tex: '|\\phi_{in}|=\\frac{\\tau_0^2}{4\\ln 2}\\sqrt{(\\tau_{in}/\\tau_0)^2-1}', caption: 'Magnitude of the quadratic input phase inferred from a Gaussian pulse whose configured duration exceeds its transform limit; the Input chirp control supplies the missing sign.' },
       ],
       limitations: `<p>There is no modeled gain medium, cavity, or mode-locking mechanism —
         repetition rate, duration, and shape are configured directly. The duration estimate
-        uses second-order GDD only and is shown only for a transform-limited Gaussian input;
-        pre-existing chirp, third- and higher-order dispersion, self-phase modulation, and
-        material absorption are not inferred. Divergence and M² are not modeled.</p>`,
+        represents only quadratic phase for Gaussian and sech² inputs. It does not reconstruct
+        arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
+        distortion, or material absorption. A duration-bandwidth pair below its transform
+        limit is reported as inconsistent rather than assigned invented phase. Divergence and
+        M² are not modeled.</p>`,
     },
     related: ['cwlaser', 'sclaser', 'pulsecompressor', 'objective', 'stage'],
+    citations: [
+      { label: 'M. Karpiński et al., “Control and Measurement of Quantum Light Pulses for Quantum Information Science and Technology,” Advanced Quantum Technologies 4, 2000150 (2021) — quadratic spectral phase and dispersive pulse broadening', url: 'https://doi.org/10.1002/qute.202000150' },
+      { label: 'P. Lazaridis, G. Debarge and P. Gallion, “Time–bandwidth product of chirped sech² pulses,” Optics Letters 20, 1160–1162 (1995) — exact sech² chirp/time-bandwidth relation', url: 'https://doi.org/10.1364/OL.20.001160' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Mode Locking', url: 'https://www.rp-photonics.com/mode_locking.html' },
       { label: 'RP Photonics Encyclopedia — Time–Bandwidth Product', url: 'https://www.rp-photonics.com/time_bandwidth_product.html' },
@@ -291,17 +306,20 @@ export const wikiEntries = [
         loss. A negative setting compresses only when it cancels positive GDD already on
         the path — placed before any glass, the same negative magnitude broadens a
         transform-limited pulse instead.</p>
-        <p>For a transform-limited Gaussian source, the travelling packet overlay reads the
-        local accumulated GDD along each traced segment. Its envelope grows continuously
-        through catalogue glass and changes at the compressor, so the same pulse can be
-        watched stretching and then returning toward its input length. The true duration,
-        GDD, and stretch factor remain available numerically at a downstream detector.</p>`,
+        <p>For Gaussian and sech² sources, the travelling packet overlay reads the local
+        accumulated GDD along each traced segment. A chirped source also carries a signed
+        input GDD inferred from its bandwidth and duration, so a compressor can shorten it
+        to the transform limit and further GDD stretches it again. Flat-top supercontinua
+        use the endpoint group-delay difference across their full band. The true duration,
+        model name, GDD, and stretch or compression factor remain available numerically at a
+        downstream detector.</p>`,
       formulas: [],
       limitations: `<p>This is a lumped second-order phase proxy, not a physical compressor
         prescription. It does not trace the compressor's internal grating, prism, or
         chirped-mirror geometry; it does not model carrier phase, third-order dispersion,
-        spatial chirp, pulse-front tilt, nonlinear phase, or an independently authored
-        input chirp. On-screen packet length is a qualitative glyph with an 8× display cap;
+        spatial chirp, pulse-front tilt, nonlinear phase, or arbitrary spectral phase. Input
+        chirp is limited to the positive/negative quadratic-phase estimate implied by the
+        authored duration and bandwidth. On-screen packet length is a qualitative glyph;
         detector numbers retain the unclamped second-order result.</p>`,
     },
     related: ['pulsedlaser', 'glassrod', 'prism', 'detector'],
@@ -361,8 +379,8 @@ export const wikiEntries = [
         sech²) are set directly rather than derived: in a real source they depend on the
         pump and on the nonlinear fibre that generated the continuum, neither of which is
         modelled here, and a continuum fresh out of the fibre is typically heavily chirped
-        and picoseconds long. The autocorrelator and the beam probe report the duration
-        you set.</p>
+        and picoseconds long. The duration you set is therefore the input to the propagation
+        estimate, not a claim that the continuum is transform-limited.</p>
         <p>The one limit the setting cannot cross is the transform limit. No pulse can be
         shorter than its own spectrum allows, so the duration has a floor set by the
         band, which the inspector shows as <em>Transform limit</em>. For a band hundreds of
@@ -372,19 +390,31 @@ export const wikiEntries = [
         fallen below the new floor. Widening the band never shortens the duration you set.
         The two endpoints are kept at least 10&nbsp;nm apart: typing one past the other
         stops it a step short, because a band of zero width has no transform limit at
-        all.</p>`,
+        all.</p>
+        <h3>Broad-band temporal spread</h3>
+        <p>A centre-wavelength GDD is not extended across this flat band. For every traced
+        length of catalogue glass, OpticalSetup evaluates the Sellmeier group index at both
+        authored endpoints and accumulates their signed group-delay difference. The displayed
+        duration is the input duration and that endpoint spread added in quadrature. This is
+        a robust first arrival-to-last arrival estimate for the declared flat spectrum, and
+        detector, scope, probe and pulse packets use the same accumulated value.</p>`,
       formulas: [
         { tex: '\\Delta t_{\\min} = \\frac{K}{c\\left(1/\\lambda_{\\min} - 1/\\lambda_{\\max}\\right)}', caption: 'The shortest pulse the band can carry. The denominator is the exact frequency span of the band, not the λ²/Δλ approximation, which drifts by several percent once the band is hundreds of nanometres wide. K is the time–bandwidth product of the chosen envelope: 0.441 for Gaussian, 0.315 for sech².' },
+        { tex: '\\Delta T=L\\,[n_g(\\lambda_{max})-n_g(\\lambda_{min})]/c,\\qquad \\tau_{out}\\approx\\sqrt{\\tau_{in}^{2}+\\Delta T^{2}}', caption: 'Flat-band endpoint group-delay-spread model used for each traced catalogue-glass length.' },
       ],
       limitations: `<p>The spectrum is an idealized flat top, not a measured shape with the
         peaks, dips, and edge roll-off of a real continuum, and its shape does not change
         with pump power. No broadening is simulated: the band is declared, not generated
         from a pump and a nonlinear fibre. Pulse-to-pulse spectral noise, a real limitation
-        of these sources, is not represented. Dispersion does not yet stretch these pulses:
-        the duration stays as set through glass and compressors, although a real continuum
-        spreads strongly across its band.</p>`,
+        of these sources, is not represented. The endpoint estimate is not a propagated
+        complex field: it cannot reproduce sub-pulses, wavelength-dependent intensity,
+        non-monotonic group delay, higher-order phase inside the band, or nonlinear evolution.
+        It is a bounded temporal-span estimate, not a pulse-reconstruction claim.</p>`,
     },
     related: ['cwlaser', 'pulsedlaser', 'prism', 'filter'],
+    citations: [
+      { label: 'J. M. Dudley, G. Genty and S. Coen, “Supercontinuum generation in photonic crystal fiber,” Reviews of Modern Physics 78, 1135–1184 (2006) — temporal structure, coherence and higher-order dispersion limits of real continua', url: 'https://doi.org/10.1103/RevModPhys.78.1135' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Supercontinuum Generation', url: 'https://www.rp-photonics.com/supercontinuum_generation.html' },
       { label: 'RP Photonics Encyclopedia — Photonic Crystal Fibers', url: 'https://www.rp-photonics.com/photonic_crystal_fibers.html' },
@@ -4713,7 +4743,7 @@ export const wikiEntries = [
         reading changes — a Gaussian assumption on a sech² source reads about 9% long, and
         the inspector says so explicitly, naming the true duration beside the inferred one.
         That disagreement is the lesson the component exists to teach.</p>
-        <p>For a transform-limited Gaussian source, the reading is taken from the pulse that
+        <p>The reading is taken from the pulse that
         <em>arrives</em> rather than the one that was emitted. Put a
         <a href="../glassrod/">glass rod</a> in the path and the autocorrelator measures the
         stretched duration; add a <a href="../pulsecompressor/">pulse compressor</a> with the
@@ -4721,12 +4751,12 @@ export const wikiEntries = [
         <em>Ultrashort pulse chirping</em> example is built around exactly that comparison,
         with three autocorrelators reading the same pulse under three different dispersion
         conditions.</p>
-        <p>That qualification is not decoration. The broadening is computed from a closed-form
-        Gaussian result, so it is only derived when the source is both transform-limited and
-        Gaussian. Switch the source to sech&sup2;, or clear its transform-limited box, and no
-        stretched duration exists to report: the instrument falls back to the duration
-        configured on the source, and the inspector says so in as many words rather than
-        letting a dispersion measurement be read out of a number that never moved.</p>
+        <p>The duration-model row states where that arriving width came from: closed-form
+        Gaussian GDD, numerically tabulated sech² GDD, a bandwidth-derived positive or negative
+        input chirp, a flat-band endpoint group-delay spread, or the explicit 0&nbsp;nm
+        bandwidth exception. The autocorrelation still cannot determine chirp itself; it is
+        displaying the scene's propagation model and then applying the instrument's chosen
+        deconvolution factor.</p>
         <h3>Cross-correlation mode</h3>
         <p><strong>Measurement mode</strong> switches the same box between correlating one
         source against itself and correlating <em>two</em> sources against each other. In

@@ -1,7 +1,7 @@
 // Pure helpers for pulse timing and canvas-only packet visualization.
 // Optical path lengths are expressed in millimetres and time in nanoseconds.
 
-import { gaussianPulseDurationAfterGDD } from './glass.js';
+import { pulseDurationAfterDispersion } from './glass.js';
 
 export const C_MM_PER_NS = 299.792458;
 
@@ -269,38 +269,43 @@ export function pointAtOpticalPath(track, target) {
   return sample ? { x: sample.x, y: sample.y, angle: sample.angle } : null;
 }
 
-// The local temporal envelope represented at one position on a traced path.
-// Only a transform-limited Gaussian has enough authored information for the
-// second-order GDD formula to determine a duration. Other pulse shapes keep
-// their configured width rather than receiving an invented chirp model.
-function pulseEnvelopeAtSample(track, sample, target) {
-  if (!sample || !track.pulse) return null;
-  const inputPulseWidthFs = Math.min(1e9, Math.max(1, track.pulse.pulseWidthFs || 100));
-  let gddFs2 = 0;
-  let previous = null;
-  for (const event of (Array.isArray(track.gddTrace) ? track.gddTrace : [])) {
-    if (!Number.isFinite(event?.opl) || !Number.isFinite(event?.gdd)) continue;
+function traceValueAt(events, target, key) {
+  let value = 0, previous = null;
+  for (const event of (Array.isArray(events) ? events : [])) {
+    if (!Number.isFinite(event?.opl) || !Number.isFinite(event?.[key])) continue;
     if (target < event.opl - 1e-9) {
       if (previous && event.linear === true && event.opl > previous.opl) {
         const t = Math.min(1, Math.max(0, (target - previous.opl) / (event.opl - previous.opl)));
-        gddFs2 = previous.gdd + (event.gdd - previous.gdd) * t;
-      } else if (previous) {
-        gddFs2 = previous.gdd;
-      }
-      previous = null;
+        value = previous[key] + (event[key] - previous[key]) * t;
+      } else if (previous) value = previous[key];
       break;
     }
     previous = event;
-    gddFs2 = event.gdd;
+    value = event[key];
   }
-  const canDerive = track.pulse.transformLimited === true
-    && (track.pulse.pulseShape || 'gauss') === 'gauss';
-  const derived = canDerive
-    ? gaussianPulseDurationAfterGDD(inputPulseWidthFs, gddFs2) : null;
-  const pulseWidthFs = Number.isFinite(derived) ? derived : inputPulseWidthFs;
+  return value;
+}
+
+// The local temporal envelope represented at one position on a traced path.
+// The same source metadata and accumulated dispersion feed detector readouts,
+// probes, scopes and these travelling packets, so their durations cannot drift.
+function pulseEnvelopeAtSample(track, sample, target) {
+  if (!sample || !track.pulse) return null;
+  const inputPulseWidthFs = Math.min(1e9, Math.max(1, track.pulse.pulseWidthFs || 100));
+  const gddFs2 = traceValueAt(track.gddTrace, target, 'gdd');
+  const groupDelayDifferenceFs = traceValueAt(
+    track.groupDelayDifferenceTrace, target, 'value',
+  );
+  const derived = pulseDurationAfterDispersion(
+    track.pulse, gddFs2, groupDelayDifferenceFs,
+  );
+  const pulseWidthFs = Number.isFinite(derived?.durationFs)
+    ? derived.durationFs : inputPulseWidthFs;
   const stretchFactor = pulseWidthFs / inputPulseWidthFs;
   return {
     gddFs2,
+    groupDelayDifferenceFs,
+    dispersionModel: derived?.model ?? null,
     inputPulseWidthFs,
     pulseWidthFs,
     stretchFactor,
@@ -313,7 +318,7 @@ function pulseEnvelopeAtSample(track, sample, target) {
     // stays clearly visible while the extremes stop swamping the bench.
     // The real duration and factor remain un-clamped on the marker for
     // readback and detector reporting.
-    visualStretch: Math.min(3, Math.sqrt(Math.max(1, stretchFactor))),
+    visualStretch: Math.min(3, Math.max(0.4, Math.sqrt(stretchFactor))),
   };
 }
 

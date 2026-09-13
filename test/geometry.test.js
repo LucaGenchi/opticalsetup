@@ -223,10 +223,16 @@ test('pulsed lasers produce optical-path tracks and physical detector arrival ti
   const detector = createElement('detector', 52 + C_MM_PER_NS + 19, 0);
   const scene = traceScene([laser, detector]);
   assert.ok(scene.pulseTracks.length > 0);
-  assert.deepEqual(scene.pulseTracks[0].pulse, {
-    sourceId: laser.id, repRateMHz: 80, pulseWidthFs: 120, phaseNs: 0,
-    centerWavelengthNm: 532, pulseShape: 'gauss', transformLimited: true,
-  });
+  const tracedPulse = scene.pulseTracks[0].pulse;
+  assert.equal(tracedPulse.sourceId, laser.id);
+  assert.equal(tracedPulse.repRateMHz, 80);
+  assert.equal(tracedPulse.pulseWidthFs, 120);
+  assert.equal(tracedPulse.phaseNs, 0);
+  assert.equal(tracedPulse.centerWavelengthNm, 532);
+  assert.equal(tracedPulse.pulseShape, 'gauss');
+  assert.equal(tracedPulse.transformLimited, true);
+  assert.ok(tracedPulse.bandwidthNm > 0, 'pulse track carries the spectrum needed for dispersion');
+  assert.equal(tracedPulse.inputChirp, 'positive');
   const reading = detectorReading(detector.id);
   assert.ok(reading.pulse);
   assert.ok(Math.abs(reading.pulse.earliestPathDelayNs - 1) < 1e-9);
