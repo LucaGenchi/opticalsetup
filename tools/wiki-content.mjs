@@ -5245,6 +5245,111 @@ export const wikiEntries = [
   },
 
   {
+    type: 'polygonscanner',
+    title: 'Polygon scanner',
+    category: 'Mirrors',
+    realWorld: {
+      html: `
+        <p>A <strong>rotating polygon scanner</strong> is a prism of flat mirror facets
+        cut around a wheel, spun continuously by a motor. Each facet sweeps the beam
+        through one line; as it passes out of the beam the next facet picks it up at the
+        start of the next line. The idea is old enough to be everywhere without being
+        noticed — it is the mechanism inside laser printers, supermarket barcode
+        scanners, many LiDAR heads, and the line-scanning laser processing systems used
+        for high-throughput marking and ablation.</p>
+        <p>Its advantage over a <a href="../galvo/">galvo mirror</a> is that the motion
+        never reverses. A galvo has to decelerate, stop and accelerate back at the end of
+        every line, and the settling that follows is what limits how fast it can scan. A
+        polygon turns one way at constant speed, so there is no turnaround to wait for
+        and the line rate is set purely by how fast the motor spins and how many facets
+        it carries:</p>`,
+      formulas: [
+        { tex: 'f_{\\text{line}} = \\frac{N \\cdot \\text{RPM}}{60}', caption: 'Lines per second, for N facets. A 12-facet wheel at 30,000 RPM delivers 6,000 lines per second — a rate no galvo of comparable aperture can approach.' },
+        { tex: '\\Delta\\theta_{\\text{optical}} = \\frac{4\\pi}{N}', caption: 'The optical sweep one facet delivers. Reflection doubles a mechanical angle, and the wheel turns through a full facet pitch 2π/N while one facet crosses the beam, so fewer facets buy a wider scan and a lower line rate.' },
+      ],
+      html2: `
+        <p>What you pay for that speed is <strong>pupil walk</strong>. A galvo pivots
+        about its own face, so the beam leaves from roughly the same place and only the
+        angle changes. A polygon facet is offset from the rotation axis, so as the wheel
+        turns the reflection point slides bodily along the facet and the beam translates
+        as well as tilting. Scan lenses for polygon systems are designed around that
+        moving pupil, and facets are made generously larger than the beam so it has room
+        to walk.</p>
+        <p>The other cost is the gap between facets. For part of every rotation the beam
+        straddles the edge between two facets and is split in two, each half leaving at a
+        completely different angle. Nothing useful can be done with that light, so the
+        source is gated off across the transition — the scanner's <em>duty cycle</em> is
+        the fraction of each facet period that survives. A wider beam eats more of the
+        facet and leaves less duty, which is the trade behind the large wheels in
+        high-power line-scanning heads.</p>
+        <p>Because every facet is cut and mounted separately, real wheels also carry
+        facet-to-facet angular errors. A facet tilted a fraction of a milliradian out of
+        plane puts its line slightly above or below the others, and since the error
+        repeats once per revolution it shows up as periodic banding in the scanned
+        image — the reason precision systems either specify pyramidal error tightly or
+        correct it actively.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The component is a regular polygon centred on its rotation axis, and the
+        vertices that draw it are the same vertices that get traced: every facet you can
+        see is a real mirror surface, so there is no separate abstract scan angle that
+        could disagree with the picture. Each facet reflects by the ordinary vector law
+        of reflection used by the plain <a href="../mirror/">mirror</a>, which means the
+        2× angle doubling and the pupil walk are not written into the model — they simply
+        come out of turning the geometry.</p>
+        <p><strong>Rotation</strong> runs the wheel continuously at a set RPM, or holds a
+        <em>static phase</em> so you can step through a facet by hand. The
+        <em>facet rate</em> readout gives the physical lines per second at all times,
+        even when playback is slowing the visible motion down for inspection.</p>
+        <p>The <strong>usable scan window</strong> is an ideal synchronized blanker: a
+        centred fraction of each facet period during which the facets reflect, with the
+        hub drawn green. Outside it the facets absorb, the hub turns amber, and no
+        outgoing ray remains — the modelled equivalent of gating the source across a
+        facet transition.</p>
+        <p>The wheel is opaque, so a facet reflectivity below 100% loses the remainder to
+        the coating rather than transmitting it. That is deliberate: a solid metal wheel
+        has no way to pass light, and letting it through would produce spurious
+        reflections off the inside faces of the far facets.</p>`,
+      formulas: [
+        { tex: 'w_{\\text{facet}} = D \\sin\\!\\left(\\frac{\\pi}{N}\\right)', caption: 'The facet width readout — the chord of one facet. This is the number to compare a beam width against: over one facet period the facet travels its whole chord through the beam, so a beam occupying a fraction f of it is on a single facet for only about 1 − f of the period.' },
+      ],
+      limitations: `<p>The scan window is <strong>not derived from your beam</strong>.
+        It is a fraction of the facet period centred on the facet, and the component has
+        no knowledge of what is illuminating it, so a window left wider than the geometry
+        supports will show the beam splitting across two facets while the hub still reads
+        open. That split is real behaviour — it is what the blanking exists to hide — but
+        choosing the window to suit the beam is left to you. Oblique incidence tightens
+        it further and asymmetrically: the footprint on the facet is the beam width
+        divided by the cosine of the incidence angle, and that angle grows on one side of
+        the sweep and shrinks on the other, so the clean window is both narrower than the
+        facet ratio suggests and not centred on the facet.</p>
+        <p>Blanking is an ideal switch synchronized to the facet, not a model of how any
+        particular controller drives a source. Every facet is perfect and identical:
+        there is no pyramidal or facet-to-facet angular error, so none of the periodic
+        line banding that characterizes real wheels appears, and no bearing wobble,
+        windage, or timing jitter. There is no f-theta or telecentric scan lens — put an
+        ordinary lens after the wheel and the focus moves as f·tan θ, with the pincushion
+        that implies. Nothing here predicts a diffraction-limited spot size, and the
+        second scan axis that turns lines into an area is out of the plane and not
+        modelled.</p>`,
+    },
+    extraDemos: [{
+      example: 'polygon-scanner-line-scanning',
+      heading: 'A line-scanning bench, with its evidence',
+      caption: 'A 12-facet 100&nbsp;mm wheel at 1,000&nbsp;RPM — 200 lines per second — sweeping a focus across a '
+        + 'detector, annotated with what the source datasheet actually states and what is free interpretation. '
+        + 'Its window is set to 56%, the widest this wheel scans before the 6&nbsp;mm beam starts to straddle two '
+        + 'facets; open it in the canvas and widen the window past that to watch the transition the blanking hides.',
+    }],
+    related: ['galvo', 'mirror', 'aod'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Laser Scanners', url: 'https://www.rp-photonics.com/laser_scanners.html' },
+      { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
+    ],
+  },
+
+  {
     type: 'retroreflector',
     title: 'Retroreflector',
     category: 'Mirrors',

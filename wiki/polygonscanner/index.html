@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polygon scanner — Optics Encyclopedia | OpticalSetup</title>
+<meta name="description" content="Traces reflection from every facet of a rotating regular polygon, so the angle doubling and the pupil walk fall out of the geometry rather than being modelled. Facet rate = facets × RPM / 60. The usable window is ideal synchronized blanking centred on the facet — green hub open, amber blanked — and is not derived from your beam: compare the beam against the facet width readout and close the window before the beam straddles two facets. No telecentric scan optics, facet-to-facet angular error, or material removal model. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<link rel="canonical" href="https://opticalsetup.com/wiki/polygonscanner/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Polygon scanner — OpticalSetup Encyclopedia">
+<meta property="og:description" content="Traces reflection from every facet of a rotating regular polygon, so the angle doubling and the pupil walk fall out of the geometry rather than being modelled. Facet rate = facets × RPM / 60. The usable window is ideal synchronized blanking centred on the facet — green hub open, amber blanked — and is not derived from your beam: compare the beam against the facet width readout and close the window before the beam straddles two facets. No telecentric scan optics, facet-to-facet angular error, or material removal model.">
+<meta property="og:url" content="https://opticalsetup.com/wiki/polygonscanner/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/katex.min.css">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell">
+    
+    <nav class="wiki-nav" aria-label="Component wiki index">
+      <h2>Components</h2>
+      
+        <div class="cat">
+          <div class="cat-name">Sources</div>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Mirrors</div>
+          <ul><li><a href="../../wiki/mirror/" class="">Mirror</a></li><li><a href="../../wiki/cmirrorx/" class="">Convex mirror</a></li><li><a href="../../wiki/cmirror/" class="">Concave mirror</a></li><li><a href="../../wiki/oap/" class="">Parabolic mirror</a></li><li><a href="../../wiki/galvo/" class="">Galvo mirror</a></li><li><a href="../../wiki/polygonscanner/" class="current">Polygon scanner</a></li><li><a href="../../wiki/retroreflector/" class="">Retroreflector</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lenses</div>
+          <div class="cat-sub">Ideal lenses</div><ul><li><a href="../../wiki/lens/" class="">Thin convex lens</a></li><li><a href="../../wiki/lensc/" class="">Thin concave lens</a></li><li><a href="../../wiki/telescope/" class="">Conjugated thin lens pair</a></li><li><a href="../../wiki/objective/" class="">Objective</a></li></ul><div class="cat-sub">Real lenses</div><ul><li><a href="../../wiki/thicklens/" class="">Thick spherical lens</a></li><li><a href="../../wiki/lensgroup/" class="">Lens group</a></li><li><a href="../../wiki/asphericlens/" class="">Aspheric lens</a></li></ul><div class="cat-sub">Metalenses</div><ul><li><a href="../../wiki/metalens/" class="">Metalens</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Fibers</div>
+          <ul><li><a href="../../wiki/fiber/" class="">Optical fiber</a></li><li><a href="../../wiki/barefiber/" class="">Bare fiber</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Filters &amp; Splitters</div>
+          <ul><li><a href="../../wiki/bs/" class="">Beamsplitter</a></li><li><a href="../../wiki/filter/" class="">Filter</a></li><li><a href="../../wiki/dichroic/" class="">Dichroic mirror</a></li><li><a href="../../wiki/etalon/" class="">Etalon (Fabry–Pérot)</a></li><li><a href="../../wiki/vipa/" class="">VIPA (Virtually Imaged Phased Array)</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Dispersive elements</div>
+          <ul><li><a href="../../wiki/freeglass/" class="">Freeform glass</a></li><li><a href="../../wiki/grating/" class="">Diffraction grating</a></li><li><a href="../../wiki/prism/" class="">Prism</a></li><li><a href="../../wiki/diffuser/" class="">Diffuser</a></li><li><a href="../../wiki/glassrod/" class="">Glass rod</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Polarization</div>
+          <ul><li><a href="../../wiki/polarizer/" class="">Polarizer</a></li><li><a href="../../wiki/hwp/" class="">Half-wave plate</a></li><li><a href="../../wiki/qwp/" class="">Quarter-wave plate</a></li><li><a href="../../wiki/pbs/" class="">Polarizing beamsplitter</a></li><li><a href="../../wiki/isolator/" class="">Optical isolator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Beam Block</div>
+          <ul><li><a href="../../wiki/slit/" class="">Slit</a></li><li><a href="../../wiki/beamdump/" class="">Beam dump</a></li><li><a href="../../wiki/blocker/" class="">Invisible blocker</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Wavefront Shaping</div>
+          <ul><li><a href="../../wiki/slm/" class="">Spatial light modulator</a></li><li><a href="../../wiki/metasurface/" class="">Metasurface</a></li><li><a href="../../wiki/dmd/" class="">Digital micromirror device</a></li><li><a href="../../wiki/dm/" class="">Deformable mirror</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Detectors</div>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Modulators</div>
+          <div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Pulse Timing</div>
+          <ul><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Specimens</div>
+          <ul><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+    </nav>
+    <main class="wiki-article">
+      <div class="crumb"><a href="../../wiki/">Wiki</a> / <a href="../../wiki/#mirrors">Mirrors</a> / Polygon scanner</div>
+      <div class="article-head">
+        <div class="article-icon"><svg viewBox="-40 -40 80 80" aria-hidden="true"><polygon points="-28.977774788672047,7.76457135307563 -28.977774788672054,-7.764571353075611 -21.21320343559643,-21.213203435596423 -7.764571353075619,-28.97777478867205 7.764571353075609,-28.977774788672054 21.21320343559642,-21.21320343559643 28.97777478867205,-7.76457135307562 28.977774788672054,7.764571353075607 21.21320343559645,21.2132034355964 7.764571353075622,28.97777478867205 -7.764571353075605,28.977774788672054 -21.2132034355964,21.21320343559645" fill="#cbd5e1" stroke="#475569" stroke-width="2"/><circle r="10.799999999999999" fill="#64748b" stroke="#334155" stroke-width="1"/><circle r="2.5" fill="#16a34a"/></svg></div>
+        <div>
+          <h1>Polygon scanner</h1>
+        </div>
+      </div>
+      <p class="tagline">Traces reflection from every facet of a rotating regular polygon, so the angle doubling and the pupil walk fall out of the geometry rather than being modelled. Facet rate = facets × RPM / 60. The usable window is ideal synchronized blanking centred on the facet — green hub open, amber blanked — and is not derived from your beam: compare the beam against the facet width readout and close the window before the beam straddles two facets. No telecentric scan optics, facet-to-facet angular error, or material removal model.</p>
+      <a class="place-cta" href="../../sketch/?demo=polygonscanner">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?demo=polygonscanner&amp;embed=1"
+          title="Polygon scanner — a live trace of the scene described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace, not a picture of one — but this preview is not interactive. Open it in the canvas to move things, change parameters, and save or export your own version.</p>
+
+      <h3 class="extra-demo-head">A line-scanning bench, with its evidence</h3>
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=polygon-scanner-line-scanning&amp;embed=1"
+          title="A line-scanning bench, with its evidence"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A 12-facet 100&nbsp;mm wheel at 1,000&nbsp;RPM — 200 lines per second — sweeping a focus across a detector, annotated with what the source datasheet actually states and what is free interpretation. Its window is set to 56%, the widest this wheel scans before the 6&nbsp;mm beam starts to straddle two facets; open it in the canvas and widen the window past that to watch the transition the blanking hides.</p>
+
+      <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
+      
+        <p>A <strong>rotating polygon scanner</strong> is a prism of flat mirror facets
+        cut around a wheel, spun continuously by a motor. Each facet sweeps the beam
+        through one line; as it passes out of the beam the next facet picks it up at the
+        start of the next line. The idea is old enough to be everywhere without being
+        noticed — it is the mechanism inside laser printers, supermarket barcode
+        scanners, many LiDAR heads, and the line-scanning laser processing systems used
+        for high-throughput marking and ablation.</p>
+        <p>Its advantage over a <a href="../galvo/">galvo mirror</a> is that the motion
+        never reverses. A galvo has to decelerate, stop and accelerate back at the end of
+        every line, and the settling that follows is what limits how fast it can scan. A
+        polygon turns one way at constant speed, so there is no turnaround to wait for
+        and the line rate is set purely by how fast the motor spins and how many facets
+        it carries:</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>f</mi><mtext>line</mtext></msub><mo>=</mo><mfrac><mrow><mi>N</mi><mo>⋅</mo><mtext>RPM</mtext></mrow><mn>60</mn></mfrac></mrow><annotation encoding="application/x-tex">f_{\text{line}} = \frac{N \cdot \text{RPM}}{60}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">line</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0463em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">60</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord text"><span class="mord">RPM</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">Lines per second, for N facets. A 12-facet wheel at 30,000 RPM delivers 6,000 lines per second — a rate no galvo of comparable aperture can approach.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi mathvariant="normal">Δ</mi><msub><mi>θ</mi><mtext>optical</mtext></msub><mo>=</mo><mfrac><mrow><mn>4</mn><mi>π</mi></mrow><mi>N</mi></mfrac></mrow><annotation encoding="application/x-tex">\Delta\theta_{\text{optical}} = \frac{4\pi}{N}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.9805em;vertical-align:-0.2861em;"></span><span class="mord">Δ</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0278em;">θ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0278em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">optical</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:2.0074em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">4</span><span class="mord mathnormal" style="margin-right:0.0359em;">π</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+      <div class="caption">The optical sweep one facet delivers. Reflection doubles a mechanical angle, and the wheel turns through a full facet pitch 2π/N while one facet crosses the beam, so fewer facets buy a wider scan and a lower line rate.</div>
+    </div>
+
+        <p>What you pay for that speed is <strong>pupil walk</strong>. A galvo pivots
+        about its own face, so the beam leaves from roughly the same place and only the
+        angle changes. A polygon facet is offset from the rotation axis, so as the wheel
+        turns the reflection point slides bodily along the facet and the beam translates
+        as well as tilting. Scan lenses for polygon systems are designed around that
+        moving pupil, and facets are made generously larger than the beam so it has room
+        to walk.</p>
+        <p>The other cost is the gap between facets. For part of every rotation the beam
+        straddles the edge between two facets and is split in two, each half leaving at a
+        completely different angle. Nothing useful can be done with that light, so the
+        source is gated off across the transition — the scanner's <em>duty cycle</em> is
+        the fraction of each facet period that survives. A wider beam eats more of the
+        facet and leaves less duty, which is the trade behind the large wheels in
+        high-power line-scanning heads.</p>
+        <p>Because every facet is cut and mounted separately, real wheels also carry
+        facet-to-facet angular errors. A facet tilted a fraction of a milliradian out of
+        plane puts its line slightly above or below the others, and since the error
+        repeats once per revolution it shows up as periodic banding in the scanned
+        image — the reason precision systems either specify pyramidal error tightly or
+        correct it actively.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
+      <div class="sim-block">
+        
+        <p>The component is a regular polygon centred on its rotation axis, and the
+        vertices that draw it are the same vertices that get traced: every facet you can
+        see is a real mirror surface, so there is no separate abstract scan angle that
+        could disagree with the picture. Each facet reflects by the ordinary vector law
+        of reflection used by the plain <a href="../mirror/">mirror</a>, which means the
+        2× angle doubling and the pupil walk are not written into the model — they simply
+        come out of turning the geometry.</p>
+        <p><strong>Rotation</strong> runs the wheel continuously at a set RPM, or holds a
+        <em>static phase</em> so you can step through a facet by hand. The
+        <em>facet rate</em> readout gives the physical lines per second at all times,
+        even when playback is slowing the visible motion down for inspection.</p>
+        <p>The <strong>usable scan window</strong> is an ideal synchronized blanker: a
+        centred fraction of each facet period during which the facets reflect, with the
+        hub drawn green. Outside it the facets absorb, the hub turns amber, and no
+        outgoing ray remains — the modelled equivalent of gating the source across a
+        facet transition.</p>
+        <p>The wheel is opaque, so a facet reflectivity below 100% loses the remainder to
+        the coating rather than transmitting it. That is deliberate: a solid metal wheel
+        has no way to pass light, and letting it through would produce spurious
+        reflections off the inside faces of the far facets.</p>
+<div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>w</mi><mtext>facet</mtext></msub><mo>=</mo><mi>D</mi><mi>sin</mi><mo>⁡</mo><mtext> ⁣</mtext><mrow><mo fence="true">(</mo><mfrac><mi>π</mi><mi>N</mi></mfrac><mo fence="true">)</mo></mrow></mrow><annotation encoding="application/x-tex">w_{\text{facet}} = D \sin\!\left(\frac{\pi}{N}\right)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">facet</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.836em;vertical-align:-0.686em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">D</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">sin</span><span class="mspace" style="margin-right:-0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size2">(</span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">π</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size2">)</span></span></span></span></span></span></span></div>
+      <div class="caption">The facet width readout — the chord of one facet. This is the number to compare a beam width against: over one facet period the facet travels its whole chord through the beam, so a beam occupying a fraction f of it is on a single facet for only about 1 − f of the period.</div>
+    </div>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The scan window is <strong>not derived from your beam</strong>.
+        It is a fraction of the facet period centred on the facet, and the component has
+        no knowledge of what is illuminating it, so a window left wider than the geometry
+        supports will show the beam splitting across two facets while the hub still reads
+        open. That split is real behaviour — it is what the blanking exists to hide — but
+        choosing the window to suit the beam is left to you. Oblique incidence tightens
+        it further and asymmetrically: the footprint on the facet is the beam width
+        divided by the cosine of the incidence angle, and that angle grows on one side of
+        the sweep and shrinks on the other, so the clean window is both narrower than the
+        facet ratio suggests and not centred on the facet.</p>
+        <p>Blanking is an ideal switch synchronized to the facet, not a model of how any
+        particular controller drives a source. Every facet is perfect and identical:
+        there is no pyramidal or facet-to-facet angular error, so none of the periodic
+        line banding that characterizes real wheels appears, and no bearing wobble,
+        windage, or timing jitter. There is no f-theta or telecentric scan lens — put an
+        ordinary lens after the wheel and the focus moves as f·tan θ, with the pincushion
+        that implies. Nothing here predicts a diffraction-limited spot size, and the
+        second scan axis that turns lines into an area is out of the plane and not
+        modelled.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/galvo/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><circle r="4.5" fill="#777" stroke="#444" stroke-width="1.2"/><g transform="rotate(0)"><line x1="0" y1="-10" x2="0" y2="10" stroke="#444" stroke-width="3"/></g><path d="M -9,-13 A 15 15 0 0 1 9,-13" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/><path d="M -9,13 A 15 15 0 0 0 9,13" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/></svg>Galvo mirror</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/aod/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-5" width="40" height="10" rx="3" fill="#d7bd68" stroke="#8a6f24" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3012">AOD</text></svg>AOD</a>
+      </div>
+
+      
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
+      <ul class="resource-list">
+        <li><a href="https://www.rp-photonics.com/laser_scanners.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Laser Scanners</a></li><li><a href="https://www.rp-photonics.com/mirrors.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Mirrors</a></li>
+      </ul>
+    </main>
+  </div>
+  <footer class="wiki-footer">OpticalSetup is a qualitative geometric-optics workbench, not a calibrated design package — every "In OpticalSetup" section above says exactly where the model simplifies reality.</footer>
+</body>
+</html>
