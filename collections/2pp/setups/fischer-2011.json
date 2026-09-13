@@ -313,7 +313,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Central π step: about 50% of depletion pupil area.\nBoth beams: circular polarization; 4 kHz / 3% gates.\nGeometric model: phase and arrivals only.\nNo depletion field, vectorial PSF, voxel size or curing.\n* Design choices: geometry, timing and power; see note.",
+        "text": "Central π step: about 50% of depletion pupil area.\nBoth beams: circular polarization; 4 kHz / 3% gates.\nGeometric model: phase and arrivals only.\nNo depletion field, vectorial PSF, voxel size or curing.\n* Design choice = free interpretation; not specified in the paper.",
         "fontSize": 18,
         "fill": "#475569"
       },

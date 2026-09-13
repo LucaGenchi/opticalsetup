@@ -18,6 +18,9 @@ voxel, dose or curing. A fixed-scale inset shows actual sampled ray arrivals.
 
 ## Evidence and architecture
 
+[Integration review](research/integration-review.md) records the exact tests,
+fresh reviewer findings and the remaining live-browser acceptance gate.
+
 - [Selection and exclusions](research/selection.md): eleven original branch
   reviews, all eight scores, and the reasons for retaining exactly five papers.
 - [Shared review](research/shared-review.md): current-head conflict decisions,

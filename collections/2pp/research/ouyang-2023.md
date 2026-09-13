@@ -1,73 +1,71 @@
-# Ouyang 2023 — evidence, use, and model limits
+# Ouyang 2023: programmable multi-focus writing
 
-**Paper:** Z. Ouyang et al., “Ultrafast 3D nanofabrication via digital holography,” *Nature Communications* 14, 1716 (2023). DOI: [10.1038/s41467-023-37163-y](https://doi.org/10.1038/s41467-023-37163-y).
+Wenqi Ouyang et al., [“Ultrafast 3D nanofabrication via digital holography,” *Nature Communications* 14, 1716 (2023)](https://doi.org/10.1038/s41467-023-37163-y). This integrated scene teaches the geometric route from a programmed DMD's selected angular orders through a Fourier filter and pupil relay to three sample-plane arrivals. It is an explicitly **800 nm central-wavelength view**, not a simulation of dispersion-compensated femtosecond fields or polymerization.
 
-This note distinguishes reported apparatus facts from the bounded OpticalSetup interpretation. It was checked against the 9-page article (SHA-256 `6bc3f492e12a5d12db9084b1b3d3ca0a98905019df929db748427646a3d35d38`) and 29-page supplement (SHA-256 `d3a3e5950cbe721b16355eccd1e95fb557e84fbc760ea79b24ef041006af17e0`).
+**Design choice = free interpretation; not specified in the paper.** This key applies to the folds, unreported spacings and apertures, monochromatic carrier view, selected frame/column, order count/angles, and drawing layout. The reported hardware values below have a different status.
 
-## Evidence table
+## Primary evidence
 
-| Item | Reported evidence | Scene treatment |
+Reviewed the nine-page article, including rendered Fig. 1 on p. 2, and the complete [29-page supplement](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-023-37163-y/MediaObjects/41467_2023_37163_MOESM1_ESM.pdf), including rendered Fig. S1 on p. 12 and Fig. S4/Note 2 on p. 15. Article SHA-256: `6bc3f492e12a5d12db9084b1b3d3ca0a98905019df929db748427646a3d35d38`; supplement: `d3a3e5950cbe721b16355eccd1e95fb557e84fbc760ea79b24ef041006af17e0`.
+
+| Reported fact | Primary location | Integrated treatment |
 | --- | --- | --- |
-| Identity and mechanism | Article p. 1 abstract; p. 2 Results and Fig. 1: 1 kHz femtosecond amplifier, up to 2000 hologram-generated foci, independently controlled amplitude/phase/location, and random-access scanning by sequential DMD holograms. | Native DMD set to a labelled 1D binary-hologram proxy. Focus count, angular span, and scan angle change both its displayed mask and traced output orders. |
-| Laser | Article p. 2 and supplement p. 2: Spitfire Pro, 800 nm, 1 kHz, 100 fs, 4 W average source output. | Pulsed source records `800 nm`, `0.001 MHz`, `100 fs`, and `4 W`. The 4 W is not treated as sample or per-focus power. |
-| Attenuation | Supplement p. 2 and Fig. S1 on p. 12: HWP followed by PBS adjusts power. | Native HWP and PBS are on the traced path. |
-| Angular-dispersion precompensation | Article p. 2; supplement pp. 2–3; Fig. S1 caption p. 12: reflective blazed grating, 600 lines/mm, followed by L1/L2 4f relay before the DMD. | Native reflective grating and two lenses trace to the DMD. The scene follows the caption/order drawing: L1 = 225 mm, L2 = 250 mm. |
-| L1/L2 conflict | Supplement p. 2 “System configuration” and Fig. S1 caption p. 12 state L1/L2 = 225/250 mm. The next subsection on p. 2 states 250/225 mm. | Conflict is labelled on the canvas and is not silently resolved. |
-| DMD | Supplement p. 2: TI DLP6500, 1920×1080, 7.56 µm pixels, synchronized to 1 kHz pulses; supplement pp. 4–5 describes Lee binary holograms, lateral/axial phase terms, superposed foci, and WGS uniformity optimization. | Hardware specifications are labels. The optical effect is a deterministic geometric proxy, not a Lee/WGS solver. The workbench’s 2D section represents at most eight focus orders. |
-| Fourier filtering and relay | Article p. 2 and Fig. 1; supplement p. 2 and Fig. S1: L3 = 150 mm forms a Fourier plane with a spatial filter for unwanted orders; L4 = 200 mm and objective L5 form the second 4f relay to the sample. | Native L3, slit/order filter, L4, dichroic, and objective form a computed path to the stage. |
-| Objective/sample | Supplement p. 2: Nikon CFI S Fluor 40× Oil, NA 1.3, WD 0.24 mm; FTO substrate on PI H-811.I2 six-axis positioner. | Native oil objective uses 5 mm EFL (40× with the app’s 200 mm reference tube lens), NA 1.3, WD 0.24 mm; resin stage receives real traced pulsed arrivals. |
-| Throughput settings | Supplement p. 3: 1–2000 foci, 1 kHz scan rate, 5 nJ per focus for best results; supplement p. 8 Table S1: one 100 fs pulse defines a voxel in the compared multi-focus condition. | These are documented, not converted into the source’s 4 W field. The scene demonstrates three representative foci; it does not claim the 2000-focus field or calibrated per-focus energy. |
-| Observation path | Supplement p. 2 and Fig. S1 p. 12: 589 nm GCI-060402 LED through single-mode fibre and M1 below the substrate; transmitted image returns through the shared objective and dichroic to L6 = 100 mm and FLIR Blackfly CCD. | A native 589 nm directional source is used as a **Free interpretation — not specified in the paper** proxy for fibre-delivered LED illumination. M1, resin, objective, dichroic, L6, and camera are all traced; the camera receives the 589 nm path. |
-| Nonlinear response | Supplement p. 15 Fig. S4 and Note 2: fitted nonlinear coefficients are 8.65 (IP-Dip), 7.19 (DETC), and 6.65 (CAS 55035-43-3 resin). The authors note that a 2PA process would be nearer 2–3 and infer participation of multiple photons at ultrahigh peak power. | No pure two-photon absorption coefficient, threshold, dose, or cure law is applied. The resin markers are explicitly qualitative. |
+| Spitfire Pro: 800 nm, 1 kHz, 100 fs, 4 W | Article p. 2; supplement p. 2 | Source settings retained; 4 W is source output, never per-focus/sample power. |
+| HWP/PBS attenuation; 600 lines/mm reflective grating | Supplement p. 2, S1 p. 12 | Native elements on the path; a design-choice dump receives the rejected PBS port. |
+| L1/L2 = 225/250 mm; L3/L4 = 150/200 mm | Article Fig. 1 caption; supplement S1 | Focal lengths retained. The supplement's later compensation subsection reverses L1/L2; the scene follows the article and S1 caption, without claiming that conflict is resolved. |
+| Grating incidence 49.43° | Supplement p. 3 | Retained in the native central-wavelength geometry. |
+| DLP6500, 1920 × 1080, 7.56 µm pixels, pulse-synchronized holograms | Supplement pp. 2, 4–5 | Shared illustrative binary frame and separate geometric orders. The drawn 48 mm aperture and 16 × 16 display are not the device's physical pixel prescription. |
+| Nikon 40× oil, NA 1.3, WD 0.24 mm; six-axis sample positioner | Supplement p. 2 | Native objective and static resin stage. Five-millimetre EFL follows the app's 200 mm reference and is a design choice. |
+| 1–2000 foci; 5 nJ/focus; single-pulse comparison | Supplement pp. 3, 8 | Documented, not used to calibrate the three representative orders or sample markers. |
+| Fitted nonlinear orders 8.65, 7.19, 6.65 in the prose | Supplement p. 15 | No two-photon-only cure law. Fig. S4 itself labels the final fit 6.66. |
 
-## Optical sequence and planes
+The paper's mechanism combines digitally encoded, independently positioned foci with a regenerative amplifier and material kinetics. Article pp. 2–4 also discuss ionization, diffusion and solidification. Geometric intersections do not reproduce those results, the reported 90/141 nm features, a high-NA PSF, WGS uniformity, or arbitrary 3D random access.
 
-The writing path is:
+## What is actually traced
 
-1. 800 nm amplified pulsed source → HWP/PBS power control.
-2. Reflective 600 lines/mm grating → L1/L2 precompensation relay → reflective DMD.
-3. DMD binary hologram → L3 → Fourier-plane spatial filter.
-4. L4 → dichroic → oil objective → photocurable resin on the six-axis stage.
+The writing train is amplifier → HWP/PBS → grating → folded L1/L2 relay → reflective DMD → L3 → Fourier-plane slit → L4 → dichroic fold → objective → mounted resin. Five added flat mirrors compact the upstream relay; they preserve unfolded path distances. All five folds and their mechanical arrangement are design choices.
 
-The grating/L1/L2 unit precompensates angular dispersion that the small-pitch DMD would otherwise introduce; it is not temporal focusing at the sample. L3’s Fourier plane is the order-selection plane. L4 and the objective relay/rescale the selected foci to the sample. The throughput mechanism is parallel, random-access placement of up to 2000 independently encoded foci, with one amplified pulse per voxel in the compared condition.
+The grating/doublet before the DMD has the paper's **compensation topology**, but the scene does not calculate its compensation. The DMD's geometric orders add wavelength-independent angles and do not model its physical diffraction dispersion. Therefore the source deliberately uses `transformLimited: false, bandwidth: 0`: one 800 nm carrier with 100 fs/1 kHz timing metadata. This is a geometric viewing convention, not a physical zero-bandwidth 100 fs pulse. Enabling source bandwidth exposes uncompensated spectral spread and does not demonstrate the reported compensation or pulse confinement. No compensating spectral slope has been invented.
 
-The observation path is independent at 589 nm: fibre LED → M1 → substrate/resin → shared objective → transmitted through the short-pass dichroic → L6 → CCD.
+The shared DMD displays the current 2D binary illustration, enlarged with its sampled column marked. Frame 0, column 6 of 16 is chosen so the entire 2 mm source beam is ON in the traced section. Changing a frame gates actual sampled rays. Separately enabled **Geometric holographic orders** split accepted light into equal-weight branches. Order count, span and steering do not synthesize or modify the displayed frame. Default playback is static; optional frame playback changes discretely at an illustrative rate, not at a claimed hardware-synchronized 1 kHz.
 
-## Free interpretation in the native scene
+The actual objective focus is on the resin plane. All admitted rays contribute to the shared arrival detail; its fixed ±250 µm field makes the small displacements visible without enlarging the optical geometry. It shows sampled positions/support, not calculated voxel dimensions or dose. The sample uses `transmitExc: true, transmission: 0` to stop the displayed writing rays at the specimen while retaining arrival markers. This is a display boundary, not a measured resin absorption.
 
-- **Free interpretation — not specified in the paper:** exact mechanical distances, clear apertures, incident beam diameter, and compact fold packing. Reported focal lengths and the two stated 4f relationships are retained.
-- **Free interpretation — not specified in the paper:** the fibre LED is represented by a directional 589 nm native source because OpticalSetup has no powered fibre-LED element.
-- **Bounded proxy:** the DMD samples a deterministic 1D binary mask and creates equal-weight angular orders for a chosen focus count/span. It does not synthesize the paper’s 2D Lee holograms, solve phase, reproduce the WGS algorithm, predict diffraction efficiency, or establish focus uniformity.
-- **2D projection:** lateral/axial 3D random access is reduced to an in-plane angular scan. The paper’s 299 × 554 × 760 µm³ work volume and 128/128/249 nm scan resolution are evidence, not canvas calibration.
+The **589 nm observation branch is omitted**, as the canvas states. In the paper it is fibre-coupled LED → M1 below the substrate → resin/substrate → shared objective → transmitted dichroic port → L6 (100 mm) → FLIR Blackfly CCD. The integrated scene makes no camera-image or observation-signal claim.
 
-## Control experiments
+## Optical planes and finite beam
 
-1. **Laser emission and power boundary.** Select the Spitfire source and clear **Emit traced rays**: every 800 nm writing ray and resin arrival disappears, while the independent 589 nm observation path remains. Re-enable it, then change **Average power** from 4 W. For positive power the peak-power readout and source metadata change, but normalized ray geometry and qualitative voxel markers do not. Setting power to 0 W stops writing; the independent observation source remains on. The collection handoff retains reported paper values. This deliberately demonstrates no calibrated cure/dose model is being claimed.
-2. **Single versus multi-focus hologram.** Select the DMD and set **Representative foci** from 3 to 1. Three traced angular orders collapse to one and one representative focus route reaches the resin. This demonstrates the scene’s distinguishing multi-focus mechanism, not a 3D PSF or the reported 2000-focus limit.
-3. **Random-access steering.** Change **Random-access scan** from 0° to +1° (larger angles can leave the finite relay aperture). The whole focus group shifts through the relay and at the sample. This is a 2D angular proxy for changing the tilted/spherical phase terms in sequential holograms.
-4. **Fourier-order selection.** Select the Fourier-plane slit and reduce **Gap** from 24 mm to about 4 mm. Outer representative orders are clipped while the central route survives. The result shows why an order filter is physically meaningful; it does not predict the paper’s exact aperture or diffraction efficiency.
+| Plane or distance | Native value |
+| --- | --- |
+| Grating | `(285, 180)` mm, incidence 49.43° |
+| Grating → L1 / L1 → L2 / L2 → DMD | 225 / 475 / 250 mm, including all folds |
+| DMD body / rotation | `(397.135169, 304.654720)` mm / 123° |
+| **DMD active face**, local x = −9 | `(402.036921, 297.106685)` mm |
+| L3 / Fourier filter / L4 | x = 552.036921 / 702.036921 / 902.036921 mm, at y = 297.106685 mm |
+| L4 → dichroic → BFP | 47.963079 + 152.036921 = 200 mm |
+| Objective true BFP and stop | `(950, 449.143606)` mm |
+| Equivalent refracting plane / resin | y = 454.143606 / 459.143606 mm |
 
-For each control, restore the stated default before comparing the next one. The default stage is static because the paper’s fast random access is performed by sequential DMD holograms; the six-axis stage is used for alignment and stitching, not as the per-voxel scanner.
+Using the active face rather than the DMD body centre, the unfolded L3/L4 matrix is `A = −4/3, B = 0, C = 0, D = −3/4`. The true BFP and stop coincide. The 2 mm source beam is a design choice that avoids the original scene's severe overfill: the default measured incident pupil extent is 2.993286 mm against a 13 mm pupil. This underfilled model does **not** realize the objective's rated NA 1.3 or calculate high-NA resolution.
 
-## Handoff to Two-Photon Lithography Lab
+Twenty-five independent native line probes across the entire configured source width reach all three orders at steering −1°, 0° and +1°. Each order's pupil centre remains within `1e−8 mm` of the axis; its complete footprint stays inside the pupil. The actual tilted DMD footprint produces small order-dependent beam-width changes, while each monochromatic group still has geometric focus span below `1e−8 mm`. These are ray-geometry checks, not field or throughput predictions.
 
-The native traced stage resolves the ordinary pulsed source and the objective’s NA. Current destination bounds accept 800 nm, 100 fs, and NA 1.3. They reject 0.001 MHz and 4000 mW as outside the calculator’s ranges. Those values remain in this source scene and note without coercion. The destination is single-focus and cannot accept this multi-focus DMD apparatus, per-focus dose, single-pulse initiation, fitted nonlinear order, WGS uniformity, or a 3D focus field.
+## Controls and checks
 
-## Remaining unsupported behavior
+Restore the defaults between comparisons.
 
-- Arbitrary binary hologram synthesis, phase recovery, WGS optimization, 99% focus uniformity, DMD switching electronics, and true 3D random access.
-- Angular-dispersion/pulse-front compensation as a time-dependent field calculation; the workbench traces spatial wavelength samples and ordinary lens/grating geometry only.
-- High-NA vectorial PSF, the reported 90/141 nm structures, refractive-index matching errors, cover-glass effects, depletion, plasma/ionization, radical diffusion, solidification, damage, and micro-explosions.
-- Calibrated pulse energy at each focus. The reported 5 nJ per focus and measured component efficiencies (64% grating, ~5% DMD, 82% objective, ~2.62% overall) are not inferred from or substituted for the 4 W source output.
+| Experiment | Verified native result |
+| --- | --- |
+| Source off or 0 W | No writing or arrival-detail channels. Positive 4 → 2 W changes metadata only. |
+| Geometric orders 3 → 1 | Three groups/75 actual arrivals become one group/25 arrivals. Eight orders preserve eight full groups/200 arrivals and total normalized weight 0.82. |
+| Order steering 0° → +1° | Default x offsets −130.953, 0, +130.953 µm become −196.529, −65.456, +65.456 µm. |
+| Filter gap 16 → 4 mm | Only the central order's 25 rays survive; lost order power is not redistributed. |
+| DMD frame 0 → 1 | Same configured order angles, but the sampled column admits 13 rather than 25 source samples per order. An all-OFF frame removes them. |
+| NA reduced to 0.1 / steering +20° | The finite pupil removes outlying rays / finite downstream apertures reject all writing. No false unfocused escape hits survive. |
+| Resin moved 0.1 mm axially | Three sampled supports broaden to approximately 53.8–59.9 µm; no sharp fictitious centroid is substituted. Moving L4 by 10 mm also produces finite geometric spread. |
 
+`node --test test/2pp-ouyang-integrated.test.js` passes **6/6**, covering both relay distances, actual face/BFP geometry, full-aperture foci and pupil centres, 1–8 orders, source/frame/filter boundaries, physical defocus, finite coordinates, no post-resin fan and exact save/reload trace equivalence. The on-canvas figure is 1060 × 795 mm with 26.5 mm body/component type and a 42.4 mm title. The native SVG was inspected at 1440 px and at a 500 px fitted width; it is a layout check, **not browser evidence**. Real desktop/narrow browser controls and console acceptance remain pending while the shared browser connection is unavailable.
 
-## PR review addendum
+The destination Two-Photon Lithography Lab cannot represent this multi-focus CGH apparatus, its source operating range, single-pulse initiation or higher-order kinetics. No dose or throughput conclusion should be inferred from a handoff or from the resin markers.
 
-The attached article was re-read, including the rendered Fig. 1 on p. 2: the DMD generates the holographic focus group at the Fourier plane; the filter selects orders, and L4/L5 reimage them into resin. The stage is static for this random-access DMD demonstration.
-
-- Fixed a DMD mask disagreement: the renderer used centred surface coordinates while the tracer sampled a shifted coordinate. Both now use the same local height. Finer sampling prevents the 4 mm carrier from aliasing into a visually uniform mask, and focus-span changes update the displayed proxy too.
-- Changed the default displayed ON fraction to 0.5. The three centre-wavelength focal routes remain live; independent tests check glyph/trace agreement across ON and OFF regions and verify total power conservation across eight selected orders.
-- Separated the dichroic, objective and resin by redistributing the same L4–objective optical path length. Repositioned clipped labels, added on-canvas control instructions, and created current native SVG-derived default/single-focus previews under `previews/`. Earlier browser screenshots are historical verification of the original PR.
-- Verified at the resin: three centre-wavelength foci become one, +1° scan translates all three, a 4 mm Fourier slit selects only the central group, and source disabled or 0 W removes writing while 589 nm camera signal remains. Nine default hit records represent three geometric focus orders sampled at three wavelengths, not nine independent physical foci.
-- The shared zero-power guard rejects invalid/zero laser emission. Positive average power still changes source metadata rather than normalized geometric weights; no calibrated dose/curing law is inferred.
-- Verification: full `npm test`, native-source and DMD boundary regressions, complete scene controls, save/reload equivalence, partial handoff ranges, all application JavaScript syntax, `git diff --check`, and visual inspection of the native SVG raster previews. Browser review is recorded separately by the collection reviewer.
+The native source explicitly disables automatic apparatus-to-lab handoff. The companion page may still pass the verified nominal 800 nm, 100 fs and NA 1.3 paper parameters; it does not export the interpreted optical train or unsupported 1 kHz / 4 W inputs.

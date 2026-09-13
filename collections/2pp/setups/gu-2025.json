@@ -947,7 +947,7 @@
       "y": 525.623837986294,
       "rot": 180,
       "label": "Metalens row",
-      "showLabel": true,
+      "showLabel": false,
       "labelPos": "t",
       "params": {
         "length": 63,
@@ -1019,7 +1019,7 @@
       "labelPos": "b",
       "labelFontSize": 22,
       "params": {
-        "text": "SLM gates intensity; metalenses focus.\n2D mask shown; one column is traced.\nReported lens: 100 µm, NA 0.8.\nDrawing: 9 mm pitch and f = 40 mm,\nenlarged independently.\nGeometric model: no PSF, dose or curing.\nDesign choices: see companion note.",
+        "text": "SLM gates intensity; metalenses focus.\n2D mask shown; one column is traced.\nReported lens: 100 µm, NA 0.8.\nDrawing: 9 mm pitch and f = 40 mm,\nenlarged independently.\nGeometric model: no PSF, dose or curing.\nDesign choice = free interpretation;\nnot specified in the paper.",
         "fontSize": 22,
         "fill": "#475569"
       }
@@ -1052,6 +1052,22 @@
       "labelFontSize": 22,
       "params": {
         "text": "Observation microscope omitted.\nIt is not the writing objective.",
+        "fontSize": 22,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gu-array-label",
+      "type": "textlabel",
+      "x": 610,
+      "y": 460,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 22,
+      "params": {
+        "text": "Metalens row",
         "fontSize": 22,
         "fill": "#475569"
       }

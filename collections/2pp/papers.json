@@ -215,7 +215,7 @@
         "Resin on six-axis hexapod"
       ],
       "mechanism": "Binary holographic foci can write with one amplified pulse. The authors analyze high-order nonlinear response, rather than assuming a calibrated pure two-photon reaction.",
-      "modelLimits": "Single-pulse initiation, hologram optimization, high-order response and multi-focus dose are outside the workbench tracer and destination single-focus educational model.",
+      "modelLimits": "The native scene traces an 800nm central carrier only, not broadband dispersion compensation. The 2D binary frame gates a sampled column; separate geometric orders illustrate focus placement. No CGH optimization, single-pulse initiation, high-order response or dose is calculated.",
       "settings": {
         "wavelengthNm": 800,
         "repetitionRateMHz": 0.001,
@@ -227,7 +227,7 @@
         "Supplement compensation prose swaps the L1/L2 values; the drawing follows the explicit Fig. S1 caption (225/250 mm).",
         "4 W is source output; reported 5 nJ per focus at 1 kHz is not source power."
       ],
-      "auxiliaryPath": "589 nm fibre LED below the substrate reflects from M1 through the objective and dichroic to L6=100 mm and CCD.",
+      "auxiliaryPath": "589 nm fibre LED below the substrate reflects from M1 through the objective and dichroic to L6=100 mm and CCD. This observation branch is omitted from the compact native writing view.",
       "handoff": {
         "basis": "paper",
         "verified": true,
@@ -242,15 +242,15 @@
       "experiments": [
         {
           "control": "Pulsed source",
-          "result": "Disable writing light while inspecting the separate observation path."
+          "result": "Disable the pulsed source or set power to zero to remove every writing arrival."
         },
         {
-          "control": "Geometric focus orders",
-          "result": "Change order count and spacing; the displayed binary frame is illustrative, not a solved hologram."
+          "control": "Orders in this section (1–8)",
+          "result": "Change from the default three orders to one or eight. The binary frame and separate geometric orders are configured independently; no hologram is solved."
         },
         {
           "control": "Steering / spatial filter",
-          "result": "Shift the representative pattern or change order selection, then inspect actual sample arrivals."
+          "result": "Steer the pattern or reduce the Fourier filter gap from 16 to 4 mm to select orders; compare actual arrivals and the true pupil footprint."
         }
       ]
     },
@@ -299,7 +299,8 @@
         "verified": true,
         "settings": {
           "wavelengthNm": 800,
-          "numericalAperture": 0.8
+          "numericalAperture": 0.8,
+          "pulseDurationFs": 35
         }
       },
       "shortTitle": "Gu 2025 · Metalens arrays",

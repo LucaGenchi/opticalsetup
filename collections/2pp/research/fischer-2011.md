@@ -18,7 +18,7 @@ Paper: Joachim Fischer and Martin Wegener, “Three-dimensional direct laser wri
 | Temporal gate | Reported | Manuscript p. 7: both beams chopped by AOMs at 4 kHz and 3% duty, including experiments without depletion. |
 | Depletion power | Reported with location | Manuscript p. 7: 50 mW for the shown STED-DLW structures; all powers quoted in front of the objective entrance pupil. It is not documented as laser-head output. |
 | Excitation power | Reported range, not one setting | Manuscript p. 7: regular-DLW optima 7.4–8.3 mW across rod spacings; STED-DLW optima 31% higher. |
-| Combined-beam layout | Interpretation | A long-pass dichroic combines the two colours before a shared relay and objective. This is physically coherent with the stated common objective, but no mechanical optical-train drawing is published in the manuscript. |
+| Combined-beam layout | Interpretation | A short-pass dichroic combines the two colours before a shared relay and objective. This is physically coherent with the stated common objective, but no mechanical optical-train drawing is published in the manuscript. |
 
 The distinguishing phase pattern is not a vortex doughnut: its central π pupil step supports axial inhibition as well as the radial ring shown in Fig. 2.
 

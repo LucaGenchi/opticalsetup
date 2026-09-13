@@ -37,6 +37,21 @@ Static exports use the selected starting frame, and animated exports use the
 same explicit time argument as the live canvas. This clock illustrates frame
 changes; it is not a calibrated DMD refresh or pulse synchronization model.
 
+Both devices offer an optional `showMaskDetail` inset, disabled for older
+saves and new elements. `maskDetailOffsetX/Y` locate its top-left corner in
+world axes relative to the device center (±5000 mm); `maskDetailWidth/Height`
+set a separate display size (130–1000 by 110–600 mm, default 250 by 140).
+`maskDetailFontSize` requests 12–36-unit type (default 18), with fit-aware
+layout inside the saved box. The inset remains upright when the device
+rotates and contributes to visual and fitted export bounds without changing
+the active face, hit box, aperture, or optical surfaces.
+
+Its enlarged pixels use the same normalized frame object and discrete clock
+as the native device. It shows the current frame number and an amber outline
+around the sampled column. All custom pixels up to 32 × 32 are retained;
+exact legacy stripe row edges remain explicit. Changing the inset's size,
+position, or type size cannot add an optical effect or alter traced power.
+
 `sampleProgrammableFrame(frame, height, column)` returns the selected pixel,
 its intensity transmission, and its displayed phase cycles. The coordinate
 `height` runs along the physical active face. A DMD ON pixel routes to its
@@ -97,6 +112,9 @@ pickoff. Excessively branching trees can still be truncated within each
 input's allowance. They under-report the omitted light without scaling up
 surviving rays, and incomplete coherent paths lose their coherent-field
 interpretation. Unused shares are not taken from neighbouring aperture samples.
+AOM and AOD first/residual ports use the same retention rule, so a real 1%
+CW duty cycle or tiny residual survives downstream optics. The RF drawing
+toggle changes only the drawing; both ports keep their original power.
 
 ## Array and order arrival previews
 
@@ -179,3 +197,8 @@ bypassing a finite splitter. `test/weak-order-budget.test.js` checks exact
 power and complete aperture support through one to eight weak focus orders,
 exact extinction, and deliberately exhausted budgets under reversed sampling
 and more than the normal number of source rays.
+`test/programmable-mask-detail.test.js` checks the optional frame inset's
+shared clock and full grid, unchanged optical behavior, world placement,
+static/animated SVG bounds, save compatibility, and fitted typography.
+`test/aom-low-duty.test.js` checks 1–99% duty and tiny first/residual powers
+through real downstream optics with both source sampling and drawing modes.

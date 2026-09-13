@@ -104,7 +104,7 @@ not calculated voxels or evidence of polymerization.
 ## Visual and browser status
 
 Personally inspected the coordinator's actual-browser screenshot
-`audit/browser/pearre-original-1024.jpg`: the 1024×800 editor fits its toolbar,
+[Pearre original narrow screenshot](evidence/pearre-original-1024.jpg): the 1024×800 editor fits its toolbar,
 palette, canvas and inspector, but the fitted 765×725 frame makes most
 mechanism/limit text tiny. The nearly square crop and long vertical relay do
 not follow the compact landscape collection style. Objective, focus and resin

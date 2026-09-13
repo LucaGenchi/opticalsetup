@@ -46,7 +46,7 @@
         "enabled": true,
         "wavelength": 800,
         "avgPowerW": 4,
-        "handoffEnabled": true,
+        "handoffEnabled": false,
         "beamMode": "beam",
         "beamWidth": 2,
         "repRateMHz": 0.001,
@@ -97,8 +97,8 @@
       "id": "ouyang-pbs-dump",
       "type": "beamdump",
       "x": 210,
-      "y": 280,
-      "rot": 90,
+      "y": 100,
+      "rot": 270,
       "label": "",
       "showLabel": false,
       "params": {
@@ -112,7 +112,7 @@
       "type": "grating",
       "x": 285,
       "y": 180,
-      "rot": 49.43,
+      "rot": 49.43000000000001,
       "label": "600/mm",
       "showLabel": false,
       "params": {
@@ -129,7 +129,7 @@
       "type": "mirror",
       "x": 252.03692073978098,
       "y": 107.10668476681474,
-      "rot": -102.16647704274766,
+      "rot": 257.8335229572524,
       "label": "",
       "showLabel": false,
       "params": {
@@ -161,7 +161,7 @@
       "type": "mirror",
       "x": 252.03692073978098,
       "y": 352.10668476681474,
-      "rot": -45,
+      "rot": 315,
       "label": "",
       "showLabel": false,
       "params": {
@@ -430,22 +430,6 @@
       "showLabel": false,
       "params": {
         "text": "Separate geometric orders → arrivals.\n800 nm view: no dispersion compensation,\nCGH field or polymerization calculation.\nDesign choice = free interpretation;\nnot specified in the paper.\n589 nm observation omitted; see note.",
-        "fontSize": 26.5,
-        "fill": "#475569"
-      },
-      "labelPos": "b",
-      "labelFontSize": 26.5
-    },
-    {
-      "id": "ouyang-controls",
-      "type": "textlabel",
-      "x": 25,
-      "y": 705,
-      "rot": 0,
-      "label": "",
-      "showLabel": false,
-      "params": {
-        "text": "Try: source off · orders 3 → 1 · steer +1°\nFilter 16 → 4 mm removes outer orders.",
         "fontSize": 26.5,
         "fill": "#475569"
       },

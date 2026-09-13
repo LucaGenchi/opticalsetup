@@ -96,6 +96,12 @@ test('Ouyang source, geometric-order and Fourier-filter controls affect actual a
     assert.equal(sampleArrivalDetailReading('ouyang-stage').channels.length, 0);
   }
   Object.assign(source.params, { enabled: true, avgPowerW: 4 });
+  by(scene, 'hwp').params.a = 45;
+  const rejected = trace(scene);
+  assert.equal(rejected.writeHits.length, 0);
+  assert.ok(rejected.drawables.filter(d => d.type === 'path').every(d => d.pts.every(p => p.y > 90)),
+    'the actual upward PBS rejection port terminates in its dump');
+  by(scene, 'hwp').params.a = 0;
   dmd.params.focusCount = 1;
   const single = trace(scene); assert.equal(single.writeHits.length, 1); assert.equal(single.signalHits.length, 25);
   dmd.params.focusCount = 8;
