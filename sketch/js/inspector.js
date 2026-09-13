@@ -7,7 +7,7 @@ import {
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
-  FLUOROPHORES, fluorophoreSpec,
+  FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
@@ -45,8 +45,28 @@ function roundSig(value, sig = 4) {
 
 export function initInspector(el) { panel = el; }
 
-function field(labelText, inputHTML) {
-  return `<label class="field"><span>${esc(labelText)}</span>${inputHTML}</label>`;
+// Committing one of these keys changes which controls belong on the panel, so
+// the inspector is rebuilt rather than left describing the previous mode. Most
+// of them gate a param's show() predicate; a few (sensorId, specimenType,
+// preset, mode, sync, temporalMode) swap the param list itself.
+//
+// An element whose params include a readout or derived value already rebuilds
+// on every commit (see the end of applyInput), so it can never go stale. This
+// list is what covers the rest — and test/inspector-conditional-params.test.js
+// audits the registry against it, so a new conditional param on an element
+// without a readout fails the suite instead of silently hiding its controls
+// until the user reselects the element.
+export const REBUILD_ON_COMMIT_KEYS = [
+  'dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode',
+  'raysMode', 'zeroOrder', 'modulate', 'modShape', 'mode', 'scanMode', 'moveMode',
+  'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot',
+  'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
+  'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
+  'measurementMode', 'prop', 'sync', 'sourceKind',
+];
+
+function field(labelText, inputHTML, className = '') {
+  return `<label class="field${className ? ` ${className}` : ''}"><span>${esc(labelText)}</span>${inputHTML}</label>`;
 }
 
 function splitFieldLabel(labelText) {
@@ -386,7 +406,9 @@ function measurementHTML(el) {
       <dt>Spot span</dt><dd>${spot}</dd>`;
   const measurementFoot = cancelled
     ? 'Exact coherent cancellation leaves an empty sensor profile.'
-    : isCamera ? 'Profile height is normalized to the brightest sensor pixel.'
+    : isCamera ? (rd.profileScale === 'fit'
+      ? 'Profile height is normalized to the brightest sensor pixel.'
+      : 'Profile height follows the relative sensor intensity; attenuation lowers the profile.')
     : 'Relative ray weight from the qualitative tracer—not calibrated optical power.';
   const statusText = cancelled ? 'Coherent cancellation'
     : cameraState?.kind === 'phase-unavailable' ? 'Deposited intensity'
@@ -686,7 +708,12 @@ function paramField(p, sel) {
   // it reads as part of the source's settings, but computed from the other
   // params on every render and never stored or saved.
   if (p.type === 'readout') {
-    return field(p.label, `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`);
+    // `wide` gives the value the whole row instead of the 112px value column.
+    // A readout that holds a sentence rather than a number wraps into a tall,
+    // unreadable ribbon otherwise.
+    return field(p.label,
+      `<output class="readout" data-p="${p.key}">${esc(p.readout(sel.params, sel))}</output>`,
+      p.wide ? 'field-wide' : '');
   }
   // Editable, but backed by another param instead of its own storage:
   // displayed value comes from `get`, and a commit writes through `set`
@@ -1334,10 +1361,20 @@ export function applyInput(inp, rebuild = false) {
     if (sel.type === 'autocorrelator' && pkey === 'measurementMode') applyScopeSpanForMode(sel);
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }
+  // Only on commit: mid-keystroke, typing "700" into the band maximum passes
+  // through "7", and lifting the duration to that momentary band's floor
+  // would outlive the edit.
+  if (rebuild && sel.type === 'sclaser') Object.assign(sel.params, normalizeSupercontinuumParams(sel.params));
   changed();
   if (pkey) {
     refreshReadouts(sel);
     refreshDerivedSelects(sel);
+  }
+  // Each continuum endpoint sets the other field's valid range. Refresh on
+  // commit so the next edit uses the current endpoint, without stealing typing.
+  if (rebuild && sel.type === 'sclaser' && ['scMin', 'scMax'].includes(pkey)) {
+    renderInspector();
+    return;
   }
   // While a pulsed laser is transform-limited its bandwidth is derived from
   // the pulse duration, so the field is hidden and nothing needs syncing.
@@ -1357,8 +1394,7 @@ export function applyInput(inp, rebuild = false) {
   // layer already is; otherwise the panel can describe the previous target.
   if (rebuild && sel.type === 'objective' && ['x', 'y', 'rot'].includes(key)) { renderInspector(); return; }
   // conditional params (show/hide) need a panel rebuild — only on 'change' to not steal focus
-  if (rebuild && ['dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode', 'raysMode', 'zeroOrder', 'modulate', 'mode', 'scanMode', 'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode', 'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode', 'measurementMode',
-    'prop', 'sync', 'sourceKind'].includes(pkey)) { renderInspector(); return; }
+  if (rebuild && REBUILD_ON_COMMIT_KEYS.includes(pkey)) { renderInspector(); return; }
   // A readout is derived from the other params, so any committed edit can
   // change it. Rebuilding on commit (never mid-keystroke) is what keeps a
   // peak power or a transform-limited bandwidth from going stale on screen.

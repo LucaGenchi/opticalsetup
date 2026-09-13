@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v58';
+const CACHE_NAME = 'opticalsetup-pwa-v85';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -19,6 +19,7 @@ const PRECACHE_PATHS = [
   "./js/electro-optic.js",
   "./js/camera-profile.js",
   "./js/canvas.js",
+  "./js/polygon-scanner.js",
   "./js/clipboard.js",
   "./js/lamps.js",
   "./js/probe.js",
@@ -60,6 +61,7 @@ const PRECACHE_PATHS = [
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20sphere%20vs%20asphere%20vs%20ideal%20lens.json",
   "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
   "../Examples/Optics%20Bench/Michelson%20interferometer.json",
+  "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
   "../Examples/Microscopy%20Implementations/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
@@ -93,8 +95,13 @@ async function networkFirst(request) {
   try {
     const response = await fetch(request);
     if (response.ok && response.type === 'basic') {
-      const cache = await caches.open(CACHE_NAME);
-      await cache.put(request, response.clone());
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      } catch (_) {
+        // Storage may be full or unavailable. The network response is still
+        // usable and must not be replaced by stale content or an error.
+      }
     }
     return response;
   } catch {
