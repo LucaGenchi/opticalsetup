@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v86';
+const CACHE_NAME = 'opticalsetup-pwa-v87';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -21,6 +21,7 @@ const PRECACHE_PATHS = [
   "./js/canvas.js",
   "./js/polygon-scanner.js",
   "./js/clipboard.js",
+  "./js/collection-loader.js",
   "./js/lamps.js",
   "./js/probe.js",
   "./js/community-data.js",

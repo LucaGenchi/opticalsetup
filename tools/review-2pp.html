@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2PP browser review fixture</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9edf3; color: #19283d; font: 14px system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 18px; background: white; flex-wrap: wrap; }
+  label { display: flex; align-items: center; gap: 6px; }
+  select, button { font: inherit; padding: 5px 8px; }
+  main { padding: 12px; width: max-content; margin: auto; }
+  iframe { display: block; border: 1px solid #a7b2c2; background: white; }
+  small { color: #516074; }
+</style>
+<header>
+  <strong>2PP browser review</strong>
+  <label>Scene <select id="scene" aria-label="Review scene"></select></label>
+  <label>Version <select id="version" aria-label="Review version"><option value="integrated">Integrated branch</option><option value="original">Original reviewed head</option></select></label>
+  <label>Viewport <select id="width" aria-label="Review viewport"><option value="1280">1280 × 800</option><option value="1024">1024 × 800</option></select></label>
+  <button id="load">Load scene</button>
+  <small>Native editable app in an iframe of the stated viewport width.</small>
+</header>
+<main><iframe id="native-app" title="Native OpticalSetup review" width="1280" height="800"></iframe></main>
+<script type="module">
+const versions = {
+  'basic-2pp': null,
+  'pearre-2018': '6b02bbfdb5db9273bf38915f3592e71fd124ca60',
+  'kiefer-2024': '72f0323d38ff8afa3e375e87e861c262b1399456',
+  'nanoscribe-gt': '121a0b11b2b77a107bf3360c521eaa1775168ec6',
+  'saha-2019': 'c7ef3daab746e92348999d36104611db5227ed0c',
+  'yan-2015': 'c847dbe60976e23058d72707b050e178e1ebe3e5',
+  'dong-2007': 'ff39dc2ea261286a896873510b42e8991fa6dcea',
+  'fischer-2011': '38b0f1ed897167808f90f8eb97ea774b1a553a55',
+  'gittard-2011': '039b7726ca6363a4d721e722963077f03ce1a3f4',
+  'somers-2021': '79d3966d7f6f75fdcc073b16d47e35edf15f208e',
+  'ouyang-2023': '9cf0f93fe2a16238450ef17b9204a2352ffe24fe',
+  'gu-2025': '6788ffc987cc59cf214c6a7f2c054520abc3c374',
+};
+const scene = document.querySelector('#scene');
+const version = document.querySelector('#version');
+const width = document.querySelector('#width');
+const frame = document.querySelector('#native-app');
+const query = new URLSearchParams(location.search);
+for (const id of Object.keys(versions)) scene.add(new Option(id, id));
+if (Object.hasOwn(versions, query.get('paper'))) scene.value = query.get('paper');
+if (query.get('version') === 'original') version.value = 'original';
+if (query.get('width') === '1024') width.value = '1024';
+function load() {
+  const sha = versions[scene.value];
+  const url = version.value === 'original' && sha
+    ? new URL(`https://raw.githack.com/LucaGenchi/opticalsetup/${sha}/sketch/`)
+    : new URL('../sketch/', location.href);
+  url.searchParams.set('paper', scene.value);
+  url.searchParams.set('edit', '1');
+  frame.src = url.href;
+  frame.width = width.value;
+  const state = new URLSearchParams({ paper: scene.value, version: version.value, width: width.value });
+  history.replaceState(null, '', `?${state}`);
+}
+document.querySelector('#load').addEventListener('click', load);
+width.addEventListener('change', () => { frame.width = width.value; });
+load();
+</script>
+</html>

@@ -1,0 +1,179 @@
+{
+  "retrieved": "2026-09-05",
+  "documents": [
+    {
+      "paper": "fischer-2011",
+      "filename": "fischer-2011.pdf",
+      "url": "https://arxiv.org/pdf/1105.5703",
+      "bytes": 5792801,
+      "sha256": "55ded32ec38701a1bef2af6d67362338850bd658a953649ec4937fec1b8d49a8",
+      "pages": 11,
+      "kind": "article"
+    },
+    {
+      "paper": "gittard-2011",
+      "filename": "gittard-2011.pdf",
+      "url": "https://europepmc.org/api/getPdf?pmcid=PMC3207384",
+      "bytes": 1862560,
+      "sha256": "57aeb233979fa416a88854a4e398c1e7859dddfa6285c4b6aa9134baf1dea062",
+      "pages": 12,
+      "kind": "article"
+    },
+    {
+      "paper": "buckmann-2014",
+      "filename": "buckmann-2014.pdf",
+      "url": "https://www.nature.com/articles/ncomms5130.pdf",
+      "bytes": 1197543,
+      "sha256": "b6447b7fb4183e3e16277b81e8b79269acbe5728f45cf03925d82ef4fa26949a",
+      "pages": 6,
+      "kind": "article"
+    },
+    {
+      "paper": "buckmann-2014",
+      "filename": "buckmann-2014-si.pdf",
+      "url": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fncomms5130/MediaObjects/41467_2014_BFncomms5130_MOESM923_ESM.pdf",
+      "bytes": 611750,
+      "sha256": "054192ea47887a8786c0a65c6c36fac7aad2dcc02ef72e03c8b8097cfa08b5fd",
+      "pages": 2,
+      "kind": "supplement"
+    },
+    {
+      "paper": "nanoscribe-gt",
+      "filename": "nanoscribe-gt-datasheet.pdf",
+      "url": "https://mdpi-res.com/d_attachment/polymers/polymers-10-00011/article_deploy/polymers-10-00011-s001.pdf?version=1513942821",
+      "bytes": 634800,
+      "sha256": "471bd66e9974798b34f58c4098c8a12450d239d3aeea25838a8da59b60755d6f",
+      "pages": 2,
+      "kind": "datasheet"
+    },
+    {
+      "paper": "pearre-2018",
+      "filename": "pearre-2018.pdf",
+      "url": "https://arxiv.org/pdf/1803.07135",
+      "bytes": 4023713,
+      "sha256": "2b51881c09f7bf66d1b2afbb452511926c0e4b3d2d58d406c2508d75c48118e6",
+      "pages": 23,
+      "kind": "article"
+    },
+    {
+      "paper": "geng-2019",
+      "filename": "geng-2019.pdf",
+      "url": "https://www.nature.com/articles/s41467-019-10249-2.pdf",
+      "bytes": 2824243,
+      "sha256": "990e1682b0563440b21aad1e81ebcc1bd215d557d28603b95e404f2ab402563e",
+      "pages": 7,
+      "kind": "article"
+    },
+    {
+      "paper": "geng-2019",
+      "filename": "geng-2019-si.pdf",
+      "url": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-019-10249-2/MediaObjects/41467_2019_10249_MOESM1_ESM.pdf",
+      "bytes": 69444,
+      "sha256": "7676c8d74cb43b57b985741b41e734fbc8b95d200a95137a6a136d6f8300711a",
+      "pages": 1,
+      "kind": "supplement"
+    },
+    {
+      "paper": "saha-2019",
+      "filename": "saha-2019.pdf",
+      "url": "https://liuchao-jin.github.io/files/essay/saha2019scalable.pdf",
+      "bytes": 658247,
+      "sha256": "b29f3e7b928c690852f19316c2adb96e656618fc9109ce30c1c0fa5f27c82e66",
+      "pages": 6,
+      "kind": "article"
+    },
+    {
+      "paper": "hahn-2020",
+      "filename": "hahn-2020.pdf",
+      "url": "https://d-nb.info/1259433633/34",
+      "bytes": 1688652,
+      "sha256": "b954098d1e27f6f5533a26728e05210be52747bd71b9fab17d640794052ceb4b",
+      "pages": 9,
+      "kind": "article"
+    },
+    {
+      "paper": "somers-2021",
+      "filename": "somers-2021.pdf",
+      "url": "https://www.nature.com/articles/s41377-021-00645-z.pdf",
+      "bytes": 1221753,
+      "sha256": "9fff3a13ae10d356f028575af9151c9c46094c3eb73da4ac31732d2f5417e7ba",
+      "pages": 11,
+      "kind": "article"
+    },
+    {
+      "paper": "ouyang-2023",
+      "filename": "ouyang-2023.pdf",
+      "url": "https://www.nature.com/articles/s41467-023-37163-y.pdf",
+      "bytes": 2272726,
+      "sha256": "6bc3f492e12a5d12db9084b1b3d3ca0a98905019df929db748427646a3d35d38",
+      "pages": 9,
+      "kind": "article"
+    },
+    {
+      "paper": "ouyang-2023",
+      "filename": "ouyang-2023-si.pdf",
+      "url": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-023-37163-y/MediaObjects/41467_2023_37163_MOESM1_ESM.pdf",
+      "bytes": 9501776,
+      "sha256": "d3a3e5950cbe721b16355eccd1e95fb557e84fbc760ea79b24ef041006af17e0",
+      "pages": 29,
+      "kind": "supplement"
+    },
+    {
+      "paper": "jiao-2023",
+      "filename": "jiao-complete.pdf",
+      "url": "http://www.ijemnet.com/en/article/pdf/preview/10.1088/2631-7990/ace0a7.pdf",
+      "bytes": 3248095,
+      "sha256": "31d5ce6d1902acb821665477a222aa1af9e2a7145c7daae036613d7a54477f28",
+      "pages": 10,
+      "kind": "article"
+    },
+    {
+      "paper": "zhang-2024",
+      "filename": "zhang-2024.pdf",
+      "url": "https://mane.ustc.edu.cn/_upload/article/files/87/1e/a51f62f74e9d807ff2eb58cf86a2/3b90a55f-f7a8-4bac-8cbb-0305af0aee96.pdf",
+      "bytes": 10841230,
+      "sha256": "a77e14fcd42e764d6ac625972f382b83616e8dfff59dccca3d8ee2daccd4848f",
+      "pages": 9,
+      "kind": "article"
+    },
+    {
+      "paper": "zhang-2024",
+      "filename": "zhang-2024-si.pdf",
+      "url": "https://ndownloader.figshare.com/files/44609864",
+      "bytes": 1729206,
+      "sha256": "d6b5890cf92ef59d6cc29a05e66e2102087ad7b378477666d0b45dab9f4e9f16",
+      "pages": 33,
+      "kind": "supplement"
+    },
+    {
+      "paper": "kiefer-2024",
+      "filename": "kiefer-2024.pdf",
+      "url": "https://www.light-am.com/article/pdf/preview/LAM2023080053.pdf",
+      "bytes": 8962048,
+      "sha256": "55ac959947738f905ce52252e777686ac17609a303a6a75f167769ce4350be02",
+      "pages": 14,
+      "kind": "article"
+    },
+    {
+      "paper": "gu-2025",
+      "filename": "gu-2025.pdf",
+      "url": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-025-09842-x/MediaObjects/41586_2025_9842_MOESM1_ESM.pdf",
+      "bytes": 3576087,
+      "sha256": "638eaae37d600d6e77b379218af9f61ed914d5874e7df9cec468267d3b67d979",
+      "pages": 28,
+      "kind": "supplement"
+    }
+  ],
+  "additionalFigures": [
+    {
+      "paper": "gu-2025",
+      "label": "Extended Data Fig. 2: apparatus",
+      "url": "https://www.nature.com/articles/s41586-025-09842-x/figures/7"
+    },
+    {
+      "paper": "gu-2025",
+      "label": "Extended Data Fig. 3: phase-to-amplitude modulation",
+      "url": "https://www.nature.com/articles/s41586-025-09842-x/figures/8"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+/* Collections reuse the wiki shell: palette, header, hub cards, embeds and
+   section heads all come from wiki/assets/wiki.css. Only the few things a
+   research page needs beyond an article live here. */
+
+.paper-meta { color: var(--muted); font-size: 13px; margin: -6px 0 18px; }
+.paper-meta a { color: var(--accent); }
+
+/* Reported values, evidence hashes and handoff fields are tabular. */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin: 16px 0; }
+.table-wrap table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.table-wrap th, .table-wrap td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+.table-wrap thead th { background: var(--accent-soft); color: var(--ink); font-weight: 600; white-space: nowrap; }
+.table-wrap tbody tr:last-child th, .table-wrap tbody tr:last-child td { border-bottom: 0; }
+.table-wrap th span { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+
+/* What the companion calculator will and will not accept, side by side. */
+.handoff { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 14px 0; }
+.handoff > div { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--panel); }
+.handoff h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.handoff ul { margin: 0; padding-left: 18px; font-size: 14px; }
+
+.collection-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 14px 0 4px; }
+
+/* A collection card carries a sentence, not a component name, so it needs
+   more room than the wiki's component grid. */
+.hub-grid.collection-grid { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+.hub-card .desc.count { margin-top: 6px; color: var(--accent); font-weight: 600; }
