@@ -21,6 +21,18 @@ miss its equivalent focusing segment and continue unrefracted to the sample.
 Two finite absorbing boundaries now close that path. They conservatively
 bound the equivalent model, not a resolved objective prescription.
 
+The follow-up original-scene review exposed a second inconsistency: clipping
+the equivalent pupil's position to the drawn barrel broke conjugacy in 13 of
+the 23 objective presets. The integrated aperture now stays at the BFP, with
+the finite annulus and bore preserved even for outside-housing equivalent
+planes. Pupil fill is measured at that same BFP, including rejected rays.
+This intentionally corrects acceptance when old saved objectives are loaded;
+their EFL, WD, NA and nominal focus are preserved. Gittard's old actual stop
+at y=277 becomes its BFP y=282.13, and Fischer's old mask-to-stop relay must be
+retargeted from x=500 to its objective BFP. Historical original-branch reviews
+and numerical evidence retain their original geometry and are not rewritten
+to imply that those branches received this fix.
+
 ## Programmable devices
 
 The [shared DMD/SLM frame contract](../../../docs/programmable-masks.md) separates

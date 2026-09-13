@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fischer 2011 — OpticalSetup</title>
-<meta name="description" content="Two-photon lithography research: primary references, native optical setups, source evidence, reported parameters and unresolved details.">
+<title>Fischer 2011 · Depletion-inspired writing — OpticalSetup</title>
+<meta name="description" content="Learn two-photon polymerization through one basic optical setup and five distinct research architectures, with editable native traces and source evidence.">
 <link rel="canonical" href="https://opticalsetup.com/collections/2pp/fischer-2011/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Fischer 2011 — OpticalSetup">
-<meta property="og:description" content="Two-photon lithography research: primary references, native optical setups, source evidence, reported parameters and unresolved details.">
+<meta property="og:title" content="Fischer 2011 · Depletion-inspired writing — OpticalSetup">
+<meta property="og:description" content="Learn two-photon polymerization through one basic optical setup and five distinct research architectures, with editable native traces and source evidence.">
 <meta property="og:url" content="https://opticalsetup.com/collections/2pp/fischer-2011/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -61,8 +61,16 @@
       <div class="crumb"><a href="../../../collections/">Collections</a> / <a href="../../../collections/2pp/">Two-photon lithography</a> / Fischer 2011</div>
       <div class="article-head"><div><h1>Three-dimensional direct laser writing inspired by stimulated-emission-depletion microscopy</h1></div></div>
       <p class="paper-meta">Depletion-assisted writing · 2011 · <a href="https://doi.org/10.1364/OME.1.000614">10.1364/OME.1.000614</a></p>
-      <div class="sim-block"><strong>Research notes · native setup pending</strong>
-      <p>The source review below is preserved for an individual reconstruction.</p></div>
+      <div class="sim-block"><strong>Native optical setup · qualitative model</strong>
+      <p>Read the companion evidence note for reported facts, design choices, control experiments and model limits.</p></div>
+      <div class="collection-actions"><a class="place-cta" href="../../../sketch/?paper=fischer-2011&amp;edit=1">Open editable setup</a><a class="plain" href="../setups/fischer-2011.json" download>Download native scene</a><a class="plain" href="../research/fischer-2011.md">Evidence and controls</a></div>
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../../sketch/?paper=fischer-2011&amp;embed=1"
+          title="Fischer 2011 — a live native trace of the setup described below"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live native trace, not a picture of one — this preview is not interactive. Open the editable setup to inspect components, change controls and save your own copy.</p>
+      <h2 class="section-head sim"><span class="sw"></span>Try three controls</h2><ol><li><strong>Excitation / depletion sources and AOM duty.</strong> Disable either color or vary AOM duty from 1–99%. The arrival inset distinguishes excitation and CW light; no depletion chemistry is calculated.</li><li><strong>Central pupil area / optical path.</strong> Change the central phase zone. The optical path changes while the geometric focus stays fixed.</li><li><strong>Sample motion.</strong> Switch between static and ±50 µm transverse motion. The fixed micrometer view shows actual ray arrivals and the reported 100 µm/s translation rate.</li></ol>
       <h2 class="section-head real"><span class="sw"></span>Current understanding</h2>
       <p>A central phase step in the depletion pupil produces axial and radial inhibition around the excitation volume. This is not simply a lateral doughnut.</p>
       <h3>Reported optical sequence</h3><ol><li>Mai Tai HP excitation, approximately 810 nm</li><li>Excitation AOM: 4 kHz, 3% duty</li><li>532 nm continuous-wave depletion laser and synchronized AOM</li><li>Central 180° phase mask imaged onto the objective entrance pupil</li><li>Combined, circularly polarized beams</li><li>Leica HCX PL APO, NA 1.4</li><li>DETC/PETA resin, scanned at 100 µm/s</li></ol>
@@ -70,8 +78,12 @@
       <ul class="reference-list"><li>Author manuscript pp. 6–7: apparatus description; p. 7 Fig. 2: calculated excitation/depletion focal distributions. Fig. 2 is not an optical-train drawing.</li></ul>
       <ul class="resource-list"><li><a href="https://arxiv.org/pdf/1105.5703" target="_blank" rel="noopener">article PDF</a> · 11 pages · SHA-256 <code>55ded32ec38701a1…</code></li></ul>
       <h2 class="section-head sim"><span class="sw"></span>Limits and unresolved details</h2>
-      <div class="limitations"><p>No stimulated depletion, vectorial PSF, triplet dynamics or resin kinetics are simulated. Combiner placement is inferred from the stated common objective, not a published mechanical drawing.</p><ul><li>Excitation repetition rate and pulse duration are not specified in the retrieved manuscript.</li><li>Depletion 50 mW is before the objective; ordinary excitation 7.4–8.3 mW is not a single fixed source power.</li><li>Central mask occupies 50% of the pupil area; the 2D drawing cannot encode radial area fractions.</li></ul></div>
+      <div class="limitations"><p>No stimulated depletion, vectorial PSF, triplet dynamics or resin kinetics are simulated. The 2D meridional phase-zone proxy converts pupil area to diameter but cannot calculate the axial/radial depletion focus. Combiner placement is inferred from the stated common objective, not a published mechanical drawing.</p><ul><li>Excitation repetition rate and pulse duration are not specified in the retrieved manuscript.</li><li>Depletion 50 mW is before the objective; ordinary excitation 7.4–8.3 mW is not a single fixed source power.</li><li>Central mask occupies 50% of the pupil area; the native meridional proxy uses the corresponding sqrt(0.5) diameter, while the physical pupil diameter and relay prescription remain unspecified.</li></ul></div>
       <div class="table-wrap"><table><thead><tr><th>Reported input</th><th>Value</th></tr></thead><tbody><tr><th>wavelengthNm</th><td>810</td></tr><tr><th>numericalAperture</th><td>1.4</td></tr></tbody></table></div>
+      <h2 class="section-head sim"><span class="sw"></span>Companion calculator</h2>
+      <p><a href="https://twophotonlithography.com/lab?from=opticalsetup&amp;v=1&amp;basis=paper&amp;wavelengthNm=810&amp;numericalAperture=1.4">Open the explicitly reviewed paper subset</a></p><div class="handoff"><div><h3>Transferred</h3><ul><li>Wavelength: 810 nm</li><li>Numerical aperture: 1.4 </li></ul></div><div><h3>Not transferred</h3><ul><li>Source power: No verified exact value</li><li>Repetition rate: No verified exact value</li><li>Pulse duration: No verified exact value</li></ul></div></div>
+      <p>Source ratings are not sample or per-focus power. The destination keeps defaults for missing quantities. Literature provenance requires the companion paper-handoff support; verify its import notice before using these values.</p>
+      <p class="embed-caption">The workbench writing preview does not calibrate dose, curing or three-dimensional focal volume.</p>
     </main>
   </div>
   <footer class="wiki-footer">Paper-specific research and qualitative optical models. Source PDFs remain with their authors and publishers. <a href="/collections/2pp/sources.json">Source manifest</a> · <a href="/collections/2pp/papers.json">Research records</a></footer>

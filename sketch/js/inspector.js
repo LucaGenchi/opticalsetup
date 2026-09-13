@@ -60,12 +60,12 @@ export function initInspector(el) { panel = el; }
 export const REBUILD_ON_COMMIT_KEYS = [
   'dtype', 'ftype', 'beamMode', 'autoColor', 'convert', 'bwMode', 'temporalMode',
   'raysMode', 'zeroOrder', 'modulate', 'modShape', 'mode', 'scanMode', 'moveMode',
-  'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot',
+  'transmitExc', 'specimenType', 'voxelPreview', 'pzMode', 'showSignalSpot', 'showArrivalDetail',
   'sensorId', 'refl', 'transformLimited', 'rangeMode', 'driveMode', 'switchMode',
   'extension', 'immersion', 'preset', 'material', 'showDepleted', 'modMode',
   'measurementMode', 'prop', 'sync', 'sourceKind',
   'maskPattern', 'maskMode', 'maskPlayback', 'maskFrame', 'maskSlice', 'maskLevel',
-  'holographicOrders', 'spectralMode',
+  'holographicOrders', 'spectralMode', 'showMaskDetail',
 ];
 
 function field(labelText, inputHTML, className = '') {

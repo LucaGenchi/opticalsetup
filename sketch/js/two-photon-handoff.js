@@ -11,7 +11,7 @@ function formatQueryNumber(value) {
 }
 
 export function buildTwoPhotonHandoffUrl(laser, baseUrl = TWO_PHOTON_LAB_URL, options = {}) {
-  if (laser?.type !== 'pulsedlaser') return null;
+  if (laser?.type !== 'pulsedlaser' || laser.params?.handoffEnabled === false) return null;
   const p = laser.params;
   if (![p.wavelength, p.avgPowerW, p.repRateMHz, p.pulseWidthFs].every(finite)) return null;
   if (p.wavelength <= 0 || p.avgPowerW < 0 || p.repRateMHz <= 0 || p.pulseWidthFs <= 0) return null;
@@ -41,6 +41,7 @@ export function twoPhotonLaserCandidates(elements = [], signalHits = [], stageId
 
   return elements.filter(element => sourceIds.has(element?.id)
     && element.type === 'pulsedlaser'
+    && element.params?.handoffEnabled !== false
     && buildTwoPhotonHandoffUrl(element));
 }
 

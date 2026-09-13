@@ -345,22 +345,14 @@ export function objectiveBarrelHalfHeightAt(params = {}, x = OBJECTIVE_SHOULDER_
   return outer + (tip - outer) * t;
 }
 
-// Where the aperture stop physically sits. For an infinity objective the
-// entrance pupil IS the back focal plane, and that is what makes relaying a
-// scan mirror onto the BFP worth doing: a beam pivoting there stays centred
-// in the stop at every scan angle, while a mismatched pivot walks across it
-// and vignettes. The single-plane model can push the BFP further back than
-// any real barrel, so the stop is clamped into the housing rather than left
-// blocking light in mid-air behind it.
+// The equivalent model places its entrance pupil at its BFP. Keep that
+// optical plane independent of the cosmetic barrel: clamping it to a drawn
+// shoulder used to break scanner/pupil conjugacy, including ordinary 100x
+// objectives. Like the equivalent refracting plane, this acceptance plane
+// can lie outside the housing. Finite annulus/bore surfaces constrain the
+// supported rays; they are not a resolved internal objective prescription.
 export function objectiveStopX(params = {}) {
-  // Clamped at BOTH ends, into the straight rear section. A long-working-
-  // distance objective puts its back focal plane ahead of the front tip, and a
-  // stop out there is not just cosmetically odd: the barrel silhouette narrows
-  // to the nose, so the blocking annulus derived from it stops covering the
-  // full bore and a wide beam leaks straight past the optic unrefracted. A
-  // real entrance pupil is inside the housing, so keep it there.
-  const seated = Math.max(objectiveBackFocalPlaneX(params), objectiveBackX(params) + 1);
-  return Math.min(seated, OBJECTIVE_SHOULDER_X);
+  return objectiveBackFocalPlaneX(params);
 }
 
 // The purple acceptance sector is an explanatory overlay, off unless asked

@@ -25,3 +25,7 @@
    more room than the wiki's component grid. */
 .hub-grid.collection-grid { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
 .hub-card .desc.count { margin-top: 6px; color: var(--accent); font-weight: 600; }
+.hub-card.collection-start { border-color: var(--accent); background: var(--accent-soft); }
+@media (max-width: 520px) {
+  .hub-grid.collection-grid { grid-template-columns: 1fr; }
+}

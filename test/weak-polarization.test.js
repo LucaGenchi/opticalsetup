@@ -40,7 +40,7 @@ for (const sourceType of ['cwlaser', 'pulsedlaser']) {
 }
 
 test('a sized beam keeps every sample through a long polarizer stack', () => {
-  // Retained-weak children are charged against a source-wide budget of 256.
+  // Retained-weak children used to share one source-wide budget of 256.
   // A polarizer emits exactly one child, so it continues a ray rather than
   // widening the tree -- but it takes the branching path because its output
   // carries a tag. Charging it there spent a slot per sample per stage: a

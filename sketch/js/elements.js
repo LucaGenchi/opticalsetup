@@ -11,6 +11,9 @@ import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengt
 import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
+import {
+  SAMPLE_ARRIVAL_DETAIL_PARAMS, sampleArrivalDetailSVG, sampleArrivalDetailBounds,
+} from './sample-arrival-detail.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
 import {
@@ -38,7 +41,7 @@ import {
   OBJECTIVE_WD_MAX,
   applyObjectivePreset,
   objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
-  objectiveBarrelHalfHeightAt, objectiveStopX,
+  objectiveStopX,
   objectiveEffectiveFocalLength, objectiveFrontAperture, objectiveLensPlaneX, objectiveMagnification,
   objectiveMaximumNA, objectiveMaximumWorkingDistance, objectiveMediumIndex, objectiveMediumKey,
   objectiveNumericalAperture, objectivePresetKey, objectivePupilDiameter, objectivePupilRadius,
@@ -52,7 +55,8 @@ import {
 import { aodScanPosition, aodAccessTimeUs, aodMaxScanRateKHz } from './acousto-optic.js';
 import {
   programmableMaskParams, programmableEffectParams, programmableMaskFrame,
-  programmableFrameSVG, programmableMaskEffects,
+  programmableFrameSVG, programmableMaskEffects, PROGRAMMABLE_MASK_DETAIL_PARAMS,
+  programmableMaskDetailSVG, programmableMaskDetailBounds,
 } from './programmable-mask.js';
 import { phaseModulatorOpdMm, phaseModulatorPeakOpdMm } from './electro-optic.js';
 import {
@@ -565,22 +569,34 @@ export function cameraReadingState(reading) {
 // range is just the length of the mean phasor -- no search over d needed, and
 // no chance of sampling only the reference phases where a given profile
 // happens to be flat.
-function portSwing(profile, fringes) {
+function portSwing(profile, fringes, centralAreaFraction = 0.5) {
   const SAMPLES = 256;
   let meanCos = 0, meanSin = 0;
   for (let i = 0; i < SAMPLES; i++) {
-    const phase = 2 * Math.PI * fringes * phasePlateOpdFraction(profile, (i + 0.5) / SAMPLES);
+    const phase = 2 * Math.PI * fringes
+      * phasePlateOpdFraction(profile, (i + 0.5) / SAMPLES, centralAreaFraction);
     meanCos += Math.cos(phase);
     meanSin += Math.sin(phase);
   }
   return Math.hypot(meanCos, meanSin) / SAMPLES;
 }
 
-export function phasePlateOpdFraction(profile, u) {
-  const position = Math.min(1, Math.max(0, Number(u)));
+export function phasePlateCentralDiameterFraction(areaFraction = 0.5) {
+  const raw = Number(areaFraction);
+  const area = Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : 0;
+  return Math.sqrt(area);
+}
+
+export function phasePlateOpdFraction(profile, u, centralAreaFraction = 0.5) {
+  const value = Number(u);
+  const position = Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
   const centred = 2 * position - 1;          // -1 at one edge, +1 at the other
   if (profile === 'step') return position < 0.5 ? 0 : 1;
   if (profile === 'bar') return Math.abs(centred) < 1 / 3 ? 1 : 0;
+  if (profile === 'pupil') {
+    const diameter = phasePlateCentralDiameterFraction(centralAreaFraction);
+    return diameter > 0 && Math.abs(centred) <= diameter ? 1 : 0;
+  }
   if (profile === 'bump') return 1 - centred * centred;
   return position;                            // 'ramp'
 }
@@ -2013,6 +2029,7 @@ export const registry = {
       { key: 'enabled', label: 'Emit traced rays', type: 'checkbox', def: true },
       P.wavelength,
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
+      { key: 'handoffEnabled', label: 'Allow configured-value 2PP handoff', type: 'checkbox', def: true },
       ...beamShapeParams(3),
       ...pulseTrainParams(),
       { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150 },
@@ -2913,16 +2930,11 @@ export const registry = {
       const lensX = objectiveLensPlaneX(el.params);
       const outer = objectiveBarrelHalfHeight(el.params);
       const pupil = Math.min(outer, objectivePupilRadius(el.params));
-      // The stop sits at the back focal plane, which for an infinity objective
-      // is where its entrance pupil is — see objectiveStopX. Its outer extent
-      // follows the barrel at that point so it cannot swallow light that
-      // visually passes outside the housing.
+      // The equivalent model's stop is always at its BFP. Its position and
+      // finite outer extent do not follow the drawn taper: a drawing detail
+      // must not move the pupil or reopen the blocking annulus.
       const stopX = objectiveStopX(el.params);
-      // The stop is seated in the straight rear section, so its blocking
-      // annulus spans the full barrel radius. Anything inside the housing is
-      // either refracted through the pupil or absorbed by the metal; only
-      // light that genuinely passes outside the barrel goes by untouched.
-      const stopOuter = Math.max(objectiveBarrelHalfHeightAt(el.params, stopX), outer);
+      const stopOuter = outer;
       // The stop starts a hair outside the rated pupil, and the clear bore
       // matches it. A beam sized to exactly fill the pupil lands its edge rays
       // right on the boundary, and without this margin the stop — which the
@@ -2932,6 +2944,9 @@ export const registry = {
         effectiveFocalLength: objectiveEffectiveFocalLength(el.params),
         workingDistance: objectiveWorkingDistance(el.params),
         objectiveMediumIndex: objectiveMediumIndex(el.params),
+        // Tracer measurements project each encountered ray to this plane,
+        // including rays stopped by the annulus or finite acceptance bore.
+        pupilPlaneX: stopX, pupilRadius: pupil,
         // A legacy >1 NA is kept in the editor so old sketches are not
         // rewritten with an invented medium. Until the author resolves
         // that medium, however, it is not a configured NA that downstream
@@ -3284,6 +3299,7 @@ export const registry = {
       ...programmableMaskParams('slm'),
       ...programmableEffectParams,
       layersParam,
+      ...PROGRAMMABLE_MASK_DETAIL_PARAMS,
     ],
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
@@ -3292,7 +3308,8 @@ export const registry = {
       return `<rect x="-9" y="${-L - 3}" width="20" height="${frame.length + 6}" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/>`
         + programmableFrameSVG(frame, { x: -6, y: -L + 1, width: 14, height: frame.length - 6 })
         + `<line x1="-9" y1="${-L}" x2="-9" y2="${L}" stroke="#65d4c2" stroke-width="1.6"/>`
-        + `<text x="1" y="${L - 1}" text-anchor="middle" font-size="4.5" font-weight="600" fill="#fff">SLM</text>`;
+        + `<text x="1" y="${L - 1}" text-anchor="middle" font-size="4.5" font-weight="600" fill="#fff">SLM</text>`
+        + programmableMaskDetailSVG(el, frame);
     },
     surfaces(el) {
       const mask = programmableMaskFrame(el.params, 'slm', el._animationTimeS);
@@ -3447,6 +3464,7 @@ export const registry = {
       { key: 'routeOff', label: 'Show OFF order', type: 'checkbox', def: false },
       ...programmableMaskParams('dmd'),
       ...programmableEffectParams,
+      ...PROGRAMMABLE_MASK_DETAIL_PARAMS,
     ],
     size_: el => ({ w: 30, h: el.params.length + 10 }),
     svg(el) {
@@ -3455,7 +3473,8 @@ export const registry = {
       return `<rect x="-9" y="${-L - 3}" width="20" height="${frame.length + 6}" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/>`
         + programmableFrameSVG(frame, { x: -6, y: -L + 1, width: 14, height: frame.length - 6 })
         + `<line x1="-9" y1="${-L}" x2="-9" y2="${L}" stroke="#dbe8ee" stroke-width="1.6"/>`
-        + `<text x="1" y="${L - 1}" text-anchor="middle" font-size="4.5" font-weight="600" fill="#fff">DMD</text>`;
+        + `<text x="1" y="${L - 1}" text-anchor="middle" font-size="4.5" font-weight="600" fill="#fff">DMD</text>`
+        + programmableMaskDetailSVG(el, frame);
     },
     surfaces(el) {
       const mask = programmableMaskFrame(el.params, 'dmd', el._animationTimeS);
@@ -3937,10 +3956,15 @@ export const registry = {
         key: 'profile', label: 'Path profile', type: 'select', def: 'bar',
         options: [
           ['bar', 'Central bar — a phase-contrast test object'],
+          ['pupil', 'Central pupil zone — radial area fraction'],
           ['ramp', 'Wedge — path rises across the aperture'],
           ['step', 'Step — half the aperture retarded'],
           ['bump', 'Curved — quadratic, thickest at the centre'],
         ],
+      },
+      {
+        key: 'centralAreaFraction', label: 'Central pupil area fraction', type: 'number',
+        min: 0, max: 1, step: 0.01, def: 0.5, show: p => p.profile === 'pupil',
       },
       // Half a wave at 532 nm. That is the phase-contrast condition -- the
       // setting that turns the most phase into the most contrast -- and it
@@ -3958,7 +3982,9 @@ export const registry = {
           // beam, so a wide plate in a narrow beam makes far fewer fringes
           // than its own peak path difference suggests.
           const lit = el?.id ? phasePlateIllumination(el.id) : null;
-          const fringes = acrossAperture * (lit ? lit.span : 1);
+          const pupilSpan = params.centralAreaFraction > 0 && params.centralAreaFraction < 1 ? 1 : 0;
+          const span = params.profile === 'pupil' ? (lit?.phaseSpan ?? pupilSpan) : (lit?.span ?? 1);
+          const fringes = acrossAperture * span;
           const count = `${fringes.toFixed(2)} at 532 nm`;
           if (!lit) return `${count} if the beam fills the aperture`;
           if (fringes < 0.02) return `${count} — too little path to see`;
@@ -3970,7 +3996,7 @@ export const registry = {
           // wave -- the total sits at half the light however the reference arm
           // is set, and only the profile carries the pattern. Saying that is
           // the difference between a subtle element and one that looks broken.
-          if (portSwing(params.profile, fringes) < 0.05) {
+          if (portSwing(params.profile, fringes, params.centralAreaFraction) < 0.05) {
             return `${count} — total stays put, read the profile`;
           }
           return count;
@@ -3981,11 +4007,14 @@ export const registry = {
     svg(el) {
       const h = (el.params.aperture || 30) / 2;
       const profile = el.params.profile || 'ramp';
+      const pupilHalfHeight = h * phasePlateCentralDiameterFraction(el.params.centralAreaFraction);
       // The drawn wedge/step/bar shows which part of the beam is retarded.
       const shape = profile === 'step'
         ? `M -4,0 L 4,0 L 4,${h} L -4,${h} Z`
         : profile === 'bar'
           ? `M -4,${-h / 3} L 4,${-h / 3} L 4,${h / 3} L -4,${h / 3} Z`
+          : profile === 'pupil'
+            ? `M -4,${-pupilHalfHeight} L 4,${-pupilHalfHeight} L 4,${pupilHalfHeight} L -4,${pupilHalfHeight} Z`
           : profile === 'bump'
             ? `M -1,${-h} Q 5,0 -1,${h} L -4,${h} L -4,${-h} Z`
             : `M -4,${-h} L 1,${-h} L 4,${h} L -4,${h} Z`;
@@ -3997,7 +4026,10 @@ export const registry = {
       const h = (el.params.aperture || 30) / 2;
       return [{
         x1: 0, y1: -h, x2: 0, y2: h, kind: 'phaseplate',
-        data: { profile: el.params.profile || 'ramp', opdUm: el.params.opdUm },
+        data: {
+          profile: el.params.profile || 'ramp', opdUm: el.params.opdUm,
+          centralAreaFraction: el.params.centralAreaFraction,
+        },
       }];
     },
   },
@@ -4323,6 +4355,7 @@ export const registry = {
       // by specimenTypeOf().
       { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: () => false, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
       ...sampleModeParams(),
+      ...SAMPLE_ARRIVAL_DETAIL_PARAMS,
     ],
     svg(el) {
       const p = el.params;
@@ -4337,7 +4370,8 @@ export const registry = {
         `<path d="M ${outer},-8 L ${outer},6 L ${windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
         `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="none"/>` +
         spot +
-        (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
+        (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '') +
+        sampleArrivalDetailSVG(el);
     },
     immersionContact: el => {
       const halfWidth = (el.params.aperture || 50) / 2;
@@ -5026,7 +5060,9 @@ export function getElementMeta(type, params = {}, context = {}) {
   } else if (type === 'metalens') {
     note = 'Focal length follows f(λ) = f₀λ₀/λ. Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
   } else if (type === 'phaseplate') {
-    note = 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. A wedge near half a fringe swings the port total hardest; at a whole fringe the written phases cancel and the total stops moving while the profile still shows the pattern, which is when the readout says so.';
+    note = params.profile === 'pupil'
+      ? 'The central-zone diameter is sqrt(area fraction), so its 2D meridional section represents the requested radial pupil area. It writes optical path but this geometric tracer does not propagate the resulting vectorial diffraction pattern or predict a depleted focus.'
+      : 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. A wedge near half a fringe swings the port total hardest; at a whole fringe the written phases cancel and the total stops moving while the profile still shows the pattern, which is when the readout says so.';
   } else if (type === 'pmt') {
     note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
   } else if (type === 'aod') {
@@ -5168,6 +5204,22 @@ export function getVisualBounds(el, { includeLabel = true } = {}) {
     const left = el.x + place.x, top = el.y + place.y;
     x0 = Math.min(x0, left); x1 = Math.max(x1, left + place.w);
     y0 = Math.min(y0, top); y1 = Math.max(y1, top + place.h);
+  }
+
+  if (el.type === 'stage') {
+    const inset = sampleArrivalDetailBounds(el);
+    if (inset) {
+      x0 = Math.min(x0, inset.x0); x1 = Math.max(x1, inset.x1);
+      y0 = Math.min(y0, inset.y0); y1 = Math.max(y1, inset.y1);
+    }
+  }
+
+  if (el.type === 'slm' || el.type === 'dmd') {
+    const inset = programmableMaskDetailBounds(el);
+    if (inset) {
+      x0 = Math.min(x0, inset.x0); x1 = Math.max(x1, inset.x1);
+      y0 = Math.min(y0, inset.y0); y1 = Math.max(y1, inset.y1);
+    }
   }
 
   if (includeLabel && el.showLabel && el.label) {

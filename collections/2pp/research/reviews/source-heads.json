@@ -1,0 +1,132 @@
+{
+  "reviewedOn": "2026-09-13",
+  "repository": "LucaGenchi/opticalsetup",
+  "main": "3242a2fe6a84ca155b9f97b4b399ecc24666c0b4",
+  "prs": [
+    {
+      "number": 108,
+      "title": "Preserve 2PP source research and reusable optical components",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/108",
+      "base": "main",
+      "base_sha": "50fd4084c4251c9768b0ef841ad36de854b59ae4",
+      "head": "codex/2pp-paper-collection",
+      "head_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "updated_at": "2026-09-12T18:09:16Z"
+    },
+    {
+      "number": 125,
+      "title": "Add Pearre 2018 resonant-scanning 2PP setup",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/125",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-pearre-2018-working",
+      "head_sha": "6b02bbfdb5db9273bf38915f3592e71fd124ca60",
+      "updated_at": "2026-09-13T06:06:21Z"
+    },
+    {
+      "number": 126,
+      "title": "Add working Kiefer 2024 multi-focus printer setup",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/126",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-kiefer-2024-working",
+      "head_sha": "72f0323d38ff8afa3e375e87e861c262b1399456",
+      "updated_at": "2026-09-13T06:40:05Z"
+    },
+    {
+      "number": 127,
+      "title": "Add Nanoscribe GT 2PP teaching setup",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/127",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-nanoscribe-gt-working",
+      "head_sha": "121a0b11b2b77a107bf3360c521eaa1775168ec6",
+      "updated_at": "2026-09-13T06:58:20Z"
+    },
+    {
+      "number": 128,
+      "title": "Add Saha 2019 temporal-focusing projection scene",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/128",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-saha-2019-working",
+      "head_sha": "c7ef3daab746e92348999d36104611db5227ed0c",
+      "updated_at": "2026-09-13T07:31:08Z"
+    },
+    {
+      "number": 129,
+      "title": "Add Yan 2015 parallel-writing mechanism interpretation",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/129",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-yan-2015-working",
+      "head_sha": "c847dbe60976e23058d72707b050e178e1ebe3e5",
+      "updated_at": "2026-09-13T08:03:39Z"
+    },
+    {
+      "number": 130,
+      "title": "Add Dong 2007 designable multiple-beam 2PP scene",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/130",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-dong-2007-working",
+      "head_sha": "ff39dc2ea261286a896873510b42e8991fa6dcea",
+      "updated_at": "2026-09-13T18:00:41Z"
+    },
+    {
+      "number": 131,
+      "title": "Add Fischer 2011 STED-inspired 2PP setup",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/131",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-fischer-2011-working",
+      "head_sha": "38b0f1ed897167808f90f8eb97ea774b1a553a55",
+      "updated_at": "2026-09-13T19:08:30Z"
+    },
+    {
+      "number": 132,
+      "title": "Add Gittard 2011 multifocus SLM 2PP setup",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/132",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-gittard-2011-working",
+      "head_sha": "039b7726ca6363a4d721e722963077f03ce1a3f4",
+      "updated_at": "2026-09-12T17:49:21Z"
+    },
+    {
+      "number": 133,
+      "title": "Add Somers 2021 spatiotemporal projection setup",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/133",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-somers-2021-working",
+      "head_sha": "79d3966d7f6f75fdcc073b16d47e35edf15f208e",
+      "updated_at": "2026-09-12T17:49:22Z"
+    },
+    {
+      "number": 134,
+      "title": "Add Ouyang 2023 holographic 2PP setup",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/134",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-ouyang-2023-working",
+      "head_sha": "9cf0f93fe2a16238450ef17b9204a2352ffe24fe",
+      "updated_at": "2026-09-12T17:49:23Z"
+    },
+    {
+      "number": 135,
+      "title": "Add Gu 2025 metalens-array 2PP setup",
+      "url": "https://github.com/LucaGenchi/opticalsetup/pull/135",
+      "base": "codex/2pp-paper-collection",
+      "base_sha": "9a4a967bb8dafa811f5bbc87092b9d21ecaea9bc",
+      "head": "codex/2pp-gu-2025-working",
+      "head_sha": "6788ffc987cc59cf214c6a7f2c054520abc3c374",
+      "updated_at": "2026-09-12T17:49:24Z"
+    }
+  ],
+  "latestAndreaReview": {
+    "body": "@bertona88 — this branch and all eleven scene branches stacked on it have been brought up to date with current `main` and reworked. Everything below is pushed; nothing is merged. The scenes want a careful human pass, one paper at a time, and the notes at the end say how to run them locally.\n\n## 1. Merged current `main` (25 commits of drift)\n\nTwo conflicts, both \"two features written at the same place\", kept whole. Cache `v84`.\n\n## 2. Two collisions between this work and decisions `main` made later\n\n- **Duty cycle could not go below 5%.** Both the AOM and the chopper floored `chopDuty` at 0.05 in 0.05 steps, so the Fischer 2011 scene's 3% AOM duty loaded as 5% and two of its tests failed. A few percent is ordinary pulse picking, so both controls now run 0.01–0.99 in 0.01 steps.\n- **The diffractive splitter lost light.** `test/2pp-array-elements.test.js` asserted that power in a non-propagating order simply disappears (detector reads 0.5). Since #139, gratings keep light they cannot diffract, and the new splitter inherits that path, so it reads 1.0. The test now states the conserving rule.\n\n## 3. Stale inspector controls on the DMD (three separate cases)\n\n`test/inspector-conditional-params.test.js` caught mode switches that reveal or hide other controls without rebuilding the panel, so the revealed fields stayed stale until the element was reselected: `pattern` (Ouyang), `spectralDispersion` (Saha), `sequence` and `disperseSpectrum` (Somers). Each is fixed on its own branch.\n\n## 4. Collections, instead of a single subject in the site header\n\nThe landing header promoted \"2PP research\" directly, which does not scale past one subject. It now offers **Collections**, and `/collections/` lists each collection and counts what it holds (`tools/build-collections-index.mjs`, counts read from the collection's own data so they cannot go stale).\n\nThe collection pages also carried their own light stylesheet, their own header and their own name for the canvas (\"Workbench\"). They now use the same shell as the wiki, examples and community: same palette and dark mode, same mark and header, same \"Open the canvas\" wording, hub cards, section heads, the live-trace embed frame and the limitations block. Only the research-page extras (reference tables, the transferred/not-transferred columns) remain in `collections/assets/collections.css`.\n\nThe header itself moved to **`tools/site-chrome.mjs`**, now shared by the wiki, examples, community and collections builders, so the nav cannot drift between sections. Every section lists Collections.\n\n## 5. Pearre 2018 geometry\n\nThe dichroic overlapped both the relay and the objective. Corrected by hand on the bench: the 1:1 relay runs on 100 mm lenses placed so its second lens sits one focal length from the objective's back focal plane (99.6 mm, checked against `objectiveBackFocalPlaneX`), which is what puts the scanned pupil on the objective pupil. The dichroic, PMT, objective and resin follow it down, and the frame grew to hold the longer column.\n\n## Status of every branch\n\n| PR | Paper | Tests | Scene |\n| --- | --- | --- | --- |\n| #108 | foundation | 959 pass / 0 fail | — |\n| #125 | pearre-2018 | 971 / 0 | 19 elements |\n| #126 | kiefer-2024 | 966 / 0 | 33 elements, 7 beamlets reach the resin |\n| #127 | nanoscribe-gt | 967 / 0 | 17 elements |\n| #128 | saha-2019 | 971 / 0 | 13 elements |\n| #129 | yan-2015 | 965 / 0 | 12 elements |\n| #130 | dong-2007 | 966 / 0 | 14 elements |\n| #131 | fischer-2011 | 968 / 0 | 20 elements |\n| #132 | gittard-2011 | 970 / 0 | 28 elements |\n| #133 | somers-2021 | 972 / 0 | 25 elements |\n| #134 | ouyang-2023 | 967 / 0 | 23 elements |\n| #135 | gu-2025 | 966 / 0 | 33 elements |\n\nEvery scene parses and traces with no non-finite geometry. Five branches needed real conflict resolution against `main` (`writeGroup`, `writeReference`/`focusRow` and the DMD hologram helpers landed where `main` had added spectral fields and the compressor helpers) — those merges are worth a look in their own right.\n\n## Running it locally\n\nNo build step and no dependencies are needed to look at the site: the generated pages are committed.\n\n```\ngit fetch origin\ngit checkout codex/2pp-kiefer-2024-working   # or any other scene branch\nnode serve.mjs                                # serves the repo root on :5182\n```\n\nThen open:\n\n- `http://localhost:5182/collections/` — the hub\n- `http://localhost:5182/collections/2pp/` — the 17 references\n- `http://localhost:5182/collections/2pp/<paper>/` — one paper, with its live preview\n- `http://localhost:5182/sketch/?paper=<paper>&edit=1` — the editable scene\n\n`npm test` runs the suite with no install. Only rebuilding the wiki needs `npm install` (katex); the collection and hub builders do not:\n\n```\nnode tools/build-2pp-collection.mjs && node tools/build-collections-index.mjs && node tools/build-sitemap.mjs\n```\n\nOne branch holds one paper's scene, so checking them one at a time means switching branches. On this foundation branch alone the paper pages correctly show \"native setup pending\", since the foundation deliberately ships no scenes.\n\n/andrea-review\nPlease review this branch (`codex/2pp-paper-collection`, head `9a4a967`) and each of the eleven scene branches listed above, in depth. Specifically:\n1. **Physics and provenance, per scene.** Does the traced path match the reported optical train in each paper's evidence note? Is anything marked \"reported\" that the source does not actually state, and is everything inferred marked as free interpretation? Flag any scene where the geometry implies a claim the 2D tracer cannot support.\n2. **The Pearre correction.** Confirm the relay-to-BFP distance is the right criterion and that the other scenes with scan relays (Kiefer, Gittard, Somers, Gu, Ouyang) place their pupil relays consistently — several were authored before this was checked.\n3. **The two behaviour changes on `main`'s side**: the 0.01 duty floor on the AOM and chopper, and the splitter keeping power it cannot diffract. Both change existing element behaviour, not just this collection. Say if either is wrong.\n4. **The conflict resolutions** in `sketch/js/raytrace.js` on #130, #132, #135 and in `sketch/js/elements.js` on #134, where both sides had added fields or helpers at the same place.\n5. **The site chrome change**: `tools/site-chrome.mjs` is now shared by four builders. Check the wiki, examples and community pages still render identically apart from the added Collections link.\n6. **Combining the scenes.** #128, #133 and #134 each extend the DMD in a different direction; they are fine separately but will collide. Advise on the order to land them and what the combined DMD should look like.\nReply here with concrete findings (file, line, and what is wrong) or an explicit \"no issues found\". Please do not push to these branches.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n",
+    "url": "https://github.com/LucaGenchi/opticalsetup/pull/108#issuecomment-5647623099",
+    "updated_at": "2026-09-12T17:48:44Z"
+  }
+}

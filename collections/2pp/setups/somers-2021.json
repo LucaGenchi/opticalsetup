@@ -1,0 +1,455 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "somers-frame",
+      "type": "figureframe",
+      "x": 380,
+      "y": 285,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "w": 760,
+        "h": 570,
+        "background": "white"
+      }
+    },
+    {
+      "id": "somers-title",
+      "type": "textlabel",
+      "x": 25,
+      "y": 35,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "text": "Somers 2021 · continuous projection",
+        "fontSize": 28.8,
+        "fill": "#26333a"
+      }
+    },
+    {
+      "id": "somers-subtitle",
+      "type": "textlabel",
+      "x": 25,
+      "y": 82,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "text": "Discrete DMD slices · 800 nm, 65 fs, 5 kHz",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "somers-laser",
+      "type": "pulsedlaser",
+      "x": 65,
+      "y": 145,
+      "rot": 0,
+      "label": "fs source",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "enabled": true,
+        "wavelength": 800,
+        "avgPowerW": 0.1,
+        "handoffEnabled": false,
+        "beamMode": "beam",
+        "beamWidth": 4.5,
+        "repRateMHz": 0.005,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 65,
+        "transformLimited": false,
+        "pulseShape": "gauss",
+        "bandwidth": 22,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "somers-hwp",
+      "type": "hwp",
+      "x": 140,
+      "y": 145,
+      "rot": 0,
+      "label": "λ/2",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "a": 0,
+        "length": 18
+      }
+    },
+    {
+      "id": "somers-pbs",
+      "type": "pbs",
+      "x": 180,
+      "y": 145,
+      "rot": 0,
+      "label": "PBS",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "size": 20
+      }
+    },
+    {
+      "id": "somers-power-dump",
+      "type": "beamdump",
+      "x": 180,
+      "y": 108,
+      "rot": 90,
+      "label": "Reject",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "aperture": 20
+      }
+    },
+    {
+      "id": "somers-galilean",
+      "type": "telescope",
+      "x": 232.5,
+      "y": 145,
+      "rot": 0,
+      "label": "1.33×",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "f1": -75,
+        "f2": 100,
+        "dia": 25.4,
+        "transEff": 99
+      }
+    },
+    {
+      "id": "somers-pishaper-note",
+      "type": "textlabel",
+      "x": 260,
+      "y": 105,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "text": "πShaper",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "somers-expander",
+      "type": "telescope",
+      "x": 410,
+      "y": 145,
+      "rot": 0,
+      "label": "100 / 150 mm",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "f1": 100,
+        "f2": 150,
+        "dia": 25.4,
+        "transEff": 99
+      }
+    },
+    {
+      "id": "somers-input-fold-1",
+      "type": "mirror",
+      "x": 640,
+      "y": 145,
+      "rot": 315,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "length": 26,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "somers-input-fold-2",
+      "type": "mirror",
+      "x": 640,
+      "y": 282.3811032171265,
+      "rot": 102,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "length": 26,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "somers-dmd",
+      "type": "dmd",
+      "x": 670,
+      "y": 206,
+      "rot": 270,
+      "label": "DMD",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "r",
+      "params": {
+        "length": 12,
+        "tilt": 12,
+        "routeOff": false,
+        "maskPattern": "slices",
+        "maskLevel": 1,
+        "pitch": 8,
+        "duty": 0.5,
+        "maskFrames": [],
+        "maskLegacyBands": [],
+        "maskFrame": 0,
+        "maskPlayback": true,
+        "maskRateHz": 0.5,
+        "maskSlice": 0.5,
+        "holographicOrders": false,
+        "focusCount": 3,
+        "focusSpan": 6,
+        "scanAngle": 0,
+        "spectralMode": "carrier",
+        "dispersionReferenceNm": 800,
+        "dispersionSlopeDegPer100Nm": 6,
+        "carrierLinesPerMm": 92.6,
+        "carrierOrder": 5,
+        "designWavelengthNm": 800,
+        "showMaskDetail": true,
+        "maskDetailOffsetX": -645,
+        "maskDetailOffsetY": -11,
+        "maskDetailWidth": 295,
+        "maskDetailHeight": 120
+      }
+    },
+    {
+      "id": "somers-dmd-label",
+      "type": "textlabel",
+      "x": 475,
+      "y": 241,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "text": "2D slices +\nspectral carrier",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "somers-relay-fold-1",
+      "type": "mirror",
+      "x": 670,
+      "y": 315,
+      "rot": 45,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "length": 26,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "somers-l3",
+      "type": "lens",
+      "x": 470,
+      "y": 315,
+      "rot": 180,
+      "label": "L3 · 300 mm",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "t",
+      "params": {
+        "f": 300,
+        "dia": 25.4,
+        "transEff": 99
+      }
+    },
+    {
+      "id": "somers-relay-fold-2",
+      "type": "mirror",
+      "x": 421.5,
+      "y": 315,
+      "rot": 45,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "length": 26,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "somers-relay-fold-3",
+      "type": "mirror",
+      "x": 421.5,
+      "y": 420,
+      "rot": 315,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "length": 26,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "somers-observation-bs",
+      "type": "bs",
+      "x": 465,
+      "y": 420,
+      "rot": 0,
+      "label": "½",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "ratio": 0.5,
+        "size": 20
+      }
+    },
+    {
+      "id": "somers-ccd",
+      "type": "camera",
+      "x": 465,
+      "y": 355,
+      "rot": 270,
+      "label": "CCD incident",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "r",
+      "params": {
+        "ch": 20,
+        "pixels": 64,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "somers-objective",
+      "type": "objective",
+      "x": 555.87,
+      "y": 420,
+      "rot": 0,
+      "label": "NA 1.49",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "efl": 2,
+        "workingDistance": 0.13,
+        "immersion": "oil",
+        "immersionIndex": 1.333,
+        "na": 1.49,
+        "showAcceptance": false,
+        "transEff": 70,
+        "frontAperture": 8
+      }
+    },
+    {
+      "id": "somers-stage",
+      "type": "stage",
+      "x": 572,
+      "y": 420,
+      "rot": 90,
+      "label": "Resin / Z",
+      "showLabel": true,
+      "labelFontSize": 18,
+      "labelPos": "r",
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 0,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 0.1,
+        "pzFreqZ": 0.2,
+        "pzZSteps": 5,
+        "aperture": 30,
+        "sampleKind": "resin",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": false,
+        "thickness": 0.2,
+        "voxelPreview": false,
+        "voxelSize": 0.3,
+        "transmitExc": true,
+        "transmission": 0,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1,
+        "showArrivalDetail": true,
+        "arrivalDetailRangeUm": 80,
+        "arrivalDetailOffsetX": -547,
+        "arrivalDetailOffsetY": -95,
+        "arrivalDetailWidth": 295,
+        "arrivalDetailHeight": 120,
+        "arrivalDetailFontSize": 18
+      }
+    },
+    {
+      "id": "somers-limits",
+      "type": "textlabel",
+      "x": 25,
+      "y": 510,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "labelPos": "b",
+      "params": {
+        "text": "DMD frames image onto resin; orange line marks the traced column.\nGeometric model: no temporal confinement, dose or curing; shaping untraced.\nZ is a reversing preview; frames and pulses are not synchronized.\nDesign choice = free interpretation; not specified in the paper.",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "somers-objective-label",
+      "type": "textlabel",
+      "x": 495,
+      "y": 440,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "params": {
+        "text": "NA 1.49",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    }
+  ],
+  "beams": []
+}

@@ -20,7 +20,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE_URL = 'https://opticalsetup.com';
 
 async function main() {
-  const { papers } = JSON.parse(await readFile(join(ROOT, 'collections/2pp/papers.json'), 'utf8'));
+  const { papers, introduction } = JSON.parse(await readFile(join(ROOT, 'collections/2pp/papers.json'), 'utf8'));
   const examplesByName = new Map(examples.map(e => [e.name, e]));
   const exampleSlugs = exampleEntries.map(entry => {
     const manifestEntry = examplesByName.get(entry.match);
@@ -39,6 +39,8 @@ async function main() {
     ...community.map(e => ({ loc: `${SITE_URL}/community/${e.slug}/`, priority: '0.6', freq: 'monthly' })),
     { loc: `${SITE_URL}/collections/`, priority: '0.8', freq: 'monthly' },
     { loc: `${SITE_URL}/collections/2pp/`, priority: '0.8', freq: 'monthly' },
+    { loc: `${SITE_URL}/collections/2pp/research/`, priority: '0.5', freq: 'monthly' },
+    ...(introduction ? [{ loc: `${SITE_URL}/collections/2pp/${introduction.id}/`, priority: '0.8', freq: 'monthly' }] : []),
     ...papers.map(p => ({ loc: `${SITE_URL}/collections/2pp/${p.id}/`, priority: '0.7', freq: 'monthly' })),
   ];
 

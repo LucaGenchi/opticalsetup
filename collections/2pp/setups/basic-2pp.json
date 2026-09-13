@@ -1,0 +1,298 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "basic-frame",
+      "type": "figureframe",
+      "x": 350,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 720,
+        "h": 540,
+        "background": "white"
+      },
+      "labelPos": "b",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-title",
+      "type": "textlabel",
+      "x": 25,
+      "y": 34,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Basic two-photon polymerization",
+        "fontSize": 28.8,
+        "fill": "#26333a"
+      },
+      "labelPos": "b",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-subtitle",
+      "type": "textlabel",
+      "x": 25,
+      "y": 80,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Serial writing \u00b7 an illustrative optical design",
+        "fontSize": 16,
+        "fill": "#64748b"
+      },
+      "labelPos": "b",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-source",
+      "type": "pulsedlaser",
+      "x": 65,
+      "y": 150,
+      "rot": 0,
+      "label": "fs source",
+      "showLabel": true,
+      "params": {
+        "enabled": true,
+        "wavelength": 780,
+        "avgPowerW": 0.01,
+        "handoffEnabled": false,
+        "beamMode": "beam",
+        "beamWidth": 1.2,
+        "repRateMHz": 80,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 120,
+        "transformLimited": false,
+        "pulseShape": "gauss",
+        "bandwidth": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      },
+      "labelPos": "b",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-halfwave",
+      "type": "hwp",
+      "x": 140,
+      "y": 150,
+      "rot": 0,
+      "label": "\u03bb/2",
+      "showLabel": true,
+      "params": {
+        "a": 0,
+        "length": 16
+      },
+      "labelPos": "b",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-attenuator",
+      "type": "polarizer",
+      "x": 175,
+      "y": 150,
+      "rot": 0,
+      "label": "Attenuator",
+      "showLabel": true,
+      "params": {
+        "pangle": 0,
+        "length": 20
+      },
+      "labelPos": "t",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-expander",
+      "type": "telescope",
+      "x": 220,
+      "y": 150,
+      "rot": 0,
+      "label": "2\u00d7 expander",
+      "showLabel": true,
+      "params": {
+        "f1": -20,
+        "f2": 40,
+        "dia": 16,
+        "transEff": 100
+      },
+      "labelPos": "b",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-galvo-x",
+      "type": "galvo",
+      "x": 300,
+      "y": 150,
+      "rot": 135,
+      "label": "X galvo",
+      "showLabel": true,
+      "params": {
+        "length": 22,
+        "commandAngle": 0,
+        "scanMode": "sine",
+        "scanAmplitude": 0.25,
+        "scanFrequencyHz": 1,
+        "scanPhaseDeg": 0,
+        "refl": 100,
+        "showTransmitted": false
+      },
+      "labelPos": "t",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-pivot-relay",
+      "type": "telescope",
+      "x": 300,
+      "y": 230,
+      "rot": 90,
+      "label": "1:1 pivot relay",
+      "showLabel": true,
+      "params": {
+        "f1": 40,
+        "f2": 40,
+        "dia": 20,
+        "transEff": 100
+      },
+      "labelPos": "l",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-galvo-y",
+      "type": "galvo",
+      "x": 300,
+      "y": 310,
+      "rot": 135,
+      "label": "Y galvo",
+      "showLabel": true,
+      "params": {
+        "length": 22,
+        "commandAngle": 0,
+        "scanMode": "sine",
+        "scanAmplitude": 0.25,
+        "scanFrequencyHz": 0.2,
+        "scanPhaseDeg": 90,
+        "refl": 100,
+        "showTransmitted": false
+      },
+      "labelPos": "l",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-pupil-relay",
+      "type": "telescope",
+      "x": 400,
+      "y": 310,
+      "rot": 0,
+      "label": "Scan / tube relay",
+      "showLabel": true,
+      "params": {
+        "f1": 40,
+        "f2": 80,
+        "dia": 20,
+        "transEff": 100
+      },
+      "labelPos": "b",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-objective",
+      "type": "objective",
+      "x": 532.5,
+      "y": 310,
+      "rot": 0,
+      "label": "NA 0.65",
+      "showLabel": false,
+      "params": {
+        "efl": 5,
+        "workingDistance": 1.5,
+        "immersion": "air",
+        "immersionIndex": 1.333,
+        "na": 0.65,
+        "showAcceptance": false,
+        "transEff": 100,
+        "frontAperture": 8
+      },
+      "labelPos": "t",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-resin",
+      "type": "stage",
+      "x": 550,
+      "y": 310,
+      "rot": 90,
+      "label": "Resin / Z",
+      "showLabel": true,
+      "params": {
+        "pzMode": "z",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 0.1,
+        "pzFreqZ": 0.15,
+        "pzZSteps": 5,
+        "aperture": 40,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 0.3,
+        "voxelPreview": true,
+        "voxelSize": 0.3,
+        "transmitExc": true,
+        "transmission": 0,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1,
+        "showArrivalDetail": true,
+        "arrivalDetailRangeUm": 60,
+        "arrivalDetailOffsetX": -95,
+        "arrivalDetailOffsetY": -185,
+        "arrivalDetailWidth": 210,
+        "arrivalDetailHeight": 120
+      },
+      "labelPos": "r",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-limits",
+      "type": "textlabel",
+      "x": 25,
+      "y": 435,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Two-photon excitation concentrates near a focused pulse.\nA voxel is a small exposed volume.\nHere, markers show qualitative ray arrivals.\nGeometric model: no voxel size, dose or curing.\nX/Y share a 2D section. Z translates the sample.",
+        "fontSize": 18,
+        "fill": "#475569"
+      },
+      "labelPos": "b",
+      "labelFontSize": 18
+    },
+    {
+      "id": "basic-objective-label",
+      "type": "textlabel",
+      "x": 485,
+      "y": 271,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "fontSize": 18,
+        "fill": "#475569",
+        "text": "NA 0.65 objective"
+      }
+    }
+  ],
+  "beams": []
+}

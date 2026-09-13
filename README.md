@@ -190,7 +190,7 @@ two-photon absorption, threshold dose, cure kinetics, voxel overlap, or a hidden
 third axis.
 
 Standalone objectives are set by effective focal length (EFL) — the focal length of
-the whole assembly as one equivalent lens — plus a working distance no longer than EFL,
+the whole assembly as one equivalent lens — plus an independent working distance,
 a front aperture, and a rated NA. The normal inspector offers coordinated generic 4×,
 10×, 20×, 40×, 60× water, and 100× oil starting points; exact catalogue values live in
 a collapsed Advanced parameters section. These are plausible first-order specs, not
@@ -215,6 +215,16 @@ filling it converges at `atan(NA)` rather than the sine-condition `asin(NA/n)` t
 half-angle quotes — close at moderate NA, separating near the ceiling — and the single
 plane is a first-order stand-in for a compound prescription, not the real internal
 conjugates.
+
+The equivalent aperture stays at the BFP even when that plane lies outside the
+drawn housing. A finite annulus and acceptance bore reject unsupported rays;
+they do not describe the objective's internal glass or guarantee an unvignetted
+field at every scan angle. Pupil fill is measured at that BFP, including rays
+rejected by these boundaries. Previously, the aperture was clamped to the drawn
+barrel, which broke pupil conjugacy for some common high-NA and long-working-
+distance objectives. Existing saved parameters, working distances and nominal
+foci are preserved, but those sketches now retrace with the corrected aperture;
+relays aligned to the former clamped plane need to be realigned to the BFP.
 
 A non-air objective derives an exported immersion bridge to the nearest compatible
 sample, stage-mounted sample, or facing fiber end; a moving stage carries that same
@@ -298,9 +308,9 @@ A collection follows one subject through its literature. `/collections/` is the
 hub that lists them, built by `tools/build-collections-index.mjs`; each
 collection builds its own pages and is linked from there.
 
-The first is the [two-photon lithography workspace](collections/2pp/README.md),
-which preserves the references, figure reviews, reported parameters, optical
-sequences and open questions for 17 benchmark references. Generated setups and
-preset links have been removed. Reconstructions are handled individually from
-the source documents. Rebuild it with `tools/build-2pp-collection.mjs`, then the
+The first is the [two-photon polymerization collection](collections/2pp/README.md):
+one canonical Basic scene and five distinct paper architectures. Its source
+reviews, shared scanner and programmable-mask rules, and explicit model limits
+support the native scenes. Excluded literature remains research-only with
+documented reasons. Rebuild it with `tools/build-2pp-collection.mjs`, then the
 hub, then `tools/build-sitemap.mjs`.

@@ -15,7 +15,8 @@ import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
 import { sampleProgrammableFrame, programmableSpectralAngle } from './programmable-mask.js';
-import { groupArrivalHits } from './arrival-preview.js';
+import { arrivalOutputPort, arrivalPortState, groupArrivalHits } from './arrival-preview.js';
+import { recordSampleArrivalDetail, resetSampleArrivalDetails } from './sample-arrival-detail.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -100,17 +101,24 @@ function recordObjectivePupil(elementId, radius, pupilRadius) {
 // camera -- and a wide plate in a narrow beam writes almost none of them.
 let phasePlateSpans = new Map();
 
-function recordPhasePlateSpan(elementId, u) {
+function recordPhasePlateSpan(elementId, u, phaseFraction) {
   if (!elementId || !Number.isFinite(u)) return;
   const seen = phasePlateSpans.get(elementId);
-  if (!seen) phasePlateSpans.set(elementId, { lo: u, hi: u });
-  else { seen.lo = Math.min(seen.lo, u); seen.hi = Math.max(seen.hi, u); }
+  if (!seen) phasePlateSpans.set(elementId, { lo: u, hi: u, phaseLo: phaseFraction, phaseHi: phaseFraction });
+  else {
+    seen.lo = Math.min(seen.lo, u); seen.hi = Math.max(seen.hi, u);
+    seen.phaseLo = Math.min(seen.phaseLo, phaseFraction);
+    seen.phaseHi = Math.max(seen.phaseHi, phaseFraction);
+  }
 }
 
 export function phasePlateIllumination(elementId) {
   const seen = phasePlateSpans.get(elementId);
   if (!seen) return null;
-  return { span: Math.max(0, Math.min(1, seen.hi - seen.lo)) };
+  return {
+    span: Math.max(0, Math.min(1, seen.hi - seen.lo)),
+    phaseSpan: Math.max(0, Math.min(1, seen.phaseHi - seen.phaseLo)),
+  };
 }
 
 // pulse-compressor element id -> the GDD the beam arrives carrying, and what
@@ -940,7 +948,8 @@ const MIN_COHERENT_INT = 1e-4;
 // pale mix rather than as whichever wavelength happens to sit in the middle.
 const MIXED_LIGHT_COLOR = '#cbd8ea';
 const MIN_RETAINED_POWER_INT = 1e-12;
-const MAX_RETAINED_WEAK_BRANCHES = 256;
+const MAX_RETAINED_WEAK_BRANCHES_PER_INPUT = 256;
+const MAX_RETAINED_WEAK_BRANCHES_PER_SOURCE = 16384;
 // How many rays one shaper hit may leave with, across all of its layers. It
 // bounds a stack that multiplies rays (orders x wavelengths x speckle grains),
 // and every layer sizes its own sampling to fit rather than overflowing and
@@ -2320,7 +2329,7 @@ function interact(ray, hit) {
         recordMetalensHit(s.el?.id, sample.wl, focalLength);
         return {
           d: lensBend(d, hit.p, s, focalLength, nextLenslet ? data.arrayPitch : 0),
-          ...(s.el?.type === 'metalensarray' ? { arrivalGroup: `${ray.arrivalGroup || ''}/${s.el.id}:M${lensletIndex}` } : {}),
+          ...(s.el?.type === 'metalensarray' ? arrivalPortState(ray, `${s.el.id}:M${lensletIndex}`, true) : {}),
           wl: sample.wl,
           bw: sampled ? 0 : ray.bw,
           ...(sampled ? {
@@ -2426,7 +2435,9 @@ function interact(ray, hit) {
       return [transmitAt(ray.wl)];
     }
     case 'dichroic': {
-      if (!ray.bw) return dichroicTransmits(ray.wl, data) ? [{ d }] : [{ d: reflect(d, n) }];
+      if (!ray.bw) return dichroicTransmits(ray.wl, data)
+        ? [{ d, ...arrivalPortState(ray, `${s.id}:T`) }]
+        : [{ d: reflect(d, n), ...arrivalPortState(ray, `${s.id}:R`) }];
       // A Gaussian (or already-filtered) input has no closed-form box
       // overlap with the passband — integrate the real profile numerically.
       if (ray.spec && ray.spec.kind !== 'flat') {
@@ -2526,6 +2537,7 @@ function interact(ray, hit) {
             // ray inherits the incident spectrum untouched.
             ...(port.spec !== undefined ? { spec: port.spec, wl: port.wl, bw: port.bw } : {}),
             tag: 'm0',
+            ...arrivalPortState(ray, `${s.id}:m0`),
           });
           continue;
         }
@@ -2544,6 +2556,7 @@ function interact(ray, hit) {
             wl: wls[i].wl, bw: 0, spec: null,
             intensity: ray.intensity * wls[i].weight / counts[i],
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
+            ...arrivalPortState(ray, `${s.id}:m${m}`),
           });
         }
       }
@@ -2749,14 +2762,9 @@ function interact(ray, hit) {
             },
           });
         } else {
-          // One ray, exactly as before -- the anti-phase chunks are a drawing
-          // hint on it and nothing more. Splitting it into a residual plus
-          // the light handed back during the off phase would have drawn the
-          // zeroth order more honestly, but at high efficiency the residual
-          // falls under the tracer's weak-branch floor and is culled at the
-          // next ordinary optic, so a display flag would have moved a
-          // detector reading (efficiency 0.99 through a lens: 0.505 -> 0.495).
-          // A drawing choice must never do that. The cost is that the drawn
+          // One ray carries the complete CW time average. The anti-phase
+          // chunks remain a drawing hint, independent of the power law.
+          // The cost is that the drawn
           // beam extinguishes fully while the RF is on even though a real
           // zeroth order keeps 1-efficiency; the wiki says so.
           // Emitted whatever it carries, including a sliver: the tracer
@@ -2770,6 +2778,11 @@ function interact(ray, hit) {
           });
         }
       }
+      // A 1% CW duty cycle or a small residual order is still real light at
+      // the next lens. Keep both AO ports under the same bounded weak-branch
+      // allowance as analyzers and programmed orders; never raise their
+      // intensity just to pass the ordinary 2% drawing/traversal threshold.
+      for (const child of out) child.retainWeak = true;
       return out;
     }
     case 'chop': {
@@ -3077,7 +3090,7 @@ function interact(ray, hit) {
       if (isDmd) {
         const on = (maskSample?.transmission ?? 0) > 0;
         base = rotv(base, (on ? 1 : -1) * 2 * data.tilt * D2R);
-        if (!on) return data.routeOff ? [{ d: base, tag: 'off' }] : [];
+        if (!on) return data.routeOff ? [{ d: base, tag: 'off', ...arrivalPortState(ray, `${s.id}:off`) }] : [];
       }
       const zf = data.zeroOrder && ((data.layers || []).length || data.effects?.holographic || data.mask)
         ? Math.min(0.95, Math.max(0, data.zeroFrac ?? 0.1)) : 0;
@@ -3086,7 +3099,8 @@ function interact(ray, hit) {
         wl: ray.wl, bw: ray.bw, spec: ray.spec, spectralContinuum: ray.spectralContinuum,
         spectralLo: ray.spectralLo, spectralHi: ray.spectralHi,
         retainWeak: ray.retainWeak || isDmd || data.mask?.mode === 'amplitude', keepWeak: ray.keepWeak,
-        arrivalGroup: ray.arrivalGroup,
+        ...(isDmd || zf > 0 ? arrivalPortState(ray, `${s.id}:${isDmd ? 'on' : 'programmed'}`)
+          : { arrivalPath: ray.arrivalPath, arrivalGroup: ray.arrivalGroup }),
       }].filter(r => r.intensity > 0);
       const layers = (data.layers || []).slice(0, 4);
       // Size the whole stack's sampling before tracing any of it. Each layer
@@ -3110,7 +3124,7 @@ function interact(ray, hit) {
           const routed = rotv(incident.d, angle * D2R);
           const orderRay = { ...incident, d: routed, intensity: incident.intensity / angles.length,
             tag: incident.tag + (effects.holographic ? `H${orderIndex}` : ''),
-            arrivalGroup: effects.holographic ? `${incident.arrivalGroup || ''}/${s.id}:H${orderIndex}` : incident.arrivalGroup,
+            ...(effects.holographic ? arrivalPortState(incident, `${s.id}:H${orderIndex}`, true) : {}),
             retainWeak: incident.retainWeak || effects.holographic, keepWeak: incident.keepWeak || hasSpectrum };
           if (!hasSpectrum) return [orderRay];
           const lineSpectrum = ray.spec?.kind === 'lines';
@@ -3163,7 +3177,7 @@ function interact(ray, hit) {
               const center = -L / 2 + (row + 0.5) * L / count;
               next.push({ ...r, d: lensBend(r.d, hit.p, s, f, center),
                 intensity: r.intensity / count, retainWeak: true,
-                arrivalGroup: `${r.arrivalGroup || ''}/${s.id}:F${row}`,
+                ...arrivalPortState(r, `${s.id}:layer${li}:F${row}`, true),
                 tag: r.tag + 'F' + row });
             }
           } else if (ly.type === 'lensarray') {
@@ -3176,7 +3190,7 @@ function interact(ray, hit) {
             // lenslet index goes into the branch signature so beam strips
             // only pair up within the same lenslet
             next.push({ ...r, d: lensBend(r.d, hit.p, s, ly.f, hc), tag: r.tag + 'L' + idx,
-              arrivalGroup: `${r.arrivalGroup || ''}/${s.id}:L${idx}` });
+              ...arrivalPortState(r, `${s.id}:layer${li}:L${idx}`, true) });
           } else if (ly.type === 'grating') {
             const orders = shaperLayerOrders(ly);
             const gd = 1e6 / (ly.lines || 600);
@@ -3240,6 +3254,7 @@ function interact(ray, hit) {
                   spec: port.spec, wl: port.wl, bw: port.bw,
                   intensity: r.intensity * port.fraction,
                   tag: r.tag + 'm' + m,
+                  ...arrivalPortState(r, `${s.id}:layer${li}:m${m}`),
                   // As above. A coarsened order can still span most of the
                   // band, and colorOf paints that as mixed light on its own --
                   // which is why this is a flag and not a colour: stamping the
@@ -3256,6 +3271,7 @@ function interact(ray, hit) {
                 const port = zeroOrderPort(r, orders, wls, counts, si, gd);
                 next.push({
                   ...r, intensity: r.intensity * port.fraction, tag: r.tag + 'm0',
+                  ...arrivalPortState(r, `${s.id}:layer${li}:m0`),
                   ...(port.spec !== undefined ? { spec: port.spec, wl: port.wl, bw: port.bw } : {}),
                 });
                 continue;
@@ -3283,6 +3299,7 @@ function interact(ray, hit) {
                   spectralHi: lineSpectrum ? null : (wls[wi].spectralHi ?? r.spectralHi),
                   intensity: r.intensity * wls[wi].weight / counts[wi],
                   tag: r.tag + 'm' + m + (wls.length > 1 ? 'w' + wi : ''),
+                  ...arrivalPortState(r, `${s.id}:layer${li}:m${m}`),
                   // As above: its own colours where it really is a band taken
                   // apart, and the incident beam's otherwise.
                   dispersed: (m !== 0 && r.bw > 0) || r.dispersed,
@@ -3354,9 +3371,11 @@ function interact(ray, hit) {
         speckle: r.speckle || undefined,
         retainWeak: r.retainWeak || undefined, keepWeak: r.keepWeak || undefined,
         ...(r.arrivalGroup ? { arrivalGroup: r.arrivalGroup } : {}),
+        ...(r.arrivalPath ? { arrivalPath: r.arrivalPath } : {}),
       }));
       if (zf > 0) {
-        out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0', retainWeak: true });
+        out.push({ d: data.transmissive ? d : reflect(d, n), intensity: ray.intensity * zf, tag: 'z0', retainWeak: true,
+          ...arrivalPortState(ray, `${s.id}:z0`) });
       }
       return out;
     }
@@ -3407,10 +3426,17 @@ function interact(ray, hit) {
 // `couplings` collects light captured by fiber input connectors.
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
   const done = [];
-  let retainedWeakBranches = 0;
+  // Each incident spatial ray receives the same bounded allowance. A global
+  // first-come counter let the first edge samples exhaust all 256 slots, so
+  // increasing a focus grid from four to eight silently erased half a sized
+  // beam. Unused shares cannot be stolen by a neighbouring sample. The source
+  // cap also bounds callers with more than the usual 25 input rays.
+  const weakBudgetPerInput = Math.min(MAX_RETAINED_WEAK_BRANCHES_PER_INPUT,
+    Math.floor(MAX_RETAINED_WEAK_BRANCHES_PER_SOURCE / Math.max(1, rays0.length)));
+  const retainedWeakBranches = new Uint32Array(rays0.length);
   const cameraSurfaces = surfaces.filter(surface => surface.kind === 'detector'
     && registry[surface.el?.type]?.readoutKind === 'camera');
-  const stack = rays0.map(r => {
+  const stack = rays0.map((r, inputIndex) => {
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
     const gdd = Number.isFinite(r.gddStart) ? r.gddStart
       : Number.isFinite(r.gdd) ? r.gdd : 0;
@@ -3423,7 +3449,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // a lens or compressor is an instantaneous step at one optical path.
       gddTrace: visualizesDispersion ? [{ opl, gdd, linear: false }] : null,
       segmentIntensities: [], segmentHistories: [], segmentEvents: [],
-      sig: '', depth: 0, last: null,
+      sig: '', depth: 0, last: null, traceInputIndex: inputIndex,
     };
   });
   const appendPoint = (r, p, geometricLength) => {
@@ -3544,11 +3570,28 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             na: Number.isFinite(hit.surface.data.objectiveNA) ? hit.surface.data.objectiveNA : null,
           }];
         }
-        // Every segment across the barrel face — the open pupil and the metal
-        // either side of it — reports where it was struck, so the widest hit
-        // is the radius of the beam that actually arrived.
-        const span = hit.surface.data.pupilSpan;
-        if (Array.isArray(span) && Number.isFinite(hit.u)) {
+        // Measure at the equivalent BFP, not at the separated lens plane.
+        // A centred scanning pupil walks across the lens, so using lens-hit
+        // height incorrectly reports an angle-dependent pupil fill. Include
+        // annulus/bore rejections so overfill remains visible. For reverse
+        // incidence at the lens, its outgoing ray travels toward the pupil.
+        const data = hit.surface.data;
+        const span = data.pupilSpan;
+        if (Number.isFinite(data.pupilPlaneX)) {
+          const element = hit.surface.el;
+          const localHit = toLocal(element, hit.p.x, hit.p.y);
+          let direction = { x: r.dx, y: r.dy };
+          let localDirection = rotPt(direction.x, direction.y, -(element.rot || 0));
+          if (hit.surface.kind === 'lens' && localDirection.x < 0) {
+            direction = lensBend(direction, hit.p, hit.surface, data.f);
+            localDirection = rotPt(direction.x, direction.y, -(element.rot || 0));
+          }
+          if (Math.abs(localDirection.x) > 1e-9) {
+            const height = localHit.y + (data.pupilPlaneX - localHit.x)
+              * localDirection.y / localDirection.x;
+            recordObjectivePupil(element.id, Math.abs(height), data.pupilRadius);
+          }
+        } else if (Array.isArray(span) && Number.isFinite(hit.u)) {
           recordObjectivePupil(
             hit.surface.el.id,
             Math.abs(span[0] + hit.u * (span[1] - span[0])),
@@ -3560,6 +3603,12 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // sample can draw its excitation spot too; only the piezo stage writes
       // 2PP voxel marks, which its own writeVoxel flag already gates.
       const holder = hit.surface.el?.type;
+      // The optional fixed-scale inset needs every spatial sample, including
+      // serial-beam edges. It records actual specimen surfaces only; mounts,
+      // mixing probes and coherent discovery passes never add arrivals.
+      if (!coherent?.dryRun && !specimenProbe && holder === 'stage' && hit.surface.data.reportHit) {
+        recordSampleArrivalDetail(hit.surface.el, hit.p, r);
+      }
       if ((holder === 'stage' || holder === 'sample') && (r.writeReference || r.arrivalGroup)) {
         if (writeHits && hit.surface.data.writeVoxel && r.pulse) {
           writeHits.push({
@@ -3619,8 +3668,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         // where this particular ray crossed the aperture -- which is what turns
         // a uniform port into a fringe pattern once the arms recombine.
         const peak = Math.min(20000, Math.max(0, Number(hit.surface.data.opdUm) || 0)) * 1e-3;
-        if (!coherent?.dryRun) recordPhasePlateSpan(hit.surface.el?.id, hit.u);
-        const extraOpl = peak * phasePlateOpdFraction(hit.surface.data.profile, hit.u);
+        const phaseFraction = phasePlateOpdFraction(
+          hit.surface.data.profile, hit.u, hit.surface.data.centralAreaFraction,
+        );
+        if (!coherent?.dryRun) recordPhasePlateSpan(hit.surface.el?.id, hit.u, phaseFraction);
+        const extraOpl = peak * phaseFraction;
         if (extraOpl > 0) {
           r.segmentIntensities.push(r.intensity);
           r.segmentHistories.push(r.sig);
@@ -3685,6 +3737,12 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       r.carriedEvan = null;
       const children = interact(r, hit);
       if (children.length === 0) break;
+      // Preserve real outgoing ports independently of spectral/spatial tags.
+      // Grating and programmable-layer orders attach their ports directly.
+      for (const child of children) {
+        const port = arrivalOutputPort(hit.surface.kind, child.tag);
+        if (port) Object.assign(child, arrivalPortState(r, `${hit.surface.id}:${port}`));
+      }
       recordCoherentArrival(r, hit, children, coherent?.arrivals);
       for (const child of children) {
         const override = coherent?.plan?.get(coherentChildKey(r, hit.surface, child));
@@ -3719,6 +3777,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         if ('medium' in c0) r.medium = c0.medium;
         if ('mediumMaterial' in c0) r.mediumMaterial = c0.mediumMaterial;
         if ('arrivalGroup' in c0) r.arrivalGroup = c0.arrivalGroup;
+        if ('arrivalPath' in c0) r.arrivalPath = c0.arrivalPath;
         if ('ior' in c0) r.ior = c0.ior;
         if (Number.isFinite(c0.phaseOffset)) r.phaseOffset = c0.phaseOffset;
         else if (Number.isFinite(c0.phaseShift)) r.phaseOffset = (r.phaseOffset || 0) + c0.phaseShift;
@@ -3740,17 +3799,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       for (const c of children) {
         const childIntensity = c.intensity !== undefined ? c.intensity : r.intensity;
         const childRetainsWeak = r.retainWeak || Boolean(c.retainWeak);
-        // Only a genuine branch is charged. A lone child continues the ray it
-        // came from rather than widening the tree -- a polarizer takes this
-        // path because its output carries a tag, not because it split -- so
-        // charging it would spend the budget on work that never grew. It bit
-        // a sized beam through a long polarizer stack: every sample charged
-        // once per stage, the 256 slots ran out, and later samples were
-        // dropped, reporting 92% of the expected signal after 16 elements and
-        // 68% after 20. Depth and length still bound a continuation chain.
+        // Only a genuine branch spends its originating input's allowance.
+        // One-child continuations remain free; no discarded light is ever
+        // reassigned to the branches that survive the finite budget.
         if (childRetainsWeak && childIntensity < MIN_INT && children.length > 1) {
-          if (retainedWeakBranches >= MAX_RETAINED_WEAK_BRANCHES) continue;
-          retainedWeakBranches++;
+          if (retainedWeakBranches[r.traceInputIndex] >= weakBudgetPerInput) {
+            markIncompleteCoherence(r, 'coherent path exceeded its retained-branch budget');
+            continue;
+          }
+          retainedWeakBranches[r.traceInputIndex]++;
         }
         const ox = c.origin ? c.origin.x : hit.p.x, oy = c.origin ? c.origin.y : hit.p.y;
         const childGdd = 'gdd' in c ? c.gdd : r.gdd;
@@ -3825,6 +3882,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           sample: r.sample, sampleCount: r.sampleCount, sampleGrid: r.sampleGrid,
           writeReference: r.writeReference,
           arrivalGroup: c.arrivalGroup || r.arrivalGroup,
+          arrivalPath: c.arrivalPath || r.arrivalPath,
+          traceInputIndex: r.traceInputIndex,
           objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),
           retainWeak: childRetainsWeak,
@@ -4093,6 +4152,7 @@ export function traceScene(elements, beams = []) {
   const writeHits = [];
   const signalHits = [];
   lastSignalHits = [];
+  resetSampleArrivalDetails();
   const couplings = [];
   lastPaths = [];
   detectorHits = new Map();

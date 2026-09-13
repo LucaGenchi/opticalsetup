@@ -1,0 +1,1061 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 450,
+      "y": 330,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "w": 900,
+        "h": 660,
+        "background": "white"
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 25,
+      "y": 32,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "text": "Gu 2025 · addressable metalens foci",
+        "fontSize": 35.2,
+        "fill": "#26333a"
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "laser",
+      "type": "pulsedlaser",
+      "x": 72,
+      "y": 145,
+      "rot": 0,
+      "label": "fs source",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "enabled": true,
+        "wavelength": 800,
+        "avgPowerW": 7,
+        "beamMode": "beam",
+        "beamWidth": 9.4,
+        "repRateMHz": 0.001,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 35,
+        "transformLimited": false,
+        "pulseShape": "gauss",
+        "bandwidth": 20,
+        "pol": 90,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed",
+        "handoffEnabled": false
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "hwp1",
+      "type": "hwp",
+      "x": 150,
+      "y": 145,
+      "rot": 0,
+      "label": "HWP",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "a": 45,
+        "length": 22
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "pbs1",
+      "type": "pbs",
+      "x": 195,
+      "y": 145,
+      "rot": 0,
+      "label": "PBS",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "size": 24
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "be1",
+      "type": "lensc",
+      "x": 265,
+      "y": 145,
+      "rot": 0,
+      "label": "−100",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "f": -100,
+        "dia": 20,
+        "transEff": 99
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "be2",
+      "type": "lens",
+      "x": 415,
+      "y": 145,
+      "rot": 0,
+      "label": "+250",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "f": 250,
+        "dia": 50,
+        "transEff": 99
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "pbs2",
+      "type": "pbs",
+      "x": 535,
+      "y": 145,
+      "rot": 0,
+      "label": "PBS",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "size": 30
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "qwp1",
+      "type": "qwp",
+      "x": 550,
+      "y": 145,
+      "rot": 0,
+      "label": "QWP1 · double pass",
+      "showLabel": false,
+      "labelPos": "t",
+      "params": {
+        "a": 45,
+        "length": 34
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "slm",
+      "type": "slm",
+      "x": 574,
+      "y": 145,
+      "rot": 0,
+      "label": "SLM",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "transmissive": false,
+        "length": 23.625,
+        "zeroOrder": false,
+        "zeroFrac": 0.1,
+        "layers": [],
+        "maskMode": "amplitude",
+        "maskPattern": "custom",
+        "maskFrames": [
+          [
+            [
+              0,
+              0.42,
+              0.66,
+              1,
+              0,
+              0.54,
+              0.78
+            ],
+            [
+              0.54,
+              0.78,
+              0.18,
+              0.72,
+              0.66,
+              0.9,
+              0.3
+            ],
+            [
+              0.9,
+              0.3,
+              0,
+              0,
+              0.18,
+              0.42,
+              0
+            ],
+            [
+              0.42,
+              0,
+              0.9,
+              0.38,
+              0.54,
+              0,
+              0.18
+            ],
+            [
+              0,
+              0.18,
+              0.42,
+              0.92,
+              0,
+              0.3,
+              0.54
+            ],
+            [
+              0.3,
+              0.54,
+              0.78,
+              0.18,
+              0.42,
+              0.66,
+              0.9
+            ],
+            [
+              0.66,
+              0.9,
+              0,
+              1,
+              0.78,
+              0.18,
+              0
+            ]
+          ],
+          [
+            [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              0.65,
+              0.65,
+              0.65,
+              1,
+              0.65,
+              0.65,
+              0.65
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0.65,
+              0.65,
+              0.65,
+              1,
+              0.65,
+              0.65,
+              0.65
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0.65,
+              0.65,
+              0.65,
+              1,
+              0.65,
+              0.65,
+              0.65
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0.65,
+              0.65,
+              0.65,
+              1,
+              0.65,
+              0.65,
+              0.65
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0.65,
+              0.65,
+              0.65,
+              1,
+              0.65,
+              0.65,
+              0.65
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0.65,
+              0.65,
+              0.65,
+              1,
+              0.65,
+              0.65,
+              0.65
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0.65,
+              0.65,
+              0.65,
+              1,
+              0.65,
+              0.65,
+              0.65
+            ]
+          ]
+        ],
+        "maskFrame": 0,
+        "maskPlayback": false,
+        "maskRateHz": 0.5,
+        "maskSlice": 0.5,
+        "maskLegacyBands": [],
+        "holographicOrders": false,
+        "spectralMode": "none",
+        "showMaskDetail": true,
+        "maskDetailOffsetX": 46,
+        "maskDetailOffsetY": 165,
+        "maskDetailWidth": 250,
+        "maskDetailHeight": 125,
+        "maskDetailFontSize": 21
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "qwp2",
+      "type": "qwp",
+      "x": 535,
+      "y": 168,
+      "rot": 90,
+      "label": "QWP2",
+      "showLabel": false,
+      "labelPos": "r",
+      "params": {
+        "a": 45,
+        "length": 36
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "l1",
+      "type": "lens",
+      "x": 535,
+      "y": 190,
+      "rot": 90,
+      "label": "L1 · 75 mm",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "f": 75,
+        "dia": 42,
+        "transEff": 99
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "window1",
+      "type": "thicklens",
+      "x": 535,
+      "y": 252,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "r1": 0,
+        "r2": 0,
+        "thickness": 1,
+        "dia": 30,
+        "glass": "silica",
+        "transEff": 99
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "window2",
+      "type": "thicklens",
+      "x": 535,
+      "y": 278,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "r1": 0,
+        "r2": 0,
+        "thickness": 1,
+        "dia": 30,
+        "glass": "silica",
+        "transEff": 99
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "l2",
+      "type": "lens",
+      "x": 535,
+      "y": 465.62383798629406,
+      "rot": 90,
+      "label": "L2 · 200 mm",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": {
+        "f": 200,
+        "dia": 92,
+        "transEff": 99
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "fold",
+      "type": "mirror",
+      "x": 535,
+      "y": 525.623837986294,
+      "rot": 135,
+      "label": "Fold",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "length": 94,
+        "refl": 99,
+        "showTransmitted": false
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "ml2",
+      "type": "metalensarray",
+      "x": 675,
+      "y": 525.623837986294,
+      "rot": 180,
+      "label": "Metalens row",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "length": 63,
+        "count": 7,
+        "f": 40,
+        "designWavelength": 800,
+        "focusEff": 49.3
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "stage",
+      "type": "stage",
+      "x": 715,
+      "y": 525.623837986294,
+      "rot": 90,
+      "label": "Resin / stage",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 4,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 2,
+        "pzFreqZ": 0.15,
+        "pzZSteps": 5,
+        "aperture": 76,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 0.5,
+        "voxelPreview": true,
+        "voxelSize": 0.5,
+        "transmitExc": true,
+        "transmission": 0,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1,
+        "showArrivalDetail": false
+      },
+      "labelFontSize": 22
+    },
+    {
+      "id": "gu-subtitle",
+      "type": "textlabel",
+      "x": 25,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 22,
+      "params": {
+        "text": "Intensity image → independent focal spots",
+        "fontSize": 22,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gu-mechanism",
+      "type": "textlabel",
+      "x": 25,
+      "y": 350,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 22,
+      "params": {
+        "text": "SLM gates intensity; metalenses focus.\n2D mask shown; one column is traced.\nReported lens: 100 µm, NA 0.8.\nDrawing: 9 mm pitch and f = 40 mm,\nenlarged independently.\nGeometric model: no PSF, dose or curing.\nDesign choices: see companion note.",
+        "fontSize": 22,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gu-vacuum",
+      "type": "textlabel",
+      "x": 585,
+      "y": 262,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 22,
+      "params": {
+        "text": "Vacuum cell\nWindows: design choice",
+        "fontSize": 22,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gu-observation",
+      "type": "textlabel",
+      "x": 25,
+      "y": 573,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 22,
+      "params": {
+        "text": "Observation microscope omitted.\nIt is not the writing objective.",
+        "fontSize": 22,
+        "fill": "#475569"
+      }
+    }
+  ],
+  "beams": []
+}

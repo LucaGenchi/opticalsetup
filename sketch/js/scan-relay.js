@@ -125,8 +125,8 @@ export function inspectScanRelay(matrix, {
   };
 }
 
-// The equivalent BFP and the actually seated aperture stop can differ for
-// long-WD/long-EFL objectives. Do not silently treat the two as identical.
+// Report both equivalent planes explicitly. The integrated objective keeps
+// its stop at the BFP; historical paper snapshots may still clamp that stop.
 export function objectiveScanPlanes(objective) {
   const x = finite(objective.x, 'objective x');
   const y = finite(objective.y, 'objective y');

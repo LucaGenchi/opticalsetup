@@ -1,0 +1,469 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "ouyang-frame",
+      "type": "figureframe",
+      "x": 520,
+      "y": 397.5,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 1060,
+        "h": 795,
+        "background": "white"
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-title",
+      "type": "textlabel",
+      "x": 25,
+      "y": 30,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Ouyang 2023 · Programmable multi-focus",
+        "fontSize": 42.4,
+        "fill": "#26333a"
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-laser",
+      "type": "pulsedlaser",
+      "x": 80,
+      "y": 180,
+      "rot": 0,
+      "label": "800 nm",
+      "showLabel": true,
+      "params": {
+        "enabled": true,
+        "wavelength": 800,
+        "avgPowerW": 4,
+        "handoffEnabled": true,
+        "beamMode": "beam",
+        "beamWidth": 2,
+        "repRateMHz": 0.001,
+        "pulsePhaseNs": 0,
+        "pulseWidthFs": 100,
+        "transformLimited": false,
+        "pulseShape": "gauss",
+        "bandwidth": 0,
+        "pol": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-hwp",
+      "type": "hwp",
+      "x": 160,
+      "y": 180,
+      "rot": 0,
+      "label": "λ/2",
+      "showLabel": true,
+      "params": {
+        "a": 0,
+        "length": 18
+      },
+      "labelPos": "t",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-pbs",
+      "type": "pbs",
+      "x": 210,
+      "y": 180,
+      "rot": 0,
+      "label": "PBS",
+      "showLabel": true,
+      "params": {
+        "size": 20
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-pbs-dump",
+      "type": "beamdump",
+      "x": 210,
+      "y": 280,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "aperture": 20
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-grating",
+      "type": "grating",
+      "x": 285,
+      "y": 180,
+      "rot": 49.43,
+      "label": "600/mm",
+      "showLabel": false,
+      "params": {
+        "lines": 600,
+        "orders": "1",
+        "transmissive": false,
+        "length": 30
+      },
+      "labelPos": "r",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-fold-a",
+      "type": "mirror",
+      "x": 252.03692073978098,
+      "y": 107.10668476681474,
+      "rot": -102.16647704274766,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 22,
+        "refl": 100,
+        "showTransmitted": false
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-l1",
+      "type": "lens",
+      "x": 252.03692073978098,
+      "y": 252.10668476681474,
+      "rot": 90,
+      "label": "L1 225",
+      "showLabel": true,
+      "params": {
+        "f": 225,
+        "dia": 20,
+        "transEff": 100
+      },
+      "labelPos": "l",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-fold-b",
+      "type": "mirror",
+      "x": 252.03692073978098,
+      "y": 352.10668476681474,
+      "rot": -45,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 22,
+        "refl": 100,
+        "showTransmitted": false
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-fold-c",
+      "type": "mirror",
+      "x": 502.03692073978095,
+      "y": 352.10668476681474,
+      "rot": 45,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 22,
+        "refl": 100,
+        "showTransmitted": false
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-l2",
+      "type": "lens",
+      "x": 502.03692073978095,
+      "y": 227.10668476681474,
+      "rot": 90,
+      "label": "L2 250",
+      "showLabel": true,
+      "params": {
+        "f": 250,
+        "dia": 20,
+        "transEff": 100
+      },
+      "labelPos": "r",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-fold-d",
+      "type": "mirror",
+      "x": 502.03692073978095,
+      "y": 187.10668476681474,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 22,
+        "refl": 100,
+        "showTransmitted": false
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-fold-e",
+      "type": "mirror",
+      "x": 402.03692073978095,
+      "y": 187.10668476681474,
+      "rot": 45,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "length": 22,
+        "refl": 100,
+        "showTransmitted": false
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-dmd",
+      "type": "dmd",
+      "x": 397.1351694246457,
+      "y": 304.65471987832353,
+      "rot": 123,
+      "label": "DMD",
+      "showLabel": true,
+      "params": {
+        "length": 48,
+        "tilt": 12,
+        "routeOff": false,
+        "maskPattern": "hologram",
+        "maskLevel": 1,
+        "pitch": 8,
+        "duty": 0.5,
+        "maskFrames": [],
+        "maskLegacyBands": [],
+        "maskFrame": 0,
+        "maskPlayback": false,
+        "maskRateHz": 0.5,
+        "maskSlice": 0.34375,
+        "holographicOrders": true,
+        "focusCount": 3,
+        "focusSpan": 4,
+        "scanAngle": 0,
+        "spectralMode": "none",
+        "dispersionReferenceNm": 800,
+        "dispersionSlopeDegPer100Nm": 6,
+        "carrierLinesPerMm": 92.6,
+        "carrierOrder": 1,
+        "designWavelengthNm": 800,
+        "showMaskDetail": true,
+        "maskDetailOffsetX": 237.8648305753543,
+        "maskDetailOffsetY": -209.65471987832353,
+        "maskDetailWidth": 365,
+        "maskDetailHeight": 155,
+        "maskDetailFontSize": 26
+      },
+      "labelPos": "l",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-l3",
+      "type": "lens",
+      "x": 552.036920739781,
+      "y": 297.10668476681474,
+      "rot": 0,
+      "label": "L3 150",
+      "showLabel": true,
+      "params": {
+        "f": 150,
+        "dia": 30,
+        "transEff": 100
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-filter",
+      "type": "slit",
+      "x": 702.036920739781,
+      "y": 297.10668476681474,
+      "rot": 0,
+      "label": "Order filter",
+      "showLabel": true,
+      "params": {
+        "gap": 16,
+        "length": 36
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-l4",
+      "type": "lens",
+      "x": 902.036920739781,
+      "y": 297.10668476681474,
+      "rot": 0,
+      "label": "L4 200",
+      "showLabel": true,
+      "params": {
+        "f": 200,
+        "dia": 36,
+        "transEff": 100
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-dichroic",
+      "type": "dichroic",
+      "x": 950,
+      "y": 297.10668476681474,
+      "rot": 315,
+      "label": "DM",
+      "showLabel": true,
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 700,
+        "center": 550,
+        "band": 50,
+        "length": 40
+      },
+      "labelPos": "r",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-objective",
+      "type": "objective",
+      "x": 950,
+      "y": 442.9036055065957,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "efl": 5,
+        "workingDistance": 0.24,
+        "immersion": "oil",
+        "immersionIndex": 1.333,
+        "na": 1.3,
+        "showAcceptance": false,
+        "transEff": 82,
+        "frontAperture": 13
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-stage",
+      "type": "stage",
+      "x": 950,
+      "y": 459.1436055065957,
+      "rot": 0,
+      "label": "Resin",
+      "showLabel": true,
+      "params": {
+        "pzMode": "static",
+        "pzTravelXY": 12,
+        "pzFreqXY": 0.15,
+        "pzTravelZ": 8,
+        "pzFreqZ": 0.1,
+        "pzZSteps": 5,
+        "aperture": 40,
+        "sampleKind": "generic",
+        "specimenType": "resin",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 0.3,
+        "voxelPreview": true,
+        "voxelSize": 0.3,
+        "transmitExc": true,
+        "transmission": 0,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1,
+        "showArrivalDetail": true,
+        "arrivalDetailRangeUm": 250,
+        "arrivalDetailOffsetX": -275,
+        "arrivalDetailOffsetY": 30.85639449340431,
+        "arrivalDetailWidth": 320,
+        "arrivalDetailHeight": 220,
+        "arrivalDetailFontSize": 26
+      },
+      "labelPos": "l",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-objective-label",
+      "type": "textlabel",
+      "x": 715,
+      "y": 404,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "40× oil / NA 1.3",
+        "fontSize": 26.5,
+        "fill": "#475569"
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-scope",
+      "type": "textlabel",
+      "x": 25,
+      "y": 545,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Separate geometric orders → arrivals.\n800 nm view: no dispersion compensation,\nCGH field or polymerization calculation.\nDesign choice = free interpretation;\nnot specified in the paper.\n589 nm observation omitted; see note.",
+        "fontSize": 26.5,
+        "fill": "#475569"
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-controls",
+      "type": "textlabel",
+      "x": 25,
+      "y": 705,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Try: source off · orders 3 → 1 · steer +1°\nFilter 16 → 4 mm removes outer orders.",
+        "fontSize": 26.5,
+        "fill": "#475569"
+      },
+      "labelPos": "b",
+      "labelFontSize": 26.5
+    },
+    {
+      "id": "ouyang-grating-label",
+      "type": "textlabel",
+      "x": 282,
+      "y": 230,
+      "rot": 0,
+      "params": {
+        "text": "600/mm",
+        "fontSize": 26.5,
+        "fill": "#475569"
+      }
+    }
+  ],
+  "beams": []
+}

@@ -75,7 +75,7 @@ test('separate scanner pivots need an inter-pivot conjugacy as well as the final
   close(complete.A, 2);
 });
 
-test('world objective planes respect rotation, working distance and the separately seated stop', () => {
+test('world objective planes respect rotation and retain pupil conjugacy outside the housing', () => {
   const objective = createElement('objective', 560, 679);
   objective.rot = 90;
   Object.assign(objective.params, { efl: 8, workingDistance: 0.6 });
@@ -87,8 +87,9 @@ test('world objective planes respect rotation, working distance and the separate
   assert.equal(planes.stopClamped, false);
   Object.assign(objective.params, { efl: 2, workingDistance: 12 });
   const longWD = objectiveScanPlanes(objective);
-  assert.equal(longWD.stopClamped, true);
-  assert.notDeepEqual(longWD.bfp, longWD.stop);
+  assert.equal(longWD.stopClamped, false);
+  assert.deepEqual(longWD.bfp, longWD.stop);
+  close(longWD.bfp.y, 703);
 });
 
 test('invalid geometry fails explicitly instead of returning non-finite optical coordinates', () => {

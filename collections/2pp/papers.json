@@ -1,27 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "sourceArticle": "https://andreabertoncini.com/blog/throughput-scaling-two-photon-polymerization",
-  "reviewDate": "2026-09-05",
+  "reviewDate": "2026-09-13",
   "papers": [
-    {
-      "id": "dong-2007",
-      "year": 2007,
-      "title": "Micronanofabrication of assembled three-dimensional microstructures by designable multiple beams multiphoton processing",
-      "doi": "10.1063/1.2789661",
-      "family": "Lens and aperture arrays",
-      "status": "full-text-needed",
-      "documents": [],
-      "reviewed": [],
-      "opticalTrain": [],
-      "mechanism": "The abstract describes configurable lens sets and aperture masks for multiple-beam writing. Full apparatus not reconstructed from the abstract.",
-      "modelLimits": "Full text and apparatus figure unavailable.",
-      "settings": {},
-      "unknowns": [
-        "The benchmark DOI 10.1063/1.2535504 resolves to a different paper. Corrected DOI verified against title and authors.",
-        "Publisher access failed; no exact OA manuscript located in author/repository searches."
-      ],
-      "auxiliaryPath": ""
-    },
     {
       "id": "fischer-2011",
       "year": 2011,
@@ -45,7 +26,7 @@
         "DETC/PETA resin, scanned at 100 µm/s"
       ],
       "mechanism": "A central phase step in the depletion pupil produces axial and radial inhibition around the excitation volume. This is not simply a lateral doughnut.",
-      "modelLimits": "No stimulated depletion, vectorial PSF, triplet dynamics or resin kinetics are simulated. Combiner placement is inferred from the stated common objective, not a published mechanical drawing.",
+      "modelLimits": "No stimulated depletion, vectorial PSF, triplet dynamics or resin kinetics are simulated. The 2D meridional phase-zone proxy converts pupil area to diameter but cannot calculate the axial/radial depletion focus. Combiner placement is inferred from the stated common objective, not a published mechanical drawing.",
       "settings": {
         "wavelengthNm": 810,
         "numericalAperture": 1.4
@@ -53,9 +34,33 @@
       "unknowns": [
         "Excitation repetition rate and pulse duration are not specified in the retrieved manuscript.",
         "Depletion 50 mW is before the objective; ordinary excitation 7.4–8.3 mW is not a single fixed source power.",
-        "Central mask occupies 50% of the pupil area; the 2D drawing cannot encode radial area fractions."
+        "Central mask occupies 50% of the pupil area; the native meridional proxy uses the corresponding sqrt(0.5) diameter, while the physical pupil diameter and relay prescription remain unspecified."
       ],
-      "auxiliaryPath": ""
+      "auxiliaryPath": "",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 810,
+          "numericalAperture": 1.4
+        }
+      },
+      "shortTitle": "Fischer 2011 · Depletion-inspired writing",
+      "summary": "Combine excitation and a phase-shaped second beam at one objective.",
+      "experiments": [
+        {
+          "control": "Excitation / depletion sources and AOM duty",
+          "result": "Disable either color or vary AOM duty from 1–99%. The arrival inset distinguishes excitation and CW light; no depletion chemistry is calculated."
+        },
+        {
+          "control": "Central pupil area / optical path",
+          "result": "Change the central phase zone. The optical path changes while the geometric focus stays fixed."
+        },
+        {
+          "control": "Sample motion",
+          "result": "Switch between static and ±50 µm transverse motion. The fixed micrometer view shows actual ray arrivals and the reported 100 µm/s translation rate."
+        }
+      ]
     },
     {
       "id": "gittard-2011",
@@ -93,258 +98,32 @@
         "4 W source output is not 8–12 mW per-focus writing power.",
         "Fig. 1 labels the attenuator as a half-wave plate/polarizer and the source as <140 fs; prose describes a liquid-crystal modulator/PBS and <150 fs. The drawing follows the prose and retains this discrepancy."
       ],
-      "auxiliaryPath": "A CMOS camera branch connects near the scanner; transmission illumination is below the specimen. No APD is specified in Fig. 1."
-    },
-    {
-      "id": "buckmann-2014",
-      "year": 2014,
-      "title": "An elasto-mechanical unfeelability cloak made of pentamode metamaterials",
-      "doi": "10.1038/ncomms5130",
-      "family": "Commercial galvo writing",
-      "status": "reviewed",
-      "documents": [
-        "buckmann-2014.pdf",
-        "buckmann-2014-si.pdf"
-      ],
-      "reviewed": [
-        "PDF p. 5 Methods; supplementary document has mechanical cloak figures, not internal optical schematics."
-      ],
-      "opticalTrain": [
-        "Frequency-doubled erbium-fibre laser: 780 nm, approximately 90 fs",
-        "Nanoscribe Photonic Professional GT internal beam delivery (undisclosed)",
-        "Galvo scanning with positioning stages",
-        "Zeiss 25×, NA 0.8 dip-in objective",
-        "IP-S resin on glass"
-      ],
-      "mechanism": "Dip-in writing and long working distance allow millimetre-scale metamaterial construction; reported writing speed is 5 cm/s, with 0.5 µm lateral and 1 µm axial line spacing.",
-      "modelLimits": "Only the documented functional sequence is drawn. Proprietary relay, attenuator and laser architecture are not inferred from other Nanoscribe generations.",
-      "settings": {
-        "wavelengthNm": 780,
-        "pulseDurationFs": 90,
-        "numericalAperture": 0.8
+      "auxiliaryPath": "A CMOS camera branch connects near the scanner; transmission illumination is below the specimen. No APD is specified in Fig. 1.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 780,
+          "repetitionRateMHz": 80,
+          "numericalAperture": 1.4
+        }
       },
-      "unknowns": [
-        "Repetition rate and source power are not reported.",
-        "No apparatus figure gives the internal beamline."
-      ],
-      "auxiliaryPath": ""
-    },
-    {
-      "id": "nanoscribe-gt",
-      "year": 2014,
-      "title": "Photonic Professional GT technical data (benchmark datasheet)",
-      "doi": "",
-      "family": "Commercial galvo writing",
-      "status": "reviewed",
-      "documents": [
-        "nanoscribe-gt-datasheet.pdf"
-      ],
-      "reviewed": [
-        "Vendor datasheet pp. 1–2; retrieved revision is 2016, whereas the benchmark point is labelled 2014."
-      ],
-      "opticalTrain": [
-        "NIR femtosecond laser (unspecified timing and wavelength)",
-        "Proprietary beam delivery",
-        "XY galvo scanner",
-        "Configuration-dependent objective",
-        "XYZ piezo stage and coarse motorized XY stage"
-      ],
-      "mechanism": "Datasheet lists typical 10 mm/s beam scanning and 100 µm/s piezo scanning, 300 µm XYZ piezo travel, and 100×100 mm² accessible motorized print area.",
-      "modelLimits": "A vendor functional diagram, not a reverse-engineered optical prescription. The 2016 document does not establish the exact 2014 configuration.",
-      "settings": {},
-      "unknowns": [
-        "Wavelength, repetition rate, duration, power and objective NA are unspecified.",
-        "Electrical consumption below 500 W is not optical laser power."
-      ],
-      "auxiliaryPath": ""
-    },
-    {
-      "id": "yang-2015",
-      "year": 2015,
-      "title": "Parallel direct laser writing of micro-optical and photonic structures using spatial light modulator",
-      "doi": "10.1016/j.optlaseng.2015.02.006",
-      "family": "Parallel writing",
-      "status": "full-text-needed",
-      "documents": [],
-      "reviewed": [],
-      "opticalTrain": [],
-      "mechanism": "Predefined CGH focus patterns produced by an SLM; a full optical train cannot be inferred from the abstract.",
-      "modelLimits": "Full text and apparatus figure unavailable; no reconstructed scene is published.",
-      "settings": {},
-      "unknowns": [
-        "Exact title and DOI verified. Publisher access unavailable and no exact OA full text obtained."
-      ],
-      "auxiliaryPath": ""
-    },
-    {
-      "id": "yan-2015",
-      "year": 2015,
-      "title": "High-throughput fabrication of micrometer-sized compound parabolic mirror arrays by using parallel laser direct-write processing",
-      "doi": "10.1088/2040-8978/17/7/075803",
-      "family": "Parallel writing",
-      "status": "full-text-needed",
-      "documents": [],
-      "reviewed": [],
-      "opticalTrain": [],
-      "mechanism": "Parallel fabrication of compound parabolic mirror arrays. The 633 nm optical characterization wavelength is not evidence for the fabrication laser wavelength.",
-      "modelLimits": "Full text and apparatus figure unavailable; no reconstructed scene is published.",
-      "settings": {},
-      "unknowns": [
-        "Exact title and DOI verified. Publisher access unavailable and no exact OA full text obtained.",
-        "RMIT repository record 27487374 has an empty files list; the old Swinburne handle redirects after repository migration."
-      ],
-      "auxiliaryPath": ""
-    },
-    {
-      "id": "pearre-2018",
-      "year": 2018,
-      "title": "Fast micron-scale 3D printing with a resonant-scanning two-photon microscope",
-      "doi": "arXiv:1803.07135",
-      "family": "Resonant scanning",
-      "status": "reviewed",
-      "documents": [
-        "pearre-2018.pdf"
-      ],
-      "reviewed": [
-        "Author preprint pp. 3–4 Fig. 1 and optical system description."
-      ],
-      "opticalTrain": [
-        "Ti:sapphire: typically 780 nm, approximately 120 fs, 80 MHz",
-        "Pockels-cell intensity control (ConOptics 350-80/302RM)",
-        "Power-monitor pickoff",
-        "2× Galilean beam expander",
-        "7.91 kHz resonant X scanner and slow Y galvo",
-        "Scan/tube relay",
-        "25×, NA 0.8 objective with immersion compensation ring",
-        "Resin; objective piezo Z and positioning stage"
-      ],
-      "mechanism": "A fast resonant raster is intensity-addressed by the Pockels cell. The 3.33 MHz command stream is not the optical repetition frequency.",
-      "modelLimits": "Pockels intensity control is represented by the documented assembly, not a standalone phase-only modulator. Resonance, scan linearization and PrintImage software are not reproduced.",
-      "settings": {
-        "wavelengthNm": 780,
-        "repetitionRateMHz": 80,
-        "pulseDurationFs": 120,
-        "numericalAperture": 0.8
-      },
-      "unknowns": [
-        "Laser output is approximately 0.6–1 W, not a single fixed setting.",
-        "6–10 W is pump power, not the printing beam."
-      ],
-      "auxiliaryPath": "Dichroic/PMT imaging shares the objective path; PMT is an imaging return detector, not a writing source."
-    },
-    {
-      "id": "geng-2019",
-      "year": 2019,
-      "title": "Ultrafast multi-focus 3-D nano-fabrication based on two-photon polymerization",
-      "doi": "10.1038/s41467-019-10249-2",
-      "family": "DMD holography",
-      "status": "reviewed",
-      "documents": [
-        "geng-2019.pdf",
-        "geng-2019-si.pdf"
-      ],
-      "reviewed": [
-        "PDF p. 2 Fig. 1 and system description; p. 6 dispersion-compensation Methods. Retrieved supplement describes movies only."
-      ],
-      "opticalTrain": [
-        "Chameleon Ultra II: 800 nm, 200 fs, 3.3 W",
-        "Transmissive 1200 lines/mm grating and high-reflector M1",
-        "L1=100 mm and L2=250 mm, 4f dispersion precompensation",
-        "DLP4100 DMD: 1024×768, 13.68 µm pitch; binary holograms",
-        "L3=200 mm, Fourier-plane filter selecting the first holographic order",
-        "L4=200 mm to objective pupil",
-        "Nikon 40×, NA 1.3 oil, WD 0.22 mm",
-        "IP-Dip on XYZ stage"
-      ],
-      "mechanism": "DMD holograms encode random-access positions and amplitudes at 22.7 kHz. Grating precompensation cancels the DMD carrier dispersion; it does not create temporal focusing at the sample.",
-      "modelLimits": "Native DMD ON/OFF micromirror routing is not binary holography. Carrier order 10 and selected holographic first order refer to different levels of the diffraction construction.",
-      "settings": {
-        "wavelengthNm": 800,
-        "pulseDurationFs": 200,
-        "numericalAperture": 1.3,
-        "sourcePowerMw": 3300
-      },
-      "unknowns": [
-        "Repetition rate is not stated; instrument brand alone is not evidence for 80 MHz.",
-        "3.3 W source output exceeds the lab handoff power range."
-      ],
-      "auxiliaryPath": "LED/50:50 beam splitter/dichroic and CCD provide epi observation through the same objective."
-    },
-    {
-      "id": "saha-2019",
-      "year": 2019,
-      "title": "Scalable submicrometer additive manufacturing",
-      "doi": "10.1126/science.aax8760",
-      "family": "Temporal focusing projection",
-      "status": "reviewed",
-      "documents": [
-        "saha-2019.pdf"
-      ],
-      "reviewed": [
-        "PDF p. 1 Fig. 1 apparatus and caption; p. 2 temporal focusing explanation; p. 3 Fig. 3 settings; p. 4 1 kHz laser discussion."
-      ],
-      "opticalTrain": [
-        "Amplified femtosecond source: 800 nm, nominal 35 fs, 1 kHz",
-        "DMD image mask and angular dispersion",
-        "Collimating lens L1",
-        "Fold mirror",
-        "60×, NA 1.25 objective L2",
-        "Projected resin plane on XYZ stage"
-      ],
-      "mechanism": "A 4f-like arrangement images the DMD mask to the build plane. Spectral path lengths are equal at that plane, where the pulse is shortest; adjacent planes have lower peak intensity.",
-      "modelLimits": "Geometric rays cannot establish temporal focusing, sheet confinement, voxel size or polymer conversion. No generic pulse compressor is substituted for this effect.",
-      "settings": {
-        "wavelengthNm": 800,
-        "repetitionRateMHz": 0.001,
-        "pulseDurationFs": 35,
-        "numericalAperture": 1.25
-      },
-      "unknowns": [
-        "35/39/42 nW per projected pixel are measured before the objective; they are not total source power.",
-        "Supplementary instrument prescription has not been downloaded.",
-        "1 kHz and 35 fs fall outside the current lab input ranges."
-      ],
-      "auxiliaryPath": ""
-    },
-    {
-      "id": "hahn-2020",
-      "year": 2020,
-      "title": "Rapid Assembly of Small Materials Building Blocks (Voxels) into Large Functional 3D Metamaterials",
-      "doi": "10.1002/adfm.201907795",
-      "family": "DOE parallel scanning",
-      "status": "reviewed",
-      "documents": [
-        "hahn-2020.pdf"
-      ],
-      "reviewed": [
-        "PDF pp. 5–6 Figs. 2–3 and apparatus description."
-      ],
-      "opticalTrain": [
-        "Mai Tai HP: 790 nm, 90 fs, 80 MHz, 2.8 W",
-        "AOM: first order writing, zero order dumped",
-        "Two N-SF10 prisms: 2 m tip spacing, approximately −30000 fs² compensation",
-        "3×3 static DOE at entrance pupil of dispersion-compensating telescope",
-        "Dispersion-compensating telescope (DCT), near-unity magnification",
-        "PBS, LG1/LG2 demagnifying relay, GX",
-        "LG3/LG4 relay, GY",
-        "LG5/LG6 relay; dichroic reflects 790 nm",
-        "Quarter-wave plate; Zeiss 40× NA 1.4 oil",
-        "Resin, coarse XY and piezo Z stages"
-      ],
-      "mechanism": "Nine foci share galvo scanning. A specifically chromatic telescope counteracts the angular dispersion of the DOE; a normal achromatic 1× telescope is not equivalent.",
-      "modelLimits": "The DCT is labelled as a prescription-dependent assembly; no ordinary relay is claimed to reproduce its chromatic correction. AOM frequency and instantaneous gate timing are separate quantities.",
-      "settings": {
-        "wavelengthNm": 790,
-        "repetitionRateMHz": 80,
-        "pulseDurationFs": 90,
-        "numericalAperture": 1.4,
-        "sourcePowerMw": 2800
-      },
-      "unknowns": [
-        "Detailed lens prescriptions require the cited instrument sources.",
-        "2.8 W source output is outside the destination power input range."
-      ],
-      "auxiliaryPath": "LED transmission imaging goes to a camera. Sample backreflection double-passes the QWP, changes polarization and exits the PBS toward an APD."
+      "shortTitle": "Gittard 2011 · SLM multifocus",
+      "summary": "Create representative focus rows from the full SLM aperture, then scan them.",
+      "experiments": [
+        {
+          "control": "Pulsed source",
+          "result": "Disable emission to remove all writing arrivals."
+        },
+        {
+          "control": "Orders in this section (1 / 4 / 8)",
+          "result": "Change the separate geometric-order count. The displayed phase frame is illustrative; it does not calculate the orders or carrier."
+        },
+        {
+          "control": "Galvo or pupil relay",
+          "result": "Move the focus pattern with a scanner or disturb the relay to see why pupil conjugacy matters."
+        }
+      ]
     },
     {
       "id": "somers-2021",
@@ -371,7 +150,7 @@
         "BBK/PETA resin on 3-axis air-bearing stage"
       ],
       "mechanism": "Stage-synchronized image masks and continuous Z translation remove interlayer dead time. The dispersive DMD and objective establish a temporal focus at the projected image plane.",
-      "modelLimits": "No time-dependent field or curing model is solved. The drawing identifies the spatial conjugate planes without replacing the DMD with a generic periodic amplitude mask simulation.",
+      "modelLimits": "Discrete 2D frames supply one sampled column to the geometric tracer; a separate carrier supplies wavelength angles. No temporal field, dose, curing or stage/frame synchronization is calculated.",
       "settings": {
         "wavelengthNm": 800,
         "repetitionRateMHz": 0.005,
@@ -380,9 +159,35 @@
       },
       "unknowns": [
         "5 kHz is outside the lab repetition-rate range.",
-        "Total operating source power is not a single value."
+        "Total operating source power is not a single value.",
+        "Objective transmission of 70% is a reported assumption. The native objective EFL and WD are design choices."
       ],
-      "auxiliaryPath": "50:50 beam splitter before the objective feeds a CCD. A 633 nm alignment laser enters through a DMLP650 dichroic. A GaP detector is used upstream of the DMD while minimizing pulse duration."
+      "auxiliaryPath": "50:50 beam splitter before the objective feeds a CCD. A 633 nm alignment laser enters through a DMLP650 dichroic. A GaP detector is used upstream of the DMD while minimizing pulse duration. The compact native view omits the 633 nm alignment/DMLP650 branch and GaP detector, and traces incident light to the CCD rather than a calculated specimen image.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 800,
+          "pulseDurationFs": 65,
+          "numericalAperture": 1.49
+        }
+      },
+      "shortTitle": "Somers 2021 · DMD projection",
+      "summary": "Project changing mask slices and compare wavelength paths at the sample.",
+      "experiments": [
+        {
+          "control": "Pulsed source",
+          "result": "Disable emission to remove the projected writing light."
+        },
+        {
+          "control": "DMD frame playback",
+          "result": "Step through discrete 2D slices; the tracer follows the displayed sampled column."
+        },
+        {
+          "control": "Sample depth",
+          "result": "Move the resin away from its conjugate image plane and inspect the spread of sampled wavelengths. Temporal confinement is not calculated."
+        }
+      ]
     },
     {
       "id": "ouyang-2023",
@@ -396,7 +201,7 @@
         "ouyang-2023-si.pdf"
       ],
       "reviewed": [
-        "Main PDF p. 2 Fig. 1; supplement pp. 2–3, 8; p. 12 Fig. S1."
+        "Main PDF p. 2 Fig. 1 and system description; p. 3 Fig. 2 single-pulse results; supplement pp. 2–5 Methods, p. 8 Table S1, p. 12 Fig. S1, and p. 15 Fig. S4/Note 2 nonlinear coefficients."
       ],
       "opticalTrain": [
         "Spitfire Pro: 800 nm, 100 fs, 1 kHz, 4 W",
@@ -422,131 +227,32 @@
         "Supplement compensation prose swaps the L1/L2 values; the drawing follows the explicit Fig. S1 caption (225/250 mm).",
         "4 W is source output; reported 5 nJ per focus at 1 kHz is not source power."
       ],
-      "auxiliaryPath": "589 nm fibre LED below the substrate reflects from M1 through the objective and dichroic to L6=100 mm and CCD."
-    },
-    {
-      "id": "jiao-2023",
-      "year": 2023,
-      "title": "Acousto-optic scanning spatial-switching multiphoton lithography",
-      "doi": "10.1088/2631-7990/ace0a7",
-      "family": "AOD scanning with spatial switching",
-      "status": "reviewed",
-      "documents": [
-        "jiao-complete.pdf"
-      ],
-      "reviewed": [
-        "PDF p. 3 Fig. 1; pp. 7–8 Methods. Supplement Fig. S2 is cited but not retrieved."
-      ],
-      "opticalTrain": [
-        "Keyun laser: 517 nm, 250 fs, 45 MHz, 6.5 W",
-        "N-F2 prism pair P1/P2 for group-delay precompensation",
-        "AOM temporal gate, approximately 2 MHz switching",
-        "N-F2 prism P3 for central-field angular precompensation",
-        "AOD X step addressing and AOD Y nonlinear frequency sweep",
-        "Eight-beam DOE adjacent to AOD Y exit pupil",
-        "Custom Kepler dispersion compensation module",
-        "CL1=250 mm at front focal plane of TL1",
-        "DLP6500 DMD spatial mask at back focal plane of TL1",
-        "TL2 and Olympus 100× NA 1.4 objective",
-        "IP-L/IP-Dip on moving XYZ stage"
-      ],
-      "mechanism": "The DOE makes eight foci; the DMD independently gates their scanned image regions. The fast AOD scans a line in 17.5 µs; nonlinear RF sweeps compensate changing cylindrical power.",
-      "modelLimits": "The current AOD is an ideal angle controller, not a nonlinear acoustic-wavefront solver. The drawing keeps the specialized compensation and mask planes explicit.",
-      "settings": {
-        "wavelengthNm": 517,
-        "repetitionRateMHz": 45,
-        "pulseDurationFs": 250,
-        "numericalAperture": 1.4,
-        "sourcePowerMw": 6500
+      "auxiliaryPath": "589 nm fibre LED below the substrate reflects from M1 through the objective and dichroic to L6=100 mm and CCD.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 800,
+          "pulseDurationFs": 100,
+          "numericalAperture": 1.3
+        }
       },
-      "unknowns": [
-        "KDCM prescriptions need the supplement.",
-        "6.5 W is source output; 260 mW for eight foci is a different measurement plane.",
-        "Reported 532 nm laser is for wavefront metrology, not the 517 nm fabrication path."
-      ],
-      "auxiliaryPath": ""
-    },
-    {
-      "id": "zhang-2024",
-      "year": 2024,
-      "title": "High-Throughput Two-Photon 3D Printing Enabled by Holographic Multi-Foci High-Speed Scanning",
-      "doi": "10.1021/acs.nanolett.4c00505",
-      "family": "SLM holography",
-      "status": "reviewed",
-      "documents": [
-        "zhang-2024.pdf",
-        "zhang-2024-si.pdf"
-      ],
-      "reviewed": [
-        "Main PDF p. 2 Fig. 1; supplement pp. 2–3 apparatus and optical efficiency description."
-      ],
-      "opticalTrain": [
-        "Menlo BlueCut: 1030 nm, 400 fs, 1 MHz; maximum 10 W",
-        "AOM shutter: zeroth order writing, first order dumped",
-        "HWP/PBS attenuation",
-        "Beam expander and iris",
-        "Reflective Hamamatsu X15213-03BL SLM; 1272×1024, 12.5 µm pitch, 60 Hz",
-        "300/200 mm 4f relay",
-        "Orthogonal galvo pair",
-        "150/150 mm 4f relay to objective pupil",
-        "Dichroic and Olympus 60× NA 1.35 oil objective",
-        "SZ2080; piezo Z with manual XY"
-      ],
-      "mechanism": "Interference-aware CGHs suppress the SLM zero-order contribution near the pattern centre. The AOM zero order is the useful writing path, a separate meaning of zero order.",
-      "modelLimits": "Do not add a spatial stop at the hologram centre: cancellation is computational interference. The existing tracer cannot optimize that coherent hologram.",
-      "settings": {
-        "wavelengthNm": 1030,
-        "repetitionRateMHz": 1,
-        "pulseDurationFs": 400,
-        "numericalAperture": 1.35
-      },
-      "unknowns": [
-        "10 W is maximum capacity, not measured operating power.",
-        "1 MHz is below the lab handoff range.",
-        "Pupil illumination is 8.5 mm against an 8.1 mm entrance aperture."
-      ],
-      "auxiliaryPath": "Dichroic, L5 and CCD monitor the sample through the writing objective."
-    },
-    {
-      "id": "kiefer-2024",
-      "year": 2024,
-      "title": "A multi-photon (7 × 7)-focus 3D laser printer based on a 3D-printed diffractive optical element and a 3D-printed multi-lens array",
-      "doi": "10.37188/lam.2024.003",
-      "family": "DOE and microlens arrays",
-      "status": "reviewed",
-      "documents": [
-        "kiefer-2024.pdf"
-      ],
-      "reviewed": [
-        "PDF pp. 3–4, especially Fig. 2 with complete beamline and relay labels."
-      ],
-      "opticalTrain": [
-        "Chameleon Ultra II: 790 nm, 140 fs sech², 80 MHz, 3.7 W",
-        "L1/L2 1.25× demagnification to AOM; first order used",
-        "L3/L4 1.60× relay to DOE (571 µm beam diameter)",
-        "7×7 DOE, initial separation parameter M≈3",
-        "L5/L6 3.33× telescope and L7",
-        "Custom aspheric microlens array: approximately 720 µm beam diameter; raises M to 300",
-        "LG1 collimation to GX; LG2/LG3 unity relay to GY",
-        "LG4/LG5 2× pupil relay",
-        "Zeiss 40× NA 1.4 oil objective",
-        "49 foci, 60 µm separation; XYZ specimen positioning"
-      ],
-      "mechanism": "The microlens array expands beamlet separation without the large chromatic spread that direct high-angle DOE splitting would cause. It is a separate optic after the DOE.",
-      "modelLimits": "The native lenslet element is a 1D paraxial proxy. It cannot reproduce the custom aspheric prescription, 7×7 vectorial focus or measured efficiency.",
-      "settings": {
-        "wavelengthNm": 790,
-        "repetitionRateMHz": 80,
-        "pulseDurationFs": 140,
-        "numericalAperture": 1.4,
-        "sourcePowerMw": 3700
-      },
-      "unknowns": [
-        "954 mW is before the objective for all 49 foci, not 954 mW per focus.",
-        "19.5 mW per focus is before the objective; 70% objective transmission is assumed in the paper.",
-        "No prism pair is added merely because Hahn uses one."
-      ],
-      "auxiliaryPath": "LED transmission illumination above the specimen; a beam splitter (BS) and L8 feed the camera through the writing objective."
+      "shortTitle": "Ouyang 2023 · Digital holographic multifocus",
+      "summary": "Use separately configured angular orders to illustrate random-access focus placement.",
+      "experiments": [
+        {
+          "control": "Pulsed source",
+          "result": "Disable writing light while inspecting the separate observation path."
+        },
+        {
+          "control": "Geometric focus orders",
+          "result": "Change order count and spacing; the displayed binary frame is illustrative, not a solved hologram."
+        },
+        {
+          "control": "Steering / spatial filter",
+          "result": "Shift the representative pattern or change order selection, then inspect actual sample arrivals."
+        }
+      ]
     },
     {
       "id": "gu-2025",
@@ -556,17 +262,18 @@
       "family": "Metalens arrays",
       "status": "reviewed",
       "documents": [
-        "gu-2025.pdf"
+        "gu-2025-author-manuscript.pdf",
+        "gu-2025-supplement.pdf"
       ],
       "reviewed": [
-        "Official supplementary PDF pp. 4, 12–13 and apparatus-related discussion; public Extended Data Fig. 2 apparatus (publisher Fig7_ESM) and Fig. 3 phase-to-amplitude operation. Main article PDF remains unavailable."
+        "OSTI-hosted complete author manuscript pp. 5–7 and 18–20; Extended Data Figs. 1–3 on pp. 25–27; official supplementary PDF pp. 3–6, 12–15 and 22."
       ],
       "opticalTrain": [
-        "Femtosecond laser: centre approximately 800 nm, 1 kHz, 7 W",
-        "HWP1/PBS1 power control and beam expander",
+        "Solstice femtosecond amplifier: 800 nm, 1 kHz, 35 fs, 7 W average output",
+        "HWP1/PBS1 power control and −100 mm/+250 mm Galilean beam expander",
         "PBS2/QWP1/reflective LC-SLM double pass: phase-to-amplitude modulation",
         "QWP2",
-        "L1/L2 relay with vacuum cell around the intermediate focus",
+        "L1/L2 conjugate relay with vacuum cell around the intermediate focus: 200:200 mm for ML1 or 75:200 mm for ML2",
         "Fold mirror",
         "Metalens array directly focuses into resist",
         "Substrate and translation stage above metalens array"
@@ -577,15 +284,84 @@
         "wavelengthNm": 800,
         "repetitionRateMHz": 0.001,
         "numericalAperture": 0.8,
-        "sourcePowerMw": 7000
+        "sourcePowerMw": 7000,
+        "pulseDurationFs": 35
       },
       "unknowns": [
-        "Pulse duration is not verified in the downloaded supplement; do not invent 100 fs.",
-        "Main paper full PDF not obtained.",
-        "7 W total output is outside the lab power range.",
-        "50×50 array uses 200 µm lens size; 370×350 array uses 100 µm lens size."
+        "The version-of-record PDF remains subscription content; apparatus values were verified in the complete OSTI author manuscript.",
+        "7 W is total amplifier output, not sample-plane or per-focus power, and is outside the companion lab range.",
+        "Metalens focal lengths and most free-space distances are not numerically specified.",
+        "The caption names HWP1–2, but the Methods writing-path description specifies HWP1 only and the second HWP is not unambiguously located."
       ],
-      "auxiliaryPath": "A separate observation objective above the substrate connects to a beam splitter, LED, L3 and CMOS. It is not the writing objective."
+      "auxiliaryPath": "A separate observation objective above the substrate connects to a beam splitter, LED, L3 and CMOS. It is not the writing objective.",
+      "handoff": {
+        "basis": "paper",
+        "verified": true,
+        "settings": {
+          "wavelengthNm": 800,
+          "numericalAperture": 0.8
+        }
+      },
+      "shortTitle": "Gu 2025 · Metalens arrays",
+      "summary": "Image an intensity mask onto separate lenslets that make the writing foci.",
+      "experiments": [
+        {
+          "control": "Pulsed source",
+          "result": "Disable emission or set source power to zero to remove writing arrivals."
+        },
+        {
+          "control": "SLM intensity frame",
+          "result": "Enable individual sampled regions to select independent metalenses."
+        },
+        {
+          "control": "Metalens focal length / stage depth",
+          "result": "Move the geometric focus away from the resin and inspect the actual arrival spread."
+        }
+      ]
     }
-  ]
+  ],
+  "introduction": {
+    "id": "basic-2pp",
+    "shortTitle": "Basic two-photon polymerization",
+    "title": "Basic Two-Photon Polymerization",
+    "family": "Serial scanning",
+    "status": "designed",
+    "doi": "",
+    "year": 2026,
+    "documents": [],
+    "reviewed": [
+      "Paper-independent paraxial design. Both scanner pivots are conjugate to the objective back focal plane. All operating values and lens choices are illustrative."
+    ],
+    "opticalTrain": [
+      "Femtosecond source",
+      "Half-wave plate and linear polarizer",
+      "2× beam expander",
+      "X galvo, 1:1 inter-pivot relay, Y galvo",
+      "40:80 mm scan/tube pupil relay",
+      "NA 0.65 dry objective",
+      "Photoresist on an axially moving stage"
+    ],
+    "mechanism": "A focused pulse supplies a localized two-photon excitation region. Pupil-conjugate mirrors move its geometric focus while the stage changes sample depth. The two scanner axes are projected onto this single optical section.",
+    "summary": "Follow one pulse train through attenuation, scanning, focusing and sample motion.",
+    "modelLimits": "The ray-arrival inset displays actual traced support at the sample. It is not a PSF, voxel, dose or polymerization calculation.",
+    "settings": {},
+    "unknowns": [
+      "All configured values are educational design choices, not a fabrication prescription."
+    ],
+    "auxiliaryPath": "",
+    "experiments": [
+      {
+        "control": "Source emission and power",
+        "result": "Switch off the pulse train or set power to zero to remove arrivals. Positive source power is metadata; relative attenuation is controlled by the polarization optics."
+      },
+      {
+        "control": "Galvo center angle",
+        "result": "Change either mirror angle and inspect the shifted sample arrival while the beam stays centered in the pupil."
+      },
+      {
+        "control": "Stage depth and relay spacing",
+        "result": "Play the Z motion to see defocus spread, or shift the pupil relay to produce pupil walk."
+      }
+    ]
+  }
 }

@@ -79,6 +79,25 @@ not calculate arbitrary 2D/3D CGH fields, high-NA vector PSFs, diffraction
 efficiency, pulse-front tilt, temporal-focusing confinement, calibrated voxel
 dimensions, polymerization, or throughput.
 
+## Weak-order trace budget
+
+Retained weak rays keep the existing positive-power floor of `1e-12`; the
+separate `keepWeak` path keeps its existing `1e-5` floor. Genuine branching
+spends a bounded allowance of at most 256 weak children per originating input
+ray. A per-source trace pass has at most 16,384 such children, divided equally
+among its input rays. One-child continuations do not spend this allowance;
+the normal trace-depth limit still applies to them.
+
+This replaces the old first-come, 256-child source-wide counter. That counter
+let early aperture samples consume the allowance before later samples reached
+weak focus orders, so switching from a line to a sized beam changed the
+reported transmitted power. The ordinary 25-ray source now retains every
+sample through an eight-focus SLM with residual light and an observation
+pickoff. Excessively branching trees can still be truncated within each
+input's allowance. They under-report the omitted light without scaling up
+surviving rays, and incomplete coherent paths lose their coherent-field
+interpretation. Unused shares are not taken from neighbouring aperture samples.
+
 ## Array and order arrival previews
 
 `arrival-preview.js` groups resin arrivals by source, stage and optical
@@ -87,6 +106,25 @@ all-aperture focus orders attach a reusable channel identity. Every sampled
 ray in a channel contributes its existing normalized source-power weight.
 Neither the number of source samples nor the number of wavelength samples
 creates extra apparent writing channels.
+
+`arrivalPath` records physical ports before any array activates grouping;
+`arrivalGroup` becomes that path once a lenslet or programmed order requests
+a grouped preview. `arrivalPortState` extends both at each subsequent physical
+branch. These identities are opaque and local to a trace. They are independent
+of `sig`, whose tags also describe spatial and wavelength sampling. Four
+lenslets followed by two grating orders therefore produce eight groups, while
+five wavelength samples within each order still produce eight groups. A DOE
+before an MLA likewise retains its upstream order identity.
+
+The shared port mapping covers transmitted/reflected splitter ports,
+refraction versus total internal reflection, AOM/AOD first and zeroth orders,
+and the AOTF's coaxial selected and deflected depleted ports. Dichroic spectral
+pieces on the same reflected port stay together. Diffuser samples do not
+become separate physical channels. SLM programmed and residual ports and DMD
+ON/OFF ports also remain distinct. A ray that misses a finite pickoff has not
+visited its transmitted port: its support is kept separate from the rays
+that crossed and were attenuated. Group counts therefore describe the traced
+routes, not a promised number of fabrication sites.
 
 Each channel returns one **actual sampled arrival** nearest its weighted
 center, plus the full endpoints and span of all its traced arrivals and their
@@ -135,4 +173,9 @@ controls. Existing component, SLM spectrum, speckle and state tests remain
 applicable. Final scene browser checks must inspect the integrated branch.
 `test/arrival-preview.test.js` checks source/order separation, actual sampled
 representatives, weighted power, sampling-independent channel counts,
-defocused spread, and a dark array channel.
+defocused spread, a dark array channel, orders before and after an MLA,
+downstream grating composition, residual and acousto-optic ports, and rays
+bypassing a finite splitter. `test/weak-order-budget.test.js` checks exact
+power and complete aperture support through one to eight weak focus orders,
+exact extinction, and deliberately exhausted budgets under reversed sampling
+and more than the normal number of source rays.

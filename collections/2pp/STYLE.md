@@ -54,6 +54,11 @@ state how an out-of-plane axis is represented in this 2D workbench.
 
 ## Acceptance
 
+The canonical Basic frame is 720 × 540, with 18-unit body/component labels
+and a 28.8-unit title. Scale text sizes to preserve the same perceived size
+on larger physical frames. Aim for 11–12 px when fitted to the narrow editor's
+roughly 500 px canvas. Shortening prose is preferable to shrinking it.
+
 Run the native tracer with the default state and all three controls. Verify
 sample arrivals, finite geometry, relay conjugacy where relevant, and save /
 reload. Inspect the real native editor at desktop width and a 1024 px layout,

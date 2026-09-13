@@ -133,6 +133,46 @@ export const programmableEffectParams = [
     show: p => p.spectralMode === 'carrier' },
 ];
 
+const detailDefaults = Object.freeze({
+  maskDetailOffsetX: 45, maskDetailOffsetY: -150,
+  maskDetailWidth: 250, maskDetailHeight: 140, maskDetailFontSize: 18,
+});
+const detailRanges = Object.freeze({
+  maskDetailOffsetX: [-5000, 5000], maskDetailOffsetY: [-5000, 5000],
+  maskDetailWidth: [130, 1000], maskDetailHeight: [110, 600],
+  maskDetailFontSize: [12, 36],
+});
+
+export const PROGRAMMABLE_MASK_DETAIL_PARAMS = [
+  { key: 'maskDetailHeading', label: 'Frame inset', type: 'section', open: false },
+  { key: 'showMaskDetail', label: 'Show enlarged frame', type: 'checkbox', def: false,
+    note: 'An enlarged view of the current device pixels; the amber column is sampled by the ray tracer.' },
+  ...[
+    ['maskDetailOffsetX', 'Inset horizontal offset (mm)', 5],
+    ['maskDetailOffsetY', 'Inset vertical offset (mm)', 5],
+    ['maskDetailWidth', 'Inset width (mm)', 10],
+    ['maskDetailHeight', 'Inset height (mm)', 10],
+    ['maskDetailFontSize', 'Inset text size', 1],
+  ].map(([key, label, step]) => ({ key, label, step, type: 'number',
+    min: detailRanges[key][0], max: detailRanges[key][1], def: detailDefaults[key],
+    show: p => p.showMaskDetail === true })),
+];
+
+export function programmableMaskDetailOptions(params = {}) {
+  const options = { enabled: params.showMaskDetail === true };
+  for (const [key, fallback] of Object.entries(detailDefaults)) {
+    options[key] = bounded(params[key], ...detailRanges[key], fallback);
+  }
+  return options;
+}
+
+export function programmableMaskDetailBounds(element) {
+  const options = programmableMaskDetailOptions(element.params);
+  if (!options.enabled || !Number.isFinite(element.x) || !Number.isFinite(element.y)) return null;
+  const x0 = element.x + options.maskDetailOffsetX, y0 = element.y + options.maskDetailOffsetY;
+  return { x0, y0, x1: x0 + options.maskDetailWidth, y1: y0 + options.maskDetailHeight };
+}
+
 export function programmableMaskFrame(params = {}, device = 'dmd', timeSeconds = 0) {
   const p = migrateProgrammableMaskParams(params, device);
   const pattern = patterns.has(p.maskPattern) ? p.maskPattern : 'uniform';
@@ -239,19 +279,83 @@ export function programmableSpectralAngle(effects, wavelength) {
 
 // Draw a true 2D panel. The one tracer cross-section is never substituted for
 // the device image. Bounded downsampling keeps tiny exported icons inexpensive.
-export function programmableFrameSVG(frame, { x = -6, y = -17, width = 14, height = 34, markSlice = false } = {}) {
-  const rows = Math.min(24, frame.grid.length), cols = Math.min(16, frame.grid[0].length);
+export function programmableFrameSVG(frame, {
+  x = -6, y = -17, width = 14, height = 34, markSlice = false, fullResolution = false,
+} = {}) {
+  // Imported frames have at most 32 rows; exact legacy stripe edges can
+  // create up to 202 narrow bands. A large inset can draw those actual cells.
+  const rows = Math.min(fullResolution ? 256 : 24, frame.grid.length);
+  const cols = Math.min(fullResolution ? MASK_MAX_SIDE : 16, frame.grid[0].length);
   let svg = `<g data-mask-frame="${frame.index}" data-mask-mode="${frame.mode}">`;
   for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
-    const value = sampleProgrammableFrame(frame, ((row + 0.5) / rows - 0.5) * frame.length, (col + 0.5) / cols).value;
+    const top = fullResolution && frame.rowEdges ? frame.rowEdges[row] : row / rows;
+    const bottom = fullResolution && frame.rowEdges ? frame.rowEdges[row + 1] : (row + 1) / rows;
+    const value = fullResolution ? frame.grid[row][col]
+      : sampleProgrammableFrame(frame, ((row + 0.5) / rows - 0.5) * frame.length, (col + 0.5) / cols).value;
     let color;
     if (frame.mode === 'phase') {
       const a = value * Math.PI * 2;
       color = [0, 2 * Math.PI / 3, 4 * Math.PI / 3].map(shift => Math.round(140 + 90 * Math.cos(a - shift)));
     } else color = [30, 44, 52].map(v => Math.round(v + value * (238 - v)));
-    const gap = Math.min(width / cols, height / rows) * 0.14;
-    svg += `<rect data-mask-pixel="${row},${col}" x="${x + col * width / cols}" y="${y + row * height / rows}" width="${width / cols - gap}" height="${height / rows - gap}" fill="rgb(${color.join(',')})"/>`;
+    const gap = Math.min(width / cols, height * (bottom - top)) * 0.14;
+    svg += `<rect data-mask-pixel="${row},${col}" x="${x + col * width / cols}" y="${y + top * height}" width="${width / cols - gap}" height="${height * (bottom - top) - gap}" fill="rgb(${color.join(',')})"/>`;
   }
-  if (markSlice) svg += `<line x1="${x + frame.column * width}" y1="${y}" x2="${x + frame.column * width}" y2="${y + height}" stroke="#e88e35" stroke-width="1" stroke-dasharray="3 2"/>`;
+  if (markSlice) {
+    const column = Math.min(cols - 1, Math.floor(frame.column * cols));
+    svg += `<rect data-mask-slice="${column}" x="${x + column * width / cols}" y="${y}" width="${width / cols}" height="${height}" fill="none" stroke="#e88e35" stroke-width="1.2"/>`;
+    svg += `<line x1="${x + frame.column * width}" y1="${y}" x2="${x + frame.column * width}" y2="${y + height}" stroke="#e88e35" stroke-width="1" stroke-dasharray="3 2"/>`;
+  }
+  return svg + '</g>';
+}
+
+// The panel is an enlarged display of the same normalized frame, separate
+// from the physical active face. Counter-rotation makes its offsets world
+// aligned, exactly like the specimen-arrival inset.
+export function programmableMaskDetailSVG(element, currentFrame = null) {
+  const options = programmableMaskDetailOptions(element.params);
+  if (!options.enabled) return '';
+  const frame = currentFrame || programmableMaskFrame(element.params, element.type, element._animationTimeS);
+  const width = options.maskDetailWidth, height = options.maskDetailHeight;
+  const wide = width >= 230;
+  const rotation = finite(element.rot, 0);
+  const device = frame.device === 'slm' ? 'SLM' : 'DMD';
+  const frameLabel = `${frame.index + 1} / ${frame.count}`;
+  const column = Math.min(frame.grid[0].length - 1, Math.floor(frame.column * frame.grid[0].length)) + 1;
+  const columnLabel = `Column ${column} / ${frame.grid[0].length}`;
+  const modeLabel = frame.mode === 'binary' ? 'Binary ON / OFF'
+    : frame.mode === 'phase' ? 'Phase (cycles)' : 'Intensity 0–1';
+  const bodyScale = 0.88;
+  // Reserve text room before sizing the grid. Oversized requested text fits
+  // down inside the saved panel instead of extending its visual/export box.
+  const textFactor = Math.max(`${device} frame`.length * 0.64,
+    frameLabel.length * 0.64, modeLabel.length * 0.56 * bodyScale,
+    columnLabel.length * 0.56 * bodyScale);
+  const fontLimit = wide ? Math.min((height - 16) / 4.4, (width - 32 - 56) / textFactor)
+    : Math.min((height - 44) / 2.2, (width - 24) / ((device.length + frameLabel.length) * 0.64 + 1),
+      (width - 24) / (columnLabel.length * 0.56 * bodyScale));
+  const fontSize = Math.min(options.maskDetailFontSize, fontLimit);
+  const bodySize = fontSize * bodyScale;
+  const gridSize = wide ? Math.min(height - 16, width - 32 - textFactor * fontSize)
+    : Math.min(width - 24, height - 24 - 2.2 * fontSize);
+  const gridX = wide ? 8 : (width - gridSize) / 2;
+  const gridY = wide ? (height - gridSize) / 2 : fontSize + 12;
+  const textX = gridX + gridSize + 16;
+  const number = value => Number(value.toFixed(2));
+  let svg = `<g class="programmable-mask-detail" transform="rotate(${-rotation}) translate(${options.maskDetailOffsetX} ${options.maskDetailOffsetY})" font-family="Helvetica, Arial, sans-serif">`;
+  svg += `<title>${device} frame ${frameLabel}. ${modeLabel}. Amber outline: ${columnLabel.toLowerCase()}, sampled by the 2D ray tracer.</title>`;
+  svg += `<rect width="${width}" height="${height}" rx="6" fill="#ffffff" stroke="#64748b" stroke-width="0.8"/>`;
+  svg += `<rect x="${gridX - 1}" y="${gridY - 1}" width="${gridSize + 2}" height="${gridSize + 2}" fill="#172033"/>`;
+  svg += programmableFrameSVG(frame, { x: gridX, y: gridY, width: gridSize, height: gridSize,
+    fullResolution: true, markSlice: true });
+  if (wide) {
+    svg += `<text x="${number(textX)}" y="${number(height / 2 - 1.55 * fontSize)}" font-size="${number(fontSize)}" font-weight="700" fill="#172033">${device} frame</text>`;
+    svg += `<text x="${number(textX)}" y="${number(height / 2 - 0.35 * fontSize)}" font-size="${number(fontSize)}" font-weight="700" fill="#172033">${frameLabel}</text>`;
+    svg += `<text x="${number(textX)}" y="${number(height / 2 + 0.9 * fontSize)}" font-size="${number(bodySize)}" fill="#475569">${modeLabel}</text>`;
+    svg += `<text x="${number(textX)}" y="${number(height / 2 + 2.05 * fontSize)}" font-size="${number(bodySize)}" fill="#b45309">${columnLabel}</text>`;
+  } else {
+    svg += `<text x="12" y="${number(fontSize + 5)}" font-size="${number(fontSize)}" font-weight="700" fill="#172033">${device}</text>`;
+    svg += `<text x="${width - 12}" y="${number(fontSize + 5)}" text-anchor="end" font-size="${number(fontSize)}" font-weight="700" fill="#172033">${frameLabel}</text>`;
+    svg += `<text x="${width / 2}" y="${height - 10}" text-anchor="middle" font-size="${number(bodySize)}" fill="#b45309">${columnLabel}</text>`;
+  }
   return svg + '</g>';
 }

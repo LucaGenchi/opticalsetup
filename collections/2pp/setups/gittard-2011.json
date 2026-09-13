@@ -1,0 +1,616 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "gittard-frame",
+      "type": "figureframe",
+      "x": 370,
+      "y": 285,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "w": 760,
+        "h": 570,
+        "background": "white"
+      }
+    },
+    {
+      "id": "gittard-title",
+      "type": "textlabel",
+      "x": 25,
+      "y": 35,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "Gittard 2011 · SLM multifocus writing",
+        "fontSize": 32,
+        "fill": "#263238"
+      }
+    },
+    {
+      "id": "gittard-subtitle",
+      "type": "textlabel",
+      "x": 25,
+      "y": 85,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "Reported: 780 nm · 80 MHz · 4 W source · NA 1.40 oil",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gittard-laser",
+      "type": "pulsedlaser",
+      "x": 65,
+      "y": 140,
+      "rot": 0,
+      "label": "Chameleon",
+      "showLabel": true,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "enabled": true,
+        "wavelength": 780,
+        "avgPowerW": 4,
+        "beamMode": "beam",
+        "beamWidth": 1,
+        "repRateMHz": 80,
+        "pulseWidthFs": 150,
+        "transformLimited": false,
+        "bandwidth": 0,
+        "pulseShape": "gauss",
+        "pol": 0,
+        "showPulse": true
+      }
+    },
+    {
+      "id": "gittard-attenuator",
+      "type": "eom",
+      "x": 155,
+      "y": 140,
+      "rot": 0,
+      "label": "LC",
+      "showLabel": true,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "aperture": 16,
+        "modulate": true,
+        "driveMode": "static",
+        "retardance": 135,
+        "a": 45
+      }
+    },
+    {
+      "id": "gittard-pbs",
+      "type": "pbs",
+      "x": 200,
+      "y": 140,
+      "rot": 0,
+      "label": "PBS",
+      "showLabel": true,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "size": 16
+      }
+    },
+    {
+      "id": "gittard-pbs-dump",
+      "type": "beamdump",
+      "x": 200,
+      "y": 110,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "aperture": 10
+      }
+    },
+    {
+      "id": "gittard-expander",
+      "type": "telescope",
+      "x": 270,
+      "y": 140,
+      "rot": 0,
+      "label": "2×",
+      "showLabel": true,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "f1": -15,
+        "f2": 30,
+        "dia": 16,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gittard-slm",
+      "type": "slm",
+      "x": 506.3639610306789,
+      "y": 133.63603896932108,
+      "rot": 315,
+      "label": "SLM phase",
+      "showLabel": true,
+      "labelPos": "t",
+      "labelFontSize": 20,
+      "params": {
+        "transmissive": false,
+        "length": 28,
+        "zeroOrder": true,
+        "zeroFrac": 0.7,
+        "maskMode": "phase",
+        "maskPattern": "hologram",
+        "maskFrame": 0,
+        "maskPlayback": false,
+        "maskSlice": 0.5,
+        "holographicOrders": true,
+        "focusCount": 4,
+        "focusSpan": 2,
+        "scanAngle": -12,
+        "spectralMode": "none",
+        "layers": [],
+        "showMaskDetail": true,
+        "maskDetailOffsetX": 43.63603896932108,
+        "maskDetailOffsetY": -13.636038969321078,
+        "maskDetailWidth": 180,
+        "maskDetailHeight": 170
+      }
+    },
+    {
+      "id": "gittard-fourier-lens",
+      "type": "lens",
+      "x": 500,
+      "y": 180,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "f": 40,
+        "dia": 26,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gittard-zero-dump",
+      "type": "beamdump",
+      "x": 500,
+      "y": 230,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "aperture": 6
+      }
+    },
+    {
+      "id": "gittard-order-stop",
+      "type": "slit",
+      "x": 508.50226246680086,
+      "y": 220,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "gap": 3,
+        "length": 10
+      }
+    },
+    {
+      "id": "gittard-collimator",
+      "type": "lens",
+      "x": 500,
+      "y": 260,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "f": 40,
+        "dia": 26,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gittard-fourier-label",
+      "type": "textlabel",
+      "x": 390,
+      "y": 213,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "Fourier\nselection P",
+        "fontSize": 20,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gittard-galvo-x",
+      "type": "galvo",
+      "x": 500,
+      "y": 300,
+      "rot": 51,
+      "label": "X galvo",
+      "showLabel": true,
+      "labelPos": "r",
+      "labelFontSize": 20,
+      "params": {
+        "length": 22,
+        "commandAngle": 0,
+        "scanMode": "sine",
+        "scanAmplitude": 0.2,
+        "scanFrequencyHz": 0.5,
+        "scanPhaseDeg": 0
+      }
+    },
+    {
+      "id": "gittard-scan-relay",
+      "type": "telescope",
+      "x": 430,
+      "y": 300,
+      "rot": 180,
+      "label": "Pivot relay",
+      "showLabel": true,
+      "labelPos": "t",
+      "labelFontSize": 20,
+      "params": {
+        "f1": 35,
+        "f2": 35,
+        "dia": 20,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gittard-galvo-y",
+      "type": "galvo",
+      "x": 360,
+      "y": 300,
+      "rot": 45,
+      "label": "Y galvo",
+      "showLabel": false,
+      "labelPos": "l",
+      "labelFontSize": 20,
+      "params": {
+        "length": 22,
+        "commandAngle": 0,
+        "scanMode": "sine",
+        "scanAmplitude": 0.2,
+        "scanFrequencyHz": 0.13,
+        "scanPhaseDeg": 0
+      }
+    },
+    {
+      "id": "gittard-scan-lens",
+      "type": "lens",
+      "x": 360,
+      "y": 340,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "f": 40,
+        "dia": 18,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gittard-relay-fold",
+      "type": "mirror",
+      "x": 360,
+      "y": 390,
+      "rot": 135,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "length": 24,
+        "refl": 100,
+        "showTransmitted": false
+      }
+    },
+    {
+      "id": "gittard-tube-lens",
+      "type": "lens",
+      "x": 450,
+      "y": 390,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "f": 100,
+        "dia": 18,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gittard-pupil-label",
+      "type": "textlabel",
+      "x": 360,
+      "y": 435,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "Pupil relay",
+        "fontSize": 20,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gittard-observation-pickoff",
+      "type": "dichroic",
+      "x": 510,
+      "y": 390,
+      "rot": 45,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 700,
+        "length": 20
+      }
+    },
+    {
+      "id": "gittard-objective",
+      "type": "objective",
+      "x": 537.87,
+      "y": 390,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "efl": 2,
+        "workingDistance": 0.13,
+        "immersion": "oil",
+        "na": 1.4,
+        "frontAperture": 6,
+        "showAcceptance": false,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gittard-objective-label",
+      "type": "textlabel",
+      "x": 545,
+      "y": 348,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "NA 1.40 oil",
+        "fontSize": 20,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gittard-stage",
+      "type": "stage",
+      "x": 554,
+      "y": 390,
+      "rot": 90,
+      "label": "Resin",
+      "showLabel": false,
+      "labelPos": "r",
+      "labelFontSize": 20,
+      "params": {
+        "pzMode": "static",
+        "aperture": 22,
+        "specimenType": "resin",
+        "transmitExc": true,
+        "transmission": 0.8,
+        "showSignalSpot": true,
+        "voxelPreview": true,
+        "voxelSize": 0.2,
+        "showArrivalDetail": true,
+        "arrivalDetailRangeUm": 40,
+        "arrivalDetailOffsetX": -529,
+        "arrivalDetailOffsetY": -195,
+        "arrivalDetailWidth": 250,
+        "arrivalDetailHeight": 185
+      }
+    },
+    {
+      "id": "gittard-postsample-filter",
+      "type": "filter",
+      "x": 558,
+      "y": 390,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "ftype": "shortpass",
+        "cutoff": 700,
+        "length": 15
+      }
+    },
+    {
+      "id": "gittard-illumination-lens",
+      "type": "lens",
+      "x": 615,
+      "y": 390,
+      "rot": 180,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "f": 22.239583333333332,
+        "dia": 16,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gittard-illumination",
+      "type": "pointsource",
+      "x": 650,
+      "y": 390,
+      "rot": 180,
+      "label": "Light",
+      "showLabel": true,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "displayScale": 0.7,
+        "sourceKind": "point",
+        "wavelength": 550,
+        "bwMode": "mono",
+        "spread": 5,
+        "nrays": 9,
+        "autoColor": true
+      }
+    },
+    {
+      "id": "gittard-camera-lens",
+      "type": "lens",
+      "x": 510,
+      "y": 420,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "f": 25,
+        "dia": 12,
+        "transEff": 100
+      }
+    },
+    {
+      "id": "gittard-cmos",
+      "type": "camera",
+      "x": 510,
+      "y": 467,
+      "rot": 90,
+      "label": "CMOS",
+      "showLabel": true,
+      "labelPos": "r",
+      "labelFontSize": 20,
+      "params": {
+        "ch": 24,
+        "pixels": 32,
+        "interference": false,
+        "profileScale": "fit"
+      }
+    },
+    {
+      "id": "gittard-limits",
+      "type": "textlabel",
+      "x": 25,
+      "y": 495,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "Four focus rows scan together (paper: 4×4).\nGeometric model: no CGH solution, PSF, voxel or curing.\nX/Y share this 2D section. Phase pixels are illustrative.",
+        "fontSize": 19,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gittard-interpretation-key",
+      "type": "textlabel",
+      "x": 25,
+      "y": 550,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "Design choice = free interpretation; not specified in the paper.",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gittard-inset-note",
+      "type": "textlabel",
+      "x": 25,
+      "y": 408,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "One CW illumination channel is also shown.",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gittard-y-label",
+      "type": "textlabel",
+      "x": 295,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "Y galvo",
+        "fontSize": 20,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "gittard-resin-label",
+      "type": "textlabel",
+      "x": 556,
+      "y": 435,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "labelFontSize": 20,
+      "params": {
+        "text": "Resin",
+        "fontSize": 20,
+        "fill": "#475569"
+      }
+    }
+  ],
+  "beams": []
+}

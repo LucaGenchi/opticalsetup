@@ -384,12 +384,11 @@ test('the aperture stop sits at the back focal plane, where an infinity pupil be
   // Default WD = EFL puts the BFP inside the barrel, so the stop is exactly there.
   assert.equal(objectiveStopX(objective.params), objectiveBackFocalPlaneX(objective.params));
 
-  // The single-plane model can push the BFP further back than any real
-  // barrel; the stop is then clamped into the housing rather than left
-  // blocking light in mid-air behind it.
+  // Equivalent planes can lie outside the cosmetic housing. Moving the
+  // pupil into that drawing used to silently break conjugacy in saved scenes.
   objective.params.efl = 120;
   assert.ok(objectiveBackFocalPlaneX(objective.params) < objectiveBackX(objective.params));
-  assert.equal(objectiveStopX(objective.params), objectiveBackX(objective.params) + 1);
+  assert.equal(objectiveStopX(objective.params), objectiveBackFocalPlaneX(objective.params));
 });
 
 test('overfilling the back pupil reports what it costs', () => {

@@ -50,9 +50,17 @@ The native objective uses local `+x` toward the specimen:
 
 Rotate and translate these coordinates by the element's own placement.
 `objectiveScanPlanes()` returns all four useful optical planes, including the
-separately seated stop. `objectiveStopX()` can clamp the stop into the barrel
-for extreme prescriptions: then the stop is **not** the nominal BFP and both
-must be tested. Select an unclamped objective for the canonical introduction.
+aperture stop. **In the integrated model, `objectiveStopX()` equals the BFP for
+every objective.** A cosmetic barrel shoulder must not alter conjugacy. The
+finite blocking annulus and acceptance bore remain in place, including when
+these equivalent planes lie outside the housing. They bound a first-order
+model, not a physical internal prescription. The finite lens/bore can still
+vignette tilted, nearly full-pupil bundles; test actual throughput separately.
+
+The original paper branches audited below predate this correction. They clamp
+some stops into the barrel, so their actual-stop measurements differ from BFP
+measurements. The historical JSON evidence remains unchanged and records
+`stopClamped: true` where applicable.
 
 For distinct X and Y mirrors, verify X→Y imaging and Y→BFP imaging separately,
 then verify their composition. A 1:1 inter-pivot relay has `B=C=0` and `A=D=−1`.
@@ -138,6 +146,39 @@ Minimal numerical correction for Gittard's inter-pivot relay: move its centre
 x=481.75 to **481.55**, retaining both focal lengths and both scanner centres.
 The final 35.5325/35.5325 mm relay is already exact. This statement addresses
 the scanner geometry, not the upstream SLM order prescription.
+
+### Integration correction and saved sketches
+
+The original clamp affected 13 of the 23 built-in objective presets, including
+ordinary 100× oil objectives. Its removal changes acceptance, not EFL, WD, NA,
+element placement, or the saved-file schema:
+
+| Objective parameters | Old local stop | Correct BFP / stop | Equivalent lens |
+| --- | ---: | ---: | ---: |
+| EFL 2, WD 0.13, NA 1.4 oil | 7 | 12.13 | 14.13 |
+| EFL 2, WD 12, NA 0.5 dry | 7 | 24 | 26 |
+| EFL 40, WD 20, NA 0.2 dry | −20 | −44 | −4 |
+
+For Gittard, this moves the actual stop y=277 to the existing BFP y=282.13.
+After the 0.2 mm inter-pivot correction, both scanner pupils are stationary at
+the accepted plane. This does **not** repair the broad upstream SLM/Fourier
+bundles found in the [original review](reviews/gittard-2011.md).
+
+Fischer's original mask relay imaged its mask to the old stop x=500, not the
+nominal BFP x=505.13; the integrated scene must retune that image plane. Its
+unchanged on-axis geometric focus is not evidence of correct phase-pupil
+imaging. See the [original Fischer review](reviews/fischer-2011.md).
+
+Existing saved objectives load the same authored parameters and retrace with
+this deliberate optical correction; there is no hidden legacy clamp. The
+regression checks retain on-axis focus, configured transmission, observable
+overfill, finite outside-envelope behavior and forward/reverse propagation.
+High-NA and long-WD sampled scan bundles also verify that a centred BFP stays
+centred. Pupil-fill readout now projects rays to the BFP, including rejected
+annulus/bore rays, instead of treating their displacement at the lens plane as
+pupil growth. Its diameter is twice the maximum distance from the pupil axis;
+for decentered or disjoint beams this is an occupancy envelope, not a fitted
+beam diameter or calibrated transmitted power.
 
 The other families need the correct **kind** of conjugacy:
 

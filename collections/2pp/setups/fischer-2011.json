@@ -1,0 +1,355 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "fischer-frame",
+      "type": "figureframe",
+      "x": 350,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 720,
+        "h": 540,
+        "background": "white"
+      },
+      "labelFontSize": 18,
+      "labelPos": "b"
+    },
+    {
+      "id": "fischer-title",
+      "type": "textlabel",
+      "x": 25,
+      "y": 34,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Fischer 2011 · STED-inspired writing",
+        "fontSize": 28.8,
+        "fill": "#26333a"
+      },
+      "labelFontSize": 18,
+      "labelPos": "b"
+    },
+    {
+      "id": "excitation-source",
+      "type": "pulsedlaser",
+      "x": 65,
+      "y": 150,
+      "rot": 0,
+      "label": "~810 nm fs",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "enabled": true,
+        "wavelength": 810,
+        "avgPowerW": 0.01048,
+        "handoffEnabled": false,
+        "beamMode": "beam",
+        "beamWidth": 5.6,
+        "repRateMHz": 80,
+        "pulseWidthFs": 150,
+        "transformLimited": false,
+        "pulseShape": "gauss",
+        "pol": 0,
+        "showPulse": true,
+        "bandwidth": 0
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "excitation-aom",
+      "type": "aom",
+      "x": 170,
+      "y": 150,
+      "rot": 0,
+      "label": "AOM",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "aperture": 12,
+        "deflect": 0,
+        "rfMHz": 80,
+        "zero": false,
+        "eff": 1,
+        "modulate": true,
+        "modShape": "square",
+        "modFreqMHz": 0.004,
+        "chopDuty": 0.03,
+        "phaseNs": 0,
+        "drawChopped": false
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "excitation-qwp",
+      "type": "qwp",
+      "x": 235,
+      "y": 150,
+      "rot": 0,
+      "label": "circular",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "a": 45,
+        "length": 16
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "excitation-fold",
+      "type": "mirror",
+      "x": 425,
+      "y": 150,
+      "rot": -45,
+      "label": "Fold*",
+      "showLabel": false,
+      "labelPos": "t",
+      "labelFontSize": 18,
+      "params": {
+        "length": 24,
+        "refl": 100
+      }
+    },
+    {
+      "id": "excitation-relay-l1",
+      "type": "lens",
+      "x": 425,
+      "y": 210,
+      "rot": 90,
+      "label": "L1*",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": {
+        "f": 100,
+        "dia": 20,
+        "transEff": 100
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "depletion-source",
+      "type": "cwlaser",
+      "x": 65,
+      "y": 310,
+      "rot": 0,
+      "label": "532 nm CW",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "enabled": true,
+        "wavelength": 532,
+        "avgPowerW": 0.05,
+        "beamMode": "beam",
+        "beamWidth": 5.6,
+        "pol": 0,
+        "coherenceLengthMm": 0
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "depletion-qwp",
+      "type": "qwp",
+      "x": 190,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "a": 45,
+        "length": 16
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "depletion-aom",
+      "type": "aom",
+      "x": 155,
+      "y": 310,
+      "rot": 0,
+      "label": "AOM",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "aperture": 12,
+        "deflect": 0,
+        "rfMHz": 80,
+        "zero": false,
+        "eff": 1,
+        "modulate": true,
+        "modShape": "square",
+        "modFreqMHz": 0.004,
+        "chopDuty": 0.03,
+        "phaseNs": 0,
+        "drawChopped": false
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "central-pi-mask",
+      "type": "phaseplate",
+      "x": 225,
+      "y": 310,
+      "rot": 0,
+      "label": "π pupil*",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "profile": "pupil",
+        "centralAreaFraction": 0.5,
+        "opdUm": 0.266,
+        "aperture": 5.6
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "depletion-relay-l1",
+      "type": "lens",
+      "x": 325,
+      "y": 310,
+      "rot": 0,
+      "label": "L1*",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 20,
+        "transEff": 100
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "wavelength-combiner",
+      "type": "dichroic",
+      "x": 425,
+      "y": 310,
+      "rot": -45,
+      "label": "Combine*",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 650,
+        "length": 30
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "common-relay-l2",
+      "type": "lens",
+      "x": 525,
+      "y": 310,
+      "rot": 0,
+      "label": "L2*",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "f": 100,
+        "dia": 20,
+        "transEff": 100
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "leica-objective",
+      "type": "objective",
+      "x": 612.87,
+      "y": 310,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "efl": 2,
+        "workingDistance": 0.13,
+        "frontAperture": 10,
+        "immersion": "oil",
+        "immersionIndex": 1.518,
+        "na": 1.4,
+        "transEff": 100
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "detc-peta-stage",
+      "type": "stage",
+      "x": 629,
+      "y": 310,
+      "rot": 90,
+      "label": "",
+      "showLabel": false,
+      "labelPos": "b",
+      "params": {
+        "pzMode": "xy",
+        "pzTravelXY": 0.1,
+        "pzFreqXY": 0.5,
+        "aperture": 30,
+        "specimenType": "resin",
+        "showSignalSpot": true,
+        "thickness": 0.3,
+        "voxelPreview": true,
+        "voxelSize": 0.3,
+        "transmitExc": true,
+        "transmission": 0,
+        "showArrivalDetail": true,
+        "arrivalDetailRangeUm": 60,
+        "arrivalDetailOffsetX": -155,
+        "arrivalDetailOffsetY": -200,
+        "arrivalDetailWidth": 215,
+        "arrivalDetailHeight": 130
+      },
+      "labelFontSize": 18
+    },
+    {
+      "id": "fischer-mechanism-note",
+      "type": "textlabel",
+      "x": 25,
+      "y": 460,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Central π step: about 50% of depletion pupil area.\nBoth beams: circular polarization; 4 kHz / 3% gates.\nGeometric model: phase and arrivals only.\nNo depletion field, vectorial PSF, voxel size or curing.\n* Design choices: geometry, timing and power; see note.",
+        "fontSize": 18,
+        "fill": "#475569"
+      },
+      "labelFontSize": 18,
+      "labelPos": "b"
+    },
+    {
+      "id": "fischer-objective-label",
+      "type": "textlabel",
+      "x": 565,
+      "y": 270,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "params": {
+        "text": "NA 1.4 objective",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    },
+    {
+      "id": "fischer-sample-label",
+      "type": "textlabel",
+      "x": 565,
+      "y": 365,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "labelFontSize": 18,
+      "params": {
+        "text": "DETC/PETA\n100 µm/s scan",
+        "fontSize": 18,
+        "fill": "#475569"
+      }
+    }
+  ],
+  "beams": []
+}

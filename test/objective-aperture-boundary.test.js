@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createElement } from '../sketch/js/elements.js';
-import { traceScene } from '../sketch/js/raytrace.js';
+import { objectivePupilFill, traceScene } from '../sketch/js/raytrace.js';
 import {
   objectiveBackFocalPlaneX, objectiveBarrelHalfHeight, objectiveEffectiveFocalLength,
   objectiveLensPlaneX, objectivePupilRadius, objectiveStopX,
@@ -52,7 +52,7 @@ test('collimated pupil-edge rays retain their working-distance focus and transmi
   for (const params of [
     {},
     { immersion: 'water', na: 1.0, workingDistance: 0.3 },
-    { immersion: 'oil', na: 1.4, workingDistance: 0.13 },
+    { efl: 2, immersion: 'oil', na: 1.4, workingDistance: 0.13, frontAperture: 6 },
     { efl: 2, workingDistance: 12, frontAperture: 8, na: 0.5 },
   ]) {
     for (const rotation of [0, 37]) {
@@ -105,8 +105,11 @@ test('the acceptance boundary catches rays that would also miss the outer barrel
 });
 
 test('back-focal-plane conjugacy survives in both propagation directions', () => {
-  for (const rotation of [0, 37]) {
-    const element = objective({}, rotation);
+  for (const params of [{},
+    { efl: 2, workingDistance: 0.13, immersion: 'oil', na: 1.4, frontAperture: 6 },
+    { efl: 2, workingDistance: 12, na: 0.5, frontAperture: 8 },
+  ]) for (const rotation of [0, 37]) {
+    const element = objective(params, rotation);
     const bfp = objectiveBackFocalPlaneX(element.params);
     const lens = objectiveLensPlaneX(element.params);
     for (const sign of [-1, 1]) {
@@ -116,15 +119,60 @@ test('back-focal-plane conjugacy survives in both propagation directions', () =>
       close(forward.points[1].y, forward.points[2].y,
         'rays diverging from the BFP leave collimated');
 
-      const reverse = traced(element, sourceThrough(element, lens, sign * 2, 0, false));
+      const reverseHeight = sign * 0.8 * objectivePupilRadius(element.params);
+      const reverse = traced(element, sourceThrough(element, lens, reverseHeight, 0, false));
       assert.equal(reverse.points.length, 3);
       const a = reverse.points[1], b = reverse.points[2];
       close(a.x, lens);
-      assert.ok(b.x < bfp, 'the reverse ray gets through the pupil');
+      assert.ok(b.x < bfp - 100, 'the reverse ray clears the finite pupil and bore');
       close(a.y + (b.y - a.y) * (bfp - a.x) / (b.x - a.x), 0,
         'sample-side collimated light focuses at the BFP');
     }
   }
+});
+
+test('high-NA and long-WD objectives preserve a centred scan pupil and report fill at that plane', () => {
+  for (const [params, beamRadius, angleDeg] of [
+    [{ efl: 2, workingDistance: 0.13, immersion: 'oil', na: 1.4, frontAperture: 6 }, 2.7, 1.6],
+    [{ efl: 2, workingDistance: 12, na: 0.5, frontAperture: 8 }, 0.8, 4],
+    [{ efl: 40, workingDistance: 20, na: 0.2, frontAperture: 20 }, 6, 0.4],
+  ]) for (const rotation of [0, 37]) for (const sign of [-1, 0, 1]) {
+    const element = objective({ ...params, transEff: 75 }, rotation);
+    const bfp = objectiveBackFocalPlaneX(element.params);
+    const focal = objectiveEffectiveFocalLength(element.params);
+    const slope = Math.tan(sign * angleDeg * Math.PI / 180);
+    const sources = Array.from({ length: 9 }, (_, index) => sourceThrough(element, bfp,
+      beamRadius * (index - 4) / 4, slope));
+    const position = toWorld(element, objectiveLensPlaneX(element.params) + focal, 0);
+    const sample = createElement('stage', position.x, position.y);
+    sample.rot = rotation + 90;
+    Object.assign(sample.params, { specimenType: 'resin', voxelPreview: true, transmission: 0 });
+    const scene = traceScene([...sources, element, sample]);
+    assert.equal(scene.writeHits.length, 9, 'all nine rays within the finite envelope reach the focus');
+    for (const hit of scene.writeHits) {
+      close(toLocal(element, hit.x, hit.y).y, focal * slope);
+      close(hit.intensity, 0.75);
+    }
+    close(objectivePupilFill(element.id).beamDiameter, 2 * beamRadius,
+      'a centred pupil keeps its true fill while its bundle walks across the equivalent lens');
+  }
+});
+
+test('pupil readout includes rejected bore rays and reverse rays at their actual pupil coordinates', () => {
+  const element = objective({ efl: 2, workingDistance: 0.13, immersion: 'oil', na: 1.4, frontAperture: 6 });
+  const bfp = objectiveBackFocalPlaneX(element.params);
+  const radius = objectivePupilRadius(element.params);
+  const blocked = traced(element, sourceThrough(element, bfp, radius - 0.05, 0.1), true);
+  assert.equal(blocked.scene.writeHits.length, 0);
+  close(objectivePupilFill(element.id).beamDiameter, 2 * (radius - 0.05),
+    'a bore rejection must not erase an admitted pupil sample');
+
+  traced(element, sourceThrough(element, bfp, radius + 0.2));
+  assert.ok(objectivePupilFill(element.id).fill > 1, 'the pupil annulus still reports overfill');
+
+  traced(element, sourceThrough(element, objectiveLensPlaneX(element.params), 0.8 * radius, 0, false));
+  close(objectivePupilFill(element.id).beamDiameter, 0,
+    'a reverse collimated line focuses at the centre of the BFP');
 });
 
 test('pupil overfill still stops at the annulus and light outside the objective remains untouched', () => {

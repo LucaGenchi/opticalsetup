@@ -10,13 +10,12 @@ import { FAVICON, header } from './site-chrome.mjs';
 const DIR = fileURLToPath(new URL('../collections/', import.meta.url));
 const esc = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const { papers } = JSON.parse(await readFile(join(DIR, '2pp/papers.json'), 'utf8'));
+const { papers, introduction } = JSON.parse(await readFile(join(DIR, '2pp/papers.json'), 'utf8'));
 const collections = [{
   slug: '2pp',
   title: 'Two-photon lithography',
-  blurb: 'Primary references read one at a time: the optical train each paper reports, the evidence '
-    + 'behind it, and native setups for the apparatus that could be reconstructed honestly.',
-  detail: `${papers.length} references · ${papers.filter(p => p.status === 'reviewed').length} with source notes`,
+  blurb: 'Learn serial writing, then explore five distinct research architectures. Change native optical controls and follow the traced light to the sample.',
+  detail: `${papers.length + (introduction ? 1 : 0)} setups · ${introduction ? 'one basic introduction + ' : ''}${papers.length} paper architectures`,
 }];
 
 const DESCRIPTION = 'Curated OpticalSetup collections: subject-by-subject research workspaces with primary '
