@@ -21,6 +21,133 @@ function cite(...nums) {
 
 export const exampleEntries = [
   {
+    match: 'Gregorian telescope — element by element',
+    title: 'Gregorian telescope',
+    tagline: 'A parabola and an ellipse, each placed at the one pair of points it images perfectly, and a traced spot seven ten-millionths of a millimetre across.',
+    html: `
+      <p>A spherical mirror does not focus. Rays near its rim cross the axis ahead of
+      rays near its centre, and no plane anywhere along the axis catches them all — the
+      light forms a caustic rather than a point. This is not a manufacturing defect; it
+      is what a sphere is.</p>
+      <p>The conic sections are the cure, and each one is exact for exactly one pair of
+      points. A <strong>parabola</strong> images infinity onto its focus. An
+      <strong>ellipse</strong> images one of its foci onto the other. A
+      <strong>hyperbola</strong> does the same for one real focus and one virtual one.
+      These are not approximations that improve on the sphere — they are geometric
+      identities, true for a ray at the rim as much as one on the axis.</p>
+      <p>James Gregory published this telescope in 1663, before anyone had built a
+      reflecting telescope at all: a parabolic primary to collect the light, and a
+      concave elliptical secondary placed <em>past</em> the primary's focus to relay that
+      image out through a hole in the primary. Each mirror is asked to do the one job its
+      own shape does perfectly, so the pair inherits the exactness.</p>
+      <p>The arrangement costs length — the secondary must sit beyond the prime focus, so
+      the tube is longer than a Cassegrain of the same focal length — and repays it with
+      an upright image and, more usefully, a <em>real intermediate focus</em> inside the
+      instrument, where a field stop can sit and reject stray light before it ever
+      reaches the detector.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>Both mirrors are real conic surfaces, intersected analytically, so nothing here
+      is a paraxial stand-in: the focus is as good or as bad as the geometry makes it.</p>
+      <p>The primary is a parabola (<span class="w">k = −1</span>) of
+      <span class="w">f = 40 mm</span>, forming a real image at <span class="w">x = 460</span>.
+      The secondary sits 20 mm beyond that, and its prescription follows directly from
+      requiring its two foci to land on the intermediate image and on the focal plane:
+      <span class="w">R = 2pq/(p+q) = 31.35 mm</span> and
+      <span class="w">k = −((q−p)/(q+p))² = −0.3221</span>, with
+      <span class="w">p = 20</span> and <span class="w">q = 72.5</span>. That is the mirror
+      equation and the eccentricity, nothing more.</p>
+      <p>The traced spot at the focal plane spans <strong>7×10⁻⁷ mm</strong> — zero, to the
+      precision the arithmetic holds. Set either conic constant to zero and the surface
+      becomes a sphere, and the point becomes a smear you can measure.</p>
+      <p>The central obstruction is not drawn in. The secondary is an opaque mirror
+      sitting in the beam, so it blocks the middle of the aperture because it is genuinely
+      in the way, and the primary is illuminated as an annulus in consequence.</p>`,
+    limitations: `<p>This is a 2D meridional section. There is no sagittal plane, so
+      astigmatism and field curvature are not reproduced as a real instrument shows them,
+      and the off-axis behaviour sampled here is only one cut through a rotationally
+      symmetric system.</p>
+      <p>Nothing is diffractive: no Airy disc, and none of the ring redistribution a
+      central obstruction really causes, so the geometric point is sharper than any real
+      telescope's. Reflectivity is a flat percentage with no angle, polarization or
+      wavelength dependence, and the scale here is a teaching choice rather than any
+      catalogue instrument.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Parabolic Mirrors', url: 'https://www.rp-photonics.com/parabolic_mirrors.html' },
+    ],
+    related: ['conicmirror', 'oap', 'cmirror', 'mirror'],
+  },
+
+  {
+    match: 'Ritchey–Chrétien telescope — element by element',
+    title: 'Ritchey–Chrétien telescope',
+    tagline: 'Two hyperboloids that are measurably worse on the optical axis than a classical Cassegrain, and better everywhere else — the trade behind Hubble, the VLT and Keck.',
+    html: `
+      <p>A classical Cassegrain is exact on its axis. A parabolic primary brings starlight
+      to a point, and a hyperbolic secondary sharing that focus relays it to another point,
+      each surface doing the one thing its shape does perfectly. Measured on the axis, it
+      cannot be beaten.</p>
+      <p>Point it slightly off axis and the image falls apart. Rays through opposite sides
+      of the aperture no longer land together; a star grows a one-sided flare, brighter at
+      one end, like a small comet. This is <strong>coma</strong>, and it grows linearly
+      with field angle, which is why a classical Cassegrain is a superb instrument for
+      looking at one object and a poor one for surveying a field.</p>
+      <p>George Ritchey and Henri Chrétien's answer, around 1910, was to stop insisting on
+      the axis. Make <em>both</em> mirrors hyperbolic and two free parameters become
+      available instead of one — enough to cancel spherical aberration and coma together
+      rather than spherical aberration alone. The design is <em>aplanatic</em>: no longer
+      perfect anywhere, and nearly as good everywhere.</p>
+      <p>That trade is why it is the standard for research telescopes. Hubble, the VLT and
+      the Keck telescopes are all Ritchey–Chrétiens, because a telescope earns its cost on
+      the field it can image at once, not on the single point at the centre of it.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>The geometry is fixed and only the two conic constants change, so any difference
+      between the designs is surface shape alone.</p>
+      <p>The classical Cassegrain's secondary follows from the shared-focus construction,
+      <span class="w">k = −((m+1)/(m−1))² = −2.609467</span> at a secondary magnification
+      of <span class="w">m = 4.25</span>. The Ritchey–Chrétien's pair cannot be built that
+      way — neither mirror images the conjugates on its own — so it was solved against this
+      app's own tracer by bisection: the secondary conic chosen to null the signed
+      spherical aberration at the focal plane, then the primary conic chosen to null the
+      signed coma of a 0.1° bundle. That gives
+      <span class="w">k₁ = −1.040245</span> and <span class="w">k₂ = −2.971093</span>.</p>
+      <p>Spot size at the focal plane, measured:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Design</th><th>on axis</th><th>0.1°</th><th>0.3°</th></tr></thead>
+        <tbody>
+          <tr><td>Classical Cassegrain</td><td>4.5×10⁻⁷ mm</td><td>5.0×10⁻³ mm</td><td>2.2×10⁻² mm</td></tr>
+          <tr><td>Ritchey–Chrétien</td><td>5.4×10⁻⁴ mm</td><td>1.9×10⁻³ mm</td><td>1.4×10⁻² mm</td></tr>
+        </tbody>
+      </table></div>
+      <p>The Cassegrain is a thousand times better on the axis and two and a half times
+      worse a tenth of a degree off it. Set the primary to
+      <span class="w">k = −1</span> and the secondary to
+      <span class="w">k = −2.609467</span> in the inspector and you can watch the axis
+      sharpen and the field degrade together.</p>
+      <p>By 0.3° the two designs are close again, and that is worth understanding rather
+      than hiding: what remains at that field is largely astigmatism, which the
+      Ritchey–Chrétien does not claim to correct. Removing it needs a third element — a
+      corrector plate — which is exactly what wide-field survey telescopes add.</p>`,
+    limitations: `<p>A 2D meridional section cannot show astigmatism or field curvature
+      the way a real instrument does: a rotationally symmetric system is being sampled
+      along a single cut, so the off-axis numbers above describe that cut and not a full
+      spot diagram. The aplanatic pair was solved against this tracer's exact ray
+      geometry rather than from third-order theory, so the conic constants are close to
+      but not identical with the textbook closed-form values.</p>
+      <p>Nothing is diffractive — no Airy disc, no obstruction-driven ring
+      redistribution, no spider vanes — and the aperture is a teaching scale, not a
+      catalogue instrument. Reflectivity carries no angle, polarization or wavelength
+      dependence.</p>`,
+    citations: [],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
+    ],
+    related: ['conicmirror', 'oap', 'cmirror', 'objective'],
+  },
+
+  {
     match: 'IR Cassegrain objective — element by element',
     title: 'Inside an IR Cassegrain objective',
     tagline: 'Follow the light through an open primary, onto a convex secondary, and back to a concave primary that focuses around it.',
@@ -60,8 +187,24 @@ export const exampleEntries = [
         The ray focus stays put because the modeled reflection geometry is achromatic.</li>
         <li><strong>Change loss:</strong> reduce primary reflectivity from 98% to 49%.
         The relative detected signal halves; at 0% the primary absorbs the beam.</li>
-      </ol>`,
-    limitations: `
+      </ol>
+      <p><strong>Why this pairing, and not a classical Cassegrain.</strong> The choice is
+      a directly derivable on-axis teaching construction, not a claim of better
+      performance. A convex paraboloid creates a virtual source; an ellipsoid images that
+      source to the chosen sample position. The generous spacing exists to make the folded
+      path readable. Note also the order: here the collimated beam meets the
+      <em>convex paraboloid</em> first, whereas a conventional classical Cassegrain sends
+      it to the concave parabolic primary first and then to a convex hyperbolic secondary.
+      Swapping the conic constants in this scene would not reproduce that arrangement.</p>
+      <p><strong>On the reported signal.</strong> It is a relative sum over this 2D ray
+      section, not transmitted power through a circular pupil, so central-obstruction
+      losses here differ from a 3D area calculation. With the scene's 14.4&nbsp;mm central
+      stop and 32&nbsp;mm illuminated width, a continuous 1D blocked fraction would be
+      <span class="w">14.4/32 = 45%</span>, while the corresponding area fraction for a
+      uniformly illuminated circular pupil would be
+      <span class="w">(14.4/32)² = 20.25%</span>. The figure the scene reports is the
+      sampled result for these rays, and the two 98% mirror reflections reduce it
+      further.</p>`,    limitations: `
       <p>This is a 2D meridional ray trace, not a 3D objective design or electromagnetic
       calculation. The mirror is a zero-thickness, one-sided coated conic with an opaque
       back and absorptive coating losses. No substrate thickness, mounting spiders,

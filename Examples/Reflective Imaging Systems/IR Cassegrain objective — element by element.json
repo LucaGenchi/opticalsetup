@@ -357,7 +357,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Geometry only: no Airy rings, spider diffraction, coating spectrum or calibrated IR sensitivity.\nThe point focus is geometric. The scale and conics are teaching choices, not catalogue specifications.",
+        "text": "Geometry only: no Airy rings, spider diffraction, coating spectrum or calibrated IR sensitivity.\nThe point focus is geometric. The scale and conics are teaching choices, not catalogue specifications.\nSignal is a relative sum over this 2D ray section, not transmitted power through a circular pupil, so the\ncentral obstruction costs a different fraction here than a 3D area calculation would give.",
         "fontSize": 9,
         "fill": "#7c828c"
       }

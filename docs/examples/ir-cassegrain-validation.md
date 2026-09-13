@@ -1,6 +1,6 @@
 # IR Cassegrain objective verification
 
-Open **Examples → Microscopy Implementations → IR Cassegrain objective — element by element**.
+Open **Examples → Reflective Imaging Systems → IR Cassegrain objective — element by element**.
 The companion page is generated from `tools/examples-content.mjs`; its sources,
 analytic prescription and model limitations are kept there. Regenerate the native
 scene with `node tools/build-cassegrain-example.mjs`.

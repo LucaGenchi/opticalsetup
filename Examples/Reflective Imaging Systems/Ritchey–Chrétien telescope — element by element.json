@@ -1,0 +1,161 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 320,
+      "y": 292,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 560,
+        "h": 505,
+        "background": "white"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 60,
+      "y": 78,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# Ritchey–Chrétien telescope",
+        "fontSize": 15,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "subtitle",
+      "type": "textlabel",
+      "x": 60,
+      "y": 102,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Two hyperboloids, aplanatic · the design of nearly every large research telescope · 2D geometric interpretation",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "source",
+      "type": "cwlaser",
+      "x": 150,
+      "y": 190,
+      "rot": 0,
+      "label": "collimated starlight",
+      "showLabel": true,
+      "params": {
+        "wavelength": 550,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 54,
+        "autoColor": true,
+        "temporalMode": "cw"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "primary",
+      "type": "conicmirror",
+      "x": 500,
+      "y": 190,
+      "rot": 0,
+      "label": "primary · k = -1.040245",
+      "showLabel": true,
+      "params": {
+        "dia": 55,
+        "hole": 15,
+        "radius": -80,
+        "conic": -1.040245,
+        "facing": "left",
+        "refl": 96
+      },
+      "labelPos": "r"
+    },
+    {
+      "id": "secondary",
+      "type": "conicmirror",
+      "x": 470,
+      "y": 190,
+      "rot": 0,
+      "label": "secondary · k = -2.971093",
+      "showLabel": true,
+      "params": {
+        "dia": 27.5,
+        "hole": 0,
+        "radius": -26.153846,
+        "conic": -2.971093,
+        "facing": "right",
+        "refl": 96
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "focal-plane",
+      "type": "camera",
+      "x": 534.5,
+      "y": 190,
+      "rot": 0,
+      "label": "focal plane",
+      "showLabel": true,
+      "params": {
+        "ch": 20,
+        "pixels": 32,
+        "interference": false,
+        "profileScale": "absolute"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "notes",
+      "type": "textlabel",
+      "x": 60,
+      "y": 300,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "### Giving up a perfect axis to buy a usable field\nMake the primary a **parabola** (k = -1) with the hyperbolic secondary that shares its focus (k = -2.609467) and\nthis becomes a classical Cassegrain: exactly stigmatic on the axis, spot **4.5e-7 mm**. Tilt it a tenth of a degree\nand that becomes **5.0e-3 mm**, one-sided — **coma**, the aberration that confines a classical Cassegrain to a\nnarrow field.\n\nThe Ritchey–Chrétien makes **both** mirrors hyperbolic and gives up the exact axis — **5.4e-4 mm**, no longer zero —\nto cancel coma across the field: **1.9e-3 mm** at the same tenth of a degree. Hubble, the VLT and Keck are all this\ndesign, because a telescope is judged on the field it can image and not on the single point at its centre.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "controls",
+      "type": "textlabel",
+      "x": 60,
+      "y": 424,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Try:** set primary k = -1 and secondary k = -2.609467 for the classical Cassegrain and compare — on axis it gets\n*better*, which is the whole point · by 0.3° the two are close again (2.2e-2 against 1.4e-2 mm), because what is\nleft there is astigmatism, which this design does not claim to correct.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "limits",
+      "type": "textlabel",
+      "x": 60,
+      "y": 476,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "A 2D meridional section: no sagittal plane, so astigmatism and field curvature are not shown as a real instrument\nwould show them, and nothing here is diffractive — no Airy disc, and none of the ring redistribution the central\nobstruction really causes. The secondary blocks the middle of the aperture because it is genuinely in the way.\nSignal is a relative sum over this 2D ray section, not transmitted power through a circular pupil, so what the\nobstruction costs here is not the fraction a 3D area calculation would give.",
+        "fontSize": 9,
+        "fill": "#34454d"
+      }
+    }
+  ],
+  "beams": []
+}

@@ -91,7 +91,7 @@ test('malformed geometry is bounded, disclosed, serializable and editable', () =
   for (const key of ['R', 'k', 'h', 'inner', 'refl']) assert.ok(Number.isFinite(invalid[key]));
 });
 
-const exampleText = readFileSync(new URL('../Examples/Microscopy Implementations/IR Cassegrain objective — element by element.json', import.meta.url), 'utf8');
+const exampleText = readFileSync(new URL('../Examples/Reflective Imaging Systems/IR Cassegrain objective — element by element.json', import.meta.url), 'utf8');
 function example(change = () => {}) {
   const scene = parseSketch(exampleText, registry);
   change(id => scene.elements.find(el => el.id === id));
@@ -142,4 +142,54 @@ test('save and reload preserve the computed focus and apertures', () => {
   const restored = detectorReading('focus-sensor');
   assert.equal(restored.signal, reading.signal);
   assert.equal(restored.spotSpan, reading.spotSpan);
+});
+
+// The two telescopes share one geometry so only the conic constants differ.
+// Both prescriptions were derived rather than guessed -- the Gregorian from
+// the ellipse's two foci, the Ritchey-Chretien by bisection against this
+// tracer -- so a regression in the conic intersection shows up here as a
+// focus that stops being a point.
+function telescope(name, mutate = () => {}) {
+  const raw = readFileSync(new URL(`../Examples/Reflective Imaging Systems/${name}.json`, import.meta.url), 'utf8');
+  const scene = parseSketch(raw, registry);
+  const get = id => scene.elements.find(e => e.id === id);
+  mutate(get);
+  traceAll(scene.elements);
+  return { get, reading: detectorReading('focal-plane') };
+}
+
+test('the Gregorian pair is exact: a parabola and an ellipse sharing a focus', () => {
+  const { reading } = telescope('Gregorian telescope — element by element');
+  assert.ok(reading, 'no light reached the focal plane');
+  assert.ok(reading.spotSpan < 1e-5, `spot span ${reading.spotSpan}`);
+  // Either surface turned spherical destroys it, which is the control the
+  // scene's own caption invites the reader to try.
+  for (const id of ['primary', 'secondary']) {
+    const { reading: sphere } = telescope('Gregorian telescope — element by element', get => { get(id).params.conic = 0; });
+    assert.ok(sphere.spotSpan > 20 * reading.spotSpan, `${id} as a sphere still focused: ${sphere.spotSpan}`);
+  }
+});
+
+test('the Ritchey-Chretien trades the axis for the field against a classical Cassegrain', () => {
+  const NAME = 'Ritchey–Chrétien telescope — element by element';
+  const { reading: rc } = telescope(NAME);
+  assert.ok(rc, 'no light reached the focal plane');
+  // Aplanatic, not stigmatic: small on axis, but deliberately not zero.
+  assert.ok(rc.spotSpan > 1e-5 && rc.spotSpan < 5e-3, `spot span ${rc.spotSpan}`);
+  // The classical pair the caption names is the sharper one on axis.
+  const { reading: classical } = telescope(NAME, get => {
+    get('primary').params.conic = -1;
+    get('secondary').params.conic = -2.609467;
+  });
+  assert.ok(classical.spotSpan < rc.spotSpan / 100,
+    `classical Cassegrain should be far sharper on axis: ${classical.spotSpan} vs ${rc.spotSpan}`);
+});
+
+test('both telescopes are obstructed by their own secondary, not by a drawn-in stop', () => {
+  for (const name of ['Gregorian telescope — element by element', 'Ritchey–Chrétien telescope — element by element']) {
+    const { get, reading } = telescope(name);
+    assert.ok(!get('central-stop'), 'the obstruction should be the secondary itself');
+    // Some light is lost to it: a clear aperture would deliver everything.
+    assert.ok(reading.signal > 0.2 && reading.signal < 0.7, `${name}: signal ${reading.signal}`);
+  }
 });
