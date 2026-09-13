@@ -5248,6 +5248,7 @@ export const wikiEntries = [
     type: 'polygonscanner',
     title: 'Polygon scanner',
     category: 'Mirrors',
+    tagline: 'Traces reflection from every facet of a rotating regular polygon.',
     realWorld: {
       html: `
         <p>A <strong>rotating polygon scanner</strong> is a prism of flat mirror facets
@@ -5334,14 +5335,6 @@ export const wikiEntries = [
         second scan axis that turns lines into an area is out of the plane and not
         modelled.</p>`,
     },
-    extraDemos: [{
-      example: 'polygon-scanner-line-scanning',
-      heading: 'A line-scanning bench, with its evidence',
-      caption: 'A 12-facet 100&nbsp;mm wheel at 1,000&nbsp;RPM — 200 lines per second — sweeping a focus across a '
-        + 'detector, annotated with what the source datasheet actually states and what is free interpretation. '
-        + 'Its window is set to 56%, the widest this wheel scans before the 6&nbsp;mm beam starts to straddle two '
-        + 'facets; open it in the canvas and widen the window past that to watch the transition the blanking hides.',
-    }],
     related: ['galvo', 'mirror', 'aod'],
     resources: [
       { label: 'RP Photonics Encyclopedia — Laser Scanners', url: 'https://www.rp-photonics.com/laser_scanners.html' },

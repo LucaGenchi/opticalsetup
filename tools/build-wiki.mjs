@@ -23,7 +23,6 @@ import '../sketch/js/etalon.js';
 import '../sketch/js/vipa.js';
 import '../sketch/js/detector-instruments.js';
 import { wikiEntries, wikiToolSubjects } from './wiki-content.mjs';
-import { examples } from '../sketch/js/examples-data.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE_URL = 'https://opticalsetup.com';
@@ -47,9 +46,15 @@ function iconSVG(type) {
   return `<svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}" aria-hidden="true">${def.svg(el)}</svg>`;
 }
 
+// The line under a title, and the blurb on every card of the wiki index. It
+// wants to be generally descriptive and short -- what the component is, not
+// how to drive it. An entry may say so itself; otherwise it falls back to the
+// element's own inspector description, which is free to be more detailed and
+// for some components is too long to read well on the index.
 function taglineOf(entry) {
   const tool = toolEntries.get(entry.type);
   if (tool) return tool.tagline;
+  if (entry.tagline) return entry.tagline;
   return getElementMeta(entry.type, createElement(entry.type).params).description;
 }
 
@@ -208,19 +213,6 @@ function proseSectionHTML(section, label) {
   return parts.join('\n');
 }
 
-// An extra embed is normally another component's palette demo. Some subjects
-// are better shown by a whole worked scene than by a demo bench, so an entry
-// may name an example slug instead -- the canvas opens either the same way.
-function extraDemoQuery(extra) {
-  if (extra.example) {
-    if (!examples.some(e => e.slug === extra.example)) {
-      throw new Error(`wiki extraDemos references unknown example "${extra.example}"`);
-    }
-    return `example=${esc(extra.example)}`;
-  }
-  return `demo=${esc(extra.demo)}`;
-}
-
 function pageHTML(entry, entries) {
   const base = '../..';
   const tagline = taglineOf(entry);
@@ -268,7 +260,7 @@ ${header(base)}
 ${(entry.extraDemos || []).map(extra => `
       <h3 class="extra-demo-head">${esc(extra.heading)}</h3>
       <div class="embed-wrap">
-        <iframe class="embed-frame" src="${base}/sketch/?${extraDemoQuery(extra)}&amp;embed=1"
+        <iframe class="embed-frame" src="${base}/sketch/?demo=${esc(extra.demo)}&amp;embed=1"
           title="${esc(extra.heading)}"
           loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
       </div>
