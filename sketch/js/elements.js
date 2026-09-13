@@ -2233,7 +2233,7 @@ export const registry = {
 
 
   conicmirror: {
-    label: 'Conic mirror', category: 'Mirrors', paletteOrder: 4, size: { w: 20, h: 56 },
+    label: 'Conic mirror', category: 'Mirrors', paletteOrder: 3.5, size: { w: 20, h: 56 },
     aliases: ['annular mirror', 'Cassegrain', 'Schwarzschild', 'elliptical mirror', 'hyperbolic mirror', 'reflective objective'],
     params: [
       { key: 'dia', label: 'Outer diameter (mm)', type: 'number', min: 1, max: 500, step: 1, def: 50 },
@@ -4817,7 +4817,7 @@ const ELEMENT_HELP = {
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
   conicmirror: 'Exact conic intersections and surface normals, with a real central opening. k = 0: sphere; −1: parabola; below −1: hyperbola. Radius 0: plane. The coated side reflects; the back and coating losses absorb. The opening is capped at the diameter; an impossible spherical/elliptical radius is enlarged to keep the aperture real (see Geometry used). 2D ray geometry only: no diffraction, spider vanes, coating spectrum, or calibrated IR throughput.',
-  polygonscanner: 'Traces reflection from every facet of a rotating regular polygon. Facet rate = facets × RPM / 60; fractional facet counts round to the nearest integer. The usable window applies ideal synchronized blanking (amber hub); green means open. It is a fraction of the facet period centred on the facet, not something derived from your beam — near a transition a beam that is a large part of a facet lands on two of them at once and splits, as a real scanner does, so close the window before that point. Compare the beam width with the facet width readout; oblique incidence widens the footprint by 1/cos, and asymmetrically, so the clean window is narrower than the facet ratio alone suggests. Mechanics playback slows rotation for inspection. No telecentric scan optics, TrueRaster correction, SuperSync jitter, or material removal model.',
+  polygonscanner: 'Traces reflection from every facet of a rotating regular polygon, so the angle doubling and the pupil walk fall out of the geometry rather than being modelled. Facet rate = facets × RPM / 60. The usable window is ideal synchronized blanking centred on the facet — green hub open, amber blanked — and is not derived from your beam: compare the beam against the facet width readout and close the window before the beam straddles two facets. No telecentric scan optics, facet-to-facet angular error, or material removal model.',
   cmirrorx: 'Diverges reflected rays off a real spherical surface of radius 2f, so it carries the spherical aberration a real one does.',
   cmirror: 'Focuses reflected rays off a real spherical surface of radius 2f — marginal rays cross ahead of the paraxial focus, which is the aberration a parabolic mirror exists to avoid.',
   oap: 'Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.',

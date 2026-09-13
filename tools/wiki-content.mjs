@@ -5245,6 +5245,180 @@ export const wikiEntries = [
   },
 
   {
+    type: 'conicmirror',
+    title: 'Conic mirror',
+    category: 'Mirrors',
+    tagline: 'Reflects from an exact conic surface — sphere, parabola, ellipse or hyperbola — with an optional real central opening.',
+    realWorld: {
+      html: `
+        <p>A spherical mirror is easy to make and wrong in a specific way: rays striking
+        it far from the axis cross ahead of the ones near the axis, so a distant star
+        never quite comes to a point. That is spherical aberration, and it is not a
+        manufacturing defect — it is what a sphere does. The conic sections fix it, each
+        one exactly, for one particular pair of conjugate points.</p>
+        <p>The surface is described by a vertex radius and a <strong>conic constant</strong>
+        k, which selects the section: k = 0 is a sphere, k = −1 a parabola, −1 &lt; k &lt; 0
+        a prolate ellipse, k &lt; −1 a hyperbola, and k &gt; 0 an oblate ellipse.</p>`,
+      formulas: [
+        { tex: 'z(y) = \\frac{y^{2}/R}{1 + \\sqrt{1 - (1+k)\\,y^{2}/R^{2}}}', caption: 'The conic sag: how far the surface has departed from its vertex plane at height y. One radius and one conic constant describe every shape in the family.' },
+      ],
+      html2: `
+        <p>Each conic images one pair of points perfectly. A <strong>parabola</strong>
+        takes a source at infinity to its focus, which is why it is the shape of a
+        telescope primary and of the <a href="../oap/">off-axis parabolic mirror</a>. An
+        <strong>ellipse</strong> images one of its two foci onto the other, both at finite
+        distance. A <strong>hyperbola</strong> does the same for one real and one virtual
+        focus.</p>
+        <p>Combining two of them is how reflecting telescopes and objectives are built: a
+        Cassegrain pairs a parabolic primary with a hyperbolic secondary, a Gregorian with
+        an elliptical one, and a Ritchey–Chrétien uses two hyperbolas to clear coma as
+        well. The same two-mirror idea, turned into a microscope objective, is the
+        standard tool of infrared microscopy and FTIR: mirrors have no dispersion at all,
+        so the focus does not move with wavelength, and no glass is asked to transmit
+        light it would simply absorb.</p>
+        <p>What every on-axis two-mirror system pays is the <strong>central
+        obstruction</strong>. The secondary sits in the beam, so the aperture is an
+        annulus: some light is lost outright, and in a real instrument the rest is
+        redistributed, with a diffraction pattern whose rings are stronger than an
+        unobstructed aperture's.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The mirror is a real conic surface, intersected analytically. Each ray's hit
+        point and surface normal are solved on the conic itself rather than on a paraxial
+        stand-in, so aberration is a <em>result</em> here: give a mirror k = 0 and the
+        marginal rays really do cross ahead of the paraxial ones, by an amount you can
+        measure with a detector.</p>
+        <p>The <strong>signed vertex radius</strong> sets curvature and which way the
+        surface bends — a radius of zero is a plane — and the <strong>coated side</strong>
+        chooses which face reflects; the other is opaque, and reflectivity below 100% is
+        absorbed rather than transmitted, as a solid mirror substrate would.</p>
+        <p>The <strong>central opening</strong> is a real hole, not a drawing. Rays inside
+        it pass through the mirror entirely, and — because the search does not stop at the
+        opening — a ray that enters through the hole at an angle can still strike the
+        annulus further along, which is exactly the path the light takes in a Cassegrain.
+        Because a requested radius can be too short for the requested aperture to exist,
+        the <em>Geometry used</em> readout always reports the radius and opening actually
+        realized, so a silently adjusted prescription cannot pass unnoticed.</p>`,
+      formulas: [],
+      limitations: `<p>This is a two-dimensional meridional section. There is no
+        sagittal plane, so nothing here reproduces astigmatism or field curvature as a
+        real conic would show them off-axis, and a rotational surface's behaviour is only
+        being sampled along one cut.</p>
+        <p>Nothing is diffractive: there is no Airy pattern, none of the ring
+        redistribution a central obstruction causes, and no spider vanes, so the
+        geometric point focus a well-matched conic pair produces is sharper than any real
+        instrument's. Reflectivity is a single flat percentage with no angle,
+        polarization or wavelength dependence, so a coating's spectrum and an infrared
+        detector's responsivity are both outside the model. The conic constant is bounded
+        to ±20 and the radius to ±5000&nbsp;mm.</p>`,
+    },
+    related: ['oap', 'cmirror', 'mirror', 'objective'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Parabolic Mirrors', url: 'https://www.rp-photonics.com/parabolic_mirrors.html' },
+      { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
+    ],
+  },
+
+  {
+    type: 'polygonscanner',
+    title: 'Polygon scanner',
+    category: 'Mirrors',
+    tagline: 'Traces reflection from every facet of a rotating regular polygon.',
+    realWorld: {
+      html: `
+        <p>A <strong>rotating polygon scanner</strong> is a prism of flat mirror facets
+        cut around a wheel, spun continuously by a motor. Each facet sweeps the beam
+        through one line; as it passes out of the beam the next facet picks it up at the
+        start of the next line. The idea is old enough to be everywhere without being
+        noticed — it is the mechanism inside laser printers, supermarket barcode
+        scanners, many LiDAR heads, and the line-scanning laser processing systems used
+        for high-throughput marking and ablation.</p>
+        <p>Its advantage over a <a href="../galvo/">galvo mirror</a> is that the motion
+        never reverses. A galvo has to decelerate, stop and accelerate back at the end of
+        every line, and the settling that follows is what limits how fast it can scan. A
+        polygon turns one way at constant speed, so there is no turnaround to wait for
+        and the line rate is set purely by how fast the motor spins and how many facets
+        it carries:</p>`,
+      formulas: [
+        { tex: 'f_{\\text{line}} = \\frac{N \\cdot \\text{RPM}}{60}', caption: 'Lines per second, for N facets. A 12-facet wheel at 30,000 RPM delivers 6,000 lines per second — a rate no galvo of comparable aperture can approach.' },
+        { tex: '\\Delta\\theta_{\\text{optical}} = \\frac{4\\pi}{N}', caption: 'The optical sweep one facet delivers. Reflection doubles a mechanical angle, and the wheel turns through a full facet pitch 2π/N while one facet crosses the beam, so fewer facets buy a wider scan and a lower line rate.' },
+      ],
+      html2: `
+        <p>What you pay for that speed is <strong>pupil walk</strong>. A galvo pivots
+        about its own face, so the beam leaves from roughly the same place and only the
+        angle changes. A polygon facet is offset from the rotation axis, so as the wheel
+        turns the reflection point slides bodily along the facet and the beam translates
+        as well as tilting. Scan lenses for polygon systems are designed around that
+        moving pupil, and facets are made generously larger than the beam so it has room
+        to walk.</p>
+        <p>The other cost is the gap between facets. For part of every rotation the beam
+        straddles the edge between two facets and is split in two, each half leaving at a
+        completely different angle. Nothing useful can be done with that light, so the
+        source is gated off across the transition — the scanner's <em>duty cycle</em> is
+        the fraction of each facet period that survives. A wider beam eats more of the
+        facet and leaves less duty, which is the trade behind the large wheels in
+        high-power line-scanning heads.</p>
+        <p>Because every facet is cut and mounted separately, real wheels also carry
+        facet-to-facet angular errors. A facet tilted a fraction of a milliradian out of
+        plane puts its line slightly above or below the others, and since the error
+        repeats once per revolution it shows up as periodic banding in the scanned
+        image — the reason precision systems either specify pyramidal error tightly or
+        correct it actively.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The component is a regular polygon centred on its rotation axis, and the
+        vertices that draw it are the same vertices that get traced: every facet you can
+        see is a real mirror surface, so there is no separate abstract scan angle that
+        could disagree with the picture. Each facet reflects by the ordinary vector law
+        of reflection used by the plain <a href="../mirror/">mirror</a>, which means the
+        2× angle doubling and the pupil walk are not written into the model — they simply
+        come out of turning the geometry.</p>
+        <p><strong>Rotation</strong> runs the wheel continuously at a set RPM, or holds a
+        <em>static phase</em> so you can step through a facet by hand. The
+        <em>facet rate</em> readout gives the physical lines per second at all times,
+        even when playback is slowing the visible motion down for inspection.</p>
+        <p>The <strong>usable scan window</strong> is an ideal synchronized blanker: a
+        centred fraction of each facet period during which the facets reflect, with the
+        hub drawn green. Outside it the facets absorb, the hub turns amber, and no
+        outgoing ray remains — the modelled equivalent of gating the source across a
+        facet transition.</p>
+        <p>The wheel is opaque, so a facet reflectivity below 100% loses the remainder to
+        the coating rather than transmitting it. That is deliberate: a solid metal wheel
+        has no way to pass light, and letting it through would produce spurious
+        reflections off the inside faces of the far facets.</p>`,
+      formulas: [
+        { tex: 'w_{\\text{facet}} = D \\sin\\!\\left(\\frac{\\pi}{N}\\right)', caption: 'The facet width readout — the chord of one facet. This is the number to compare a beam width against: over one facet period the facet travels its whole chord through the beam, so a beam occupying a fraction f of it is on a single facet for only about 1 − f of the period.' },
+      ],
+      limitations: `<p>The scan window is <strong>not derived from your beam</strong>.
+        It is a fraction of the facet period centred on the facet, and the component has
+        no knowledge of what is illuminating it, so a window left wider than the geometry
+        supports will show the beam splitting across two facets while the hub still reads
+        open. That split is real behaviour — it is what the blanking exists to hide — but
+        choosing the window to suit the beam is left to you. Oblique incidence tightens
+        it further and asymmetrically: the footprint on the facet is the beam width
+        divided by the cosine of the incidence angle, and that angle grows on one side of
+        the sweep and shrinks on the other, so the clean window is both narrower than the
+        facet ratio suggests and not centred on the facet.</p>
+        <p>Blanking is an ideal switch synchronized to the facet, not a model of how any
+        particular controller drives a source. Every facet is perfect and identical:
+        there is no pyramidal or facet-to-facet angular error, so none of the periodic
+        line banding that characterizes real wheels appears, and no bearing wobble,
+        windage, or timing jitter. There is no f-theta or telecentric scan lens — put an
+        ordinary lens after the wheel and the focus moves as f·tan θ, with the pincushion
+        that implies. Nothing here predicts a diffraction-limited spot size, and the
+        second scan axis that turns lines into an area is out of the plane and not
+        modelled.</p>`,
+    },
+    related: ['galvo', 'mirror', 'aod'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Laser Scanners', url: 'https://www.rp-photonics.com/laser_scanners.html' },
+      { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
+    ],
+  },
+
+  {
     type: 'retroreflector',
     title: 'Retroreflector',
     category: 'Mirrors',

@@ -46,9 +46,15 @@ function iconSVG(type) {
   return `<svg viewBox="${-vb / 2} ${-vb / 2} ${vb} ${vb}" aria-hidden="true">${def.svg(el)}</svg>`;
 }
 
+// The line under a title, and the blurb on every card of the wiki index. It
+// wants to be generally descriptive and short -- what the component is, not
+// how to drive it. An entry may say so itself; otherwise it falls back to the
+// element's own inspector description, which is free to be more detailed and
+// for some components is too long to read well on the index.
 function taglineOf(entry) {
   const tool = toolEntries.get(entry.type);
   if (tool) return tool.tagline;
+  if (entry.tagline) return entry.tagline;
   return getElementMeta(entry.type, createElement(entry.type).params).description;
 }
 
