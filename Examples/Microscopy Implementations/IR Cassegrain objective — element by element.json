@@ -1,0 +1,367 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 320,
+      "y": 255,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 640,
+        "h": 510,
+        "background": "white"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 24,
+      "y": 40,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Inside an IR Cassegrain objective",
+        "fontSize": 21,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "subtitle",
+      "type": "textlabel",
+      "x": 24,
+      "y": 71,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Two real mirror surfaces • 3 µm illumination • a meridional cutaway",
+        "fontSize": 11.5,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "prescription",
+      "type": "textlabel",
+      "x": 24,
+      "y": 94,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Illustrative conic design. Every bend below is computed from the mirror shape.",
+        "fontSize": 10,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "source",
+      "type": "cwlaser",
+      "x": 80,
+      "y": 230,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "wavelength": 3000,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 32,
+        "pol": 0,
+        "coherenceLengthMm": 0,
+        "autoColor": true,
+        "color": "#e02020",
+        "temporalMode": "cw"
+      }
+    },
+    {
+      "id": "central-stop",
+      "type": "beamdump",
+      "x": 160,
+      "y": 230,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "aperture": 14.4
+      }
+    },
+    {
+      "id": "entrance-stop",
+      "type": "slit",
+      "x": 208,
+      "y": 230,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "gap": 32,
+        "length": 45
+      }
+    },
+    {
+      "id": "primary",
+      "type": "conicmirror",
+      "x": 250,
+      "y": 230,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "dia": 160,
+        "hole": 36,
+        "radius": 203.63636363636363,
+        "conic": -0.0743801652892562,
+        "facing": "right",
+        "refl": 98
+      }
+    },
+    {
+      "id": "secondary",
+      "type": "conicmirror",
+      "x": 370,
+      "y": 230,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "dia": 36,
+        "hole": 0,
+        "radius": 80,
+        "conic": -1,
+        "facing": "left",
+        "refl": 98
+      }
+    },
+    {
+      "id": "focus-sensor",
+      "type": "camera",
+      "x": 552,
+      "y": 230,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "ch": 20,
+        "pixels": 32,
+        "interference": false,
+        "profileScale": "absolute"
+      }
+    },
+    {
+      "id": "primary-label",
+      "type": "textlabel",
+      "x": 245,
+      "y": 127,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "PRIMARY",
+        "fontSize": 11,
+        "fill": "#b28b42"
+      }
+    },
+    {
+      "id": "primary-detail",
+      "type": "textlabel",
+      "x": 245,
+      "y": 143,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "concave • annular",
+        "fontSize": 9.5,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "secondary-label",
+      "type": "textlabel",
+      "x": 358,
+      "y": 177,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "SECONDARY",
+        "fontSize": 11,
+        "fill": "#b28b42"
+      }
+    },
+    {
+      "id": "secondary-detail",
+      "type": "textlabel",
+      "x": 358,
+      "y": 193,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "convex",
+        "fontSize": 9.5,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "source-label",
+      "type": "textlabel",
+      "x": 34,
+      "y": 277,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "IR laser",
+        "fontSize": 10,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "stop-label",
+      "type": "textlabel",
+      "x": 137,
+      "y": 289,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Pupil stops",
+        "fontSize": 10,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "hole-label",
+      "type": "textlabel",
+      "x": 232,
+      "y": 335,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Real opening",
+        "fontSize": 10,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "focus-label",
+      "type": "textlabel",
+      "x": 473,
+      "y": 268,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Sample / sensor plane",
+        "fontSize": 10,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "wd-label",
+      "type": "textlabel",
+      "x": 390,
+      "y": 294,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "160 mm from secondary vertex",
+        "fontSize": 9,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "incoming-key",
+      "type": "arrowann",
+      "x": 294,
+      "y": 244,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "len": 28,
+        "width": 1,
+        "fill": "#b28b42"
+      }
+    },
+    {
+      "id": "return-key",
+      "type": "arrowann",
+      "x": 301,
+      "y": 183,
+      "rot": 180,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "len": 28,
+        "width": 1,
+        "fill": "#b28b42"
+      }
+    },
+    {
+      "id": "focus-key",
+      "type": "arrowann",
+      "x": 444,
+      "y": 204,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "len": 28,
+        "width": 1,
+        "fill": "#b28b42"
+      }
+    },
+    {
+      "id": "route",
+      "type": "textlabel",
+      "x": 24,
+      "y": 382,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Follow the light**\n1. The pupil stops admit two off-axis ray bands.\n2. Light passes through the primary opening.\n3. The convex secondary sends it back, spreading out.\n4. The concave primary brings it to the sample,\n   around the secondary: an annular focusing cone.",
+        "fontSize": 10.5,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "controls",
+      "type": "textlabel",
+      "x": 355,
+      "y": 382,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Try it in the inspector**\n• Primary opening: 36 → 20 mm clips the input.\n• Both conic constants: set k = 0 to see aberration.\n• Laser wavelength: 3000 → 10000 nm, same focus.\n• Primary reflectivity: 0% removes the focus.",
+        "fontSize": 10.5,
+        "fill": "#7c828c"
+      }
+    },
+    {
+      "id": "limits",
+      "type": "textlabel",
+      "x": 24,
+      "y": 480,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Geometry only: no Airy rings, spider diffraction, coating spectrum or calibrated IR sensitivity.\nThe point focus is geometric. The scale and conics are teaching choices, not catalogue specifications.",
+        "fontSize": 9,
+        "fill": "#7c828c"
+      }
+    }
+  ],
+  "beams": []
+}

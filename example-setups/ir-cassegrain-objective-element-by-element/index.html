@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside an IR Cassegrain objective — Examples | OpticalSetup</title>
+<meta name="description" content="Follow the light through an open primary, onto a convex secondary, and back to a concave primary that focuses around it.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/ir-cassegrain-objective-element-by-element/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Inside an IR Cassegrain objective — OpticalSetup Examples">
+<meta property="og:description" content="Follow the light through an open primary, onto a convex secondary, and back to a concave primary that focuses around it.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/ir-cassegrain-objective-element-by-element/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Microscopy Implementations / Inside an IR Cassegrain objective</div>
+      <h1>Inside an IR Cassegrain objective</h1>
+      <p class="tagline" style="margin-top: 10px;">Follow the light through an open primary, onto a convex secondary, and back to a concave primary that focuses around it.</p>
+
+      <a class="place-cta" href="../../sketch/?example=ir-cassegrain-objective-element-by-element">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=ir-cassegrain-objective-element-by-element&amp;embed=1"
+          title="Inside an IR Cassegrain objective — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+      
+      <p>A reflective microscope objective can focus infrared light without refractive
+      glass. A common layout uses a large concave primary with a central opening and a
+      small convex secondary. In the infinity-input focusing direction, light first
+      passes through the primary opening, reflects from the secondary, returns to the
+      primary, and finally converges past the secondary toward the sample.<sup class="cite">[<a href="#ref-1">1</a>]</sup></p>
+      <p>This example exposes each optic as an independent, editable element. The two
+      golden curves are actual traced surfaces. The small absorber and slit select the
+      entrance pupil; the camera's active face marks the sample plane.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>A prescription you can understand</h2>
+      <div class="sim-block">
+        
+      <p>This is a <strong>Cassegrain-type teaching design</strong>, not a manufacturer
+      prescription or the classical concentric spherical Schwarzschild design. The
+      convex secondary is a paraboloid with radius 80 mm and conic constant −1. It turns
+      collimated light into a diverging return bundle with a virtual focus at x = 410 mm.
+      The ellipsoidal primary sends that bundle to the second focus at x = 530 mm.</p>
+      <p>The primary vertex is x = 250 mm. Its two focal distances are therefore 160
+      and 280 mm: ellipse semi-major axis a = 220 mm, focal half-separation c = 60 mm,
+      vertex radius R = (a² − c²)/a = 203.636363… mm, and k = −c²/a² = −0.074380… .
+      The secondary vertex is x = 370 mm. Both radii are positive in the scene's +x
+      axis; the coated sides face each other.</p>
+      <p>These conics provide an exact on-axis geometrical focus. The 160 mm working
+      distance and oversized dimensions make the path readable; they are illustrative
+      dimensions, not a claimed commercial IR objective specification.</p>
+      <ol>
+        <li><strong>Clip the entrance:</strong> select the primary and reduce Central
+        opening from 36 to 20 mm. Fewer rays reach the focus. The opening is an absence
+        of mirror, not a transmissive surface.</li>
+        <li><strong>Try spherical mirrors:</strong> set both conic constants to zero,
+        leaving their radii and positions unchanged. The sensor spot span rises from
+        numerical zero to about 0.152 mm; the camera inspector makes this small blur
+        easier to inspect than the overview.</li>
+        <li><strong>Change wavelength:</strong> change the source from 3000 to 10000 nm.
+        The ray focus stays put because the modeled reflection geometry is achromatic.</li>
+        <li><strong>Change loss:</strong> reduce primary reflectivity from 98% to 49%.
+        The relative detected signal halves; at 0% the primary absorbs the beam.</li>
+      </ol>
+        <div class="limitations"><span class="lbl">What you won't see</span>
+      <p>This is a 2D meridional ray trace, not a 3D objective design or electromagnetic
+      calculation. The mirror is a zero-thickness, one-sided coated conic with an opaque
+      back and absorptive coating losses. No substrate thickness, mounting spiders,
+      diffraction, Airy rings, vector PSF, wavefront phase, coating dispersion, or IR
+      detector responsivity is calculated. The geometric point focus is not a prediction
+      of physical spot diameter. Commercial Schwarzschild objectives and their
+      aberration correction are different prescriptions.<sup class="cite">[<a href="#ref-2">2</a>]</sup></p>
+      <p>The selected entrance pupil is represented by two ray bands in this section.
+      Its area throughput cannot be inferred from the displayed 1D ray weights. Golden
+      mirror strokes and red IR rays are display colors, not a material or visible-color
+      claim. Source watts are metadata for power readouts; the existing tracer continues
+      to draw normalized rays at zero watts.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/cmirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -0.40,-12.70 L -0.34,-11.64 L -0.28,-10.58 L -0.23,-9.53 L -0.18,-8.47 L -0.14,-7.41 L -0.10,-6.35 L -0.07,-5.29 L -0.04,-4.23 L -0.03,-3.17 L -0.01,-2.12 L -0.00,-1.06 L 0.00,-0.00 L -0.00,1.06 L -0.01,2.12 L -0.03,3.18 L -0.04,4.23 L -0.07,5.29 L -0.10,6.35 L -0.14,7.41 L -0.18,8.47 L -0.23,9.52 L -0.28,10.58 L -0.34,11.64 L -0.40,12.70" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg>Concave mirror</a><a href="../../wiki/cmirrorx/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M 0.40,-12.70 L 0.34,-11.64 L 0.28,-10.58 L 0.23,-9.53 L 0.18,-8.47 L 0.14,-7.41 L 0.10,-6.35 L 0.07,-5.29 L 0.04,-4.23 L 0.03,-3.17 L 0.01,-2.12 L 0.00,-1.06 L 0.00,-0.00 L 0.00,1.06 L 0.01,2.12 L 0.03,3.18 L 0.04,4.23 L 0.07,5.29 L 0.10,6.35 L 0.14,7.41 L 0.18,8.47 L 0.23,9.52 L 0.28,10.58 L 0.34,11.64 L 0.40,12.70" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg>Convex mirror</a><a href="../../wiki/oap/"><svg viewBox="-49 -49 98 98" aria-hidden="true"><path d="M -8.0,-40.0 L -6.8,-36.9 L -5.7,-33.8 L -4.7,-30.8 L -3.8,-27.7 L -3.0,-24.6 L -2.3,-21.5 L -1.7,-18.5 L -1.2,-15.4 L -0.8,-12.3 L -0.4,-9.2 L -0.2,-6.2 L -0.0,-3.1 L 0.0,0.0 L -0.0,3.1 L -0.2,6.2 L -0.4,9.2 L -0.8,12.3 L -1.2,15.4 L -1.7,18.5 L -2.3,21.5 L -3.0,24.6 L -3.8,27.7 L -4.7,30.8 L -5.7,33.8 L -6.8,36.9 L -8.0,40.0" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/><line x1="-5.0" y1="-36.0" x2="0.5" y2="-31.0" stroke="#888" stroke-width="1"/><line x1="-2.4" y1="-28.0" x2="3.1" y2="-23.0" stroke="#888" stroke-width="1"/><line x1="-0.5" y1="-20.0" x2="5.0" y2="-15.0" stroke="#888" stroke-width="1"/><line x1="0.8" y1="-12.0" x2="6.3" y2="-7.0" stroke="#888" stroke-width="1"/><line x1="1.4" y1="-4.0" x2="6.9" y2="1.0" stroke="#888" stroke-width="1"/><line x1="1.4" y1="4.0" x2="6.9" y2="9.0" stroke="#888" stroke-width="1"/><line x1="0.8" y1="12.0" x2="6.3" y2="17.0" stroke="#888" stroke-width="1"/><line x1="-0.5" y1="20.0" x2="5.0" y2="25.0" stroke="#888" stroke-width="1"/><line x1="-2.4" y1="28.0" x2="3.1" y2="33.0" stroke="#888" stroke-width="1"/><line x1="-5.0" y1="36.0" x2="0.5" y2="41.0" stroke="#888" stroke-width="1"/></svg>Parabolic mirror</a><a href="../../wiki/camera/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-15" width="40" height="30" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">CAM</text><rect x="-24" y="-7" width="5" height="14" fill="#333" stroke="#2b333d"/><circle cx="13" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Camera</a><a href="../../wiki/slit/"><svg viewBox="-34.4 -34.4 68.8 68.8" aria-hidden="true"><rect x="-2.5" y="-25.4" width="5" height="21.4" fill="#333"/><rect x="-2.5" y="4" width="5" height="21.4" fill="#333"/></svg>Slit</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.edmundoptics.co.uk/knowledge-center/application-notes/microscopy/introduction-to-reflective-objectives/" target="_blank" rel="noopener">Edmund Optics — Introduction to Reflective Objectives (infinity-input ray order)</a></li><li id="ref-2"><a href="https://www.thorlabs.com/reflective-microscope-objectives" target="_blank" rel="noopener">Thorlabs — Reflective Microscope Objectives (Schwarzschild design)</a></li>
+      </ol>
+
+      
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are curated and reviewed for pedagogical accuracy — see the <a href="../../community/">community section</a> for setups submitted directly by users, and the <a href="../../wiki/">wiki</a> for how each component actually works.</footer>
+</body>
+</html>

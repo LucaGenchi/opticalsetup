@@ -38,6 +38,12 @@ export const examples = [
   },
   {
     "group": "Microscopy Implementations",
+    "name": "IR Cassegrain objective — element by element",
+    "path": "../Examples/Microscopy%20Implementations/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ir-cassegrain-objective-element-by-element"
+  },
+  {
+    "group": "Microscopy Implementations",
     "name": "Multiphoton microscope — SHG and two photon fluorescence",
     "path": "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
     "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"

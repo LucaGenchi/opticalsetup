@@ -21,6 +21,67 @@ function cite(...nums) {
 
 export const exampleEntries = [
   {
+    match: 'IR Cassegrain objective — element by element',
+    title: 'Inside an IR Cassegrain objective',
+    tagline: 'Follow the light through an open primary, onto a convex secondary, and back to a concave primary that focuses around it.',
+    html: `
+      <p>A reflective microscope objective can focus infrared light without refractive
+      glass. A common layout uses a large concave primary with a central opening and a
+      small convex secondary. In the infinity-input focusing direction, light first
+      passes through the primary opening, reflects from the secondary, returns to the
+      primary, and finally converges past the secondary toward the sample.${cite(1)}</p>
+      <p>This example exposes each optic as an independent, editable element. The two
+      golden curves are actual traced surfaces. The small absorber and slit select the
+      entrance pupil; the camera's active face marks the sample plane.</p>`,
+    inOpticalSetupTitle: 'A prescription you can understand',
+    inOpticalSetupHtml: `
+      <p>This is a <strong>Cassegrain-type teaching design</strong>, not a manufacturer
+      prescription or the classical concentric spherical Schwarzschild design. The
+      convex secondary is a paraboloid with radius 80 mm and conic constant −1. It turns
+      collimated light into a diverging return bundle with a virtual focus at x = 410 mm.
+      The ellipsoidal primary sends that bundle to the second focus at x = 530 mm.</p>
+      <p>The primary vertex is x = 250 mm. Its two focal distances are therefore 160
+      and 280 mm: ellipse semi-major axis a = 220 mm, focal half-separation c = 60 mm,
+      vertex radius R = (a² − c²)/a = 203.636363… mm, and k = −c²/a² = −0.074380… .
+      The secondary vertex is x = 370 mm. Both radii are positive in the scene's +x
+      axis; the coated sides face each other.</p>
+      <p>These conics provide an exact on-axis geometrical focus. The 160 mm working
+      distance and oversized dimensions make the path readable; they are illustrative
+      dimensions, not a claimed commercial IR objective specification.</p>
+      <ol>
+        <li><strong>Clip the entrance:</strong> select the primary and reduce Central
+        opening from 36 to 20 mm. Fewer rays reach the focus. The opening is an absence
+        of mirror, not a transmissive surface.</li>
+        <li><strong>Try spherical mirrors:</strong> set both conic constants to zero,
+        leaving their radii and positions unchanged. The sensor spot span rises from
+        numerical zero to about 0.152 mm; the camera inspector makes this small blur
+        easier to inspect than the overview.</li>
+        <li><strong>Change wavelength:</strong> change the source from 3000 to 10000 nm.
+        The ray focus stays put because the modeled reflection geometry is achromatic.</li>
+        <li><strong>Change loss:</strong> reduce primary reflectivity from 98% to 49%.
+        The relative detected signal halves; at 0% the primary absorbs the beam.</li>
+      </ol>`,
+    limitations: `
+      <p>This is a 2D meridional ray trace, not a 3D objective design or electromagnetic
+      calculation. The mirror is a zero-thickness, one-sided coated conic with an opaque
+      back and absorptive coating losses. No substrate thickness, mounting spiders,
+      diffraction, Airy rings, vector PSF, wavefront phase, coating dispersion, or IR
+      detector responsivity is calculated. The geometric point focus is not a prediction
+      of physical spot diameter. Commercial Schwarzschild objectives and their
+      aberration correction are different prescriptions.${cite(2)}</p>
+      <p>The selected entrance pupil is represented by two ray bands in this section.
+      Its area throughput cannot be inferred from the displayed 1D ray weights. Golden
+      mirror strokes and red IR rays are display colors, not a material or visible-color
+      claim. Source watts are metadata for power readouts; the existing tracer continues
+      to draw normalized rays at zero watts.</p>`,
+    citations: [
+      { label: 'Edmund Optics — Introduction to Reflective Objectives (infinity-input ray order)', url: 'https://www.edmundoptics.co.uk/knowledge-center/application-notes/microscopy/introduction-to-reflective-objectives/' },
+      { label: 'Thorlabs — Reflective Microscope Objectives (Schwarzschild design)', url: 'https://www.thorlabs.com/reflective-microscope-objectives' },
+    ],
+    resources: [],
+    related: ['cmirror', 'cmirrorx', 'oap', 'camera', 'slit'],
+  },
+  {
     match: 'Spherical aberration — ideal lens vs spherical singlet',
     title: 'Why a real lens has no focal point',
     tagline: 'One collimated bundle through an ideal lens and through a real N-BK7 singlet of the same focal length — a point against a 30 mm smear.',

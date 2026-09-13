@@ -5245,6 +5245,82 @@ export const wikiEntries = [
   },
 
   {
+    type: 'conicmirror',
+    title: 'Conic mirror',
+    category: 'Mirrors',
+    tagline: 'Reflects from an exact conic surface — sphere, parabola, ellipse or hyperbola — with an optional real central opening.',
+    realWorld: {
+      html: `
+        <p>A spherical mirror is easy to make and wrong in a specific way: rays striking
+        it far from the axis cross ahead of the ones near the axis, so a distant star
+        never quite comes to a point. That is spherical aberration, and it is not a
+        manufacturing defect — it is what a sphere does. The conic sections fix it, each
+        one exactly, for one particular pair of conjugate points.</p>
+        <p>The surface is described by a vertex radius and a <strong>conic constant</strong>
+        k, which selects the section: k = 0 is a sphere, k = −1 a parabola, −1 &lt; k &lt; 0
+        a prolate ellipse, k &lt; −1 a hyperbola, and k &gt; 0 an oblate ellipse.</p>`,
+      formulas: [
+        { tex: 'z(y) = \\frac{y^{2}/R}{1 + \\sqrt{1 - (1+k)\\,y^{2}/R^{2}}}', caption: 'The conic sag: how far the surface has departed from its vertex plane at height y. One radius and one conic constant describe every shape in the family.' },
+      ],
+      html2: `
+        <p>Each conic images one pair of points perfectly. A <strong>parabola</strong>
+        takes a source at infinity to its focus, which is why it is the shape of a
+        telescope primary and of the <a href="../oap/">off-axis parabolic mirror</a>. An
+        <strong>ellipse</strong> images one of its two foci onto the other, both at finite
+        distance. A <strong>hyperbola</strong> does the same for one real and one virtual
+        focus.</p>
+        <p>Combining two of them is how reflecting telescopes and objectives are built: a
+        Cassegrain pairs a parabolic primary with a hyperbolic secondary, a Gregorian with
+        an elliptical one, and a Ritchey–Chrétien uses two hyperbolas to clear coma as
+        well. The same two-mirror idea, turned into a microscope objective, is the
+        standard tool of infrared microscopy and FTIR: mirrors have no dispersion at all,
+        so the focus does not move with wavelength, and no glass is asked to transmit
+        light it would simply absorb.</p>
+        <p>What every on-axis two-mirror system pays is the <strong>central
+        obstruction</strong>. The secondary sits in the beam, so the aperture is an
+        annulus: some light is lost outright, and in a real instrument the rest is
+        redistributed, with a diffraction pattern whose rings are stronger than an
+        unobstructed aperture's.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The mirror is a real conic surface, intersected analytically. Each ray's hit
+        point and surface normal are solved on the conic itself rather than on a paraxial
+        stand-in, so aberration is a <em>result</em> here: give a mirror k = 0 and the
+        marginal rays really do cross ahead of the paraxial ones, by an amount you can
+        measure with a detector.</p>
+        <p>The <strong>signed vertex radius</strong> sets curvature and which way the
+        surface bends — a radius of zero is a plane — and the <strong>coated side</strong>
+        chooses which face reflects; the other is opaque, and reflectivity below 100% is
+        absorbed rather than transmitted, as a solid mirror substrate would.</p>
+        <p>The <strong>central opening</strong> is a real hole, not a drawing. Rays inside
+        it pass through the mirror entirely, and — because the search does not stop at the
+        opening — a ray that enters through the hole at an angle can still strike the
+        annulus further along, which is exactly the path the light takes in a Cassegrain.
+        Because a requested radius can be too short for the requested aperture to exist,
+        the <em>Geometry used</em> readout always reports the radius and opening actually
+        realized, so a silently adjusted prescription cannot pass unnoticed.</p>`,
+      formulas: [],
+      limitations: `<p>This is a two-dimensional meridional section. There is no
+        sagittal plane, so nothing here reproduces astigmatism or field curvature as a
+        real conic would show them off-axis, and a rotational surface's behaviour is only
+        being sampled along one cut.</p>
+        <p>Nothing is diffractive: there is no Airy pattern, none of the ring
+        redistribution a central obstruction causes, and no spider vanes, so the
+        geometric point focus a well-matched conic pair produces is sharper than any real
+        instrument's. Reflectivity is a single flat percentage with no angle,
+        polarization or wavelength dependence, so a coating's spectrum and an infrared
+        detector's responsivity are both outside the model. The conic constant is bounded
+        to ±20 and the radius to ±5000&nbsp;mm.</p>`,
+    },
+    related: ['oap', 'cmirror', 'mirror', 'objective'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Parabolic Mirrors', url: 'https://www.rp-photonics.com/parabolic_mirrors.html' },
+      { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
+    ],
+  },
+
+  {
     type: 'polygonscanner',
     title: 'Polygon scanner',
     category: 'Mirrors',

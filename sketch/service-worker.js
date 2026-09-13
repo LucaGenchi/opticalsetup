@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v85';
+const CACHE_NAME = 'opticalsetup-pwa-v86';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -14,6 +14,7 @@ const PRECACHE_PATHS = [
   "./icons/apple-touch-icon.png",
   "./js/acousto-optic.js",
   "./js/asphere.js",
+  "./js/conic-mirror.js",
   "./js/aotf.js",
   "./js/electro-optic.js",
   "./js/camera-profile.js",
@@ -63,6 +64,7 @@ const PRECACHE_PATHS = [
   "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
+  "../Examples/Microscopy%20Implementations/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json"
 ];
 
