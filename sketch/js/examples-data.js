@@ -14,6 +14,12 @@ export const examples = [
   },
   {
     "group": "Lens Physics",
+    "name": "IR Cassegrain objective — element by element",
+    "path": "../Examples/Lens%20Physics/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ir-cassegrain-objective-element-by-element"
+  },
+  {
+    "group": "Lens Physics",
     "name": "Singlet vs achromat — axial colour",
     "path": "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
     "slug": "singlet-vs-achromat-axial-colour"
@@ -35,12 +41,6 @@ export const examples = [
     "name": "Coherent Raman microscope — SRS and CARS",
     "path": "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
     "slug": "coherent-raman-microscope-srs-and-cars"
-  },
-  {
-    "group": "Microscopy Implementations",
-    "name": "IR Cassegrain objective — element by element",
-    "path": "../Examples/Microscopy%20Implementations/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
-    "slug": "ir-cassegrain-objective-element-by-element"
   },
   {
     "group": "Microscopy Implementations",

@@ -63,4 +63,4 @@ text('limits', 24, 480,
   'Geometry only: no Airy rings, spider diffraction, coating spectrum or calibrated IR sensitivity.\nThe point focus is geometric. The scale and conics are teaching choices, not catalogue specifications.', 9);
 
 const scene = { app: 'optics2d', version: 1, elements, beams: [] };
-await writeFile(new URL('../Examples/Microscopy Implementations/IR Cassegrain objective — element by element.json', import.meta.url), JSON.stringify(scene, null, 2) + '\n');
+await writeFile(new URL('../Examples/Lens Physics/IR Cassegrain objective — element by element.json', import.meta.url), JSON.stringify(scene, null, 2) + '\n');

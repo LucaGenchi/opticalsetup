@@ -64,7 +64,7 @@ const PRECACHE_PATHS = [
   "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
-  "../Examples/Microscopy%20Implementations/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
+  "../Examples/Lens%20Physics/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json"
 ];
 

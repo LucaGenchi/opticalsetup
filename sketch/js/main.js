@@ -626,33 +626,21 @@ const demoScenes = {
         + 'blanking exists to hide.', fontSize: 10,
     }),
   ],
-  // The prescription is the shipped IR Cassegrain example's, verbatim: a
-  // parabolic secondary and an ellipsoidal primary sharing a focus, which
-  // images the collimated input to a point with no aberration to tune away.
+  // On-axis: a tilt of even five degrees costs this parabola a 5.9 mm caustic,
+  // so the demo keeps the beam on the axis, where an exact conic earns its
+  // keep -- k = -1 puts every ray through one point, k = 0 does not.
   conicmirror: () => [
-    mkDemo('cwlaser', 80, 230, 0, { wavelength: 3000, beamMode: 'beam', beamWidth: 32 },
-      { label: '3 um IR', showLabel: true, labelPos: 'b' }),
-    mkDemo('beamdump', 160, 230, 0, { aperture: 14.4 }),
-    mkDemo('slit', 208, 230, 0, { gap: 32, length: 45 }),
-    mkDemo('conicmirror', 250, 230, 0,
-      { dia: 160, hole: 36, radius: 203.63636363636363, conic: -0.0743801652892562, facing: 'right', refl: 98 },
-      { label: 'primary - concave, annular', showLabel: true, labelPos: 't' }),
-    mkDemo('conicmirror', 370, 230, 0, { dia: 36, hole: 0, radius: 80, conic: -1, facing: 'left', refl: 98 },
-      { label: 'secondary - convex', showLabel: true, labelPos: 't' }),
-    mkDemo('camera', 552, 230, 0, { ch: 20, pixels: 32 },
-      { label: 'sample / sensor plane', showLabel: true, labelPos: 'b' }),
-    mkDemo('textlabel', 60, 330, 0, {
-      text: '### A reflective objective, element by element\n'
-        + 'Light passes through the opening in the primary, the convex secondary\n'
-        + 'sends it back spreading, and the concave primary brings it to a focus\n'
-        + 'around the secondary -- an annular cone, which is why the input is\n'
-        + 'annular too.', fontSize: 11,
-    }),
-    mkDemo('textlabel', 60, 415, 0, {
-      text: 'The secondary is a **parabola** (k = -1) and the primary an **ellipse** (k = -0.074)\n'
-        + 'sharing a focus, so the point focus is exact rather than tuned. Set both k = 0 and\n'
-        + '0.15 mm of spherical aberration appears. Mirrors, so the focus does not move with\n'
-        + 'wavelength.', fontSize: 10,
+    mkDemo('cwlaser', 60, 200, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 50 }),
+    mkDemo('conicmirror', 320, 200, 0,
+      { dia: 70, hole: 0, radius: -200, conic: -1, facing: 'left', refl: 98 },
+      { label: 'parabola, k = -1', showLabel: true, labelPos: 'r' }),
+    mkDemo('box', 220, 200, 0, { text: '', w: 2, h: 26, behavior: 'pass', fill: '#c9d4e0' },
+      { label: 'focus (f = R/2 = 100 mm)', showLabel: true, labelPos: 'b' }),
+    mkDemo('textlabel', 60, 300, 0, {
+      text: 'The collimated beam comes back to a **single point**: a parabola images infinity\n'
+        + 'onto its focus exactly. Set the conic constant to **k = 0** and the same mirror\n'
+        + 'becomes a sphere, whose outer rays cross about 2 mm early -- spherical aberration,\n'
+        + 'computed from the surface rather than assumed.', fontSize: 11,
     }),
   ],
   aod: () => [

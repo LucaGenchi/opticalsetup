@@ -91,7 +91,7 @@ test('malformed geometry is bounded, disclosed, serializable and editable', () =
   for (const key of ['R', 'k', 'h', 'inner', 'refl']) assert.ok(Number.isFinite(invalid[key]));
 });
 
-const exampleText = readFileSync(new URL('../Examples/Microscopy Implementations/IR Cassegrain objective — element by element.json', import.meta.url), 'utf8');
+const exampleText = readFileSync(new URL('../Examples/Lens Physics/IR Cassegrain objective — element by element.json', import.meta.url), 'utf8');
 function example(change = () => {}) {
   const scene = parseSketch(exampleText, registry);
   change(id => scene.elements.find(el => el.id === id));
