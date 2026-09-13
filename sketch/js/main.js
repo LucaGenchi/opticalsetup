@@ -608,6 +608,23 @@ const demoScenes = {
     mkDemo('lens', 205.849365, 260, 90, { f: 100, dia: 100 }),
     mkDemo('box', 205.849365, 360, 0, { text: '', w: 110, h: 10, behavior: 'block', fill: '#f2f3f5' },
       { label: 'successive line sweeps; blanked between facets', showLabel: true, labelPos: 'b' }),
+    mkDemo('textlabel', 330, 120, 0, {
+      text: '### Inspect the scan\n'
+        + '12 facets x 1,000 RPM / 60 = **200 lines/s**\n'
+        + '\n'
+        + '**Green hub:** the scan window is open\n'
+        + '**Amber hub:** ideal synchronized blanking\n'
+        + '\n'
+        + 'Motion is slowed for inspection; the facet\n'
+        + 'rate readout always gives the physical rate.', fontSize: 11,
+    }),
+    mkDemo('textlabel', 330, 290, 0, {
+      text: 'The window is **56%**, not the 71% a datasheet might quote: that belongs to a head\n'
+        + 'with its own wheel geometry. Here a 6 mm beam on a 25.9 mm facet stays on one facet\n'
+        + 'for 56% of each period. Widen it past that and the beam straddles two facets at a\n'
+        + 'transition, leaving in two directions at once -- real behaviour, and what the\n'
+        + 'blanking exists to hide.', fontSize: 10,
+    }),
   ],
   aod: () => [
     mkDemo('cwlaser', 40, 200, 0, { wavelength: 532, beamMode: 'line' }),
