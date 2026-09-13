@@ -20,6 +20,15 @@ export function polygonScannerState(params = {}, timeSeconds = 0) {
   return { facets, rpm, diameter, duty, fraction, angle, active, lineRateHz };
 }
 
+// One facet's chord. The usable window is a fraction of the facet period, not
+// something derived from the beam, so this is the number to compare a beam
+// width against: a beam that is a large part of a facet straddles two of them
+// near a transition, and the window has to be closed before that happens.
+export function polygonScannerFacetWidth(params = {}) {
+  const { facets, diameter } = polygonScannerState(params);
+  return diameter * Math.sin(Math.PI / facets);
+}
+
 export function polygonScannerVertices(params = {}, timeSeconds = 0) {
   const { facets, diameter, angle } = polygonScannerState(params, timeSeconds);
   return Array.from({ length: facets }, (_, i) => {

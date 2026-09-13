@@ -56,8 +56,8 @@ export const examples = [
   },
   {
     "group": "Scanning",
-    "name": "Polygon scanner   line scanning",
-    "path": "../Examples/Scanning/Polygon%20scanner%20-%20line%20scanning.json",
+    "name": "Polygon scanner — line scanning",
+    "path": "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
     "slug": "polygon-scanner-line-scanning"
   },
   {

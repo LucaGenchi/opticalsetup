@@ -73,7 +73,7 @@
         "scanMode": "rotate",
         "rpm": 1000,
         "scanPhase": 50,
-        "dutyCycle": 71,
+        "dutyCycle": 56,
         "refl": 98
       },
       "labelPos": "t"
@@ -130,7 +130,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "## Interpretation, not an LSE replica\n71% window and 6 mm input are\nfrom the supplied LSE170 STD sheet.\nWheel, laser and lens settings are\nillustrative. The real LSE uses mirrors.\n\nNo telecentric correction, 2D feed,\nSuperSync timing or ablation model.",
+        "text": "## Interpretation, not an LSE replica\nThe 6 mm input is from the supplied\nLSE170 STD sheet. Its 71% duty belongs to\nthat head's own wheel geometry, not this\none: here a 6 mm beam on a 25.9 mm facet\nstays on one facet for 56% of each period,\nso the window is set to 56%.\n\nWheel, laser and lens settings are\nillustrative. The real LSE uses mirrors.\nNo telecentric correction, 2D feed,\nSuperSync timing or ablation model.",
         "fontSize": 9,
         "fill": "#475569"
       },
@@ -145,7 +145,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Try Static phase: 25% → 50% → 75%. At 95%, the beam is blanked.\nSet the scan window to 100% to inspect facet transitions, or facet reflectivity to zero to absorb the beam.",
+        "text": "Try Static phase: 25% → 50% → 75%. At 95%, the beam is blanked.\nWiden the scan window past 56% to watch the beam split across two facets at a transition, or set facet reflectivity to zero to absorb the beam.",
         "fontSize": 8,
         "fill": "#475569"
       },

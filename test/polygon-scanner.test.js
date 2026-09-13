@@ -2,15 +2,50 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createElement, registry } from '../sketch/js/elements.js';
-import { polygonScannerState, polygonScannerSurfaces } from '../sketch/js/polygon-scanner.js';
+import {
+  polygonScannerState, polygonScannerSurfaces, polygonScannerVertices, polygonScannerFacetWidth,
+} from '../sketch/js/polygon-scanner.js';
 import { traceAll, detectorReading } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import { elementDriveHz } from '../sketch/js/timescale.js';
 import { buildSVG } from '../sketch/js/export.js';
 
-const example = readFileSync(new URL('../Examples/Scanning/Polygon scanner - line scanning.json', import.meta.url), 'utf8');
+const example = readFileSync(new URL('../Examples/Scanning/Polygon scanner — line scanning.json', import.meta.url), 'utf8');
 const near = (a, b, tolerance = 1e-8) => assert.ok(Math.abs(a - b) < tolerance, `${a} ≈ ${b}`);
 const scene = () => parseSketch(example, registry).elements;
+
+// Which facet a horizontal ray at height y strikes, solved from the same
+// vertices the tracer uses rather than from the traced drawables, so a
+// straddle is identified exactly rather than inferred from exit angles.
+function facetUnderRay(el, params, y) {
+  const local = polygonScannerVertices(params, 0);
+  const r = (el.rot || 0) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+  const world = local.map(p => ({ x: el.x + p.x * c - p.y * s, y: el.y + p.x * s + p.y * c }));
+  let nearest = null;
+  for (let i = 0; i < world.length; i++) {
+    const a = world[i], b = world[(i + 1) % world.length];
+    if ((a.y - y) * (b.y - y) > 0 || a.y === b.y) continue;
+    const x = a.x + (y - a.y) / (b.y - a.y) * (b.x - a.x);
+    if (nearest === null || x < nearest.x) nearest = { x, facet: i };
+  }
+  return nearest;
+}
+
+// Every phase the blanking window leaves open must put the whole beam on one
+// facet. A beam spanning two facets leaves in two directions a full facet step
+// apart -- real behaviour at a transition, but the window exists to gate it,
+// and a window wider than the geometry allows shows it while the hub is green.
+function straddlingPhases(el, params, beamY, beamWidth, step = 0.25) {
+  const bad = [];
+  for (let phase = 0; phase < 100; phase += step) {
+    const p = { ...params, scanPhase: phase };
+    if (!polygonScannerState(p).active) continue;
+    const lo = facetUnderRay(el, p, beamY - beamWidth / 2);
+    const hi = facetUnderRay(el, p, beamY + beamWidth / 2);
+    if (!lo || !hi || lo.facet !== hi.facet) bad.push(phase);
+  }
+  return bad;
+}
 
 test('facet rate follows RPM, phase wraps, and stopped rotation stays fixed', () => {
   const p = { facets: 12, rpm: 1000, scanPhase: 50 };
@@ -112,6 +147,40 @@ test('reflectivity scales delivered power without internal ghost reflections', (
   wheel.params.refl = 0;
   traceAll(elements);
   assert.equal(detectorReading('target'), null);
+});
+
+test('facet width is the chord, and it is what bounds a usable window', () => {
+  near(polygonScannerFacetWidth({ diameter: 100, facets: 12 }), 100 * Math.sin(Math.PI / 12));
+  near(polygonScannerFacetWidth({ diameter: 60, facets: 6 }), 30);
+  // Bounded like every other input: junk falls back to the defaults.
+  assert.ok(Number.isFinite(polygonScannerFacetWidth({ diameter: NaN, facets: 'oops' })));
+});
+
+// Both shipped scenes once declared the datasheet's 71% window on wheels whose
+// geometry could not deliver it, so a 6 mm beam split across two facets --
+// flinging half the power a facet step away, off the figure -- while the hub
+// still read green. The window each scene declares has to fit its own wheel.
+test('the shipped example never opens its window onto a facet transition', () => {
+  const elements = scene();
+  const wheel = elements.find(e => e.id === 'scanner');
+  const source = elements.find(e => e.id === 'source');
+  const bad = straddlingPhases(wheel, wheel.params, source.y, source.params.beamWidth);
+  assert.deepEqual(bad, [], `open phases split across two facets: ${bad.slice(0, 8).join(', ')}`);
+  // ...and the window is not trivially narrow; it should still scan a line.
+  assert.ok(wheel.params.dutyCycle >= 50, `window collapsed to ${wheel.params.dutyCycle}%`);
+});
+
+test('the palette demo never opens its window onto a facet transition', () => {
+  const main = readFileSync(new URL('../sketch/js/main.js', import.meta.url), 'utf8');
+  const block = main.match(/polygonscanner: \(\) => \[([\s\S]*?)\n {2}\],/);
+  assert.ok(block, 'polygonscanner demo scene not found in main.js');
+  const laser = block[1].match(/mkDemo\('cwlaser', [\d.]+, ([\d.]+).*?beamWidth: (\d+)/);
+  const wheel = block[1].match(/mkDemo\('polygonscanner', ([\d.]+), ([\d.]+), (\d+), \{ diameter: (\d+), dutyCycle: (\d+) \}/);
+  assert.ok(laser && wheel, 'demo laser or wheel no longer matches the expected shape');
+  const el = { x: +wheel[1], y: +wheel[2], rot: +wheel[3] };
+  const params = { diameter: +wheel[4], dutyCycle: +wheel[5], facets: 12 };
+  const bad = straddlingPhases(el, params, +laser[1], +laser[2]);
+  assert.deepEqual(bad, [], `open phases split across two facets: ${bad.slice(0, 8).join(', ')}`);
 });
 
 test('native save/reload preserves the example and exported animation follows facet motion', () => {
