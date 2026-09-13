@@ -130,7 +130,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "## Interpretation, not an LSE replica\nThe 6 mm input is from the supplied\nLSE170 STD sheet. Its 71% duty belongs to\nthat head's own wheel geometry, not this\none: here a 6 mm beam on a 25.9 mm facet\nstays on one facet for 56% of each period,\nso the window is set to 56%.\n\nWheel, laser and lens settings are\nillustrative. The real LSE uses mirrors.\nNo telecentric correction, 2D feed,\nSuperSync timing or ablation model.",
+        "text": "## Interpretation, not an LSE replica\nThe 6 mm input is from the supplied\nLSE170 STD sheet, as a Gaussian 1/e²\ndiameter rather than a hard edge. Its 71%\nduty specifies the complete head with its\ntelecentric optics, and the sheet does not\ngive the fold, wheel or blanking phase\nneeded to reproduce it. The 56% here is a\nconservative centred window for this\nillustrative geometry.\n\nWheel, laser and lens settings are\nillustrative. The real LSE uses mirrors.\nNo telecentric correction, 2D feed,\nSuperSync timing or ablation model.",
         "fontSize": 9,
         "fill": "#475569"
       },

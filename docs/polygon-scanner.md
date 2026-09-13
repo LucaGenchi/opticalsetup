@@ -16,7 +16,7 @@ not a claim about current products.
 | --- | --- | --- |
 | Rotating polygon makes fast scan lines; an external perpendicular feed axis extends processing to an area | p. 1, diagram and High Throughput Raster Processing | Actual rotating-facet ray tracing; this 2D section shows one scan line. Perpendicular feed is out of plane and is not simulated. |
 | LSE uses integrated telecentric mirrors | p. 2, Full Telecentric Optics | Not reconstructed: no mirror prescriptions are supplied. The example uses an explicitly illustrative thin lens. |
-| LSE170 STD: 100–400 lines/s, 71% duty, 6 mm input beam (1/e²), 10 mm clear input aperture, 170 mm scan width | p. 2, specifications table | 200 lines/s and a 6 mm geometric beam. The **71% duty is not carried over**: it belongs to that head's own wheel geometry, which the sheet does not disclose, and this reconstruction's wheel cannot deliver it (see below). The window here is 56%, the widest this geometry scans without the beam straddling a facet edge. The beam uses native uniform ray sampling, not a Gaussian 1/e² profile. The 170 mm field and 10 mm head aperture are not imposed. |
+| LSE170 STD: 100–400 lines/s, 71% duty, 6 mm input beam (1/e²), 10 mm clear input aperture, 170 mm scan width | p. 2, specifications table | 200 lines/s and a 6 mm geometric beam. The **71% duty is not carried over**: it is a specification for the complete head with its integrated telecentric mirror optics, and the sheet does not give the internal fold, wheel prescription or blanking phase needed to reproduce it. The window here is 56%, a conservative centred blanking window for this illustrative geometry (see below). Note also that the sheet's 6 mm is a Gaussian 1/e² diameter, which is not the same clipping criterion as a hard-edged 6 mm geometric beam. The beam uses native uniform ray sampling, not a Gaussian 1/e² profile. The 170 mm field and 10 mm head aperture are not imposed. |
 | LSE170 HNA: 100–400 lines/s, 8 mm beam, 170 mm scan width; LSE300 STD: 56–224 lines/s, 11 mm beam, 300 mm scan width | p. 2, specifications table | Reference only; no product presets that imply matching a complete scan head. |
 | 25–100 m/s moving spot speed; system efficiency >85% green/IR and >70% UV | p. 2, specifications table | Not claimed for this layout. Individual facet reflectivity is distinct from whole-head efficiency. |
 | LSE170 STD minimum green spot diameter 22 µm under the sheet's conditions | p. 2, spot table and footnote 1 | Not calculated: an ideal ray crossing is not a diffraction-limited spot size prediction. |
@@ -63,9 +63,14 @@ is the beam width divided by the cosine of the incidence angle, and as the wheel
 turns that angle grows on one side of the sweep and shrinks on the other. In
 this example, 45° at mid-facet becomes 60° at one end — doubling the footprint
 there — which is why the clean window runs 21.6% to 90.1% rather than sitting
-symmetrically about 50%, and why a centred window has to stop at 56%. Enlarging
-the wheel widens the clean window but does not centre it; the asymmetry is a
-property of the fold angle, not of the wheel size. The inspector's **facet
+symmetrically about 50%. That interval is 68.5% wide, but its centre is at 55.9%,
+and a window pinned to the middle of the facet can only use the symmetric part of
+it: 2 × min(50 − 21.6, 90.1 − 50) ≈ 56.8%, so the example's 56% keeps a little
+margin. Part of the apparent duty loss is therefore the cost of fixing the
+blanking centre rather than unusable facet area, and an independently adjustable
+blanking phase would recover some of it without a larger wheel. Enlarging the
+wheel widens the clean window but does not centre it; the asymmetry is a property
+of the fold angle, not of the wheel size. The inspector's **facet
 width** readout gives the chord to compare a beam against.
 
 Static mode freezes the selected phase. Zero RPM also stops motion. Facet counts
