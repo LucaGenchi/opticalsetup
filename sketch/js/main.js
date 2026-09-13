@@ -225,7 +225,7 @@ const demoScenes = {
   // something on the far side that stops receiving it.
   beamdump: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
-    mkDemo('bs', 200, 200, 0, { ratio: 0.5 }),
+    mkDemo('bs', 200, 200, 90, { ratio: 0.5 }),
     mkDemo('detector', 380, 200, 0, {}, { label: 'kept port', showLabel: true }),
     mkDemo('beamdump', 200, 330, 90, { aperture: 22 }, { label: 'unused port ends here', showLabel: true, labelPos: 'b' }),
   ],
@@ -236,7 +236,7 @@ const demoScenes = {
   ],
   blocker: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
-    mkDemo('bs', 220, 200, 0, { ratio: 0.5 }),
+    mkDemo('bs', 220, 200, 90, { ratio: 0.5 }),
     mkDemo('detector', 400, 200, 0, {}, { label: 'the branch you want', showLabel: true }),
     mkDemo('blocker', 220, 320, 0, { w: 40, h: 16 }, { label: 'absorbs, but never drawn in an export', showLabel: true, labelPos: 'b' }),
   ],
@@ -554,7 +554,7 @@ const demoScenes = {
       repRateMHz: 80, pulseWidthFs: 100,
     }),
     mkDemo('aom', 220, 200, 0, {
-      deflect: 15, rfMHz: 80, zero: true, eff: 1,
+      deflect: 15, zero: true, eff: 1,
       modulate: true, modShape: 'square', modFreqMHz: 40,
     }),
     mkDemo('box', 370, 200, 0, { text: '', w: 10, h: 90, behavior: 'block', fill: '#f2f3f5' }, { label: '1st order (deflected) + 0th order', showLabel: true, labelPos: 'r' }),

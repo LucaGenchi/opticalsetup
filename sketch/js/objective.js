@@ -16,9 +16,9 @@
 // real catalogue magnification, and the back focal plane one EFL behind it
 // is a genuine conjugate: light focused there leaves the objective
 // collimated, which is what widefield (Köhler-style) illumination needs and
-// what a scan relay must be imaged onto. Working distance is capped at EFL,
-// so that plane always lands at or behind the tip — inside the barrel, where
-// a real objective's principal plane and pupil actually sit. It is never
+// what a scan relay must be imaged onto. Working distance is independent of
+// EFL, so long-WD designs can place the equivalent plane outside the barrel.
+// It represents the whole objective, not a physical glass surface. It is never
 // drawn: an objective is an opaque barrel, not a visible singlet.
 //
 // Rated NA is a real aperture, not an annotation. The back pupil has

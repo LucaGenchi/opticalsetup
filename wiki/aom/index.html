@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Acousto-optic modulator (AOM) — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/aom/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Acousto-optic modulator (AOM) — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.">
+<meta property="og:description" content="Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/aom/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -121,7 +121,7 @@
           <h1>Acousto-optic modulator (AOM)</h1>
         </div>
       </div>
-      <p class="tagline">Deflects and frequency-shifts first-order light with efficiency, zero-order, and square or sinusoidal RF modulation.</p>
+      <p class="tagline">Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.</p>
       <a class="place-cta" href="../../sketch/?demo=aom">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -150,18 +150,65 @@
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
         
-        <p>The frequency shift is modeled exactly: the diffracted ray's optical frequency
-        is genuinely shifted by the configured RF frequency, then converted back to a
-        wavelength, which is what makes an AOM in a pulse-timing setup actually change
-        color. Deflection and diffraction efficiency, though, are direct configurable
-        parameters rather than quantities derived from crystal or drive properties.
-        Gating support (square or graded sinusoidal) lets the modeled RF drive turn on
-        and off in time, which the pulse-timing overlay reads as a temporal gate on the
-        beam.</p>
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Deflection angle and diffraction efficiency are set directly by
+        <p>Deflection and modulation efficiency are direct configurable parameters
+        rather than quantities derived from crystal or drive properties. The optical
+        frequency shift is <strong>not</strong> applied, and there is no drive-frequency
+        control: the shift is real &mdash; it is the whole basis of heterodyne detection
+        &mdash; but at 7.6&times;10<sup>&minus;5</sup>&nbsp;nm for 80&nbsp;MHz at
+        532&nbsp;nm it is a thousand times finer than any wavelength difference this
+        workbench resolves, since every readout here rounds to the nearest nanometre.
+        Carrying it only ever moved a number nothing could report. The
+        <a href="../aod/">AOD</a> had already declined it for the same reason.
+        Gating support lets the modeled RF drive vary in time, which the pulse-timing
+        overlay reads as a temporal gate on the beam. Three waveforms are offered, named
+        for the drive a function generator would supply: <strong>square</strong> switches
+        the diffracted order fully on and off and is the only one with a
+        <em>duty cycle</em>; <strong>sine</strong> and <strong>sawtooth</strong> sweep the
+        drive continuously and are described by a <em>modulation depth</em> instead,
+        swinging between 1&minus;depth and full transmission. Both continuous shapes
+        therefore average 1&nbsp;&minus;&nbsp;depth/2 over a period, which is the power a
+        detector with no temporal resolution reads.</p>
+        <p>The ramp carries the symmetry control a function generator puts on its own
+        ramp output. <em>Rise fraction</em> is how much of the period is spent climbing:
+        1 is the rising sawtooth, 0 the falling one, 0.5 a triangle, and anything
+        between an asymmetric triangle peaking at exactly that point in the period.
+        Sweeping it changes the shape without changing the average, so it never doubles
+        as a brightness control.</p>
+        <p>A square gate switches the diffracted order fully on and off, so it can be
+        drawn in chunks rather than as a uniformly dimmed line &mdash; the same schematic
+        footprint the <a href="../chopper/">chopper</a> already uses for gated CW light.
+        <em>Draw gated beam chopped</em> controls it, and it is a drawing choice alone:
+        the traced power stays duty-averaged and every detector reading is identical
+        either way. The continuous waveforms are never chunked, because they have no
+        on/off edges to draw.</p>
+        <p>With <em>Keep 0th order</em> on, both orders are chunked <strong>in
+        opposition</strong>: light returns to the undiffracted beam exactly while the RF
+        is off, so one is lit wherever the other is dark. Both beams still carry their
+        duty-averaged power, and the two orders always sum to the incident power.</p>
+        <p>A detector's time trace shows the levels rather than just the shape. Its
+        vertical axis is absolute for a single beam — full height is one whole source
+        beam, and light lost upstream draws short rather than being rescaled back — so
+        <em>modulation efficiency</em> is visible as the contrast it really sets: at
+        &eta;&nbsp;=&nbsp;0.5 the diffracted order peaks at half height while the
+        undiffracted one only falls to half, in opposition, and the two sum to the beam at
+        every instant. At &eta;&nbsp;=&nbsp;1 both swing the whole way. Light lost
+        anywhere upstream shortens the trace in the same way, instead of being normalized
+        back to full scale.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Deflection angle and modulation efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
-        is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency
-        shift is first-principles physics.</p></div>
+        is a schematic acousto-optic model, not a Bragg-cell simulator.
+        <em>Modulation efficiency</em> is the crystal's
+        diffraction efficiency under another name: it is the fraction of the beam that can
+        be switched, which is exactly what limits the contrast of both orders. The chunk spacing is schematic too: a real
+        megahertz gate would put its chunks micrometres apart, so a fixed on-screen
+        period is drawn instead, exactly as pulse markers are spaced for legibility
+        rather than to scale, and the two orders share that period rather than each
+        following its own RF timing. The chunks are also idealized in depth: both
+        orders are drawn fully dark between chunks, while a real diffracted order
+        only reaches the configured efficiency and a real zeroth order keeps
+        1&minus;efficiency of the beam rather than extinguishing. Drawing that
+        residual as its own branch would have let a display setting change a detector
+        reading, which the chunks must never do.</p></div>
       </div>
 
       

@@ -12,21 +12,12 @@
 // apply. It is not modelled here because it cannot be seen: 80 MHz moves
 // 532 nm by 7.6e-5 nm, more than a thousand times finer than the finest
 // wavelength this workbench resolves, and it is "usually irrelevant for
-// applications of beam deflectors" in any case. The AOM, which is defined by
-// its drive frequency, still carries it.
-
-const C_NM_PER_S = 2.99792458e17;
+// applications of beam deflectors" in any case. The AOM does not carry it
+// either, for the same reason: a drive frequency that moves the wavelength by
+// 7.6e-5 nm is a control nothing in this workbench can report.
 
 const finite = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
-
-export function acoustoOpticShiftedWavelength(wavelengthNm, rfMHz, order = 1) {
-  const wavelength = Math.max(1e-9, finite(wavelengthNm, 532));
-  const driveHz = finite(rfMHz, 0) * 1e6;
-  const sign = Number(order) < 0 ? -1 : 1;
-  const opticalHz = C_NM_PER_S / wavelength;
-  return C_NM_PER_S / Math.max(1, opticalHz + sign * driveHz);
-}
 
 // A deterministic hash, so "random" addressing is random in the way a real
 // random-access deflector is --- an unpredictable order of spots --- without
