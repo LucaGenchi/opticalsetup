@@ -1,0 +1,161 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 320,
+      "y": 292,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 560,
+        "h": 505,
+        "background": "white"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 60,
+      "y": 78,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# Gregorian telescope",
+        "fontSize": 15,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "subtitle",
+      "type": "textlabel",
+      "x": 60,
+      "y": 102,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Parabolic primary · concave elliptical secondary beyond the prime focus · 2D geometric interpretation",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "source",
+      "type": "cwlaser",
+      "x": 150,
+      "y": 190,
+      "rot": 0,
+      "label": "collimated starlight",
+      "showLabel": true,
+      "params": {
+        "wavelength": 550,
+        "avgPowerW": 0.1,
+        "beamMode": "beam",
+        "beamWidth": 54,
+        "autoColor": true,
+        "temporalMode": "cw"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "primary",
+      "type": "conicmirror",
+      "x": 500,
+      "y": 190,
+      "rot": 0,
+      "label": "primary · k = -1",
+      "showLabel": true,
+      "params": {
+        "dia": 55,
+        "hole": 15,
+        "radius": -80,
+        "conic": -1,
+        "facing": "left",
+        "refl": 96
+      },
+      "labelPos": "r"
+    },
+    {
+      "id": "secondary",
+      "type": "conicmirror",
+      "x": 440,
+      "y": 190,
+      "rot": 0,
+      "label": "secondary · k = -0.322133",
+      "showLabel": true,
+      "params": {
+        "dia": 30,
+        "hole": 0,
+        "radius": 31.351351,
+        "conic": -0.322133,
+        "facing": "right",
+        "refl": 96
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "focal-plane",
+      "type": "camera",
+      "x": 534.5,
+      "y": 190,
+      "rot": 0,
+      "label": "focal plane",
+      "showLabel": true,
+      "params": {
+        "ch": 20,
+        "pixels": 32,
+        "interference": false,
+        "profileScale": "absolute"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "notes",
+      "type": "textlabel",
+      "x": 60,
+      "y": 300,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "### Two conics, each doing the one thing only it can\nThe **parabola** is the surface that images infinity onto a point, so the primary brings starlight to a real\nfocus at x = 460, inside the tube. The **ellipse** is the surface that images a point onto another point, and\nthe secondary sits past that focus with its two foci on the intermediate image and on the focal plane. Each\nsurface is exact for its own job, so the pair is exact: the traced spot spans **7e-7 mm**.\n\nThe Gregorian pays for that in length — the secondary has to sit beyond the prime focus, so the tube is longer\nthan a Cassegrain of the same focal length — and is repaid with an upright image and a real intermediate focus,\nwhere a field stop can sit and reject stray light before it ever reaches the detector.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "controls",
+      "type": "textlabel",
+      "x": 60,
+      "y": 424,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Try:** secondary k = 0 turns the ellipse into a sphere, and the point into a smear · primary k = 0 does the same at\nthe other surface · slide the secondary and the focus walks off the sensor, because its foci no longer match the\ngeometry · any wavelength from 400 to 700 nm leaves the focus exactly where it is. Mirrors have no dispersion.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "limits",
+      "type": "textlabel",
+      "x": 60,
+      "y": 476,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "A 2D meridional section: no sagittal plane, so astigmatism and field curvature are not shown as a real instrument\nwould show them, and nothing here is diffractive — no Airy disc, and none of the ring redistribution the central\nobstruction really causes. The secondary blocks the middle of the aperture because it is genuinely in the way.",
+        "fontSize": 9,
+        "fill": "#34454d"
+      }
+    }
+  ],
+  "beams": []
+}

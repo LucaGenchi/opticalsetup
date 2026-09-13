@@ -14,12 +14,6 @@ export const examples = [
   },
   {
     "group": "Lens Physics",
-    "name": "IR Cassegrain objective — element by element",
-    "path": "../Examples/Lens%20Physics/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
-    "slug": "ir-cassegrain-objective-element-by-element"
-  },
-  {
-    "group": "Lens Physics",
     "name": "Singlet vs achromat — axial colour",
     "path": "../Examples/Lens%20Physics/Singlet%20vs%20achromat%20%E2%80%94%20axial%20colour.json",
     "slug": "singlet-vs-achromat-axial-colour"
@@ -59,6 +53,24 @@ export const examples = [
     "name": "Michelson interferometer",
     "path": "../Examples/Optics%20Bench/Michelson%20interferometer.json",
     "slug": "michelson-interferometer"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "Gregorian telescope — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
+    "slug": "gregorian-telescope-element-by-element"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "IR Cassegrain objective — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ir-cassegrain-objective-element-by-element"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "Ritchey–Chrétien telescope — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ritchey-chretien-telescope-element-by-element"
   },
   {
     "group": "Scanning",

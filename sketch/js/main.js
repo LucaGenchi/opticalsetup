@@ -634,9 +634,12 @@ const demoScenes = {
     mkDemo('conicmirror', 320, 200, 0,
       { dia: 70, hole: 0, radius: -200, conic: -1, facing: 'left', refl: 98 },
       { label: 'parabola, k = -1', showLabel: true, labelPos: 'r' }),
-    mkDemo('box', 220, 200, 0, { text: '', w: 2, h: 26, behavior: 'pass', fill: '#c9d4e0' },
+    // Marked with an annotation, not an object: anything solid on the axis
+    // here would be in the beam, and a drawn optic that light passes through
+    // reads as a bug rather than as a label.
+    mkDemo('arrowann', 220, 262, 90, { len: 44, width: 1.5, fill: '#8a8f98' },
       { label: 'focus (f = R/2 = 100 mm)', showLabel: true, labelPos: 'b' }),
-    mkDemo('textlabel', 60, 300, 0, {
+    mkDemo('textlabel', 60, 332, 0, {
       text: 'The collimated beam comes back to a **single point**: a parabola images infinity\n'
         + 'onto its focus exactly. Set the conic constant to **k = 0** and the same mirror\n'
         + 'becomes a sphere, whose outer rays cross about 2 mm early -- spherical aberration,\n'
