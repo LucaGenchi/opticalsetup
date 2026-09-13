@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OpticalSetup · 2PP setup preview</title>
+  <style>
+    :root{color-scheme:dark;background:#0d1117;color:#e6edf3;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:#0d1117}
+    header{height:66px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid #30363d;background:#161b22;gap:16px}
+    h1{font-size:17px;margin:0;font-weight:650}.sub{font-size:12px;color:#8b949e;margin-top:3px}.badge{font-size:12px;padding:5px 9px;border:1px solid #3d444d;border-radius:999px;color:#a5d6ff;white-space:nowrap}
+    main{display:grid;grid-template-columns:280px minmax(0,1fr);height:calc(100vh - 66px)}
+    aside{border-right:1px solid #30363d;background:#0d1117;overflow:auto;padding:12px}
+    .intro{font-size:12px;line-height:1.45;color:#8b949e;padding:4px 7px 12px}
+    button.scene{width:100%;display:block;text-align:left;border:1px solid transparent;background:transparent;color:#c9d1d9;border-radius:8px;padding:10px 11px;margin:2px 0;cursor:pointer}
+    button.scene:hover{background:#161b22}button.scene.active{background:#1f2937;border-color:#388bfd;color:white}
+    .name{font-size:13px;font-weight:650}.meta{font-size:11px;color:#8b949e;margin-top:3px}
+    .viewer{min-width:0;display:grid;grid-template-rows:52px minmax(0,1fr);background:#010409}
+    .toolbar{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #30363d;background:#161b22;min-width:0}
+    .current{min-width:0;flex:1}.current strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.current span{display:block;font-size:11px;color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+    a.action{font-size:12px;color:#e6edf3;text-decoration:none;border:1px solid #3d444d;border-radius:7px;padding:7px 10px;background:#21262d;white-space:nowrap}a.action:hover{border-color:#8b949e}
+    iframe{width:100%;height:100%;border:0;background:white}
+    @media(max-width:850px){main{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}aside{border-right:0;border-bottom:1px solid #30363d;display:flex;overflow:auto;padding:8px;height:102px}.intro{display:none}button.scene{min-width:180px;margin-right:4px}.viewer{min-height:calc(100vh - 168px)}.badge{display:none}}
+  </style>
+</head>
+<body>
+<header>
+  <div><h1>OpticalSetup · 2PP setups</h1><div class="sub">Temporary review gallery · each scene is pinned to its current draft-PR commit</div></div>
+  <div class="badge">11 native scenes · nothing merged</div>
+</header>
+<main>
+  <aside id="list">
+    <div class="intro">Choose a paper. The right side loads that paper's native OpticalSetup scene directly from its own branch snapshot, so conflicting DMD implementations do not need to be merged just to review them.</div>
+  </aside>
+  <section class="viewer">
+    <div class="toolbar">
+      <div class="current"><strong id="title">Loading…</strong><span id="detail"></span></div>
+      <a class="action" id="full" target="_blank" rel="noopener">Open full screen</a>
+      <a class="action" id="pr" target="_blank" rel="noopener">PR</a>
+    </div>
+    <iframe id="frame" title="OpticalSetup 2PP scene"></iframe>
+  </section>
+</main>
+<script>
+const repo='LucaGenchi/opticalsetup';
+const scenes=[
+  {id:'pearre-2018',title:'Pearre 2018',desc:'Resonant-scanning two-photon microscope',sha:'6b02bbfdb5db9273bf38915f3592e71fd124ca60',pr:125},
+  {id:'kiefer-2024',title:'Kiefer 2024',desc:'7×7 multifocus DOE + microlens-array printer',sha:'72f0323d38ff8afa3e375e87e861c262b1399456',pr:126},
+  {id:'nanoscribe-gt',title:'Nanoscribe GT',desc:'Commercial galvo / piezo 2PP teaching setup',sha:'121a0b11b2b77a107bf3360c521eaa1775168ec6',pr:127},
+  {id:'saha-2019',title:'Saha 2019',desc:'Femtosecond projection with temporal focusing',sha:'c7ef3daab746e92348999d36104611db5227ed0c',pr:128},
+  {id:'yan-2015',title:'Yan 2015',desc:'Parallel-writing SLM mechanism interpretation',sha:'c847dbe60976e23058d72707b050e178e1ebe3e5',pr:129},
+  {id:'dong-2007',title:'Dong 2007',desc:'Designable multiple-beam processing interpretation',sha:'ff39dc2ea261286a896873510b42e8991fa6dcea',pr:130},
+  {id:'fischer-2011',title:'Fischer 2011',desc:'STED-inspired two-color direct laser writing',sha:'38b0f1ed897167808f90f8eb97ea774b1a553a55',pr:131},
+  {id:'gittard-2011',title:'Gittard 2011',desc:'SLM multifocus two-photon polymerization',sha:'039b7726ca6363a4d721e722963077f03ce1a3f4',pr:132},
+  {id:'somers-2021',title:'Somers 2021',desc:'Continuous spatiotemporal projection printing',sha:'79d3966d7f6f75fdcc073b16d47e35edf15f208e',pr:133},
+  {id:'ouyang-2023',title:'Ouyang 2023',desc:'Digital-holography multifocus nanofabrication',sha:'9cf0f93fe2a16238450ef17b9204a2352ffe24fe',pr:134},
+  {id:'gu-2025',title:'Gu 2025',desc:'Metalens-array 3D nanolithography',sha:'6788ffc987cc59cf214c6a7f2c054520abc3c374',pr:135}
+];
+const list=document.getElementById('list'),frame=document.getElementById('frame'),full=document.getElementById('full'),pr=document.getElementById('pr'),title=document.getElementById('title'),detail=document.getElementById('detail');
+function url(s){return `https://raw.githack.com/${repo}/${s.sha}/sketch/?paper=${encodeURIComponent(s.id)}&edit=1`}
+function select(s,button){document.querySelectorAll('button.scene').forEach(b=>b.classList.remove('active'));button?.classList.add('active');title.textContent=s.title;detail.textContent=`${s.desc} · commit ${s.sha.slice(0,8)}`;frame.src=url(s);full.href=url(s);pr.href=`https://github.com/${repo}/pull/${s.pr}`;history.replaceState(null,'',`#${s.id}`)}
+for(const s of scenes){const b=document.createElement('button');b.className='scene';b.innerHTML=`<div class="name">${s.title}</div><div class="meta">${s.desc}</div>`;b.onclick=()=>select(s,b);list.appendChild(b);s.button=b}
+const requested=location.hash.slice(1);const initial=scenes.find(s=>s.id===requested)||scenes[0];select(initial,initial.button);
+</script>
+</body>
+</html>
