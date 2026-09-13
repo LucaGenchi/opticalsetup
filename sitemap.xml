@@ -379,6 +379,18 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://opticalsetup.com/example-setups/gregorian-telescope-element-by-element/</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://opticalsetup.com/example-setups/ritchey-chretien-telescope-element-by-element/</loc>
+    <lastmod>2026-09-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://opticalsetup.com/example-setups/ir-cassegrain-objective-element-by-element/</loc>
     <lastmod>2026-09-13</lastmod>
     <changefreq>monthly</changefreq>

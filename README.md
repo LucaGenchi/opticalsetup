@@ -116,9 +116,9 @@ figures as SVG or PNG.
   bundled examples continue to load without a network connection; sketches still
   autosave locally in the browser.
 
-## Element-by-element IR objective
+## Reflective imaging systems, element by element
 
-**Examples → Microscopy Implementations → IR Cassegrain objective — element by element**
+**Examples → Reflective Imaging Systems → IR Cassegrain objective — element by element**
 opens an editable reflective objective with separate conic primary and secondary,
 a real central opening, pupil stops, and a sensor at the computed focus. Its
 companion example page explains the illustrative prescription and four control
@@ -127,6 +127,15 @@ parabolic, elliptical and hyperbolic profiles with exact intersections/normals,
 a bounded opening, a selectable coated side, and absorptive reflectivity losses.
 It models a 2D surface, not diffraction, a coating spectrum or a commercial
 Schwarzschild prescription.
+
+Two telescopes share that category and one geometry, so the only thing
+separating them is the shape of two surfaces. The **Gregorian** pairs a
+parabolic primary with a concave elliptical secondary beyond the prime focus:
+each surface images the one pair of points its own shape images exactly, so the
+pair is exact too. The **Ritchey–Chrétien** makes both mirrors hyperbolic and
+gives up a perfect axis to cancel coma across the field — the trade behind
+nearly every large research telescope. Its example page measures both against a
+classical Cassegrain on and off axis.
 
 ## Simulation scope
 
