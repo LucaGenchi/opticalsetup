@@ -1,6 +1,6 @@
 **Research-only archive — no native setup in this collection.**
 
-The following is the historical apparatus evidence note; controls describe the retired branch. See [selection rationale](selection.md) and the original [review](reviews/pearre-2018.md).
+The following is the historical apparatus evidence note; controls, test counts and image references describe the retired branch rather than this integration. See [selection rationale](selection.md) and the original [review](reviews/pearre-2018.md).
 
 # Pearre 2018 — evidence and use
 
@@ -54,7 +54,7 @@ The original Figure frame clipped the title, monitor and long component labels. 
 
 The new resonant helper previously overflowed for very large finite time/phase inputs; phase reduction now keeps the mirror angle finite. The shared source correction also prevents a zero-watt laser from emitting light or writing voxels.
 
-Validation: `npm test` passed (785 tests); every `sketch/js/*.js` and `serve.mjs` passed `node --check`; `git diff --check` passed. Deterministic tests cover the default route, resonant extrema, independent slow-Y motion, held scanners, Pockels duty, laser off/zero power, save/reload, supported handoff units, extreme scanner inputs and frame containment. Native SVG exports were rasterized and inspected for [default](../verification/pearre-2018-default.png), [held scanners](../verification/pearre-2018-static-galvos.png) and [laser off](../verification/pearre-2018-laser-off.png). Live browser verification is recorded separately by the collection reviewer; these exports do not claim browser UI coverage.
+Validation: `npm test` passed (785 tests); every `sketch/js/*.js` and `serve.mjs` passed `node --check`; `git diff --check` passed. Deterministic tests cover the default route, resonant extrema, independent slow-Y motion, held scanners, Pockels duty, laser off/zero power, save/reload, supported handoff units, extreme scanner inputs and frame containment. Native SVG exports were rasterized and inspected for [default](https://github.com/LucaGenchi/opticalsetup/blob/6b02bbfdb5db9273bf38915f3592e71fd124ca60/collections/2pp/verification/pearre-2018-default.png), [held scanners](https://github.com/LucaGenchi/opticalsetup/blob/6b02bbfdb5db9273bf38915f3592e71fd124ca60/collections/2pp/verification/pearre-2018-static-galvos.png) and [laser off](https://github.com/LucaGenchi/opticalsetup/blob/6b02bbfdb5db9273bf38915f3592e71fd124ca60/collections/2pp/verification/pearre-2018-laser-off.png). Live browser verification is recorded separately by the collection reviewer; these exports do not claim browser UI coverage.
 
 
 ## Shared collection integration

@@ -1,6 +1,6 @@
 **Research-only archive — no native setup in this collection.**
 
-The following is the historical apparatus evidence note; controls describe the retired branch. See [selection rationale](selection.md) and the original [review](reviews/kiefer-2024.md).
+The following is the historical apparatus evidence note; controls, test counts and image references describe the retired branch rather than this integration. See [selection rationale](selection.md) and the original [review](reviews/kiefer-2024.md).
 
 # Kiefer 2024 — evidence and scene controls
 

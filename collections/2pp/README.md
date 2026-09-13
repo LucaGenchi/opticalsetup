@@ -1,6 +1,8 @@
 # Two-photon polymerization collection
 
-Six editable native scenes form one educational collection:
+Six editable native scenes form one educational collection. A
+[native overview](previews/native-overview.png) shows their common layout;
+this export is not browser evidence.
 
 | Scene | Lesson |
 | --- | --- |

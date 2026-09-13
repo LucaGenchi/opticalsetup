@@ -80,6 +80,8 @@ builders and `tools/render-2pp-preview.mjs` passed `node --check`.
 `git diff --check` passed. The three builders completed successfully with six
 authored scenes, eleven research-only records and ninety sitemap URLs.
 All six native SVG previews were regenerated using the current exporter.
+The [native overview](../previews/native-overview.png) combines these exports
+for visual comparison and is explicitly labeled as native layout evidence.
 
 Meaningful regression coverage includes both independent scanner pivots,
 full beam support and finite objective boundaries, mask migration and bounded
@@ -97,19 +99,23 @@ narrow-view checks that were not completed. Historical screenshots from
 [Pearre](reviews/evidence/pearre-original-1024.jpg) are original-scene evidence
 only. They do not show these integrated reconstructions.
 
-Fresh final browser attempts are serialized to avoid contention. Five fresh
-sessions so far bootstrapped Chrome/CDP successfully, then their first tab-list
+All six fresh final browser attempts were serialized to avoid contention.
+Every session bootstrapped Chrome/CDP successfully, then its first tab-list
 operation failed with:
 
 ```text
 CDP operation refresh tabs timed out after 20000ms
 ```
 
-The Ouyang final connection attempt is pending the final code checkpoint.
-No final integrated page was reached by the five completed attempts. No
+The final code checkpoint is
+`ba0a89f3431e7eb536002417895d6aef18d22871`; later commits only complete
+review documentation and historical links. No final integrated page was reached
+by any of the six attempts. No
 browser screenshot, console-clean claim or browser persistence pass is made.
 The documented troubleshooting did not expose a permitted recovery beyond
-the attempted connections; no alternate browser-control mechanism was used.
+the attempted connections. The control-browser skill requires that provided
+browser connection and prohibits switching to another control mechanism; no
+unsupported recovery or alternate browser-control method was used.
 
 Remaining acceptance work is the same for each of the final six scenes:
 desktop and 1024 px layout, live inspector controls and animation, browser

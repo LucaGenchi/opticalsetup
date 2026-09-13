@@ -2,8 +2,9 @@
 
 Reviewer: independent final-review agent `final_ouyang_browser`, 2026-09-13.
 Branch: `codex/2pp-curated-integration`. This reviewer did not author the scene.
+Final code checkpoint: `ba0a89f3431e7eb536002417895d6aef18d22871`.
 
-**Native verdict: KEEP. Browser acceptance remains pending.** The scene presents
+**Native verdict: KEEP. Browser acceptance is blocked and remains open.** The scene presents
 a useful, bounded central-wavelength lesson: actual DMD-selected angular orders
 pass through the Fourier filter and a pupil relay, producing separate geometric
 arrivals. It does not claim to reconstruct a CGH field, dispersion compensation,
@@ -74,17 +75,31 @@ or runtime screenshots.
 
 ## Real-browser gate
 
-The reviewer is waiting for the serialized browser slot and the final public
-integration checkpoint. No browser result is claimed yet.
+The reviewer received an exclusive browser slot after the final code checkpoint
+was published. The intended target was that checkpoint's
+`tools/review-2pp.html?paper=ouyang-2023&width=1280`, followed by its 1024 px view.
+Normal setup successfully selected the documented Chrome browser, and the full
+browser guidance was read. The first and only tab-discovery attempt,
+`browser.tabs.list()`, failed with:
+
+```text
+CDP operation refresh tabs timed out after 20000ms
+```
+
+This occurred before a tab could be obtained or navigation attempted. The
+reviewer read the documented troubleshooting guidance, did not reset or switch
+the browser, and did not use an alternative browser-control mechanism. No
+target page, DOM, browser console or browser screenshot was obtained. The
+exclusive browser slot is released.
 
 | Required final gate | Status |
 | --- | --- |
-| Desktop editor, toolbar, palette, canvas and inspector | Pending browser access |
-| Approximately 1024 px editor, fit and overflow | Pending browser access |
-| Source, order, steering, frame and filter controls through the UI | Pending browser access |
-| Browser save and reload | Pending browser access |
-| Browser console inspection | Pending browser access |
-| Real browser screenshots at both widths | Pending browser access |
+| Desktop editor, toolbar, palette, canvas and inspector | Unverified — connection timeout before navigation |
+| Approximately 1024 px editor, fit and overflow | Unverified — connection timeout before navigation |
+| Source, order, steering, frame and filter controls through the UI | Unverified — connection timeout before navigation |
+| Browser save and reload | Unverified — connection timeout before navigation |
+| Browser console inspection | Unverified — connection timeout before navigation |
+| Real browser screenshots at both widths | Unavailable — no browser capture obtained |
 
 The native optical and figure checks support keeping this scene. Final
 browser acceptance must remain open until the checks above can be observed.
