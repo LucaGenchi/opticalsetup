@@ -39,7 +39,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Cavity length 1873.7 mm: one round trip = c / 80 MHz,\nso each signal pulse returns to the crystal with the next pump pulse",
+        "text": "One-way cavity path 1873.7 mm: round-trip time = 1 / 80 MHz = 12.5 ns,\nso each signal pulse returns to the crystal with the next pump pulse",
         "fontSize": 10,
         "fill": "#34454d"
       }
@@ -107,10 +107,10 @@
         "signalWl": 1480,
         "pumpAcceptanceNm": 5,
         "linewidthMode": "both",
-        "signalLinewidthCm": 147,
+        "signalLinewidthCm": 29.43,
         "idlerLinewidthCm": 131,
         "outputPhase": "unknown",
-        "durationFactor": 1,
+        "durationFactor": 5,
         "efficiency": 0.78,
         "transmitPump": true
       },
@@ -261,7 +261,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Only the 1480 nm signal resonates. The crystal converts a fixed 78 % of the pump,\nthe reported maximum pump depletion: threshold and gain are not modelled.",
+        "text": "Only the 1480 nm signal resonates. The crystal converts a fixed 78 % of the pump (the reported\nmaximum depletion, used as an illustrative fraction): threshold and gain are not modelled.",
         "fontSize": 10,
         "fill": "#34454d"
       }

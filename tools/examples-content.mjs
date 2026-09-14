@@ -771,32 +771,46 @@ export const exampleEntries = [
       enters through a coating that transmits it and the idler leaves through one that
       transmits the idler. A few per cent of the signal leaves through the output coupler
       on each round trip.</p>
-      <p>The layout here follows a MgO:PPLN oscillator reported by O'Donnell, Chaitanya
-      Kumar and Ebrahim-Zadeh: two <span class="w">r = 100 mm</span> concave mirrors either
-      side of the crystal, a plane mirror, and a plane 5 % signal output coupler. Pumped by
-      80–100 fs pulses tunable from 997 to 1070 nm at 80 MHz, it produced an idler tunable
-      from 3132 to 4273 nm with a 140–180 nm bandwidth and up to 65 mW of average power,
-      from a threshold as low as 5 mW, with up to 78 % pump depletion${cite(1)}.</p>`,
+      <p>The layout here is inspired by a MgO:PPLN oscillator reported by O'Donnell,
+      Chaitanya Kumar and Ebrahim-Zadeh: a 42 mm crystal between two
+      <span class="w">r = 100 mm</span> concave mirrors, a plane mirror, and a plane 5 %
+      signal output coupler. Group-velocity matching between pump and idler in that long
+      crystal was central to its efficiency. Pumped by 80–100 fs pulses tunable from 997
+      to 1070 nm at 80 MHz, it produced 400–600 fs signal pulses and an idler tunable from
+      3132 to 4273 nm with a 140–180 nm bandwidth and up to 65 mW of average power, from a
+      threshold as low as 5 mW, with up to 78 % pump depletion${cite(1)}.</p>
+      <p>Strictly, the synchronisation condition fixes the cavity's <em>group</em> optical
+      path, <span class="w">c / (2 f<sub>rep</sub>)</span> one way. A long dispersive crystal
+      slows the pulses inside it, so the mirrors of a real cavity sit closer together than
+      that distance.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
-      <p>The pump is a 1040 nm, 100 fs, 80 MHz pulsed laser. The cavity runs
-      M3 → M1 → crystal → M2 → M5 → M4, and its one-way length is exactly
-      <span class="w">c / (2 × 80 MHz) = 1873.7 mm</span>, so the traced round trip matches
-      the pump period. The standing-wave cavity is folded in a Z to fit the page.</p>
+      <p>The scene routes that architecture; it does not reproduce the oscillator's
+      operating point. The pump is a 1040 nm, 100 fs, 80 MHz pulsed laser. The cavity runs
+      M3 → M1 → crystal → M2 → M5 → M4, with a one-way path of exactly
+      <span class="w">c / (2 × 80 MHz) = 1873.7 mm</span>: a round-trip time of
+      <span class="w">1 / 80 MHz = 12.5 ns</span>, the pump period. The crystal is a thin
+      surface, so the whole path is air and group and geometric lengths coincide. The
+      standing-wave cavity is folded in a Z to fit the page.</p>
       <p>The crystal is set to a pump wavelength of 1040 nm with a ±5 nm acceptance and a
-      1480 nm resonant signal, which places the idler at 3498 nm. Both output widths are
-      authored: the idler at <span class="w">131 cm⁻¹</span>, about 160 nm at 3.5 µm and
-      inside the reported 140–180 nm, and the signal at <span class="w">147 cm⁻¹</span>,
-      assumed as wide as the transform-limited pump. Combining pump and signal as
-      uncorrelated Gaussians would have predicted an idler about 255 nm wide, wider than
-      reported, which is why the measured width is authored directly.</p>
-      <p>The crystal converts a fixed 78 % of the pump, the reported maximum depletion.
-      By photon energy the generated signal carries 55 % of the pump power and the idler
-      23 %. The idler leaves through M2 in one pass; its probe shows the 3.5 µm band. The
-      signal leaks out through M4 on every round trip, and the tracer follows the first
-      half-dozen before its depth budget ends, so the signal detector reads about 0.15
-      of the pump rather than the full 0.55 a steady state would deliver. The residual
-      pump leaves through M5.</p>
+      1480 nm resonant signal, which places the idler at 3498 nm. Both outputs are
+      authored. The signal is <span class="w">29.43 cm⁻¹</span> wide with five times the
+      pump duration: a 500 fs pulse just above its Gaussian transform limit, representative
+      of the reported 400–600 fs. The idler is <span class="w">131 cm⁻¹</span>, about
+      160 nm at 3.5 µm and inside the reported 140–180 nm; its 500 fs duration follows the
+      same factor and is illustrative. Deriving the idler from these pump and signal widths
+      as uncorrelated Gaussians would give about 184 nm instead.</p>
+      <p>The crystal converts a fixed 78 % of the pump: the reported maximum depletion,
+      used here as an illustrative lossless fraction rather than a calibration. By photon
+      energy the generated signal carries 55 % of the pump power and the idler 23 %. The
+      idler leaves through M2 in one pass, and its probe shows the 3.5 µm band. The
+      residual pump leaves through M5.</p>
+      <p>The signal leaks through M4 on every round trip. The tracer sums six
+      output-coupler encounters before its path-depth limit, about 0.145 of the pump in
+      total; summing infinitely many leaks in this otherwise lossless model would recover
+      the generated 0.548. Neither value predicts a real oscillator's steady-state output,
+      and with the illustrative 2 W pump the scene's watts — about 0.46 W of idler and
+      0.29 W at the signal port — do not reproduce the reported output powers.</p>
       <p>Things to try: lower M4's reflectivity and watch more signal leave per round trip;
       change the signal wavelength on the crystal and follow the idler across the
       mid-infrared; or set the pump off by more than 5 nm and the oscillator goes dark.</p>`,
@@ -804,15 +818,19 @@ export const exampleEntries = [
       converts a fixed fraction of the pump on its first pass; there is no threshold, gain,
       build-up or saturation, and changing the cavity length does not detune anything —
       in a real synchronously pumped OPO it shifts the signal and can stop oscillation.
-      The traced signal is a transient of the first few round trips, not a steady state.</p>
-      <p>Three drawing concessions stand in for real optics. The two r = 100 mm focusing
-      mirrors around the crystal are drawn as plane dichroic mirrors 50 mm either side of
-      it, because the workbench's curved mirrors reflect every wavelength equally and a
-      zero-thickness crystal needs no focus. In the reported cavity one mirror transmits
-      both the idler and the residual pump; here a dichroic switches at a single edge, so
-      the pump leaves through an extra fold, M5. The pump is a single axial ray, on which
-      the lens and plane mirrors act exactly. Pulse durations are authored, and dispersion
-      compensation inside the cavity is not modelled.</p>`,
+      The signal output is a finite sum of traced leakage paths, not a transient or
+      steady-state solution.</p>
+      <p>Four drawing concessions stand in for the reported oscillator. The two
+      r = 100 mm focusing mirrors around the crystal are drawn as plane dichroic mirrors
+      50 mm either side of it, because the workbench's curved mirrors reflect every
+      wavelength equally; that spacing is illustrative, not the real mode geometry. In
+      the reported cavity one mirror transmits both the idler and the residual pump; here
+      a dichroic switches at a single edge, so the pump leaves through an extra fold, M5.
+      The pump is a single axial ray, so the scene shows chief-ray routing only — no focus,
+      waist, resonator mode or beam overlap. And the output widths, durations and
+      conversion fraction are authored and illustrative, not a jointly measured operating
+      point. The 42 mm crystal's propagation, group-velocity matching and intracavity
+      dispersion are not modelled.</p>`,
     citations: [
       { label: 'C. F. O’Donnell, S. Chaitanya Kumar, M. Ebrahim-Zadeh, “Enhancement of efficiency in femtosecond optical parametric oscillators using group-velocity-matching in long nonlinear crystals,” APL Photonics 4, 050801 (2019)', url: 'https://doi.org/10.1063/1.5094550' },
       { label: 'RP Photonics Encyclopedia — Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
