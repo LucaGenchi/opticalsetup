@@ -38,7 +38,7 @@ import {
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
-import { opoPulse, opoWaves, pumpDepletion, pumpWidthNm } from './parametric.js';
+import { opoPulse, opoWaves, pumpWidthNm } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -145,51 +145,9 @@ function recordMetalensHit(elementId, wavelengthNm, focalLengthMm) {
 
 // crystal element id -> the OPO state its last pump ray produced.
 let opoStates = new Map();
-// source element id -> configured average power, which thresholds are in.
-let sourceAvgPowerW = new Map();
-// Non-null only during an OPO power pre-pass: crystal element id -> pump
-// power and pulse energy summed over every arrival.
-let opoIncidentProbe = null;
-// crystal element id -> { state, ratio, depletion, incident } from the most
-// recent pre-pass, which the following passes convert with.
-let opoDrive = new Map();
 
 function recordOpo(elementId, state) {
   if (elementId) opoStates.set(elementId, state);
-}
-
-function recordOpoIncident(elementId, ray) {
-  const entry = opoIncidentProbe.get(elementId) || { avgW: 0, pulseJ: 0, arrivals: 0, cwArrivals: 0, unknownPower: 0 };
-  entry.arrivals += 1;
-  const configured = sourceAvgPowerW.get(ray.originId);
-  const share = Number.isFinite(ray.power) ? ray.power : 0;
-  if (!Number.isFinite(configured)) entry.unknownPower += 1;
-  else {
-    entry.avgW += share * averageGateTransmission(ray.pulse) * configured;
-    const repHz = Number(ray.pulse?.repRateMHz) * 1e6;
-    if (repHz > 0) entry.pulseJ += share * configured / repHz;
-    else entry.cwArrivals += 1;
-  }
-  opoIncidentProbe.set(elementId, entry);
-}
-
-// Turn summed arrivals into a drive level for each thresholded OPO crystal.
-function opoDriveFromIncident(elements) {
-  const drive = new Map();
-  for (const el of elements) {
-    const p = el.params || {};
-    if (el.type !== 'crystal' || p.convert !== 'opo' || !(Number(p.thresholdW) > 0)) continue;
-    const incident = opoIncidentProbe.get(el.id) || null;
-    const byEnergy = p.thresholdUnit === 'pulseMJ';
-    const amount = !incident ? 0 : byEnergy ? incident.pulseJ * 1e3 : incident.avgW;
-    const ratio = amount / Number(p.thresholdW);
-    const depletion = pumpDepletion(ratio);
-    let state = depletion > 0 ? 'oscillating' : 'below';
-    if (incident && amount === 0 && incident.unknownPower === incident.arrivals) state = 'unknown-power';
-    else if (incident && amount === 0 && byEnergy && incident.cwArrivals > 0) state = 'needs-pulses';
-    drive.set(el.id, { state, ratio, depletion, unit: byEnergy ? 'pulseMJ' : 'avgW', amount, threshold: Number(p.thresholdW) });
-  }
-  return drive;
 }
 
 export function opoReading(elementId) {
@@ -3362,11 +3320,11 @@ function interact(ray, hit) {
         // Optical parametric oscillation (see parametric.js for the model).
         const crystalId = s.el?.id || null;
         const pass = () => [{ d }];
-        // Light this crystal generated never converts in it again, however
-        // broad its spectrum or wide the acceptance: a resonating signal
-        // would otherwise re-split on every round trip, branching
-        // exponentially. Another crystal may still convert it.
-        if (crystalId && ray.parametricFrom === crystalId) return pass();
+        // Light is never converted twice by the same crystal, however broad
+        // its spectrum or wide the acceptance: a resonating signal would
+        // otherwise re-split on every round trip, branching exponentially.
+        // A different crystal may still convert it.
+        if (crystalId && Array.isArray(ray.parametricPath) && ray.parametricPath.includes(crystalId)) return pass();
         const pumpWl = Number(data.pumpWl ?? 532);
         const sig = Number(data.signalWl ?? 800);
         if (!(Number.isFinite(pumpWl) && pumpWl > 0
@@ -3391,33 +3349,21 @@ function interact(ray, hit) {
           return data.transmitPump ? pass() : [];
         }
 
-        // A threshold is compared with the pump summed over every arrival at
-        // this crystal, which the power pre-passes in traceScene() collect.
-        const thresholdW = Math.max(0, Number(data.thresholdW) || 0);
-        let drive = null, depletion = 1;
-        if (thresholdW > 0) {
-          if (opoIncidentProbe && crystalId) recordOpoIncident(crystalId, ray);
-          drive = opoDrive.get(crystalId) || null;
-          depletion = drive ? drive.depletion : 0;
-        }
-        const fraction = efficiency * depletion;
         const phase = { outputPhase: data.outputPhase, durationFactor: data.durationFactor, crystalId };
-        const pulses = waves.degenerate
+        const pulses = waves.merged
           ? { merged: opoPulse(ray.pulse, waves.merged, { ...phase, role: 'degenerate' }) }
           : {
             signal: opoPulse(ray.pulse, waves.signal, { ...phase, role: 'signal' }),
             idler: opoPulse(ray.pulse, waves.idler, { ...phase, role: 'idler' }),
           };
-        recordOpo(crystalId, {
-          state: thresholdW === 0 ? 'fixed' : drive?.state || 'below',
-          drive, depletion, fraction, waves, pulses,
-        });
-        if (!(fraction > 0)) return data.transmitPump ? pass() : [];
+        recordOpo(crystalId, { state: 'converting', efficiency, waves, pulses });
+        if (!(efficiency > 0)) return data.transmitPump ? pass() : [];
 
-        const converted = ray.intensity * fraction;
+        const converted = ray.intensity * efficiency;
+        const path = [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), crystalId].filter(Boolean);
         const gen = (wave, pulse, intensity, tag) => ({
           d, wl: wave.wl, bw: wave.bw, spec: wave.spec, intensity, tag, pulse,
-          parametricFrom: crystalId,
+          parametricPath: path,
           // The pulse's reference plane is the crystal exit; its spectral
           // phase is reported as unknown unless declared transform-limited.
           gdd: 0,
@@ -3426,19 +3372,21 @@ function interact(ray, hit) {
           phaseIssue: 'parametric output: optical phase relative to the pump is not modelled',
         });
         let out;
-        if (waves.degenerate) {
-          // At degeneracy signal and idler occupy the same optical mode. One
-          // ray carries their combined power and both distributions.
+        if (waves.merged) {
+          // At degeneracy with equal widths, signal and idler are one beam
+          // carrying their combined power.
           out = [gen(waves.merged, pulses.merged, converted, 's=i')];
         } else {
           // One signal and one idler photon are created per pump photon. Their
           // photon fluxes are equal, so P_s/P_i = nu_s/nu_i = lambda_i/lambda_s.
+          // At degeneracy with different widths they stay two coincident beams,
+          // each with its own spectrum.
           out = [
             gen(waves.signal, pulses.signal, converted * waves.signalShare, 's'),
             gen(waves.idler, pulses.idler, converted * (1 - waves.signalShare), 'i'),
           ];
         }
-        if (data.transmitPump && fraction < 0.999) out.push({ d, intensity: ray.intensity * (1 - fraction), tag: 'p' });
+        if (data.transmitPump && efficiency < 0.999) out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'p' });
         return out;
       }
       let wl = ray.wl, bw, spec;
@@ -3878,7 +3826,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           gdd: childGdd,
           gddTrace: r.gddTrace ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
-          parametricFrom: 'parametricFrom' in c ? c.parametricFrom : r.parametricFrom,
+          parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
           intensity: childIntensity,
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
@@ -4167,10 +4115,6 @@ export function traceScene(elements, beams = []) {
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
   opoStates = new Map();
-  opoDrive = new Map();
-  sourceAvgPowerW = new Map(elements
-    .filter(el => registry[el.type]?.source && Number.isFinite(Number(el.params?.avgPowerW)))
-    .map(el => [el.id, Number(el.params.avgPowerW)]));
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
@@ -4277,32 +4221,6 @@ export function traceScene(elements, beams = []) {
     }
   }
   };
-
-  // An OPO threshold is a property of the total pump reaching the crystal,
-  // not of any one ray, so it is measured before anything converts with it:
-  // trace once collecting the pump arriving at each thresholded crystal,
-  // evaluate its drive, and repeat so a crystal pumped by another's output
-  // sees that output too. Arrivals re-emitted by fibers are not collected.
-  const thresholdedOpos = elements.filter(el => el.type === 'crystal'
-    && el.params?.convert === 'opo' && Number(el.params?.thresholdW) > 0).length;
-  for (let pass = 0; pass < Math.min(3, thresholdedOpos); pass++) {
-    opoIncidentProbe = new Map();
-    try {
-      emitSources(false);
-      opoDrive = opoDriveFromIncident(elements);
-    } finally {
-      opoIncidentProbe = null;
-      opoStates = new Map();
-      detectorHits = new Map();
-      detectorMisses = new Map();
-      incompleteCoherenceIds = new Map();
-      objectivePupilHits = new Map();
-      phasePlateSpans = new Map();
-      compressorGdd = new Map();
-      metalensHits = new Map();
-      gateTransmissionCache = new Map();
-    }
-  }
 
   // Probe whenever a signal-bearing specimen is on the table: its channels
   // may need to know the other colours present, and even a specimen with no

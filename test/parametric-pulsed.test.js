@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createElement } from '../sketch/js/elements.js';
 import { detectorReading, opoReading, traceScene } from '../sketch/js/raytrace.js';
 import {
-  idlerWavelength, nmToWavenumberWidth, opoPulse, opoWaves, pumpDepletion, transformLimitFs,
+  idlerWavelength, nmToWavenumberWidth, opoPulse, opoWaves, transformLimitFs,
   waveSpectrum, wavenumberToNmWidth,
 } from '../sketch/js/parametric.js';
 import { spectrumStats, transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
@@ -128,6 +128,8 @@ test('output durations follow the authored factor, never beat the transform limi
   assert.equal(opoPulse(null, wave, { crystalId: 'X', role: 'signal' }), null, 'CW stays CW');
 });
 
+// The picoEmerald brochure gives 2 ps and 10 cm⁻¹ for its signal and 1032 nm
+// beam, not for the idler: the two 10 cm⁻¹ outputs here are illustrative.
 test('a ps OPO in the picoEmerald class with authored 10 cm⁻¹ outputs', () => {
   const { long, short, state } = opoScene({
     laser: { wavelength: 516, pulseWidthFs: 2000, transformLimited: false, bandwidth: wavenumberToNmWidth(516, 10), avgPowerW: 3 },
@@ -166,24 +168,93 @@ test('a single-frequency CW pump with a single-frequency cavity stays exact', ()
   assert.equal(state.waves.signal.bw, 0);
 });
 
-test('degenerate output carries both distributions, continuous with the near-degenerate pair', () => {
-  const at = opoWaves({ pumpWl: 800, pumpFwhmNm: transformLimitedBandwidthNm(140, 800), signalWl: 1600 });
-  assert.ok(at.degenerate);
-  const merged = spectrumStats(at.merged.spec);
-  const signalOnly = spectrumStats(at.signal.spec), idlerOnly = spectrumStats(at.idler.spec);
-  assert.ok(merged.fwhm > signalOnly.fwhm && merged.fwhm < idlerOnly.fwhm, 'the sum lies between its parts');
+test('degeneracy with equal widths is one beam; with different widths, two coincident beams', () => {
+  const pumpNm = transformLimitedBandwidthNm(140, 800);
+  const equal = opoWaves({ pumpWl: 800, pumpFwhmNm: pumpNm, signalWl: 1600, linewidthMode: 'both', signalLinewidthCm: 60, idlerLinewidthCm: 60 });
+  assert.ok(equal.degenerate && equal.merged);
 
-  // Just off degeneracy, the two separate bands weighted by power have the
-  // same summed profile.
-  const off = opoWaves({ pumpWl: 800, pumpFwhmNm: transformLimitedBandwidthNm(140, 800), signalWl: 1600.001 });
-  assert.ok(!off.degenerate);
-  near(off.signalShare, 0.5, 1e-6, 'near-degenerate share');
-  near(at.signalShare, 0.5, 1e-12, 'degenerate share');
+  const unequal = opoWaves({ pumpWl: 800, pumpFwhmNm: pumpNm, signalWl: 1600 });
+  assert.ok(unequal.degenerate && !unequal.merged, 'pump-wide signal and quadrature idler differ in width');
+  near(unequal.idler.wl, 1600, 1e-9, 'coincident idler');
 
   const { long, short } = opoScene({ laser: TISA, crystal: { pumpWl: 800, signalWl: 1600, efficiency: 0.4 }, cutoff: 1200 });
   near(long.signal, 0.4, PULSED, 'degenerate power');
   near(short.signal, 0.6, PULSED, 'residual pump');
-  assert.equal(long.pulse.trains.length, 1);
+  assert.equal(long.pulse.trains.length, 2, 'signal and idler trains');
+});
+
+test('a line signal and a band idler at degeneracy keep their own spectra through a filter', () => {
+  // Pump 800 nm, signal 1600 nm exactly, signal 0 cm⁻¹, idler 100 cm⁻¹. A
+  // 1 nm bandpass at 1600 nm passes the whole line but only a sliver of the
+  // band. The same settings a hair off degeneracy must agree.
+  const run = signalWl => {
+    const pump = createElement('pulsedlaser', 60, 160);
+    Object.assign(pump.params, TISA);
+    const xtal = createElement('crystal', 220, 160);
+    Object.assign(xtal.params, {
+      convert: 'opo', pumpWl: 800, signalWl, efficiency: 1, transmitPump: false,
+      linewidthMode: 'both', signalLinewidthCm: 0, idlerLinewidthCm: 100,
+    });
+    const band = createElement('filter', 320, 160);
+    Object.assign(band.params, { ftype: 'bandpass', center: 1600, band: 1, trans: 1 });
+    const det = createElement('detector', 420, 160);
+    traceScene([pump, xtal, band, det]);
+    return detectorReading(det.id)?.signal ?? 0;
+  };
+  const at = run(1600);
+  const near1600 = run(1600.0001);
+  near(at, near1600, 1e-3, 'degenerate and near-degenerate transmission');
+  assert.ok(at > 0.5 && at < 0.6, `the line half passes and the band mostly does not (got ${at})`);
+});
+
+test('generated pulses carry only train fields, never the pump spectrum or chirp description', () => {
+  const pump = {
+    sourceId: 'L', repRateMHz: 80, pulseWidthFs: 140, phaseNs: 3, pulseShape: 'sech2', transformLimited: true,
+    centerWavelengthNm: 800, gates: [{ opl: 1, frequencyMHz: 1, duty: 0.5, phaseNs: 0 }],
+    spectrumKind: 'flat', transformLimitFs: 20, inputChirp: 'positive',
+  };
+  const out = opoPulse(pump, waveSpectrum(1200, 50), { crystalId: 'X', role: 'signal' });
+  for (const key of ['spectrumKind', 'transformLimitFs', 'inputChirp']) assert.ok(!(key in out), `${key} leaked`);
+  assert.equal(out.phaseNs, 3);
+  assert.deepEqual(out.gates, pump.gates);
+  assert.notEqual(out.gates, pump.gates, 'gates are copied, not shared');
+  assert.equal(out.pulseShape, 'gauss', 'the output spectrum is Gaussian');
+});
+
+test('a zero-width pulsed output has a duration but cannot be declared transform-limited', () => {
+  const pump = { sourceId: 'L', repRateMHz: 80, pulseWidthFs: 140, phaseNs: 0, pulseShape: 'gauss', transformLimited: true };
+  const line = waveSpectrum(1200, 0);
+  const unknown = opoPulse(pump, line, { crystalId: 'X', role: 'signal' });
+  assert.equal(unknown.pulseWidthFs, 140);
+  assert.equal(unknown.durationRaisedToLimit, false);
+  const limited = opoPulse(pump, line, { crystalId: 'X', role: 'signal', outputPhase: 'transformLimited' });
+  assert.equal(limited.transformLimited, false);
+  assert.equal(limited.transformLimitUnavailable, true, 'the refused request is reported');
+  assert.equal(transformLimitFs(0), Infinity);
+});
+
+test('light is never converted twice by the same crystal, even after another crystal', () => {
+  // A cavity closed by a pump-transmitting dichroic and a 50 % output mirror.
+  // Crystal A turns 800 nm into 5000 + 952 nm; crystal B turns that 952 nm
+  // idler into 1500 + 2609 nm. A's acceptance is opened to ±2000 nm, so when
+  // B's light returns through A only the provenance guard stops A converting
+  // it into 2143 nm or 5455 nm light that no crystal should make. A guard
+  // that remembered only the last crystal lets both through.
+  const pump = createElement('cwlaser', 40, 160);
+  Object.assign(pump.params, { wavelength: 800, avgPowerW: 1, beamMode: 'line' });
+  const input = createElement('dichroic', 120, 160);
+  Object.assign(input.params, { dtype: 'shortpass', cutoff: 850 });
+  const a = createElement('crystal', 200, 160);
+  Object.assign(a.params, { convert: 'opo', pumpWl: 800, signalWl: 5000, efficiency: 0.5, pumpAcceptanceNm: 2000 });
+  const b = createElement('crystal', 300, 160);
+  Object.assign(b.params, { convert: 'opo', pumpWl: 952, signalWl: 1500, efficiency: 0.5 });
+  const output = createElement('mirror', 400, 160);
+  Object.assign(output.params, { refl: 50, showTransmitted: true });
+  const det = createElement('detector', 500, 160);
+  traceScene([pump, input, a, b, output, det]);
+  const lines = new Set(detectorReading(det.id).spectrum.map(s => Math.round(s.wavelength)));
+  for (const expected of [800, 952, 1500, 2609, 5000]) assert.ok(lines.has(expected), `missing ${expected} nm`);
+  for (const forbidden of [2143, 5455]) assert.ok(!lines.has(forbidden), `A reconverted light derived from its own output (${forbidden} nm)`);
 });
 
 test('the acceptance window is authored and independent of the pump bandwidth', () => {
@@ -212,128 +283,15 @@ test('light a crystal generated never converts in it again, even through a wide 
   }
 });
 
-test('pump depletion follows the plane-wave singly resonant solution, then an empirical plateau', () => {
-  assert.equal(pumpDepletion(0.5), 0);
-  assert.equal(pumpDepletion(1), 0);
-  assert.equal(pumpDepletion((Math.PI / 2) ** 2), 1);
-  assert.equal(pumpDepletion(10), 1);
-  // x/sin x = √N, depletion sin²x: pick x, derive N, recover sin²x.
-  for (const x of [0.2, 0.7, 1.2, 1.5]) {
-    near(pumpDepletion((x / Math.sin(x)) ** 2), Math.sin(x) ** 2, 1e-9, `depletion at x=${x}`);
-  }
-});
-
-const CW_THRESHOLD = {
-  source: 'cwlaser',
-  crystal: { pumpWl: 1064, signalWl: 1550, thresholdW: 3, efficiency: 1, linewidthMode: 'signal', signalLinewidthCm: 0 },
-  cutoff: 2500,
-};
-const idlerShare = 1550 / (1550 + idlerWavelength(1064, 1550));
-
-test('a threshold switches oscillation on with the pump power', () => {
-  const run = avgPowerW => opoScene({ ...CW_THRESHOLD, laser: { wavelength: 1064, avgPowerW } });
-  const below = run(2);
-  assert.equal(below.long, null, 'below threshold there is no idler');
-  near(below.short.signal, 1, 1e-9, 'all pump passes');
-  assert.equal(below.state.state, 'below');
-
-  const full = run(3 * (Math.PI / 2) ** 2);
-  assert.equal(full.state.state, 'oscillating');
-  near(full.state.depletion, 1, 1e-9, 'full depletion');
-
-  const partial = run(4.5);
-  near(partial.long.signal, pumpDepletion(1.5) * idlerShare, 1e-9, 'idler at 1.5× threshold');
-});
-
-test('the threshold sees the whole beam, however many rays sample it', () => {
-  const line = opoScene({ ...CW_THRESHOLD, laser: { wavelength: 1064, avgPowerW: 4.5, beamMode: 'line' } });
-  const beam = opoScene({ ...CW_THRESHOLD, laser: { wavelength: 1064, avgPowerW: 4.5, beamMode: 'beam', beamWidth: 4 } });
-  near(line.state.drive.ratio, 1.5, 1e-9, 'line');
-  near(beam.state.drive.ratio, 1.5, 1e-9, 'beam');
-  near(beam.long.signal, line.long.signal, 1e-9, 'same idler');
-});
-
-test('clipping the pump lowers the drive, uniform attenuation too', () => {
-  // A 10 mm beam through a 3 mm slit keeps only the central samples.
-  const iris = createElement('slit', 140, 160);
-  iris.params.gap = 3;
-  const clipped = opoScene({
-    ...CW_THRESHOLD, laser: { wavelength: 1064, avgPowerW: 9, beamMode: 'beam', beamWidth: 10 },
-    crystal: { ...CW_THRESHOLD.crystal, thresholdW: 1 }, beforeCrystal: [iris],
-  });
-  const open = opoScene({
-    ...CW_THRESHOLD, laser: { wavelength: 1064, avgPowerW: 9, beamMode: 'beam', beamWidth: 10 },
-    crystal: { ...CW_THRESHOLD.crystal, thresholdW: 1 },
-  });
-  near(open.state.drive.amount, 9, 1e-9, 'open beam delivers the source power');
-  assert.ok(clipped.state.drive.amount < 0.5 * open.state.drive.amount, `clipped drive ${clipped.state.drive.amount} W`);
-
-  const nd = createElement('filter', 140, 160);
-  Object.assign(nd.params, { ftype: 'nd', trans: 0.5 });
-  const attenuated = opoScene({ ...CW_THRESHOLD, laser: { wavelength: 1064, avgPowerW: 9 }, beforeCrystal: [nd] });
-  near(attenuated.state.drive.amount, 4.5, 1e-6, 'attenuated drive');
-});
-
-test('two pump paths meeting on one crystal add up to reach threshold together', () => {
-  // A 50/50 splitter sends half the pump up to a mirror that folds it back
-  // onto the crystal at an angle. Neither half alone reaches the 3 W threshold.
-  const run = withMirror => {
-    const laser = createElement('cwlaser', 60, 160);
-    Object.assign(laser.params, { wavelength: 1064, avgPowerW: 4.5, beamMode: 'line' });
-    const bs = createElement('bs', 140, 160);
-    const fold = createElement('mirror', 140, 80);
-    fold.rot = 61;
-    const xtal = createElement('crystal', 260, 160);
-    Object.assign(xtal.params, { convert: 'opo', ...CW_THRESHOLD.crystal });
-    traceScene(withMirror ? [laser, bs, fold, xtal] : [laser, bs, xtal]);
-    return opoReading(xtal.id);
-  };
-  const one = run(false);
-  near(one.drive.amount, 2.25, 1e-9, 'one path');
-  assert.equal(one.state, 'below');
-  const both = run(true);
-  near(both.drive.amount, 4.5, 1e-9, 'both paths');
-  assert.equal(both.state, 'oscillating');
-  near(both.depletion, pumpDepletion(1.5), 1e-9, 'depletion from the summed pump');
-});
-
-test('a pulse-energy threshold divides average power by the repetition rate', () => {
-  // 20 mJ pulses at 1 kHz (the source's lowest repetition rate): 20 W average. Threshold 10 mJ.
-  const ns = {
-    source: 'pulsedlaser',
-    laser: { wavelength: 355, pulseWidthFs: 5e6, transformLimited: false, bandwidth: 0.01, avgPowerW: 20, repRateMHz: 0.001 },
-    crystal: { pumpWl: 355, signalWl: 500, thresholdUnit: 'pulseMJ', thresholdW: 10, efficiency: 0.3, linewidthMode: 'signal', signalLinewidthCm: 5 },
-    cutoff: 800,
-  };
-  const { state, long } = opoScene(ns);
-  near(state.drive.amount, 20, 1e-9, 'pulse energy');
-  near(state.drive.ratio, 2, 1e-9, 'ratio');
-  assert.ok(long.signal > 0);
-
-  const cw = opoScene({ ...ns, source: 'cwlaser', laser: { wavelength: 355, avgPowerW: 5 } });
-  assert.equal(cw.state.state, 'needs-pulses');
-  assert.equal(cw.long, null);
-});
-
-test('a source without an average power cannot reach a threshold', () => {
-  const { long, state } = opoScene({
-    source: 'pointsource', laser: { wavelength: 532 },
-    crystal: { pumpWl: 532, signalWl: 800, thresholdW: 1 }, cutoff: 1200,
-  });
-  assert.equal(long, null);
-  if (state?.drive) assert.equal(state.drive.state, 'unknown-power');
-});
-
 test('saved OPO crystals without the new settings keep their fixed-fraction behaviour', () => {
   const legacy = createElement('crystal', 0, 0);
-  assert.equal(legacy.params.thresholdW, 0);
   assert.equal(legacy.params.pumpAcceptanceNm, 1);
   assert.equal(legacy.params.linewidthMode, 'pump');
   const waves = opoWaves({ pumpWl: 532, signalWl: 800 });
   const { long, short, state } = opoScene({
     source: 'cwlaser', laser: { wavelength: 532 }, crystal: { pumpWl: 532, signalWl: 800 }, cutoff: 1200,
   });
-  assert.equal(state.state, 'fixed');
+  assert.equal(state.state, 'converting');
   near(long.signal, 0.6 * (1 - waves.signalShare), 1e-9, 'idler');
   near(short.signal, 0.4 + 0.6 * waves.signalShare, 1e-9, 'pump + signal');
 });
