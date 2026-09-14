@@ -295,3 +295,30 @@ test('saved OPO crystals without the new settings keep their fixed-fraction beha
   near(long.signal, 0.6 * (1 - waves.signalShare), 1e-9, 'idler');
   near(short.signal, 0.4 + 0.6 * waves.signalShare, 1e-9, 'pump + signal');
 });
+
+test('a transform-limited OPO output draws its own dispersion even when the pump could not', () => {
+  // The pump is not transform-limited, so its packets carry no GDD history.
+  // A signal declared transform-limited must still broaden through glass on
+  // the canvas; one with unknown phase must not.
+  const run = outputPhase => {
+    const pump = createElement('pulsedlaser', 60, 160);
+    Object.assign(pump.params, { wavelength: 800, pulseWidthFs: 140, transformLimited: false, bandwidth: 10, beamMode: 'line' });
+    const xtal = createElement('crystal', 200, 160);
+    Object.assign(xtal.params, { convert: 'opo', pumpWl: 800, signalWl: 1200, transmitPump: false, outputPhase });
+    const glass = createElement('glassrod', 320, 160);
+    glass.params.material = 'nbk7';
+    const det = createElement('detector', 500, 160);
+    const { pulseTracks } = traceScene([pump, xtal, glass, det]);
+    return pulseTracks.filter(track => track.pulse.centerWavelengthNm > 1000);
+  };
+  // The glass fans each output into spectral samples, so look per colour.
+  const limited = run('transformLimited');
+  for (const centre of [1200, 2400]) {
+    const tracks = limited.filter(track => Math.abs(track.pulse.centerWavelengthNm - centre) < 5);
+    assert.ok(tracks.some(track => track.gddTrace?.some(event => event.linear)),
+      `glass left no dispersion history on the transform-limited ${centre} nm output`);
+  }
+  const unknown = run('unknown');
+  assert.ok(unknown.length > 0);
+  for (const track of unknown) assert.equal(track.gddTrace, undefined, 'unknown phase must not claim broadening');
+});

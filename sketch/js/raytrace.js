@@ -3824,7 +3824,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           keepWeak: 'keepWeak' in c ? c.keepWeak : r.keepWeak,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           gdd: childGdd,
-          gddTrace: r.gddTrace ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
+          // A child with a pulse of its own (light an OPO generated) has its
+          // dispersion drawn only if that pulse's duration is derivable, not
+          // because its parent's was.
+          gddTrace: ('pulse' in c
+            ? c.pulse?.transformLimited === true && (c.pulse?.pulseShape || 'gauss') === 'gauss'
+            : r.gddTrace)
+            ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
           intensity: childIntensity,
