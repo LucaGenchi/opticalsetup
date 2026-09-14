@@ -7,7 +7,7 @@ import {
   newSampleChannel, MAX_SAMPLE_CHANNELS, MIXING_KINDS, EPI_CAPABLE_KINDS, sampleChannels,
   signalKindsFor, specimenTypeOf, channelWarning, defaultEmissionWl, drivingExcitationWl,
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
-  FLUOROPHORES, fluorophoreSpec,
+  FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
@@ -406,7 +406,9 @@ function measurementHTML(el) {
       <dt>Spot span</dt><dd>${spot}</dd>`;
   const measurementFoot = cancelled
     ? 'Exact coherent cancellation leaves an empty sensor profile.'
-    : isCamera ? 'Profile height is normalized to the brightest sensor pixel.'
+    : isCamera ? (rd.profileScale === 'fit'
+      ? 'Profile height is normalized to the brightest sensor pixel.'
+      : 'Profile height follows the relative sensor intensity; attenuation lowers the profile.')
     : 'Relative ray weight from the qualitative tracer—not calibrated optical power.';
   const statusText = cancelled ? 'Coherent cancellation'
     : cameraState?.kind === 'phase-unavailable' ? 'Deposited intensity'
@@ -1359,10 +1361,20 @@ export function applyInput(inp, rebuild = false) {
     if (sel.type === 'autocorrelator' && pkey === 'measurementMode') applyScopeSpanForMode(sel);
     if (sel.type === 'objective') Object.assign(sel.params, normalizeObjectiveParams(sel.params));
   }
+  // Only on commit: mid-keystroke, typing "700" into the band maximum passes
+  // through "7", and lifting the duration to that momentary band's floor
+  // would outlive the edit.
+  if (rebuild && sel.type === 'sclaser') Object.assign(sel.params, normalizeSupercontinuumParams(sel.params));
   changed();
   if (pkey) {
     refreshReadouts(sel);
     refreshDerivedSelects(sel);
+  }
+  // Each continuum endpoint sets the other field's valid range. Refresh on
+  // commit so the next edit uses the current endpoint, without stealing typing.
+  if (rebuild && sel.type === 'sclaser' && ['scMin', 'scMax'].includes(pkey)) {
+    renderInspector();
+    return;
   }
   // While a pulsed laser is transform-limited its bandwidth is derived from
   // the pulse duration, so the field is hidden and nothing needs syncing.

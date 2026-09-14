@@ -1416,33 +1416,50 @@ function fiberEmissionRays(c) {
   return rays;
 }
 
-// slice the envelope strip between polylines A and B into "on" quads
-// `startMm` slides the on-window along the beam, so two strips sharing a
-// period can be drawn in anti-phase: the second is lit exactly where the
-// first is dark.
-function chopStrip(A, B, period, duty, startMm = 0) {
-  const lerpP = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+// Slice the envelope strip between two beam edges A and B -- one propagation
+// segment each, as the beam fill is built -- into its "on" quads.
+//
+// Each edge carries its own `start`: how far into that edge the pattern's
+// on-window begins, measured unwrapped from the gate, so window n lies at
+// [start + nP, start + nP + on] along it. Pairing window n on both edges is
+// what keeps a chunk's cut where both edges are equally far from the gate.
+// Behind an oblique optic the edges arrive after different distances -- a
+// 45 degree mirror folds a 12 mm beam's edges 12 mm apart -- and cutting both
+// at one edge's positions would slant the fill across the beam while the
+// dashed outlines, which follow each edge's own phase, stay square to it.
+// An anti-phase strip is simply one whose starts sit half a period later.
+function chopStrip(A, B, period, duty, startA = 0, startB = startA) {
+  const along = (p0, p1, length, s) => (length < 1e-9 ? p0
+    : { x: p0.x + (p1.x - p0.x) * s / length, y: p0.y + (p1.y - p0.y) * s / length });
+  const [a0, a1] = A, [b0, b1] = B;
+  const lengthA = Math.hypot(a1.x - a0.x, a1.y - a0.y);
+  const lengthB = Math.hypot(b1.x - b0.x, b1.y - b0.y);
+  if (Math.max(lengthA, lengthB) < 1e-6) return [];
+  const on = period * duty;
+  const clamp = (v, length) => Math.min(length, Math.max(0, v));
+  const first = Math.floor((Math.min(-startA, -startB) - on) / period);
+  const last = Math.ceil(Math.max(lengthA - startA, lengthB - startB) / period);
   const polys = [];
-  const n = Math.min(A.length, B.length);
-  let phase = ((-startMm % period) + period) % period;
-  for (let j = 0; j < n - 1 && polys.length < 300; j++) {
-    const a0 = A[j], a1 = A[j + 1], b0 = B[j], b1 = B[j + 1];
-    const L = Math.hypot(a1.x - a0.x, a1.y - a0.y);
-    if (L < 1e-6) continue;
-    let s = 0;
-    while (s < L && polys.length < 300) {
-      const ip = (phase + s) % period;
-      const on = ip < period * duty;
-      const segEnd = Math.min(L, s + (on ? period * duty - ip : period - ip));
-      if (on) {
-        const t0 = s / L, t1 = segEnd / L;
-        polys.push([lerpP(a0, a1, t0), lerpP(a0, a1, t1), lerpP(b0, b1, t1), lerpP(b0, b1, t0)]);
-      }
-      s = segEnd + 1e-6;
-    }
-    phase = (phase + L) % period;
+  for (let n = first; n <= last && polys.length < 300; n++) {
+    const aLo = clamp(startA + n * period, lengthA), aHi = clamp(startA + n * period + on, lengthA);
+    const bLo = clamp(startB + n * period, lengthB), bHi = clamp(startB + n * period + on, lengthB);
+    // Nothing of this window falls on this segment along either edge.
+    if (aHi - aLo < 1e-6 && bHi - bLo < 1e-6) continue;
+    polys.push([along(a0, a1, lengthA, aLo), along(a0, a1, lengthA, aHi),
+      along(b0, b1, lengthB, bHi), along(b0, b1, lengthB, bLo)]);
   }
   return polys;
+}
+
+// A chop pattern is anchored where it was cut -- the chopper or AOM -- and has
+// to run on unbroken from there. Every ray object measures `startMm` from its
+// own first point, so a ray continuing a parent's pattern carries the parent's
+// phase forward by the distance the parent travelled. It is kept unwrapped:
+// two beam edges that reached an oblique optic after different distances must
+// still pair the same window, which a phase folded into one period cannot tell.
+function continuedChop(chopped, travelledMm) {
+  if (!chopped) return undefined;
+  return { ...chopped, startMm: (chopped.startMm || 0) - travelledMm };
 }
 
 function rayArcHit(p, d, surface) {
@@ -1528,6 +1545,7 @@ function rayAsphereHit(p, d, surface) {
     if (!Number.isFinite(t) || t < 0.05) return null;
     const localY = y0 + dy * t;
     if (localY < -h - 1e-7 || localY > h + 1e-7) return null;
+    if (profile.inner > 0 && Math.abs(localY) < profile.inner - 1e-7) return null;
     return {
       t,
       // The authored surface runs from +h to -h, matching surface.a -> b.
@@ -1656,7 +1674,10 @@ function rayAsphereHit(p, d, surface) {
       const leftT = lo + span * interval.u0;
       const rightT = lo + span * interval.u1;
       const candidate = polishRoot(leftT, rightT);
-      if (candidate !== null) return makeHit(candidate);
+      if (candidate !== null) {
+        const hit = makeHit(candidate);
+        if (hit) return hit;
+      }
       continue;
     }
 
@@ -2244,6 +2265,12 @@ function interact(ray, hit) {
       if (specimenProbe && data.specimen) recordProbeBeam(s, ray);
       return [{ d, intensity: ray.intensity * Math.min(1, Math.max(0, data.transmission ?? 1)) }];
     }
+    case 'conicmirror': {
+      // n points toward local +x. Only the chosen coated side reflects.
+      if (dot(d, n) * data.frontSign >= 0) return [];
+      const R = Math.min(1, Math.max(0, (data.refl ?? 98) / 100));
+      return R > 0 ? [{ d: reflect(d, n), intensity: ray.intensity * R }] : [];
+    }
     case 'mirror': {
       // partial reflectivity (cavity mirrors / output couplers): reflect R,
       // transmit 1-R. The transmitted ray is retained through the bounded
@@ -2257,7 +2284,9 @@ function interact(ray, hit) {
       if (R >= 1) return [{ d: reflect(d, n), phaseShift: Math.PI }];
       const out = [];
       if (R > 0) out.push({ d: reflect(d, n), intensity: ray.intensity * R, tag: 'R', retainWeak: true });
-      if (R < 1) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted, retainWeak: true });
+      // Solid polygon wheels absorb coating losses; leaking through the
+      // wheel would otherwise produce spurious internal facet reflections.
+      if (R < 1 && !data.opaque) out.push({ d, intensity: ray.intensity * (1 - R), tag: 'T', hidden: !data.showTransmitted, retainWeak: true });
       return out;
     }
     case 'cmirror': {
@@ -3688,7 +3717,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // it arrives with its own sourceId and its own tint -- so it starts
           // undispersed however the pump reached it.
           dispersed: 'sourceId' in c ? Boolean(c.dispersed) : (c.dispersed || r.dispersed || false),
-          chopped: c.chopped || r.chopped || undefined,
+          // A pattern the optic cut here starts here; one inherited from
+          // upstream continues from where the parent's pattern had reached.
+          chopped: c.chopped || continuedChop(r.chopped, polylineLength(r.pts)),
           // A branch that merely passed THROUGH a collector was never
           // collected, so it stays evanescent with the range it had.
           evan: c.evan || Boolean(c.tag === 'T' && carriedEvan),
@@ -3798,9 +3829,13 @@ function assembleDrawables(paths, opts, drawables) {
   // A dash pattern starts at the path origin, so sliding the on-window along
   // the beam is a negative offset: with the pattern shifted back by P - start,
   // the first dash lands at `start` instead of at zero.
-  const dashOffsetOf = r => (drawChopped(r) && r.chopped.startMm
-    ? Number((r.chopped.period - (r.chopped.startMm % r.chopped.period)).toFixed(3))
-    : undefined);
+  // `startMm` is unwrapped (see continuedChop), so fold it into one period.
+  const dashOffsetOf = r => {
+    if (!drawChopped(r)) return undefined;
+    const P = r.chopped.period;
+    const start = (((r.chopped.startMm || 0) % P) + P) % P;
+    return start > 1e-9 ? Number((P - start).toFixed(3)) : undefined;
+  };
 
   const pushRay = (r, w, opacity, thin) => {
     if (r.pts.length < 2) return;
@@ -3851,20 +3886,29 @@ function assembleDrawables(paths, opts, drawables) {
   // finite optic. Pairing complete paths would erase their valid common strip;
   // segment histories let that strip continue exactly to the first differing
   // interaction without inventing a connection beyond it.
+  // A chopped ray's fill is cut one segment at a time, while its dashed
+  // outline runs along the whole polyline; each segment therefore carries the
+  // pattern forward by the distance before it, or the fill would restart at
+  // every bend the outline passes straight through.
   const bySample = new Map();
   for (const r of paths) {
     if (r.sample === null || r.sample === undefined || r.pts.length < 2) continue;
     if (!bySample.has(r.sample)) bySample.set(r.sample, []);
+    let travelled = 0;
     for (let j = 0; j < r.pts.length - 1; j++) {
+      const segmentLength = Math.hypot(r.pts[j + 1].x - r.pts[j].x, r.pts[j + 1].y - r.pts[j].y);
       const intensity = r.segmentIntensities?.[j] ?? r.intensity;
-      if (!(intensity > 1e-12)) continue;
-      bySample.get(r.sample).push({
-        ...r,
-        pts: [r.pts[j], r.pts[j + 1]],
-        intensity,
-        renderHistory: r.segmentHistories?.[j] ?? r.sig,
-        renderEvent: r.segmentEvents?.[j] ?? null,
-      });
+      if (intensity > 1e-12) {
+        bySample.get(r.sample).push({
+          ...r,
+          pts: [r.pts[j], r.pts[j + 1]],
+          intensity,
+          renderHistory: r.segmentHistories?.[j] ?? r.sig,
+          renderEvent: r.segmentEvents?.[j] ?? null,
+          chopped: continuedChop(r.chopped, travelled),
+        });
+      }
+      travelled += segmentLength;
     }
   }
   const clippedPair = (ra, rb) => {
@@ -3912,7 +3956,9 @@ function assembleDrawables(paths, opts, drawables) {
           ? [ra.pts, rb.pts]
           : clippedPair(ra, rb);
         if (drawChopped(ra)) {
-          for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty, ra.chopped.startMm || 0)) {
+          const startA = ra.chopped.startMm || 0;
+          const startB = rb.chopped ? rb.chopped.startMm || 0 : startA;
+          for (const q of chopStrip(A, B, ra.chopped.period, ra.chopped.duty, startA, startB)) {
             drawables.push({ type: 'poly', pts: q, color: colorOf(ra), opacity: op });
           }
         } else {

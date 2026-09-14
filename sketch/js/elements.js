@@ -1,3 +1,4 @@
+import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfaces } from './conic-mirror.js';
 // Registry of optical elements.
 // Local coordinates: element centered at (0,0); default optical propagation is along +x.
 // def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
@@ -8,6 +9,7 @@
 
 import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
 import { uid } from './util.js';
+import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
@@ -16,7 +18,7 @@ import {
   formatTimeAxisNs,
 } from './probe.js';
 import {
-  linewidthForCoherenceLengthNm, spectrumSamples, transformLimitedBandwidthNm,
+  linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
 } from './spectrum.js';
 import {
   boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
@@ -2163,6 +2165,39 @@ export const registry = {
     },
   },
 
+  polygonscanner: {
+    label: 'Polygon scanner', category: 'Mirrors', paletteOrder: 4.5,
+    aliases: ['polygon mirror', 'rotating polygon', 'line scanner', 'raster scanner', 'NST', 'SCANLAB'],
+    directHint: 'aim the beam at a perimeter facet; the hub is the rotation axis',
+    size: { w: 68, h: 68 },
+    size_: el => {
+      const { diameter } = polygonScannerState(el.params);
+      return { w: diameter + 8, h: diameter + 8 };
+    },
+    params: [
+      { key: 'diameter', label: 'Wheel diameter (mm)', type: 'number', min: 10, max: 200, step: 1, def: 60 },
+      { key: 'facets', label: 'Mirror facets', type: 'number', min: 3, max: 72, step: 1, def: 12 },
+      { key: 'scanMode', label: 'Rotation', type: 'select', def: 'rotate', options: [['rotate', 'Continuous'], ['static', 'Static phase']] },
+      { key: 'rpm', label: 'Rotation speed (RPM)', type: 'number', min: 0, max: 60000, step: 100, def: 1000 },
+      { key: 'lineRate', label: 'Facet rate (lines/s)', type: 'readout', readout: p => p.scanMode === 'static' ? '0 (static)' : polygonScannerState(p).lineRateHz.toFixed(2) },
+      // The number a beam width has to be judged against: the window is not
+      // derived from the beam, so this is what says whether it can be opened.
+      { key: 'facetWidth', label: 'Facet width (mm)', type: 'readout', readout: p => polygonScannerFacetWidth(p).toFixed(1) },
+      { key: 'scanPhase', label: 'Phase within one facet (%)', type: 'number', min: 0, max: 100, step: 1, def: 50 },
+      { key: 'dutyCycle', label: 'Usable scan window (%)', type: 'number', min: 0, max: 100, step: 1, def: 71 },
+      { key: 'refl', label: 'Facet reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+    ],
+    svg(el) {
+      const time = el._animationTimeS || 0;
+      const { active, diameter } = polygonScannerState(el.params, time);
+      const points = polygonScannerVertices(el.params, time).map(p => `${p.x},${p.y}`).join(' ');
+      return `<polygon points="${points}" fill="#cbd5e1" stroke="#475569" stroke-width="2"/>` +
+        `<circle r="${diameter * 0.18}" fill="#64748b" stroke="#334155" stroke-width="1"/>` +
+        `<circle r="2.5" fill="${active ? '#16a34a' : '#d97706'}"/>`;
+    },
+    surfaces: el => polygonScannerSurfaces(el.params, el._animationTimeS || 0),
+  },
+
   retroreflector: {
     label: 'Retroreflector', category: 'Mirrors', paletteOrder: 5, size: { w: 24, h: 56 },
     size_: el => ({ w: el.params.length / 2 + 10, h: el.params.length + 10 }),
@@ -2196,6 +2231,26 @@ export const registry = {
     },
   },
 
+
+  conicmirror: {
+    label: 'Conic mirror', category: 'Mirrors', paletteOrder: 3.5, size: { w: 20, h: 56 },
+    aliases: ['annular mirror', 'Cassegrain', 'Schwarzschild', 'elliptical mirror', 'hyperbolic mirror', 'reflective objective'],
+    params: [
+      { key: 'dia', label: 'Outer diameter (mm)', type: 'number', min: 1, max: 500, step: 1, def: 50 },
+      { key: 'hole', label: 'Central opening (mm)', type: 'number', min: 0, max: 500, step: 0.5, def: 0 },
+      { key: 'radius', label: 'Signed vertex radius (mm)', type: 'number', min: -5000, max: 5000, step: 0.1, def: -100, slider: false },
+      { key: 'conic', label: 'Conic constant k', type: 'number', min: -20, max: 20, step: 0.01, def: 0, slider: false },
+      { key: 'facing', label: 'Coated side (local axis)', type: 'select', def: 'left', options: [['left', '−x side'], ['right', '+x side']] },
+      { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
+      { key: 'realized', label: 'Geometry used', type: 'readout', readout: params => {
+        const g = conicMirrorGeometry(params);
+        return `R = ${g.R.toFixed(3)} mm; opening = ${(2 * g.inner).toFixed(2)} mm`;
+      } },
+    ],
+    size_: conicMirrorSize,
+    svg: conicMirrorSVG,
+    surfaces: conicMirrorSurfaces,
+  },
 
   cmirrorx: {
     label: 'Convex mirror', category: 'Mirrors', paletteOrder: 1, size: { w: 18, h: 56 },
@@ -2706,8 +2761,8 @@ export const registry = {
     // collimated light) is the wide barrel and carries the back pupil; front
     // (sample side) is the narrow tip at local x=+16, the physical boundary
     // the working distance is measured from. The equivalent refracting plane
-    // of focal length EFL sits at x = 16 + WD - EFL, always inside the barrel
-    // because WD is capped at EFL. It is never drawn — an objective is an
+    // of focal length EFL sits at x = 16 + WD - EFL. This equivalent plane
+    // can lie outside the barrel for long-WD designs. It is never drawn — an
     // opaque barrel, not a visible singlet. See objective.js.
     label: 'Objective', category: 'Lenses',
     paletteGroup: 'Ideal lenses', paletteOrder: 3, size: { w: 36, h: 40 },
@@ -2748,8 +2803,10 @@ export const registry = {
           if (ratio <= 1.001) {
             return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — ${(ratio * 100).toFixed(0)}% filled, all through`;
           }
+          // The fraction is a round-pupil area ratio; the 2D tracer clips a
+          // line through the pupil instead, so its traced power can differ.
           return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm — overfilled, ` +
-            `${(fill.transmitted * 100).toFixed(0)}% through (${((1 - fill.transmitted) * 100).toFixed(0)}% lost)`;
+            `about ${(fill.transmitted * 100).toFixed(0)}% through a round pupil (area estimate; the 2D trace can differ)`;
         },
       },
       // Underfilling the pupil does not just waste the rating — it hands you a
@@ -4193,7 +4250,7 @@ export const registry = {
     params: [
       { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
       { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree']] },
-      { key: 'raysMode', label: 'Rays from tip', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
+      { key: 'raysMode', label: 'Rays from axis', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
       { key: 'spread', label: 'Fan angle (°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' },
       { key: 'nrays', label: 'Rays', type: 'number', min: 2, max: 9, step: 1, def: 3, show: p => p.raysMode === 'fan' },
       { key: 'showImage', label: 'Draw image formed', type: 'checkbox', def: true },
@@ -4279,7 +4336,7 @@ export const registry = {
         `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>` +
         `<line x1="0" y1="-9" x2="0" y2="${-PROBE_LEADER}" stroke="#e07020" stroke-width="1"/>`;
       return crosshair +
-        `<g transform="rotate(${-place.rot}) translate(${place.x.toFixed(2)},${place.y.toFixed(2)}) scale(${scale})">` +
+        `<g class="probe-card" transform="rotate(${-place.rot}) translate(${place.x.toFixed(2)},${place.y.toFixed(2)}) scale(${scale})">` +
         card.body + `</g>`;
     },
     surfaces: () => [],
@@ -4570,6 +4627,39 @@ registry.lensc = {
 // rather than a line, so it replaces wavelength with a range and defaults to
 // a fixed broadband white instead of a colour derived from a centroid λ that
 // no longer means much once the band is hundreds of nm wide.
+//
+// Its pulse duration is set by hand, but never below what its band allows: a
+// pulse shorter than the transform limit of its spectrum cannot exist. The
+// floor is rounded up to three significant figures so the field shows a clean
+// number and the rounded value still honours the limit. A band so narrow its
+// limit passes the longest duration the field holds -- a zero-width band has
+// no finite limit at all -- floors at that maximum instead: the tracer and a
+// reloaded sketch clamp there too, so any higher floor could never be kept.
+const SC_PULSE_WIDTH_MIN_FS = 1;
+const SC_PULSE_WIDTH_MAX_FS = 1000000000;
+export function supercontinuumPulseWidthFloorFs(p = {}) {
+  const tl = supercontinuumTransformLimitFs(p.scMin ?? 300, p.scMax ?? 700, p.pulseShape);
+  if (!(tl > SC_PULSE_WIDTH_MIN_FS)) return SC_PULSE_WIDTH_MIN_FS;
+  if (!(tl < SC_PULSE_WIDTH_MAX_FS)) return SC_PULSE_WIDTH_MAX_FS;
+  const unit = 10 ** (Math.floor(Math.log10(tl)) - 2);
+  return Math.min(SC_PULSE_WIDTH_MAX_FS, Number((Math.ceil(tl / unit - 1e-9) * unit).toPrecision(3)));
+}
+// Narrowing the band or switching the envelope raises the floor under a
+// duration that was valid a moment ago; every path that edits those params
+// runs this so the stored duration is lifted rather than left impossible.
+// It is also what enforces the floor on a typed duration: the field's HTML
+// min stays at 1 fs so the browser's 10 fs step ladder is not rebased onto
+// an arbitrary floor like 71.5 fs, which would mark 250 fs as off-step.
+export function normalizeSupercontinuumParams(params) {
+  const floor = supercontinuumPulseWidthFloorFs(params);
+  return Number(params.pulseWidthFs) >= floor ? {} : { pulseWidthFs: floor };
+}
+// The two endpoints stay at least one field step apart. A zero-width band is
+// not a continuum at all, and it has no finite transform limit: clamping a
+// crossed entry to equal endpoints lifted the pulse duration to the field's
+// 1e9 fs ceiling, where it stayed after the band was put right. At 10 nm the
+// narrowest band still admits a 71 fs pulse at 700 nm.
+const SC_MIN_SEPARATION_NM = 10;
 registry.sclaser = {
   ...registry.pulsedlaser,
   label: 'Supercontinuum laser',
@@ -4577,11 +4667,23 @@ registry.sclaser = {
   aliases: ['super continuum', 'white laser', 'broadband pulsed source', 'sc laser'],
   params: [
     { ...P.wavelength, def: 500, show: () => false },
-    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200, max: 11999, step: 10, def: 300 },
-    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number', min: 201, max: 12000, step: 10, def: 700 },
+    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200,
+      max: p => Math.max(200, Math.min(12000 - SC_MIN_SEPARATION_NM, (p.scMax ?? 700) - SC_MIN_SEPARATION_NM)), step: 10, def: 300 },
+    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number',
+      min: p => Math.min(12000, Math.max(200 + SC_MIN_SEPARATION_NM, (p.scMin ?? 300) + SC_MIN_SEPARATION_NM)), max: 12000, step: 10, def: 700 },
     { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
     ...beamShapeParams(3),
     ...pulseTrainParams(),
+    // Duration and envelope are configured independently of the broad spectrum;
+    // this is not a reconstruction of nonlinear continuum generation.
+    ...registry.pulsedlaser.params.filter(p => ['pulseWidthFs', 'pulseShape'].includes(p.key))
+      .map(p => p.key === 'pulseWidthFs'
+        ? { ...p, def: 100, min: supercontinuumPulseWidthFloorFs, htmlMin: SC_PULSE_WIDTH_MIN_FS, max: SC_PULSE_WIDTH_MAX_FS }
+        : { ...p }),
+    {
+      key: 'scTransformLimit', label: 'Transform limit (fs)', type: 'readout',
+      readout: p => String(supercontinuumPulseWidthFloorFs(p)),
+    },
     POL_PARAM,
     // Broadband white by default: a supercontinuum has no single colour to
     // derive, and this is the shade the tracer already paints wide-band light.
@@ -4611,7 +4713,9 @@ const DIRECT = {
   objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
   mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
   galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
+  polygonscanner: { resize: { uniform: 'diameter' }, tune: { key: 'scanPhase', short: 'phase' } },
   retroreflector: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
+  conicmirror: { resize: { y: 'dia' }, tune: { key: 'conic', short: 'k' } },
   cmirrorx: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   cmirror: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
   oap: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
@@ -4706,12 +4810,14 @@ export function getDirectManipulation(el) {
 const ELEMENT_HELP = {
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
-  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam.',
+  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
   pointsource: 'Emits isotropic light — monochromatic, broadband, or the line spectrum of a gas discharge lamp — that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
-  objarrow: 'Traces object-tip rays and draws an ideal paraxial image; the image marker does not model downstream clipping.',
+  objarrow: 'Traces a ray fan from the object’s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
   mirror: 'Reflects rays with configurable size and reflectivity.',
   retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range — a physical model of a mechanical retroreflecting delay stage.',
   galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
+  conicmirror: 'Exact conic intersections and surface normals, with a real central opening. k = 0: sphere; −1: parabola; below −1: hyperbola. Radius 0: plane. The coated side reflects; the back and coating losses absorb. The opening is capped at the diameter; an impossible spherical/elliptical radius is enlarged to keep the aperture real (see Geometry used). 2D ray geometry only: no diffraction, spider vanes, coating spectrum, or calibrated IR throughput.',
+  polygonscanner: 'Traces reflection from every facet of a rotating regular polygon, so the angle doubling and the pupil walk fall out of the geometry rather than being modelled. Facet rate = facets × RPM / 60. The usable window is ideal synchronized blanking centred on the facet — green hub open, amber blanked — and is not derived from your beam: compare the beam against the facet width readout and close the window before the beam straddles two facets. No telecentric scan optics, facet-to-facet angular error, or material removal model.',
   cmirrorx: 'Diverges reflected rays off a real spherical surface of radius 2f, so it carries the spherical aberration a real one does.',
   cmirror: 'Focuses reflected rays off a real spherical surface of radius 2f — marginal rays cross ahead of the paraxial focus, which is the aberration a parabolic mirror exists to avoid.',
   oap: 'Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture — no spherical aberration, unlike a spherical mirror.',
@@ -4722,7 +4828,7 @@ const ELEMENT_HELP = {
   thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
   asphericlens: 'Refracts through exact conic-plus-even-polynomial faces, so changing k or A₄/A₆/A₈ changes the physical ray intersections and aberration rather than only the drawing.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
-  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane sits inside the barrel so light focuses exactly one working distance past the front tip and the back focal plane (BFP) stays a real conjugate. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
+  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane is placed so light focuses one working distance past the front tip. It can lie outside the drawn barrel for long-working-distance designs; it represents the whole objective, not a physical glass surface. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
   dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',

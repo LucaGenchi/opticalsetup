@@ -319,7 +319,7 @@ const demoScenes = {
   // something on the far side that stops receiving it.
   beamdump: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
-    mkDemo('bs', 200, 200, 0, { ratio: 0.5 }),
+    mkDemo('bs', 200, 200, 90, { ratio: 0.5 }),
     mkDemo('detector', 380, 200, 0, {}, { label: 'kept port', showLabel: true }),
     mkDemo('beamdump', 200, 330, 90, { aperture: 22 }, { label: 'unused port ends here', showLabel: true, labelPos: 'b' }),
   ],
@@ -330,7 +330,7 @@ const demoScenes = {
   ],
   blocker: () => [
     mkDemo('cwlaser', 40, 200, 0, { beamMode: 'beam', beamWidth: 10 }),
-    mkDemo('bs', 220, 200, 0, { ratio: 0.5 }),
+    mkDemo('bs', 220, 200, 90, { ratio: 0.5 }),
     mkDemo('detector', 400, 200, 0, {}, { label: 'the branch you want', showLabel: true }),
     mkDemo('blocker', 220, 320, 0, { w: 40, h: 16 }, { label: 'absorbs, but never drawn in an export', showLabel: true, labelPos: 'b' }),
   ],
@@ -692,6 +692,53 @@ const demoScenes = {
     mkDemo('cwlaser', 60, 200, 0),
     mkDemo('galvo', 220, 200, 45, { scanMode: 'sine', scanAmplitude: 8, scanFrequencyHz: 0.4 }),
     mkDemo('box', 220, 60, 0, { text: '', w: 200, h: 2, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — the reflected beam sweeps back and forth', showLabel: true, labelPos: 't' }),
+  ],
+  // The beam enters at the facet midpoint (one apothem from the hub along the
+  // 315 degree normal), and the window is the widest one this 25.9 mm facet can
+  // scan before the 6 mm beam starts to straddle two facets at a transition.
+  polygonscanner: () => [
+    mkDemo('cwlaser', 50, 194.150635, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 6 }),
+    mkDemo('polygonscanner', 240, 160, 315, { diameter: 100, dutyCycle: 56 }),
+    mkDemo('lens', 205.849365, 260, 90, { f: 100, dia: 100 }),
+    mkDemo('box', 205.849365, 360, 0, { text: '', w: 110, h: 10, behavior: 'block', fill: '#f2f3f5' },
+      { label: 'successive line sweeps; blanked between facets', showLabel: true, labelPos: 'b' }),
+    mkDemo('textlabel', 330, 120, 0, {
+      text: '### Inspect the scan\n'
+        + '12 facets x 1,000 RPM / 60 = **200 lines/s**\n'
+        + '\n'
+        + '**Green hub:** the scan window is open\n'
+        + '**Amber hub:** ideal synchronized blanking\n'
+        + '\n'
+        + 'Motion is slowed for inspection; the facet\n'
+        + 'rate readout always gives the physical rate.', fontSize: 11,
+    }),
+    mkDemo('textlabel', 330, 290, 0, {
+      text: 'The window is **56%**, not the 71% a datasheet might quote: that belongs to a head\n'
+        + 'with its own wheel geometry. Here a 6 mm beam on a 25.9 mm facet stays on one facet\n'
+        + 'for 56% of each period. Widen it past that and the beam straddles two facets at a\n'
+        + 'transition, leaving in two directions at once -- real behaviour, and what the\n'
+        + 'blanking exists to hide.', fontSize: 10,
+    }),
+  ],
+  // On-axis: a tilt of even five degrees costs this parabola a 5.9 mm caustic,
+  // so the demo keeps the beam on the axis, where an exact conic earns its
+  // keep -- k = -1 puts every ray through one point, k = 0 does not.
+  conicmirror: () => [
+    mkDemo('cwlaser', 60, 200, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 50 }),
+    mkDemo('conicmirror', 320, 200, 0,
+      { dia: 70, hole: 0, radius: -200, conic: -1, facing: 'left', refl: 98 },
+      { label: 'parabola, k = -1', showLabel: true, labelPos: 'r' }),
+    // Marked with an annotation, not an object: anything solid on the axis
+    // here would be in the beam, and a drawn optic that light passes through
+    // reads as a bug rather than as a label.
+    mkDemo('arrowann', 220, 262, 90, { len: 44, width: 1.5, fill: '#8a8f98' },
+      { label: 'focus (f = R/2 = 100 mm)', showLabel: true, labelPos: 'b' }),
+    mkDemo('textlabel', 60, 332, 0, {
+      text: 'The collimated beam comes back to a **single point**: a parabola images infinity\n'
+        + 'onto its focus exactly. Set the conic constant to **k = 0** and the same mirror\n'
+        + 'becomes a sphere, whose outer rays cross about 2 mm early -- spherical aberration,\n'
+        + 'computed from the surface rather than assumed.', fontSize: 11,
+    }),
   ],
   aod: () => [
     mkDemo('cwlaser', 40, 200, 0, { wavelength: 532, beamMode: 'line' }),

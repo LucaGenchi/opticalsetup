@@ -361,14 +361,32 @@ export const wikiEntries = [
         colour — which is why a prism turns this source into a visible rainbow even though
         the undispersed beam is drawn as a single broadband white line.</p>
         <p>It carries the same pulse train as the Pulsed Laser, since a real supercontinuum
-        inherits its pump's timing, but exposes no pulse duration of its own: that is a
-        property of whatever generated the continuum upstream, which is not modeled here.</p>`,
-      formulas: [],
+        inherits its pump's timing. Its pulse duration and envelope (Gaussian or
+        sech²) are set directly rather than derived: in a real source they depend on the
+        pump and on the nonlinear fibre that generated the continuum, neither of which is
+        modelled here, and a continuum fresh out of the fibre is typically heavily chirped
+        and picoseconds long. The autocorrelator and the beam probe report the duration
+        you set.</p>
+        <p>The one limit the setting cannot cross is the transform limit. No pulse can be
+        shorter than its own spectrum allows, so the duration has a floor set by the
+        band, which the inspector shows as <em>Transform limit</em>. For a band hundreds of
+        nanometres wide that floor is around a femtosecond and never gets in the way. A
+        narrow band raises it: 690–700&nbsp;nm cannot carry a Gaussian pulse shorter than
+        71&nbsp;fs. Narrowing the band or changing the envelope lifts a duration that has
+        fallen below the new floor. Widening the band never shortens the duration you set.
+        The two endpoints are kept at least 10&nbsp;nm apart: typing one past the other
+        stops it a step short, because a band of zero width has no transform limit at
+        all.</p>`,
+      formulas: [
+        { tex: '\\Delta t_{\\min} = \\frac{K}{c\\left(1/\\lambda_{\\min} - 1/\\lambda_{\\max}\\right)}', caption: 'The shortest pulse the band can carry. The denominator is the exact frequency span of the band, not the λ²/Δλ approximation, which drifts by several percent once the band is hundreds of nanometres wide. K is the time–bandwidth product of the chosen envelope: 0.441 for Gaussian, 0.315 for sech².' },
+      ],
       limitations: `<p>The spectrum is an idealized flat top, not a measured shape with the
         peaks, dips, and edge roll-off of a real continuum, and its shape does not change
         with pump power. No broadening is simulated: the band is declared, not generated
         from a pump and a nonlinear fibre. Pulse-to-pulse spectral noise, a real limitation
-        of these sources, is not represented.</p>`,
+        of these sources, is not represented. Dispersion does not yet stretch these pulses:
+        the duration stays as set through glass and compressors, although a real continuum
+        spreads strongly across its band.</p>`,
     },
     related: ['cwlaser', 'pulsedlaser', 'prism', 'filter'],
     resources: [
@@ -1130,9 +1148,9 @@ export const wikiEntries = [
         <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
         length EFL, but it does <em>not</em> put that plane at the front tip. It sits one
         focal length short of the nominal focus — at the front tip plus
-        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for a real objective means
-        somewhere inside the barrel. That single choice is what makes three things true at
-        once:</p>
+        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for most objectives means
+        somewhere inside the barrel, and for long-working-distance designs ahead of the front
+        tip (see below). That single choice is what makes three things true at once:</p>
         <ul>
           <li>Collimated light from the tube-lens side focuses <em>exactly</em> one working
           distance beyond the physical front tip, so the drawn focus is the working
@@ -2005,7 +2023,7 @@ export const wikiEntries = [
   },
   {
     type: 'pbs',
-    summary: "Separates orthogonal polarization components into transmitted and reflected paths, for examining polarization routing and power control with waveplates or electro-optic modulators.",
+    summary: "Separates orthogonal polarizations of light into transmitted and reflected beams.",
     title: 'Polarizing beamsplitter',
     category: 'Polarization',
     realWorld: {
@@ -2616,7 +2634,7 @@ export const wikiEntries = [
 
   {
     type: 'beamdump',
-    summary: "Absorbs light that reaches its active surface, terminating unwanted beams and providing a visible endpoint for discarded branches of an optical setup.",
+    summary: "Absorbs any light that reaches it, terminating an unwanted beam.",
     title: 'Beam dump',
     category: 'Beam Block',
     realWorld: {
@@ -2722,7 +2740,7 @@ export const wikiEntries = [
   },
   {
     type: 'slit',
-    summary: "Passes light through an adjustable aperture gap and blocks rays outside it, for exploring spatial selection, clipping, and transmission through narrow openings.",
+    summary: "Passes light through an adjustable gap and blocks everything outside it.",
     title: 'Slit',
     category: 'Beam Block',
     realWorld: {
@@ -3393,7 +3411,7 @@ export const wikiEntries = [
   },
   {
     type: 'detector',
-    summary: "Measures the relative light signal reaching its active surface, for comparing transmitted power and attenuation along different paths in an optical setup.",
+    summary: "Measures the relative intensity of light reaching its active surface.",
     title: 'Photodetector',
     category: 'Detectors',
     realWorld: {
@@ -3910,7 +3928,7 @@ export const wikiEntries = [
 
   {
     type: 'camera',
-    summary: "Integrates light across a one-dimensional array of sensor pixels, showing intensity profiles, wavelength mixtures, and interference for supported coherent optical paths.",
+    summary: "Records a one-dimensional intensity profile across its pixels, including interference from coherent beams.",
     title: 'Camera',
     category: 'Detectors',
     realWorld: {
@@ -5098,7 +5116,7 @@ export const wikiEntries = [
 
   {
     type: 'cmirrorx',
-    summary: "Spreads reflected light from a convex spherical surface, with curvature-dependent divergence and the spherical aberration that follows from the actual mirror geometry.",
+    summary: "Diverges light from a real convex spherical surface, including its spherical aberration.",
     title: 'Convex mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5137,7 +5155,7 @@ export const wikiEntries = [
 
   {
     type: 'cmirror',
-    summary: "Focuses reflected light from a concave spherical surface, showing how marginal rays cross ahead of the paraxial focus because of spherical aberration.",
+    summary: "Focuses light from a real concave spherical surface, including its spherical aberration.",
     title: 'Concave mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5191,7 +5209,7 @@ export const wikiEntries = [
 
   {
     type: 'oap',
-    summary: "Reflects light from an exact parabolic surface, collimating a source at its focus and illustrating the difference between parabolic and spherical mirrors.",
+    summary: "Reflects light from an exact parabola, collimating a source at its focus without spherical aberration.",
     title: 'Parabolic mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5283,6 +5301,180 @@ export const wikiEntries = [
   },
 
   {
+    type: 'conicmirror',
+    title: 'Conic mirror',
+    category: 'Mirrors',
+    summary: 'Reflects from an exact conic surface — sphere, parabola, ellipse or hyperbola — with an optional real central opening.',
+    realWorld: {
+      html: `
+        <p>A spherical mirror is easy to make and wrong in a specific way: rays striking
+        it far from the axis cross ahead of the ones near the axis, so a distant star
+        never quite comes to a point. That is spherical aberration, and it is not a
+        manufacturing defect — it is what a sphere does. The conic sections fix it, each
+        one exactly, for one particular pair of conjugate points.</p>
+        <p>The surface is described by a vertex radius and a <strong>conic constant</strong>
+        k, which selects the section: k = 0 is a sphere, k = −1 a parabola, −1 &lt; k &lt; 0
+        a prolate ellipse, k &lt; −1 a hyperbola, and k &gt; 0 an oblate ellipse.</p>`,
+      formulas: [
+        { tex: 'z(y) = \\frac{y^{2}/R}{1 + \\sqrt{1 - (1+k)\\,y^{2}/R^{2}}}', caption: 'The conic sag: how far the surface has departed from its vertex plane at height y. One radius and one conic constant describe every shape in the family.' },
+      ],
+      html2: `
+        <p>Each conic images one pair of points perfectly. A <strong>parabola</strong>
+        takes a source at infinity to its focus, which is why it is the shape of a
+        telescope primary and of the <a href="../oap/">off-axis parabolic mirror</a>. An
+        <strong>ellipse</strong> images one of its two foci onto the other, both at finite
+        distance. A <strong>hyperbola</strong> does the same for one real and one virtual
+        focus.</p>
+        <p>Combining two of them is how reflecting telescopes and objectives are built: a
+        Cassegrain pairs a parabolic primary with a hyperbolic secondary, a Gregorian with
+        an elliptical one, and a Ritchey–Chrétien uses two hyperbolas to clear coma as
+        well. The same two-mirror idea, turned into a microscope objective, is the
+        standard tool of infrared microscopy and FTIR: mirrors have no dispersion at all,
+        so the focus does not move with wavelength, and no glass is asked to transmit
+        light it would simply absorb.</p>
+        <p>What every on-axis two-mirror system pays is the <strong>central
+        obstruction</strong>. The secondary sits in the beam, so the aperture is an
+        annulus: some light is lost outright, and in a real instrument the rest is
+        redistributed, with a diffraction pattern whose rings are stronger than an
+        unobstructed aperture's.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The mirror is a real conic surface, intersected analytically. Each ray's hit
+        point and surface normal are solved on the conic itself rather than on a paraxial
+        stand-in, so aberration is a <em>result</em> here: give a mirror k = 0 and the
+        marginal rays really do cross ahead of the paraxial ones, by an amount you can
+        measure with a detector.</p>
+        <p>The <strong>signed vertex radius</strong> sets curvature and which way the
+        surface bends — a radius of zero is a plane — and the <strong>coated side</strong>
+        chooses which face reflects; the other is opaque, and reflectivity below 100% is
+        absorbed rather than transmitted, as a solid mirror substrate would.</p>
+        <p>The <strong>central opening</strong> is a real hole, not a drawing. Rays inside
+        it pass through the mirror entirely, and — because the search does not stop at the
+        opening — a ray that enters through the hole at an angle can still strike the
+        annulus further along, which is exactly the path the light takes in a Cassegrain.
+        Because a requested radius can be too short for the requested aperture to exist,
+        the <em>Geometry used</em> readout always reports the radius and opening actually
+        realized, so a silently adjusted prescription cannot pass unnoticed.</p>`,
+      formulas: [],
+      limitations: `<p>This is a two-dimensional meridional section. There is no
+        sagittal plane, so nothing here reproduces astigmatism or field curvature as a
+        real conic would show them off-axis, and a rotational surface's behaviour is only
+        being sampled along one cut.</p>
+        <p>Nothing is diffractive: there is no Airy pattern, none of the ring
+        redistribution a central obstruction causes, and no spider vanes, so the
+        geometric point focus a well-matched conic pair produces is sharper than any real
+        instrument's. Reflectivity is a single flat percentage with no angle,
+        polarization or wavelength dependence, so a coating's spectrum and an infrared
+        detector's responsivity are both outside the model. The conic constant is bounded
+        to ±20 and the radius to ±5000&nbsp;mm.</p>`,
+    },
+    related: ['oap', 'cmirror', 'mirror', 'objective'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Parabolic Mirrors', url: 'https://www.rp-photonics.com/parabolic_mirrors.html' },
+      { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
+    ],
+  },
+
+  {
+    type: 'polygonscanner',
+    title: 'Polygon scanner',
+    category: 'Mirrors',
+    summary: 'Traces reflection from every facet of a rotating regular polygon.',
+    realWorld: {
+      html: `
+        <p>A <strong>rotating polygon scanner</strong> is a prism of flat mirror facets
+        cut around a wheel, spun continuously by a motor. Each facet sweeps the beam
+        through one line; as it passes out of the beam the next facet picks it up at the
+        start of the next line. The idea is old enough to be everywhere without being
+        noticed — it is the mechanism inside laser printers, supermarket barcode
+        scanners, many LiDAR heads, and the line-scanning laser processing systems used
+        for high-throughput marking and ablation.</p>
+        <p>Its advantage over a <a href="../galvo/">galvo mirror</a> is that the motion
+        never reverses. A galvo has to decelerate, stop and accelerate back at the end of
+        every line, and the settling that follows is what limits how fast it can scan. A
+        polygon turns one way at constant speed, so there is no turnaround to wait for
+        and the line rate is set purely by how fast the motor spins and how many facets
+        it carries:</p>`,
+      formulas: [
+        { tex: 'f_{\\text{line}} = \\frac{N \\cdot \\text{RPM}}{60}', caption: 'Lines per second, for N facets. A 12-facet wheel at 30,000 RPM delivers 6,000 lines per second — a rate no galvo of comparable aperture can approach.' },
+        { tex: '\\Delta\\theta_{\\text{optical}} = \\frac{4\\pi}{N}', caption: 'The optical sweep one facet delivers. Reflection doubles a mechanical angle, and the wheel turns through a full facet pitch 2π/N while one facet crosses the beam, so fewer facets buy a wider scan and a lower line rate.' },
+      ],
+      html2: `
+        <p>What you pay for that speed is <strong>pupil walk</strong>. A galvo pivots
+        about its own face, so the beam leaves from roughly the same place and only the
+        angle changes. A polygon facet is offset from the rotation axis, so as the wheel
+        turns the reflection point slides bodily along the facet and the beam translates
+        as well as tilting. Scan lenses for polygon systems are designed around that
+        moving pupil, and facets are made generously larger than the beam so it has room
+        to walk.</p>
+        <p>The other cost is the gap between facets. For part of every rotation the beam
+        straddles the edge between two facets and is split in two, each half leaving at a
+        completely different angle. Nothing useful can be done with that light, so the
+        source is gated off across the transition — the scanner's <em>duty cycle</em> is
+        the fraction of each facet period that survives. A wider beam eats more of the
+        facet and leaves less duty, which is the trade behind the large wheels in
+        high-power line-scanning heads.</p>
+        <p>Because every facet is cut and mounted separately, real wheels also carry
+        facet-to-facet angular errors. A facet tilted a fraction of a milliradian out of
+        plane puts its line slightly above or below the others, and since the error
+        repeats once per revolution it shows up as periodic banding in the scanned
+        image — the reason precision systems either specify pyramidal error tightly or
+        correct it actively.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The component is a regular polygon centred on its rotation axis, and the
+        vertices that draw it are the same vertices that get traced: every facet you can
+        see is a real mirror surface, so there is no separate abstract scan angle that
+        could disagree with the picture. Each facet reflects by the ordinary vector law
+        of reflection used by the plain <a href="../mirror/">mirror</a>, which means the
+        2× angle doubling and the pupil walk are not written into the model — they simply
+        come out of turning the geometry.</p>
+        <p><strong>Rotation</strong> runs the wheel continuously at a set RPM, or holds a
+        <em>static phase</em> so you can step through a facet by hand. The
+        <em>facet rate</em> readout gives the physical lines per second at all times,
+        even when playback is slowing the visible motion down for inspection.</p>
+        <p>The <strong>usable scan window</strong> is an ideal synchronized blanker: a
+        centred fraction of each facet period during which the facets reflect, with the
+        hub drawn green. Outside it the facets absorb, the hub turns amber, and no
+        outgoing ray remains — the modelled equivalent of gating the source across a
+        facet transition.</p>
+        <p>The wheel is opaque, so a facet reflectivity below 100% loses the remainder to
+        the coating rather than transmitting it. That is deliberate: a solid metal wheel
+        has no way to pass light, and letting it through would produce spurious
+        reflections off the inside faces of the far facets.</p>`,
+      formulas: [
+        { tex: 'w_{\\text{facet}} = D \\sin\\!\\left(\\frac{\\pi}{N}\\right)', caption: 'The facet width readout — the chord of one facet. This is the number to compare a beam width against: over one facet period the facet travels its whole chord through the beam, so a beam occupying a fraction f of it is on a single facet for only about 1 − f of the period.' },
+      ],
+      limitations: `<p>The scan window is <strong>not derived from your beam</strong>.
+        It is a fraction of the facet period centred on the facet, and the component has
+        no knowledge of what is illuminating it, so a window left wider than the geometry
+        supports will show the beam splitting across two facets while the hub still reads
+        open. That split is real behaviour — it is what the blanking exists to hide — but
+        choosing the window to suit the beam is left to you. Oblique incidence tightens
+        it further and asymmetrically: the footprint on the facet is the beam width
+        divided by the cosine of the incidence angle, and that angle grows on one side of
+        the sweep and shrinks on the other, so the clean window is both narrower than the
+        facet ratio suggests and not centred on the facet.</p>
+        <p>Blanking is an ideal switch synchronized to the facet, not a model of how any
+        particular controller drives a source. Every facet is perfect and identical:
+        there is no pyramidal or facet-to-facet angular error, so none of the periodic
+        line banding that characterizes real wheels appears, and no bearing wobble,
+        windage, or timing jitter. There is no f-theta or telecentric scan lens — put an
+        ordinary lens after the wheel and the focus moves as f·tan θ, with the pincushion
+        that implies. Nothing here predicts a diffraction-limited spot size, and the
+        second scan axis that turns lines into an area is out of the plane and not
+        modelled.</p>`,
+    },
+    related: ['galvo', 'mirror', 'aod'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Laser Scanners', url: 'https://www.rp-photonics.com/laser_scanners.html' },
+      { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
+    ],
+  },
+
+  {
     type: 'retroreflector',
     summary: "Returns light antiparallel through a right-angle mirror pair, with optional translation that lengthens the round-trip optical path for mechanical delay demonstrations.",
     title: 'Retroreflector',
@@ -5351,7 +5543,7 @@ export const wikiEntries = [
   },
   {
     type: 'eye', title: 'Human eye', category: 'Detectors',
-    summary: 'Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.',
+    summary: "Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.",
     realWorld: { html: `<p>The eye forms an image on the retina using the refractive power of the cornea and crystalline lens. The iris controls the pupil opening, while accommodation changes the lens shape to bring different object distances into focus.</p>` },
     inOpticalSetup: {
       html: `<p>The pupil clips incoming rays, an equivalent thin lens bends the accepted light, and a retinal detector records the resulting signal. Adjust <em>Eye diameter</em>, <em>Pupil diameter</em>, and <em>Lens focal length</em> to compare the illuminated spot. A linked detector screen makes the retinal reading visible beside the eye.</p><p>In the example, a parallel beam enters the pupil. Change the focal length to move the best focus relative to the retinal plane, or narrow the pupil to admit less of the beam.</p>`,
@@ -5360,7 +5552,7 @@ export const wikiEntries = [
   },
   {
     type: 'generaldetector', title: 'General detector', category: 'Detectors',
-    summary: 'Collects light at one sensor face and reports multiple beam properties, combining power, spectrum, polarization, wavefront, and pulse information in one instrument.',
+    summary: "Collects light at one sensor face and reports multiple beam properties, combining power, spectrum, polarization, wavefront, and pulse information in one instrument.",
     realWorld: { html: `<p>A laboratory normally measures optical power, spectrum, polarization, beam shape, and pulse timing with different instruments. Each instrument has its own acceptance, resolution, and calibration; no single generic detector replaces all of them.</p>` },
     inOpticalSetup: {
       html: `<p>The general detector combines the workbench's supported readings at one active face. Point the face toward the incoming beam and attach a detector screen to inspect the available views. The example uses a pulsed source so both spectral and temporal properties are present.</p><p>Reduce the active height or move the detector off-axis to see how clipping changes the collected signal. Power in watts depends on the source power specified in the scene.</p>`,
@@ -5369,7 +5561,7 @@ export const wikiEntries = [
   },
   {
     type: 'display', title: 'Detector screen', category: 'Detectors',
-    summary: 'Shows the live readings of a linked detector on the canvas, with sensor-specific views and a data cable that never changes optical propagation.',
+    summary: "Shows the live readings of a linked detector on the canvas, with sensor-specific views and a data cable that never changes optical propagation.",
     realWorld: { html: `<p>A detector's readout electronics turn its electrical output into numbers or plots. A display shows the information measured by the connected instrument; a cable to the display is a signal connection, not another optical path.</p>` },
     inOpticalSetup: {
       html: `<p>Select <em>Sensor input</em> to link the screen to a detector. Available views follow that sensor's capabilities, and the display adapts its information density to its drawn size. The cable carries data only: moving the screen or routing its cable across a beam cannot attenuate or deflect the light.</p><p>The example links a screen to a power meter behind a neutral-density filter. Change the filter transmission to change the reading, then move the screen to see that its position has no optical effect.</p>`,
@@ -5378,7 +5570,7 @@ export const wikiEntries = [
   },
   {
     type: 'delayline', title: 'Mechanical delay line', category: 'Pulse Timing',
-    summary: 'Adds an adjustable folded optical path while preserving the outgoing beam axis, for comparing pulse arrival times at fixed or periodically swept delays.',
+    summary: "Adds an adjustable optical path to delay pulses, keeping the outgoing beam on its axis.",
     realWorld: {
       html: `<p>A mechanical optical delay line changes the distance traveled by light using a translation stage and folding mirrors or a retroreflector. Time-resolved experiments use this change to vary the arrival of one pulse relative to another. The path multiplier depends on the number of passes through the moving section${cite(1)}.</p>`,
       formulas: [{ tex: String.raw`\Delta t = \frac{\Delta L}{c}`, caption: 'For an extra optical path ΔL in vacuum. A simple double-pass stage moving by x adds ΔL = 2x.' }],
@@ -5391,7 +5583,7 @@ export const wikiEntries = [
   },
   {
     type: 'chopper', title: 'Chopper', category: 'Modulators',
-    summary: 'Periodically interrupts light with an adjustable frequency and duty cycle, showing gated pulse trains and a schematic chopped pattern for continuous beams.',
+    summary: "Periodically interrupts light with an adjustable frequency and duty cycle, showing gated pulse trains and a schematic chopped pattern for continuous beams.",
     realWorld: { html: `<p>An optical chopper uses a rotating slotted wheel to interrupt a beam. Chopping frequency describes how often the beam is interrupted, while duty cycle describes the fraction of each cycle that remains open. Commercial systems offer different wheel patterns and frequency ranges${cite(1)}.</p>` },
     inOpticalSetup: {
       html: `<p>Enable <em>Modulate on/off</em>, set <em>Chop frequency</em> in hertz, and adjust the on fraction and gate offset. Pulsed illumination is gated in time. CW light is drawn in visible chunks, while its detector reading uses duty-averaged power.</p><p>The example sends CW light through a 50% gate to a detector. Lower the on fraction to shorten the drawn illuminated sections and reduce the average reading. Disable modulation to restore uninterrupted transmission.</p>`,
@@ -5400,7 +5592,7 @@ export const wikiEntries = [
   },
   {
     type: 'crystal', title: 'Crystal', category: 'Nonlinear Optics',
-    summary: 'Converts a chosen fraction of incident light into harmonic, parametric, supercontinuum, or custom output, with an option to retain the residual pump.',
+    summary: "Converts a chosen fraction of incident light into harmonic, parametric, supercontinuum, or custom output, with an option to retain the residual pump.",
     realWorld: { html: `<p>Nonlinear optical crystals can generate light at frequencies different from the input. For example, second-harmonic generation doubles frequency and halves vacuum wavelength. Efficient conversion depends on excitation intensity and phase matching, rather than a freely chosen conversion percentage${cite(1)}.</p>` },
     inOpticalSetup: {
       html: `<p>Choose a conversion mode before expecting an output: the default <em>None</em> passes light unchanged. SHG and THG set the wavelength to one half or one third of the input. Custom output uses the entered wavelength; supercontinuum creates a fixed illustrative band. Conversion efficiency sets the converted ray weight, and residual-pump transmission retains the unconverted branch.</p><p>OPO mode uses the configured pump and signal wavelengths to calculate a positive idler wavelength when possible, assigning equal converted weights to signal and idler. Use a signal wavelength longer than the pump. The example doubles 1064 nm to 532 nm and separates it from the remaining pump with a dichroic.</p>`,
@@ -5409,7 +5601,7 @@ export const wikiEntries = [
   },
   {
     type: 'sample', title: 'Sample', category: 'Specimens',
-    summary: 'Represents an illuminated specimen with configurable transmission and signal channels, for exploring excitation delivery, fluorescence collection, and qualitative nonlinear optical emission.',
+    summary: "Represents an illuminated specimen with configurable transmission and signal channels, for exploring excitation delivery, fluorescence collection, and qualitative nonlinear optical emission.",
     realWorld: { html: `<p>A specimen can transmit or absorb excitation light and generate an optical signal. Fluorescence and coherent nonlinear signals arise through different processes; nonlinear microscopy includes two-photon fluorescence, second-harmonic generation, and coherent anti-Stokes Raman scattering${cite(1)}.</p>` },
     inOpticalSetup: {
       html: `<p>Orient the sample across the beam: at zero rotation its long axis is horizontal, so a horizontal incoming beam needs a 90° sample rotation. Choose the specimen mode, excitation transmission, and desired channels. The model supports stacked fluorescence, SHG, THG, SFG, and CARS signals; SFG and CARS require two different excitation wavelengths meeting at the same spot.</p><p>The example produces a fluorescent signal under 488 nm illumination. Adjust its emission and transmission, then use a filter and detector to distinguish emitted light from the excitation. Parametric channels use a forward lobe with an optional weaker backward contribution.</p>`,
@@ -5418,7 +5610,7 @@ export const wikiEntries = [
   },
   {
     type: 'stage', title: 'Sample on piezo stage', category: 'Specimens',
-    summary: 'Moves a mounted sample through a static position, lateral scan, depth scan, or raster, with optional pulsed writing marks for photocurable resin.',
+    summary: "Moves a mounted sample through static, lateral, depth or raster scans, and can record writing in resin.",
     realWorld: { html: `<p>A sample stage translates the specimen relative to the illumination and collection optics. Lateral motion samples different positions across a specimen; axial motion changes its position along the optical axis. A physical stage has finite travel, response time, and positioning accuracy.</p>` },
     inOpticalSetup: {
       html: `<p>The stage combines a mounting aperture with the sample's optical modes. Select a static position, long-axis scan, beam-axis depth scan, or synchronized raster, then set the travel and frequency. At 90° rotation, a horizontal beam crosses the sample and a long-axis scan moves it vertically on the canvas.</p><p>The example moves an illuminated sample laterally. For a writing demonstration, choose photocurable resin, enable voxel preview, and use a pulsed source. Marks record traced pulse arrivals in the moving sample.</p>`,
@@ -5427,7 +5619,7 @@ export const wikiEntries = [
   },
   {
     type: 'objarrow', title: 'Object', category: 'Sources',
-    summary: 'Places an arrow, letter, or tree as an imaging object, with an optional ray fan and computed paraxial image for lens demonstrations.',
+    summary: "Places an arrow, letter, or tree as an imaging object, with an optional ray fan and computed paraxial image for lens demonstrations.",
     realWorld: { html: `<p>Ray diagrams represent an extended object with a recognizable shape so that image position, orientation, and magnification can be compared. A converging lens can form a real inverted image or a virtual upright image depending on object distance.</p>` },
     inOpticalSetup: {
       html: `<p>Choose an arrow, letter F, or tree, set its height, and enable the image marker. The optional ray fan originates at the object's on-axis anchor; it is not a full collection of rays from every point of the shape. The paraxial image marker is calculated separately.</p><p>The example places an object 200 mm before a 100 mm lens. Its paraxial image appears 200 mm beyond the lens with equal size and inverted orientation. Move the lens to explore magnification and virtual images.</p>`,
@@ -5436,7 +5628,7 @@ export const wikiEntries = [
   },
   {
     type: 'probe', title: 'Beam probe', category: 'Annotations',
-    summary: 'Reads the nearby traced beam without intercepting it, showing a selected spectrum, wavelength, power, polarization, pulse duration, or intensity-over-time view.',
+    summary: "Reads the nearby traced beam without intercepting it, showing a selected spectrum, wavelength, power, polarization, pulse duration, or intensity-over-time view.",
     realWorld: { html: `<p>Laboratory beam diagnostics normally require a sensor or pickoff that interacts with the light. A non-intercepting label in a ray diagram instead communicates a property already known from the model; it is not a physical measuring instrument.</p>` },
     inOpticalSetup: {
       html: `<p>Place the crosshair near a traced beam and select the property to show. Spectrum and time views provide range controls; pulse duration requires suitable pulsed light. The probe reads the nearest traced beam rather than integrating all light over a detector face.</p><p>The example puts a spectrum probe between a broadband source and a detector. Move it away from the beam, then back, to see its dependence on the selected location. It never absorbs light or creates a new optical branch.</p>`,
@@ -5445,7 +5637,7 @@ export const wikiEntries = [
   },
   {
     type: 'figureframe', title: 'Figure frame', category: 'Annotations',
-    summary: 'Defines a rectangular export crop directly on the canvas, keeping a chosen composition while hiding the frame border and handles from the final figure.',
+    summary: "Sets the exact export crop on the canvas; its border and handles never appear in the exported figure.",
     realWorld: { html: `<p>A figure's crop determines which parts of a setup appear in a publication or presentation. It is a composition choice, separate from any optical aperture or physical enclosure shown in the drawing.</p>` },
     inOpticalSetup: {
       html: `<p>Place a frame around the desired composition and resize its edges or corners. The frame controls the export bounds, while its own border and editing handles remain canvas-only. Leave room inside the crop for component names, probe readouts, and any beam endpoints you want to show.</p><p>The example frames a small lens bench. Resize the frame and export the scene to compare the crop. Light continues to propagate beyond the frame on the workbench.</p>`,
@@ -5454,7 +5646,7 @@ export const wikiEntries = [
   },
   {
     type: 'highlight', title: 'Highlight', category: 'Annotations',
-    summary: 'Adds a colored background region behind the optical setup, for grouping components or calling attention to a section without changing any traced rays.',
+    summary: "Adds a coloured background region behind part of the setup, without affecting any rays.",
     realWorld: { html: `<p>Shaded regions in optical diagrams can identify a subsystem, distinguish experimental stages, or mark an area of interest. Such visual grouping has no physical optical meaning unless the caption explicitly assigns one.</p>` },
     inOpticalSetup: {
       html: `<p>Resize and position the highlight behind the components you want to group, then choose its appearance. It remains behind both rays and elements, so the beam path and hardware stay visible. Use a text label to explain what the shaded region means.</p><p>The example marks the lens area on a simple bench. Move or resize the highlight across the incoming and outgoing beam to confirm that only the composition changes.</p>`,
@@ -5463,7 +5655,7 @@ export const wikiEntries = [
   },
   {
     type: 'box', title: 'Custom box', category: 'Custom',
-    summary: 'Draws a labeled rectangular enclosure with explicit beam-blocking or pass-through behavior, for representing equipment whose internal optics are outside the current setup.',
+    summary: "Draws a labelled enclosure that either blocks beams or lets them pass through.",
     realWorld: { html: `<p>An enclosure in an optical diagram can stand for a housing or a device whose internal optical train is not shown. The drawing alone does not specify whether the real device transmits, absorbs, focuses, or converts light.</p>` },
     inOpticalSetup: {
       html: `<p>Set the label, width, height, and fill, then choose the beam behavior. <em>Blocks beam</em>, the default, absorbs rays at the rectangular boundary. <em>Beam passes through</em> adds no optical interaction.</p><p>The example places a blocking box in a laser path. Switch it to pass-through and the detector receives light again. If the box is meant to focus, split, or convert light, use the corresponding native optical elements to represent that behavior.</p>`,
@@ -5472,7 +5664,7 @@ export const wikiEntries = [
   },
   {
     type: 'textlabel', title: 'Text label', category: 'Annotations',
-    summary: 'Adds formatted notes directly to the canvas using Markdown, with headings, lists, emphasis, code, and clickable web or DOI links for supporting references.',
+    summary: "Adds formatted Markdown notes to the canvas, with headings, lists and clickable links.",
     realWorld: { html: `<p>Labels explain component roles, operating conditions, and the assumptions behind a diagram. Keeping interpretation beside the relevant hardware helps readers distinguish measured parameters from illustrative choices.</p>` },
     inOpticalSetup: {
       html: `<p>Place a text label and double-click it, press Enter when selected, or use <em>Edit text</em> to edit on the canvas. Markdown supports headings, lists, emphasis, and code; web and DOI addresses become clickable links. The font-size and color controls set its base appearance.</p><p>The example demonstrates several formatting styles. Keep a short explanation beside the setup and use a link for longer background material. Text grows from its left anchor, while resizing changes the base font size.</p>`,
@@ -5481,7 +5673,7 @@ export const wikiEntries = [
   },
   {
     type: 'gascell', title: 'Gas cell', category: 'Lab elements',
-    summary: 'Draws a gas-cell housing with optional windows, extension tube, and gas port, providing laboratory context without adding absorption, refraction, or gas dynamics.',
+    summary: "Draws a gas-cell housing for laboratory context, without any optical effect on the beam.",
     realWorld: { html: `<p>A gas cell contains a gas along an optical path. Its physical behavior depends on the gas, pressure, path length, and windows. A housing may also provide connections for gas flow or for a fiber passing through the cell.</p>` },
     inOpticalSetup: {
       html: `<p>The gas cell is deliberately diagram-only. Set its dimensions, optional windows, extension side, gas-port appearance, and transparency to show the hardware context. The transparency control changes the drawing, not optical transmission.</p><p>The example sends a beam through the housing. Toggle its windows or change its appearance and the traced path stays the same. A fiber drawn through a gas cell remains an independent fiber path; the housing does not bind to it or change its propagation settings.</p>`,
@@ -5490,7 +5682,7 @@ export const wikiEntries = [
   },
   {
     type: 'window', title: 'Optical window', category: 'Lab elements',
-    summary: 'Draws an optical window as laboratory hardware, with adjustable appearance and dimensions while leaving all beam directions, powers, and arrival times unchanged.',
+    summary: "Draws an optical window as laboratory hardware, without any optical effect on the beam.",
     realWorld: { html: `<p>An optical window separates environments while admitting light. A real window can introduce refraction, reflection, absorption, and dispersion depending on its material, thickness, coatings, and incidence angle.</p>` },
     inOpticalSetup: {
       html: `<p>This window is a diagram-only symbol. Adjust its size, orientation, and transparency to place it in the drawing. It never bends, blocks, or absorbs a ray, and it adds no optical path or pulse dispersion.</p><p>The example shows uninterrupted light through the symbol. Rotate it to confirm that the beam stays unchanged. To study the optical effects of a glass plate, use a rectangular freeform-glass boundary with a suitable material instead.</p>`,

@@ -1,3 +1,5 @@
+import { polygonScannerState } from './polygon-scanner.js';
+
 // Canvas simulation time scale: how many simulated nanoseconds elapse per
 // real wall-clock second. One shared clock drives pulse packets, chopper
 // gating, AOM/EOM modulation, and galvo scanning, so those elements stay
@@ -79,6 +81,9 @@ export function elementDriveHz(el) {
     case 'pulsedlaser':
     case 'sclaser':
       return p.temporalMode === 'pulsed' && p.repRateMHz > 0 ? p.repRateMHz * 1e6 : null;
+    case 'polygonscanner':
+      return p.scanMode !== 'static' && polygonScannerState(p).rpm > 0
+        ? polygonScannerState(p).lineRateHz : null;
     case 'galvo':
       return p.scanMode && p.scanMode !== 'static' ? Math.max(0.01, p.scanFrequencyHz || 1) : null;
     case 'chopper':
@@ -117,6 +122,7 @@ export function elementDriveHz(el) {
 
 const MOTION_LABELS = {
   galvo: 'galvo scanning',
+  polygonscanner: 'polygon scanning',
   chopper: 'the chopper',
   aom: 'AOM modulation',
   aod: 'AOD scanning',

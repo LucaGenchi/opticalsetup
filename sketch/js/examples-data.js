@@ -55,6 +55,30 @@ export const examples = [
     "slug": "michelson-interferometer"
   },
   {
+    "group": "Reflective Imaging Systems",
+    "name": "Gregorian telescope — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
+    "slug": "gregorian-telescope-element-by-element"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "IR Cassegrain objective — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ir-cassegrain-objective-element-by-element"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "Ritchey–Chrétien telescope — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ritchey-chretien-telescope-element-by-element"
+  },
+  {
+    "group": "Scanning",
+    "name": "Polygon scanner — line scanning",
+    "path": "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
+    "slug": "polygon-scanner-line-scanning"
+  },
+  {
     "group": "Ultrashort Pulses",
     "name": "Ultrashort pulse chirping",
     "path": "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",

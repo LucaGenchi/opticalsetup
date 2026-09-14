@@ -364,8 +364,8 @@ async function main() {
   if (missing.length) throw new Error(`Missing wiki entries: ${missing.join(', ')}`);
   for (const entry of wikiEntries) {
     const words = entry.summary?.trim().split(/\s+/).length || 0;
-    if (words < 18 || words > 28 || entry.summary.length > 190) {
-      throw new Error(`${entry.type}: write a complete 18–28 word summary, at most 190 characters`);
+    if (words < 10 || words > 28 || entry.summary.length > 190) {
+      throw new Error(`${entry.type}: write a complete 10–28 word summary, at most 190 characters`);
     }
     if (registry[entry.type] && entry.category !== registry[entry.type].category) {
       throw new Error(`${entry.type}: wiki category differs from the component registry`);

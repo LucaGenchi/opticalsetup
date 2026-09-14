@@ -5,12 +5,13 @@ import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
-  displayActionUpdate, delayLineSweepSpanMm,
+  displayActionUpdate, delayLineSweepSpanMm, normalizeSupercontinuumParams,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
+import { polygonScannerState } from './polygon-scanner.js';
 import { traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
@@ -214,8 +215,9 @@ const ILLUSTRATIVE_MAX_CYCLE_S = 12;
 // would need ~1000 real seconds per sweep even at 1 ms/s — it falls back to
 // the same illustrative wall-clock treatment as the piezo stage and the
 // retroreflector, so the mirror still visibly scans instead of freezing.
-function galvoAnimationSeconds(params) {
-  const hz = Math.max(0.01, params.scanFrequencyHz || 1);
+function galvoAnimationSeconds(params, polygon = false) {
+  const hz = polygon ? Math.max(0.01, polygonScannerState(params).lineRateHz)
+    : Math.max(0.01, params.scanFrequencyHz || 1);
   // Mechanics mode deliberately opts every mechanical element out of the
   // simulated clock, regardless of frequency — see pulsePlayback.mechanicsMode.
   if (!pulsePlayback.mechanicsMode) {
@@ -236,8 +238,8 @@ function animatedOpticalElements() {
   if (!hasGalvoMotion() && !hasAodScan() && !hasPhaseModulation() && !hasStageMotion()
     && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence()) return state.elements;
   return state.elements.map(el => {
-    if (el.type === 'galvo' && el.params.scanMode !== 'static') {
-      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
+    if (isScanningMirror(el)) {
+      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params, el.type === 'polygonscanner') };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
@@ -258,8 +260,8 @@ function animatedOpticalElements() {
 function animatedVisualElements() {
   if (!hasMotion() && !hasSignalSpotStage()) return state.elements;
   return state.elements.map(el => {
-    if (el.type === 'galvo' && el.params.scanMode !== 'static') {
-      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
+    if (isScanningMirror(el)) {
+      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params, el.type === 'polygonscanner') };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
@@ -287,7 +289,7 @@ function renderImmersion() {
 }
 
 function hasMotion() {
-  return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
+  return state.elements.some(el => isScanningMirror(el)
     || (el.type === 'aod' && el.params.scanMode !== 'static')
     || (el.type === 'phasemodulator' && el.params.driveMode !== 'static')
     || (el.type === 'delayline' && el.params.moveMode === 'linear'
@@ -306,8 +308,14 @@ function hasAotfSequence() {
     && Array.isArray(el.params.channels) && el.params.channels.length > 1);
 }
 
+function isScanningMirror(el) {
+  return (el.type === 'galvo' && el.params.scanMode !== 'static')
+    || (el.type === 'polygonscanner' && el.params.scanMode !== 'static'
+      && polygonScannerState(el.params).rpm > 0);
+}
+
 function hasGalvoMotion() {
-  return state.elements.some(el => el.type === 'galvo' && el.params.scanMode !== 'static');
+  return state.elements.some(isScanningMirror);
 }
 
 function hasAodScan() {
@@ -1014,6 +1022,7 @@ function writeParam(el, key, value) {
   if (spec?.type === 'derived') spec.set(el.params, value);
   else el.params[key] = value;
   if (el.type === 'objective') Object.assign(el.params, normalizeObjectiveParams(el.params));
+  if (el.type === 'sclaser') Object.assign(el.params, normalizeSupercontinuumParams(el.params));
 }
 
 function boundedParam(el, key, value) {
@@ -1023,8 +1032,6 @@ function boundedParam(el, key, value) {
   const resolve = bound => typeof bound === 'function' ? bound(el.params) : bound;
   let lo = resolve(spec.min) ?? (spec.type === 'optsize' ? 1 : -Number.MAX_SAFE_INTEGER);
   let hi = resolve(spec.max) ?? (spec.type === 'optsize' ? 500 : Number.MAX_SAFE_INTEGER);
-  if (el.type === 'sclaser' && key === 'scMax') lo = Math.max(lo, el.params.scMin);
-  if (el.type === 'sclaser' && key === 'scMin') hi = Math.min(hi, el.params.scMax);
   const step = Number.isFinite(spec.step) && spec.step > 0 ? spec.step : (spec.type === 'optsize' ? 0.5 : 1);
   let magnitude = negative ? Math.abs(value) : value;
   magnitude = Math.min(hi, Math.max(lo, magnitude));
@@ -1658,7 +1665,12 @@ function onDown(e) {
   }
   if (hitTuneHandle(sel, w)) {
     const tune = getDirectManipulation(sel).tune;
-    drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: readParam(sel, tune.key), moved: false };
+    // A supercontinuum's duration is lifted whenever its band narrows below
+    // what the duration allows. Mid-drag that would ratchet: sweeping λ max
+    // down and back would leave the pulse at the narrowest band's floor, so
+    // each step re-derives it from the duration the drag started with.
+    drag = { mode: 'tune', el: sel, tune, clientY: e.clientY, value: readParam(sel, tune.key), moved: false,
+      pulseWidthFs: sel.type === 'sclaser' ? sel.params.pulseWidthFs : undefined };
     svg.setPointerCapture(e.pointerId);
     return;
   }
@@ -1820,6 +1832,7 @@ function onMove(e) {
     const next = boundedParam(drag.el, drag.tune.key, drag.value + steps * step);
     if (next === readParam(drag.el, drag.tune.key)) return;
     if (!drag.moved) { pushUndo(); drag.moved = true; }
+    if (drag.pulseWidthFs !== undefined) drag.el.params.pulseWidthFs = drag.pulseWidthFs;
     writeParam(drag.el, drag.tune.key, next);
     setStatus(directValueLabel(drag.el, drag.tune));
     renderAll();

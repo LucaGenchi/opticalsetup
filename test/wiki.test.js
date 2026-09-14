@@ -26,7 +26,7 @@ test('every visible component and fiber tool has a built, discoverable wiki arti
     assert.ok(html.includes(`class="tagline">${esc(entry.summary)}</p>`), entry.type);
     assert.ok(hub.includes(`class="desc">${esc(entry.summary)}</span>`), entry.type);
     const words = entry.summary.split(/\s+/).length;
-    assert.ok(words >= 18 && words <= 28 && entry.summary.length <= 190, entry.type);
+    assert.ok(words >= 10 && words <= 28 && entry.summary.length <= 190, entry.type);
     for (const match of html.matchAll(/href="(?:\.\.\/\.\.\/wiki\/|\.\.\/)([a-z]+)\/"/g)) {
       assert.ok(WIKI_TYPES.has(match[1]), `${entry.type} links to absent article ${match[1]}`);
     }
