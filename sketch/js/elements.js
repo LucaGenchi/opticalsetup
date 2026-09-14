@@ -1964,7 +1964,7 @@ function opoWaveText(name, wave, pulse) {
   const width = wave.bw > 0 ? `${sig3(wave.bw)} nm (${sig3(wave.widthCm)} cm⁻¹)` : 'single-frequency';
   if (!pulse) return `${name} ${width}`;
   const note = pulse.transformLimited ? ', transform-limited'
-    : pulse.transformLimitUnavailable ? ', not transform-limited: a zero linewidth has no limit'
+    : pulse.transformLimitUnavailable ? ', not transform-limited: a zero linewidth has no finite transform-limited duration'
       : pulse.durationRaisedToLimit ? ', raised to its transform limit' : '';
   return `${name} ${width}, ${formatOpoDuration(pulse.pulseWidthFs)}${note}`;
 }
