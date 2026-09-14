@@ -749,6 +749,81 @@ export const exampleEntries = [
     related: ['pulsedlaser', 'glassrod', 'pulsecompressor', 'autocorrelator'],
   },
   {
+    match: 'Synchronously pumped femtosecond OPO',
+    title: 'Synchronously pumped femtosecond OPO',
+    tagline: 'A resonator exactly as long as the gap between pump pulses, turning 1 µm femtosecond pulses into a mid-infrared idler.',
+    html: `
+      <p>An optical parametric oscillator splits pump photons into a <em>signal</em> and an
+      <em>idler</em> inside a χ⁽²⁾ crystal, and feeds one of them back through the crystal
+      with a cavity so that it keeps being amplified. With a continuous pump the feedback
+      is always there to meet. With a femtosecond pump it is not: the crystal only has
+      gain while a pump pulse is inside it, and between pulses there is none${cite(2)}.</p>
+      <p><strong>Synchronous pumping</strong> solves this by making the cavity exactly as
+      long as the gap between pump pulses. A signal pulse leaves the crystal, travels
+      once around the resonator, and arrives back just as the next pump pulse does, so
+      it is amplified again on every pass. For a pump at repetition rate
+      <span class="w">f<sub>rep</sub></span> the round trip must take
+      <span class="w">1/f<sub>rep</sub></span>, which for a linear cavity means a length
+      <span class="w">L = c / (2 f<sub>rep</sub>)</span> — 1.87 m at 80 MHz. In practice
+      the output coupler sits on a translation stage for fine control of that length${cite(1)}.</p>
+      <p>The mirrors carry the physics. Only the signal is resonant, so the cavity is
+      <strong>singly resonant</strong>: every mirror reflects the signal, while the pump
+      enters through a coating that transmits it and the idler leaves through one that
+      transmits the idler. A few per cent of the signal leaves through the output coupler
+      on each round trip.</p>
+      <p>The layout here follows a MgO:PPLN oscillator reported by O'Donnell, Chaitanya
+      Kumar and Ebrahim-Zadeh: two <span class="w">r = 100 mm</span> concave mirrors either
+      side of the crystal, a plane mirror, and a plane 5 % signal output coupler. Pumped by
+      80–100 fs pulses tunable from 997 to 1070 nm at 80 MHz, it produced an idler tunable
+      from 3132 to 4273 nm with a 140–180 nm bandwidth and up to 65 mW of average power,
+      from a threshold as low as 5 mW, with up to 78 % pump depletion${cite(1)}.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>The pump is a 1040 nm, 100 fs, 80 MHz pulsed laser. The cavity runs
+      M3 → M1 → crystal → M2 → M5 → M4, and its one-way length is exactly
+      <span class="w">c / (2 × 80 MHz) = 1873.7 mm</span>, so the traced round trip matches
+      the pump period. The standing-wave cavity is folded in a Z to fit the page.</p>
+      <p>The crystal is set to a pump wavelength of 1040 nm with a ±5 nm acceptance and a
+      1480 nm resonant signal, which places the idler at 3498 nm. Both output widths are
+      authored: the idler at <span class="w">131 cm⁻¹</span>, about 160 nm at 3.5 µm and
+      inside the reported 140–180 nm, and the signal at <span class="w">147 cm⁻¹</span>,
+      assumed as wide as the transform-limited pump. Combining pump and signal as
+      uncorrelated Gaussians would have predicted an idler about 255 nm wide, wider than
+      reported, which is why the measured width is authored directly.</p>
+      <p>The crystal converts a fixed 78 % of the pump, the reported maximum depletion.
+      By photon energy the generated signal carries 55 % of the pump power and the idler
+      23 %. The idler leaves through M2 in one pass; its probe shows the 3.5 µm band. The
+      signal leaks out through M4 on every round trip, and the tracer follows the first
+      half-dozen before its depth budget ends, so the signal detector reads about 0.15
+      of the pump rather than the full 0.55 a steady state would deliver. The residual
+      pump leaves through M5.</p>
+      <p>Things to try: lower M4's reflectivity and watch more signal leave per round trip;
+      change the signal wavelength on the crystal and follow the idler across the
+      mid-infrared; or set the pump off by more than 5 nm and the oscillator goes dark.</p>`,
+    limitations: `<p>This is a phenomenological OPO, not a cavity simulation. The crystal
+      converts a fixed fraction of the pump on its first pass; there is no threshold, gain,
+      build-up or saturation, and changing the cavity length does not detune anything —
+      in a real synchronously pumped OPO it shifts the signal and can stop oscillation.
+      The traced signal is a transient of the first few round trips, not a steady state.</p>
+      <p>Three drawing concessions stand in for real optics. The two r = 100 mm focusing
+      mirrors around the crystal are drawn as plane dichroic mirrors 50 mm either side of
+      it, because the workbench's curved mirrors reflect every wavelength equally and a
+      zero-thickness crystal needs no focus. In the reported cavity one mirror transmits
+      both the idler and the residual pump; here a dichroic switches at a single edge, so
+      the pump leaves through an extra fold, M5. The pump is a single axial ray, on which
+      the lens and plane mirrors act exactly. Pulse durations are authored, and dispersion
+      compensation inside the cavity is not modelled.</p>`,
+    citations: [
+      { label: 'C. F. O’Donnell, S. Chaitanya Kumar, M. Ebrahim-Zadeh, “Enhancement of efficiency in femtosecond optical parametric oscillators using group-velocity-matching in long nonlinear crystals,” APL Photonics 4, 050801 (2019)', url: 'https://doi.org/10.1063/1.5094550' },
+      { label: 'RP Photonics Encyclopedia — Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
+    ],
+    resources: [
+      { label: 'APE — OPO-X fs specifications (Ti:sapphire-pumped femtosecond OPO)', url: 'https://www.ape-berlin.de/en/tunable-light-sources/femtosecond-opo/opo-x-fs/' },
+    ],
+    related: ['crystal', 'dichroic', 'mirror', 'pulsedlaser', 'probe'],
+  },
+
+  {
     match: 'OPTICAL SETUP — pulsed component panorama',
     title: 'OPTICAL SETUP — pulsed component panorama',
     tagline: "OpticalSetup's own flagship demo: the words \"OPTICAL SETUP\" traced entirely in live pulsed light, exercising nearly every category in the component library.",

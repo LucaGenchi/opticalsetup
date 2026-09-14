@@ -43,6 +43,12 @@ export const examples = [
     "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
   },
   {
+    "group": "Nonlinear Optics",
+    "name": "Synchronously pumped femtosecond OPO",
+    "path": "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20femtosecond%20OPO.json",
+    "slug": "synchronously-pumped-femtosecond-opo"
+  },
+  {
     "group": "Optics Bench",
     "name": "Mach–Zehnder interferometer",
     "path": "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
