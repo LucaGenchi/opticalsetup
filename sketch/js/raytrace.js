@@ -38,6 +38,7 @@ import {
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
+import { opoPulse, opoWaves, pumpDepletion, pumpWidthNm } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -140,6 +141,22 @@ function recordMetalensHit(elementId, wavelengthNm, focalLengthMm) {
   let hits = metalensHits.get(elementId);
   if (!hits) { hits = new Map(); metalensHits.set(elementId, hits); }
   hits.set(wavelengthNm.toFixed(6), { wavelengthNm, focalLengthMm });
+}
+
+// crystal element id -> the OPO state its last pump ray produced, and source
+// element id -> configured average power, which a threshold is measured in.
+let opoStates = new Map();
+let sourceAvgPowerW = new Map();
+
+function recordOpo(elementId, state) {
+  if (!elementId) return;
+  const prev = opoStates.get(elementId);
+  // Several rays of one beam hit a crystal; report the strongest-pumped one.
+  if (!prev || (state.ratio ?? -1) >= (prev.ratio ?? -1)) opoStates.set(elementId, state);
+}
+
+export function opoReading(elementId) {
+  return opoStates.get(elementId) || null;
 }
 
 export function metalensReading(elementId) {
@@ -3305,9 +3322,8 @@ function interact(ray, hit) {
     case 'transmit': {
       const efficiency = Math.min(1, Math.max(0, data.efficiency ?? 1));
       if (data.convert === 'opo') {
-        // optical parametric down-conversion: pump -> signal + idler,
-        // energy conservation 1/lambda_p = 1/lambda_s + 1/lambda_i.
-        // Phase-matching is pump-specific: light at any other wavelength
+        // Optical parametric oscillation (see parametric.js for the model).
+        // Phase matching is pump-specific: light at any other wavelength
         // (the crystal's own signal/idler bouncing back through on a later
         // cavity round trip) just transmits unconverted — without this
         // guard, resonating signal would re-split on every single pass,
@@ -3318,31 +3334,63 @@ function interact(ray, hit) {
             && Number.isFinite(sig) && sig > 0)) {
           return data.transmitPump ? [{ d }] : [];
         }
-        if (Math.abs(ray.wl - pumpWl) > 1) return [{ d }];
-        const invIdler = 1 / pumpWl - 1 / sig;
+        // A broadband pulse is accepted across its own spectral width, so a
+        // femtosecond pump tuned a few nm off the design wavelength still
+        // pumps the crystal.
+        const pumpFwhmNm = pumpWidthNm(ray);
+        if (Math.abs(ray.wl - pumpWl) > Math.max(1, pumpFwhmNm)) return [{ d }];
+        // The cavity holds the signal; the idler follows the pump that arrives.
+        const waves = opoWaves({
+          pumpWl: ray.wl, pumpFwhmNm, signalWl: sig,
+          linewidthMode: data.linewidthMode, signalLinewidthCm: data.signalLinewidthCm,
+        });
         // A signal at or above the pump frequency leaves no positive idler.
         // Treat that as no conversion, while still honouring the user's
         // choice about whether the unconverted pump is shown or dumped.
-        if (!(invIdler > 1e-9)) return data.transmitPump ? [{ d }] : [];
+        if (!waves) {
+          recordOpo(s.el?.id, { state: 'invalid' });
+          return data.transmitPump ? [{ d }] : [];
+        }
 
-        const idler = 1 / invIdler;
-        const converted = ray.intensity * efficiency;
+        // Below threshold nothing oscillates and the pump passes untouched.
+        const thresholdW = Math.max(0, Number(data.thresholdW) || 0);
+        let depletion = 1, ratio = null;
+        if (thresholdW > 0) {
+          const pumpW = (sourceAvgPowerW.get(ray.originId) ?? NaN) * ray.intensity;
+          ratio = Number.isFinite(pumpW) ? pumpW / thresholdW : null;
+          depletion = ratio === null ? 0 : pumpDepletion(ratio);
+        }
+        const fraction = efficiency * depletion;
+        recordOpo(s.el?.id, {
+          state: ratio === null && thresholdW > 0 ? 'unknown-power' : depletion > 0 ? 'oscillating' : 'below',
+          ratio, depletion, fraction, waves,
+        });
+        if (!(fraction > 0)) return data.transmitPump ? [{ d }] : [];
+
+        const converted = ray.intensity * fraction;
+        const gen = (w, intensity, tag, transformLimited) => ({
+          d, wl: w.wl, bw: w.bw, spec: w.spec, intensity, tag,
+          pulse: opoPulse(ray.pulse, w.wl, { transformLimited }),
+          // An OPO cavity forms its own pulses; the pump's accumulated chirp
+          // is not copied onto the new light.
+          gdd: 0,
+        });
+        const syncSignal = data.linewidthMode !== 'fixed';
         let out;
-        if (Math.abs(idler - sig) <= 1e-9 * Math.max(idler, sig)) {
+        if (waves.degenerate) {
           // At degeneracy signal and idler occupy the same optical mode. One
           // ray carries their combined converted power instead of drawing two
           // coincident branches.
-          out = [{ d, wl: sig, intensity: converted, tag: 's=i' }];
+          out = [gen(waves.signal, converted, 's=i', false)];
         } else {
           // One signal and one idler photon are created per pump photon. Their
           // photon fluxes are equal, so P_s/P_i = nu_s/nu_i = lambda_i/lambda_s.
-          const signalShare = idler / (sig + idler);
           out = [
-            { d, wl: sig, intensity: converted * signalShare, tag: 's' },
-            { d, wl: idler, intensity: converted * (1 - signalShare), tag: 'i' },
+            gen(waves.signal, converted * waves.signalShare, 's', syncSignal),
+            gen(waves.idler, converted * (1 - waves.signalShare), 'i', false),
           ];
         }
-        if (data.transmitPump && efficiency < 0.999) out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'p' });
+        if (data.transmitPump && fraction < 0.999) out.push({ d, intensity: ray.intensity * (1 - fraction), tag: 'p' });
         return out;
       }
       let wl = ray.wl, bw, spec;
@@ -4069,6 +4117,10 @@ export function traceScene(elements, beams = []) {
   coarsePortCache = new Map();
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
+  opoStates = new Map();
+  sourceAvgPowerW = new Map(elements
+    .filter(el => registry[el.type]?.source && Number.isFinite(Number(el.params?.avgPowerW)))
+    .map(el => [el.id, Number(el.params.avgPowerW)]));
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen

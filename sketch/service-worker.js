@@ -38,6 +38,7 @@ const PRECACHE_PATHS = [
   "./js/main.js",
   "./js/markdown.js",
   "./js/objective.js",
+  "./js/parametric.js",
   "./js/polarization.js",
   "./js/polygon.js",
   "./js/proposal.js",
