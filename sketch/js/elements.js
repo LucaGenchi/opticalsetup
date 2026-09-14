@@ -1947,25 +1947,42 @@ export function compressorFinalState({ incoming, outgoing }) {
 
 // Inspector text for a crystal's OPO state on the last trace.
 const pct = x => `${Number((x * 100).toPrecision(3))}%`;
+const sig3 = x => Number(x.toPrecision(3));
 function opoStateText(reading) {
   if (!reading) return 'No pump reaching the crystal yet';
   if (reading.state === 'invalid') return 'No output: the signal must be longer than the pump';
-  if (reading.state === 'unknown-power') return 'Not oscillating: this source has no average power, so the threshold cannot be reached';
-  if (reading.state === 'below') {
-    return `Below threshold — pump at ${pct(reading.ratio)} of threshold, no oscillation`;
-  }
-  if (reading.ratio === null) return `Oscillating — fixed ${pct(reading.fraction)} of the pump converted (no threshold set)`;
-  return `Oscillating at ${Number(reading.ratio.toPrecision(3))}× threshold — ${pct(reading.depletion)} pump depletion, ${pct(reading.fraction)} converted`;
+  if (reading.state === 'fixed') return `Oscillating — fixed ${pct(reading.fraction)} of the pump converted (no threshold set)`;
+  if (reading.state === 'unknown-power') return 'Not oscillating: the pump source has no average power, so no threshold can be reached';
+  if (reading.state === 'needs-pulses') return 'Not oscillating: a pulse-energy threshold needs a pulsed pump';
+  const drive = reading.drive;
+  if (!drive) return 'Below threshold — no pump measured at the crystal';
+  const unit = drive.unit === 'pulseMJ' ? 'mJ' : 'W';
+  const level = `${sig3(drive.amount)} ${unit} of ${sig3(drive.threshold)} ${unit} threshold`;
+  if (reading.state === 'below') return `Below threshold — ${level}, no oscillation`;
+  return `Oscillating at ${sig3(drive.ratio)}× threshold (${level}) — ${pct(reading.depletion)} pump depletion, ${pct(reading.fraction)} converted`;
+}
+
+function formatOpoDuration(fs) {
+  if (!(fs > 0)) return '—';
+  if (fs >= 1e6) return `${sig3(fs / 1e6)} ns`;
+  if (fs >= 1e3) return `${sig3(fs / 1e3)} ps`;
+  return `${sig3(fs)} fs`;
+}
+
+function opoWaveText(name, wave, pulse) {
+  const width = wave.bw > 0 ? `${sig3(wave.bw)} nm (${sig3(wave.widthCm)} cm⁻¹)` : 'single-frequency';
+  if (!pulse) return `${name} ${width}`;
+  const note = pulse.transformLimited ? ', transform-limited'
+    : pulse.durationRaisedToLimit ? ', raised to its transform limit' : '';
+  return `${name} ${width}, ${formatOpoDuration(pulse.pulseWidthFs)}${note}`;
 }
 
 function opoWidthsText(reading) {
   const waves = reading?.waves;
-  if (!waves) return '\u2014';
-  const one = (name, w) => (w.bw > 0
-    ? `${name} ${Number(w.bw.toPrecision(3))} nm (${Number(w.widthCm.toPrecision(3))} cm⁻¹)`
-    : `${name} single-frequency`);
-  if (waves.degenerate) return one('Degenerate output', waves.signal);
-  return `${one('Signal', waves.signal)} · ${one('idler', waves.idler)}`;
+  if (!waves) return '—';
+  const pulses = reading.pulses || {};
+  if (waves.degenerate) return opoWaveText('Degenerate output', waves.merged, pulses.merged);
+  return `${opoWaveText('Signal', waves.signal, pulses.signal)} · ${opoWaveText('idler', waves.idler, pulses.idler)}`;
 }
 
 export const registry = {
@@ -4142,30 +4159,55 @@ export const registry = {
           return idler === null ? 'None — the signal must be longer than the pump' : `${Number(idler.toPrecision(5))} nm`;
         },
       },
-      // How wide the resonant signal is. A synchronously pumped fs/ps OPO
-      // emits pulses about as long as its pump's, so the signal follows the
-      // pump's spectral width; a ns or CW OPO's width is set by its cavity.
       {
-        key: 'linewidthMode', label: 'Signal linewidth', type: 'select', def: 'sync', show: p => p.convert === 'opo',
-        options: [['sync', 'Follows the pump (synchronous pumping)'], ['fixed', 'Set by the cavity']],
-      },
-      {
-        key: 'signalLinewidthCm', label: 'Signal linewidth (cm⁻¹)', type: 'number', min: 0, max: 500, step: 0.5, def: 5,
-        show: p => p.convert === 'opo' && p.linewidthMode === 'fixed',
-      },
-      // 0 keeps the old fixed-fraction behaviour, so saved scenes are unchanged.
-      {
-        key: 'thresholdW', label: 'Threshold (avg. pump W, 0 = none)', type: 'number', min: 0, max: 1000, step: 0.01, def: 0,
+        key: 'pumpAcceptanceNm', label: 'Pump acceptance (± nm)', type: 'number', min: 0, max: 100, step: 0.5, def: 1,
         show: p => p.convert === 'opo',
       },
-      { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5, show: p => p.convert !== 'none' },
+      // Linewidths are FWHM in wavenumber. Matching the pump is a heuristic
+      // for a synchronously pumped fs/ps OPO; a ns or CW OPO's signal width is
+      // set by its cavity, and a datasheet may give both outputs.
+      {
+        key: 'linewidthMode', label: 'Output linewidths', type: 'select', def: 'pump', show: p => p.convert === 'opo',
+        options: [
+          ['pump', 'Signal as wide as the pump'],
+          ['signal', 'Signal width set, idler derived'],
+          ['both', 'Signal and idler widths set'],
+        ],
+      },
+      {
+        key: 'signalLinewidthCm', label: 'Signal linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5,
+        show: p => p.convert === 'opo' && (p.linewidthMode === 'signal' || p.linewidthMode === 'both'),
+      },
+      {
+        key: 'idlerLinewidthCm', label: 'Idler linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5,
+        show: p => p.convert === 'opo' && p.linewidthMode === 'both',
+      },
+      {
+        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'unknown', show: p => p.convert === 'opo',
+        options: [['unknown', 'Duration set, spectral phase unknown'], ['transformLimited', 'Transform-limited']],
+      },
+      {
+        key: 'durationFactor', label: 'Output ÷ pump duration', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1,
+        show: p => p.convert === 'opo' && p.outputPhase !== 'transformLimited',
+      },
+      // A threshold of 0 keeps the old fixed-fraction behaviour, so saved
+      // scenes are unchanged.
+      {
+        key: 'thresholdUnit', label: 'Threshold in', type: 'select', def: 'avgW', show: p => p.convert === 'opo',
+        options: [['avgW', 'Average pump power (W)'], ['pulseMJ', 'Pump pulse energy (mJ)']],
+      },
+      {
+        key: 'thresholdW', label: 'Threshold (0 = none)', type: 'number', min: 0, max: 100000, step: 0.01, def: 0,
+        show: p => p.convert === 'opo',
+      },
+      { key: 'efficiency', label: 'Conversion efficiency (OPO: measured maximum)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5, show: p => p.convert !== 'none' },
       { key: 'transmitPump', label: 'Transmit residual pump', type: 'checkbox', def: true, show: p => p.convert !== 'none' },
       {
         key: 'opoState', label: 'Oscillation', type: 'readout', wide: true, show: p => p.convert === 'opo',
         readout: (p, el) => opoStateText(el ? opoReading(el.id) : null),
       },
       {
-        key: 'opoWidths', label: 'Output linewidths', type: 'readout', wide: true, show: p => p.convert === 'opo',
+        key: 'opoWidths', label: 'Outputs', type: 'readout', wide: true, show: p => p.convert === 'opo',
         readout: (p, el) => opoWidthsText(el ? opoReading(el.id) : null),
       },
     ],
@@ -4178,7 +4220,12 @@ export const registry = {
       const p = el.params;
       if (p.convert === 'none') return [];
       const h = (p.aperture || 22) / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: { convert: p.convert, outWl: p.outWl, pumpWl: p.pumpWl, signalWl: p.signalWl, linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, thresholdW: p.thresholdW, efficiency: p.efficiency, transmitPump: p.transmitPump } }];
+      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: {
+        convert: p.convert, outWl: p.outWl, pumpWl: p.pumpWl, signalWl: p.signalWl, pumpAcceptanceNm: p.pumpAcceptanceNm,
+        linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
+        outputPhase: p.outputPhase, durationFactor: p.durationFactor, thresholdUnit: p.thresholdUnit, thresholdW: p.thresholdW,
+        efficiency: p.efficiency, transmitPump: p.transmitPump,
+      } }];
     },
   },
 
@@ -4918,7 +4965,7 @@ const ELEMENT_HELP = {
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
-  crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output. OPO mode splits power by Manley–Rowe, gives signal and idler their own linewidths (following a pulsed pump or set by the cavity), and can require a pump threshold; phase matching and cavity dynamics are not simulated.',
+  crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output. OPO mode splits the generated power by Manley–Rowe, gives signal and idler their own linewidths and pulse durations, and can require a threshold on the total pump reaching it; phase matching and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',

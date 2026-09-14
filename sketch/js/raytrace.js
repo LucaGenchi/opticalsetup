@@ -143,16 +143,53 @@ function recordMetalensHit(elementId, wavelengthNm, focalLengthMm) {
   hits.set(wavelengthNm.toFixed(6), { wavelengthNm, focalLengthMm });
 }
 
-// crystal element id -> the OPO state its last pump ray produced, and source
-// element id -> configured average power, which a threshold is measured in.
+// crystal element id -> the OPO state its last pump ray produced.
 let opoStates = new Map();
+// source element id -> configured average power, which thresholds are in.
 let sourceAvgPowerW = new Map();
+// Non-null only during an OPO power pre-pass: crystal element id -> pump
+// power and pulse energy summed over every arrival.
+let opoIncidentProbe = null;
+// crystal element id -> { state, ratio, depletion, incident } from the most
+// recent pre-pass, which the following passes convert with.
+let opoDrive = new Map();
 
 function recordOpo(elementId, state) {
-  if (!elementId) return;
-  const prev = opoStates.get(elementId);
-  // Several rays of one beam hit a crystal; report the strongest-pumped one.
-  if (!prev || (state.ratio ?? -1) >= (prev.ratio ?? -1)) opoStates.set(elementId, state);
+  if (elementId) opoStates.set(elementId, state);
+}
+
+function recordOpoIncident(elementId, ray) {
+  const entry = opoIncidentProbe.get(elementId) || { avgW: 0, pulseJ: 0, arrivals: 0, cwArrivals: 0, unknownPower: 0 };
+  entry.arrivals += 1;
+  const configured = sourceAvgPowerW.get(ray.originId);
+  const share = Number.isFinite(ray.power) ? ray.power : 0;
+  if (!Number.isFinite(configured)) entry.unknownPower += 1;
+  else {
+    entry.avgW += share * averageGateTransmission(ray.pulse) * configured;
+    const repHz = Number(ray.pulse?.repRateMHz) * 1e6;
+    if (repHz > 0) entry.pulseJ += share * configured / repHz;
+    else entry.cwArrivals += 1;
+  }
+  opoIncidentProbe.set(elementId, entry);
+}
+
+// Turn summed arrivals into a drive level for each thresholded OPO crystal.
+function opoDriveFromIncident(elements) {
+  const drive = new Map();
+  for (const el of elements) {
+    const p = el.params || {};
+    if (el.type !== 'crystal' || p.convert !== 'opo' || !(Number(p.thresholdW) > 0)) continue;
+    const incident = opoIncidentProbe.get(el.id) || null;
+    const byEnergy = p.thresholdUnit === 'pulseMJ';
+    const amount = !incident ? 0 : byEnergy ? incident.pulseJ * 1e3 : incident.avgW;
+    const ratio = amount / Number(p.thresholdW);
+    const depletion = pumpDepletion(ratio);
+    let state = depletion > 0 ? 'oscillating' : 'below';
+    if (incident && amount === 0 && incident.unknownPower === incident.arrivals) state = 'unknown-power';
+    else if (incident && amount === 0 && byEnergy && incident.cwArrivals > 0) state = 'needs-pulses';
+    drive.set(el.id, { state, ratio, depletion, unit: byEnergy ? 'pulseMJ' : 'avgW', amount, threshold: Number(p.thresholdW) });
+  }
+  return drive;
 }
 
 export function opoReading(elementId) {
@@ -3323,71 +3360,82 @@ function interact(ray, hit) {
       const efficiency = Math.min(1, Math.max(0, data.efficiency ?? 1));
       if (data.convert === 'opo') {
         // Optical parametric oscillation (see parametric.js for the model).
-        // Phase matching is pump-specific: light at any other wavelength
-        // (the crystal's own signal/idler bouncing back through on a later
-        // cavity round trip) just transmits unconverted — without this
-        // guard, resonating signal would re-split on every single pass,
-        // branching exponentially and never terminating.
+        const crystalId = s.el?.id || null;
+        const pass = () => [{ d }];
+        // Light this crystal generated never converts in it again, however
+        // broad its spectrum or wide the acceptance: a resonating signal
+        // would otherwise re-split on every round trip, branching
+        // exponentially. Another crystal may still convert it.
+        if (crystalId && ray.parametricFrom === crystalId) return pass();
         const pumpWl = Number(data.pumpWl ?? 532);
         const sig = Number(data.signalWl ?? 800);
         if (!(Number.isFinite(pumpWl) && pumpWl > 0
             && Number.isFinite(sig) && sig > 0)) {
-          return data.transmitPump ? [{ d }] : [];
+          return data.transmitPump ? pass() : [];
         }
-        // A broadband pulse is accepted across its own spectral width, so a
-        // femtosecond pump tuned a few nm off the design wavelength still
-        // pumps the crystal.
-        const pumpFwhmNm = pumpWidthNm(ray);
-        if (Math.abs(ray.wl - pumpWl) > Math.max(1, pumpFwhmNm)) return [{ d }];
+        // Phase matching accepts pump light whose centre lies within an
+        // authored window; everything else passes unconverted.
+        const acceptance = Math.max(0, Number(data.pumpAcceptanceNm ?? 1));
+        if (!(Math.abs(ray.wl - pumpWl) <= acceptance)) return pass();
         // The cavity holds the signal; the idler follows the pump that arrives.
         const waves = opoWaves({
-          pumpWl: ray.wl, pumpFwhmNm, signalWl: sig,
-          linewidthMode: data.linewidthMode, signalLinewidthCm: data.signalLinewidthCm,
+          pumpWl: ray.wl, pumpFwhmNm: pumpWidthNm(ray), signalWl: sig,
+          linewidthMode: data.linewidthMode,
+          signalLinewidthCm: data.signalLinewidthCm, idlerLinewidthCm: data.idlerLinewidthCm,
         });
         // A signal at or above the pump frequency leaves no positive idler.
         // Treat that as no conversion, while still honouring the user's
         // choice about whether the unconverted pump is shown or dumped.
         if (!waves) {
-          recordOpo(s.el?.id, { state: 'invalid' });
-          return data.transmitPump ? [{ d }] : [];
+          recordOpo(crystalId, { state: 'invalid' });
+          return data.transmitPump ? pass() : [];
         }
 
-        // Below threshold nothing oscillates and the pump passes untouched.
+        // A threshold is compared with the pump summed over every arrival at
+        // this crystal, which the power pre-passes in traceScene() collect.
         const thresholdW = Math.max(0, Number(data.thresholdW) || 0);
-        let depletion = 1, ratio = null;
+        let drive = null, depletion = 1;
         if (thresholdW > 0) {
-          const pumpW = (sourceAvgPowerW.get(ray.originId) ?? NaN) * ray.intensity;
-          ratio = Number.isFinite(pumpW) ? pumpW / thresholdW : null;
-          depletion = ratio === null ? 0 : pumpDepletion(ratio);
+          if (opoIncidentProbe && crystalId) recordOpoIncident(crystalId, ray);
+          drive = opoDrive.get(crystalId) || null;
+          depletion = drive ? drive.depletion : 0;
         }
         const fraction = efficiency * depletion;
-        recordOpo(s.el?.id, {
-          state: ratio === null && thresholdW > 0 ? 'unknown-power' : depletion > 0 ? 'oscillating' : 'below',
-          ratio, depletion, fraction, waves,
+        const phase = { outputPhase: data.outputPhase, durationFactor: data.durationFactor, crystalId };
+        const pulses = waves.degenerate
+          ? { merged: opoPulse(ray.pulse, waves.merged, { ...phase, role: 'degenerate' }) }
+          : {
+            signal: opoPulse(ray.pulse, waves.signal, { ...phase, role: 'signal' }),
+            idler: opoPulse(ray.pulse, waves.idler, { ...phase, role: 'idler' }),
+          };
+        recordOpo(crystalId, {
+          state: thresholdW === 0 ? 'fixed' : drive?.state || 'below',
+          drive, depletion, fraction, waves, pulses,
         });
-        if (!(fraction > 0)) return data.transmitPump ? [{ d }] : [];
+        if (!(fraction > 0)) return data.transmitPump ? pass() : [];
 
         const converted = ray.intensity * fraction;
-        const gen = (w, intensity, tag, transformLimited) => ({
-          d, wl: w.wl, bw: w.bw, spec: w.spec, intensity, tag,
-          pulse: opoPulse(ray.pulse, w.wl, { transformLimited }),
-          // An OPO cavity forms its own pulses; the pump's accumulated chirp
-          // is not copied onto the new light.
+        const gen = (wave, pulse, intensity, tag) => ({
+          d, wl: wave.wl, bw: wave.bw, spec: wave.spec, intensity, tag, pulse,
+          parametricFrom: crystalId,
+          // The pulse's reference plane is the crystal exit; its spectral
+          // phase is reported as unknown unless declared transform-limited.
           gdd: 0,
+          // New light does not carry the pump's reconstructable CW field.
+          phaseValid: false,
+          phaseIssue: 'parametric output: optical phase relative to the pump is not modelled',
         });
-        const syncSignal = data.linewidthMode !== 'fixed';
         let out;
         if (waves.degenerate) {
           // At degeneracy signal and idler occupy the same optical mode. One
-          // ray carries their combined converted power instead of drawing two
-          // coincident branches.
-          out = [gen(waves.signal, converted, 's=i', false)];
+          // ray carries their combined power and both distributions.
+          out = [gen(waves.merged, pulses.merged, converted, 's=i')];
         } else {
           // One signal and one idler photon are created per pump photon. Their
           // photon fluxes are equal, so P_s/P_i = nu_s/nu_i = lambda_i/lambda_s.
           out = [
-            gen(waves.signal, converted * waves.signalShare, 's', syncSignal),
-            gen(waves.idler, converted * (1 - waves.signalShare), 'i', false),
+            gen(waves.signal, pulses.signal, converted * waves.signalShare, 's'),
+            gen(waves.idler, pulses.idler, converted * (1 - waves.signalShare), 'i'),
           ];
         }
         if (data.transmitPump && fraction < 0.999) out.push({ d, intensity: ray.intensity * (1 - fraction), tag: 'p' });
@@ -3830,6 +3878,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           gdd: childGdd,
           gddTrace: r.gddTrace ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
+          parametricFrom: 'parametricFrom' in c ? c.parametricFrom : r.parametricFrom,
           intensity: childIntensity,
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
@@ -4118,6 +4167,7 @@ export function traceScene(elements, beams = []) {
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
   opoStates = new Map();
+  opoDrive = new Map();
   sourceAvgPowerW = new Map(elements
     .filter(el => registry[el.type]?.source && Number.isFinite(Number(el.params?.avgPowerW)))
     .map(el => [el.id, Number(el.params.avgPowerW)]));
@@ -4227,6 +4277,32 @@ export function traceScene(elements, beams = []) {
     }
   }
   };
+
+  // An OPO threshold is a property of the total pump reaching the crystal,
+  // not of any one ray, so it is measured before anything converts with it:
+  // trace once collecting the pump arriving at each thresholded crystal,
+  // evaluate its drive, and repeat so a crystal pumped by another's output
+  // sees that output too. Arrivals re-emitted by fibers are not collected.
+  const thresholdedOpos = elements.filter(el => el.type === 'crystal'
+    && el.params?.convert === 'opo' && Number(el.params?.thresholdW) > 0).length;
+  for (let pass = 0; pass < Math.min(3, thresholdedOpos); pass++) {
+    opoIncidentProbe = new Map();
+    try {
+      emitSources(false);
+      opoDrive = opoDriveFromIncident(elements);
+    } finally {
+      opoIncidentProbe = null;
+      opoStates = new Map();
+      detectorHits = new Map();
+      detectorMisses = new Map();
+      incompleteCoherenceIds = new Map();
+      objectivePupilHits = new Map();
+      phasePlateSpans = new Map();
+      compressorGdd = new Map();
+      metalensHits = new Map();
+      gateTransmissionCache = new Map();
+    }
+  }
 
   // Probe whenever a signal-bearing specimen is on the table: its channels
   // may need to know the other colours present, and even a specimen with no
