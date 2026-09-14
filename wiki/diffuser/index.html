@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Diffuser — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Spreads incident light into a configurable angular fan. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Spreads incident light into an adjustable angular fan, providing a qualitative model for comparing illumination coverage and the light collected downstream. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/diffuser/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Diffuser — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Spreads incident light into a configurable angular fan.">
+<meta property="og:description" content="Spreads incident light into an adjustable angular fan, providing a qualitative model for comparing illumination coverage and the light collected downstream.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/diffuser/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -56,13 +56,17 @@
     </div>
   </header>
   <div class="wiki-shell">
-    
+
     <nav class="wiki-nav" aria-label="Component wiki index">
       <h2>Components</h2>
-      
+
+        <div class="cat">
+          <div class="cat-name">Annotations</div>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/textlabel/" class="">Text label</a></li></ul>
+        </div>
         <div class="cat">
           <div class="cat-name">Sources</div>
-          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li></ul>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li><li><a href="../../wiki/objarrow/" class="">Object</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Mirrors</div>
@@ -98,19 +102,31 @@
         </div>
         <div class="cat">
           <div class="cat-name">Detectors</div>
-          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li></ul>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li><li><a href="../../wiki/generaldetector/" class="">General detector</a></li><li><a href="../../wiki/display/" class="">Detector screen</a></li><li><a href="../../wiki/eye/" class="">Human eye</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Modulators</div>
-          <div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
+          <ul><li><a href="../../wiki/chopper/" class="">Chopper</a></li></ul><div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Pulse Timing</div>
-          <ul><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+          <ul><li><a href="../../wiki/delayline/" class="">Mechanical delay line</a></li><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Nonlinear Optics</div>
+          <ul><li><a href="../../wiki/crystal/" class="">Crystal</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Specimens</div>
-          <ul><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+          <ul><li><a href="../../wiki/sample/" class="">Sample</a></li><li><a href="../../wiki/stage/" class="">Sample on piezo stage</a></li><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Custom</div>
+          <ul><li><a href="../../wiki/box/" class="">Custom box</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lab elements</div>
+          <ul><li><a href="../../wiki/gascell/" class="">Gas cell</a></li><li><a href="../../wiki/window/" class="">Optical window</a></li></ul>
         </div>
     </nav>
     <main class="wiki-article">
@@ -121,7 +137,7 @@
           <h1>Diffuser</h1>
         </div>
       </div>
-      <p class="tagline">Spreads incident light into a configurable angular fan.</p>
+      <p class="tagline">Spreads incident light into an adjustable angular fan, providing a qualitative model for comparing illumination coverage and the light collected downstream.</p>
       <a class="place-cta" href="../../sketch/?demo=diffuser">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -133,7 +149,7 @@
 
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-      
+
         <p>An optical diffuser scatters a beam into a cone of directions by refracting
         light through a microscopically rough or engineered surface — ground or frosted
         glass, a holographic diffuser with an embossed random microstructure, or an
@@ -156,7 +172,7 @@
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        
+
         <p>Each incident ray is split into a small fan of rays (five, for a single traced
         ray), scattered within the configured divergence half-angle around the original
         direction. The scatter angle for each ray isn't randomized frame to frame — it's a
@@ -175,15 +191,15 @@
         the app.</p></div>
       </div>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
         <a href="../../wiki/freeglass/"><svg viewBox="-46 -46 92 92" aria-hidden="true"><path d="M -36 -24 L 30 -24 L 38 20 L -26 26 L -36 -24 Z" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5" stroke-linejoin="round"/></svg>Freeform glass</a><a href="../../wiki/prism/"><svg viewBox="-23.664696837416493 -23.664696837416493 47.329393674832986 47.329393674832986" aria-hidden="true"><path d="M 0,-12.7 L -14.664696837416493,12.7 L 14.664696837416493,12.7 Z" fill="#c9e4f5" stroke="#4a90c4" stroke-width="1.5"/></svg>Prism</a><a href="../../wiki/slm/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/><line x1="-11" y1="-18" x2="-7" y2="-18" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-13" x2="-7" y2="-13" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-8" x2="-7" y2="-8" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-3" x2="-7" y2="-3" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="2" x2="-7" y2="2" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="7" x2="-7" y2="7" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="12" x2="-7" y2="12" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="17" x2="-7" y2="17" stroke="#4ac0b0" stroke-width="2.5"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">SLM</text></svg>SLM</a>
       </div>
 
-      
 
-      
+
+
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
         <li><a href="https://www.rp-photonics.com/diffusers.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Diffusers</a></li><li><a href="https://www.rp-photonics.com/scattering.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Scattering</a></li>

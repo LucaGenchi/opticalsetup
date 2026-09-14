@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Electro-optic modulator (EOM) — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Changes polarization through voltage-controlled retardance, held fixed or switched periodically, so a downstream analyzer can convert the change into intensity modulation. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/eom/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Electro-optic modulator (EOM) — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.">
+<meta property="og:description" content="Changes polarization through voltage-controlled retardance, held fixed or switched periodically, so a downstream analyzer can convert the change into intensity modulation.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/eom/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -56,13 +56,17 @@
     </div>
   </header>
   <div class="wiki-shell">
-    
+
     <nav class="wiki-nav" aria-label="Component wiki index">
       <h2>Components</h2>
-      
+
+        <div class="cat">
+          <div class="cat-name">Annotations</div>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/textlabel/" class="">Text label</a></li></ul>
+        </div>
         <div class="cat">
           <div class="cat-name">Sources</div>
-          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li></ul>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li><li><a href="../../wiki/objarrow/" class="">Object</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Mirrors</div>
@@ -98,19 +102,31 @@
         </div>
         <div class="cat">
           <div class="cat-name">Detectors</div>
-          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li></ul>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li><li><a href="../../wiki/generaldetector/" class="">General detector</a></li><li><a href="../../wiki/display/" class="">Detector screen</a></li><li><a href="../../wiki/eye/" class="">Human eye</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Modulators</div>
-          <div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="current">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
+          <ul><li><a href="../../wiki/chopper/" class="">Chopper</a></li></ul><div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="current">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Pulse Timing</div>
-          <ul><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+          <ul><li><a href="../../wiki/delayline/" class="">Mechanical delay line</a></li><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Nonlinear Optics</div>
+          <ul><li><a href="../../wiki/crystal/" class="">Crystal</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Specimens</div>
-          <ul><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+          <ul><li><a href="../../wiki/sample/" class="">Sample</a></li><li><a href="../../wiki/stage/" class="">Sample on piezo stage</a></li><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Custom</div>
+          <ul><li><a href="../../wiki/box/" class="">Custom box</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lab elements</div>
+          <ul><li><a href="../../wiki/gascell/" class="">Gas cell</a></li><li><a href="../../wiki/window/" class="">Optical window</a></li></ul>
         </div>
     </nav>
     <main class="wiki-article">
@@ -121,7 +137,7 @@
           <h1>Electro-optic modulator (EOM)</h1>
         </div>
       </div>
-      <p class="tagline">Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.</p>
+      <p class="tagline">Changes polarization through voltage-controlled retardance, held fixed or switched periodically, so a downstream analyzer can convert the change into intensity modulation.</p>
       <a class="place-cta" href="../../sketch/?demo=eom">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -133,7 +149,7 @@
 
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-      
+
         <p>An electro-optic modulator controls light with a voltage. Almost all of them
         work through the <em>Pockels effect</em>: in a crystal without inversion symmetry,
         an applied electric field changes the refractive index in proportion to the field
@@ -205,7 +221,7 @@
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        
+
         <p>This element is the <strong>polarisation modulator</strong> of the three: a
         Pockels cell used as a voltage-controlled waveplate. It applies a retardance
         between the two axes of a crystal whose orientation you set, either as a fixed
@@ -239,19 +255,19 @@
         reach gigahertz, have no counterpart.</p></div>
       </div>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
         <a href="../../wiki/phasemodulator/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-17" y="-6" width="34" height="12" rx="3" fill="#c9b3d8" stroke="#6b4f85" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#33224a">φ~</text><path d="M -20,-10 h 4 v -3 h 4 v 3 h 4" fill="none" stroke="#6b4f85" stroke-width="1.1" stroke-linecap="round"/></svg>Phase modulator</a><a href="../../wiki/polarizer/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/><g transform="rotate(0)"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/><line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/><path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g></svg>Polarizer</a><a href="../../wiki/pbs/"><svg viewBox="-20.7 -20.7 41.4 41.4" aria-hidden="true"><rect x="-12.7" y="-12.7" width="25.4" height="25.4" fill="#d5e3f0" stroke="#3f6a92" stroke-width="1.6"/><line x1="-12.7" y1="12.7" x2="12.7" y2="-12.7" stroke="#3f6a92" stroke-width="1.6"/><text x="-12.7" y="20.7" text-anchor="start" dominant-baseline="central" font-size="8.5" fill="#3f6a92" font-weight="600" >PBS</text></svg>Polarizing BS</a><a href="../../wiki/qwp/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-2.5" y="-12.7" width="5" height="25.4" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/><text x="0" y="-18.7" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" >λ/4</text></svg>λ/4 waveplate</a><a href="../../wiki/aom/"><svg viewBox="-28 -28 56 56" aria-hidden="true"><rect x="-20" y="-13" width="40" height="26" rx="3" fill="#c9b458" stroke="#8a7a2e" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#3d3616">AOM</text></svg>AOM</a>
       </div>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>References</h2>
       <ol class="reference-list">
         <li id="ref-1"><a href="https://www.rp-photonics.com/electro_optic_modulators.html" target="_blank" rel="noopener">“Electro-optic Modulators,” RP Photonics Encyclopedia (DOI 10.61835/7rv)</a></li><li id="ref-2"><a href="https://en.wikipedia.org/wiki/Electro-optic_modulator" target="_blank" rel="noopener">Electro-optic modulator — Wikipedia</a></li><li id="ref-3"><a href="https://www.accessengineeringlibrary.com/browse/handbook-of-optics-volume-v-atmospheric-optics-modulators-fiber-optics-x-ray-and-neutron-optics-third-edition" target="_blank" rel="noopener">T. A. Maldonado, “Electro-Optic Modulators,” ch. 13 in M. Bass (ed.), Handbook of Optics, Vol. 2, McGraw-Hill (1995) — the standard reference treatment: crystal optics and the index ellipsoid, the electro-optic effect, and modulator devices</a></li>
       </ol>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
         <li><a href="https://www.rp-photonics.com/pockels_cells.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Pockels Cells</a></li><li><a href="https://technav.ieee.org/topic/electrooptic-modulators/" target="_blank" rel="noopener">IEEE TechNav — Electrooptic Modulators</a></li>

@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Deformable mirror — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Applies continuous reflective tip, tilt, and paraxial defocus. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Reflects light with adjustable tip, tilt, and paraxial defocus, providing a simple model for steering a beam and changing its wavefront curvature. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/dm/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Deformable mirror — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Applies continuous reflective tip, tilt, and paraxial defocus.">
+<meta property="og:description" content="Reflects light with adjustable tip, tilt, and paraxial defocus, providing a simple model for steering a beam and changing its wavefront curvature.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/dm/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -56,13 +56,17 @@
     </div>
   </header>
   <div class="wiki-shell">
-    
+
     <nav class="wiki-nav" aria-label="Component wiki index">
       <h2>Components</h2>
-      
+
+        <div class="cat">
+          <div class="cat-name">Annotations</div>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/textlabel/" class="">Text label</a></li></ul>
+        </div>
         <div class="cat">
           <div class="cat-name">Sources</div>
-          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li></ul>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li><li><a href="../../wiki/objarrow/" class="">Object</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Mirrors</div>
@@ -98,19 +102,31 @@
         </div>
         <div class="cat">
           <div class="cat-name">Detectors</div>
-          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li></ul>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="">Autocorrelator</a></li><li><a href="../../wiki/generaldetector/" class="">General detector</a></li><li><a href="../../wiki/display/" class="">Detector screen</a></li><li><a href="../../wiki/eye/" class="">Human eye</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Modulators</div>
-          <div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
+          <ul><li><a href="../../wiki/chopper/" class="">Chopper</a></li></ul><div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Pulse Timing</div>
-          <ul><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+          <ul><li><a href="../../wiki/delayline/" class="">Mechanical delay line</a></li><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Nonlinear Optics</div>
+          <ul><li><a href="../../wiki/crystal/" class="">Crystal</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Specimens</div>
-          <ul><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+          <ul><li><a href="../../wiki/sample/" class="">Sample</a></li><li><a href="../../wiki/stage/" class="">Sample on piezo stage</a></li><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Custom</div>
+          <ul><li><a href="../../wiki/box/" class="">Custom box</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lab elements</div>
+          <ul><li><a href="../../wiki/gascell/" class="">Gas cell</a></li><li><a href="../../wiki/window/" class="">Optical window</a></li></ul>
         </div>
     </nav>
     <main class="wiki-article">
@@ -121,7 +137,7 @@
           <h1>Deformable mirror</h1>
         </div>
       </div>
-      <p class="tagline">Applies continuous reflective tip, tilt, and paraxial defocus.</p>
+      <p class="tagline">Reflects light with adjustable tip, tilt, and paraxial defocus, providing a simple model for steering a beam and changing its wavefront curvature.</p>
       <a class="place-cta" href="../../sketch/?demo=dm">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -133,7 +149,7 @@
 
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-      
+
         <p>A deformable mirror corrects a wavefront by changing its own shape. Light does
         not always arrive with the flat, well-behaved wavefront that optical design assumes:
         the atmosphere scrambles starlight, the eye's own cornea and lens distort a view of
@@ -187,7 +203,7 @@
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        
+
         <p>This element models the two lowest-order corrections a deformable mirror makes —
         the ones that dominate real aberration budgets — as a mirror with an adjustable
         curvature and an adjustable deflection. Three controls:</p>
@@ -230,15 +246,15 @@
         the shape is one you set by hand rather than one the system finds.</p></div>
       </div>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
         <a href="../../wiki/slm/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/><line x1="-11" y1="-18" x2="-7" y2="-18" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-13" x2="-7" y2="-13" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-8" x2="-7" y2="-8" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="-3" x2="-7" y2="-3" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="2" x2="-7" y2="2" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="7" x2="-7" y2="7" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="12" x2="-7" y2="12" stroke="#4ac0b0" stroke-width="2.5"/><line x1="-11" y1="17" x2="-7" y2="17" stroke="#4ac0b0" stroke-width="2.5"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">SLM</text></svg>SLM</a><a href="../../wiki/dmd/"><svg viewBox="-31 -31 62 62" aria-hidden="true"><rect x="-9" y="-23" width="20" height="46" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/><line x1="-11" y1="-14" x2="-7" y2="-18" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-8" x2="-7" y2="-12" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="-2" x2="-7" y2="-6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="4" x2="-7" y2="0" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="10" x2="-7" y2="6" stroke="#cfd6dd" stroke-width="1.6"/><line x1="-11" y1="16" x2="-7" y2="12" stroke="#cfd6dd" stroke-width="1.6"/><text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(90 3 0)">DMD</text></svg>DMD</a><a href="../../wiki/cmirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><path d="M -0.40,-12.70 L -0.34,-11.64 L -0.28,-10.58 L -0.23,-9.53 L -0.18,-8.47 L -0.14,-7.41 L -0.10,-6.35 L -0.07,-5.29 L -0.04,-4.23 L -0.03,-3.17 L -0.01,-2.12 L -0.00,-1.06 L 0.00,-0.00 L -0.00,1.06 L -0.01,2.12 L -0.03,3.18 L -0.04,4.23 L -0.07,5.29 L -0.10,6.35 L -0.14,7.41 L -0.18,8.47 L -0.23,9.52 L -0.28,10.58 L -0.34,11.64 L -0.40,12.70" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/><line x1="1" y1="-12.7" x2="7" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="1" y1="-6.233333333333333" x2="7" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="1" y1="0.2333333333333325" x2="7" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="1" y1="6.699999999999999" x2="7" y2="12.7" stroke="#888" stroke-width="1"/></svg>Concave mirror</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a>
       </div>
 
-      
 
-      
+
+
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
         <li><a href="https://www.rp-photonics.com/adaptive_optics.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Adaptive Optics</a></li><li><a href="https://www.rp-photonics.com/deformable_mirrors.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Deformable Mirrors</a></li>

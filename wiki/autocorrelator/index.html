@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Autocorrelator — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Calculates an intensity autocorrelation and infers pulse duration using a selected pulse-shape assumption, for examining temporal broadening and the limits of duration estimates. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/autocorrelator/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Autocorrelator — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one.">
+<meta property="og:description" content="Calculates an intensity autocorrelation and infers pulse duration using a selected pulse-shape assumption, for examining temporal broadening and the limits of duration estimates.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/autocorrelator/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -56,13 +56,17 @@
     </div>
   </header>
   <div class="wiki-shell">
-    
+
     <nav class="wiki-nav" aria-label="Component wiki index">
       <h2>Components</h2>
-      
+
+        <div class="cat">
+          <div class="cat-name">Annotations</div>
+          <ul><li><a href="../../wiki/figureframe/" class="">Figure frame</a></li><li><a href="../../wiki/probe/" class="">Beam probe</a></li><li><a href="../../wiki/highlight/" class="">Highlight</a></li><li><a href="../../wiki/textlabel/" class="">Text label</a></li></ul>
+        </div>
         <div class="cat">
           <div class="cat-name">Sources</div>
-          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li></ul>
+          <ul><li><a href="../../wiki/cwlaser/" class="">CW Laser</a></li><li><a href="../../wiki/pulsedlaser/" class="">Pulsed Laser</a></li><li><a href="../../wiki/sclaser/" class="">Supercontinuum laser</a></li><li><a href="../../wiki/pointsource/" class="">Point source</a></li><li><a href="../../wiki/objarrow/" class="">Object</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Mirrors</div>
@@ -98,19 +102,31 @@
         </div>
         <div class="cat">
           <div class="cat-name">Detectors</div>
-          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="current">Autocorrelator</a></li></ul>
+          <ul><li><a href="../../wiki/detector/" class="">Photodetector</a></li><li><a href="../../wiki/camera/" class="">Camera</a></li><li><a href="../../wiki/pmt/" class="">Photomultiplier (PMT)</a></li><li><a href="../../wiki/powermeter/" class="">Power meter</a></li><li><a href="../../wiki/wavefrontdetector/" class="">Wavefront detector</a></li><li><a href="../../wiki/polarimeter/" class="">Polarimeter</a></li><li><a href="../../wiki/spectrometer/" class="">Spectrometer</a></li><li><a href="../../wiki/autocorrelator/" class="current">Autocorrelator</a></li><li><a href="../../wiki/generaldetector/" class="">General detector</a></li><li><a href="../../wiki/display/" class="">Detector screen</a></li><li><a href="../../wiki/eye/" class="">Human eye</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Modulators</div>
-          <div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
+          <ul><li><a href="../../wiki/chopper/" class="">Chopper</a></li></ul><div class="cat-sub">Acousto-optic</div><ul><li><a href="../../wiki/aom/" class="">Acousto-optic modulator (AOM)</a></li><li><a href="../../wiki/aod/" class="">Acousto-optic deflector (AOD)</a></li><li><a href="../../wiki/aotf/" class="">Acousto-optic tunable filter</a></li></ul><div class="cat-sub">Electro-optic</div><ul><li><a href="../../wiki/eom/" class="">Electro-optic modulator (EOM)</a></li><li><a href="../../wiki/phasemodulator/" class="">Phase modulator</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Pulse Timing</div>
-          <ul><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+          <ul><li><a href="../../wiki/delayline/" class="">Mechanical delay line</a></li><li><a href="../../wiki/pulsecompressor/" class="">Pulse Compressor</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Nonlinear Optics</div>
+          <ul><li><a href="../../wiki/crystal/" class="">Crystal</a></li></ul>
         </div>
         <div class="cat">
           <div class="cat-name">Specimens</div>
-          <ul><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+          <ul><li><a href="../../wiki/sample/" class="">Sample</a></li><li><a href="../../wiki/stage/" class="">Sample on piezo stage</a></li><li><a href="../../wiki/phaseplate/" class="">Phase object</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Custom</div>
+          <ul><li><a href="../../wiki/box/" class="">Custom box</a></li></ul>
+        </div>
+        <div class="cat">
+          <div class="cat-name">Lab elements</div>
+          <ul><li><a href="../../wiki/gascell/" class="">Gas cell</a></li><li><a href="../../wiki/window/" class="">Optical window</a></li></ul>
         </div>
     </nav>
     <main class="wiki-article">
@@ -121,7 +137,7 @@
           <h1>Autocorrelator</h1>
         </div>
       </div>
-      <p class="tagline">Measures the intensity autocorrelation of a pulse and infers its duration by dividing out a deconvolution factor — which means it only reads correctly if the assumed pulse shape matches the real one.</p>
+      <p class="tagline">Calculates an intensity autocorrelation and infers pulse duration using a selected pulse-shape assumption, for examining temporal broadening and the limits of duration estimates.</p>
       <a class="place-cta" href="../../sketch/?demo=autocorrelator">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -140,7 +156,7 @@
       <p class="embed-caption">Two synchronized sources — 790&nbsp;nm and 1030&nbsp;nm — combined on a dichroic and read by one cross-correlator. The delay line sweeps through time zero at 100.000&nbsp;mm and back, so the two pulses walk across each other every ten seconds while the sum-frequency peak flares up between them at the crossing. Click the delay line to stop the sweep and hunt time zero by hand.</p>
 
       <h2 class="section-head real"><span class="sw"></span>In the real world</h2>
-      
+
         <p>A femtosecond pulse cannot be timed by anything electronic. The fastest
         photodiodes and sampling oscilloscopes reach a few picoseconds; a 100&nbsp;fs pulse
         is two orders of magnitude shorter than that, and no detector exists whose response
@@ -365,7 +381,7 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        
+
         <p>The Autocorrelator reports the pulse duration of whatever pulse train reaches its
         face — and reports it the way a real instrument does, as a trace width with an
         assumption divided out, rather than as a number read off the source.</p>
@@ -489,19 +505,19 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         described above but not modelled.</p></div>
       </div>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
         <a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/glassrod/"><svg viewBox="-38 -38 76 76" aria-hidden="true"><rect x="-30" y="-6.35" width="60" height="12.7" rx="4" fill="#c9e4f5" fill-opacity="0.72" stroke="#4a90c4" stroke-width="1.5"/></svg>Glass rod</a><a href="../../wiki/pulsecompressor/"><svg viewBox="-32 -32 64 64" aria-hidden="true"><rect x="-24" y="-15" width="48" height="30" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/><g  fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round"><path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/><path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">−GDD</text></svg>Pulse compressor</a><a href="../../wiki/detector/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-13" width="36" height="26" rx="3" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#fff">PD</text><rect x="-19.5" y="-9" width="3" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><circle cx="11" cy="-8" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photodetector</a><a href="../../wiki/spectrometer/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-27" y="-15" width="54" height="30" rx="4" fill="#44505d" stroke="#202a33" stroke-width="1.5"/><rect x="-28.7" y="-11" width="3.4" height="22" rx="1" fill="#fde68a" stroke="#26323c" stroke-width="0.8"/><text x="1" y="1"  text-anchor="middle" dominant-baseline="central" font-size="9.5" font-weight="720" letter-spacing="0.4" fill="#fff">SPEC</text><circle cx="19" cy="-8" r="3" fill="#7f8a95" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Spectrometer</a>
       </div>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>References</h2>
       <ol class="reference-list">
         <li id="ref-1"><a href="https://www.rp-photonics.com/autocorrelators.html" target="_blank" rel="noopener">R. Paschotta, “Autocorrelators,” RP Photonics Encyclopedia; doi:10.61835/y7n</a></li><li id="ref-2"><a href="https://www.meetoptics.com/academy/autocorrelators" target="_blank" rel="noopener">“Ultrashort laser pulse characterisation: Optical autocorrelators,” MEETOPTICS Academy</a></li><li id="ref-3"><a href="https://www.sciencedirect.com/science/article/pii/B0123693950008423" target="_blank" rel="noopener">D. J. Kane, “Ultrafast Laser Techniques: Pulse Characterization Techniques,” in Encyclopedia of Modern Optics, Elsevier (2005), pp. 227–239; doi:10.1016/B0-12-369395-0/00842-3</a></li><li id="ref-4"><a href="https://doi.org/10.1371/journal.pone.0156371" target="_blank" rel="noopener">V. Piazza, G. de Vito, E. Farrokhtakin, G. Ciofani and V. Mattoli, “Femtosecond-laser-pulse characterization and optimization for CARS microscopy,” PLoS ONE 11(5), e0156371 (2016)</a></li><li id="ref-5"><a href="https://doi.org/10.1063/1.1653002" target="_blank" rel="noopener">R. A. Fisher and J. A. Fleck Jr., “On the phase characteristics and compression of picosecond pulses,” Appl. Phys. Lett. 15, 287 (1969) — the origin of the coherent-artifact warning</a></li><li id="ref-6"><a href="https://doi.org/10.1109/3.199311" target="_blank" rel="noopener">D. J. Kane and R. Trebino, “Characterization of arbitrary femtosecond pulses using frequency-resolved optical gating,” IEEE J. Quantum Electron. 29(2), 571–579 (1993)</a></li>
       </ol>
 
-      
+
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>
       <ul class="resource-list">
         <li><a href="https://www.rp-photonics.com/pulse_characterization.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Pulse Characterization</a></li><li><a href="https://www.rp-photonics.com/pulse_duration.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Pulse Duration</a></li>
