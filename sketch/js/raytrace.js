@@ -2434,7 +2434,8 @@ function interact(ray, hit) {
     case 'dichroic': {
       // A band reflector may return only part of its band, as an output
       // coupler's coating does: the rest of the band is transmitted. Both
-      // parts are kept however weak, like a partial mirror's.
+      // parts are retained below the normal drawing cutoff, within the trace
+      // budgets, as a partial mirror's are.
       const inBandR = data.dtype === 'notch' ? Math.min(1, Math.max(0, (data.bandRefl ?? 100) / 100)) : 1;
       const partial = inBandR < 1;
       if (!ray.bw) {

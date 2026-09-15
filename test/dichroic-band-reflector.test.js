@@ -97,3 +97,26 @@ test('a partially reflecting band is an output coupler: the band splits, the sid
   const full = run('cwlaser', { wavelength: 800 }, 100);
   assert.equal(full.through, null);
 });
+
+test('a spectrum straddling a band edge splits within the shared integration error', () => {
+  // The partial and full band reflector both re-grid each port's surviving
+  // spectrum separately, which loses about 1.5 % for a Gaussian cut by a band
+  // edge. That approximation is inherited from the spectral machinery; this
+  // pins it rather than claiming exact conservation.
+  const run = bandRefl => {
+    const src = createElement('pulsedlaser', 60, 160);
+    Object.assign(src.params, { beamMode: 'line', wavelength: 750, transformLimited: false, bandwidth: 60 });
+    const mirror = createElement('dichroic', 300, 160);
+    mirror.rot = 135;
+    Object.assign(mirror.params, { dtype: 'notch', center: 800, band: 100, bandRefl });
+    const through = createElement('detector', 460, 160);
+    const reflected = createElement('detector', 300, 320);
+    reflected.rot = 90;
+    traceScene([src, mirror, through, reflected]);
+    return { t: detectorReading(through.id)?.signal ?? 0, r: detectorReading(reflected.id)?.signal ?? 0 };
+  };
+  const partial = run(90), full = run(100);
+  assert.ok(Math.abs(partial.t + partial.r - 1) < 0.02, `partial total ${partial.t + partial.r}`);
+  assert.ok(Math.abs(full.t + full.r - 1) < 0.02, `full total ${full.t + full.r}`);
+  assert.ok(partial.r < full.r && partial.t > full.t, 'lowering the band reflectivity moves power to the transmitted port');
+});

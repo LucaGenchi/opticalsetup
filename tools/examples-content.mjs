@@ -772,9 +772,9 @@ export const exampleEntries = [
       gain beats the round-trip loss, which is why an OPO has a pump threshold, and
       driven well above it the pump is depleted and the generated waves can start to
       convert back${cite(2)}.</p>
-      <p>Here the cavity is a four-mirror <strong>bow-tie ring</strong>. The crystal only
-      amplifies light travelling in the same direction as the pump, so the resonant signal
-      circulates one way around the ring. The mirror after the crystal is the output
+      <p>Here the cavity is a four-mirror <strong>bow-tie ring</strong>. In this singly
+      pumped, co-propagating phase-matched configuration, parametric gain favours the signal
+      travelling with the pump, selecting one circulation direction around the ring${cite(1)}. The mirror after the crystal is the output
       coupler: its coating reflects most of the signal and transmits the rest together with
       the pump and idler, so all three leave collinearly and are separated outside. A real
       ring resonator still requires a suitable mode, mirror curvatures, coatings and cavity
@@ -798,7 +798,11 @@ export const exampleEntries = [
       the idler at 1588 nm. It converts a fixed 30 % of the pump: 19.95 % becomes signal
       and 10.05 % idler. The idler detector reads that 10.05 % in one pass. The signal
       leaks through M2 on every round trip, and the tracer sums twelve of those leaks,
-      reading 18.6 % of the pump. The signal linewidth is authored at 5 cm⁻¹ to represent
+      reading 18.6 % of the pump. The ring is about 1885 mm around, a 6.3 ns round trip
+      against a 10 ns pump, so those twelve leaks are not twelve amplified passes during a
+      pump pulse: the tracer launches the signal once and follows it, without build-up.
+      The tracer also launches the signal only in the pump's direction; it does not
+      calculate the gain competition that selects that direction. The signal linewidth is authored at 5 cm⁻¹ to represent
       a cavity-selected linewidth — the trace does not calculate it from the cavity — the
       idler is derived from pump and signal, and the 0.8 × pump duration factor is
       illustrative. All of these are textbook values, not one instrument's.</p>
