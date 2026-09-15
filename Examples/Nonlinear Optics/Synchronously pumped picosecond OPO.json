@@ -6,13 +6,13 @@
       "id": "frame",
       "type": "figureframe",
       "x": 600,
-      "y": 350,
+      "y": 340,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
         "w": 1200,
-        "h": 620,
+        "h": 680,
         "background": "white"
       }
     },
@@ -20,12 +20,12 @@
       "id": "title",
       "type": "textlabel",
       "x": 30,
-      "y": 70,
+      "y": 30,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "# Synchronously pumped femtosecond OPO\nMgO:PPLN singly resonant cavity after O'Donnell, Chaitanya Kumar & Ebrahim-Zadeh, APL Photonics 4, 050801 (2019)",
+        "text": "# Synchronously pumped picosecond OPO\nGreen-pumped singly resonant oscillator, modelled on the APE Levante Emerald 6 ps datasheet",
         "fontSize": 12,
         "fill": "#34454d"
       }
@@ -33,8 +33,8 @@
     {
       "id": "cavity-note",
       "type": "textlabel",
-      "x": 560,
-      "y": 118,
+      "x": 820,
+      "y": 470,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -47,16 +47,16 @@
     {
       "id": "pump",
       "type": "pulsedlaser",
-      "x": 150,
-      "y": 250,
+      "x": 270,
+      "y": 400,
       "rot": 0,
-      "label": "Yb:fibre pump · 1040 nm · 100 fs · 80 MHz",
+      "label": "532 nm · 6 ps · 80 MHz · 4 W",
       "showLabel": true,
       "params": {
-        "wavelength": 1040,
-        "pulseWidthFs": 100,
+        "wavelength": 532,
+        "pulseWidthFs": 6000,
         "repRateMHz": 80,
-        "avgPowerW": 2,
+        "avgPowerW": 4,
         "transformLimited": true,
         "pulseShape": "gauss",
         "beamMode": "line"
@@ -64,80 +64,81 @@
       "labelPos": "b"
     },
     {
-      "id": "lens",
-      "type": "lens",
-      "x": 270,
-      "y": 250,
-      "rot": 0,
-      "label": "f = 150 mm",
-      "showLabel": true,
-      "params": {
-        "f": 150,
-        "dia": 25.4
-      },
-      "labelPos": "t"
-    },
-    {
       "id": "M1",
       "type": "dichroic",
-      "x": 370,
-      "y": 250,
-      "rot": 98,
+      "x": 440,
+      "y": 400,
+      "rot": 168,
       "label": "M1",
       "showLabel": true,
       "params": {
-        "dtype": "shortpass",
-        "cutoff": 1200,
+        "dtype": "notch",
+        "center": 800,
+        "band": 300,
         "length": 25.4
-      },
-      "labelPos": "t"
-    },
-    {
-      "id": "crystal",
-      "type": "crystal",
-      "x": 420,
-      "y": 250,
-      "rot": 0,
-      "label": "MgO:PPLN",
-      "showLabel": true,
-      "params": {
-        "convert": "opo",
-        "aperture": 10,
-        "pumpWl": 1040,
-        "signalWl": 1480,
-        "pumpAcceptanceNm": 5,
-        "linewidthMode": "both",
-        "signalLinewidthCm": 29.43,
-        "idlerLinewidthCm": 131,
-        "outputPhase": "unknown",
-        "durationFactor": 5,
-        "efficiency": 0.78,
-        "transmitPump": true
       },
       "labelPos": "b"
     },
     {
+      "id": "crystal",
+      "type": "crystal",
+      "x": 490,
+      "y": 400,
+      "rot": 0,
+      "label": "LBO",
+      "showLabel": true,
+      "params": {
+        "convert": "opo",
+        "aperture": 10,
+        "pumpWl": 532,
+        "signalWl": 800,
+        "pumpAcceptanceNm": 1,
+        "linewidthMode": "signal",
+        "signalLinewidthCm": 4.69,
+        "outputPhase": "unknown",
+        "durationFactor": 0.8333,
+        "efficiency": 0.375,
+        "transmitPump": true
+      },
+      "labelPos": "t"
+    },
+    {
       "id": "M2",
       "type": "dichroic",
-      "x": 470,
-      "y": 250,
-      "rot": 98,
+      "x": 540,
+      "y": 400,
+      "rot": 168,
       "label": "M2",
       "showLabel": true,
       "params": {
-        "dtype": "longpass",
-        "cutoff": 2500,
+        "dtype": "notch",
+        "center": 800,
+        "band": 300,
         "length": 25.4
       },
       "labelPos": "t"
     },
     {
+      "id": "F1",
+      "type": "mirror",
+      "x": 1079.4818,
+      "y": 115.2843,
+      "rot": 168,
+      "label": "F1",
+      "showLabel": true,
+      "params": {
+        "length": 25.4,
+        "refl": 100
+      },
+      "labelPos": "r"
+    },
+    {
       "id": "M3",
       "type": "mirror",
-      "x": 52.7836,
-      "y": 159.0397,
-      "rot": 16,
-      "label": "M3",
+      "x": 365.779,
+      "y": 115.2843,
+      "rot": 0,
+      "label": "M3 · HR",
       "showLabel": true,
       "params": {
         "length": 25.4,
@@ -146,41 +147,41 @@
       "labelPos": "b"
     },
     {
-      "id": "M5",
-      "type": "dichroic",
-      "x": 1065.9823,
-      "y": 420.8952,
-      "rot": 3,
-      "label": "M5",
-      "showLabel": true,
-      "params": {
-        "dtype": "shortpass",
-        "cutoff": 1300,
-        "length": 25.4
-      },
-      "labelPos": "t"
-    },
-    {
       "id": "M4",
       "type": "mirror",
-      "x": 254.7933,
-      "y": 563.9297,
-      "rot": 170,
-      "label": "M4 · OC",
+      "x": 211.1236,
+      "y": 546.4252,
+      "rot": 156,
+      "label": "M4 · output coupler",
       "showLabel": true,
       "params": {
         "length": 25.4,
-        "refl": 95,
+        "refl": 90,
         "showTransmitted": true
       },
       "labelPos": "b"
     },
     {
+      "id": "separator",
+      "type": "dichroic",
+      "x": 740,
+      "y": 400,
+      "rot": 135,
+      "label": "separator",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1000,
+        "length": 25.4
+      },
+      "labelPos": "t"
+    },
+    {
       "id": "pump-dump",
       "type": "beamdump",
-      "x": 1142.8832,
-      "y": 442.9461,
-      "rot": 16,
+      "x": 740,
+      "y": 510,
+      "rot": 90,
       "label": "residual pump",
       "showLabel": true,
       "params": {
@@ -191,8 +192,8 @@
     {
       "id": "idler-probe",
       "type": "probe",
-      "x": 700,
-      "y": 250,
+      "x": 850,
+      "y": 400,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -203,10 +204,10 @@
     {
       "id": "idler-detector",
       "type": "detector",
-      "x": 860,
-      "y": 250,
+      "x": 1000,
+      "y": 400,
       "rot": 0,
-      "label": "idler · 3.5 µm",
+      "label": "idler · 1588 nm",
       "showLabel": true,
       "params": {
         "aperture": 26
@@ -216,8 +217,8 @@
     {
       "id": "signal-probe",
       "type": "probe",
-      "x": 195.7048,
-      "y": 574.3486,
+      "x": 183.7173,
+      "y": 558.6273,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -228,10 +229,10 @@
     {
       "id": "signal-detector",
       "type": "detector",
-      "x": 107.0721,
-      "y": 589.9769,
-      "rot": 170,
-      "label": "signal · 1480 nm",
+      "x": 101.4982,
+      "y": 595.2336,
+      "rot": 156,
+      "label": "signal · 800 nm",
       "showLabel": true,
       "params": {
         "aperture": 26
@@ -241,13 +242,13 @@
     {
       "id": "coatings",
       "type": "textlabel",
-      "x": 290,
-      "y": 318,
+      "x": 300,
+      "y": 610,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "M1 · transmits the pump, reflects the signal\nM2 · reflects the signal, transmits the idler\nM5 · reflects the signal, transmits the residual pump\nM3 · high reflector    M4 · output coupler, 5 % of the signal",
+        "text": "M1, M2 · reflect the signal band (650–950 nm), transmit pump and idler\nF1, M3 · high reflectors    M4 · output coupler, 10 % of the signal (illustrative)",
         "fontSize": 10,
         "fill": "#34454d"
       }
@@ -255,13 +256,13 @@
     {
       "id": "legend",
       "type": "textlabel",
-      "x": 560,
-      "y": 590,
+      "x": 300,
+      "y": 650,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Only the 1480 nm signal resonates. The crystal converts a fixed 78 % of the pump (the reported\nmaximum depletion, used as an illustrative fraction): threshold and gain are not modelled.",
+        "text": "Only the 800 nm signal resonates. The crystal converts a fixed 37.5 % of the pump (the datasheet's\nminimum combined output over its pump power, used as an illustrative fraction): no threshold or gain.",
         "fontSize": 10,
         "fill": "#34454d"
       }

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synchronously pumped picosecond OPO — Examples | OpticalSetup</title>
+<meta name="description" content="A green-pumped oscillator whose cavity is exactly as long as the gap between pump pulses, turning 532 nm picosecond light into a tunable 800 nm signal.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/synchronously-pumped-picosecond-opo/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Synchronously pumped picosecond OPO — OpticalSetup Examples">
+<meta property="og:description" content="A green-pumped oscillator whose cavity is exactly as long as the gap between pump pulses, turning 532 nm picosecond light into a tunable 800 nm signal.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/synchronously-pumped-picosecond-opo/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Nonlinear Optics / Synchronously pumped picosecond OPO</div>
+      <h1>Synchronously pumped picosecond OPO</h1>
+      <p class="tagline" style="margin-top: 10px;">A green-pumped oscillator whose cavity is exactly as long as the gap between pump pulses, turning 532 nm picosecond light into a tunable 800 nm signal.</p>
+
+      <a class="place-cta" href="../../sketch/?example=synchronously-pumped-picosecond-opo">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=synchronously-pumped-picosecond-opo&amp;embed=1"
+          title="Synchronously pumped picosecond OPO — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+      
+      <p>An optical parametric oscillator feeds one of its two generated waves back through
+      a χ⁽²⁾ crystal so that it keeps being amplified. With a mode-locked pump the
+      crystal only has gain while a pump pulse is inside it, and between pulses there is
+      none<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+      <p><strong>Synchronous pumping</strong> makes the cavity exactly as long as the gap
+      between pump pulses. A signal pulse leaves the crystal, travels once around the
+      resonator and arrives back just as the next pump pulse does, so it is amplified on
+      every pass. For a pump at repetition rate <span class="w">f<sub>rep</sub></span> the
+      round trip must take <span class="w">1/f<sub>rep</sub></span>: a one-way optical path
+      of <span class="w">c / (2 f<sub>rep</sub>)</span>, 1.87 m at 80 MHz. Strictly this is
+      the <em>group</em> optical path, so a dispersive crystal inside the cavity makes the
+      mirrors sit a little closer together than that distance.</p>
+      <p>Green-pumped picosecond OPOs are a standard source for coherent Raman
+      microscopy, because they deliver two synchronised, independently useful colours. In
+      the Levante Emerald 6 ps class, a 532 nm pump of about 6 ps and 4 W at about 80 MHz
+      gives a signal tunable from 690 to 990 nm with a 0.3–0.4 nm bandwidth and 5–6 ps
+      pulses, an idler from 1150 to 2300 nm, and at least 0.9 W of signal and 0.6 W of
+      idler; its datasheet describes it as suited to SRS and CARS<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>The cavity is <strong>singly resonant</strong>: its mirrors reflect only the
+      signal band, so the pump enters through the first curved mirror and the idler and
+      residual pump leave through the second, while a few per cent of the signal leaves
+      through the output coupler on every round trip.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+        
+      <p>The scene routes that architecture; it does not reproduce the instrument's
+      internal design or its operating point. A 532 nm, 6 ps, 80 MHz, 4 W pump enters a
+      Z-shaped cavity, M3 → F1 → M1 → crystal → M2 → M4, whose one-way path is exactly
+      <span class="w">c / (2 × 80 MHz) = 1873.7 mm</span> — a round trip of 12.5 ns, the
+      pump period. Every fold is at a 12° angle of incidence, so the beam turns back on
+      itself as it does on real cavity mirrors, and one flat fold, F1, keeps the long arm
+      on the page. The crystal is a thin surface, so the whole path is air and group and
+      geometric lengths coincide.</p>
+      <p>M1 and M2 are band reflectors that return the 650–950 nm signal band and transmit
+      the pump and idler. The pump enters through M1; the idler and residual pump leave
+      together through M2 and are separated by a dichroic outside the cavity. M4 is an
+      output coupler reflecting 90 % of the signal — the datasheet does not give this
+      value, so it is illustrative.</p>
+      <p>The crystal is set to a 532 nm pump and an 800 nm signal, placing the idler at
+      1588 nm. The signal is authored at 0.30 nm (4.69 cm⁻¹) with 5 ps pulses, the low ends
+      of the datasheet's ranges, whose time–bandwidth product of 0.70 is the closest to its
+      quoted typical 0.6. The idler width, about 1.3 nm, is derived from pump and signal as
+      uncorrelated Gaussians rather than taken from the datasheet.</p>
+      <p>The crystal converts a fixed 37.5 % of the pump — the datasheet's minimum combined
+      output (0.9 + 0.6 W) over its 4 W pump, used as an illustrative lossless fraction.
+      By photon energy that is 24.9 % signal and 12.6 % idler. The idler detector reads the
+      12.6 % in one pass. The tracer sums six output-coupler leaks of the signal before its
+      path-depth limit, about 11.7 % of the pump; infinitely many would recover the
+      generated 24.9 %. Neither is a steady-state prediction, and with the 4 W pump the
+      scene's 0.50 W idler and 0.47 W signal-port powers are not a calibration against the
+      datasheet.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>This is a phenomenological OPO, not a cavity simulation. The crystal
+      converts a fixed fraction of the pump on its first pass; there is no threshold, gain,
+      build-up or saturation, and changing the cavity length does not detune anything —
+      in a real synchronously pumped OPO it shifts the signal and can stop oscillation.
+      The signal output is a finite sum of traced leakage paths.</p>
+      <p>Drawing concessions: M1 and M2 are drawn flat, whereas real synchronously pumped
+      cavities focus into the crystal with curved mirrors, because the workbench's curved
+      mirrors are not wavelength-selective. The datasheet couples signal and idler out
+      collinearly; here the idler leaves through M2. The pump is a single axial ray, so the
+      scene shows chief-ray routing only, with no focus, waist, resonator mode or beam
+      overlap. Crystal length, temperature tuning and intracavity dispersion are not
+      modelled, and the output widths, durations, output coupling and conversion fraction
+      are authored.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/crystal/"><svg viewBox="-24 -24 48 48" aria-hidden="true"><path d="M -12,-11 L 16,-11 L 12,11 L -16,11 Z" fill="#e4d5f2" stroke="#8a5fb0" stroke-width="1.5"/></svg>Crystal</a><a href="../../wiki/dichroic/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-3" y="-12.7" width="6" height="25.4" fill="#dfeef7" stroke="#5d7f96" stroke-width="1.5"/><line x1="-3" y1="-12.7" x2="-3" y2="12.7" stroke="#b04ad0" stroke-width="2"/></svg>Dichroic mirror</a><a href="../../wiki/mirror/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><line x1="0" y1="-12.7" x2="0" y2="12.7" stroke="#444" stroke-width="3.5"/><line x1="-1.5" y1="-12.7" x2="-7.5" y2="-6.699999999999999" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="-6.233333333333333" x2="-7.5" y2="-0.2333333333333334" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="0.2333333333333325" x2="-7.5" y2="6.2333333333333325" stroke="#888" stroke-width="1"/><line x1="-1.5" y1="6.699999999999999" x2="-7.5" y2="12.7" stroke="#888" stroke-width="1"/></svg>Mirror</a><a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/probe/"><svg viewBox="-24 -24 48 48" aria-hidden="true"><circle r="4.5" fill="none" stroke="#e07020" stroke-width="1.6"/><line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/><line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/><line x1="0" y1="-9" x2="0" y2="-22" stroke="#e07020" stroke-width="1"/><g class="probe-card" transform="rotate(0) translate(-42.00,-58.00) scale(1.5)"><rect x="0" y="0" width="56" height="24" rx="4" fill="#fff" stroke="#c9ced6"/><text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text></g></svg>Beam probe (?)</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.ape-berlin.de/content/uploads/2019/01/APE-Levante-Emerald-ps-OPO-for-Green-Pump-Laser-Rev-3.1.1.pdf" target="_blank" rel="noopener">APE — Levante Emerald, tunable OPO for green picosecond lasers, datasheet Rev. 3.1.1</a></li><li id="ref-2"><a href="https://www.rp-photonics.com/optical_parametric_oscillators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Optical Parametric Oscillators</a></li>
+      </ol>
+
+      
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are curated and reviewed for pedagogical accuracy — see the <a href="../../community/">community section</a> for setups submitted directly by users, and the <a href="../../wiki/">wiki</a> for how each component actually works.</footer>
+</body>
+</html>

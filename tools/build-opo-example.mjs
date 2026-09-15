@@ -1,122 +1,173 @@
-// Generates the synchronously pumped OPO example: `node tools/build-opo-example.mjs`.
+// Generates the two OPO examples: `node tools/build-opo-example.mjs`.
 //
-// The cavity is inspired by the femtosecond OPO of O'Donnell, Chaitanya Kumar
-// and Ebrahim-Zadeh (APL Photonics 4, 050801, 2019): a 42 mm MgO:PPLN crystal
-// between two r = 100 mm concave mirrors M1 and M2, a plane mirror M3 and a
-// plane output coupler M4 transmitting 5 % of the signal, pumped by 80–100 fs
-// pulses near 1 µm at 80 MHz, with 400–600 fs signal pulses and a 3.1–4.3 µm
-// idler 140–180 nm wide. The scene routes that architecture; it does not
-// reproduce the oscillator's operating point.
+// Both are singly resonant: every cavity mirror is a band reflector that
+// returns the ~800 nm signal and transmits the 532 nm pump and 1588 nm idler,
+// which is what real OPO mirror coatings do. Every fold is near normal
+// incidence (12° in the picosecond cavity, 15° in the folded one), as cavity
+// mirrors are used, so the beam folds back on itself rather than glancing off.
 //
-// Synchronous pumping fixes the length. A signal pulse has to be back at the
-// crystal when the next pump pulse arrives, so one round trip equals the pump
-// period: the one-way group optical path is c / (2 f_rep) = 1873.70 mm for
-// 80 MHz. In the real cavity the dispersive crystal makes the mirror spacing
-// shorter than that; here the crystal is a thin surface, the whole path is
-// air, and the two are equal. It is laid out in a Z to fit the page:
-// M3 → M1 → crystal → M2 → M5 → M4.
+// 1. SYNCHRONOUSLY PUMPED PICOSECOND OPO. Modelled on the APE Levante Emerald
+//    6 ps class (datasheet Rev 3.1.1): a 532 nm, ~6 ps, ~80 MHz, 4 W pump;
+//    signal tunable 690–990 nm with a 0.3–0.4 nm bandwidth and ~5–6 ps
+//    pulses; idler 1150–2300 nm; > 0.9 W signal and > 0.6 W idler. A signal
+//    pulse must meet the next pump pulse at the crystal, so the round trip
+//    equals the pump period: the one-way group optical path is
+//    c / (2 f_rep) = 1873.70 mm at 80 MHz. The crystal is a thin surface
+//    here, so the whole path is air and group and geometric lengths agree.
+//    Layout: an M3 → F1 → M1 → crystal → M2 → M4 Z-cavity with one flat
+//    fold, F1, in the long arm to fit the page. The idler and residual pump
+//    leave together through M2 and are separated outside the cavity.
+//    Settings: signal 0.30 nm (4.69 cm⁻¹) wide with 5/6 of the pump duration
+//    (5 ps), the low ends of the datasheet ranges, whose time–bandwidth
+//    product (0.70) is closest to its quoted typical 0.6; the idler width is
+//    derived (uncorrelated pump and signal), not a datasheet value; conversion 0.375, the ratio of the datasheet's minimum
+//    combined output (0.9 + 0.6 W) to its 4 W pump, used as a lossless
+//    fraction. The datasheet does not give the output-coupler transmission;
+//    10 % is illustrative.
+//    Concessions: M1 and M2 are drawn flat; real synchronously pumped
+//    cavities focus into the crystal with curved mirrors, and the
+//    workbench's curved mirrors are not wavelength-selective. The datasheet
+//    couples signal and idler out collinearly; here the idler leaves through
+//    M2. The pump is a single axial ray: chief-ray routing only.
 //
-// Output settings: the signal is authored at 29.43 cm⁻¹ with 5 × the pump
-// duration, i.e. a 500 fs pulse just above its Gaussian transform limit, representative
-// of the reported 400–600 fs. The idler is authored at 131 cm⁻¹ (≈160 nm at
-// 3.5 µm, inside the reported 140–180 nm); its 500 fs duration follows the
-// same factor and is illustrative. Conversion is fixed at 78 %, the reported
-// maximum pump depletion, used as an illustrative lossless fraction.
-//
-// Three concessions to the workbench, all stated on the example page:
-//  - M1 and M2 are drawn as plane dichroic mirrors. The workbench's curved
-//    mirrors reflect every wavelength equally, so they could not let the pump
-//    in or the idler out, and a zero-thickness crystal needs no focus. They
-//    sit 50 mm either side of the crystal, where r = 100 mm mirrors would.
-//  - In the real cavity M2 transmits both the idler and the residual pump. A
-//    dichroic here switches at one edge, so the pump leaves through an extra
-//    plane fold, M5, instead.
-//  - The pump is a single axial ray, so the scene shows chief-ray routing
-//    only: no focus, waist, resonator mode or overlap is represented, and
-//    the 42 mm crystal's propagation and group-velocity matching are absent.
-import { writeFile, mkdir } from 'node:fs/promises';
+// 2. OPTICAL PARAMETRIC OSCILLATOR, FOLDED CAVITY. A textbook nanosecond
+//    OPO: a Q-switched 532 nm pump, a short plane-mirror cavity folded into a
+//    V at a 15° angle of incidence, a signal linewidth set by the cavity and a partially reflecting
+//    output coupler. Every number is illustrative rather than taken from one
+//    instrument: 10 ns pump at 1 kHz with a 1 cm⁻¹ linewidth, signal 5 cm⁻¹,
+//    output pulses 0.8 × the pump duration, 30 % conversion, 70 % output
+//    coupler.
+import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 const DIR = fileURLToPath(new URL('../Examples/Nonlinear Optics/', import.meta.url));
-export const OPO_EXAMPLE_NAME = 'Synchronously pumped femtosecond OPO';
+export const SYNC_OPO_NAME = 'Synchronously pumped picosecond OPO';
+export const FOLDED_OPO_NAME = 'Optical parametric oscillator — folded cavity, element by element';
 
 const C_MM_PER_NS = 299.792458;
 export const REP_RATE_MHZ = 80;
 export const CAVITY_LENGTH_MM = C_MM_PER_NS * 1e3 / REP_RATE_MHZ / 2;
+export const FOLD_INCIDENCE_DEG = 12;
 
 const DEG = Math.PI / 180;
 const dir = deg => ({ x: Math.cos(deg * DEG), y: Math.sin(deg * DEG) });
 const along = (p, d, length) => ({ x: p.x + d.x * length, y: p.y + d.y * length });
 const round = v => Math.round(v * 1e4) / 1e4;
-// A flat reflector at `rot` degrees turns `from` into `to` when its normal
-// lies along to − from.
+// A flat reflector at `rot` degrees turns direction `from` into `to` when its
+// normal lies along to − from.
 const foldRot = (from, to) => {
   const deg = Math.atan2(to.y - from.y, to.x - from.x) / DEG;
   return round(((deg % 180) + 180) % 180);
 };
 const back = d => ({ x: -d.x, y: -d.y });
-
-const AXIS = 250;
-const HALF_FOLD = 8; // degrees each long leg leaves the crystal axis
-const LEG_M3 = 330, LEG_M5 = 620;
-const M1 = { x: 370, y: AXIS }, CRYSTAL = { x: 420, y: AXIS }, M2 = { x: 470, y: AXIS };
-const TO_M3 = dir(180 + 2 * HALF_FOLD), TO_M5 = dir(2 * HALF_FOLD), TO_M4 = dir(170);
-const M3 = along(M1, TO_M3, LEG_M3);
-const M5 = along(M2, TO_M5, LEG_M5);
-const LEG_M4 = CAVITY_LENGTH_MM - (M2.x - M1.x) - LEG_M3 - LEG_M5;
-const M4 = along(M5, TO_M4, LEG_M4);
+const TURN = 2 * FOLD_INCIDENCE_DEG;
 
 const el = (id, type, p, params, extra = {}) =>
   ({ id, type, x: round(p.x), y: round(p.y), rot: 0, label: '', showLabel: false, params, ...extra });
 const text = (id, x, y, body, fontSize = 11) =>
   el(id, 'textlabel', { x, y }, { text: body, fontSize, fill: '#34454d' });
 const named = (label, labelPos = 'b') => ({ label, showLabel: true, labelPos });
+const bandReflector = { dtype: 'notch', center: 800, band: 300, length: 25.4 };
 
-export function opoExampleScene() {
+// ---------------------------------------------------------------- 1 -------
+const AXIS = 400;
+const M1 = { x: 440, y: AXIS }, CRYSTAL = { x: 490, y: AXIS }, M2 = { x: 540, y: AXIS };
+const TO_F1 = dir(-TURN);          // signal leaving M1, back over the crystal
+const TO_M3 = dir(180);            // folded back level by F1 (in −24°, out 180°: 12° incidence)
+const TO_M4 = dir(180 - TURN);     // signal leaving M2, back under the crystal
+const ARM_F1 = 700, ARM_M4 = 360;
+const F1 = along(M1, TO_F1, ARM_F1);
+const ARM_M3 = CAVITY_LENGTH_MM - (M2.x - M1.x) - ARM_F1 - ARM_M4;
+const M3 = along(F1, TO_M3, ARM_M3);
+const M4 = along(M2, TO_M4, ARM_M4);
+export const SYNC_OPO_PATH = { M3, F1, M1, M2, M4 };
+
+export function syncOpoScene() {
   return {
     app: 'optics2d', version: 1,
     elements: [
-      el('frame', 'figureframe', { x: 600, y: 350 }, { w: 1200, h: 620, background: 'white' }),
-      text('title', 30, 70, '# Synchronously pumped femtosecond OPO\nMgO:PPLN singly resonant cavity after O\'Donnell, Chaitanya Kumar & Ebrahim-Zadeh, APL Photonics 4, 050801 (2019)', 12),
-      text('cavity-note', 560, 118, `One-way cavity path ${CAVITY_LENGTH_MM.toFixed(1)} mm: round-trip time = 1 / ${REP_RATE_MHZ} MHz = ${(1e3 / REP_RATE_MHZ).toFixed(1)} ns,\nso each signal pulse returns to the crystal with the next pump pulse`, 10),
-      el('pump', 'pulsedlaser', { x: 150, y: AXIS }, {
-        wavelength: 1040, pulseWidthFs: 100, repRateMHz: REP_RATE_MHZ, avgPowerW: 2,
+      el('frame', 'figureframe', { x: 600, y: 340 }, { w: 1200, h: 680, background: 'white' }),
+      text('title', 30, 30, '# Synchronously pumped picosecond OPO\nGreen-pumped singly resonant oscillator, modelled on the APE Levante Emerald 6 ps datasheet', 12),
+      text('cavity-note', 820, 470, `One-way cavity path ${CAVITY_LENGTH_MM.toFixed(1)} mm: round-trip time = 1 / ${REP_RATE_MHZ} MHz = ${(1e3 / REP_RATE_MHZ).toFixed(1)} ns,\nso each signal pulse returns to the crystal with the next pump pulse`, 10),
+      el('pump', 'pulsedlaser', { x: 270, y: AXIS }, {
+        wavelength: 532, pulseWidthFs: 6000, repRateMHz: REP_RATE_MHZ, avgPowerW: 4,
         transformLimited: true, pulseShape: 'gauss', beamMode: 'line',
-      }, named('Yb:fibre pump · 1040 nm · 100 fs · 80 MHz')),
-      el('lens', 'lens', { x: 270, y: AXIS }, { f: 150, dia: 25.4 }, named('f = 150 mm', 't')),
-      el('M1', 'dichroic', M1, { dtype: 'shortpass', cutoff: 1200, length: 25.4 },
-        { rot: foldRot(back(dir(0)), TO_M3), ...named('M1', 't') }),
+      }, named('532 nm · 6 ps · 80 MHz · 4 W')),
+      el('M1', 'dichroic', M1, bandReflector, { rot: foldRot(back(dir(0)), TO_F1), ...named('M1', 'b') }),
       el('crystal', 'crystal', CRYSTAL, {
-        convert: 'opo', aperture: 10, pumpWl: 1040, signalWl: 1480, pumpAcceptanceNm: 5,
-        linewidthMode: 'both', signalLinewidthCm: 29.43, idlerLinewidthCm: 131,
-        outputPhase: 'unknown', durationFactor: 5, efficiency: 0.78, transmitPump: true,
-      }, named('MgO:PPLN')),
-      el('M2', 'dichroic', M2, { dtype: 'longpass', cutoff: 2500, length: 25.4 },
-        { rot: foldRot(dir(0), TO_M5), ...named('M2', 't') }),
-      el('M3', 'mirror', M3, { length: 25.4, refl: 100 },
-        { rot: foldRot(TO_M3, back(TO_M3)), ...named('M3', 'b') }),
-      el('M5', 'dichroic', M5, { dtype: 'shortpass', cutoff: 1300, length: 25.4 },
-        { rot: foldRot(TO_M5, TO_M4), ...named('M5', 't') }),
-      el('M4', 'mirror', M4, { length: 25.4, refl: 95, showTransmitted: true },
-        { rot: foldRot(TO_M4, back(TO_M4)), ...named('M4 · OC', 'b') }),
-      el('pump-dump', 'beamdump', along(M5, TO_M5, 80), { aperture: 22 },
-        { rot: 2 * HALF_FOLD, ...named('residual pump', 'b') }),
-      el('idler-probe', 'probe', { x: 700, y: AXIS }, { prop: 'spectrum' }),
-      el('idler-detector', 'detector', { x: 860, y: AXIS }, { aperture: 26 }, named('idler · 3.5 µm')),
-      el('signal-probe', 'probe', along(M4, TO_M4, 60), { prop: 'spectrum' }),
-      el('signal-detector', 'detector', along(M4, TO_M4, 150), { aperture: 26 },
-        { rot: 170, ...named('signal · 1480 nm') }),
-      text('coatings', 290, 318, 'M1 · transmits the pump, reflects the signal\nM2 · reflects the signal, transmits the idler\nM5 · reflects the signal, transmits the residual pump\nM3 · high reflector    M4 · output coupler, 5 % of the signal', 10),
-      text('legend', 560, 590, 'Only the 1480 nm signal resonates. The crystal converts a fixed 78 % of the pump (the reported\nmaximum depletion, used as an illustrative fraction): threshold and gain are not modelled.', 10),
+        convert: 'opo', aperture: 10, pumpWl: 532, signalWl: 800, pumpAcceptanceNm: 1,
+        linewidthMode: 'signal', signalLinewidthCm: 4.69,
+        outputPhase: 'unknown', durationFactor: 0.8333, efficiency: 0.375, transmitPump: true,
+      }, named('LBO', 't')),
+      el('M2', 'dichroic', M2, bandReflector, { rot: foldRot(dir(0), TO_M4), ...named('M2', 't') }),
+      el('F1', 'mirror', F1, { length: 25.4, refl: 100 }, { rot: foldRot(TO_F1, TO_M3), ...named('F1', 'r') }),
+      el('M3', 'mirror', M3, { length: 25.4, refl: 100 }, { rot: foldRot(TO_M3, back(TO_M3)), ...named('M3 · HR', 'b') }),
+      el('M4', 'mirror', M4, { length: 25.4, refl: 90, showTransmitted: true },
+        { rot: foldRot(TO_M4, back(TO_M4)), ...named('M4 · output coupler', 'b') }),
+      el('separator', 'dichroic', { x: 740, y: AXIS }, { dtype: 'longpass', cutoff: 1000, length: 25.4 },
+        { rot: 135, ...named('separator', 't') }),
+      el('pump-dump', 'beamdump', { x: 740, y: AXIS + 110 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
+      el('idler-probe', 'probe', { x: 850, y: AXIS }, { prop: 'spectrum' }),
+      el('idler-detector', 'detector', { x: 1000, y: AXIS }, { aperture: 26 }, named('idler · 1588 nm')),
+      el('signal-probe', 'probe', along(M4, TO_M4, 30), { prop: 'spectrum' }),
+      el('signal-detector', 'detector', along(M4, TO_M4, 120), { aperture: 26 },
+        { rot: round(180 - TURN), ...named('signal · 800 nm') }),
+      text('coatings', 300, 610, 'M1, M2 · reflect the signal band (650–950 nm), transmit pump and idler\nF1, M3 · high reflectors    M4 · output coupler, 10 % of the signal (illustrative)', 10),
+      text('legend', 300, 650, 'Only the 800 nm signal resonates. The crystal converts a fixed 37.5 % of the pump (the datasheet\'s\nminimum combined output over its pump power, used as an illustrative fraction): no threshold or gain.', 10),
+    ],
+  };
+}
+
+// ---------------------------------------------------------------- 2 -------
+const V_AXIS = 300;
+const V_INCIDENCE_DEG = 15;
+const V_M1 = { x: 330, y: V_AXIS }, V_CRYSTAL = { x: 400, y: V_AXIS }, V_M2 = { x: 470, y: V_AXIS };
+const V_TO_M3 = dir(180 + 2 * V_INCIDENCE_DEG);
+const V_ARM = 200;
+const V_M3 = along(V_M2, V_TO_M3, V_ARM);
+export const FOLDED_OPO_PATH = { M1: V_M1, M2: V_M2, M3: V_M3 };
+
+export function foldedOpoScene() {
+  return {
+    app: 'optics2d', version: 1,
+    elements: [
+      el('frame', 'figureframe', { x: 400, y: 260 }, { w: 800, h: 520, background: 'white' }),
+      text('title', 30, 30, '# Optical parametric oscillator — folded cavity\nA textbook singly resonant OPO: one pump photon becomes one signal and one idler photon', 12),
+      text('energy', 30, 88, '1 / 532 nm = 1 / 800 nm + 1 / 1588 nm      generated power: signal 66.5 %, idler 33.5 % (equal photon numbers)', 10),
+      el('pump', 'pulsedlaser', { x: 170, y: V_AXIS }, {
+        wavelength: 532, pulseWidthFs: 1e7, repRateMHz: 0.001, avgPowerW: 1,
+        transformLimited: false, bandwidth: 0.03, pulseShape: 'gauss', beamMode: 'line',
+      }, named('Q-switched 532 nm · 10 ns · 1 kHz')),
+      el('M1', 'dichroic', V_M1, bandReflector, { rot: 0, ...named('M1 · input mirror', 'b') }),
+      el('crystal', 'crystal', V_CRYSTAL, {
+        convert: 'opo', aperture: 10, pumpWl: 532, signalWl: 800, pumpAcceptanceNm: 1,
+        linewidthMode: 'signal', signalLinewidthCm: 5,
+        outputPhase: 'unknown', durationFactor: 0.8, efficiency: 0.3, transmitPump: true,
+      }, named('χ⁽²⁾ crystal', 'b')),
+      el('M2', 'dichroic', V_M2, bandReflector, { rot: foldRot(dir(0), V_TO_M3), ...named('M2 · fold mirror', 'b') }),
+      el('M3', 'mirror', V_M3, { length: 25.4, refl: 70, showTransmitted: true },
+        { rot: foldRot(V_TO_M3, back(V_TO_M3)), ...named('M3 · output coupler', 'r') }),
+      el('separator', 'dichroic', { x: 600, y: V_AXIS }, { dtype: 'longpass', cutoff: 1000, length: 25.4 },
+        { rot: 135, ...named('separator', 't') }),
+      el('pump-dump', 'beamdump', { x: 600, y: V_AXIS + 100 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
+      el('idler-detector', 'detector', { x: 720, y: V_AXIS }, { aperture: 26 }, named('idler · 1588 nm')),
+      el('signal-detector', 'detector', along(V_M3, back(V_TO_M3), -130), { aperture: 26 },
+        { rot: round(180 + 2 * V_INCIDENCE_DEG), ...named('signal · 800 nm', 'l') }),
+      text('coatings', 60, 385, 'M1, M2 · reflect the signal band (650–950 nm), transmit pump and idler\nM3 · output coupler, 30 % of the signal', 10),
+      text('legend', 30, 470, 'Only the signal resonates between M1 and M3. The pump makes one pass and leaves with the idler through M2.\nIllustrative settings: 30 % conversion, cavity-set 5 cm⁻¹ signal linewidth, output pulses 0.8 × the pump duration.', 10),
     ],
   };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   await mkdir(DIR, { recursive: true });
-  const path = join(DIR, `${OPO_EXAMPLE_NAME}.json`);
-  await writeFile(path, `${JSON.stringify(opoExampleScene(), null, 2)}\n`);
-  console.log(`wrote ${path}`);
-  console.log({ CAVITY_LENGTH_MM, LEG_M4, M3, M5, M4 });
+  // The femtosecond PPLN draft this generator used to write is replaced.
+  await rm(join(DIR, 'Synchronously pumped femtosecond OPO.json'), { force: true });
+  for (const [name, scene] of [[SYNC_OPO_NAME, syncOpoScene()], [FOLDED_OPO_NAME, foldedOpoScene()]]) {
+    const path = join(DIR, `${name}.json`);
+    await writeFile(path, `${JSON.stringify(scene, null, 2)}\n`);
+    console.log(`wrote ${path}`);
+  }
+  console.log({ CAVITY_LENGTH_MM, ARM_M3, M3, F1, M4, V_M3 });
 }

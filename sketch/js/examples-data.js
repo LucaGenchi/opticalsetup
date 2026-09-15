@@ -44,9 +44,15 @@ export const examples = [
   },
   {
     "group": "Nonlinear Optics",
-    "name": "Synchronously pumped femtosecond OPO",
-    "path": "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20femtosecond%20OPO.json",
-    "slug": "synchronously-pumped-femtosecond-opo"
+    "name": "Optical parametric oscillator — folded cavity, element by element",
+    "path": "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20folded%20cavity%2C%20element%20by%20element.json",
+    "slug": "optical-parametric-oscillator-folded-cavity-element-by-element"
+  },
+  {
+    "group": "Nonlinear Optics",
+    "name": "Synchronously pumped picosecond OPO",
+    "path": "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20picosecond%20OPO.json",
+    "slug": "synchronously-pumped-picosecond-opo"
   },
   {
     "group": "Optics Bench",

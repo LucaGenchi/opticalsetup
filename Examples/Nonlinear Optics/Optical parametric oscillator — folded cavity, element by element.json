@@ -1,0 +1,220 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 400,
+      "y": 260,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 800,
+        "h": 520,
+        "background": "white"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 30,
+      "y": 30,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# Optical parametric oscillator — folded cavity\nA textbook singly resonant OPO: one pump photon becomes one signal and one idler photon",
+        "fontSize": 12,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "energy",
+      "type": "textlabel",
+      "x": 30,
+      "y": 88,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "1 / 532 nm = 1 / 800 nm + 1 / 1588 nm      generated power: signal 66.5 %, idler 33.5 % (equal photon numbers)",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "pump",
+      "type": "pulsedlaser",
+      "x": 170,
+      "y": 300,
+      "rot": 0,
+      "label": "Q-switched 532 nm · 10 ns · 1 kHz",
+      "showLabel": true,
+      "params": {
+        "wavelength": 532,
+        "pulseWidthFs": 10000000,
+        "repRateMHz": 0.001,
+        "avgPowerW": 1,
+        "transformLimited": false,
+        "bandwidth": 0.03,
+        "pulseShape": "gauss",
+        "beamMode": "line"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "M1",
+      "type": "dichroic",
+      "x": 330,
+      "y": 300,
+      "rot": 0,
+      "label": "M1 · input mirror",
+      "showLabel": true,
+      "params": {
+        "dtype": "notch",
+        "center": 800,
+        "band": 300,
+        "length": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "crystal",
+      "type": "crystal",
+      "x": 400,
+      "y": 300,
+      "rot": 0,
+      "label": "χ⁽²⁾ crystal",
+      "showLabel": true,
+      "params": {
+        "convert": "opo",
+        "aperture": 10,
+        "pumpWl": 532,
+        "signalWl": 800,
+        "pumpAcceptanceNm": 1,
+        "linewidthMode": "signal",
+        "signalLinewidthCm": 5,
+        "outputPhase": "unknown",
+        "durationFactor": 0.8,
+        "efficiency": 0.3,
+        "transmitPump": true
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "M2",
+      "type": "dichroic",
+      "x": 470,
+      "y": 300,
+      "rot": 15,
+      "label": "M2 · fold mirror",
+      "showLabel": true,
+      "params": {
+        "dtype": "notch",
+        "center": 800,
+        "band": 300,
+        "length": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "M3",
+      "type": "mirror",
+      "x": 296.7949,
+      "y": 200,
+      "rot": 30,
+      "label": "M3 · output coupler",
+      "showLabel": true,
+      "params": {
+        "length": 25.4,
+        "refl": 70,
+        "showTransmitted": true
+      },
+      "labelPos": "r"
+    },
+    {
+      "id": "separator",
+      "type": "dichroic",
+      "x": 600,
+      "y": 300,
+      "rot": 135,
+      "label": "separator",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1000,
+        "length": 25.4
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "pump-dump",
+      "type": "beamdump",
+      "x": 600,
+      "y": 400,
+      "rot": 90,
+      "label": "residual pump",
+      "showLabel": true,
+      "params": {
+        "aperture": 22
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "idler-detector",
+      "type": "detector",
+      "x": 720,
+      "y": 300,
+      "rot": 0,
+      "label": "idler · 1588 nm",
+      "showLabel": true,
+      "params": {
+        "aperture": 26
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "signal-detector",
+      "type": "detector",
+      "x": 184.2116,
+      "y": 135,
+      "rot": 210,
+      "label": "signal · 800 nm",
+      "showLabel": true,
+      "params": {
+        "aperture": 26
+      },
+      "labelPos": "l"
+    },
+    {
+      "id": "coatings",
+      "type": "textlabel",
+      "x": 60,
+      "y": 385,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "M1, M2 · reflect the signal band (650–950 nm), transmit pump and idler\nM3 · output coupler, 30 % of the signal",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "legend",
+      "type": "textlabel",
+      "x": 30,
+      "y": 470,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Only the signal resonates between M1 and M3. The pump makes one pass and leaves with the idler through M2.\nIllustrative settings: 30 % conversion, cavity-set 5 cm⁻¹ signal linewidth, output pulses 0.8 × the pump duration.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    }
+  ]
+}
