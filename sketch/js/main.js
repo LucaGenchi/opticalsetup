@@ -111,7 +111,7 @@ const demoScenes = {
       mkDemo('display', 400, 265, 0, { sensorId: sensor.id, displayScale: 0.55 })];
   },
   crystal: () => [
-    mkDemo('cwlaser', 60, 160, 0, { wavelength: 1064 }),
+    mkDemo('pulsedlaser', 60, 160, 0, { wavelength: 1064 }),
     mkDemo('crystal', 220, 160, 0, { convert: 'shg', efficiency: 0.4, transmitPump: true }),
     mkDemo('dichroic', 350, 160, 135, { cutoff: 700 }),
     mkDemo('probe', 430, 160, 0, { prop: 'wl' }),

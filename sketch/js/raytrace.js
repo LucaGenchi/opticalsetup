@@ -34,7 +34,7 @@ import {
   gaussianPulseDurationAfterGDD, glassGVD, glassIndex, isDispersiveGlass,
 } from './glass.js';
 import {
-  gaussianSpectrum, flatSpectrum, lineSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
+  gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
@@ -3002,7 +3002,7 @@ function interact(ray, hit) {
             const tint = channelColor(c, line);
             emissionAngles(N, axis).forEach((a, i) => {
               out.push({
-                d: { x: Math.cos(a), y: Math.sin(a) }, wl: line, bw: 0, pol: undefined, stokes: null,
+                d: { x: Math.cos(a), y: Math.sin(a) }, wl: line, bw: 0, spec: null, pol: undefined, stokes: null,
                 color: tint, evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
                 sourceId: emittedFrom,
                 intensity: 0.25,
@@ -3079,7 +3079,7 @@ function interact(ray, hit) {
         for (let i = 0; i < N; i++) {
           const a = i * 2 * Math.PI / N;
           out.push({
-            d: { x: Math.cos(a), y: Math.sin(a) }, wl: data.wl, bw: 0, pol: undefined, stokes: null,
+            d: { x: Math.cos(a), y: Math.sin(a) }, wl: data.wl, bw: 0, spec: null, pol: undefined, stokes: null,
             evan: true, evanLen: EMISSION_GLOW_MM, captureLen: EMISSION_CAPTURE_MM,
             intensity: emitted > 0 ? 0.25 : 0, power: Number.isFinite(ray.power) ? ray.power * (1 - transmission) * Math.min(1, Math.max(0, data.efficiency ?? 0.1)) / N : undefined,
             tag: 'f' + i,
@@ -3419,11 +3419,20 @@ function interact(ray, hit) {
         if (data.transmitPump && efficiency < 0.999) out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'p' });
         return out;
       }
+      // Every converting mode states its output spectrum explicitly. A child
+      // that sets neither bw nor spec inherits the parent's, and that spectrum
+      // -- not wl -- is what dichroics and detectors act on: harmonics of any
+      // pulsed or broadband pump used to keep the pump's, so SHG of a 1064 nm
+      // pulse still read as 1064 nm and no 532 nm light appeared downstream.
       let wl = ray.wl, bw, spec;
-      if (data.convert === 'shg') wl = ray.wl / 2;
-      else if (data.convert === 'thg') wl = ray.wl / 3;
-      else if (data.convert === 'custom' || data.convert === 'cars') wl = data.outWl;
-      else if (data.convert === 'sc') { wl = 650; bw = 440; spec = flatSpectrum(wl - bw / 2, wl + bw / 2); } // supercontinuum
+      if (data.convert === 'shg' || data.convert === 'thg') {
+        const order = data.convert === 'shg' ? 2 : 3;
+        wl = ray.wl / order;
+        bw = (ray.bw || 0) / order;
+        spec = scaleSpectrum(ray.spec, 1 / order);
+      } else if (data.convert === 'custom' || data.convert === 'cars') {
+        wl = data.outWl; bw = 0; spec = null; // one fixed output line, whatever the pump's width
+      } else if (data.convert === 'sc') { wl = 650; bw = 440; spec = flatSpectrum(wl - bw / 2, wl + bw / 2); } // supercontinuum
       const conv = { d, wl, intensity: ray.intensity * efficiency };
       if (bw !== undefined) conv.bw = bw;
       if (spec !== undefined) conv.spec = spec;
