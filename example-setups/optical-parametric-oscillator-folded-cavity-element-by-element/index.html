@@ -81,6 +81,26 @@
       <p>Energy conservation fixes the idler once the signal is chosen, and because the
       two are made in equal numbers of photons, the higher-energy signal carries the
       larger share of the generated power:</p>
+      <div class="formula"><span class="w">1/λ<sub>p</sub> = 1/λ<sub>s</sub> + 1/λ<sub>i</sub></span>
+        <div class="caption">Pumped at 532 nm with an 800 nm signal, the idler is at 1588 nm.</div></div>
+      <div class="formula"><span class="w">P<sub>s</sub> / P<sub>i</sub> = λ<sub>i</sub> / λ<sub>s</sub></span>
+        <div class="caption">Equal photon numbers: the 800 nm signal takes 66.5 % of the generated power and the 1588 nm idler 33.5 %.</div></div>
+      <p>A single pass through the crystal gives little gain, so the crystal sits in a
+      cavity that feeds one of the waves back. In a <strong>singly resonant</strong>
+      OPO only that wave, here the signal, is reflected by the mirrors; the pump and
+      idler pass straight through their coatings. Oscillation starts once the round-trip
+      gain beats the round-trip loss, which is why an OPO has a pump threshold, and
+      driven well above it the pump is depleted and the generated waves can start to
+      convert back<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+      <p>This fold provides a convenient layout and separates the outputs: M2 reflects the
+      signal toward the output coupler while transmitting the pump and idler, so they never
+      reach the output coupler. A real folded resonator still requires a suitable mode,
+      mirror curvatures, coatings and cavity length.</p>
+      <p>In an unseeded nanosecond OPO such as this example, the field must build up from
+      noise during each pump pulse. Finite build-up time raises the required gain relative
+      to the steady-state threshold<sup class="cite">[<a href="#ref-2">2</a>]</sup>, and output pulses are often somewhat shorter
+      than the pump pulses<sup class="cite">[<a href="#ref-1">1</a>]</sup>. As one example of a nanosecond OPO linewidth, a
+      commercial 355 nm-pumped system specifies below 5 cm⁻¹<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
 
       <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
       <div class="sim-block">

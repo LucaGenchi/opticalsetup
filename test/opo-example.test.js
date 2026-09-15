@@ -91,3 +91,36 @@ test('the picosecond signal carries the authored datasheet-range width and durat
   near(signal.bandMax - signal.bandMin, 0.30, 0.01, 'signal FWHM (nm)');
   near(signal.pulse.pulseWidthFs, 5000, 1, 'signal duration (fs)');
 });
+
+test('the generated example pages carry every section of their prose, in order', () => {
+  // The page builder once dropped content keys it did not render; check the
+  // built artifacts, not just the content source.
+  const page = slug => readFileSync(new URL(`../example-setups/${slug}/index.html`, import.meta.url), 'utf8');
+  const inOrder = (html, phrases, label) => {
+    let at = -1;
+    for (const phrase of phrases) {
+      const found = html.indexOf(phrase, at + 1);
+      assert.ok(found > at, `${label}: "${phrase}" missing or out of order`);
+      at = found;
+    }
+  };
+  inOrder(page('optical-parametric-oscillator-folded-cavity-element-by-element'), [
+    'Energy conservation fixes the idler',
+    '1/λ<sub>p</sub> = 1/λ<sub>s</sub> + 1/λ<sub>i</sub>',
+    'P<sub>s</sub> / P<sub>i</sub> = λ<sub>i</sub> / λ<sub>s</sub>',
+    'singly resonant',
+    'This fold provides a convenient layout',
+    'In an unseeded nanosecond OPO such as this example',
+    'href="#ref-3"',
+    'What this setup demonstrates',
+    'id="ref-3"',
+  ], 'folded OPO page');
+  inOrder(page('synchronously-pumped-picosecond-opo'), [
+    'Synchronous pumping',
+    '720–990 nm automated',
+    'What this setup demonstrates',
+    'generic χ⁽²⁾ crystal',
+    'not a measured joint operating point',
+    'id="ref-2"',
+  ], 'picosecond OPO page');
+});

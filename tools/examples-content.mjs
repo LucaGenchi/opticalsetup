@@ -760,12 +760,11 @@ export const exampleEntries = [
       so turning the crystal or changing its temperature tunes the output${cite(1)}.</p>
       <p>Energy conservation fixes the idler once the signal is chosen, and because the
       two are made in equal numbers of photons, the higher-energy signal carries the
-      larger share of the generated power:</p>`,
-    formulas: [
-      { tex: '\\frac{1}{\\lambda_p} = \\frac{1}{\\lambda_s} + \\frac{1}{\\lambda_i}', caption: 'Pumped at 532 nm with an 800 nm signal, the idler is at 1588 nm.' },
-      { tex: '\\frac{P_s}{P_i} = \\frac{\\lambda_i}{\\lambda_s}', caption: 'Equal photon numbers: the 800 nm signal takes 66.5 % of the generated power and the 1588 nm idler 33.5 %.' },
-    ],
-    html2: `
+      larger share of the generated power:</p>
+      <div class="formula"><span class="w">1/λ<sub>p</sub> = 1/λ<sub>s</sub> + 1/λ<sub>i</sub></span>
+        <div class="caption">Pumped at 532 nm with an 800 nm signal, the idler is at 1588 nm.</div></div>
+      <div class="formula"><span class="w">P<sub>s</sub> / P<sub>i</sub> = λ<sub>i</sub> / λ<sub>s</sub></span>
+        <div class="caption">Equal photon numbers: the 800 nm signal takes 66.5 % of the generated power and the 1588 nm idler 33.5 %.</div></div>
       <p>A single pass through the crystal gives little gain, so the crystal sits in a
       cavity that feeds one of the waves back. In a <strong>singly resonant</strong>
       OPO only that wave, here the signal, is reflected by the mirrors; the pump and
