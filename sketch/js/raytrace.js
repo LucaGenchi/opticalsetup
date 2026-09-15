@@ -2432,16 +2432,29 @@ function interact(ray, hit) {
       return [transmitAt(ray.wl)];
     }
     case 'dichroic': {
-      if (!ray.bw) return dichroicTransmits(ray.wl, data) ? [{ d }] : [{ d: reflect(d, n) }];
+      // A band reflector may return only part of its band, as an output
+      // coupler's coating does: the rest of the band is transmitted. Both
+      // parts are kept however weak, like a partial mirror's.
+      const inBandR = data.dtype === 'notch' ? Math.min(1, Math.max(0, (data.bandRefl ?? 100) / 100)) : 1;
+      const partial = inBandR < 1;
+      if (!ray.bw) {
+        if (dichroicTransmits(ray.wl, data)) return [{ d }];
+        if (!partial) return [{ d: reflect(d, n) }];
+        const split = [];
+        if (inBandR > 0) split.push({ d: reflect(d, n), intensity: ray.intensity * inBandR, tag: 'R', retainWeak: true });
+        split.push({ d, intensity: ray.intensity * (1 - inBandR), tag: 'T', retainWeak: true });
+        return split;
+      }
       // A Gaussian (or already-filtered) input has no closed-form box
       // overlap with the passband — integrate the real profile numerically.
       if (ray.spec && ray.spec.kind !== 'flat') {
-        const T = wl => (dichroicTransmits(wl, data) ? 1 : 0);
+        const T = wl => (dichroicTransmits(wl, data) ? 1 : 1 - inBandR);
         const out = [];
+        const weak = partial ? { retainWeak: true } : {};
         const trans = applyTransmission(ray.spec, ray.wl, T);
-        if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T' });
+        if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T', ...weak });
         const refl = applyTransmission(ray.spec, ray.wl, wl => 1 - T(wl));
-        if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R' });
+        if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R', ...weak });
         return out;
       }
       // flat (supercontinuum) or unspecified box: exact analytic overlap
@@ -2453,7 +2466,17 @@ function interact(ray, hit) {
       const [inside, outside] = data.dtype === 'notch' ? [rd, d] : [d, rd];
       const [insideTag, outsideTag] = data.dtype === 'notch' ? ['R', 'T'] : ['T', 'R'];
       const ix = bandIntersect(rb, pb);
-      if (ix && ix[1] - ix[0] > 0.5) out.push(bandChild(ray, inside, ix[0], ix[1], insideTag));
+      if (ix && ix[1] - ix[0] > 0.5) {
+        if (!partial) out.push(bandChild(ray, inside, ix[0], ix[1], insideTag));
+        else {
+          const scaled = (dir, tag, share) => {
+            const c = bandChild(ray, dir, ix[0], ix[1], tag);
+            return { ...c, intensity: c.intensity * share, retainWeak: true };
+          };
+          if (inBandR > 0) out.push(scaled(rd, 'R', inBandR));
+          out.push(scaled(d, 'Tb', 1 - inBandR));
+        }
+      }
       if (rb[0] < pb[0] - 0.5) out.push(bandChild(ray, outside, rb[0], Math.min(rb[1], pb[0]), `${outsideTag}0`));
       if (rb[1] > pb[1] + 0.5) out.push(bandChild(ray, outside, Math.max(rb[0], pb[1]), rb[1], `${outsideTag}1`));
       return out;

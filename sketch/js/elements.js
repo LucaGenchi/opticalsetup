@@ -2994,6 +2994,9 @@ export const registry = {
       { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype !== 'bandpass' && p.dtype !== 'notch' },
       { key: 'center', label: 'Band center (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype === 'bandpass' || p.dtype === 'notch' },
       { key: 'band', label: 'Band width (nm)', type: 'number', min: 1, max: 2000, step: 5, def: 50, show: p => p.dtype === 'bandpass' || p.dtype === 'notch' },
+      // An output coupler's coating reflects most of the resonant band and
+      // transmits the rest; 100 % is a high reflector.
+      { key: 'bandRefl', label: 'Reflectivity in band (%)', type: 'number', min: 0, max: 100, step: 1, def: 100, show: p => p.dtype === 'notch' },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
     ],
     size_: el => ({ w: 14, h: el.params.length + 6 }),
@@ -3004,7 +3007,7 @@ export const registry = {
     },
     surfaces(el) {
       const L = el.params.length / 2, p = el.params;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'dichroic', data: { dtype: p.dtype, cutoff: p.cutoff, center: p.center, band: p.band } }];
+      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'dichroic', data: { dtype: p.dtype, cutoff: p.cutoff, center: p.center, band: p.band, bandRefl: p.bandRefl } }];
     },
   },
 
@@ -4913,7 +4916,7 @@ const ELEMENT_HELP = {
   asphericlens: 'Refracts through exact conic-plus-even-polynomial faces, so changing k or A₄/A₆/A₈ changes the physical ray intersections and aberration rather than only the drawing.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
   objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane is placed so light focuses one working distance past the front tip. It can lie outside the drawn barrel for long-working-distance designs; it represents the whole objective, not a physical glass surface. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
-  dichroic: 'Transmits or reflects wavelength bands around its configured cutoff, or reflects one band and transmits both sides of it (band reflector).',
+  dichroic: 'Transmits or reflects wavelength bands around its configured cutoff, or reflects one band and transmits both sides of it (band reflector), optionally reflecting only part of that band as an output coupler.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
   grating: 'Creates selected diffraction orders using the grating equation.',

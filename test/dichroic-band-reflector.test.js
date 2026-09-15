@@ -62,3 +62,38 @@ test('a broadband beam is cut into its in-band reflection and out-of-band transm
   assert.ok(Math.abs(t.signal - 500 / 600) < 0.01, `transmitted share ${t.signal}`);
   assert.ok(r.bandMin >= 749 && r.bandMax <= 851, `reflected band ${r.bandMin}–${r.bandMax}`);
 });
+
+test('a partially reflecting band is an output coupler: the band splits, the sides still transmit', () => {
+  const run = (sourceType, laser, bandRefl) => {
+    const src = createElement(sourceType, 60, 160);
+    Object.assign(src.params, { beamMode: 'line', ...laser });
+    const mirror = createElement('dichroic', 300, 160);
+    mirror.rot = 135;
+    Object.assign(mirror.params, { dtype: 'notch', center: 800, band: 300, bandRefl });
+    const through = createElement('detector', 460, 160);
+    const reflected = createElement('detector', 300, 320);
+    reflected.rot = 90;
+    traceScene([src, mirror, through, reflected]);
+    return { through: detectorReading(through.id), reflected: detectorReading(reflected.id) };
+  };
+  const line = run('cwlaser', { wavelength: 800 }, 90);
+  assert.ok(Math.abs(line.reflected.signal - 0.9) < 1e-9, `reflected ${line.reflected.signal}`);
+  assert.ok(Math.abs(line.through.signal - 0.1) < 1e-9, `transmitted ${line.through.signal}`);
+
+  const outside = run('cwlaser', { wavelength: 532 }, 90);
+  assert.equal(outside.reflected, null, 'out-of-band light must not be reflected');
+  assert.ok(Math.abs(outside.through.signal - 1) < 1e-9);
+
+  // A band wholly inside the reflector splits in the same ratio.
+  const pulsed = run('pulsedlaser', { wavelength: 800, transformLimited: false, bandwidth: 5 }, 90);
+  assert.ok(Math.abs(pulsed.reflected.signal - 0.9) < 1e-3, `pulsed reflected ${pulsed.reflected.signal}`);
+  assert.ok(Math.abs(pulsed.through.signal - 0.1) < 1e-3, `pulsed transmitted ${pulsed.through.signal}`);
+
+  const continuum = run('sclaser', { scMin: 700, scMax: 900 }, 90);
+  assert.ok(Math.abs(continuum.reflected.signal - 0.9) < 0.01, `continuum reflected ${continuum.reflected.signal}`);
+  assert.ok(Math.abs(continuum.through.signal - 0.1) < 0.01, `continuum transmitted ${continuum.through.signal}`);
+
+  // The default is a high reflector, exactly as before.
+  const full = run('cwlaser', { wavelength: 800 }, 100);
+  assert.equal(full.through, null);
+});
