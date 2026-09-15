@@ -7,7 +7,7 @@ import { detectorReading, opoReading, traceScene } from '../sketch/js/raytrace.j
 import { parseSketch } from '../sketch/js/state.js';
 import { idlerWavelength } from '../sketch/js/parametric.js';
 import {
-  CAVITY_LENGTH_MM, REP_RATE_MHZ, RING_OPO_NAME, RING_OPO_PATH, SYNC_OPO_NAME, SYNC_OPO_PATH,
+  CAVITY_LENGTH_MM, REP_RATE_MHZ, RING_OPO_NAME, RING_OPO_PATH, RING_PERIMETER_MM, SYNC_OPO_NAME, SYNC_OPO_PATH,
   ringOpoScene, syncOpoScene,
 } from '../tools/build-opo-example.mjs';
 
@@ -53,6 +53,15 @@ test('every cavity fold is near normal incidence, never glancing', () => {
   near(incidence(r.M1, r.M2, r.M3), 12, 1e-6, 'ring M2');
   near(incidence(r.M2, r.M3, r.M4), 12, 1e-6, 'ring M3');
   near(incidence(r.M3, r.M4, r.M1), 12, 1e-6, 'ring M4');
+});
+
+test('the ring perimeter equals one pump period, so circulating packets stay single', () => {
+  const { M1, M2, M3, M4 } = RING_OPO_PATH;
+  const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const perimeter = d(M1, M2) + d(M2, M3) + d(M3, M4) + d(M4, M1);
+  near(perimeter, RING_PERIMETER_MM, 1e-6, 'perimeter (mm)');
+  near(perimeter / 299.792458, 1e3 / REP_RATE_MHZ, 1e-9, 'round-trip time (ns) vs pump period');
+  assert.equal(JSON.parse(read(RING_OPO_NAME)).elements.find(el => el.id === 'pump').params.repRateMHz, REP_RATE_MHZ);
 });
 
 test('the synchronously pumped cavity round trip equals the pump period', () => {
@@ -114,10 +123,10 @@ test('the generated example pages carry every section of their prose, in order',
     'P<sub>s</sub> / P<sub>i</sub> = λ<sub>i</sub> / λ<sub>s</sub>',
     'singly resonant',
     'bow-tie ring',
-    'In an unseeded nanosecond OPO such as this example',
-    'href="#ref-3"',
+    'synchronously pumped',
     'What this setup demonstrates',
-    'id="ref-3"',
+    '3747.4 mm',
+    'id="ref-2"',
   ], 'ring OPO page');
   inOrder(page('synchronously-pumped-picosecond-opo'), [
     'Synchronous pumping',

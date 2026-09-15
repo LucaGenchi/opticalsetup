@@ -751,7 +751,7 @@ export const exampleEntries = [
   {
     match: 'Optical parametric oscillator — ring cavity, element by element',
     title: 'Optical parametric oscillator',
-    tagline: 'A textbook singly resonant OPO in a bow-tie ring cavity: green pump photons split into an 800 nm signal and a 1588 nm idler.',
+    tagline: 'A synchronously pumped singly resonant OPO in a bow-tie ring: green pump photons split into an 800 nm signal and a 1588 nm idler.',
     html: `
       <p>An optical parametric oscillator makes new colours of coherent light without a
       laser transition. Inside a crystal with a χ⁽²⁾ nonlinearity, a pump photon splits
@@ -779,48 +779,51 @@ export const exampleEntries = [
       the pump and idler, so all three leave collinearly and are separated outside. A real
       ring resonator still requires a suitable mode, mirror curvatures, coatings and cavity
       length.</p>
-      <p>In an unseeded nanosecond OPO such as this example, the field must build up from
-      noise during each pump pulse. Finite build-up time raises the required gain relative
-      to the steady-state threshold${cite(2)}, and output pulses are often somewhat shorter
-      than the pump pulses${cite(1)}. As one example of a nanosecond OPO linewidth, a
-      commercial 355 nm-pumped system specifies below 5 cm⁻¹${cite(3)}.</p>`,
+      <p>With a mode-locked pump the crystal only has gain while a pump pulse is inside it,
+      so the resonator is <strong>synchronously pumped</strong>: its round trip takes exactly
+      one pump period, and a signal pulse that leaves the crystal comes round to meet the
+      next pump pulse and is amplified again${cite(1)}. For a ring that fixes the perimeter,
+      <span class="w">c / f<sub>rep</sub></span> — strictly the group optical path, so a
+      dispersive crystal makes the real ring slightly shorter.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
-      <p>A Q-switched 532 nm laser (10 ns, 1 kHz, 1 cm⁻¹) pumps a χ⁽²⁾ crystal between M1
-      and M2, the lower pair of a bow-tie ring completed by M3 and M4. All four are band
-      reflectors for the 650–950 nm signal band and transmit the pump and idler, and every
-      one is met at a 12° angle of incidence. The signal runs M2 → M3 → M4 → M1 → crystal,
-      crossing itself between the upper and lower pairs. M2 is the output coupler: it
-      reflects 80 % of the signal band and transmits the rest, so signal, idler and
-      residual pump leave together; a longpass and a shortpass dichroic then separate
-      them.</p>
+      <p>A 532 nm, 6 ps, 80 MHz pump drives a χ⁽²⁾ crystal between M1 and M2, the lower
+      pair of a bow-tie ring completed by M3 and M4. All four are band reflectors for the
+      650–950 nm signal band and transmit the pump and idler, and every one is met at a 12°
+      angle of incidence. The signal runs M2 → M3 → M4 → M1 → crystal, crossing itself
+      between the upper and lower pairs. The perimeter is exactly
+      <span class="w">c / 80 MHz = 3747.4 mm</span>, a 12.5 ns round trip equal to the pump
+      period; the crystal is a thin surface, so the whole path is air. That is why the
+      animated pulses stay single packets as they circulate: each returns to the crystal
+      exactly as the next pump packet arrives. M2 is the output coupler: it reflects 80 % of
+      the signal band and transmits the rest, so signal, idler and residual pump leave
+      together; a longpass and a shortpass dichroic then separate them.</p>
       <p>The crystal is set to a 532 nm pump and an 800 nm signal, so the inspector shows
       the idler at 1588 nm. It converts a fixed 30 % of the pump: 19.95 % becomes signal
       and 10.05 % idler. The idler detector reads that 10.05 % in one pass. The signal
       leaks through M2 on every round trip, and the tracer sums twelve of those leaks,
-      reading 18.6 % of the pump. The ring is about 1885 mm around, a 6.3 ns round trip
-      against a 10 ns pump, so those twelve leaks are not twelve amplified passes during a
-      pump pulse: the tracer launches the signal once and follows it, without build-up.
-      The tracer also launches the signal only in the pump's direction; it does not
-      calculate the gain competition that selects that direction. The signal linewidth is authored at 5 cm⁻¹ to represent
-      a cavity-selected linewidth — the trace does not calculate it from the cavity — the
-      idler is derived from pump and signal, and the 0.8 × pump duration factor is
-      illustrative. All of these are textbook values, not one instrument's.</p>
+      reading 18.6 % of the pump. Those are successive round trips of one launched signal,
+      not amplified passes: the tracer does not add gain from later pump pulses. It also
+      launches the signal only in the pump's direction and does not calculate the gain
+      competition that selects that direction. The signal is authored as wide as the pump
+      (a heuristic), the idler width is derived from pump and signal, and the output pulses
+      keep the pump's duration; all are illustrative, not one instrument's.</p>
       <p>Things to try: move the signal wavelength and watch the idler follow; lower M2's
       in-band reflectivity and more of the signal leaves on each round trip; or tune the pump more
       than 1 nm away from 532 nm and the oscillator goes dark.</p>`,
     limitations: `<p>This is a phenomenological OPO. The crystal converts a fixed fraction of
       the pump on its first pass: there is no threshold, gain, build-up or back-conversion,
       and phase matching is not calculated, so turning or heating the crystal does nothing.
-      The signal output is a finite sum of traced leaks, not a steady state. Ring cavities
-      usually use curved mirrors to focus into the crystal; these four are drawn flat. The pump is a
+      The signal output is a finite sum of traced leaks, not a steady state, and changing
+      the ring's length does not detune anything — in a real synchronously pumped OPO it
+      shifts the signal and can stop oscillation. Ring cavities usually use curved mirrors
+      to focus into the crystal; these four are drawn flat. The pump is a
       single axial ray, so only the chief-ray routing is shown, with no mode, focus or beam
       overlap. Mirror coatings switch perfectly at their band edges and do not depend on
       angle.</p>`,
     citations: [
       { label: 'RP Photonics Encyclopedia — Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
       { label: 'A. Berrou, J.-M. Melkonian, M. Raybaut, A. Godard, E. Rosencher, M. Lefebvre, “Specific architectures for optical parametric oscillators,” C. R. Physique 8, 1162–1173 (2007)', url: 'https://doi.org/10.1016/j.crhy.2007.09.012' },
-      { label: 'EKSPLA — NT340 high-energy tunable nanosecond lasers', url: 'https://ekspla.com/products/high-energy-tunable-wavelength-nanosecond-lasers-nt340/' },
     ],
     resources: [],
     related: ['crystal', 'dichroic', 'mirror', 'pulsedlaser', 'detector'],

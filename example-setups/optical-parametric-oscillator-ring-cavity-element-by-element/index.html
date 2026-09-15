@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Optical parametric oscillator — Examples | OpticalSetup</title>
-<meta name="description" content="A textbook singly resonant OPO in a bow-tie ring cavity: green pump photons split into an 800 nm signal and a 1588 nm idler.">
+<meta name="description" content="A synchronously pumped singly resonant OPO in a bow-tie ring: green pump photons split into an 800 nm signal and a 1588 nm idler.">
 <link rel="canonical" href="https://opticalsetup.com/example-setups/optical-parametric-oscillator-ring-cavity-element-by-element/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Optical parametric oscillator — OpticalSetup Examples">
-<meta property="og:description" content="A textbook singly resonant OPO in a bow-tie ring cavity: green pump photons split into an 800 nm signal and a 1588 nm idler.">
+<meta property="og:description" content="A synchronously pumped singly resonant OPO in a bow-tie ring: green pump photons split into an 800 nm signal and a 1588 nm idler.">
 <meta property="og:url" content="https://opticalsetup.com/example-setups/optical-parametric-oscillator-ring-cavity-element-by-element/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -59,7 +59,7 @@
     <main class="wiki-article" style="max-width: 760px;">
       <div class="crumb"><a href="../../example-setups/">Examples</a> / Nonlinear Optics / Optical parametric oscillator</div>
       <h1>Optical parametric oscillator</h1>
-      <p class="tagline" style="margin-top: 10px;">A textbook singly resonant OPO in a bow-tie ring cavity: green pump photons split into an 800 nm signal and a 1588 nm idler.</p>
+      <p class="tagline" style="margin-top: 10px;">A synchronously pumped singly resonant OPO in a bow-tie ring: green pump photons split into an 800 nm signal and a 1588 nm idler.</p>
 
       <a class="place-cta" href="../../sketch/?example=optical-parametric-oscillator-ring-cavity-element-by-element">Open in the canvas →</a>
 
@@ -99,43 +99,47 @@
       the pump and idler, so all three leave collinearly and are separated outside. A real
       ring resonator still requires a suitable mode, mirror curvatures, coatings and cavity
       length.</p>
-      <p>In an unseeded nanosecond OPO such as this example, the field must build up from
-      noise during each pump pulse. Finite build-up time raises the required gain relative
-      to the steady-state threshold<sup class="cite">[<a href="#ref-2">2</a>]</sup>, and output pulses are often somewhat shorter
-      than the pump pulses<sup class="cite">[<a href="#ref-1">1</a>]</sup>. As one example of a nanosecond OPO linewidth, a
-      commercial 355 nm-pumped system specifies below 5 cm⁻¹<sup class="cite">[<a href="#ref-3">3</a>]</sup>.</p>
+      <p>With a mode-locked pump the crystal only has gain while a pump pulse is inside it,
+      so the resonator is <strong>synchronously pumped</strong>: its round trip takes exactly
+      one pump period, and a signal pulse that leaves the crystal comes round to meet the
+      next pump pulse and is amplified again<sup class="cite">[<a href="#ref-1">1</a>]</sup>. For a ring that fixes the perimeter,
+      <span class="w">c / f<sub>rep</sub></span> — strictly the group optical path, so a
+      dispersive crystal makes the real ring slightly shorter.</p>
 
       <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
       <div class="sim-block">
         
-      <p>A Q-switched 532 nm laser (10 ns, 1 kHz, 1 cm⁻¹) pumps a χ⁽²⁾ crystal between M1
-      and M2, the lower pair of a bow-tie ring completed by M3 and M4. All four are band
-      reflectors for the 650–950 nm signal band and transmit the pump and idler, and every
-      one is met at a 12° angle of incidence. The signal runs M2 → M3 → M4 → M1 → crystal,
-      crossing itself between the upper and lower pairs. M2 is the output coupler: it
-      reflects 80 % of the signal band and transmits the rest, so signal, idler and
-      residual pump leave together; a longpass and a shortpass dichroic then separate
-      them.</p>
+      <p>A 532 nm, 6 ps, 80 MHz pump drives a χ⁽²⁾ crystal between M1 and M2, the lower
+      pair of a bow-tie ring completed by M3 and M4. All four are band reflectors for the
+      650–950 nm signal band and transmit the pump and idler, and every one is met at a 12°
+      angle of incidence. The signal runs M2 → M3 → M4 → M1 → crystal, crossing itself
+      between the upper and lower pairs. The perimeter is exactly
+      <span class="w">c / 80 MHz = 3747.4 mm</span>, a 12.5 ns round trip equal to the pump
+      period; the crystal is a thin surface, so the whole path is air. That is why the
+      animated pulses stay single packets as they circulate: each returns to the crystal
+      exactly as the next pump packet arrives. M2 is the output coupler: it reflects 80 % of
+      the signal band and transmits the rest, so signal, idler and residual pump leave
+      together; a longpass and a shortpass dichroic then separate them.</p>
       <p>The crystal is set to a 532 nm pump and an 800 nm signal, so the inspector shows
       the idler at 1588 nm. It converts a fixed 30 % of the pump: 19.95 % becomes signal
       and 10.05 % idler. The idler detector reads that 10.05 % in one pass. The signal
       leaks through M2 on every round trip, and the tracer sums twelve of those leaks,
-      reading 18.6 % of the pump. The ring is about 1885 mm around, a 6.3 ns round trip
-      against a 10 ns pump, so those twelve leaks are not twelve amplified passes during a
-      pump pulse: the tracer launches the signal once and follows it, without build-up.
-      The tracer also launches the signal only in the pump's direction; it does not
-      calculate the gain competition that selects that direction. The signal linewidth is authored at 5 cm⁻¹ to represent
-      a cavity-selected linewidth — the trace does not calculate it from the cavity — the
-      idler is derived from pump and signal, and the 0.8 × pump duration factor is
-      illustrative. All of these are textbook values, not one instrument's.</p>
+      reading 18.6 % of the pump. Those are successive round trips of one launched signal,
+      not amplified passes: the tracer does not add gain from later pump pulses. It also
+      launches the signal only in the pump's direction and does not calculate the gain
+      competition that selects that direction. The signal is authored as wide as the pump
+      (a heuristic), the idler width is derived from pump and signal, and the output pulses
+      keep the pump's duration; all are illustrative, not one instrument's.</p>
       <p>Things to try: move the signal wavelength and watch the idler follow; lower M2's
       in-band reflectivity and more of the signal leaves on each round trip; or tune the pump more
       than 1 nm away from 532 nm and the oscillator goes dark.</p>
         <div class="limitations"><span class="lbl">What you won't see</span><p>This is a phenomenological OPO. The crystal converts a fixed fraction of
       the pump on its first pass: there is no threshold, gain, build-up or back-conversion,
       and phase matching is not calculated, so turning or heating the crystal does nothing.
-      The signal output is a finite sum of traced leaks, not a steady state. Ring cavities
-      usually use curved mirrors to focus into the crystal; these four are drawn flat. The pump is a
+      The signal output is a finite sum of traced leaks, not a steady state, and changing
+      the ring's length does not detune anything — in a real synchronously pumped OPO it
+      shifts the signal and can stop oscillation. Ring cavities usually use curved mirrors
+      to focus into the crystal; these four are drawn flat. The pump is a
       single axial ray, so only the chief-ray routing is shown, with no mode, focus or beam
       overlap. Mirror coatings switch perfectly at their band edges and do not depend on
       angle.</p></div>
@@ -150,7 +154,7 @@
       
       <h2 class="section-head real"><span class="sw"></span>References</h2>
       <ol class="reference-list">
-        <li id="ref-1"><a href="https://www.rp-photonics.com/optical_parametric_oscillators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Optical Parametric Oscillators</a></li><li id="ref-2"><a href="https://doi.org/10.1016/j.crhy.2007.09.012" target="_blank" rel="noopener">A. Berrou, J.-M. Melkonian, M. Raybaut, A. Godard, E. Rosencher, M. Lefebvre, “Specific architectures for optical parametric oscillators,” C. R. Physique 8, 1162–1173 (2007)</a></li><li id="ref-3"><a href="https://ekspla.com/products/high-energy-tunable-wavelength-nanosecond-lasers-nt340/" target="_blank" rel="noopener">EKSPLA — NT340 high-energy tunable nanosecond lasers</a></li>
+        <li id="ref-1"><a href="https://www.rp-photonics.com/optical_parametric_oscillators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Optical Parametric Oscillators</a></li><li id="ref-2"><a href="https://doi.org/10.1016/j.crhy.2007.09.012" target="_blank" rel="noopener">A. Berrou, J.-M. Melkonian, M. Raybaut, A. Godard, E. Rosencher, M. Lefebvre, “Specific architectures for optical parametric oscillators,” C. R. Physique 8, 1162–1173 (2007)</a></li>
       </ol>
 
       

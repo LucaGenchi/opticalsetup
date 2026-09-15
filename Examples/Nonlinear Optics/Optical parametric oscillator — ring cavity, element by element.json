@@ -5,14 +5,14 @@
     {
       "id": "frame",
       "type": "figureframe",
-      "x": 500,
-      "y": 300,
+      "x": 850,
+      "y": 430,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "w": 1000,
-        "h": 600,
+        "w": 1700,
+        "h": 860,
         "background": "white"
       }
     },
@@ -25,7 +25,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "# Optical parametric oscillator — ring cavity\nA textbook singly resonant OPO: one pump photon becomes one signal and one idler photon",
+        "text": "# Optical parametric oscillator — ring cavity\nA synchronously pumped singly resonant OPO: one pump photon becomes one signal and one idler photon",
         "fontSize": 12,
         "fill": "#34454d"
       }
@@ -45,20 +45,33 @@
       }
     },
     {
+      "id": "sync-note",
+      "type": "textlabel",
+      "x": 860,
+      "y": 91.7322,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Ring perimeter 3747.4 mm: round-trip time = 1 / 80 MHz = 12.5 ns,\nso each signal pulse comes round to meet the next pump pulse",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
       "id": "pump",
       "type": "pulsedlaser",
-      "x": 200,
-      "y": 340,
+      "x": 454.5242,
+      "y": 560,
       "rot": 0,
-      "label": "Q-switched 532 nm · 10 ns · 1 kHz",
+      "label": "532 nm · 6 ps · 80 MHz",
       "showLabel": true,
       "params": {
         "wavelength": 532,
-        "pulseWidthFs": 10000000,
-        "repRateMHz": 0.001,
-        "avgPowerW": 1,
-        "transformLimited": false,
-        "bandwidth": 0.03,
+        "pulseWidthFs": 6000,
+        "repRateMHz": 80,
+        "avgPowerW": 4,
+        "transformLimited": true,
         "pulseShape": "gauss",
         "beamMode": "line"
       },
@@ -67,8 +80,8 @@
     {
       "id": "M1",
       "type": "dichroic",
-      "x": 400,
-      "y": 340,
+      "x": 674.5242,
+      "y": 560,
       "rot": 168,
       "label": "M1",
       "showLabel": true,
@@ -83,8 +96,8 @@
     {
       "id": "crystal",
       "type": "crystal",
-      "x": 500,
-      "y": 340,
+      "x": 824.5242,
+      "y": 560,
       "rot": 0,
       "label": "nonlinear crystal",
       "showLabel": true,
@@ -94,10 +107,9 @@
         "pumpWl": 532,
         "signalWl": 800,
         "pumpAcceptanceNm": 1,
-        "linewidthMode": "signal",
-        "signalLinewidthCm": 5,
+        "linewidthMode": "pump",
         "outputPhase": "unknown",
-        "durationFactor": 0.8,
+        "durationFactor": 1,
         "efficiency": 0.3,
         "transmitPump": true
       },
@@ -106,8 +118,8 @@
     {
       "id": "M2",
       "type": "dichroic",
-      "x": 600,
-      "y": 340,
+      "x": 974.5242,
+      "y": 560,
       "rot": 12,
       "label": "M2 · output coupler",
       "showLabel": true,
@@ -123,8 +135,8 @@
     {
       "id": "M3",
       "type": "dichroic",
-      "x": 150,
-      "y": 139.6471,
+      "x": 80,
+      "y": 161.7322,
       "rot": 12,
       "label": "M3",
       "showLabel": true,
@@ -139,8 +151,8 @@
     {
       "id": "M4",
       "type": "dichroic",
-      "x": 850,
-      "y": 139.6471,
+      "x": 1569.0484,
+      "y": 161.7322,
       "rot": 168,
       "label": "M4",
       "showLabel": true,
@@ -155,8 +167,8 @@
     {
       "id": "idler-separator",
       "type": "dichroic",
-      "x": 740,
-      "y": 340,
+      "x": 1124.5242,
+      "y": 560,
       "rot": 135,
       "label": "longpass 1000 nm",
       "showLabel": true,
@@ -170,8 +182,8 @@
     {
       "id": "idler-detector",
       "type": "detector",
-      "x": 900,
-      "y": 340,
+      "x": 1294.5242,
+      "y": 560,
       "rot": 0,
       "label": "idler · 1588 nm",
       "showLabel": true,
@@ -183,8 +195,8 @@
     {
       "id": "pump-separator",
       "type": "dichroic",
-      "x": 740,
-      "y": 440,
+      "x": 1124.5242,
+      "y": 660,
       "rot": 135,
       "label": "shortpass 650 nm",
       "showLabel": true,
@@ -198,8 +210,8 @@
     {
       "id": "signal-detector",
       "type": "detector",
-      "x": 900,
-      "y": 440,
+      "x": 1294.5242,
+      "y": 660,
       "rot": 0,
       "label": "signal · 800 nm",
       "showLabel": true,
@@ -211,8 +223,8 @@
     {
       "id": "pump-dump",
       "type": "beamdump",
-      "x": 740,
-      "y": 530,
+      "x": 1124.5242,
+      "y": 750,
       "rot": 90,
       "label": "residual pump",
       "showLabel": true,
@@ -225,7 +237,7 @@
       "id": "coatings",
       "type": "textlabel",
       "x": 60,
-      "y": 450,
+      "y": 680,
       "rot": 0,
       "label": "",
       "showLabel": false,
@@ -239,12 +251,12 @@
       "id": "legend",
       "type": "textlabel",
       "x": 30,
-      "y": 560,
+      "y": 810,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Only the signal resonates, circulating one way round the ring; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, cavity-set 5 cm⁻¹ signal linewidth, output pulses 0.8 × the pump duration.",
+        "text": "Only the signal resonates, circulating in the pump's direction; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, signal as wide as the pump, output pulses as long as the pump's.",
         "fontSize": 10,
         "fill": "#34454d"
       }

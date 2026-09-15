@@ -33,15 +33,16 @@
 //    couples signal and idler out collinearly; here the idler leaves through
 //    M2. The pump is a single axial ray: chief-ray routing only.
 //
-// 2. OPTICAL PARAMETRIC OSCILLATOR, RING CAVITY. A textbook nanosecond OPO in
-//    a bow-tie ring of four plane band reflectors, each at a 12° angle of
-//    incidence: a Q-switched 532 nm pump, a signal linewidth authored to
-//    represent a cavity-selected one, and an output coupler M2 that reflects
-//    80 % of the signal band while transmitting pump and idler, so signal,
-//    idler and residual pump leave together. Every number is illustrative
-//    rather than taken from one instrument: 10 ns pump at 1 kHz with a
-//    1 cm⁻¹ linewidth, signal 5 cm⁻¹, output pulses 0.8 × the pump
-//    duration, 30 % conversion.
+// 2. OPTICAL PARAMETRIC OSCILLATOR, RING CAVITY. A synchronously pumped
+//    singly resonant OPO in a bow-tie ring of four plane band reflectors,
+//    each at a 12° angle of incidence. A signal pulse that leaves the crystal
+//    must come round to meet the next pump pulse, so the ring's perimeter is
+//    c / f_rep = 3747.41 mm at 80 MHz — the same condition as the linear
+//    cavity, where the light covers the arm twice. M2 is an output coupler
+//    reflecting 80 % of the signal band while transmitting pump and idler, so
+//    signal, idler and residual pump leave together. Illustrative settings:
+//    532 nm, 6 ps, 80 MHz pump; signal as wide as the pump (a heuristic);
+//    30 % conversion.
 import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -127,13 +128,17 @@ export function syncOpoScene() {
 // ---------------------------------------------------------------- 2 -------
 // A bow-tie ring: M1 and M2 either side of the crystal, M3 and M4 above. The
 // signal runs M2 → M3 → M4 → M1 → crystal, crossing itself between the top
-// and bottom pairs. Parametric gain exists only along the pump, so the
-// signal circulates in one direction. M2 is the output coupler: it transmits
-// the pump and idler and part of the signal band.
-const RING_AXIS = 340;
-const RING_M1 = { x: 400, y: RING_AXIS }, RING_CRYSTAL = { x: 500, y: RING_AXIS }, RING_M2 = { x: 600, y: RING_AXIS };
-const RING_SPAN = 450;                                   // horizontal run of each diagonal
+// and bottom pairs, and circulates in the pump's direction. The perimeter is
+// g + 2·span/cos(24°) + (2·span − g) = span·(2/cos 24° + 2) whatever the
+// gap g between M1 and M2, so the span follows from the pump period.
+const RING_AXIS = 560;
+const RING_GAP = 300;
+export const RING_PERIMETER_MM = 2 * CAVITY_LENGTH_MM;
+const RING_SPAN = RING_PERIMETER_MM / (2 / Math.cos(TURN * DEG) + 2);
 const RING_RISE = RING_SPAN * Math.tan(TURN * DEG);      // 12° incidence at every mirror
+const RING_M2 = { x: RING_SPAN + 80, y: RING_AXIS };
+const RING_M1 = { x: RING_M2.x - RING_GAP, y: RING_AXIS };
+const RING_CRYSTAL = { x: RING_M1.x + RING_GAP / 2, y: RING_AXIS };
 const RING_M3 = { x: RING_M2.x - RING_SPAN, y: RING_AXIS - RING_RISE };
 const RING_M4 = { x: RING_M1.x + RING_SPAN, y: RING_AXIS - RING_RISE };
 export const RING_OPO_PATH = { M1: RING_M1, M2: RING_M2, M3: RING_M3, M4: RING_M4 };
@@ -142,34 +147,35 @@ const RIGHT = dir(0);
 
 export function ringOpoScene() {
   const toM3 = unit(RING_M2, RING_M3), toM1 = unit(RING_M4, RING_M1);
+  const out = RING_M2.x + 150;
   return {
     app: 'optics2d', version: 1,
     elements: [
-      el('frame', 'figureframe', { x: 500, y: 300 }, { w: 1000, h: 600, background: 'white' }),
-      text('title', 30, 30, '# Optical parametric oscillator — ring cavity\nA textbook singly resonant OPO: one pump photon becomes one signal and one idler photon', 12),
+      el('frame', 'figureframe', { x: 850, y: 430 }, { w: 1700, h: 860, background: 'white' }),
+      text('title', 30, 30, '# Optical parametric oscillator — ring cavity\nA synchronously pumped singly resonant OPO: one pump photon becomes one signal and one idler photon', 12),
       text('energy', 30, 88, '1 / 532 nm = 1 / 800 nm + 1 / 1588 nm      generated power: signal 66.5 %, idler 33.5 % (equal photon numbers)', 10),
-      el('pump', 'pulsedlaser', { x: 200, y: RING_AXIS }, {
-        wavelength: 532, pulseWidthFs: 1e7, repRateMHz: 0.001, avgPowerW: 1,
-        transformLimited: false, bandwidth: 0.03, pulseShape: 'gauss', beamMode: 'line',
-      }, named('Q-switched 532 nm · 10 ns · 1 kHz')),
+      text('sync-note', RING_M3.x + 780, RING_M3.y - 70, `Ring perimeter ${RING_PERIMETER_MM.toFixed(1)} mm: round-trip time = 1 / ${REP_RATE_MHZ} MHz = ${(1e3 / REP_RATE_MHZ).toFixed(1)} ns,\nso each signal pulse comes round to meet the next pump pulse`, 10),
+      el('pump', 'pulsedlaser', { x: RING_M1.x - 220, y: RING_AXIS }, {
+        wavelength: 532, pulseWidthFs: 6000, repRateMHz: REP_RATE_MHZ, avgPowerW: 4,
+        transformLimited: true, pulseShape: 'gauss', beamMode: 'line',
+      }, named('532 nm · 6 ps · 80 MHz')),
       el('M1', 'dichroic', RING_M1, bandReflector, { rot: foldRot(toM1, RIGHT), ...named('M1', 'b') }),
       el('crystal', 'crystal', RING_CRYSTAL, {
         convert: 'opo', aperture: 10, pumpWl: 532, signalWl: 800, pumpAcceptanceNm: 1,
-        linewidthMode: 'signal', signalLinewidthCm: 5,
-        outputPhase: 'unknown', durationFactor: 0.8, efficiency: 0.3, transmitPump: true,
+        linewidthMode: 'pump', outputPhase: 'unknown', durationFactor: 1, efficiency: 0.3, transmitPump: true,
       }, named('nonlinear crystal', 'b')),
       el('M2', 'dichroic', RING_M2, { ...bandReflector, bandRefl: 80 }, { rot: foldRot(RIGHT, toM3), ...named('M2 · output coupler', 'b') }),
       el('M3', 'dichroic', RING_M3, bandReflector, { rot: foldRot(toM3, RIGHT), ...named('M3', 't') }),
       el('M4', 'dichroic', RING_M4, bandReflector, { rot: foldRot(RIGHT, toM1), ...named('M4', 't') }),
-      el('idler-separator', 'dichroic', { x: 740, y: RING_AXIS }, { dtype: 'longpass', cutoff: 1000, length: 25.4 },
+      el('idler-separator', 'dichroic', { x: out, y: RING_AXIS }, { dtype: 'longpass', cutoff: 1000, length: 25.4 },
         { rot: 135, ...named('longpass 1000 nm', 't') }),
-      el('idler-detector', 'detector', { x: 900, y: RING_AXIS }, { aperture: 26 }, named('idler · 1588 nm')),
-      el('pump-separator', 'dichroic', { x: 740, y: RING_AXIS + 100 }, { dtype: 'shortpass', cutoff: 650, length: 25.4 },
+      el('idler-detector', 'detector', { x: out + 170, y: RING_AXIS }, { aperture: 26 }, named('idler · 1588 nm')),
+      el('pump-separator', 'dichroic', { x: out, y: RING_AXIS + 100 }, { dtype: 'shortpass', cutoff: 650, length: 25.4 },
         { rot: 135, ...named('shortpass 650 nm', 'l') }),
-      el('signal-detector', 'detector', { x: 900, y: RING_AXIS + 100 }, { aperture: 26 }, named('signal · 800 nm')),
-      el('pump-dump', 'beamdump', { x: 740, y: RING_AXIS + 190 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
-      text('coatings', 60, 450, 'M1–M4 · reflect the signal band (650–950 nm), transmit pump and idler\nM2 · output coupler: reflects 80 % of the signal band', 10),
-      text('legend', 30, 560, 'Only the signal resonates, circulating one way round the ring; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, cavity-set 5 cm⁻¹ signal linewidth, output pulses 0.8 × the pump duration.', 10),
+      el('signal-detector', 'detector', { x: out + 170, y: RING_AXIS + 100 }, { aperture: 26 }, named('signal · 800 nm')),
+      el('pump-dump', 'beamdump', { x: out, y: RING_AXIS + 190 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
+      text('coatings', 60, RING_AXIS + 120, 'M1–M4 · reflect the signal band (650–950 nm), transmit pump and idler\nM2 · output coupler: reflects 80 % of the signal band', 10),
+      text('legend', 30, RING_AXIS + 250, 'Only the signal resonates, circulating in the pump\'s direction; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, signal as wide as the pump, output pulses as long as the pump\'s.', 10),
     ],
   };
 }
