@@ -837,30 +837,31 @@ export const exampleEntries = [
   {
     match: 'Synchronously pumped picosecond OPO',
     title: 'Synchronously pumped picosecond OPO',
-    tagline: 'A frequency-doubled 1032 nm picosecond laser pumps a cavity as long as the gap between pulses, giving an 800 nm signal.',
+    tagline: 'A frequency-doubled 1032 nm picosecond laser pumps a cavity whose round trip lasts one pump period, giving an 800 nm signal.',
     html: `
       <p>An optical parametric oscillator feeds one of its two generated waves back through
       a χ⁽²⁾ crystal so that it keeps being amplified. With a mode-locked pump the
       crystal only has gain while a pump pulse is inside it, and between pulses there is
       none${cite(1)}.</p>
-      <p><strong>Synchronous pumping</strong> makes the cavity exactly as long as the gap
-      between pump pulses. A signal pulse leaves the crystal, travels once around the
+      <p><strong>Synchronous pumping</strong> makes the cavity's round-trip time equal one
+      pump period. A signal pulse leaves the crystal, travels once around the
       resonator and arrives back just as the next pump pulse does, so it is amplified on
       every pass. For a pump at repetition rate <span class="w">f<sub>rep</sub></span> the
       round trip must take <span class="w">1/f<sub>rep</sub></span>: a one-way optical path
       of <span class="w">c / (2 f<sub>rep</sub>)</span>, 1.87 m at 80 MHz. Strictly this is
       the <em>group</em> optical path, so a dispersive crystal inside the cavity makes the
       mirrors sit a little closer together than that distance.</p>
-      <p>Picosecond OPOs pumped by frequency-doubled mode-locked lasers are a common source
-      for coherent Raman imaging, which needs two synchronised colours: pulses of a few
-      picoseconds carry a spectral width comparable to a Raman line. A singly resonant
+      <p>Frequency-doubled mode-locked lasers can pump picosecond OPO sources for coherent
+      Raman imaging, which needs two synchronised colours. Near-transform-limited pulses of
+      a few picoseconds can provide bandwidths comparable to many molecular Raman bands,
+      balancing spectral selectivity against peak intensity${cite(2)}. A singly resonant
       cavity reflects only the signal band: the pump enters through one of its mirrors, the
       idler and residual pump leave through another, and a fraction of the signal leaves
       through the output coupler on every round trip.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
       <p>The scene is an illustrative layout with illustrative settings, representative of
-      picosecond OPOs of this kind rather than any one instrument. A 1032 nm, 2 ps, 80 MHz
+      picosecond OPOs of this kind rather than any one instrument or publication. A 1032 nm, 2 ps, 80 MHz
       laser is frequency-doubled in an SHG crystal that converts half of it to 516 nm. A
       shortpass dichroic sends the residual 1032 nm fundamental up to a dump and passes the
       green pump on to the OPO; in coherent Raman sources that fundamental can instead serve
@@ -892,8 +893,10 @@ export const exampleEntries = [
       saturation, and changing the cavity length does not detune anything — in a real
       synchronously pumped OPO it shifts the signal and can stop oscillation. The signal
       output is a finite sum of traced leakage paths. The SHG crystal scales the pump
-      spectrum with the wavelength, which doubles its frequency width rather than the √2 a
-      transform-limited Gaussian pulse would give.</p>
+      spectrum with the wavelength and keeps the pump's duration, which doubles the
+      frequency width. In the undepleted, ideal Gaussian limit the second harmonic would be
+      √2 wider in frequency and √2 shorter; the green here is about 14.7 cm⁻¹ instead of
+      about 10.4 cm⁻¹, and that carries into the derived idler width.</p>
       <p>Drawing concessions: M1 and M2 are drawn flat. Synchronously pumped cavities
       commonly focus into the crystal with curved mirrors, but the workbench's curved
       mirrors are not wavelength-selective. Many picosecond OPOs couple signal and idler out
@@ -904,6 +907,7 @@ export const exampleEntries = [
       are authored.</p>`,
     citations: [
       { label: 'RP Photonics Encyclopedia — Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
+      { label: 'K. Kieu, B. G. Saar, G. R. Holtom, X. S. Xie, F. W. Wise, “High-power picosecond fiber source for coherent Raman microscopy,” Optics Letters 34, 2051–2053 (2009)', url: 'https://doi.org/10.1364/OL.34.002051' },
     ],
     resources: [],
     related: ['crystal', 'dichroic', 'mirror', 'pulsedlaser', 'probe'],

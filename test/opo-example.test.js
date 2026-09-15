@@ -159,11 +159,13 @@ test('the generated example pages carry every section of their prose, in order',
   ], 'ring OPO page');
   inOrder(page('synchronously-pumped-picosecond-opo'), [
     'Synchronous pumping',
-    'frequency-doubled mode-locked lasers',
+    'Frequency-doubled mode-locked lasers can pump picosecond OPO sources',
+    'href="#ref-2"',
     'What this setup demonstrates',
     '1032 nm, 2 ps, 80 MHz',
     'time–bandwidth product of 0.60',
-    'id="ref-1"',
+    'undepleted, ideal Gaussian limit',
+    'id="ref-2"',
   ], 'picosecond OPO page');
 });
 
