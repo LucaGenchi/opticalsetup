@@ -12,7 +12,8 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, phasePlateIllumination, probeAt } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt } from './raytrace.js';
+import { idlerWavelength } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
   formatTimeAxisNs,
@@ -1944,6 +1945,38 @@ export function compressorFinalState({ incoming, outgoing }) {
     + `and a ${chirp} chirp is applied`;
 }
 
+// Inspector text for a crystal's OPO state on the last trace.
+const sig3 = x => Number(x.toPrecision(3));
+function opoStateText(reading) {
+  if (!reading) return 'No pump within the acceptance window yet';
+  if (reading.state === 'invalid') return 'No output: the signal must be longer than the pump';
+  return `Converting ${sig3(reading.efficiency * 100)}% of the pump (fixed fraction; no threshold or depletion model)`;
+}
+
+function formatOpoDuration(fs) {
+  if (!(fs > 0)) return '—';
+  if (fs >= 1e6) return `${sig3(fs / 1e6)} ns`;
+  if (fs >= 1e3) return `${sig3(fs / 1e3)} ps`;
+  return `${sig3(fs)} fs`;
+}
+
+function opoWaveText(name, wave, pulse) {
+  const width = wave.bw > 0 ? `${sig3(wave.bw)} nm (${sig3(wave.widthCm)} cm⁻¹)` : 'single-frequency';
+  if (!pulse) return `${name} ${width}`;
+  const note = pulse.transformLimited ? ', transform-limited'
+    : pulse.transformLimitUnavailable ? ', not transform-limited: a zero linewidth has no finite transform-limited duration'
+      : pulse.durationRaisedToLimit ? ', raised to its transform limit' : '';
+  return `${name} ${width}, ${formatOpoDuration(pulse.pulseWidthFs)}${note}`;
+}
+
+function opoWidthsText(reading) {
+  const waves = reading?.waves;
+  if (!waves) return '—';
+  const pulses = reading.pulses || {};
+  if (waves.merged) return opoWaveText('Degenerate output', waves.merged, pulses.merged);
+  return `${opoWaveText('Signal', waves.signal, pulses.signal)} · ${opoWaveText('idler', waves.idler, pulses.idler)}`;
+}
+
 export const registry = {
 
   // ---------------- Sources ----------------
@@ -2957,10 +2990,13 @@ export const registry = {
   dichroic: {
     label: 'Dichroic mirror', category: 'Filters & Splitters', paletteOrder: 3, size: { w: 14, h: 56 },
     params: [
-      { key: 'dtype', label: 'Type', type: 'select', def: 'longpass', options: [['longpass', 'Longpass (transmit long λ)'], ['shortpass', 'Shortpass (transmit short λ)'], ['bandpass', 'Bandpass']] },
-      { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype !== 'bandpass' },
-      { key: 'center', label: 'Band center (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype === 'bandpass' },
-      { key: 'band', label: 'Band width (nm)', type: 'number', min: 1, max: 2000, step: 5, def: 50, show: p => p.dtype === 'bandpass' },
+      { key: 'dtype', label: 'Type', type: 'select', def: 'longpass', options: [['longpass', 'Longpass (transmit long λ)'], ['shortpass', 'Shortpass (transmit short λ)'], ['bandpass', 'Bandpass'], ['notch', 'Band reflector (reflect one band)']] },
+      { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype !== 'bandpass' && p.dtype !== 'notch' },
+      { key: 'center', label: 'Band center (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype === 'bandpass' || p.dtype === 'notch' },
+      { key: 'band', label: 'Band width (nm)', type: 'number', min: 1, max: 2000, step: 5, def: 50, show: p => p.dtype === 'bandpass' || p.dtype === 'notch' },
+      // An output coupler's coating reflects most of the resonant band and
+      // transmits the rest; 100 % is a high reflector.
+      { key: 'bandRefl', label: 'Reflectivity in band (%)', type: 'number', min: 0, max: 100, step: 1, def: 100, show: p => p.dtype === 'notch' },
       { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
     ],
     size_: el => ({ w: 14, h: el.params.length + 6 }),
@@ -2971,7 +3007,7 @@ export const registry = {
     },
     surfaces(el) {
       const L = el.params.length / 2, p = el.params;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'dichroic', data: { dtype: p.dtype, cutoff: p.cutoff, center: p.center, band: p.band } }];
+      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'dichroic', data: { dtype: p.dtype, cutoff: p.cutoff, center: p.center, band: p.band, bandRefl: p.bandRefl } }];
     },
   },
 
@@ -4111,8 +4147,54 @@ export const registry = {
       { key: 'outWl', label: 'Output λ (nm)', type: 'number', min: 100, max: 12000, step: 1, def: 532, show: p => p.convert === 'custom' },
       { key: 'pumpWl', label: 'Pump λ (nm)', type: 'number', min: 100, max: 3000, step: 1, def: 532, show: p => p.convert === 'opo' },
       { key: 'signalWl', label: 'Signal λ (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 800, show: p => p.convert === 'opo' },
+      {
+        key: 'idlerWl', label: 'Idler λ', type: 'readout', show: p => p.convert === 'opo',
+        readout: p => {
+          const idler = idlerWavelength(p.pumpWl, p.signalWl);
+          return idler === null ? 'None — the signal must be longer than the pump' : `${Number(idler.toPrecision(5))} nm`;
+        },
+      },
+      {
+        key: 'pumpAcceptanceNm', label: 'Pump acceptance (± nm)', type: 'number', min: 0, max: 100, step: 0.5, def: 1,
+        show: p => p.convert === 'opo',
+      },
+      // Linewidths are FWHM in wavenumber. Matching the pump is a heuristic
+      // for a synchronously pumped fs/ps OPO; a ns or CW OPO's signal width is
+      // set by its cavity, and a datasheet may give both outputs.
+      {
+        key: 'linewidthMode', label: 'Output linewidths', type: 'select', def: 'pump', show: p => p.convert === 'opo',
+        options: [
+          ['pump', 'Signal as wide as the pump'],
+          ['signal', 'Signal width set, idler derived'],
+          ['both', 'Signal and idler widths set'],
+        ],
+      },
+      {
+        key: 'signalLinewidthCm', label: 'Signal linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5,
+        show: p => p.convert === 'opo' && (p.linewidthMode === 'signal' || p.linewidthMode === 'both'),
+      },
+      {
+        key: 'idlerLinewidthCm', label: 'Idler linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5,
+        show: p => p.convert === 'opo' && p.linewidthMode === 'both',
+      },
+      {
+        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'unknown', show: p => p.convert === 'opo',
+        options: [['unknown', 'Duration set, spectral phase unknown'], ['transformLimited', 'Transform-limited']],
+      },
+      {
+        key: 'durationFactor', label: 'Output ÷ pump duration', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1,
+        show: p => p.convert === 'opo' && p.outputPhase !== 'transformLimited',
+      },
       { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5, show: p => p.convert !== 'none' },
       { key: 'transmitPump', label: 'Transmit residual pump', type: 'checkbox', def: true, show: p => p.convert !== 'none' },
+      {
+        key: 'opoState', label: 'Oscillation', type: 'readout', wide: true, show: p => p.convert === 'opo',
+        readout: (p, el) => opoStateText(el ? opoReading(el.id) : null),
+      },
+      {
+        key: 'opoWidths', label: 'Outputs', type: 'readout', wide: true, show: p => p.convert === 'opo',
+        readout: (p, el) => opoWidthsText(el ? opoReading(el.id) : null),
+      },
     ],
     svg(el) {
       const isOpo = el.params.convert === 'opo';
@@ -4123,7 +4205,12 @@ export const registry = {
       const p = el.params;
       if (p.convert === 'none') return [];
       const h = (p.aperture || 22) / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: { convert: p.convert, outWl: p.outWl, pumpWl: p.pumpWl, signalWl: p.signalWl, efficiency: p.efficiency, transmitPump: p.transmitPump } }];
+      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: {
+        convert: p.convert, outWl: p.outWl, pumpWl: p.pumpWl, signalWl: p.signalWl, pumpAcceptanceNm: p.pumpAcceptanceNm,
+        linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
+        outputPhase: p.outputPhase, durationFactor: p.durationFactor,
+        efficiency: p.efficiency, transmitPump: p.transmitPump,
+      } }];
     },
   },
 
@@ -4734,7 +4821,7 @@ const DIRECT = {
   // and internal planes jump by hundreds of millimetres. Presets now handle
   // ordinary changes and Advanced parameters retain exact EFL entry.
   objective: { resize: { y: 'frontAperture' } },
-  dichroic: { resize: { y: 'length' }, tune: { key: p => p.dtype === 'bandpass' ? 'center' : 'cutoff', short: 'λ' } },
+  dichroic: { resize: { y: 'length' }, tune: { key: p => (p.dtype === 'bandpass' || p.dtype === 'notch' ? 'center' : 'cutoff'), short: 'λ' } },
   filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
   bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
   polarizer: { resize: { y: 'length' }, tune: { key: 'pangle', short: 'axis' } },
@@ -4829,7 +4916,7 @@ const ELEMENT_HELP = {
   asphericlens: 'Refracts through exact conic-plus-even-polynomial faces, so changing k or A₄/A₆/A₈ changes the physical ray intersections and aberration rather than only the drawing.',
   telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
   objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane is placed so light focuses one working distance past the front tip. It can lie outside the drawn barrel for long-working-distance designs; it represents the whole objective, not a physical glass surface. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
-  dichroic: 'Transmits or reflects wavelength bands around its configured cutoff.',
+  dichroic: 'Transmits or reflects wavelength bands around its configured cutoff, or reflects one band and transmits both sides of it (band reflector), optionally reflecting only part of that band as an output coupler.',
   filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
   bs: 'Splits incident light into transmitted and reflected branches.',
   grating: 'Creates selected diffraction orders using the grating equation.',
@@ -4863,7 +4950,7 @@ const ELEMENT_HELP = {
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
-  crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output.',
+  crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output. OPO mode splits the generated power by Manley–Rowe and gives signal and idler their own linewidths and pulse durations; phase matching, threshold and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',

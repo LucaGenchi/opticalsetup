@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v90';
+const CACHE_NAME = 'opticalsetup-pwa-v91';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -38,6 +38,7 @@ const PRECACHE_PATHS = [
   "./js/main.js",
   "./js/markdown.js",
   "./js/objective.js",
+  "./js/parametric.js",
   "./js/polarization.js",
   "./js/polygon.js",
   "./js/proposal.js",
@@ -64,6 +65,8 @@ const PRECACHE_PATHS = [
   "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
+  "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20ring%20cavity%2C%20element%20by%20element.json",
+  "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20picosecond%20OPO.json",
   "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",

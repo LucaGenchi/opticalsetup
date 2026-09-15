@@ -749,6 +749,171 @@ export const exampleEntries = [
     related: ['pulsedlaser', 'glassrod', 'pulsecompressor', 'autocorrelator'],
   },
   {
+    match: 'Optical parametric oscillator — ring cavity, element by element',
+    title: 'Optical parametric oscillator',
+    tagline: 'A synchronously pumped singly resonant OPO in a bow-tie ring: green pump photons split into an 800 nm signal and a 1588 nm idler.',
+    html: `
+      <p>An optical parametric oscillator makes new colours of coherent light without a
+      laser transition. Inside a crystal with a χ⁽²⁾ nonlinearity, a pump photon splits
+      into two lower-energy photons, the <em>signal</em> and the <em>idler</em>, whose
+      frequencies add up to the pump's. Which pair appears is chosen by phase matching,
+      so turning the crystal or changing its temperature tunes the output${cite(1)}.</p>
+      <p>Energy conservation fixes the idler once the signal is chosen, and because the
+      two are made in equal numbers of photons, the higher-energy signal carries the
+      larger share of the generated power:</p>
+      <div class="formula"><span class="w">1/λ<sub>p</sub> = 1/λ<sub>s</sub> + 1/λ<sub>i</sub></span>
+        <div class="caption">Pumped at 532 nm with an 800 nm signal, the idler is at 1588 nm.</div></div>
+      <div class="formula"><span class="w">P<sub>s</sub> / P<sub>i</sub> = λ<sub>i</sub> / λ<sub>s</sub></span>
+        <div class="caption">Equal photon numbers: the 800 nm signal takes 66.5 % of the generated power and the 1588 nm idler 33.5 %.</div></div>
+      <p>A single pass through the crystal gives little gain, so the crystal sits in a
+      cavity that feeds one of the waves back. In a <strong>singly resonant</strong>
+      OPO only that wave, here the signal, is reflected by the mirrors; the pump and
+      idler pass straight through their coatings. Oscillation starts once the round-trip
+      gain beats the round-trip loss, which is why an OPO has a pump threshold, and
+      driven well above it the pump is depleted and the generated waves can start to
+      convert back${cite(2)}.</p>
+      <p>Here the cavity is a four-mirror <strong>bow-tie ring</strong>. In this singly
+      pumped, co-propagating phase-matched configuration, parametric gain favours the signal
+      travelling with the pump, selecting one circulation direction around the ring${cite(1)}. The mirror after the crystal is the output
+      coupler: its coating reflects most of the signal and transmits the rest together with
+      the pump and idler, so all three leave collinearly and are separated outside. A real
+      ring resonator still requires a suitable mode, mirror curvatures, coatings and cavity
+      length.</p>
+      <p>With a mode-locked pump the crystal only has gain while a pump pulse is inside it,
+      so the resonator is <strong>synchronously pumped</strong>: its round trip takes exactly
+      one pump period, and a signal pulse that leaves the crystal comes round to meet the
+      next pump pulse and is amplified again${cite(1)}. For a ring that fixes the perimeter,
+      <span class="w">c / f<sub>rep</sub></span> — strictly the group optical path, so a
+      dispersive crystal makes the real ring slightly shorter.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A 532 nm, 2 ps, 80 MHz pump drives a χ⁽²⁾ crystal between M1 and M2, the lower
+      pair of a bow-tie ring completed by M3 and M4. All four are band reflectors for the
+      650–950 nm signal band and transmit the pump and idler, and every one is met at a 12°
+      angle of incidence. The signal runs M2 → M3 → M4 → M1 → crystal, crossing itself
+      between the upper and lower pairs. The perimeter is exactly
+      <span class="w">c / 80 MHz = 3747.4 mm</span>, a 12.5 ns round trip equal to the pump
+      period; the crystal is a thin surface, so the whole path is air. Because of that, the
+      animated packets of successive round trips overlap instead of forming offset
+      clusters. The schematic view still draws several illustrative packets around the ring
+      at a fixed fraction of the pulse spacing; the physical view shows the true
+      pump-period spacing. The overlap follows from the length ratio, not from a simulated
+      synchronisation or gain process. M2 is the output coupler: it reflects 80 % of
+      the signal band and transmits the rest, so signal, idler and residual pump leave
+      together; a longpass and a shortpass dichroic then separate them. Beam probes read
+      the wavelength of the pump, the signal circulating on the upper arm, and each
+      separated output: idler, signal and residual pump.</p>
+      <p>The crystal is set to a 532 nm pump and an 800 nm signal, so the inspector shows
+      the idler at 1588 nm. It converts a fixed 30 % of the pump: 19.95 % becomes signal
+      and 10.05 % idler. The idler detector reads that 10.05 % in one pass. The signal
+      leaks through M2 on every round trip, and the tracer sums twelve of those leaks,
+      reading 18.6 % of the pump. Those are successive round trips of one launched signal,
+      not amplified passes: the tracer does not add gain from later pump pulses. It also
+      launches the signal only in the pump's direction and does not calculate the gain
+      competition that selects that direction. The signal is authored with the same frequency
+      (wavenumber) FWHM as the pump, a heuristic, which is about 0.47 nm at 800 nm; the idler width is derived from pump and signal, and the output pulses
+      keep the pump's duration; all are illustrative, not one instrument's.</p>
+      <p>Things to try: move the signal wavelength and watch the idler follow; lower M2's
+      in-band reflectivity and more of the signal leaves on each round trip; or tune the pump more
+      than 1 nm away from 532 nm and the oscillator goes dark.</p>`,
+    limitations: `<p>This is a phenomenological OPO. The crystal converts a fixed fraction of
+      the pump on its first pass: there is no threshold, gain, build-up or back-conversion,
+      and phase matching is not calculated, so turning or heating the crystal does nothing.
+      The signal output is a finite sum of traced leaks, not a steady state, and changing
+      the ring's length does not detune anything — in a real synchronously pumped OPO it
+      shifts the signal and can stop oscillation. Ring cavities usually use curved mirrors
+      to focus into the crystal; these four are drawn flat. The pump is a
+      single axial ray, so only the chief-ray routing is shown, with no mode, focus or beam
+      overlap. Mirror coatings switch perfectly at their band edges and do not depend on
+      angle.</p>`,
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
+      { label: 'A. Berrou, J.-M. Melkonian, M. Raybaut, A. Godard, E. Rosencher, M. Lefebvre, “Specific architectures for optical parametric oscillators,” C. R. Physique 8, 1162–1173 (2007)', url: 'https://doi.org/10.1016/j.crhy.2007.09.012' },
+    ],
+    resources: [],
+    related: ['crystal', 'dichroic', 'mirror', 'pulsedlaser', 'detector'],
+  },
+
+  {
+    match: 'Synchronously pumped picosecond OPO',
+    title: 'Synchronously pumped picosecond OPO',
+    tagline: 'A frequency-doubled 1032 nm picosecond laser pumps a cavity whose round trip lasts one pump period, giving an 800 nm signal.',
+    html: `
+      <p>An optical parametric oscillator feeds one of its two generated waves back through
+      a χ⁽²⁾ crystal so that it keeps being amplified. With a mode-locked pump the
+      crystal only has gain while a pump pulse is inside it, and between pulses there is
+      none${cite(1)}.</p>
+      <p><strong>Synchronous pumping</strong> makes the cavity's round-trip time equal one
+      pump period. A signal pulse leaves the crystal, travels once around the
+      resonator and arrives back just as the next pump pulse does, so it is amplified on
+      every pass. For a pump at repetition rate <span class="w">f<sub>rep</sub></span> the
+      round trip must take <span class="w">1/f<sub>rep</sub></span>: a one-way optical path
+      of <span class="w">c / (2 f<sub>rep</sub>)</span>, 1.87 m at 80 MHz. Strictly this is
+      the <em>group</em> optical path, so a dispersive crystal inside the cavity makes the
+      mirrors sit a little closer together than that distance.</p>
+      <p>Frequency-doubled mode-locked lasers can pump picosecond OPO sources for coherent
+      Raman imaging, which needs two synchronised colours. Near-transform-limited pulses of
+      a few picoseconds can provide bandwidths comparable to many molecular Raman bands,
+      balancing spectral selectivity against peak intensity${cite(2)}. A singly resonant
+      cavity reflects only the signal band: the pump enters through one of its mirrors, the
+      idler and residual pump leave through another, and a fraction of the signal leaves
+      through the output coupler on every round trip.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>The scene is an illustrative layout with illustrative settings, representative of
+      picosecond OPOs of this kind rather than any one instrument or publication. A 1032 nm, 2 ps, 80 MHz
+      laser is frequency-doubled in an SHG crystal that converts half of it to 516 nm. A
+      shortpass dichroic sends the residual 1032 nm fundamental up to a dump and passes the
+      green pump on to the OPO; in coherent Raman sources that fundamental can instead serve
+      as a third synchronised beam.</p>
+      <p>The green pump enters a Z-shaped cavity, M3 → F1 → M1 → crystal → M2 → M4, whose
+      one-way path is exactly <span class="w">c / (2 × 80 MHz) = 1873.7 mm</span> — a round
+      trip of 12.5 ns, the pump period. Every fold is at a 12° angle of incidence, so the
+      beam turns back on itself as it does on real cavity mirrors, and one flat fold, F1,
+      keeps the long arm on the page. The crystals are thin surfaces, so the whole path is
+      air and group and geometric lengths coincide. M1 and M2 are band reflectors that
+      return the 650–950 nm signal band and transmit the pump and idler. The pump enters
+      through M1; the idler and residual pump leave together through M2 and are separated by
+      a dichroic outside the cavity. M4 is an output coupler reflecting 90 % of the
+      signal.</p>
+      <p>The OPO crystal is set to a 516 nm pump and an 800 nm signal, placing the idler at
+      1453.5 nm. The signal is authored with a 10 cm⁻¹ FWHM (0.64 nm) and the pump's 2 ps
+      duration, a time–bandwidth product of 0.60; the idler width, about 3.8 nm, is derived
+      from pump and signal as uncorrelated Gaussians. Beam probes read the wavelength of the
+      1032 nm fundamental, the 516 nm pump, the signal circulating in the long arm and the
+      residual pump, and spectrum probes show the separated idler and signal.</p>
+      <p>The OPO crystal converts a fixed, illustrative 35 % of the green pump. By photon
+      energy that is 22.6 % of the green as signal and 12.4 % as idler — 11.3 % and 6.2 % of
+      the 1032 nm laser, which is what the detectors read against. The idler detector reads
+      its 6.2 % in one pass. The tracer sums six output-coupler leaks of the signal before
+      its path-depth limit, about 5.3 % of the laser; infinitely many would recover the
+      generated 11.3 %. Neither is a steady-state prediction.</p>`,
+    limitations: `<p>This is a phenomenological OPO, not a cavity simulation. Both crystals
+      convert a fixed fraction on a single pass; there is no threshold, gain, build-up or
+      saturation, and changing the cavity length does not detune anything — in a real
+      synchronously pumped OPO it shifts the signal and can stop oscillation. The signal
+      output is a finite sum of traced leakage paths. The SHG crystal scales the pump
+      spectrum with the wavelength and keeps the pump's duration, which doubles the
+      frequency width. In the undepleted, ideal Gaussian limit the second harmonic would be
+      √2 wider in frequency and √2 shorter; the green here is about 14.7 cm⁻¹ instead of
+      about 10.4 cm⁻¹, and that carries into the derived idler width.</p>
+      <p>Drawing concessions: M1 and M2 are drawn flat. Synchronously pumped cavities
+      commonly focus into the crystal with curved mirrors, but the workbench's curved
+      mirrors are not wavelength-selective. Many picosecond OPOs couple signal and idler out
+      collinearly; here the idler leaves through M2. The pump is a single axial ray, so the
+      scene shows chief-ray routing only, with no focus, waist, resonator mode or beam
+      overlap. Crystal lengths, temperature tuning and intracavity dispersion are not
+      modelled, and the output widths, durations, output coupling and conversion fractions
+      are authored.</p>`,
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
+      { label: 'K. Kieu, B. G. Saar, G. R. Holtom, X. S. Xie, F. W. Wise, “High-power picosecond fiber source for coherent Raman microscopy,” Optics Letters 34, 2051–2053 (2009)', url: 'https://doi.org/10.1364/OL.34.002051' },
+    ],
+    resources: [],
+    related: ['crystal', 'dichroic', 'mirror', 'pulsedlaser', 'probe'],
+  },
+
+  {
     match: 'OPTICAL SETUP — pulsed component panorama',
     title: 'OPTICAL SETUP — pulsed component panorama',
     tagline: "OpticalSetup's own flagship demo: the words \"OPTICAL SETUP\" traced entirely in live pulsed light, exercising nearly every category in the component library.",

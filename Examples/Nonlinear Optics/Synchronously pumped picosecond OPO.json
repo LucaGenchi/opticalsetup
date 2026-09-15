@@ -1,0 +1,363 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 660,
+      "y": 340,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 1320,
+        "h": 680,
+        "background": "white"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 30,
+      "y": 30,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# Synchronously pumped picosecond OPO\nA frequency-doubled 1032 nm, 2 ps laser pumps a singly resonant Z cavity",
+        "fontSize": 12,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "cavity-note",
+      "type": "textlabel",
+      "x": 940,
+      "y": 470,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "One-way cavity path 1873.7 mm: round-trip time = 1 / 80 MHz = 12.5 ns,\nso each signal pulse returns to the crystal with the next pump pulse",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "laser",
+      "type": "pulsedlaser",
+      "x": 80,
+      "y": 400,
+      "rot": 0,
+      "label": "1032 nm · 2 ps · 80 MHz",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1032,
+        "pulseWidthFs": 2000,
+        "repRateMHz": 80,
+        "avgPowerW": 8,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "beamMode": "line"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "shg",
+      "type": "crystal",
+      "x": 210,
+      "y": 400,
+      "rot": 0,
+      "label": "SHG crystal",
+      "showLabel": true,
+      "params": {
+        "convert": "shg",
+        "aperture": 10,
+        "efficiency": 0.5,
+        "transmitPump": true
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "harmonic-separator",
+      "type": "dichroic",
+      "x": 330,
+      "y": 400,
+      "rot": 45,
+      "label": "shortpass 700 nm",
+      "showLabel": true,
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 700,
+        "length": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "fundamental-dump",
+      "type": "beamdump",
+      "x": 330,
+      "y": 270,
+      "rot": 270,
+      "label": "residual 1032 nm",
+      "showLabel": true,
+      "params": {
+        "aperture": 22
+      },
+      "labelPos": "r"
+    },
+    {
+      "id": "fundamental-wavelength",
+      "type": "probe",
+      "x": 330,
+      "y": 372,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "M1",
+      "type": "dichroic",
+      "x": 560,
+      "y": 400,
+      "rot": 168,
+      "label": "M1",
+      "showLabel": true,
+      "params": {
+        "dtype": "notch",
+        "center": 800,
+        "band": 300,
+        "length": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "crystal",
+      "type": "crystal",
+      "x": 610,
+      "y": 400,
+      "rot": 0,
+      "label": "OPO crystal",
+      "showLabel": true,
+      "params": {
+        "convert": "opo",
+        "aperture": 10,
+        "pumpWl": 516,
+        "signalWl": 800,
+        "pumpAcceptanceNm": 1,
+        "linewidthMode": "signal",
+        "signalLinewidthCm": 10,
+        "outputPhase": "unknown",
+        "durationFactor": 1,
+        "efficiency": 0.35,
+        "transmitPump": true
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "M2",
+      "type": "dichroic",
+      "x": 660,
+      "y": 400,
+      "rot": 168,
+      "label": "M2",
+      "showLabel": true,
+      "params": {
+        "dtype": "notch",
+        "center": 800,
+        "band": 300,
+        "length": 25.4
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "F1",
+      "type": "mirror",
+      "x": 1199.4818,
+      "y": 115.2843,
+      "rot": 168,
+      "label": "F1",
+      "showLabel": true,
+      "params": {
+        "length": 25.4,
+        "refl": 100
+      },
+      "labelPos": "r"
+    },
+    {
+      "id": "M3",
+      "type": "mirror",
+      "x": 485.779,
+      "y": 115.2843,
+      "rot": 0,
+      "label": "M3 · HR",
+      "showLabel": true,
+      "params": {
+        "length": 25.4,
+        "refl": 100
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "M4",
+      "type": "mirror",
+      "x": 331.1236,
+      "y": 546.4252,
+      "rot": 156,
+      "label": "M4 · output coupler",
+      "showLabel": true,
+      "params": {
+        "length": 25.4,
+        "refl": 90,
+        "showTransmitted": true
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "separator",
+      "type": "dichroic",
+      "x": 860,
+      "y": 400,
+      "rot": 135,
+      "label": "longpass 1000 nm",
+      "showLabel": true,
+      "params": {
+        "dtype": "longpass",
+        "cutoff": 1000,
+        "length": 25.4
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "pump-dump",
+      "type": "beamdump",
+      "x": 860,
+      "y": 510,
+      "rot": 90,
+      "label": "residual pump",
+      "showLabel": true,
+      "params": {
+        "aperture": 22
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "pump-wavelength",
+      "type": "probe",
+      "x": 460,
+      "y": 400,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "cavity-wavelength",
+      "type": "probe",
+      "x": 839.4818,
+      "y": 115.2843,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "residual-pump-wavelength",
+      "type": "probe",
+      "x": 860,
+      "y": 485,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "idler-probe",
+      "type": "probe",
+      "x": 970,
+      "y": 400,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "spectrum"
+      }
+    },
+    {
+      "id": "idler-detector",
+      "type": "detector",
+      "x": 1120,
+      "y": 400,
+      "rot": 0,
+      "label": "idler · 1454 nm",
+      "showLabel": true,
+      "params": {
+        "aperture": 26
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "signal-probe",
+      "type": "probe",
+      "x": 303.7173,
+      "y": 558.6273,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "spectrum"
+      }
+    },
+    {
+      "id": "signal-detector",
+      "type": "detector",
+      "x": 221.4982,
+      "y": 595.2336,
+      "rot": 156,
+      "label": "signal · 800 nm",
+      "showLabel": true,
+      "params": {
+        "aperture": 26
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "coatings",
+      "type": "textlabel",
+      "x": 420,
+      "y": 610,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "M1, M2 · reflect the signal band (650–950 nm), transmit pump and idler\nF1, M3 · high reflectors    M4 · output coupler, 10 % of the signal",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "legend",
+      "type": "textlabel",
+      "x": 420,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Only the 800 nm signal resonates. The OPO crystal converts a fixed, illustrative 35 % of the pump: no threshold or gain.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    }
+  ]
+}

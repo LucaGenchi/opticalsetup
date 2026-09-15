@@ -38,6 +38,7 @@ import {
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
+import { opoPulse, opoWaves, pumpWidthNm } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -140,6 +141,17 @@ function recordMetalensHit(elementId, wavelengthNm, focalLengthMm) {
   let hits = metalensHits.get(elementId);
   if (!hits) { hits = new Map(); metalensHits.set(elementId, hits); }
   hits.set(wavelengthNm.toFixed(6), { wavelengthNm, focalLengthMm });
+}
+
+// crystal element id -> the OPO state its last pump ray produced.
+let opoStates = new Map();
+
+function recordOpo(elementId, state) {
+  if (elementId) opoStates.set(elementId, state);
+}
+
+export function opoReading(elementId) {
+  return opoStates.get(elementId) || null;
 }
 
 export function metalensReading(elementId) {
@@ -2098,7 +2110,10 @@ function lensBend(dir, hitP, s, f, hc = 0) {
 function dichroicTransmits(wl, d) {
   if (d.dtype === 'longpass') return wl >= d.cutoff;
   if (d.dtype === 'shortpass') return wl <= d.cutoff;
-  return Math.abs(wl - d.center) <= d.band / 2;
+  const inBand = Math.abs(wl - d.center) <= d.band / 2;
+  // A band reflector is the coating on an OPO or laser cavity mirror: high
+  // reflection over one band, transmission on both sides of it.
+  return d.dtype === 'notch' ? !inBand : inBand;
 }
 
 // transmission passband [lo, hi] of a filter/dichroic
@@ -2417,27 +2432,54 @@ function interact(ray, hit) {
       return [transmitAt(ray.wl)];
     }
     case 'dichroic': {
-      if (!ray.bw) return dichroicTransmits(ray.wl, data) ? [{ d }] : [{ d: reflect(d, n) }];
+      // A band reflector may return only part of its band, as an output
+      // coupler's coating does: the rest of the band is transmitted. Both
+      // parts are retained below the normal drawing cutoff, within the trace
+      // budgets, as a partial mirror's are.
+      const inBandR = data.dtype === 'notch' ? Math.min(1, Math.max(0, (data.bandRefl ?? 100) / 100)) : 1;
+      const partial = inBandR < 1;
+      if (!ray.bw) {
+        if (dichroicTransmits(ray.wl, data)) return [{ d }];
+        if (!partial) return [{ d: reflect(d, n) }];
+        const split = [];
+        if (inBandR > 0) split.push({ d: reflect(d, n), intensity: ray.intensity * inBandR, tag: 'R', retainWeak: true });
+        split.push({ d, intensity: ray.intensity * (1 - inBandR), tag: 'T', retainWeak: true });
+        return split;
+      }
       // A Gaussian (or already-filtered) input has no closed-form box
       // overlap with the passband — integrate the real profile numerically.
       if (ray.spec && ray.spec.kind !== 'flat') {
-        const T = wl => (dichroicTransmits(wl, data) ? 1 : 0);
+        const T = wl => (dichroicTransmits(wl, data) ? 1 : 1 - inBandR);
         const out = [];
+        const weak = partial ? { retainWeak: true } : {};
         const trans = applyTransmission(ray.spec, ray.wl, T);
-        if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T' });
+        if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T', ...weak });
         const refl = applyTransmission(ray.spec, ray.wl, wl => 1 - T(wl));
-        if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R' });
+        if (refl) out.push({ d: reflect(d, n), wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R', ...weak });
         return out;
       }
       // flat (supercontinuum) or unspecified box: exact analytic overlap
       const rb = [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
       const pb = passbandOf(data);
       const out = [];
-      const ix = bandIntersect(rb, pb);
-      if (ix && ix[1] - ix[0] > 0.5) out.push(bandChild(ray, d, ix[0], ix[1], 'T'));
       const rd = reflect(d, n);
-      if (rb[0] < pb[0] - 0.5) out.push(bandChild(ray, rd, rb[0], Math.min(rb[1], pb[0]), 'R0'));
-      if (rb[1] > pb[1] + 0.5) out.push(bandChild(ray, rd, Math.max(rb[0], pb[1]), rb[1], 'R1'));
+      // A band reflector is a bandpass with the two ports exchanged.
+      const [inside, outside] = data.dtype === 'notch' ? [rd, d] : [d, rd];
+      const [insideTag, outsideTag] = data.dtype === 'notch' ? ['R', 'T'] : ['T', 'R'];
+      const ix = bandIntersect(rb, pb);
+      if (ix && ix[1] - ix[0] > 0.5) {
+        if (!partial) out.push(bandChild(ray, inside, ix[0], ix[1], insideTag));
+        else {
+          const scaled = (dir, tag, share) => {
+            const c = bandChild(ray, dir, ix[0], ix[1], tag);
+            return { ...c, intensity: c.intensity * share, retainWeak: true };
+          };
+          if (inBandR > 0) out.push(scaled(rd, 'R', inBandR));
+          out.push(scaled(d, 'Tb', 1 - inBandR));
+        }
+      }
+      if (rb[0] < pb[0] - 0.5) out.push(bandChild(ray, outside, rb[0], Math.min(rb[1], pb[0]), `${outsideTag}0`));
+      if (rb[1] > pb[1] + 0.5) out.push(bandChild(ray, outside, Math.max(rb[0], pb[1]), rb[1], `${outsideTag}1`));
       return out;
     }
     case 'filter': {
@@ -3305,19 +3347,75 @@ function interact(ray, hit) {
     case 'transmit': {
       const efficiency = Math.min(1, Math.max(0, data.efficiency ?? 1));
       if (data.convert === 'opo') {
-        // optical parametric down-conversion: pump -> signal + idler,
-        // energy conservation 1/lambda_p = 1/lambda_s + 1/lambda_i.
-        // Phase-matching is pump-specific: light at any other wavelength
-        // (the crystal's own signal/idler bouncing back through on a later
-        // cavity round trip) just transmits unconverted — without this
-        // guard, resonating signal would re-split on every single pass,
-        // branching exponentially and never terminating.
-        const pumpWl = data.pumpWl || 532;
-        if (Math.abs(ray.wl - pumpWl) > 1) return [{ d }];
-        const sig = Math.max(1, data.signalWl || 800);
-        const out = [{ d, wl: sig, intensity: ray.intensity * efficiency / 2, tag: 's' }];
-        const invIdler = 1 / pumpWl - 1 / sig;
-        if (invIdler > 1e-9) out.push({ d, wl: 1 / invIdler, intensity: ray.intensity * efficiency / 2, tag: 'i' });
+        // Optical parametric oscillation (see parametric.js for the model).
+        const crystalId = s.el?.id || null;
+        const pass = () => [{ d }];
+        // Light is never converted twice by the same crystal, however broad
+        // its spectrum or wide the acceptance: a resonating signal would
+        // otherwise re-split on every round trip, branching exponentially.
+        // A different crystal may still convert it.
+        if (crystalId && Array.isArray(ray.parametricPath) && ray.parametricPath.includes(crystalId)) return pass();
+        const pumpWl = Number(data.pumpWl ?? 532);
+        const sig = Number(data.signalWl ?? 800);
+        if (!(Number.isFinite(pumpWl) && pumpWl > 0
+            && Number.isFinite(sig) && sig > 0)) {
+          return data.transmitPump ? pass() : [];
+        }
+        // Phase matching accepts pump light whose centre lies within an
+        // authored window; everything else passes unconverted.
+        const acceptance = Math.max(0, Number(data.pumpAcceptanceNm ?? 1));
+        if (!(Math.abs(ray.wl - pumpWl) <= acceptance)) return pass();
+        // The cavity holds the signal; the idler follows the pump that arrives.
+        const waves = opoWaves({
+          pumpWl: ray.wl, pumpFwhmNm: pumpWidthNm(ray), signalWl: sig,
+          linewidthMode: data.linewidthMode,
+          signalLinewidthCm: data.signalLinewidthCm, idlerLinewidthCm: data.idlerLinewidthCm,
+        });
+        // A signal at or above the pump frequency leaves no positive idler.
+        // Treat that as no conversion, while still honouring the user's
+        // choice about whether the unconverted pump is shown or dumped.
+        if (!waves) {
+          recordOpo(crystalId, { state: 'invalid' });
+          return data.transmitPump ? pass() : [];
+        }
+
+        const phase = { outputPhase: data.outputPhase, durationFactor: data.durationFactor, crystalId };
+        const pulses = waves.merged
+          ? { merged: opoPulse(ray.pulse, waves.merged, { ...phase, role: 'degenerate' }) }
+          : {
+            signal: opoPulse(ray.pulse, waves.signal, { ...phase, role: 'signal' }),
+            idler: opoPulse(ray.pulse, waves.idler, { ...phase, role: 'idler' }),
+          };
+        recordOpo(crystalId, { state: 'converting', efficiency, waves, pulses });
+        if (!(efficiency > 0)) return data.transmitPump ? pass() : [];
+
+        const converted = ray.intensity * efficiency;
+        const path = [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), crystalId].filter(Boolean);
+        const gen = (wave, pulse, intensity, tag) => ({
+          d, wl: wave.wl, bw: wave.bw, spec: wave.spec, intensity, tag, pulse,
+          parametricPath: path,
+          // The pulse's reference plane is the crystal exit; its spectral
+          // phase is reported as unknown unless declared transform-limited.
+          gdd: 0,
+          // New light does not carry the pump's reconstructable CW field.
+          phaseValid: false,
+          phaseIssue: 'parametric output: optical phase relative to the pump is not modelled',
+        });
+        let out;
+        if (waves.merged) {
+          // At degeneracy with equal widths, signal and idler are one beam
+          // carrying their combined power.
+          out = [gen(waves.merged, pulses.merged, converted, 's=i')];
+        } else {
+          // One signal and one idler photon are created per pump photon. Their
+          // photon fluxes are equal, so P_s/P_i = nu_s/nu_i = lambda_i/lambda_s.
+          // At degeneracy with different widths they stay two coincident beams,
+          // each with its own spectrum.
+          out = [
+            gen(waves.signal, pulses.signal, converted * waves.signalShare, 's'),
+            gen(waves.idler, pulses.idler, converted * (1 - waves.signalShare), 'i'),
+          ];
+        }
         if (data.transmitPump && efficiency < 0.999) out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'p' });
         return out;
       }
@@ -3765,8 +3863,15 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           keepWeak: 'keepWeak' in c ? c.keepWeak : r.keepWeak,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           gdd: childGdd,
-          gddTrace: r.gddTrace ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
+          // A child with a pulse of its own (light an OPO generated) has its
+          // dispersion drawn only if that pulse's duration is derivable, not
+          // because its parent's was.
+          gddTrace: ('pulse' in c
+            ? c.pulse?.transformLimited === true && (c.pulse?.pulseShape || 'gauss') === 'gauss'
+            : r.gddTrace)
+            ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
+          parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
           intensity: childIntensity,
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
@@ -4054,6 +4159,7 @@ export function traceScene(elements, beams = []) {
   coarsePortCache = new Map();
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
+  opoStates = new Map();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
