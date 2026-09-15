@@ -773,14 +773,15 @@ export const exampleEntries = [
       gain beats the round-trip loss, which is why an OPO has a pump threshold, and
       driven well above it the pump is depleted and the generated waves can start to
       convert back${cite(2)}.</p>
-      <p>Folding the cavity is a practical choice rather than a physical one: the fold
-      mirror returns the signal to the output coupler while the pump and idler leave
-      through its back, so they never reach the output coupler and the two outputs
-      emerge in different places. With a pulsed pump the oscillation has to build up
-      from noise within each pump pulse, so the threshold rises and the output pulses
-      are somewhat shorter than the pump's${cite(1, 2)}. Nanosecond OPOs typically have
-      linewidths of a few cm⁻¹; one commercial 355 nm-pumped system specifies below
-      5 cm⁻¹${cite(3)}.</p>`,
+      <p>This fold provides a convenient layout and separates the outputs: M2 reflects the
+      signal toward the output coupler while transmitting the pump and idler, so they never
+      reach the output coupler. A real folded resonator still requires a suitable mode,
+      mirror curvatures, coatings and cavity length.</p>
+      <p>In an unseeded nanosecond OPO such as this example, the field must build up from
+      noise during each pump pulse. Finite build-up time raises the required gain relative
+      to the steady-state threshold${cite(2)}, and output pulses are often somewhat shorter
+      than the pump pulses${cite(1)}. As one example of a nanosecond OPO linewidth, a
+      commercial 355 nm-pumped system specifies below 5 cm⁻¹${cite(3)}.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
       <p>A Q-switched 532 nm laser (10 ns, 1 kHz, 1 cm⁻¹) pumps a χ⁽²⁾ crystal between M1
@@ -794,9 +795,10 @@ export const exampleEntries = [
       and 10.05 % idler. The idler detector reads that 10.05 % in one pass. The signal
       leaks through M3 on every round trip, and the tracer sums about ten of those leaks,
       reading 19.4 % of the pump — almost all of the generated signal. The signal
-      linewidth is set by the cavity to 5 cm⁻¹, the idler is derived from pump and
-      signal, and output pulses are 0.8 × the pump duration. All of these are
-      illustrative textbook values, not one instrument's.</p>
+      linewidth is authored at 5 cm⁻¹ to represent a cavity-selected linewidth — the
+      trace does not calculate it from the cavity — the idler is derived from pump and
+      signal, and the 0.8 × pump duration factor is illustrative. All of these are
+      textbook values, not one instrument's.</p>
       <p>Things to try: move the signal wavelength and watch the idler follow; lower M3's
       reflectivity and more of the signal leaves on each round trip; or tune the pump more
       than 1 nm away from 532 nm and the oscillator goes dark.</p>`,
@@ -836,17 +838,17 @@ export const exampleEntries = [
       <p>Green-pumped picosecond OPOs are a standard source for coherent Raman
       microscopy, because they deliver two synchronised, independently useful colours. In
       the Levante Emerald 6 ps class, a 532 nm pump of about 6 ps and 4 W at about 80 MHz
-      gives a signal tunable from 690 to 990 nm with a 0.3–0.4 nm bandwidth and 5–6 ps
-      pulses, an idler from 1150 to 2300 nm, and at least 0.9 W of signal and 0.6 W of
+      gives a signal tunable from 690 to 990 nm (manual tuning; 720–990 nm automated) with
+      a 0.3–0.4 nm bandwidth and 5–6 ps pulses, an idler from 1150 to 2300 nm, and at least 0.9 W of signal and 0.6 W of
       idler; its datasheet describes it as suited to SRS and CARS${cite(1)}.</p>
-      <p>The cavity is <strong>singly resonant</strong>: its mirrors reflect only the
-      signal band, so the pump enters through the first curved mirror and the idler and
-      residual pump leave through the second, while a few per cent of the signal leaves
-      through the output coupler on every round trip.</p>`,
+      <p>A singly resonant cavity reflects only the signal band: the pump enters through
+      one of its mirrors, the idler and residual pump leave through another, and a fraction
+      of the signal leaves through the output coupler on every round trip.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
-      <p>The scene routes that architecture; it does not reproduce the instrument's
-      internal design or its operating point. A 532 nm, 6 ps, 80 MHz, 4 W pump enters a
+      <p>The scene is an illustrative layout: the datasheet does not describe the
+      instrument's internal mirrors or crystal, and the scene does not reproduce its
+      operating point. The crystal is a generic χ⁽²⁾ crystal. A 532 nm, 6 ps, 80 MHz, 4 W pump enters a
       Z-shaped cavity, M3 → F1 → M1 → crystal → M2 → M4, whose one-way path is exactly
       <span class="w">c / (2 × 80 MHz) = 1873.7 mm</span> — a round trip of 12.5 ns, the
       pump period. Every fold is at a 12° angle of incidence, so the beam turns back on
@@ -860,11 +862,14 @@ export const exampleEntries = [
       value, so it is illustrative.</p>
       <p>The crystal is set to a 532 nm pump and an 800 nm signal, placing the idler at
       1588 nm. The signal is authored at 0.30 nm (4.69 cm⁻¹) with 5 ps pulses, the low ends
-      of the datasheet's ranges, whose time–bandwidth product of 0.70 is the closest to its
-      quoted typical 0.6. The idler width, about 1.3 nm, is derived from pump and signal as
+      of the datasheet's ranges. At this chosen 800 nm point that pair gives a
+      time–bandwidth product of about 0.70, the closest these ranges allow to the quoted
+      typical 0.6; it neither reproduces that value nor determines the chirp. The idler width, about 1.3 nm, is derived from pump and signal as
       uncorrelated Gaussians rather than taken from the datasheet.</p>
-      <p>The crystal converts a fixed 37.5 % of the pump — the datasheet's minimum combined
-      output (0.9 + 0.6 W) over its 4 W pump, used as an illustrative lossless fraction.
+      <p>The crystal converts an illustrative 37.5 % of the pump, numerically inspired by
+      the datasheet's two listed output-power specifications (0.9 W and 0.6 W for a 4 W
+      pump). Those specifications have no stated common wavelength or operating point, so
+      this is not a measured joint operating point.
       By photon energy that is 24.9 % signal and 12.6 % idler. The idler detector reads the
       12.6 % in one pass. The tracer sums six output-coupler leaks of the signal before its
       path-depth limit, about 11.7 % of the pump; infinitely many would recover the
@@ -876,8 +881,8 @@ export const exampleEntries = [
       build-up or saturation, and changing the cavity length does not detune anything —
       in a real synchronously pumped OPO it shifts the signal and can stop oscillation.
       The signal output is a finite sum of traced leakage paths.</p>
-      <p>Drawing concessions: M1 and M2 are drawn flat, whereas real synchronously pumped
-      cavities focus into the crystal with curved mirrors, because the workbench's curved
+      <p>Drawing concessions: M1 and M2 are drawn flat. Synchronously pumped cavities
+      commonly focus into the crystal with curved mirrors, but the workbench's curved
       mirrors are not wavelength-selective. The datasheet couples signal and idler out
       collinearly; here the idler leaves through M2. The pump is a single axial ray, so the
       scene shows chief-ray routing only, with no focus, waist, resonator mode or beam

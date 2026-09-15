@@ -18,11 +18,14 @@
 //    fold, F1, in the long arm to fit the page. The idler and residual pump
 //    leave together through M2 and are separated outside the cavity.
 //    Settings: signal 0.30 nm (4.69 cm⁻¹) wide with 5/6 of the pump duration
-//    (5 ps), the low ends of the datasheet ranges, whose time–bandwidth
-//    product (0.70) is closest to its quoted typical 0.6; the idler width is
-//    derived (uncorrelated pump and signal), not a datasheet value; conversion 0.375, the ratio of the datasheet's minimum
-//    combined output (0.9 + 0.6 W) to its 4 W pump, used as a lossless
-//    fraction. The datasheet does not give the output-coupler transmission;
+//    (5 ps), the low ends of the datasheet ranges; at 800 nm that pair has a
+//    time–bandwidth product of 0.70, the closest the ranges allow to the
+//    quoted typical 0.6. The idler width is derived (uncorrelated pump and
+//    signal), not a datasheet value. Conversion 0.375 is illustrative,
+//    numerically inspired by the listed 0.9 W and 0.6 W output specifications
+//    for a 4 W pump, which share no stated operating point. The datasheet
+//    does not identify the internal mirrors or crystal; the scene's layout
+//    and generic χ⁽²⁾ crystal are illustrative. The datasheet does not give the output-coupler transmission;
 //    10 % is illustrative.
 //    Concessions: M1 and M2 are drawn flat; real synchronously pumped
 //    cavities focus into the crystal with curved mirrors, and the
@@ -99,7 +102,7 @@ export function syncOpoScene() {
         convert: 'opo', aperture: 10, pumpWl: 532, signalWl: 800, pumpAcceptanceNm: 1,
         linewidthMode: 'signal', signalLinewidthCm: 4.69,
         outputPhase: 'unknown', durationFactor: 0.8333, efficiency: 0.375, transmitPump: true,
-      }, named('LBO', 't')),
+      }, named('χ⁽²⁾ crystal', 't')),
       el('M2', 'dichroic', M2, bandReflector, { rot: foldRot(dir(0), TO_M4), ...named('M2', 't') }),
       el('F1', 'mirror', F1, { length: 25.4, refl: 100 }, { rot: foldRot(TO_F1, TO_M3), ...named('F1', 'r') }),
       el('M3', 'mirror', M3, { length: 25.4, refl: 100 }, { rot: foldRot(TO_M3, back(TO_M3)), ...named('M3 · HR', 'b') }),
@@ -114,7 +117,7 @@ export function syncOpoScene() {
       el('signal-detector', 'detector', along(M4, TO_M4, 120), { aperture: 26 },
         { rot: round(180 - TURN), ...named('signal · 800 nm') }),
       text('coatings', 300, 610, 'M1, M2 · reflect the signal band (650–950 nm), transmit pump and idler\nF1, M3 · high reflectors    M4 · output coupler, 10 % of the signal (illustrative)', 10),
-      text('legend', 300, 650, 'Only the 800 nm signal resonates. The crystal converts a fixed 37.5 % of the pump (the datasheet\'s\nminimum combined output over its pump power, used as an illustrative fraction): no threshold or gain.', 10),
+      text('legend', 300, 650, 'Only the 800 nm signal resonates. The crystal converts an illustrative 37.5 % of the pump, inspired by the\ndatasheet\'s listed output powers but not a measured operating point: no threshold or gain.', 10),
     ],
   };
 }

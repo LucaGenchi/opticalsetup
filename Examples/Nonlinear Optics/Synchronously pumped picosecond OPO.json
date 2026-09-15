@@ -85,7 +85,7 @@
       "x": 490,
       "y": 400,
       "rot": 0,
-      "label": "LBO",
+      "label": "χ⁽²⁾ crystal",
       "showLabel": true,
       "params": {
         "convert": "opo",
@@ -262,7 +262,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Only the 800 nm signal resonates. The crystal converts a fixed 37.5 % of the pump (the datasheet's\nminimum combined output over its pump power, used as an illustrative fraction): no threshold or gain.",
+        "text": "Only the 800 nm signal resonates. The crystal converts an illustrative 37.5 % of the pump, inspired by the\ndatasheet's listed output powers but not a measured operating point: no threshold or gain.",
         "fontSize": 10,
         "fill": "#34454d"
       }
