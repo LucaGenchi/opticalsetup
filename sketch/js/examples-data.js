@@ -44,9 +44,9 @@ export const examples = [
   },
   {
     "group": "Nonlinear Optics",
-    "name": "Optical parametric oscillator — folded cavity, element by element",
-    "path": "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20folded%20cavity%2C%20element%20by%20element.json",
-    "slug": "optical-parametric-oscillator-folded-cavity-element-by-element"
+    "name": "Optical parametric oscillator — ring cavity, element by element",
+    "path": "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20ring%20cavity%2C%20element%20by%20element.json",
+    "slug": "optical-parametric-oscillator-ring-cavity-element-by-element"
   },
   {
     "group": "Nonlinear Optics",

@@ -7,8 +7,8 @@ import { detectorReading, opoReading, traceScene } from '../sketch/js/raytrace.j
 import { parseSketch } from '../sketch/js/state.js';
 import { idlerWavelength } from '../sketch/js/parametric.js';
 import {
-  CAVITY_LENGTH_MM, FOLDED_OPO_NAME, FOLDED_OPO_PATH, REP_RATE_MHZ, SYNC_OPO_NAME, SYNC_OPO_PATH,
-  foldedOpoScene, syncOpoScene,
+  CAVITY_LENGTH_MM, REP_RATE_MHZ, RING_OPO_NAME, RING_OPO_PATH, SYNC_OPO_NAME, SYNC_OPO_PATH,
+  ringOpoScene, syncOpoScene,
 } from '../tools/build-opo-example.mjs';
 
 const read = name => readFileSync(new URL(`../Examples/Nonlinear Optics/${name}.json`, import.meta.url), 'utf8');
@@ -38,7 +38,7 @@ function incidence(from, at, to) {
 
 test('the committed OPO examples are exactly what their generator writes', () => {
   assert.deepEqual(JSON.parse(read(SYNC_OPO_NAME)), syncOpoScene());
-  assert.deepEqual(JSON.parse(read(FOLDED_OPO_NAME)), foldedOpoScene());
+  assert.deepEqual(JSON.parse(read(RING_OPO_NAME)), ringOpoScene());
 });
 
 test('every cavity fold is near normal incidence, never glancing', () => {
@@ -47,8 +47,12 @@ test('every cavity fold is near normal incidence, never glancing', () => {
   near(incidence(F1, M1, M2), 12, 1e-6, 'M1');
   near(incidence(M1, M2, M4), 12, 1e-6, 'M2');
   near(incidence(M1, F1, M3), 12, 1e-6, 'F1');
-  const v = FOLDED_OPO_PATH;
-  near(incidence(v.M1, v.M2, v.M3), 15, 1e-6, 'folded M2');
+  const r = RING_OPO_PATH;
+  // Ring order: M1 → crystal → M2 → M3 → M4 → M1.
+  near(incidence(r.M4, r.M1, r.M2), 12, 1e-6, 'ring M1');
+  near(incidence(r.M1, r.M2, r.M3), 12, 1e-6, 'ring M2');
+  near(incidence(r.M2, r.M3, r.M4), 12, 1e-6, 'ring M3');
+  near(incidence(r.M3, r.M4, r.M1), 12, 1e-6, 'ring M4');
 });
 
 test('the synchronously pumped cavity round trip equals the pump period', () => {
@@ -66,7 +70,7 @@ test('the synchronously pumped cavity round trip equals the pump period', () => 
   assert.equal(at('pump').params.repRateMHz, REP_RATE_MHZ);
 });
 
-for (const [name, efficiency, oc] of [[SYNC_OPO_NAME, 0.375, 0.9], [FOLDED_OPO_NAME, 0.3, 0.7]]) {
+for (const [name, efficiency, oc] of [[SYNC_OPO_NAME, 0.375, 0.9], [RING_OPO_NAME, 0.3, 0.8]]) {
   test(`${name}: only the signal resonates; the idler leaves in one pass`, () => {
     const { idler, signal } = traced(name);
     assert.equal(opoReading('crystal').state, 'converting');
@@ -104,17 +108,17 @@ test('the generated example pages carry every section of their prose, in order',
       at = found;
     }
   };
-  inOrder(page('optical-parametric-oscillator-folded-cavity-element-by-element'), [
+  inOrder(page('optical-parametric-oscillator-ring-cavity-element-by-element'), [
     'Energy conservation fixes the idler',
     '1/λ<sub>p</sub> = 1/λ<sub>s</sub> + 1/λ<sub>i</sub>',
     'P<sub>s</sub> / P<sub>i</sub> = λ<sub>i</sub> / λ<sub>s</sub>',
     'singly resonant',
-    'This fold provides a convenient layout',
+    'bow-tie ring',
     'In an unseeded nanosecond OPO such as this example',
     'href="#ref-3"',
     'What this setup demonstrates',
     'id="ref-3"',
-  ], 'folded OPO page');
+  ], 'ring OPO page');
   inOrder(page('synchronously-pumped-picosecond-opo'), [
     'Synchronous pumping',
     '720–990 nm automated',

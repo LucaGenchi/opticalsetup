@@ -749,9 +749,9 @@ export const exampleEntries = [
     related: ['pulsedlaser', 'glassrod', 'pulsecompressor', 'autocorrelator'],
   },
   {
-    match: 'Optical parametric oscillator — folded cavity, element by element',
+    match: 'Optical parametric oscillator — ring cavity, element by element',
     title: 'Optical parametric oscillator',
-    tagline: 'A textbook singly resonant OPO in a folded cavity: green pump photons split into an 800 nm signal and a 1588 nm idler.',
+    tagline: 'A textbook singly resonant OPO in a bow-tie ring cavity: green pump photons split into an 800 nm signal and a 1588 nm idler.',
     html: `
       <p>An optical parametric oscillator makes new colours of coherent light without a
       laser transition. Inside a crystal with a χ⁽²⁾ nonlinearity, a pump photon splits
@@ -772,10 +772,13 @@ export const exampleEntries = [
       gain beats the round-trip loss, which is why an OPO has a pump threshold, and
       driven well above it the pump is depleted and the generated waves can start to
       convert back${cite(2)}.</p>
-      <p>This fold provides a convenient layout and separates the outputs: M2 reflects the
-      signal toward the output coupler while transmitting the pump and idler, so they never
-      reach the output coupler. A real folded resonator still requires a suitable mode,
-      mirror curvatures, coatings and cavity length.</p>
+      <p>Here the cavity is a four-mirror <strong>bow-tie ring</strong>. The crystal only
+      amplifies light travelling in the same direction as the pump, so the resonant signal
+      circulates one way around the ring. The mirror after the crystal is the output
+      coupler: its coating reflects most of the signal and transmits the rest together with
+      the pump and idler, so all three leave collinearly and are separated outside. A real
+      ring resonator still requires a suitable mode, mirror curvatures, coatings and cavity
+      length.</p>
       <p>In an unseeded nanosecond OPO such as this example, the field must build up from
       noise during each pump pulse. Finite build-up time raises the required gain relative
       to the steady-state threshold${cite(2)}, and output pulses are often somewhat shorter
@@ -784,27 +787,29 @@ export const exampleEntries = [
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
       <p>A Q-switched 532 nm laser (10 ns, 1 kHz, 1 cm⁻¹) pumps a χ⁽²⁾ crystal between M1
-      and the fold mirror M2. Both are band reflectors that return the 650–950 nm signal
-      band and transmit the pump and idler. M2 sits at a 15° angle of incidence and sends
-      the signal to the output coupler M3, which reflects 70 % of it. The pump enters
-      through M1 and leaves with the idler through M2, where a dichroic outside the cavity
-      separates them.</p>
+      and M2, the lower pair of a bow-tie ring completed by M3 and M4. All four are band
+      reflectors for the 650–950 nm signal band and transmit the pump and idler, and every
+      one is met at a 12° angle of incidence. The signal runs M2 → M3 → M4 → M1 → crystal,
+      crossing itself between the upper and lower pairs. M2 is the output coupler: it
+      reflects 80 % of the signal band and transmits the rest, so signal, idler and
+      residual pump leave together; a longpass and a shortpass dichroic then separate
+      them.</p>
       <p>The crystal is set to a 532 nm pump and an 800 nm signal, so the inspector shows
       the idler at 1588 nm. It converts a fixed 30 % of the pump: 19.95 % becomes signal
       and 10.05 % idler. The idler detector reads that 10.05 % in one pass. The signal
-      leaks through M3 on every round trip, and the tracer sums about ten of those leaks,
-      reading 19.4 % of the pump — almost all of the generated signal. The signal
-      linewidth is authored at 5 cm⁻¹ to represent a cavity-selected linewidth — the
-      trace does not calculate it from the cavity — the idler is derived from pump and
-      signal, and the 0.8 × pump duration factor is illustrative. All of these are
-      textbook values, not one instrument's.</p>
-      <p>Things to try: move the signal wavelength and watch the idler follow; lower M3's
-      reflectivity and more of the signal leaves on each round trip; or tune the pump more
+      leaks through M2 on every round trip, and the tracer sums twelve of those leaks,
+      reading 18.6 % of the pump. The signal linewidth is authored at 5 cm⁻¹ to represent
+      a cavity-selected linewidth — the trace does not calculate it from the cavity — the
+      idler is derived from pump and signal, and the 0.8 × pump duration factor is
+      illustrative. All of these are textbook values, not one instrument's.</p>
+      <p>Things to try: move the signal wavelength and watch the idler follow; lower M2's
+      in-band reflectivity and more of the signal leaves on each round trip; or tune the pump more
       than 1 nm away from 532 nm and the oscillator goes dark.</p>`,
     limitations: `<p>This is a phenomenological OPO. The crystal converts a fixed fraction of
       the pump on its first pass: there is no threshold, gain, build-up or back-conversion,
       and phase matching is not calculated, so turning or heating the crystal does nothing.
-      The signal output is a finite sum of traced leaks, not a steady state. The pump is a
+      The signal output is a finite sum of traced leaks, not a steady state. Ring cavities
+      usually use curved mirrors to focus into the crystal; these four are drawn flat. The pump is a
       single axial ray, so only the chief-ray routing is shown, with no mode, focus or beam
       overlap. Mirror coatings switch perfectly at their band edges and do not depend on
       angle.</p>`,
