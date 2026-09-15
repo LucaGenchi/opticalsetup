@@ -64,11 +64,11 @@
       "x": 454.5242,
       "y": 560,
       "rot": 0,
-      "label": "532 nm · 6 ps · 80 MHz",
+      "label": "532 nm · 2 ps · 80 MHz",
       "showLabel": true,
       "params": {
         "wavelength": 532,
-        "pulseWidthFs": 6000,
+        "pulseWidthFs": 2000,
         "repRateMHz": 80,
         "avgPowerW": 4,
         "transformLimited": true,

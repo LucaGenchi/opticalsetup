@@ -1,37 +1,32 @@
 // Generates the two OPO examples: `node tools/build-opo-example.mjs`.
 //
 // Both are singly resonant: every cavity mirror is a band reflector that
-// returns the ~800 nm signal and transmits the 532 nm pump and 1588 nm idler,
+// returns the ~800 nm signal and transmits the green pump and the idler,
 // which is what real OPO mirror coatings do. Every fold is at a 12° angle of
 // incidence, near normal as cavity mirrors are used, so the beam folds back
-// on itself rather than glancing off.
+// on itself rather than glancing off. Both are pumped with 2 ps pulses at
+// 80 MHz, the picosecond regime used for two-colour coherent Raman imaging.
+// Settings are illustrative, representative of commercial picosecond OPOs;
+// no manufacturer is named.
 //
-// 1. SYNCHRONOUSLY PUMPED PICOSECOND OPO. Modelled on the APE Levante Emerald
-//    6 ps class (datasheet Rev 3.1.1): a 532 nm, ~6 ps, ~80 MHz, 4 W pump;
-//    signal tunable 690–990 nm with a 0.3–0.4 nm bandwidth and ~5–6 ps
-//    pulses; idler 1150–2300 nm; > 0.9 W signal and > 0.6 W idler. A signal
-//    pulse must meet the next pump pulse at the crystal, so the round trip
-//    equals the pump period: the one-way group optical path is
+// 1. SYNCHRONOUSLY PUMPED PICOSECOND OPO. A 1032 nm, 2 ps, 80 MHz laser is
+//    frequency-doubled in a crystal; a shortpass dichroic sends the residual
+//    1032 nm fundamental up to a dump and the 516 nm harmonic pumps the OPO.
+//    A signal pulse must meet the next pump pulse at the crystal, so the round
+//    trip equals the pump period: the one-way group optical path is
 //    c / (2 f_rep) = 1873.70 mm at 80 MHz. The crystal is a thin surface
 //    here, so the whole path is air and group and geometric lengths agree.
 //    Layout: an M3 → F1 → M1 → crystal → M2 → M4 Z-cavity with one flat
 //    fold, F1, in the long arm to fit the page. The idler and residual pump
 //    leave together through M2 and are separated outside the cavity.
-//    Settings: signal 0.30 nm (4.69 cm⁻¹) wide with 5/6 of the pump duration
-//    (5 ps), the low ends of the datasheet ranges; at 800 nm that pair has a
-//    time–bandwidth product of 0.70, the closest the ranges allow to the
-//    quoted typical 0.6. The idler width is derived (uncorrelated pump and
-//    signal), not a datasheet value. Conversion 0.375 is illustrative,
-//    numerically inspired by the listed 0.9 W and 0.6 W output specifications
-//    for a 4 W pump, which share no stated operating point. The datasheet
-//    does not identify the internal mirrors or crystal; the scene's layout
-//    and generic χ⁽²⁾ crystal are illustrative. The datasheet does not give the output-coupler transmission;
-//    10 % is illustrative.
+//    Settings: 50 % SHG; signal 800 nm (idler 1453.5 nm) with a 10 cm⁻¹
+//    FWHM and the pump's 2 ps duration, a time–bandwidth product of 0.60;
+//    idler width derived (uncorrelated pump and signal); 35 % conversion;
+//    10 % output coupling.
 //    Concessions: M1 and M2 are drawn flat; real synchronously pumped
-//    cavities focus into the crystal with curved mirrors, and the
-//    workbench's curved mirrors are not wavelength-selective. The datasheet
-//    couples signal and idler out collinearly; here the idler leaves through
-//    M2. The pump is a single axial ray: chief-ray routing only.
+//    cavities commonly focus into the crystal with curved mirrors, and the
+//    workbench's curved mirrors are not wavelength-selective. The pump is a
+//    single axial ray: chief-ray routing only.
 //
 // 2. OPTICAL PARAMETRIC OSCILLATOR, RING CAVITY. A synchronously pumped
 //    singly resonant OPO in a bow-tie ring of four plane band reflectors,
@@ -41,7 +36,7 @@
 //    cavity, where the light covers the arm twice. M2 is an output coupler
 //    reflecting 80 % of the signal band while transmitting pump and idler, so
 //    signal, idler and residual pump leave together. Illustrative settings:
-//    532 nm, 6 ps, 80 MHz pump; signal with the pump's frequency (wavenumber)
+//    532 nm, 2 ps, 80 MHz pump; signal with the pump's frequency (wavenumber)
 //    FWHM (a heuristic);
 //    30 % conversion.
 import { writeFile, mkdir, rm } from 'node:fs/promises';
@@ -81,7 +76,7 @@ const bandReflector = { dtype: 'notch', center: 800, band: 300, length: 25.4 };
 
 // ---------------------------------------------------------------- 1 -------
 const AXIS = 400;
-const M1 = { x: 440, y: AXIS }, CRYSTAL = { x: 490, y: AXIS }, M2 = { x: 540, y: AXIS };
+const M1 = { x: 560, y: AXIS }, CRYSTAL = { x: 610, y: AXIS }, M2 = { x: 660, y: AXIS };
 const TO_F1 = dir(-TURN);          // signal leaving M1, back over the crystal
 const TO_M3 = dir(180);            // folded back level by F1 (in −24°, out 180°: 12° incidence)
 const TO_M4 = dir(180 - TURN);     // signal leaving M2, back under the crystal
@@ -96,37 +91,43 @@ export function syncOpoScene() {
   return {
     app: 'optics2d', version: 1,
     elements: [
-      el('frame', 'figureframe', { x: 600, y: 340 }, { w: 1200, h: 680, background: 'white' }),
-      text('title', 30, 30, '# Synchronously pumped picosecond OPO\nGreen-pumped singly resonant oscillator, modelled on the APE Levante Emerald 6 ps datasheet', 12),
-      text('cavity-note', 820, 470, `One-way cavity path ${CAVITY_LENGTH_MM.toFixed(1)} mm: round-trip time = 1 / ${REP_RATE_MHZ} MHz = ${(1e3 / REP_RATE_MHZ).toFixed(1)} ns,\nso each signal pulse returns to the crystal with the next pump pulse`, 10),
-      el('pump', 'pulsedlaser', { x: 270, y: AXIS }, {
-        wavelength: 532, pulseWidthFs: 6000, repRateMHz: REP_RATE_MHZ, avgPowerW: 4,
+      el('frame', 'figureframe', { x: 660, y: 340 }, { w: 1320, h: 680, background: 'white' }),
+      text('title', 30, 30, '# Synchronously pumped picosecond OPO\nA frequency-doubled 1032 nm, 2 ps laser pumps a singly resonant Z cavity', 12),
+      text('cavity-note', 940, 470, `One-way cavity path ${CAVITY_LENGTH_MM.toFixed(1)} mm: round-trip time = 1 / ${REP_RATE_MHZ} MHz = ${(1e3 / REP_RATE_MHZ).toFixed(1)} ns,\nso each signal pulse returns to the crystal with the next pump pulse`, 10),
+      el('laser', 'pulsedlaser', { x: 80, y: AXIS }, {
+        wavelength: 1032, pulseWidthFs: 2000, repRateMHz: REP_RATE_MHZ, avgPowerW: 8,
         transformLimited: true, pulseShape: 'gauss', beamMode: 'line',
-      }, named('532 nm · 6 ps · 80 MHz · 4 W')),
+      }, named('1032 nm · 2 ps · 80 MHz')),
+      el('shg', 'crystal', { x: 210, y: AXIS }, { convert: 'shg', aperture: 10, efficiency: 0.5, transmitPump: true },
+        named('SHG crystal', 't')),
+      el('harmonic-separator', 'dichroic', { x: 330, y: AXIS }, { dtype: 'shortpass', cutoff: 700, length: 25.4 },
+        { rot: 45, ...named('shortpass 700 nm', 'b') }),
+      el('fundamental-dump', 'beamdump', { x: 330, y: AXIS - 130 }, { aperture: 22 }, { rot: 270, ...named('residual 1032 nm', 'r') }),
+      wavelengthProbe('fundamental-wavelength', { x: 330, y: AXIS - 28 }),
       el('M1', 'dichroic', M1, bandReflector, { rot: foldRot(back(dir(0)), TO_F1), ...named('M1', 'b') }),
       el('crystal', 'crystal', CRYSTAL, {
-        convert: 'opo', aperture: 10, pumpWl: 532, signalWl: 800, pumpAcceptanceNm: 1,
-        linewidthMode: 'signal', signalLinewidthCm: 4.69,
-        outputPhase: 'unknown', durationFactor: 0.8333, efficiency: 0.375, transmitPump: true,
-      }, named('χ⁽²⁾ crystal', 't')),
+        convert: 'opo', aperture: 10, pumpWl: 516, signalWl: 800, pumpAcceptanceNm: 1,
+        linewidthMode: 'signal', signalLinewidthCm: 10,
+        outputPhase: 'unknown', durationFactor: 1, efficiency: 0.35, transmitPump: true,
+      }, named('OPO crystal', 't')),
       el('M2', 'dichroic', M2, bandReflector, { rot: foldRot(dir(0), TO_M4), ...named('M2', 't') }),
       el('F1', 'mirror', F1, { length: 25.4, refl: 100 }, { rot: foldRot(TO_F1, TO_M3), ...named('F1', 'r') }),
       el('M3', 'mirror', M3, { length: 25.4, refl: 100 }, { rot: foldRot(TO_M3, back(TO_M3)), ...named('M3 · HR', 'b') }),
       el('M4', 'mirror', M4, { length: 25.4, refl: 90, showTransmitted: true },
         { rot: foldRot(TO_M4, back(TO_M4)), ...named('M4 · output coupler', 'b') }),
-      el('separator', 'dichroic', { x: 740, y: AXIS }, { dtype: 'longpass', cutoff: 1000, length: 25.4 },
-        { rot: 135, ...named('separator', 't') }),
-      el('pump-dump', 'beamdump', { x: 740, y: AXIS + 110 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
-      wavelengthProbe('pump-wavelength', { x: 370, y: AXIS }),
+      el('separator', 'dichroic', { x: 860, y: AXIS }, { dtype: 'longpass', cutoff: 1000, length: 25.4 },
+        { rot: 135, ...named('longpass 1000 nm', 't') }),
+      el('pump-dump', 'beamdump', { x: 860, y: AXIS + 110 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
+      wavelengthProbe('pump-wavelength', { x: 460, y: AXIS }),
       wavelengthProbe('cavity-wavelength', along(F1, TO_M3, 360)),
-      wavelengthProbe('residual-pump-wavelength', { x: 740, y: AXIS + 85 }),
-      el('idler-probe', 'probe', { x: 850, y: AXIS }, { prop: 'spectrum' }),
-      el('idler-detector', 'detector', { x: 1000, y: AXIS }, { aperture: 26 }, named('idler · 1588 nm')),
+      wavelengthProbe('residual-pump-wavelength', { x: 860, y: AXIS + 85 }),
+      el('idler-probe', 'probe', { x: 970, y: AXIS }, { prop: 'spectrum' }),
+      el('idler-detector', 'detector', { x: 1120, y: AXIS }, { aperture: 26 }, named('idler · 1454 nm')),
       el('signal-probe', 'probe', along(M4, TO_M4, 30), { prop: 'spectrum' }),
       el('signal-detector', 'detector', along(M4, TO_M4, 120), { aperture: 26 },
         { rot: round(180 - TURN), ...named('signal · 800 nm') }),
-      text('coatings', 300, 610, 'M1, M2 · reflect the signal band (650–950 nm), transmit pump and idler\nF1, M3 · high reflectors    M4 · output coupler, 10 % of the signal (illustrative)', 10),
-      text('legend', 300, 650, 'Only the 800 nm signal resonates. The crystal converts an illustrative 37.5 % of the pump, inspired by the\ndatasheet\'s listed output powers but not a measured operating point: no threshold or gain.', 10),
+      text('coatings', 420, 610, 'M1, M2 · reflect the signal band (650–950 nm), transmit pump and idler\nF1, M3 · high reflectors    M4 · output coupler, 10 % of the signal', 10),
+      text('legend', 420, 650, 'Only the 800 nm signal resonates. The OPO crystal converts a fixed, illustrative 35 % of the pump: no threshold or gain.', 10),
     ],
   };
 }
@@ -162,9 +163,9 @@ export function ringOpoScene() {
       text('energy', 30, 88, '1 / 532 nm = 1 / 800 nm + 1 / 1588 nm      generated power: signal 66.5 %, idler 33.5 % (equal photon numbers)', 10),
       text('sync-note', RING_M3.x + 780, RING_M3.y - 70, `Ring perimeter ${RING_PERIMETER_MM.toFixed(1)} mm: round-trip time = 1 / ${REP_RATE_MHZ} MHz = ${(1e3 / REP_RATE_MHZ).toFixed(1)} ns,\nso each signal pulse comes round to meet the next pump pulse`, 10),
       el('pump', 'pulsedlaser', { x: RING_M1.x - 220, y: RING_AXIS }, {
-        wavelength: 532, pulseWidthFs: 6000, repRateMHz: REP_RATE_MHZ, avgPowerW: 4,
+        wavelength: 532, pulseWidthFs: 2000, repRateMHz: REP_RATE_MHZ, avgPowerW: 4,
         transformLimited: true, pulseShape: 'gauss', beamMode: 'line',
-      }, named('532 nm · 6 ps · 80 MHz')),
+      }, named('532 nm · 2 ps · 80 MHz')),
       el('M1', 'dichroic', RING_M1, bandReflector, { rot: foldRot(toM1, RIGHT), ...named('M1', 'b') }),
       el('crystal', 'crystal', RING_CRYSTAL, {
         convert: 'opo', aperture: 10, pumpWl: 532, signalWl: 800, pumpAcceptanceNm: 1,

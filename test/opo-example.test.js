@@ -14,8 +14,15 @@ import {
 const read = name => readFileSync(new URL(`../Examples/Nonlinear Optics/${name}.json`, import.meta.url), 'utf8');
 const near = (actual, expected, tolerance, label) =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${label}: ${actual} is not within ${tolerance} of ${expected}`);
-const IDLER = idlerWavelength(532, 800);
-const SIGNAL_SHARE = IDLER / (800 + IDLER);
+// Z cavity: 1032 nm doubled to 516 nm. Ring: 532 nm. Both resonate 800 nm.
+const SCENES = {
+  sync: { pumpWl: 516, pumpFraction: 0.5, efficiency: 0.35, oc: 0.9 },
+  ring: { pumpWl: 532, pumpFraction: 1, efficiency: 0.3, oc: 0.8 },
+};
+for (const scene of Object.values(SCENES)) {
+  scene.idler = idlerWavelength(scene.pumpWl, 800);
+  scene.signalShare = scene.idler / (800 + scene.idler);
+}
 
 function traced(name) {
   const scene = parseSketch(read(name), registry);
@@ -76,17 +83,21 @@ test('the synchronously pumped cavity round trip equals the pump period', () => 
     near(at(id).x, p.x, 1e-3, `${id}.x`);
     near(at(id).y, p.y, 1e-3, `${id}.y`);
   }
-  assert.equal(at('pump').params.repRateMHz, REP_RATE_MHZ);
+  assert.equal(at('laser').params.repRateMHz, REP_RATE_MHZ);
 });
 
-for (const [name, efficiency, oc] of [[SYNC_OPO_NAME, 0.375, 0.9], [RING_OPO_NAME, 0.3, 0.8]]) {
+for (const [name, { idler: idlerWl, signalShare, pumpFraction, efficiency, oc }] of
+  [[SYNC_OPO_NAME, SCENES.sync], [RING_OPO_NAME, SCENES.ring]]) {
   test(`${name}: only the signal resonates; the idler leaves in one pass`, () => {
     const { idler, signal } = traced(name);
     assert.equal(opoReading('crystal').state, 'converting');
+    // Detector readings are fractions of the laser; the Z cavity's OPO sees
+    // only the doubled half of it.
+    const converted = pumpFraction * efficiency;
 
     assert.ok(idler, 'no idler reached its detector');
-    near(idler.wavelength, IDLER, 1, 'idler centre');
-    near(idler.signal, efficiency * (1 - SIGNAL_SHARE), 1e-3, 'idler takes its whole generated share in one pass');
+    near(idler.wavelength, idlerWl, 1, 'idler centre');
+    near(idler.signal, converted * (1 - signalShare), 1e-3, 'idler takes its whole generated share in one pass');
     assert.ok(!idler.spectrum.some(s => s.wavelength < 1000), 'pump or signal leaked into the idler port');
 
     assert.ok(signal, 'no signal left the output coupler');
@@ -94,16 +105,34 @@ for (const [name, efficiency, oc] of [[SYNC_OPO_NAME, 0.375, 0.9], [RING_OPO_NAM
     assert.ok(signal.spectrum.every(s => s.wavelength > 700 && s.wavelength < 900), 'pump or idler reached the signal port');
     // Each round trip leaks (1 − R) of the circulating signal; the trace sums a
     // finite number of leaks, so the output is below the generated share.
-    const generated = efficiency * SIGNAL_SHARE;
+    const generated = converted * signalShare;
     assert.ok(signal.signal > (1 - oc) * generated && signal.signal < generated, `signal output ${signal.signal}`);
   });
 }
 
-test('the picosecond signal carries the authored datasheet-range width and duration', () => {
+test('both examples are pumped with 2 ps pulses, and the Z cavity signal is 10 cm⁻¹ wide', () => {
+  for (const name of [SYNC_OPO_NAME, RING_OPO_NAME]) {
+    const laser = JSON.parse(read(name)).elements.find(el => el.type === 'pulsedlaser');
+    assert.equal(laser.params.pulseWidthFs, 2000, `${name}: pump duration`);
+  }
   const { signal } = traced(SYNC_OPO_NAME);
-  near(signal.bandMax - signal.bandMin, 0.30, 0.01, 'signal FWHM (nm)');
-  near(signal.pulse.pulseWidthFs, 5000, 1, 'signal duration (fs)');
+  near(1e7 * (signal.bandMax - signal.bandMin) / 800 ** 2, 10, 0.1, 'signal FWHM (cm⁻¹)');
+  near(signal.pulse.pulseWidthFs, 2000, 1, 'signal duration (fs)');
 });
+
+test('the Z cavity is pumped by frequency-doubled 1032 nm light, with the fundamental dumped', () => {
+  const { scene } = traced(SYNC_OPO_NAME);
+  const laser = scene.elements.find(el => el.id === 'laser');
+  assert.equal(laser.params.wavelength, 1032);
+  assert.equal(scene.elements.find(el => el.id === 'shg').params.convert, 'shg');
+  near(probeAt(...Object.values(pick(scene, 'fundamental-wavelength'))).wl, 1032, 0.5, 'fundamental');
+  near(probeAt(...Object.values(pick(scene, 'pump-wavelength'))).wl, 516, 0.5, 'doubled pump');
+});
+
+function pick(scene, id) {
+  const el = scene.elements.find(e => e.id === id);
+  return { x: el.x, y: el.y };
+}
 
 test('the generated example pages carry every section of their prose, in order', () => {
   // The page builder once dropped content keys it did not render; check the
@@ -130,20 +159,20 @@ test('the generated example pages carry every section of their prose, in order',
   ], 'ring OPO page');
   inOrder(page('synchronously-pumped-picosecond-opo'), [
     'Synchronous pumping',
-    '720–990 nm automated',
+    'frequency-doubled mode-locked lasers',
     'What this setup demonstrates',
-    'generic χ⁽²⁾ crystal',
-    'not a measured joint operating point',
-    'id="ref-2"',
+    '1032 nm, 2 ps, 80 MHz',
+    'time–bandwidth product of 0.60',
+    'id="ref-1"',
   ], 'picosecond OPO page');
 });
 
 test('the beam probes read the wavelength of the beam each one samples', () => {
-  const expected = {
-    'pump-wavelength': 532, 'cavity-wavelength': 800, 'residual-pump-wavelength': 532,
-    'idler-wavelength': IDLER, 'signal-wavelength': 800,
-  };
-  for (const name of [SYNC_OPO_NAME, RING_OPO_NAME]) {
+  for (const [name, { pumpWl, idler }] of [[SYNC_OPO_NAME, SCENES.sync], [RING_OPO_NAME, SCENES.ring]]) {
+    const expected = {
+      'fundamental-wavelength': 1032, 'pump-wavelength': pumpWl, 'cavity-wavelength': 800,
+      'residual-pump-wavelength': pumpWl, 'idler-wavelength': idler, 'signal-wavelength': 800,
+    };
     const { scene } = traced(name);
     const probes = scene.elements.filter(el => el.type === 'probe' && el.params.prop === 'wl');
     assert.ok(probes.length >= 3, `${name}: wavelength probes missing`);
