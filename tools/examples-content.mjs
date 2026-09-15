@@ -793,9 +793,12 @@ export const exampleEntries = [
       angle of incidence. The signal runs M2 → M3 → M4 → M1 → crystal, crossing itself
       between the upper and lower pairs. The perimeter is exactly
       <span class="w">c / 80 MHz = 3747.4 mm</span>, a 12.5 ns round trip equal to the pump
-      period; the crystal is a thin surface, so the whole path is air. That is why the
-      animated pulses stay single packets as they circulate: each returns to the crystal
-      exactly as the next pump packet arrives. M2 is the output coupler: it reflects 80 % of
+      period; the crystal is a thin surface, so the whole path is air. Because of that, the
+      animated packets of successive round trips overlap instead of forming offset
+      clusters. The schematic view still draws several illustrative packets around the ring
+      at a fixed fraction of the pulse spacing; the physical view shows the true
+      pump-period spacing. The overlap follows from the length ratio, not from a simulated
+      synchronisation or gain process. M2 is the output coupler: it reflects 80 % of
       the signal band and transmits the rest, so signal, idler and residual pump leave
       together; a longpass and a shortpass dichroic then separate them.</p>
       <p>The crystal is set to a 532 nm pump and an 800 nm signal, so the inspector shows
@@ -805,8 +808,8 @@ export const exampleEntries = [
       reading 18.6 % of the pump. Those are successive round trips of one launched signal,
       not amplified passes: the tracer does not add gain from later pump pulses. It also
       launches the signal only in the pump's direction and does not calculate the gain
-      competition that selects that direction. The signal is authored as wide as the pump
-      (a heuristic), the idler width is derived from pump and signal, and the output pulses
+      competition that selects that direction. The signal is authored with the same frequency
+      (wavenumber) FWHM as the pump, a heuristic, which is about 0.16 nm at 800 nm; the idler width is derived from pump and signal, and the output pulses
       keep the pump's duration; all are illustrative, not one instrument's.</p>
       <p>Things to try: move the signal wavelength and watch the idler follow; lower M2's
       in-band reflectivity and more of the signal leaves on each round trip; or tune the pump more

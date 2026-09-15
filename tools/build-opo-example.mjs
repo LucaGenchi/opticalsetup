@@ -41,7 +41,8 @@
 //    cavity, where the light covers the arm twice. M2 is an output coupler
 //    reflecting 80 % of the signal band while transmitting pump and idler, so
 //    signal, idler and residual pump leave together. Illustrative settings:
-//    532 nm, 6 ps, 80 MHz pump; signal as wide as the pump (a heuristic);
+//    532 nm, 6 ps, 80 MHz pump; signal with the pump's frequency (wavenumber)
+//    FWHM (a heuristic);
 //    30 % conversion.
 import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -175,7 +176,7 @@ export function ringOpoScene() {
       el('signal-detector', 'detector', { x: out + 170, y: RING_AXIS + 100 }, { aperture: 26 }, named('signal · 800 nm')),
       el('pump-dump', 'beamdump', { x: out, y: RING_AXIS + 190 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
       text('coatings', 60, RING_AXIS + 120, 'M1–M4 · reflect the signal band (650–950 nm), transmit pump and idler\nM2 · output coupler: reflects 80 % of the signal band', 10),
-      text('legend', 30, RING_AXIS + 250, 'Only the signal resonates, circulating in the pump\'s direction; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, signal as wide as the pump, output pulses as long as the pump\'s.', 10),
+      text('legend', 30, RING_AXIS + 250, 'Only the signal resonates, circulating in the pump\'s direction; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, signal with the pump\'s frequency width, output pulses as long as the pump\'s.', 10),
     ],
   };
 }

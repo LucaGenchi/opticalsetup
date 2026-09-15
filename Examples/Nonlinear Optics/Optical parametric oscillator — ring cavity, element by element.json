@@ -256,7 +256,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Only the signal resonates, circulating in the pump's direction; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, signal as wide as the pump, output pulses as long as the pump's.",
+        "text": "Only the signal resonates, circulating in the pump's direction; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, signal with the pump's frequency width, output pulses as long as the pump's.",
         "fontSize": 10,
         "fill": "#34454d"
       }
