@@ -41,7 +41,7 @@ function opoScene({ source = 'pulsedlaser', laser = {}, crystal = {}, cutoff, ex
   return { long: detectorReading(long.id), short: detectorReading(short.id), state: opoReading(xtal.id), xtal };
 }
 
-// Ti:sapphire-pumped fs OPO (Chameleon Compact OPO / APE OPO-X class).
+// A Ti:sapphire-pumped femtosecond OPO.
 const TISA = { wavelength: 800, pulseWidthFs: 140, repRateMHz: 80, avgPowerW: 3.5 };
 const TISA_CM = nmToWavenumberWidth(800, transformLimitedBandwidthNm(140, 800, 'gauss'));
 
@@ -128,9 +128,9 @@ test('output durations follow the authored factor, never beat the transform limi
   assert.equal(opoPulse(null, wave, { crystalId: 'X', role: 'signal' }), null, 'CW stays CW');
 });
 
-// The picoEmerald brochure gives 2 ps and 10 cm⁻¹ for its signal and 1032 nm
-// beam, not for the idler: the two 10 cm⁻¹ outputs here are illustrative.
-test('a ps OPO in the picoEmerald class with authored 10 cm⁻¹ outputs', () => {
+// Picosecond OPOs for coherent Raman imaging run near 2 ps and 10 cm⁻¹; the
+// two 10 cm⁻¹ outputs here are illustrative.
+test('a green-pumped ps OPO with authored 10 cm⁻¹ outputs', () => {
   const { long, short, state } = opoScene({
     laser: { wavelength: 516, pulseWidthFs: 2000, transformLimited: false, bandwidth: wavenumberToNmWidth(516, 10), avgPowerW: 3 },
     crystal: { pumpWl: 516, signalWl: 800, linewidthMode: 'both', signalLinewidthCm: 10, idlerLinewidthCm: 10 }, cutoff: 1000,
@@ -143,7 +143,7 @@ test('a ps OPO in the picoEmerald class with authored 10 cm⁻¹ outputs', () =>
 });
 
 test('a ns OPO takes its signal width from the cavity, and the idler adds the pump width', () => {
-  // 5 cm⁻¹ is a typical free-running BBO OPO (EKSPLA NT340: < 5 cm⁻¹).
+  // A few cm⁻¹ is typical of a free-running nanosecond OPO.
   const { long, state } = opoScene({
     laser: { wavelength: 355, pulseWidthFs: 5e6, transformLimited: false, bandwidth: wavenumberToNmWidth(355, 1), avgPowerW: 2, repRateMHz: 0.01 },
     crystal: { pumpWl: 355, signalWl: 500, linewidthMode: 'signal', signalLinewidthCm: 5 }, cutoff: 800,
