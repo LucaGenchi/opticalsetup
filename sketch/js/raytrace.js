@@ -2110,7 +2110,10 @@ function lensBend(dir, hitP, s, f, hc = 0) {
 function dichroicTransmits(wl, d) {
   if (d.dtype === 'longpass') return wl >= d.cutoff;
   if (d.dtype === 'shortpass') return wl <= d.cutoff;
-  return Math.abs(wl - d.center) <= d.band / 2;
+  const inBand = Math.abs(wl - d.center) <= d.band / 2;
+  // A band reflector is the coating on an OPO or laser cavity mirror: high
+  // reflection over one band, transmission on both sides of it.
+  return d.dtype === 'notch' ? !inBand : inBand;
 }
 
 // transmission passband [lo, hi] of a filter/dichroic
@@ -2445,11 +2448,14 @@ function interact(ray, hit) {
       const rb = [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
       const pb = passbandOf(data);
       const out = [];
-      const ix = bandIntersect(rb, pb);
-      if (ix && ix[1] - ix[0] > 0.5) out.push(bandChild(ray, d, ix[0], ix[1], 'T'));
       const rd = reflect(d, n);
-      if (rb[0] < pb[0] - 0.5) out.push(bandChild(ray, rd, rb[0], Math.min(rb[1], pb[0]), 'R0'));
-      if (rb[1] > pb[1] + 0.5) out.push(bandChild(ray, rd, Math.max(rb[0], pb[1]), rb[1], 'R1'));
+      // A band reflector is a bandpass with the two ports exchanged.
+      const [inside, outside] = data.dtype === 'notch' ? [rd, d] : [d, rd];
+      const [insideTag, outsideTag] = data.dtype === 'notch' ? ['R', 'T'] : ['T', 'R'];
+      const ix = bandIntersect(rb, pb);
+      if (ix && ix[1] - ix[0] > 0.5) out.push(bandChild(ray, inside, ix[0], ix[1], insideTag));
+      if (rb[0] < pb[0] - 0.5) out.push(bandChild(ray, outside, rb[0], Math.min(rb[1], pb[0]), `${outsideTag}0`));
+      if (rb[1] > pb[1] + 0.5) out.push(bandChild(ray, outside, Math.max(rb[0], pb[1]), rb[1], `${outsideTag}1`));
       return out;
     }
     case 'filter': {
