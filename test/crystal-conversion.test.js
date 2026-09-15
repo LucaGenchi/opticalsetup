@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElement } from '../sketch/js/elements.js';
+import { createElement, newSampleChannel } from '../sketch/js/elements.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
-import { flatSpectrum, gaussianSpectrum, lineSpectrum, scaleSpectrum } from '../sketch/js/spectrum.js';
+import { applyTransmission, flatSpectrum, gaussianSpectrum, lineSpectrum, scaleSpectrum } from '../sketch/js/spectrum.js';
 
 // A converted ray used to inherit its pump's bandwidth and spectrum, because
 // only its wavelength was set. Dichroics and detectors act on the spectrum, so
@@ -95,4 +95,62 @@ test('scaleSpectrum scales every spectrum kind and rejects nonsense', () => {
   assert.equal(scaleSpectrum(null, 1 / 2), null);
   assert.equal(scaleSpectrum(gaussianSpectrum(1064, 5), 0), null);
   assert.equal(scaleSpectrum(gaussianSpectrum(1064, 5), NaN), null);
+});
+
+test('scaleSpectrum keeps a filtered (sampled) profile, stretched with its wavelengths', () => {
+  const filtered = applyTransmission(gaussianSpectrum(1064, 12), 1064, wl => (wl < 1064 ? 1 : 0)).spec;
+  assert.equal(filtered.kind, 'sampled');
+  const half = scaleSpectrum(filtered, 1 / 2);
+  assert.equal(half.kind, 'sampled');
+  near(half.lo, filtered.lo / 2, 1e-9, 'low edge');
+  near(half.hi, filtered.hi / 2, 1e-9, 'high edge');
+  assert.deepEqual(half.w, filtered.w);
+  assert.notEqual(half.w, filtered.w, 'weights are copied, not shared');
+});
+
+test('a filtered pump converts with its filtered shape intact', () => {
+  // A 1064 nm pulse cut to its short-wavelength half, frequency-doubled, then
+  // split by a dichroic edge inside the harmonic band. The split must follow
+  // the filtered profile stretched to half the wavelength, not a uniform box
+  // of the same width, which is what a dropped spectrum would leave behind.
+  const laser = createElement('pulsedlaser', 60, 160);
+  Object.assign(laser.params, { wavelength: 1064, transformLimited: false, bandwidth: 12, beamMode: 'line' });
+  const filter = createElement('filter', 140, 160);
+  Object.assign(filter.params, { ftype: 'shortpass', cutoff: 1064 });
+  const xtal = createElement('crystal', 220, 160);
+  Object.assign(xtal.params, { convert: 'shg', efficiency: 1, transmitPump: false });
+  const split = createElement('dichroic', 350, 160);
+  split.rot = 135;
+  split.params.cutoff = 529;
+  const long = createElement('detector', 520, 160);
+  const short = createElement('detector', 350, 350);
+  short.rot = 90;
+  traceScene([laser, filter, xtal, split, long, short]);
+  const above = detectorReading(long.id).signal, below = detectorReading(short.id).signal;
+
+  const filtered = applyTransmission(gaussianSpectrum(1064, 12), 1064, wl => (wl < 1064 ? 1 : 0)).spec;
+  const expected = applyTransmission(scaleSpectrum(filtered, 1 / 2), 532, wl => (wl >= 529 ? 1 : 0)).fraction;
+  // Re-gridding at each surface leaves about 1 % of numerical difference.
+  near(above / (above + below), expected, 0.02, 'share of the harmonic above 529 nm');
+});
+
+test('spontaneous Raman lines from a pulsed pump are lines, not the pump spectrum', () => {
+  const run = source => {
+    const pump = createElement(source, 0, 0);
+    Object.assign(pump.params, { wavelength: 532, beamMode: 'line' });
+    const sample = createElement('sample', 150, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      specimenType: 'linear', transmitExc: false,
+      channels: [{ ...newSampleChannel('raman'), material: 'dmso', eff: 0.5 }],
+    });
+    const lens = createElement('lens', 175, 0);
+    lens.params.f = 25;
+    const det = createElement('detector', 260, 0);
+    traceScene([pump, sample, lens, det]);
+    return [...new Set(detectorReading(det.id).spectrum.map(s => Math.round(s.wavelength)))].sort((a, b) => a - b);
+  };
+  const cw = run('cwlaser');
+  assert.ok(cw.length > 0 && cw.every(wl => wl > 540), `CW Raman lines ${cw}`);
+  assert.deepEqual(run('pulsedlaser'), cw, 'a pulsed pump must give the same Stokes lines, without its own spectrum');
 });

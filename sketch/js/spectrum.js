@@ -66,6 +66,9 @@ export function scaleSpectrum(spec, factor) {
   if (spec.kind === 'gauss') return gaussianSpectrum(spec.center * factor, spec.fwhm * factor);
   if (spec.kind === 'flat') return flatSpectrum(spec.lo * factor, spec.hi * factor);
   if (spec.kind === 'lines') return lineSpectrum(spec.lines.map(l => ({ nm: l.nm * factor, w: l.w })));
+  // A filtered profile keeps its shape: the grid stretches with the
+  // wavelengths and every weight stays where it was.
+  if (spec.kind === 'sampled' && Array.isArray(spec.w)) return { kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w] };
   return null;
 }
 
