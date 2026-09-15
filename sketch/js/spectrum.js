@@ -55,6 +55,23 @@ export const lineSpectrum = lines => {
   return kept.length ? { kind: 'lines', lines: kept } : null;
 };
 
+// The same spectrum with every wavelength multiplied by `factor`: an n-th
+// harmonic is the pump scaled by 1/n. Widths scale with the wavelengths, which
+// treats each spectral component as converted at its own wavelength. That
+// multiplies the frequency width by n, whereas the n-th harmonic of a
+// transform-limited Gaussian pulse is only sqrt(n) wider -- set by the
+// autoconvolution of its field, which this qualitative model does not compute.
+export function scaleSpectrum(spec, factor) {
+  if (!spec || !(factor > 0)) return null;
+  if (spec.kind === 'gauss') return gaussianSpectrum(spec.center * factor, spec.fwhm * factor);
+  if (spec.kind === 'flat') return flatSpectrum(spec.lo * factor, spec.hi * factor);
+  if (spec.kind === 'lines') return lineSpectrum(spec.lines.map(l => ({ nm: l.nm * factor, w: l.w })));
+  // A filtered profile keeps its shape: the grid stretches with the
+  // wavelengths and every weight stays where it was.
+  if (spec.kind === 'sampled' && Array.isArray(spec.w)) return { kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w] };
+  return null;
+}
+
 export function spectrumSupport(spec) {
   if (!spec) return null;
   if (spec.kind === 'lines') {
