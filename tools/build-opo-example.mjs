@@ -75,6 +75,8 @@ const el = (id, type, p, params, extra = {}) =>
 const text = (id, x, y, body, fontSize = 11) =>
   el(id, 'textlabel', { x, y }, { text: body, fontSize, fill: '#34454d' });
 const named = (label, labelPos = 'b') => ({ label, showLabel: true, labelPos });
+// A beam probe that reads the wavelength of the beam under it.
+const wavelengthProbe = (id, p) => el(id, 'probe', p, { prop: 'wl' });
 const bandReflector = { dtype: 'notch', center: 800, band: 300, length: 25.4 };
 
 // ---------------------------------------------------------------- 1 -------
@@ -115,6 +117,9 @@ export function syncOpoScene() {
       el('separator', 'dichroic', { x: 740, y: AXIS }, { dtype: 'longpass', cutoff: 1000, length: 25.4 },
         { rot: 135, ...named('separator', 't') }),
       el('pump-dump', 'beamdump', { x: 740, y: AXIS + 110 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
+      wavelengthProbe('pump-wavelength', { x: 370, y: AXIS }),
+      wavelengthProbe('cavity-wavelength', along(F1, TO_M3, 360)),
+      wavelengthProbe('residual-pump-wavelength', { x: 740, y: AXIS + 85 }),
       el('idler-probe', 'probe', { x: 850, y: AXIS }, { prop: 'spectrum' }),
       el('idler-detector', 'detector', { x: 1000, y: AXIS }, { aperture: 26 }, named('idler · 1588 nm')),
       el('signal-probe', 'probe', along(M4, TO_M4, 30), { prop: 'spectrum' }),
@@ -171,12 +176,17 @@ export function ringOpoScene() {
       el('idler-separator', 'dichroic', { x: out, y: RING_AXIS }, { dtype: 'longpass', cutoff: 1000, length: 25.4 },
         { rot: 135, ...named('longpass 1000 nm', 't') }),
       el('idler-detector', 'detector', { x: out + 170, y: RING_AXIS }, { aperture: 26 }, named('idler · 1588 nm')),
+      wavelengthProbe('pump-wavelength', { x: RING_M1.x - 90, y: RING_AXIS }),
+      wavelengthProbe('cavity-wavelength', { x: RING_M3.x + 420, y: RING_M3.y }),
+      wavelengthProbe('idler-wavelength', { x: out + 115, y: RING_AXIS }),
+      wavelengthProbe('signal-wavelength', { x: out + 115, y: RING_AXIS + 100 }),
+      wavelengthProbe('residual-pump-wavelength', { x: out, y: RING_AXIS + 200 }),
       el('pump-separator', 'dichroic', { x: out, y: RING_AXIS + 100 }, { dtype: 'shortpass', cutoff: 650, length: 25.4 },
         { rot: 135, ...named('shortpass 650 nm', 'l') }),
       el('signal-detector', 'detector', { x: out + 170, y: RING_AXIS + 100 }, { aperture: 26 }, named('signal · 800 nm')),
-      el('pump-dump', 'beamdump', { x: out, y: RING_AXIS + 190 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
+      el('pump-dump', 'beamdump', { x: out, y: RING_AXIS + 250 }, { aperture: 22 }, { rot: 90, ...named('residual pump') }),
       text('coatings', 60, RING_AXIS + 120, 'M1–M4 · reflect the signal band (650–950 nm), transmit pump and idler\nM2 · output coupler: reflects 80 % of the signal band', 10),
-      text('legend', 30, RING_AXIS + 250, 'Only the signal resonates, circulating in the pump\'s direction; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, signal with the pump\'s frequency width, output pulses as long as the pump\'s.', 10),
+      text('legend', 30, RING_AXIS + 275, 'Only the signal resonates, circulating in the pump\'s direction; signal, idler and residual pump leave together through M2.\nIllustrative settings: 30 % conversion, signal with the pump\'s frequency width, output pulses as long as the pump\'s.', 10),
     ],
   };
 }

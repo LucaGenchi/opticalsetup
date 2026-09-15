@@ -190,6 +190,42 @@
       "labelPos": "b"
     },
     {
+      "id": "pump-wavelength",
+      "type": "probe",
+      "x": 370,
+      "y": 400,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "cavity-wavelength",
+      "type": "probe",
+      "x": 719.4818,
+      "y": 115.2843,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "residual-pump-wavelength",
+      "type": "probe",
+      "x": 740,
+      "y": 485,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
       "id": "idler-probe",
       "type": "probe",
       "x": 850,

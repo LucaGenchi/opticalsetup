@@ -193,6 +193,66 @@
       "labelPos": "b"
     },
     {
+      "id": "pump-wavelength",
+      "type": "probe",
+      "x": 584.5242,
+      "y": 560,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "cavity-wavelength",
+      "type": "probe",
+      "x": 500,
+      "y": 161.7322,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "idler-wavelength",
+      "type": "probe",
+      "x": 1239.5242,
+      "y": 560,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "signal-wavelength",
+      "type": "probe",
+      "x": 1239.5242,
+      "y": 660,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "residual-pump-wavelength",
+      "type": "probe",
+      "x": 1124.5242,
+      "y": 760,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
       "id": "pump-separator",
       "type": "dichroic",
       "x": 1124.5242,
@@ -224,7 +284,7 @@
       "id": "pump-dump",
       "type": "beamdump",
       "x": 1124.5242,
-      "y": 750,
+      "y": 810,
       "rot": 90,
       "label": "residual pump",
       "showLabel": true,
@@ -251,7 +311,7 @@
       "id": "legend",
       "type": "textlabel",
       "x": 30,
-      "y": 810,
+      "y": 835,
       "rot": 0,
       "label": "",
       "showLabel": false,

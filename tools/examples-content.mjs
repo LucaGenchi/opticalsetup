@@ -800,7 +800,9 @@ export const exampleEntries = [
       pump-period spacing. The overlap follows from the length ratio, not from a simulated
       synchronisation or gain process. M2 is the output coupler: it reflects 80 % of
       the signal band and transmits the rest, so signal, idler and residual pump leave
-      together; a longpass and a shortpass dichroic then separate them.</p>
+      together; a longpass and a shortpass dichroic then separate them. Beam probes read
+      the wavelength of the pump, the signal circulating on the upper arm, and each
+      separated output: idler, signal and residual pump.</p>
       <p>The crystal is set to a 532 nm pump and an 800 nm signal, so the inspector shows
       the idler at 1588 nm. It converts a fixed 30 % of the pump: 19.95 % becomes signal
       and 10.05 % idler. The idler detector reads that 10.05 % in one pass. The signal
@@ -873,7 +875,9 @@ export const exampleEntries = [
       the pump and idler. The pump enters through M1; the idler and residual pump leave
       together through M2 and are separated by a dichroic outside the cavity. M4 is an
       output coupler reflecting 90 % of the signal — the datasheet does not give this
-      value, so it is illustrative.</p>
+      value, so it is illustrative. Beam probes read the wavelength of the pump, the
+      signal circulating in the long arm and the residual pump, and spectrum probes show
+      the separated idler and signal.</p>
       <p>The crystal is set to a 532 nm pump and an 800 nm signal, placing the idler at
       1588 nm. The signal is authored at 0.30 nm (4.69 cm⁻¹) with 5 ps pulses, the low ends
       of the datasheet's ranges. At this chosen 800 nm point that pair gives a

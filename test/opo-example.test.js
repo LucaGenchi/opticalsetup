@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { registry } from '../sketch/js/elements.js';
-import { detectorReading, opoReading, traceScene } from '../sketch/js/raytrace.js';
+import { detectorReading, opoReading, probeAt, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { idlerWavelength } from '../sketch/js/parametric.js';
 import {
@@ -136,4 +136,21 @@ test('the generated example pages carry every section of their prose, in order',
     'not a measured joint operating point',
     'id="ref-2"',
   ], 'picosecond OPO page');
+});
+
+test('the beam probes read the wavelength of the beam each one samples', () => {
+  const expected = {
+    'pump-wavelength': 532, 'cavity-wavelength': 800, 'residual-pump-wavelength': 532,
+    'idler-wavelength': IDLER, 'signal-wavelength': 800,
+  };
+  for (const name of [SYNC_OPO_NAME, RING_OPO_NAME]) {
+    const { scene } = traced(name);
+    const probes = scene.elements.filter(el => el.type === 'probe' && el.params.prop === 'wl');
+    assert.ok(probes.length >= 3, `${name}: wavelength probes missing`);
+    for (const probe of probes) {
+      const beam = probeAt(probe.x, probe.y);
+      assert.ok(beam, `${name}: ${probe.id} samples no beam`);
+      near(beam.wl, expected[probe.id], 0.5, `${name}: ${probe.id}`);
+    }
+  }
 });
