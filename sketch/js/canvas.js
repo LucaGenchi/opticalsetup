@@ -6,13 +6,14 @@ import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
   displayActionUpdate, delayLineSweepSpanMm, mixStateText, normalizeSupercontinuumParams,
+  specimenTimingText,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
 import { polygonScannerState } from './polygon-scanner.js';
-import { mixReading, traceScene } from './raytrace.js';
+import { mixReading, specimenTimingReading, traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
 import {
@@ -427,15 +428,18 @@ const announcedMixStates = new Map();
 
 function announceMixingState(elements) {
   for (const el of elements) {
-    if (el.type !== 'crystal') continue;
-    const reading = mixReading(el.id);
-    const signature = reading ? `${reading.state}:${reading.reason || ''}` : '';
+    // A crystal's mixing and a specimen's two-beam signals fail the same way,
+    // and both are worth saying out loud once.
+    const crystal = el.type === 'crystal';
+    const specimen = el.type === 'sample' || el.type === 'stage';
+    if (!crystal && !specimen) continue;
+    const reading = crystal ? mixReading(el.id) : specimenTimingReading(el.id);
+    const signature = reading ? `${reading.kind || ''}:${reading.state}` : '';
     if (announcedMixStates.get(el.id) === signature) continue;
     announcedMixStates.set(el.id, signature);
     if (reading?.state !== 'unsynchronized' && reading?.state !== 'unsupported') continue;
-    document.dispatchEvent(new CustomEvent('optics:toast', {
-      detail: { message: mixStateText(reading) },
-    }));
+    const message = crystal ? mixStateText(reading) : specimenTimingText(reading);
+    if (message) document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message } }));
   }
 }
 

@@ -3,14 +3,17 @@ import assert from 'node:assert/strict';
 
 import {
   createElement, registry, newSampleChannel, sampleChannels, specimenTypeOf,
-  signalKindsFor, channelWarning, defaultEmissionWl, drivingExcitationWl,
+  signalKindsFor, channelWarning, defaultEmissionWl, drivingExcitationWl, specimenTimingText,
   ramanShifts, ramanStokesWl, LINEAR_SIGNAL_KINDS, NONLINEAR_SIGNAL_KINDS,
   SPECIMEN_TYPES, MODIFIER_KINDS, EMISSION_ORDER,
   FLUOROPHORES, fluorophoreSpec, fluorophoreAbsorption,
   displayViewsFor, resolvedDisplayView, displayActionUpdate, getSize,
 } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
-import { traceAll, traceScene, detectorReading, specimenSignalWl, specimenIncidentWls } from '../sketch/js/raytrace.js';
+import {
+  traceAll, traceScene, detectorReading, specimenIncidentBeams, specimenSignalWl, specimenIncidentWls,
+  specimenTimingReading,
+} from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { wavelengthToColor } from '../sketch/js/util.js';
 import { C_MM_PER_NS, pulseMarkers, pulseOverlap } from '../sketch/js/pulses.js';
@@ -51,8 +54,10 @@ test('a specimen is one of four types, and only two of them carry signals', () =
   assert.deepEqual(signalKindsFor('absorbing'), []);
   assert.deepEqual(signalKindsFor('resin'), []);
   assert.deepEqual(signalKindsFor('linear').map(([id]) => id), ['fluor', 'raman', 'phase']);
+  // Sum frequency is not its own kind any more: one chi(2) channel gives both
+  // the second harmonic of a beam and the sum frequency of a pair.
   assert.deepEqual(signalKindsFor('nonlinear').map(([id]) => id),
-    ['tpef', 'thpef', 'shg', 'thg', 'sfg', 'cars', 'srs']);
+    ['tpef', 'thpef', 'shg', 'thg', 'cars', 'srs']);
 });
 
 test('both the plain sample and the piezo holder offer the same specimen types', () => {
@@ -307,7 +312,7 @@ test('SRS stops when the two arms are no longer path-matched, and the toggle ove
     'the overlap requirement can be switched off per channel');
 });
 
-test('CARS and SFG also need the pulses to coincide', () => {
+test('CARS and the second-order channel need the pulses to coincide', () => {
   const mixed = (kind, extraOplMm, requireOverlap = true) => {
     const makeLaser = (wl, y) => {
       const laser = createElement('pulsedlaser', 0, y);
@@ -339,8 +344,15 @@ test('CARS and SFG also need the pulses to coincide', () => {
   assert.ok(!mixed('cars', 5).includes(650), 'a mismatched arm switches CARS off');
   assert.ok(mixed('cars', 5, false).includes(650), 'unless the requirement is switched off');
 
-  assert.ok(mixed('sfg', 0).includes(452), 'matched arms give the sum-frequency line');
-  assert.ok(!mixed('sfg', 5).includes(452), 'a mismatched arm switches SFG off');
+  // The chi(2) channel doubles each beam whatever the timing, and adds their
+  // sum frequency only while the pulses coincide.
+  const together = mixed('shg', 0), apart = mixed('shg', 5);
+  assert.ok(together.includes(452), 'matched arms give the sum-frequency line');
+  assert.ok(!apart.includes(452), 'a mismatched arm switches the sum frequency off');
+  for (const harmonic of [400, 520]) {
+    assert.ok(together.includes(harmonic), `the ${harmonic} nm harmonic is missing`);
+    assert.ok(apart.includes(harmonic), `the ${harmonic} nm harmonic should not depend on timing`);
+  }
 });
 
 test('a mismatched pair is explained, in picoseconds and in millimetres of path', () => {
@@ -984,4 +996,83 @@ test('sample thickness is a presentation control that never moves the optical su
     const thickSurface = surfaceOf(el);
     assert.deepEqual(thinSurface, thickSurface, `${type} thickness must not move or change the optical surface`);
   }
+});
+
+test('a focused beam is timed as one beam, not as a spread of sampling rays', () => {
+  // A converging beam is traced as many rays whose paths differ across the
+  // cone. Timing a ray of one beam against an arbitrary sampled ray of the
+  // other made a matched pair look picoseconds apart and silenced the signal —
+  // which is what a correctly built two-colour microscope hit.
+  const laser = (wl, y) => {
+    const source = createElement('pulsedlaser', 0, y);
+    Object.assign(source.params, {
+      wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 1000,
+      beamMode: 'size', dia: 6,
+    });
+    return source;
+  };
+  const elements = [laser(800, -30), laser(1040, 30)];
+  // Both beams through one lens, so each arrives as a cone of rays.
+  const lens = createElement('lens', 150, 0);
+  Object.assign(lens.params, { f: 150, dia: 80 });
+  const sample = createElement('sample', 300, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 60, specimenType: 'nonlinear',
+    channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+  });
+  const detector = createElement('detector', 500, 0);
+  detector.params.aperture = 120;
+  elements.push(lens, sample, detector);
+  traceAll(elements);
+
+  const beams = specimenIncidentBeams(sample.id) || [];
+  assert.equal(beams.length, 2, `two beams reach the specimen, not ${beams.length} records`);
+  const [a, b] = beams.sort((x, y) => x.wl - y.wl);
+  assert.ok(Math.abs(a.opl - b.opl) < 1e-6, `the arms are matched: ${a.opl} vs ${b.opl}`);
+
+  const reading = specimenTimingReading(sample.id);
+  assert.equal(reading.state, 'mixing', 'matched beams were judged out of time');
+  assert.ok(reading.overlap > 0.99, `overlap ${reading.overlap}`);
+  const spectrum = detectorReading(detector.id)?.spectrum || [];
+  assert.ok(spectrum.some(s => Math.abs(s.wavelength - 650) < 2), 'no anti-Stokes line from a matched pair');
+});
+
+test('the specimen says why a two-beam signal is missing', () => {
+  const bench = ({ extraOplMm = 0, partnerRepMHz = 80 } = {}) => {
+    const laser = (wl, y, repRateMHz) => {
+      const source = createElement('pulsedlaser', 0, y);
+      Object.assign(source.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz, pulseWidthFs: 200, beamMode: 'line',
+      });
+      return source;
+    };
+    const elements = [laser(800, -6, 80), laser(1040, 6, partnerRepMHz)];
+    if (extraOplMm) {
+      const delay = createElement('delayline', 120, 6);
+      Object.assign(delay.params, { delayMm: extraOplMm, aperture: 10 });
+      elements.push(delay);
+    }
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear',
+      channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+    });
+    elements.push(sample, createElement('detector', 400, 0));
+    traceAll(elements);
+    return specimenTimingReading(sample.id);
+  };
+
+  assert.equal(bench().state, 'mixing');
+  assert.equal(specimenTimingText(bench()), null, 'a working signal says nothing');
+
+  const late = bench({ extraOplMm: 30 });
+  assert.equal(late.state, 'unsynchronized');
+  assert.match(specimenTimingText(late), /CARS needs both pulses at the specimen.*100 ps apart \(30 mm of path\)/);
+
+  // Unrelated repetition rates are outside the model rather than simply late.
+  const rates = bench({ partnerRepMHz: 37 });
+  assert.equal(rates.state, 'unsupported');
+  assert.match(specimenTimingText(rates), /timing not modelled/);
 });

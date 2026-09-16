@@ -72,10 +72,27 @@ function normalizeLayers(value) {
 function normalizeChannels(value) {
   if (!Array.isArray(value)) return [];
   const kinds = new Set(['fluor', 'raman', 'phase', 'tpef', 'thpef', 'shg', 'thg', 'sfg', 'cars', 'srs']);
+  // Sum frequency is no longer a channel of its own: one chi(2) gives both the
+  // second harmonic of each beam and the sum frequency of a pair, so a saved
+  // `sfg` channel becomes the second-order channel. A scene that carried both
+  // keeps one of them rather than emitting everything twice.
+  const seenSecondOrder = { taken: false };
+  return value.slice(0, 5).filter(record).map(raw => {
+    const named = kinds.has(raw.kind) ? raw.kind : 'fluor';
+    const kind = named === 'sfg' ? 'shg' : named;
+    if (kind === 'shg') {
+      if (seenSecondOrder.taken) return null;
+      seenSecondOrder.taken = true;
+    }
+    return { ...channelFields(raw), kind };
+  }).filter(Boolean);
+}
+
+function channelFields(raw) {
   const materials = new Set(['lipid', 'protein', 'dmso', 'pmma', 'polystyrene', 'water']);
   const dyes = new Set(['custom', 'dapi', 'hoechst', 'gfp', 'rhodamine']);
-  return value.slice(0, 5).filter(record).map(raw => ({
-    kind: kinds.has(raw.kind) ? raw.kind : 'fluor',
+  return ({
+    kind: 'fluor',
     wl: clamp(finite(raw.wl) ? raw.wl : 520, 100, 4000),
     eff: clamp(finite(raw.eff) ? raw.eff : 0.1, 0, 1),
     epi: raw.epi === true,
@@ -89,7 +106,7 @@ function normalizeChannels(value) {
     axis: clamp(finite(raw.axis) ? raw.axis : 45, 0, 180),
     transferEff: clamp(finite(raw.transferEff) ? raw.transferEff : 0.1, 0.01, 0.5),
     requireOverlap: raw.requireOverlap !== false,
-  }));
+  });
 }
 
 function resolveBound(bound, params, fallback) {

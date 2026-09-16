@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sample — Optics Encyclopedia | OpticalSetup</title>
-<meta name="description" content="Represents an illuminated specimen with configurable transmission and signal channels, for exploring excitation delivery, fluorescence collection, and qualitative nonlinear optical emission. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
+<meta name="description" content="Represents an illuminated specimen with configurable transmission and stacked signal channels, including two-beam signals that appear only while both pulses reach the spot together. Real-world physics and formulas, plus exactly how OpticalSetup models it.">
 <link rel="canonical" href="https://opticalsetup.com/wiki/sample/">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Sample — OpticalSetup Encyclopedia">
-<meta property="og:description" content="Represents an illuminated specimen with configurable transmission and signal channels, for exploring excitation delivery, fluorescence collection, and qualitative nonlinear optical emission.">
+<meta property="og:description" content="Represents an illuminated specimen with configurable transmission and stacked signal channels, including two-beam signals that appear only while both pulses reach the spot together.">
 <meta property="og:url" content="https://opticalsetup.com/wiki/sample/">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -137,7 +137,7 @@
           <h1>Sample</h1>
         </div>
       </div>
-      <p class="tagline">Represents an illuminated specimen with configurable transmission and signal channels, for exploring excitation delivery, fluorescence collection, and qualitative nonlinear optical emission.</p>
+      <p class="tagline">Represents an illuminated specimen with configurable transmission and stacked signal channels, including two-beam signals that appear only while both pulses reach the spot together.</p>
       <a class="place-cta" href="../../sketch/?demo=sample">Open in the canvas →</a>
 
       <div class="embed-wrap">
@@ -153,8 +153,8 @@
 
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
-        <p>Orient the sample across the beam: at zero rotation its long axis is horizontal, so a horizontal incoming beam needs a 90° sample rotation. Choose the specimen mode, excitation transmission, and desired channels. The model supports stacked fluorescence, SHG, THG, SFG, and CARS signals; SFG and CARS require two different excitation wavelengths meeting at the same spot.</p><p>The example produces a fluorescent signal under 488 nm illumination. Adjust its emission and transmission, then use a filter and detector to distinguish emitted light from the excitation. Parametric channels use a forward lobe with an optional weaker backward contribution.</p>
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Signals are bounded qualitative proxies, not measured cross-sections or calibrated conversion efficiencies. The model does not reconstruct a three-dimensional specimen or predict photochemistry, bleaching, or a diffraction-limited point-spread function.</p></div>
+        <p>Orient the sample across the beam: at zero rotation its long axis is horizontal, so a horizontal incoming beam needs a 90° sample rotation. Choose the specimen mode, excitation transmission, and desired channels. The model supports stacked fluorescence, Raman, phase contrast, two- and three-photon fluorescence, second-order (χ⁽²⁾), THG, CARS and stimulated Raman signals.</p><p>The <strong>χ⁽²⁾ channel</strong> covers both second-order processes at once, as one susceptibility does: each beam's second harmonic, and the sum frequency of any two different colours on the spot. There is no separate sum-frequency channel; a scene saved with one is read as this channel.</p><p><strong>Two-beam signals need the pulses together.</strong> Sum frequency, CARS and stimulated Raman only happen while both pulses are at the spot, so the model scales them by the Gaussian overlap of the two arrivals and drops them below 2 % of the peak — the second harmonic of each beam, which needs one beam only, is unaffected. Arrival is each beam's own optical path plus its emission offset, judged beam to beam, so a millimetre of unmatched arm is 3.3 ps and enough to switch a picosecond CARS signal off; the workbench says so rather than leaving an empty detector to interpret. Only trains at the same repetition rate are mixed, and <em>Needs pulse overlap</em> switches the requirement off per channel for a schematic that is about the signal rather than the timing.</p><p>The example produces a fluorescent signal under 488 nm illumination. Adjust its emission and transmission, then use a filter and detector to distinguish emitted light from the excitation. Parametric channels use a forward lobe with an optional weaker backward contribution.</p>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>Signals are bounded qualitative proxies, not measured cross-sections or calibrated conversion efficiencies, and they do not deplete the excitation: each channel emits its own authored fraction, so stacking channels never dims the beam that drives them. Sum frequency is gated on arrival time alone — no phase matching, polarization condition or focusing overlap is checked — and the pulses' own path spread across a focused cone is not treated as a timing spread. The model does not reconstruct a three-dimensional specimen or predict photochemistry, bleaching, or a diffraction-limited point-spread function.</p></div>
       </div>
 
 

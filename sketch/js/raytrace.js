@@ -179,6 +179,22 @@ function recordMix(elementId, pair) {
   pairs.set(key, pair);
 }
 
+// specimen element id -> what its two-beam channels found about arrival
+// timing this pass, so a silent signal can say why.
+let specimenTimingStates = new Map();
+
+function recordSpecimenTiming(elementId, reading) {
+  if (!elementId) return;
+  const held = specimenTimingStates.get(elementId);
+  // A channel that is mixing has more to say than one that cannot.
+  if (held && held.state === 'mixing' && reading.state !== 'mixing') return;
+  specimenTimingStates.set(elementId, reading);
+}
+
+export function specimenTimingReading(elementId) {
+  return specimenTimingStates.get(elementId) || null;
+}
+
 export function mixReading(elementId) {
   const pairs = mixStates.get(elementId);
   if (!pairs || !pairs.size) return null;
@@ -233,11 +249,12 @@ function mixingOutputs(s, ray, d, data) {
   // `wl` matters: without it this beam matches none of the partner filters in
   // beamScale, its own requests are never normalised, and a beam in several
   // saturated pairs would give away more of itself than it has.
-  const self = { wl: ray.wl, opl: ray.opl, pulse: ray.pulse, bw: ray.bw, spec: ray.spec };
+  // Timed as its beam, not as this one sampling ray of it.
+  const self = rayAsBeam(ray, beams);
   const ownScale = beamScale(self);
   // This sampling ray's share of its own beam, so a beam drawn as several rays
   // does not hand its partner's whole contribution to each of them.
-  const ownBeam = beams.find(beam => Math.abs(beam.wl - ray.wl) < 1e-9 && beam.opl === ray.opl);
+  const ownBeam = beamRecordFor(ray, beams);
   const rayShare = ownBeam?.intensity > 0 ? Math.min(1, ray.intensity / ownBeam.intensity) : 1;
 
   const pairs = [];
@@ -1362,12 +1379,16 @@ const clampConversion = value => Math.min(MAX_CONVERSION, Math.max(0, Number(val
 // beams -- but two trains of the same colour arriving at different times are
 // two beams, and collapsing them by wavelength alone would make the result
 // depend on which source happened to be traced first.
+// What makes two arriving rays the same beam: where they came from and what
+// train they carry. Deliberately NOT the accumulated path -- a focused beam is
+// sampled by rays whose paths differ across the cone, and those are one beam
+// arriving, not a spread of beams to be timed against each other.
 function probeBeamKey(ray) {
   const pulse = ray.pulse;
   const gates = (pulse?.gates || [])
     .map(g => `${g.opl}|${g.frequencyMHz}|${g.duty}|${g.phaseNs}|${g.shape || ''}`).join(';');
   return [
-    ray.wl.toFixed(9), (ray.opl || 0).toFixed(6), pulse?.sourceId || '',
+    ray.wl.toFixed(9), pulse?.sourceId || '',
     pulse?.repRateMHz ?? '', pulse?.phaseNs ?? '', pulse?.pulseWidthFs ?? '', gates,
   ].join('/');
 }
@@ -1376,28 +1397,58 @@ function recordProbeBeam(surface, ray) {
   let seen = specimenProbe.get(surface.id);
   if (!seen) specimenProbe.set(surface.id, seen = []);
   const key = probeBeamKey(ray);
+  const weight = Math.max(0, ray.intensity || 0);
   const already = seen.find(b => b.key === key);
-  // A beam sampled by several rays is one beam carrying all of their power.
-  if (already) { already.intensity += Math.max(0, ray.intensity || 0); return; }
+  // A beam sampled by several rays is one beam: its power is theirs together,
+  // and it arrives when its power arrives.
+  if (already) {
+    already.intensity += weight;
+    already.oplWeight += weight;
+    already.oplSum += weight * (ray.opl || 0);
+    already.oplMin = Math.min(already.oplMin, ray.opl || 0);
+    return;
+  }
   seen.push({
     key,
     wl: ray.wl, opl: ray.opl,
+    oplSum: weight * (ray.opl || 0), oplWeight: weight, oplMin: ray.opl || 0,
     // The arriving spectrum, so a process that mixes this beam can use its
     // width -- including whatever a filter upstream did to it.
     bw: ray.bw, spec: ray.spec,
-    intensity: Math.max(0, ray.intensity || 0),
+    intensity: weight,
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
   });
 }
 
-function srsTransferGate(channel, ray, incidentBeams) {
+// One arrival per beam, weighted by where its power actually is, so that every
+// sampling ray of a beam is timed the same way.
+function settleProbeBeam(beam) {
+  beam.opl = beam.oplWeight > 0 ? beam.oplSum / beam.oplWeight : beam.oplMin;
+  return beam;
+}
+
+// The record of the beam this ray belongs to, so a ray is timed as its beam
+// rather than against whichever ray of another beam happened to be sampled.
+function beamRecordFor(ray, beams) {
+  const key = probeBeamKey(ray);
+  return (beams || []).find(beam => beam.key === key) || null;
+}
+
+// A ray as its beam arrives: the same pulse train, timed where the beam's
+// power is. Falls back to the ray itself when there is no record.
+function rayAsBeam(ray, beams) {
+  const record = beamRecordFor(ray, beams);
+  return { wl: ray.wl, opl: record ? record.opl : ray.opl, pulse: ray.pulse, bw: ray.bw, spec: ray.spec };
+}
+
+function srsTransferGate(channel, ray, incidentBeams, elementId) {
   if ((ray.pulse?.gates || []).length) return null; // this beam is the donor
   const donor = (incidentBeams || []).find(b =>
     Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM && b.gates?.length);
   if (!donor) return null;
   // Both pulses must be at the spot together for the interaction to happen.
-  const overlap = channelOverlap(channel, ray, donor);
+  const overlap = channelOverlap(channel, ray, donor, incidentBeams, elementId).factor;
   if (overlap < MIN_OVERLAP) return null;
   const source = donor.gates[donor.gates.length - 1];
   const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1)) * overlap;
@@ -1419,11 +1470,65 @@ function srsTransferGate(channel, ray, incidentBeams) {
 }
 
 // How much of a two-beam signal survives the arrival mismatch between the
-// beams driving it. Channels can opt out, for a schematic that is about the
-// signal rather than about timing.
-function channelOverlap(channel, ray, partner) {
-  if (!partner || channel.requireOverlap === false) return 1;
-  return pulseOverlap({ opl: ray.opl, pulse: ray.pulse }, partner).factor;
+// beams driving it, judged beam to beam. Channels can opt out, for a schematic
+// that is about the signal rather than about timing.
+//
+// This is the same timing model the crystal's mixing uses: the Gaussian
+// overlap integral, coincidence with the nearest pulse of the other train, and
+// only trains at one nominal repetition rate — a rate mismatch is reported as
+// not modelled rather than waved through at full strength.
+function channelOverlap(channel, ray, partner, beams, elementId) {
+  if (!partner) return { factor: 1, state: 'oneBeam' };
+  if (channel.requireOverlap === false) return { factor: 1, state: 'ignored' };
+  const overlap = mixOverlap(rayAsBeam(ray, beams), partner);
+  const reading = {
+    kind: channel.kind, driverWl: ray.wl, partnerWl: partner.wl,
+    skewNs: overlap.skewNs, overlap: overlap.factor,
+    repRateMHz: ray.pulse?.repRateMHz ?? null,
+    partnerRepRateMHz: partner.pulse?.repRateMHz ?? null,
+  };
+  const state = overlap.unsupported ? 'unsupported'
+    : overlap.comparable && overlap.factor < MIN_OVERLAP ? 'unsynchronized'
+      : 'mixing';
+  recordSpecimenTiming(elementId, { ...reading, state });
+  return { factor: state === 'mixing' ? overlap.factor : 0, state, skewNs: overlap.skewNs };
+}
+
+// The sum frequency of this beam with every other colour at the specimen. A
+// pair is emitted once, by its shorter wavelength, and only while the two
+// pulses are there together -- the same rule the crystal's mixing follows.
+// Signals here are bounded qualitative proxies that do not deplete the
+// excitation, so each pair carries the channel's own authored efficiency
+// rather than drawing on a shared budget.
+function specimenMixedOutputs(channel, ray, d, data, elementId) {
+  const out = [];
+  const eff = Math.min(1, Math.max(0, channel.eff ?? 1));
+  if (!(eff > 0)) return out;
+  for (const partner of data.incidentBeams || []) {
+    if (partner.wl - ray.wl < MIXING_MIN_SEPARATION_NM) continue;   // the shorter beam emits
+    const wl = mixWavelength('sfg', ray.wl, partner.wl);
+    if (!(wl > 0)) continue;
+    const overlap = channelOverlap(channel, ray, partner, data.incidentBeams, elementId).factor;
+    if (overlap < MIN_OVERLAP) continue;
+    const tint = channelColor(channel, wl);
+    const forward = ray.intensity * eff * overlap;
+    out.push({
+      d, wl, bw: 0, spec: null, pol: undefined, stokes: null,
+      color: tint, sourceId: elementId, intensity: forward, tag: `sfg${Math.round(wl)}`,
+    });
+    if (channel.epi) {
+      const ratio = Math.min(1, Math.max(0, channel.epiRatio ?? 0.15));
+      if (ratio > 0) {
+        out.push({
+          d: { x: -d.x, y: -d.y }, wl, bw: 0, spec: null, pol: undefined, stokes: null,
+          color: tint, sourceId: elementId, intensity: forward * ratio,
+          power: Number.isFinite(ray.power) ? ray.power * eff * overlap * ratio : undefined,
+          tag: `esfg${Math.round(wl)}`,
+        });
+      }
+    }
+  }
+  return out;
 }
 
 // The incident beam a mixing channel pairs the current ray with: the longest
@@ -3150,7 +3255,7 @@ function interact(ray, hit) {
             stokes = applyRetarder(stokes, c.axis ?? 45, c.retardance ?? 90);
             retarded = true;
           } else if (c.kind === 'srs' && ray.pulse) {
-            const transferred = srsTransferGate(c, ray, data.incidentBeams);
+            const transferred = srsTransferGate(c, ray, data.incidentBeams, s.el?.id || null);
             if (transferred) { pulse = withGate(pulse, transferred); gated = true; }
           }
         }
@@ -3215,13 +3320,19 @@ function interact(ray, hit) {
           continue;
         }
 
+        // One chi(2) does both: a specimen that doubles a beam also sums two
+        // of them. The second harmonic is emitted whatever the timing; the
+        // pair's sum frequency only while both pulses are at the spot.
+        if (c.kind === 'shg' && emitting) {
+          for (const mixed of specimenMixedOutputs(c, ray, d, data, s.el?.id || null)) out.push(mixed);
+        }
         const wl = specimenSignalWl(c, ray.wl, data.incidentWls);
         if (!(wl > 0)) continue;
         // Sum-frequency and CARS are wave mixing: no temporal overlap between
         // the two beams, no signal.
         let overlap = 1;
         if (MIXING_KINDS.has(c.kind) && c.autoWl !== false) {
-          overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams));
+          overlap = channelOverlap(c, ray, mixingPartner(ray, data.incidentBeams), data.incidentBeams, s.el?.id || null).factor;
           if (overlap < MIN_OVERLAP) continue;
         }
         const forward = ray.intensity * eff * overlap;
@@ -4355,6 +4466,7 @@ export function traceScene(elements, beams = []) {
   specimenIncident = new Map();
   opoStates = new Map();
   mixStates = new Map();
+  specimenTimingStates = new Map();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
@@ -4478,7 +4590,7 @@ export function traceScene(elements, beams = []) {
       for (const s of surfaces) {
         if (s.kind !== 'specimen' && !(s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
             && !(s.kind === 'attenuate' && s.data.specimen)) continue;
-        const beams = specimenProbe.get(s.id) || [];
+        const beams = (specimenProbe.get(s.id) || []).map(settleProbeBeam);
         s.data.incidentBeams = beams;
         s.data.incidentWls = [...new Set(beams.map(b => b.wl))];
         if (s.el) specimenIncident.set(s.el.id, beams);
