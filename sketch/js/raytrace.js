@@ -3399,26 +3399,40 @@ function interact(ray, hit) {
           repRateMHz: ray.pulse?.repRateMHz ?? null,
           partnerRepRateMHz: partner.pulse?.repRateMHz ?? null,
         };
-        if (overlap.rateMismatch || (overlap.comparable && overlap.factor < MIN_OVERLAP)) {
-          recordMix(crystalId, { ...reading, state: 'unsynchronized', reason: overlap.rateMismatch ? 'repRate' : 'skew' });
+        // Trains at different nominal repetition rates are outside this model
+        // rather than physically impossible, and are reported as such.
+        if (overlap.unsupported) {
+          recordMix(crystalId, { ...reading, state: 'unsupported' });
+          return pass();
+        }
+        if (overlap.comparable && overlap.factor < MIN_OVERLAP) {
+          recordMix(crystalId, { ...reading, state: 'unsynchronized', reason: 'skew' });
           return pass();
         }
         recordMix(crystalId, { ...reading, state: 'mixing' });
-        if (!(efficiency > 0)) return pass();
+        // What is actually drawn as signal, and so what the driving beam is
+        // debited: a pair that half misses converts half as much, and the
+        // books have to say the same thing.
+        const converted = efficiency * overlap.factor;
+        if (!(converted > 0)) return pass();
         const path = [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), crystalId].filter(Boolean);
         const out = [{
           d, wl, bw: 0, spec: null, tag: data.convert,
-          intensity: ray.intensity * efficiency * reading.overlap,
-          pulse: mixPulse(ray.pulse, partner.pulse, { crystalId, kind: data.convert, wl }),
+          intensity: ray.intensity * converted,
+          pulse: mixPulse(ray.pulse, partner.pulse, {
+            crystalId, kind: data.convert, wl,
+            centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
+          }),
           parametricPath: path,
           // New light, referenced to the crystal exit like the OPO's outputs.
           gdd: 0,
           phaseValid: false,
           phaseIssue: 'sum/difference frequency output: optical phase relative to the inputs is not modelled',
         }];
-        // Neither input is depleted by the drawn conversion; the driving beam
-        // loses the converted fraction only when it is shown at all.
-        if (data.transmitPump) out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'p' });
+        // Only the driving beam is debited, and only by what was generated;
+        // the partner is not depleted at all, which is why this is an
+        // allocation convention rather than a two-field energy calculation.
+        if (data.transmitPump) out.push({ d, intensity: ray.intensity * (1 - converted), tag: 'p' });
         return out;
       }
       if (data.convert === 'opo') {

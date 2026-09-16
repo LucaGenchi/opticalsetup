@@ -1962,10 +1962,11 @@ export function mixStateText(reading) {
   if (reading.state === 'oneBeam') return `${label} needs a second beam of a different wavelength at the crystal`;
   if (reading.state === 'invalid') return `${label}: these two wavelengths give no positive output wavelength`;
   const pair = `${sig3(reading.driverWl)} + ${sig3(reading.partnerWl)} nm → ${sig3(reading.wl)} nm`;
+  if (reading.state === 'unsupported') {
+    return `Timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at the same repetition rate are mixed here, so ${pair} is not drawn.`;
+  }
   if (reading.state === 'unsynchronized') {
-    return reading.reason === 'repRate'
-      ? `No signal: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz, so their pulses do not coincide. ${pair} needs the same repetition rate, or one an exact multiple of the other.`
-      : `No signal: the pulses arrive ${formatMixDelay(reading.skewNs)} apart. Match the path lengths, or scan a delay stage to find time zero.`;
+    return `No signal: the pulses arrive ${formatMixDelay(reading.skewNs)} apart. Match the path lengths, or scan a delay stage to find time zero.`;
   }
   const timing = reading.skewNs == null
     ? 'no pulse timing to match'

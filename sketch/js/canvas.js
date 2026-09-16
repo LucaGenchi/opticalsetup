@@ -432,7 +432,7 @@ function announceMixingState(elements) {
     const signature = reading ? `${reading.state}:${reading.reason || ''}` : '';
     if (announcedMixStates.get(el.id) === signature) continue;
     announcedMixStates.set(el.id, signature);
-    if (reading?.state !== 'unsynchronized') continue;
+    if (reading?.state !== 'unsynchronized' && reading?.state !== 'unsupported') continue;
     document.dispatchEvent(new CustomEvent('optics:toast', {
       detail: { message: mixStateText(reading) },
     }));

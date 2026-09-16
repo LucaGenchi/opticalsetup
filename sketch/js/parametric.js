@@ -190,51 +190,80 @@ export function mixDurationFs(aFs, bFs) {
   return 1 / Math.sqrt(1 / (a * a) + 1 / (b * b));
 }
 
-// The mixed output's pulse train. It is synchronous with the pair — it exists
-// only while both are present — so it takes the driving beam's repetition
-// rate, timing and gates, with the combined duration above.
-export function mixPulse(rayPulse, partnerPulse, { crystalId, kind, wl } = {}) {
-  if (!rayPulse && !partnerPulse) return null;
-  const base = rayPulse || partnerPulse;
-  const trainId = base.sourceId || '';
+// The mixed output's pulse train. It exists only while both inputs are at the
+// crystal, so its timing comes from the pair rather than from whichever beam
+// drives it: the centre is the Gaussian product's centre, and a gate on
+// either input gates the signal, because both have to be there.
+//
+// `centerNs` is when the signal peaks at the crystal, absolute on the same
+// scale as the inputs' arrivals; `oplMm` is the path the generated ray
+// carries onward, so the stored phase reproduces that arrival.
+export function mixPulse(rayPulse, partnerPulse, { crystalId, kind, wl, centerNs, oplMm = 0, repRateMHz } = {}) {
+  const trains = [rayPulse, partnerPulse].filter(Boolean);
+  if (!trains.length) return null;
+  const timed = trains.find(t => t.repRateMHz > 0) || trains[0];
+  const trainId = timed.sourceId || '';
   const duration = mixDurationFs(rayPulse?.pulseWidthFs, partnerPulse?.pulseWidthFs);
+  // Both inputs' gates apply: each carries the path it was imposed at, so a
+  // modulator on either beam switches the signal off exactly as it should.
+  const gates = trains.flatMap(t => (Array.isArray(t.gates) ? t.gates.map(g => ({ ...g })) : []));
+  const rate = repRateMHz ?? timed.repRateMHz;
+  const phaseNs = Number.isFinite(centerNs) ? centerNs - oplMm / C_MM_PER_NS : timed.phaseNs;
   return {
     sourceId: `${trainId}›${crystalId || 'crystal'}:${kind || 'mix'}`,
-    syncSourceId: base.syncSourceId || trainId,
-    repRateMHz: base.repRateMHz,
-    phaseNs: base.phaseNs,
-    gates: Array.isArray(base.gates) ? base.gates.map(g => ({ ...g })) : undefined,
+    syncSourceId: timed.syncSourceId || trainId,
+    repRateMHz: rate,
+    phaseNs,
+    gates: gates.length ? gates : undefined,
     centerWavelengthNm: wl,
     bandwidthNm: 0,
     pulseShape: 'gauss',
-    pulseWidthFs: duration ?? base.pulseWidthFs,
+    pulseWidthFs: duration ?? timed.pulseWidthFs,
     transformLimited: false,
     spectralPhase: 'unknown',
   };
 }
 
 // How much of a mixed pair survives the mismatch in when the two pulses reach
-// the crystal. Unlike the specimen's `pulseOverlap`, trains at different
-// repetition rates are not waved through: pulses from unrelated rates never
-// coincide, so there is no steady signal. Harmonically related rates are the
-// exception a real bench uses — an 80 MHz beam and a 40 MHz one derived from
-// it meet on every second pulse — so the coincidence is judged on the faster
-// period.
+// the crystal, and when the signal peaks.
+//
+// For two Gaussian intensity envelopes of FWHM τ₁ and τ₂ arriving Δt apart,
+// the normalised overlap integral is exp[−4 ln2 Δt²/(τ₁² + τ₂²)] and the
+// product peaks at the weighted mean of the two arrivals.
+//
+// Only trains at the same nominal repetition rate are modelled. Different
+// rates are not a physical "never": 80 and 60 MHz coincide at 20 MHz, and
+// slightly detuned trains sweep through the delay, which is what asynchronous
+// optical sampling uses. This model has no epoch bookkeeping for those, so it
+// reports them as unsupported rather than pretending to a result.
 export function mixOverlap(a, b) {
   const repA = a?.pulse?.repRateMHz, repB = b?.pulse?.repRateMHz;
-  // A CW beam is always there: only a pulsed pair has to be timed.
-  if (!(repA > 0) || !(repB > 0)) return { factor: 1, skewNs: null, comparable: false, rateMismatch: false };
-  const fast = Math.max(repA, repB), slow = Math.min(repA, repB);
-  const ratio = fast / slow;
-  const harmonic = Math.round(ratio);
-  if (Math.abs(ratio - harmonic) > 1e-6 * harmonic) {
-    return { factor: 0, skewNs: null, comparable: true, rateMismatch: true };
+  const arrivalOf = beam => (beam.opl || 0) / C_MM_PER_NS + (beam.pulse?.phaseNs || 0);
+  const pulsedA = repA > 0, pulsedB = repB > 0;
+  // A steady beam is always there. Timing then comes from the pulsed one, if
+  // there is one: an always-present beam cannot set when the signal arrives.
+  if (!pulsedA || !pulsedB) {
+    const timed = pulsedA ? a : pulsedB ? b : null;
+    return {
+      factor: 1, skewNs: null, comparable: false, unsupported: false,
+      centerNs: timed ? arrivalOf(timed) : null,
+      repRateMHz: timed?.pulse?.repRateMHz ?? null,
+    };
   }
-  const periodNs = 1000 / fast;
-  const arrivalOf = beam => (beam.opl || 0) / C_MM_PER_NS + (beam.pulse.phaseNs || 0);
-  const offset = ((arrivalOf(a) - arrivalOf(b)) % periodNs + periodNs) % periodNs;
-  const skewNs = Math.min(offset, periodNs - offset);
-  // The wider pulse sets the scale over which the pair still overlaps.
-  const widthNs = Math.max(1, Math.max(a.pulse.pulseWidthFs || 100, b.pulse.pulseWidthFs || 100)) * 1e-6;
-  return { factor: Math.exp(-((skewNs / widthNs) ** 2)), skewNs, comparable: true, rateMismatch: false };
+  if (Math.abs(repA - repB) > 1e-9 * Math.max(repA, repB)) {
+    return { factor: 0, skewNs: null, comparable: false, unsupported: true, centerNs: null, repRateMHz: null };
+  }
+  const periodNs = 1000 / repA;
+  const tA = arrivalOf(a), tB = arrivalOf(b);
+  // The nearest coincidence, not the raw difference: pulse n of one train
+  // meets whichever pulse of the other is closest.
+  const wrapped = ((tA - tB) % periodNs + periodNs + periodNs / 2) % periodNs - periodNs / 2;
+  const widthA = Math.max(1, a.pulse.pulseWidthFs || 100) * 1e-6;
+  const widthB = Math.max(1, b.pulse.pulseWidthFs || 100) * 1e-6;
+  const factor = Math.exp(-4 * Math.LN2 * wrapped * wrapped / (widthA * widthA + widthB * widthB));
+  // The product of the two envelopes peaks between them, nearer the shorter
+  // pulse, which is what pins the signal down in time.
+  const weightA = 1 / (widthA * widthA), weightB = 1 / (widthB * widthB);
+  const centerNs = (tA * weightA + (tA - wrapped) * weightB) / (weightA + weightB);
+  return { factor, skewNs: Math.abs(wrapped), comparable: true, unsupported: false, centerNs, repRateMHz: repA };
 }
