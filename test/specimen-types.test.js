@@ -1292,3 +1292,35 @@ test('the specimen shows where the two beams are, not only when they are wrong',
       `${type} shows it where no signal needs two beams`);
   }
 });
+
+test('a scene carrying both second harmonic and sum frequency keeps the harmonic channel', () => {
+  // The authored migration choice: the surviving chi(2) channel covers what
+  // the sum-frequency entry did, and that entry's own settings go with it
+  // rather than the scene emitting each signal twice.
+  const raw = (kind, extra = {}) => ({
+    kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true, autoColor: true,
+    color: '#22c55e', material: 'lipid', fluorophore: 'custom', retardance: 90, axis: 45,
+    transferEff: 0.1, requireOverlap: true, ...extra,
+  });
+  const load = channels => parseSketch(JSON.stringify({
+    app: 'optics2d', version: 1,
+    elements: [{ id: 's', type: 'sample', x: 0, y: 0, rot: 90, params: { specimenType: 'nonlinear', channels } }],
+  }), registry).elements[0].params.channels;
+
+  const conflicting = [
+    raw('shg', { eff: 0.1, epi: false, autoWl: true, color: '#22c55e', requireOverlap: true }),
+    raw('sfg', { eff: 0.7, epi: true, epiRatio: 0.4, autoWl: false, wl: 400, color: '#ff0000', requireOverlap: false }),
+  ];
+  for (const order of [conflicting, [...conflicting].reverse()]) {
+    const loaded = load(order);
+    assert.equal(loaded.length, 1, 'one second-order channel survives, whichever order they were saved in');
+    const [only] = loaded;
+    assert.equal(only.kind, 'shg');
+    // The harmonic channel's own settings, not the retired entry's.
+    assert.equal(only.eff, 0.1);
+    assert.equal(only.epi, false);
+    assert.equal(only.autoWl, true);
+    assert.equal(only.color, '#22c55e');
+    assert.equal(only.requireOverlap, true);
+  }
+});

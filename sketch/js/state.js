@@ -75,9 +75,14 @@ function normalizeChannels(value) {
   // Sum frequency is no longer a channel of its own: one chi(2) gives both the
   // second harmonic of each beam and the sum frequency of a pair, so a saved
   // `sfg` channel becomes the second-order channel. Channels that were already
-  // second harmonic are kept exactly as authored, however many there are; only
-  // a converted `sfg` entry is dropped, and only when the scene already has a
-  // second-order channel that now covers it.
+  // second harmonic are kept exactly as authored, however many there are.
+  //
+  // Where a scene carried both, the authored decision (Luca, 2026-09-16) is to
+  // keep the second-harmonic channel and drop the sum-frequency entry, which
+  // the surviving channel now covers. Everything that entry carried of its own
+  // goes with it -- efficiency, epi direction and ratio, a manual wavelength,
+  // colour, and its own overlap requirement -- rather than the scene gaining a
+  // second chi(2) channel and emitting each signal twice.
   const kept = value.slice(0, 5).filter(record);
   const hasSecondOrder = kept.some(raw => raw.kind === 'shg');
   return kept.map(raw => {
