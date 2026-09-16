@@ -1140,44 +1140,110 @@ test('the sum frequency is the pair\'s own pulse, not the beam that drove it', (
   assert.ok(Math.abs(withCw.pulseWidthFs - 200) < 0.1, `duration ${withCw.pulseWidthFs}`);
 });
 
-test('two arms of one colour are two beams, and the one that meets the pulse is the partner', () => {
-  // Averaging distinct arms would put a signal where neither arm overlaps.
-  const laser = (id, wl, y, x = 0) => {
-    const source = createElement('pulsedlaser', x, y);
+test('one laser split in two is two beams, and only the arm that meets the pulse is the partner', () => {
+  // Branch identity, tested on a real split: one 800 nm laser through a
+  // beamsplitter, its two arms independently delayed, and a 1040 nm beam to
+  // mix with. Both arms carry the same source, so only the path they took
+  // tells them apart -- and averaging them would put a signal where neither
+  // arm overlaps.
+  const bench = ({ delayMm, order = 'forward' } = {}) => {
+    const pump = createElement('pulsedlaser', 0, 0);
+    Object.assign(pump.params, {
+      wavelength: 800, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+    });
+    const splitter = createElement('bs', 100, 0);
+    splitter.rot = 90;
+    Object.assign(splitter.params, { ratio: 0.5, size: 25.4 });
+    const fold = createElement('mirror', 100, 60);
+    fold.rot = 135;
+    Object.assign(fold.params, { length: 25.4, refl: 100 });
+    // The delay sits in the transmitted arm only, so the two arms move apart.
+    const delay = createElement('delayline', 250, 0);
+    Object.assign(delay.params, { delayMm, aperture: 24 });
+    // The partner colour, arriving 445 mm along: the mean of the two arms
+    // when they straddle it.
+    const probe = createElement('pulsedlaser', -45, 30);
+    Object.assign(probe.params, {
+      wavelength: 1040, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+    });
+    const sample = createElement('sample', 400, 30);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 200, specimenType: 'nonlinear',
+      channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+    });
+    const detector = createElement('detector', 600, 30);
+    detector.params.aperture = 200;
+    const optics = [pump, splitter, fold, delay, probe];
+    traceAll([...(order === 'forward' ? optics : [...optics].reverse()), sample, detector]);
+    const beams = specimenIncidentBeams(sample.id) || [];
+    return {
+      beams,
+      arms: beams.filter(b => Math.round(b.wl) === 800),
+      reading: specimenTimingReading(sample.id),
+      hasSignal: (detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650) < 3),
+    };
+  };
+
+  // Arms 15 mm either side of the partner: their mean is exactly matched.
+  const straddling = bench({ delayMm: 30 });
+  assert.equal(straddling.arms.length, 2, 'the split must give two 800 nm beams');
+  const [armA, armB] = straddling.arms;
+  assert.equal(armA.pulse.sourceId, armB.pulse.sourceId, 'both arms come from the one laser');
+  assert.notEqual(armA.branch, armB.branch, 'the two arms must be told apart by the path they took');
+  assert.ok(Math.abs(Math.abs(armA.opl - armB.opl) - 30) < 1e-6,
+    `the delay line should separate the arms by 30 mm: ${armA.opl} and ${armB.opl}`);
+  const partner = straddling.beams.find(b => Math.round(b.wl) === 1040);
+  assert.ok(Math.abs((armA.opl + armB.opl) / 2 - partner.opl) < 1e-6,
+    'the arms must straddle the partner, so that their mean would look matched');
+  assert.ok(Math.abs(armA.opl - partner.opl) > 10 && Math.abs(armB.opl - partner.opl) > 10,
+    'neither arm may actually overlap the partner');
+  assert.equal(straddling.reading.state, 'unsynchronized');
+  assert.ok(!straddling.hasSignal, 'two mistimed arms were averaged into a signal');
+
+  // Move one arm onto the partner: that arm is the partner now.
+  const matched = bench({ delayMm: 45 });
+  assert.equal(matched.arms.length, 2, 'still two arms');
+  assert.equal(matched.reading.state, 'mixing');
+  assert.ok(matched.hasSignal, 'the matched arm produced no signal');
+
+  // The order the scene happens to be built in must not decide any of it.
+  const reversed = bench({ delayMm: 45, order: 'reverse' });
+  assert.equal(reversed.reading.state, 'mixing');
+  assert.equal(reversed.hasSignal, matched.hasSignal);
+  assert.equal(bench({ delayMm: 30, order: 'reverse' }).hasSignal, false);
+});
+
+test('the sampling rays that draw one beam stay one beam', () => {
+  // The other half of the same rule: a focused cone is many rays on one path,
+  // and they must not be timed against each other.
+  const laser = (wl, y) => {
+    const source = createElement('pulsedlaser', 0, y);
     Object.assign(source.params, {
-      wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+      wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 1000, beamMode: 'size', dia: 6,
     });
     return source;
   };
-  const bench = (earlyX, lateX) => {
-    const elements = [laser('p', 800, -20), laser('e', 1040, 20, earlyX), laser('l', 1040, 40, lateX)];
-    const sample = createElement('sample', 300, 0);
-    sample.rot = 90;
-    Object.assign(sample.params, {
-      aperture: 120, specimenType: 'nonlinear',
-      channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
-    });
-    const detector = createElement('detector', 500, 0);
-    detector.params.aperture = 150;
-    elements.push(sample, detector);
-    traceAll(elements);
-    const beams = specimenIncidentBeams(sample.id) || [];
-    const spectrum = detectorReading(detector.id)?.spectrum || [];
-    return { beams, reading: specimenTimingReading(sample.id), spectrum };
-  };
+  const lens = createElement('lens', 150, 0);
+  Object.assign(lens.params, { f: 150, dia: 80 });
+  const sample = createElement('sample', 300, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 60, specimenType: 'nonlinear',
+    channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+  });
+  const detector = createElement('detector', 500, 0);
+  detector.params.aperture = 120;
+  traceAll([laser(800, -30), laser(1040, 30), lens, sample, detector]);
 
-  // Both arms mistimed, symmetrically: their mean is the matched position, and
-  // a model that averaged them would draw a signal that cannot exist.
-  const straddling = bench(-30, 30);
-  assert.equal(straddling.beams.length, 3, 'the two arms must stay two beams');
-  assert.equal(straddling.reading.state, 'unsynchronized');
-  assert.ok(!straddling.spectrum.some(s => Math.abs(s.wavelength - 650) < 2),
-    'two mistimed arms averaged into a signal');
-
-  // One arm matched: that is the partner, and the signal is there.
-  const matched = bench(0, 30);
-  assert.equal(matched.reading.state, 'mixing');
-  assert.ok(matched.spectrum.some(s => Math.abs(s.wavelength - 650) < 2), 'the matched arm produced no signal');
+  const beams = specimenIncidentBeams(sample.id) || [];
+  assert.equal(beams.length, 2, `two beams reach the specimen, not ${beams.length} records`);
+  assert.equal(new Set(beams.map(b => b.branch)).size, 2, 'each beam is one branch');
+  const [a, b] = beams.sort((x, y) => x.wl - y.wl);
+  assert.ok(Math.abs(a.opl - b.opl) < 1e-6, `the arms are matched: ${a.opl} vs ${b.opl}`);
+  assert.equal(specimenTimingReading(sample.id).state, 'mixing');
+  assert.ok((detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650) < 2),
+    'no anti-Stokes line from a matched pair');
 });
 
 test('the specimen shows where the two beams are, not only when they are wrong', () => {

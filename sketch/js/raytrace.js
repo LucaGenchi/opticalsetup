@@ -1410,6 +1410,7 @@ function recordProbeBeam(surface, ray) {
   }
   seen.push({
     key,
+    branch: ray.branch || null,
     wl: ray.wl, opl: ray.opl,
     oplSum: weight * (ray.opl || 0), oplWeight: weight, oplMin: ray.opl || 0,
     // The arriving spectrum, so a process that mixes this beam can use its
@@ -4126,8 +4127,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const childGdd = 'gdd' in c ? c.gdd : r.gdd;
         stack.push({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
-          // A genuine split starts a new branch; a lone child continues the
-          // ray it came from and keeps its branch (the `single` path above).
+          // Anything that reaches here starts a new branch string: a real
+          // split, and also a lone child that changes the light's state (a new
+          // wavelength, spectrum, polarization or pulse). The `single` fast
+          // path above is narrower than "one child" and is the only case that
+          // keeps the parent's branch. Either way every sampling ray of one
+          // beam takes the same route and lands on the same string, which is
+          // what the grouping needs.
           branch: `${r.branch || ''}>${hit.surface.el?.id || ''}:${c.tag ?? ci}`,
           wl: c.wl !== undefined ? c.wl : r.wl,
           bw: c.bw !== undefined ? c.bw : r.bw,
