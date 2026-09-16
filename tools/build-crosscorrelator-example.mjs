@@ -19,9 +19,10 @@
 // mixing only between trains at the same repetition rate.
 //
 // What the model does not do: phase matching, so the polarizations and crystal
-// angle a real 447 nm line needs are absent, and one crystal at one angle
-// would not in reality give all three lines efficiently. The drawn lines are
-// authored fractions, gated by arrival time alone.
+// angle a real 447 nm line needs are absent, and the relative strengths of the
+// three lines — or whether a given crystal would show them together at all —
+// are not predicted. The drawn lines are authored fractions, gated by arrival
+// time alone.
 import { writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -123,7 +124,7 @@ export function crossCorrelatorScene() {
       text('legend', 30, AXIS + 250,
         `Behind the crystal: ${RED_SHG_NM} nm and ${IR_SHG_NM} nm, the two second harmonics, and ${SUM_NM.toFixed(1)} nm, the sum frequency of the pair.\n`
         + 'Both lasers run at 80 MHz; on a bench they would be locked to one clock, and this model mixes only trains at the same repetition rate.\n'
-        + 'Phase matching is not modelled: one crystal at one angle would not give all three lines efficiently, and the polarizations each process needs are not checked.\n'
+        + 'Phase matching is not modelled: the relative strengths of the three peaks are not predicted, and the polarizations each process needs are not checked.\n'
         + 'Difference-frequency generation is a checkbox on the crystal, left off here: its 3.4 µm line is outside the range this bench would look at.', 10),
     ],
   };

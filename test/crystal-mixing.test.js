@@ -302,5 +302,49 @@ test('a third colour makes its own pairs, sharing one mixing budget', () => {
   // And the books still balance across three beams.
   const total = (detector.spectrum || []).reduce((sum, s) => sum + s.power, 0);
   assert.ok(total > 2.99 && total <= 3 + 1e-6, `three beams in, ${total} out`);
-  assert.equal(mixReading('c').alsoPairs, 1, 'the 600 nm beam should report both of its pairs');
+  // Three colours make three pairs, and the readout counts the crystal's.
+  assert.equal(mixReading('c').alsoPairs, 2, 'the crystal should report all three of its pairs');
+});
+
+test('two trains of one colour stay two beams, whatever order they are traced in', () => {
+  // A wavelength is not an identity: a synchronous 1000 nm beam and a late one
+  // are different partners, and which is found must not depend on which source
+  // happens to be traced first.
+  const driver = () => el('pulsedlaser', 'drv', 0, -40, { wavelength: 600, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 });
+  const synchronous = () => el('pulsedlaser', 'sync', 0, 0, { wavelength: 1000, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 });
+  const late = () => el('pulsedlaser', 'late', -30, 40, { wavelength: 1000, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 });
+  const rest = () => [
+    el('crystal', 'c', 300, 0, { convert: 'shg', efficiency: 0.3, mixEfficiency: 0.5, aperture: 120 }),
+    el('detector', 'd', 600, 0, { aperture: 150 }),
+  ];
+  const sum = Math.round(mixWavelength('sfg', 600, 1000));
+  const run = sources => {
+    traceScene([...sources, ...rest()]);
+    const detector = detectorReading('d');
+    return (detector?.spectrum || [])
+      .filter(s => Math.abs(s.wavelength - sum) <= 1)
+      .reduce((total, s) => total + s.power, 0);
+  };
+  const a = run([driver(), synchronous(), late()]);
+  const b = run([driver(), late(), synchronous()]);
+  assert.ok(a > 0, 'the synchronous partner produced nothing');
+  assert.equal(a, b, 'the result changed when only the source order changed');
+});
+
+test('the readout describes the whole crystal, not the last ray through it', () => {
+  // 600 and 800 nm mix; 1030 nm arrives late and cannot. The crystal is
+  // mixing, and must not report that nothing does.
+  const elements = [
+    el('pulsedlaser', 'a', 0, -40, { wavelength: 600, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 }),
+    el('pulsedlaser', 'b', 0, 0, { wavelength: 800, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 }),
+    el('pulsedlaser', 'c3', -30, 40, { wavelength: 1030, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 }),
+    el('crystal', 'c', 300, 0, { convert: 'shg', efficiency: 0.3, mixEfficiency: 0.5, aperture: 120 }),
+    el('detector', 'd', 600, 0, { aperture: 150 }),
+  ];
+  traceScene(elements);
+  const reading = mixReading('c');
+  assert.equal(reading.state, 'mixing', 'a pair that cannot mix spoke for the crystal');
+  assert.equal(Math.round(reading.wl), Math.round(mixWavelength('sfg', 600, 800)));
+  assert.equal(reading.alsoPairs, 2, 'the other pairs at this crystal are not counted');
+  assert.match(mixStateText(reading), /2 more pairs at this crystal/);
 });

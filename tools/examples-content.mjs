@@ -958,13 +958,15 @@ export const exampleEntries = [
       coherent Raman source, an amplifier and its seed — must reach the sample at the same
       instant. Position is easy to see; timing is not. A picosecond of error is 0.3 mm of
       path, and nothing on the table shows it.</p>
-      <p><strong>A χ⁽²⁾ crystal shows it.</strong> The same susceptibility that doubles a
-      beam also sums two of them, so a crystal that makes a second harmonic makes a sum
-      frequency as well. Doubling needs one beam and happens whatever the timing. Mixing is
-      instantaneous and needs both pulses inside the crystal at once. So the spectrum behind
-      the crystal has a fixed reference and a variable line: the two second harmonics sit
-      where they are, and a third line appears between them only as the delay approaches
-      zero${cite(1)}.</p>
+      <p><strong>A χ⁽²⁾ crystal can show it.</strong> The same second-order polarization that
+      doubles a beam also sums two of them: both processes are allowed by the one
+      susceptibility, though whether each is <em>observable</em> in a given setup depends on
+      the wavelengths, the polarizations, the crystal's orientation and the detection. What
+      does not depend on the setup is the timing: doubling needs one beam and happens
+      whatever the delay, while mixing is instantaneous and needs both pulses inside the
+      crystal at once. So the spectrum behind the crystal has a fixed reference and a
+      variable peak — two second harmonics that sit where they are, and a third peak between
+      them that appears only as the delay approaches zero${cite(1)}.</p>
       <p>That is the standard bench recipe. Focus both beams into one crystal, look at the
       spectrum, and scan the delay until the third line appears. Its peak is
       <strong>time zero</strong>, and its width is the cross-correlation of the two pulses.
@@ -979,8 +981,10 @@ export const exampleEntries = [
       front of it. A shortpass dichroic behind the crystal dumps the two fundamentals, so
       the spectrometer sees only what the crystal made: <strong>516 nm</strong> and
       <strong>395 nm</strong>, the two second harmonics, and — at time zero —
-      <strong>447.5 nm</strong>, their sum frequency. The peaks have the width of the
-      200 fs pulses that made them.</p>
+      <strong>447.5 nm</strong>, their sum frequency. The peak shapes are drawing
+      conventions, not calculated nonlinear spectra: each harmonic carries its own beam's
+      spectrum scaled with the wavelength, while the mixed peak is emitted as a single line
+      with a pulse duration attached to it.</p>
       <p><strong>The delay.</strong> The 1032 nm beam is folded down onto the combiner and
       so carries 200 mm of path the other arm does not have. The delay line in the 790 nm
       arm is set to exactly that, so the two pulses reach the crystal together and the
@@ -1004,11 +1008,10 @@ export const exampleEntries = [
       would look at.</p>`,
     limitations: `<p>The crystal gates mixing on arrival time and nothing else. There is no
       phase matching, so the polarizations, crystal cut and angle each process would need
-      are absent — and in reality one crystal at one angle would not give two second
-      harmonics and their sum frequency with comparable efficiency, which is part of why a
-      bench aligns for the line it wants: this idealised χ⁽²⁾ proxy enables every beam's own
-      second harmonic and every pair's sum frequency, and their simultaneous visibility is an
-      assumption rather than a result. The reverse reading is not safe either — on a real
+      are absent. This idealised χ⁽²⁾ proxy enables every beam's own second harmonic and
+      every pair's sum frequency at once; their relative strengths, and whether all three
+      would be visible together in any particular crystal and geometry, are not predicted
+      here. A bench normally aligns for the line it wants. The reverse reading is not safe either — on a real
       bench a missing sum-frequency peak can mean a polarization, angle or overlap problem
       rather than a timing one. The focusing lens is drawn because a real setup
       focuses, but the overlap of the two foci is not calculated, and neither is the

@@ -267,7 +267,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "Behind the crystal: 395 nm and 516 nm, the two second harmonics, and 447.5 nm, the sum frequency of the pair.\nBoth lasers run at 80 MHz; on a bench they would be locked to one clock, and this model mixes only trains at the same repetition rate.\nPhase matching is not modelled: one crystal at one angle would not give all three lines efficiently, and the polarizations each process needs are not checked.\nDifference-frequency generation is a checkbox on the crystal, left off here: its 3.4 µm line is outside the range this bench would look at.",
+        "text": "Behind the crystal: 395 nm and 516 nm, the two second harmonics, and 447.5 nm, the sum frequency of the pair.\nBoth lasers run at 80 MHz; on a bench they would be locked to one clock, and this model mixes only trains at the same repetition rate.\nPhase matching is not modelled: the relative strengths of the three peaks are not predicted, and the polarizations each process needs are not checked.\nDifference-frequency generation is a checkbox on the crystal, left off here: its 3.4 µm line is outside the range this bench would look at.",
         "fontSize": 10,
         "fill": "#34454d"
       }

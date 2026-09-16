@@ -159,17 +159,34 @@ export function opoReading(elementId) {
 // any pair, so it needs to know what else is at the crystal.
 export const MIX_CONVERTS = new Set(['shg']);
 
-// crystal element id -> what its last mixing pass found: which pair it mixed,
-// or why it produced nothing. The inspector reads it, and the app raises a
-// toast when a pair is present but not synchronised.
+// crystal element id -> every pair that met at it during this trace, keyed by
+// the two beams' identities so the same pair is not counted once per sampling
+// ray. The readout describes the crystal as a whole: one pair that cannot mix
+// must not speak for a crystal where another pair is mixing.
 let mixStates = new Map();
 
-function recordMix(elementId, state) {
-  if (elementId) mixStates.set(elementId, state);
+function recordMix(elementId, pair) {
+  if (!elementId) return;
+  let pairs = mixStates.get(elementId);
+  if (!pairs) mixStates.set(elementId, pairs = new Map());
+  const key = pair.state === 'oneBeam' ? 'oneBeam'
+    : `${pair.driverKey || pair.driverWl}+${pair.partnerKey || pair.partnerWl}`;
+  // A crystal that mixes anything has more to say than one that does not.
+  if (key === 'oneBeam' && pairs.size) return;
+  if (key !== 'oneBeam') pairs.delete('oneBeam');
+  pairs.set(key, pair);
 }
 
 export function mixReading(elementId) {
-  return mixStates.get(elementId) || null;
+  const pairs = mixStates.get(elementId);
+  if (!pairs || !pairs.size) return null;
+  const all = [...pairs.values()];
+  if (all.length === 1 && all[0].state === 'oneBeam') return all[0];
+  // The pair the readout talks about: whichever is actually mixing most, and
+  // otherwise whichever is closest to doing so.
+  const best = all.slice().sort((a, b) =>
+    (b.state === 'mixing') - (a.state === 'mixing') || (b.overlap || 0) - (a.overlap || 0))[0];
+  return all.length > 1 ? { ...best, alsoPairs: all.length - 1 } : best;
 }
 
 // Sum- and difference-frequency generation in a chi(2) crystal (the model is
@@ -204,6 +221,9 @@ function mixingOutputs(s, ray, d, data) {
     const overlap = mixOverlap({ opl: ray.opl, pulse: ray.pulse }, partner);
     const reading = {
       partnerWl: partner.wl, driverWl: ray.wl,
+      // Two trains of one colour are two pairs, so identity is the beam, not
+      // just its wavelength.
+      driverKey: ray.pulse?.sourceId || `${ray.wl}`, partnerKey: partner.key || `${partner.wl}`,
       wl: mixWavelength('sfg', ray.wl, partner.wl),
       dfgWl: data.mixDfg ? mixWavelength('dfg', ray.wl, partner.wl) : null,
       skewNs: overlap.skewNs, overlap: overlap.factor,
@@ -216,11 +236,7 @@ function mixingOutputs(s, ray, d, data) {
     if (overlap.comparable && overlap.factor < MIN_OVERLAP) { pairs.push({ ...reading, state: 'unsynchronized' }); continue; }
     pairs.push({ ...reading, state: 'mixing', overlapDetail: overlap, partner });
   }
-  // The pair the readout talks about: whichever is actually mixing most, and
-  // otherwise whichever is closest to doing so.
-  const best = pairs.slice().sort((a, b) =>
-    (b.state === 'mixing') - (a.state === 'mixing') || (b.overlap || 0) - (a.overlap || 0))[0];
-  recordMix(crystalId, pairs.length > 1 ? { ...best, alsoPairs: pairs.length - 1 } : best);
+  for (const pair of pairs) recordMix(crystalId, pair);
 
   const live = pairs.filter(pair => pair.state === 'mixing' && pair.overlap > 0);
   if (!live.length || !(fraction > 0) || shgShare >= 1) return null;
@@ -1308,11 +1324,27 @@ const MIN_OVERLAP = 0.02;
 // Returns null when there is nothing to transfer.
 // Record the colour and, for SRS, whatever intensity modulation this beam is
 // already carrying, so the real pass afterwards can mix and transfer.
+// A beam is sampled by several rays, which must not be recorded as several
+// beams -- but two trains of the same colour arriving at different times are
+// two beams, and collapsing them by wavelength alone would make the result
+// depend on which source happened to be traced first.
+function probeBeamKey(ray) {
+  const pulse = ray.pulse;
+  const gates = (pulse?.gates || [])
+    .map(g => `${g.opl}|${g.frequencyMHz}|${g.duty}|${g.phaseNs}|${g.shape || ''}`).join(';');
+  return [
+    ray.wl.toFixed(9), (ray.opl || 0).toFixed(6), pulse?.sourceId || '',
+    pulse?.repRateMHz ?? '', pulse?.phaseNs ?? '', pulse?.pulseWidthFs ?? '', gates,
+  ].join('/');
+}
+
 function recordProbeBeam(surface, ray) {
   let seen = specimenProbe.get(surface.id);
   if (!seen) specimenProbe.set(surface.id, seen = []);
-  if (seen.some(b => Math.abs(b.wl - ray.wl) < 1e-9)) return;
+  const key = probeBeamKey(ray);
+  if (seen.some(b => b.key === key)) return;
   seen.push({
+    key,
     wl: ray.wl, opl: ray.opl,
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
@@ -4406,7 +4438,7 @@ export function traceScene(elements, beams = []) {
             && !(s.kind === 'attenuate' && s.data.specimen)) continue;
         const beams = specimenProbe.get(s.id) || [];
         s.data.incidentBeams = beams;
-        s.data.incidentWls = beams.map(b => b.wl);
+        s.data.incidentWls = [...new Set(beams.map(b => b.wl))];
         if (s.el) specimenIncident.set(s.el.id, beams);
       }
     } finally {
