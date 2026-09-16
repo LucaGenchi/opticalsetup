@@ -191,6 +191,18 @@ export function mixDurationFs(aFs, bFs) {
   return 1 / Math.sqrt(1 / (a * a) + 1 / (b * b));
 }
 
+// How wide the mixed line is. Frequencies add, so for two uncorrelated
+// Gaussian inputs the sum-frequency width is their widths added in quadrature
+// — in wavenumber, where that addition is linear. A line drawn with no width
+// at all would read as an enormous spectral density beside the harmonics it is
+// meant to be compared with.
+export function mixWidthNm(outWl, aWl, aFwhmNm, bWl, bFwhmNm) {
+  if (!(outWl > 0)) return 0;
+  const a = nmToWavenumberWidth(aWl, aFwhmNm), b = nmToWavenumberWidth(bWl, bFwhmNm);
+  const widthCm = Math.hypot(a, b);
+  return widthCm > 0 ? wavenumberToNmWidth(outWl, widthCm) : 0;
+}
+
 // The mixed output's pulse train. It exists only while both inputs are at the
 // crystal, so its timing comes from the pair rather than from whichever beam
 // drives it: the centre is the Gaussian product's centre, and a gate on

@@ -38,7 +38,7 @@ import {
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
-import { opoPulse, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength } from './parametric.js';
+import { opoPulse, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -169,8 +169,10 @@ function recordMix(elementId, pair) {
   if (!elementId) return;
   let pairs = mixStates.get(elementId);
   if (!pairs) mixStates.set(elementId, pairs = new Map());
+  // Both beams of a pair report it, so the key cannot depend on which of them
+  // is speaking.
   const key = pair.state === 'oneBeam' ? 'oneBeam'
-    : `${pair.driverKey || pair.driverWl}+${pair.partnerKey || pair.partnerWl}`;
+    : [pair.driverKey || pair.driverWl, pair.partnerKey || pair.partnerWl].sort().join('+');
   // A crystal that mixes anything has more to say than one that does not.
   if (key === 'oneBeam' && pairs.size) return;
   if (key !== 'oneBeam') pairs.delete('oneBeam');
@@ -195,35 +197,58 @@ export function mixReading(elementId) {
 // are there: that extra line appearing is what finding time zero looks like on
 // a bench, against the second harmonics that never move.
 //
-// Power is an allocation, not a two-field calculation. The beam's own second
-// harmonic is reserved first; mixing draws an authored fraction of what is
-// left, and all of this beam's pairs share that one budget, so the outputs and
-// the residual always add up to the beam.
+// Power is an allocation, not a two-field calculation. Doubling reserves its
+// authored fraction of each beam; the mixing then draws its own authored
+// fraction of what doubling leaves -- of BOTH beams of a pair, which is what
+// puts a mixed line in the same range as the two harmonics beside it. Every
+// pair a beam takes part in shares that one budget, so the outputs and the
+// residual always add up to the beams that made them.
 function mixingOutputs(s, ray, d, data) {
   const crystalId = s.el?.id || null;
-  const shgShare = Math.min(1, Math.max(0, data.efficiency ?? 1));
-  const fraction = Math.min(1, Math.max(0, data.mixEfficiency ?? 0.1));
+  const shgShare = clampConversion(data.efficiency ?? 1);
+  const fraction = clampConversion(data.mixEfficiency ?? 0.3);
   // Light this crystal made itself is not fed back into its own mixing.
   if (crystalId && Array.isArray(ray.parametricPath) && ray.parametricPath.includes(crystalId)) return null;
-  // Every unordered pair is emitted once, by its shorter wavelength.
-  const partners = (data.incidentBeams || [])
-    .filter(beam => beam.wl - ray.wl >= MIXING_MIN_SEPARATION_NM)
-    .sort((a, b) => a.wl - b.wl);
+  const beams = data.incidentBeams || [];
+  const partners = beams.filter(beam => Math.abs(beam.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM);
   if (!partners.length) {
-    // Nothing to mix with here: either this beam is alone, or it is the long
-    // one of a pair and the short one emits for both.
-    const alone = !(data.incidentBeams || []).some(beam => Math.abs(beam.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM);
-    if (alone) recordMix(crystalId, { state: 'oneBeam' });
+    recordMix(crystalId, { state: 'oneBeam' });
     return null;
   }
+  const remainder = 1 - shgShare;
+  // How much of itself one beam offers a pair, and the factor that keeps a
+  // beam in several pairs from offering more of itself than it has.
+  const request = (a, b) => {
+    const overlap = mixOverlap(a, b);
+    if (overlap.unsupported) return { overlap, ask: 0 };
+    if (overlap.comparable && overlap.factor < MIN_OVERLAP) return { overlap, ask: 0 };
+    return { overlap, ask: fraction * overlap.factor };
+  };
+  const beamScale = beam => {
+    const asked = beams
+      .filter(other => Math.abs(other.wl - beam.wl) >= MIXING_MIN_SEPARATION_NM)
+      .reduce((total, other) => total + request(beam, other).ask, 0);
+    return asked > 1 ? 1 / asked : 1;
+  };
+  const self = { opl: ray.opl, pulse: ray.pulse };
+  const ownScale = beamScale(self);
+  // This sampling ray's share of its own beam, so a beam drawn as several rays
+  // does not hand its partner's whole contribution to each of them.
+  const ownBeam = beams.find(beam => Math.abs(beam.wl - ray.wl) < 1e-9 && beam.opl === ray.opl);
+  const rayShare = ownBeam?.intensity > 0 ? Math.min(1, ray.intensity / ownBeam.intensity) : 1;
+
   const pairs = [];
+  let debited = 0;
+  const path = [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), crystalId].filter(Boolean);
+  const rays = [];
   for (const partner of partners) {
-    const overlap = mixOverlap({ opl: ray.opl, pulse: ray.pulse }, partner);
+    const { overlap, ask } = request(self, partner);
     const reading = {
       partnerWl: partner.wl, driverWl: ray.wl,
       // Two trains of one colour are two pairs, so identity is the beam, not
-      // just its wavelength.
-      driverKey: ray.pulse?.sourceId || `${ray.wl}`, partnerKey: partner.key || `${partner.wl}`,
+      // just its wavelength — and both sides of a pair must name each other the
+      // same way, or one pair would be counted as two.
+      driverKey: probeBeamKey(ray), partnerKey: partner.key || `${partner.wl}`,
       wl: mixWavelength('sfg', ray.wl, partner.wl),
       dfgWl: data.mixDfg ? mixWavelength('dfg', ray.wl, partner.wl) : null,
       skewNs: overlap.skewNs, overlap: overlap.factor,
@@ -234,37 +259,32 @@ function mixingOutputs(s, ray, d, data) {
     // rather than physically impossible, and are reported as such.
     if (overlap.unsupported) { pairs.push({ ...reading, state: 'unsupported' }); continue; }
     if (overlap.comparable && overlap.factor < MIN_OVERLAP) { pairs.push({ ...reading, state: 'unsynchronized' }); continue; }
-    pairs.push({ ...reading, state: 'mixing', overlapDetail: overlap, partner });
-  }
-  for (const pair of pairs) recordMix(crystalId, pair);
-
-  const live = pairs.filter(pair => pair.state === 'mixing' && pair.overlap > 0);
-  if (!live.length || !(fraction > 0) || shgShare >= 1) return null;
-  // Each pair asks for its share of the mixing budget; if together they ask
-  // for more than there is, they are scaled down rather than overdrawn.
-  const requests = live.map(pair => fraction * pair.overlap);
-  const asked = requests.reduce((total, r) => total + r, 0);
-  const scale = asked > 1 ? 1 / asked : 1;
-  const budget = 1 - shgShare;
-  const path = [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), crystalId].filter(Boolean);
-  const rays = [];
-  let converted = 0;
-  live.forEach((pair, index) => {
-    const lines = [['sfg', pair.wl], ['dfg', pair.dfgWl]].filter(([, wl]) => wl > 0);
-    if (!lines.length) return;
-    // Sum and difference frequency share the pair's allocation; asking for the
-    // second line does not conjure more light.
-    const each = budget * requests[index] * scale / lines.length;
-    if (!(each > 0)) return;
+    pairs.push({ ...reading, state: 'mixing' });
+    if (!(ask > 0) || !(remainder > 0)) continue;
+    // What this beam gives the pair, whether or not it is the one that emits.
+    const own = remainder * ask * ownScale;
+    debited += own;
+    // One output per pair: the shorter wavelength emits it, carrying what both
+    // beams put in.
+    if (ray.wl > partner.wl) continue;
+    const fromPartner = remainder * request(partner, self).ask * beamScale(partner)
+      * (partner.intensity || 0) * rayShare;
+    const total = ray.intensity * own + fromPartner;
+    const lines = [['sfg', reading.wl], ['dfg', reading.dfgWl]].filter(([, wl]) => wl > 0);
+    if (!lines.length || !(total > 0)) continue;
     for (const [kind, wl] of lines) {
-      converted += each;
+      // The two inputs' widths carry into the line they make, so a spectrum
+      // readout compares it with the harmonics on the same footing.
+      const bw = mixWidthNm(wl, ray.wl, pumpWidthNm(ray), partner.wl, pumpWidthNm(partner));
       rays.push({
-        d, wl, bw: 0, spec: null, tag: kind,
-        intensity: ray.intensity * each,
-        pulse: mixPulse(ray.pulse, pair.partner.pulse, {
+        d, wl, bw, spec: bw > 0 ? gaussianSpectrum(wl, bw) : null, tag: kind,
+        // Sum and difference frequency share the pair's allocation; asking for
+        // the second line does not conjure more light.
+        intensity: total / lines.length,
+        pulse: mixPulse(ray.pulse, partner.pulse, {
           crystalId, kind, wl,
-          centerNs: pair.overlapDetail.centerNs, oplMm: ray.opl, repRateMHz: pair.overlapDetail.repRateMHz,
-          partnerPulseOffset: pair.overlapDetail.partnerPulseOffset, periodNs: pair.overlapDetail.periodNs,
+          centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
+          partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
         }),
         parametricPath: path,
         // New light, referenced to the crystal exit like the OPO's outputs.
@@ -273,8 +293,11 @@ function mixingOutputs(s, ray, d, data) {
         phaseIssue: 'sum/difference frequency output: optical phase relative to the inputs is not modelled',
       });
     }
-  });
-  return rays.length ? { rays, converted } : null;
+  }
+  for (const pair of pairs) recordMix(crystalId, pair);
+  // `converted` is what this beam gave away, which is what its residual owes,
+  // whether or not this ray was the one that drew the line.
+  return debited > 0 || rays.length ? { rays, converted: debited } : null;
 }
 
 export function metalensReading(elementId) {
@@ -1303,6 +1326,11 @@ function emissionAngles(count, axisAngle, bias = AXIS_BIAS) {
 // Below this the two pulses barely meet and the signal is reported as absent
 // rather than as a vanishing sliver.
 const MIN_OVERLAP = 0.02;
+// No single pass of a real crystal converts everything: 60 % is already a very
+// good stage, and letting the workbench author more would draw light no bench
+// would see.
+export const MAX_CONVERSION = 0.6;
+const clampConversion = value => Math.min(MAX_CONVERSION, Math.max(0, Number(value) || 0));
 
 // The wavelength one signal channel produces for a ray of wavelength rayWl.
 // Single-beam channels scale the incident colour. Mixing channels (SFG,
@@ -1342,10 +1370,13 @@ function recordProbeBeam(surface, ray) {
   let seen = specimenProbe.get(surface.id);
   if (!seen) specimenProbe.set(surface.id, seen = []);
   const key = probeBeamKey(ray);
-  if (seen.some(b => b.key === key)) return;
+  const already = seen.find(b => b.key === key);
+  // A beam sampled by several rays is one beam carrying all of their power.
+  if (already) { already.intensity += Math.max(0, ray.intensity || 0); return; }
   seen.push({
     key,
     wl: ray.wl, opl: ray.opl,
+    intensity: Math.max(0, ray.intensity || 0),
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),
   });
@@ -3484,7 +3515,9 @@ function interact(ray, hit) {
       return out;
     }
     case 'transmit': {
-      const efficiency = Math.min(1, Math.max(0, data.efficiency ?? 1));
+      const efficiency = data.convert && data.convert !== 'none'
+        ? clampConversion(data.efficiency ?? 1)
+        : Math.min(1, Math.max(0, data.efficiency ?? 1));
       // The probe pass records which colours reach a mixing crystal, so the
       // real pass afterwards knows what there is to mix with. Conversion still
       // happens on that pass, so a harmonic made upstream is available as a

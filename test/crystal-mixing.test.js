@@ -26,8 +26,15 @@ function bench({ dx = 0, dfg = false, repB = 80, widthFs = 200, cw = false, effi
   return { reading: mixReading('c'), detector: detectorReading('d') };
 }
 
-const sawWavelength = (detector, wl, tolerance = 1) =>
+// The generated lines are bands, not single wavelengths: the mixed output
+// carries the two inputs' widths added in quadrature, as the harmonics carry
+// their own beam's. A window has to be wide enough to hold one whole band and
+// narrow enough to exclude its neighbours.
+const sawWavelength = (detector, wl, tolerance = 8) =>
   (detector?.spectrum || []).some(s => Math.abs(s.wavelength - wl) <= tolerance);
+const bandPower = (detector, wl, span) => (detector?.spectrum || [])
+  .filter(s => Math.abs(s.wavelength - wl) <= span)
+  .reduce((total, s) => total + s.power, 0);
 
 test('sum and difference frequency follow photon energy conservation', () => {
   // 1/λ3 = 1/λ1 + 1/λ2 and 1/λ1 − 1/λ2.
@@ -54,10 +61,11 @@ test('two synchronized beams mix, and their sum frequency reaches the detector',
   assert.equal(reading.skewNs, 0);
   assert.equal(reading.overlap, 1);
   assert.ok(sawWavelength(detector, 450.27), 'no sum-frequency light at the detector');
-  // The mixing draws its authored fraction of what the beam's own second
-  // harmonic leaves behind: (1 − 0.2) × 0.4 at full overlap.
-  const line = (detector.spectrum || []).find(s => Math.abs(s.wavelength - 450.27) <= 1);
-  assert.ok(Math.abs(line.power - 0.8 * 0.4) < 1e-9, `sum-frequency power ${line.power}`);
+  // The mixing draws its authored fraction of what doubling leaves of BOTH
+  // beams — (1 − 0.2) × 0.4 of each — which is what puts the mixed line in the
+  // same range as the harmonics beside it.
+  const mixed = bandPower(detector, 450.27, 20);
+  assert.ok(Math.abs(mixed - 2 * 0.8 * 0.4) < 1e-6, `sum-frequency power ${mixed}`);
 });
 
 test('one beam alone still doubles, and mixes with nothing', () => {
@@ -91,10 +99,10 @@ test('both beams double whatever the timing, and only the pair needs it', () => 
 
 test('difference frequency is off by default and appears when asked for', () => {
   const dfgWl = mixWavelength('dfg', 800, 1030);
-  assert.ok(!sawWavelength(bench().detector, dfgWl, 5), 'DFG was drawn without being asked for');
+  assert.equal(bandPower(bench().detector, dfgWl, 600), 0, 'DFG was drawn without being asked for');
   const { reading, detector } = bench({ dfg: true });
   assert.ok(Math.abs(reading.dfgWl - dfgWl) < 1e-6);
-  assert.ok(sawWavelength(detector, dfgWl, 5), 'DFG was asked for and not drawn');
+  assert.ok(bandPower(detector, dfgWl, 600) > 0, 'DFG was asked for and not drawn');
   assert.match(mixStateText(reading), /difference 3583 nm/);
 });
 
@@ -103,16 +111,17 @@ test('the driving beam is debited for its harmonic and its share of the mixing',
   // books must not lose power that nothing absorbed.
   const { reading, detector } = bench({ dx: -0.03, efficiency: 0.5 });
   assert.equal(reading.state, 'mixing');
-  // The residual driver is a band, not a line: a 200 fs pulse has bandwidth.
-  const power = (wl, span) => (detector.spectrum || [])
-    .filter(s => Math.abs(s.wavelength - wl) <= span)
-    .reduce((total, s) => total + s.power, 0);
-  const doubled = 0.2;                                  // the bench's SHG fraction
-  const mixed = (1 - doubled) * 0.5 * reading.overlap;  // of what SHG leaves
-  assert.ok(Math.abs(power(450.27, 1) - mixed) < 1e-9, `sum frequency ${power(450.27, 1)} vs ${mixed}`);
+  // Every line here is a band: a 200 fs pulse has bandwidth, and so does what
+  // it makes.
+  const power = (wl, span) => bandPower(detector, wl, span);
+  const doubled = 0.2;                                      // the bench's SHG fraction
+  const perBeam = (1 - doubled) * 0.5 * reading.overlap;    // each beam's contribution
+  const mixed = 2 * perBeam;                                // both beams feed the line
+  assert.ok(Math.abs(power(450.27, 20) - mixed) < 1e-6, `sum frequency ${power(450.27, 20)} vs ${mixed}`);
   assert.ok(Math.abs(power(400, 6) - doubled) < 1e-6, `harmonic ${power(400, 6)} vs ${doubled}`);
-  assert.ok(Math.abs(power(800, 20) - (1 - doubled - mixed)) < 1e-6,
-    `residual ${power(800, 20)} vs ${1 - doubled - mixed}`);
+  // Each beam is debited only its own contribution.
+  assert.ok(Math.abs(power(800, 20) - (1 - doubled - perBeam)) < 1e-6,
+    `residual ${power(800, 20)} vs ${1 - doubled - perBeam}`);
 });
 
 test('the signal disappears when the two pulses stop arriving together', () => {
@@ -203,7 +212,8 @@ test('difference frequency is longer than its shorter input, but not always than
   const { reading, detector } = bench({ dfg: true });
   assert.equal(reading.state, 'mixing');
   assert.ok(reading.dfgWl > 1030, `difference frequency ${reading.dfgWl}`);
-  assert.ok(sawWavelength(detector, 3582.6, 2), 'no difference-frequency light at the detector');
+  // A difference-frequency band at 3.6 µm is wide: width in nm scales as λ².
+  assert.ok(bandPower(detector, 3582.6, 600) > 0, 'no difference-frequency light at the detector');
   // 400 nm with 1000 nm lands at 667 nm, between the two inputs.
   assert.ok(Math.abs(mixWavelength('dfg', 400, 1000) - 666.667) < 1e-3);
 });

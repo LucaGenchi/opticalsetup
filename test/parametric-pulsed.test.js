@@ -156,15 +156,16 @@ test('a ns OPO takes its signal width from the cavity, and the idler adds the pu
 test('a single-frequency CW pump with a single-frequency cavity stays exact', () => {
   const { long, short, state } = opoScene({
     source: 'cwlaser', laser: { wavelength: 1064, avgPowerW: 15 },
-    crystal: { pumpWl: 1064, signalWl: 1550, linewidthMode: 'signal', signalLinewidthCm: 0, efficiency: 0.9 },
+    // 0.6 is the ceiling the crystal allows: no single pass converts everything.
+    crystal: { pumpWl: 1064, signalWl: 1550, linewidthMode: 'signal', signalLinewidthCm: 0, efficiency: 0.6 },
     cutoff: 2500,
   });
   const idler = idlerWavelength(1064, 1550);
   near(long.wavelength, idler, 1e-9, 'idler');
   assert.equal(fwhm(long), 0);
   assert.equal(long.pulse, null);
-  near(long.signal, 0.9 * 1550 / (1550 + idler), 1e-9, 'idler power');
-  near(short.signal, 0.1 + 0.9 * idler / (1550 + idler), 1e-9, 'pump + signal');
+  near(long.signal, 0.6 * 1550 / (1550 + idler), 1e-9, 'idler power');
+  near(short.signal, 0.4 + 0.6 * idler / (1550 + idler), 1e-9, 'pump + signal');
   assert.equal(state.waves.signal.bw, 0);
 });
 
@@ -192,7 +193,7 @@ test('a line signal and a band idler at degeneracy keep their own spectra throug
     Object.assign(pump.params, TISA);
     const xtal = createElement('crystal', 220, 160);
     Object.assign(xtal.params, {
-      convert: 'opo', pumpWl: 800, signalWl, efficiency: 1, transmitPump: false,
+      convert: 'opo', pumpWl: 800, signalWl, efficiency: 0.6, transmitPump: false,
       linewidthMode: 'both', signalLinewidthCm: 0, idlerLinewidthCm: 100,
     });
     const band = createElement('filter', 320, 160);
@@ -204,7 +205,9 @@ test('a line signal and a band idler at degeneracy keep their own spectra throug
   const at = run(1600);
   const near1600 = run(1600.0001);
   near(at, near1600, 1e-3, 'degenerate and near-degenerate transmission');
-  assert.ok(at > 0.5 && at < 0.6, `the line half passes and the band mostly does not (got ${at})`);
+  // Of the 60 % converted, the zero-width signal passes the 1 nm bandpass and
+  // the 100 cm⁻¹ idler band mostly does not, so a little over half survives.
+  assert.ok(at > 0.3 && at < 0.36, `the line half passes and the band mostly does not (got ${at})`);
 });
 
 test('generated pulses carry only train fields, never the pump spectrum or chirp description', () => {

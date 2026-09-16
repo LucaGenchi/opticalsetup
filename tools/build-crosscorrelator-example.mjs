@@ -48,10 +48,11 @@ const AXIS = 400;
 const IR_AXIS = 200;
 const LASER_X = 100, COMBINE_X = 900;
 export const FOCAL_MM = 150;
-// The mixed line is drawn generously so the whole scan stays visible: below
-// 2 % of a beam the workbench stops drawing a ray at all, and a smaller share
-// would make the line vanish while it still had overlap to show.
-export const MIX_SHARE = 0.4;
+// Doubling takes 30 % of each beam; the mixing then takes 30 % of what is left
+// of both of them, which puts the sum-frequency peak in the same range as the
+// two harmonics — 0.42 against 0.3 apiece, for two equal beams.
+export const SHG_SHARE = 0.3;
+export const MIX_SHARE = 0.3;
 export const FOLD_DROP_MM = AXIS - IR_AXIS;          // the 1032 nm arm's extra leg
 export const DELAY_MM = FOLD_DROP_MM;                // what the delay line matches
 export const DELAY_NS = DELAY_MM / C_MM_PER_NS;
@@ -98,7 +99,7 @@ export function crossCorrelatorScene() {
         { rot: -45, ...named('shortpass 900 nm · combiner', 'b') }),
       el('focus', 'lens', { x: COMBINE_X + 100, y: AXIS }, { f: FOCAL_MM, dia: 25.4 }, named(`f = ${FOCAL_MM} mm`, 'b')),
       el('crystal', 'crystal', { x: COMBINE_X + 100 + FOCAL_MM, y: AXIS }, {
-        convert: 'shg', aperture: 16, efficiency: 0.3, mixEfficiency: MIX_SHARE, mixDfg: false, transmitPump: true,
+        convert: 'shg', aperture: 16, efficiency: SHG_SHARE, mixEfficiency: MIX_SHARE, mixDfg: false, transmitPump: true,
       }, named('χ⁽²⁾ crystal', 't')),
       // The spectrum behind the crystal is the whole instrument: two harmonics
       // always, a third line only at time zero. A dichroic drops the two
@@ -123,6 +124,7 @@ export function crossCorrelatorScene() {
         + 'while the two second harmonics stay exactly where they were. That is the measurement.', 10),
       text('legend', 30, AXIS + 250,
         `Behind the crystal: ${RED_SHG_NM} nm and ${IR_SHG_NM} nm, the two second harmonics, and ${SUM_NM.toFixed(1)} nm, the sum frequency of the pair.\n`
+        + `Doubling takes ${SHG_SHARE * 100} % of each beam and the mixing ${MIX_SHARE * 100} % of what is left of both, so the three peaks sit in the same range: 0.30, 0.30 and 0.42 of a beam.\n`
         + 'Both lasers run at 80 MHz; on a bench they would be locked to one clock, and this model mixes only trains at the same repetition rate.\n'
         + 'Phase matching is not modelled: the relative strengths of the three peaks are not predicted, and the polarizations each process needs are not checked.\n'
         + 'Difference-frequency generation is a checkbox on the crystal, left off here: its 3.4 µm line is outside the range this bench would look at.', 10),

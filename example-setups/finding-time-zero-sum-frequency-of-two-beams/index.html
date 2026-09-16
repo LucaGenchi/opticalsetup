@@ -104,8 +104,8 @@
       <strong>395 nm</strong>, the two second harmonics, and — at time zero —
       <strong>447.5 nm</strong>, their sum frequency. The peak shapes are drawing
       conventions, not calculated nonlinear spectra: each harmonic carries its own beam's
-      spectrum scaled with the wavelength, while the mixed peak is emitted as a single line
-      with a pulse duration attached to it.</p>
+      spectrum scaled with the wavelength, and the mixed peak is given the two inputs'
+      widths added in quadrature, so that all three can be read on one intensity axis.</p>
       <p><strong>The delay.</strong> The 1032 nm beam is folded down onto the combiner and
       so carries 200 mm of path the other arm does not have. The delay line in the 790 nm
       arm is set to exactly that, so the two pulses reach the crystal together and the
@@ -137,12 +137,14 @@
       rather than a timing one. The focusing lens is drawn because a real setup
       focuses, but the overlap of the two foci is not calculated, and neither is the
       conversion's dependence on intensity: each harmonic is an authored 30 % of its beam
-      and the mixed peak an authored share of what doubling leaves of the 790 nm beam,
-      scaled by the temporal overlap; it is drawn generously so the whole scan stays
-      visible. Only that beam is debited for the mixing; the 1032 nm beam's power is not
-      used in the calculation at all. Holding the two second harmonics fixed while the
-      mixed peak rises is the weak-conversion convention this model draws; a strongly
-      depleted experiment would show them change too.</p>
+      and the mixed peak 30 % of what doubling leaves of <em>both</em> beams, scaled by the
+      temporal overlap: 0.30 in each harmonic and 0.42 in the sum frequency, for two equal
+      beams. That proportion is a drawing convention chosen so the three peaks sit in the
+      same range, as they do on a bench, rather than a calculated efficiency — and no
+      conversion fraction here can exceed 60 %, since no single pass converts everything.
+      Holding the two second harmonics fixed while the mixed peak rises is the
+      weak-conversion convention this model draws; a strongly depleted experiment would show
+      them change too.</p>
       <p>The drawn width of the correlation is therefore a timing proxy built from the two
       authored pulse durations, not a measurement: it cannot be used to retrieve a pulse
       width the way a real cross-correlation can, and it assumes ideal Gaussian envelopes
