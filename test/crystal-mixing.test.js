@@ -12,14 +12,14 @@ const el = (type, id, x, y, params = {}) => ({ type, id, x, y, rot: 0, params: {
 // Two pulsed beams, well clear of each other's bodies, crossing one crystal.
 // `dx` moves the second laser along its own beam, which is exactly what a
 // delay stage does: 1 mm of extra path is 3.34 ps of delay.
-function bench({ dx = 0, convert = 'sfg', repB = 80, widthFs = 200, cw = false, efficiency = 0.4 } = {}) {
+function bench({ dx = 0, dfg = false, repB = 80, widthFs = 200, cw = false, efficiency = 0.4 } = {}) {
   const second = cw
     ? el('cwlaser', 'b', dx, 25, { wavelength: 800, power: 1, dia: 2 })
     : el('pulsedlaser', 'b', dx, 25, { wavelength: 800, pulseWidthFs: widthFs, repRateMHz: repB, power: 1, dia: 2 });
   const elements = [
     el('pulsedlaser', 'a', 0, -25, { wavelength: 1030, pulseWidthFs: widthFs, repRateMHz: 80, power: 1, dia: 2 }),
     second,
-    el('crystal', 'c', 300, 0, { convert, efficiency, aperture: 80 }),
+    el('crystal', 'c', 300, 0, { convert: 'shg', mixEfficiency: efficiency, mixDfg: dfg, efficiency: 0.2, aperture: 80 }),
     el('detector', 'd', 600, 0, { aperture: 120 }),
   ];
   traceScene(elements);
@@ -54,25 +54,52 @@ test('two synchronized beams mix, and their sum frequency reaches the detector',
   assert.equal(reading.skewNs, 0);
   assert.equal(reading.overlap, 1);
   assert.ok(sawWavelength(detector, 450.27), 'no sum-frequency light at the detector');
-  // The drawn signal is the authored fraction of the driving beam, and it is
-  // attributed to that beam rather than to the crystal.
+  // The mixing draws its authored fraction of what the beam's own second
+  // harmonic leaves behind: (1 − 0.2) × 0.4 at full overlap.
   const line = (detector.spectrum || []).find(s => Math.abs(s.wavelength - 450.27) <= 1);
-  assert.ok(Math.abs(line.power - 0.4) < 1e-9, `sum-frequency power ${line.power}`);
+  assert.ok(Math.abs(line.power - 0.8 * 0.4) < 1e-9, `sum-frequency power ${line.power}`);
 });
 
-test('one beam alone produces nothing, whatever its power', () => {
+test('one beam alone still doubles, and mixes with nothing', () => {
+  // A chi(2) crystal does not choose: doubling needs one beam, mixing needs
+  // two. With one beam the harmonic is all there is.
   const elements = [
     el('pulsedlaser', 'a', 0, 0, { wavelength: 1030, pulseWidthFs: 200, repRateMHz: 80, power: 5 }),
-    el('crystal', 'c', 300, 0, { convert: 'sfg', efficiency: 0.9, aperture: 40 }),
+    el('crystal', 'c', 300, 0, { convert: 'shg', efficiency: 0.3, mixEfficiency: 0.5, aperture: 40 }),
     el('detector', 'd', 600, 0, { aperture: 60 }),
   ];
   traceScene(elements);
   assert.equal(mixReading('c').state, 'oneBeam');
-  assert.ok(!sawWavelength(detectorReading('d'), 515), 'a single beam produced a harmonic in a mixing mode');
+  assert.ok(sawWavelength(detectorReading('d'), 515, 5), 'the single beam did not double');
 });
 
-test('the driving beam is debited exactly what the pair generates', () => {
-  // Half an overlap is half a signal, and the residual has to agree: the
+test('both beams double whatever the timing, and only the pair needs it', () => {
+  // This is the bench signature: two second harmonics that never move, and a
+  // third line that comes and goes with the delay.
+  const lines = detector => [...new Set((detector?.spectrum || [])
+    .map(s => Math.round(s.wavelength)))].filter(w => w < 700);
+  const together = lines(bench().detector);
+  const apart = lines(bench({ dx: -30 }).detector);
+  for (const harmonic of [515, 400]) {
+    assert.ok(together.some(w => Math.abs(w - harmonic) <= 6), `${harmonic} nm harmonic missing at time zero`);
+    assert.ok(apart.some(w => Math.abs(w - harmonic) <= 6), `${harmonic} nm harmonic missing off time zero`);
+  }
+  const sum = Math.round(1 / (1 / 800 + 1 / 1030));
+  assert.ok(together.some(w => Math.abs(w - sum) <= 1), 'no sum frequency at time zero');
+  assert.ok(!apart.some(w => Math.abs(w - sum) <= 1), 'the sum frequency survived a 100 ps mismatch');
+});
+
+test('difference frequency is off by default and appears when asked for', () => {
+  const dfgWl = mixWavelength('dfg', 800, 1030);
+  assert.ok(!sawWavelength(bench().detector, dfgWl, 5), 'DFG was drawn without being asked for');
+  const { reading, detector } = bench({ dfg: true });
+  assert.ok(Math.abs(reading.dfgWl - dfgWl) < 1e-6);
+  assert.ok(sawWavelength(detector, dfgWl, 5), 'DFG was asked for and not drawn');
+  assert.match(mixStateText(reading), /difference 3583 nm/);
+});
+
+test('the driving beam is debited for its harmonic and its share of the mixing', () => {
+  // Half an overlap is half a mixed line, and the residual has to agree: the
   // books must not lose power that nothing absorbed.
   const { reading, detector } = bench({ dx: -0.03, efficiency: 0.5 });
   assert.equal(reading.state, 'mixing');
@@ -80,19 +107,21 @@ test('the driving beam is debited exactly what the pair generates', () => {
   const power = (wl, span) => (detector.spectrum || [])
     .filter(s => Math.abs(s.wavelength - wl) <= span)
     .reduce((total, s) => total + s.power, 0);
-  const converted = 0.5 * reading.overlap;
-  assert.ok(Math.abs(power(450.27, 1) - converted) < 1e-9, `signal ${power(450.27, 1)} vs ${converted}`);
-  assert.ok(Math.abs(power(800, 20) - (1 - converted)) < 1e-6, `residual ${power(800, 20)} vs ${1 - converted}`);
+  const doubled = 0.2;                                  // the bench's SHG fraction
+  const mixed = (1 - doubled) * 0.5 * reading.overlap;  // of what SHG leaves
+  assert.ok(Math.abs(power(450.27, 1) - mixed) < 1e-9, `sum frequency ${power(450.27, 1)} vs ${mixed}`);
+  assert.ok(Math.abs(power(400, 6) - doubled) < 1e-6, `harmonic ${power(400, 6)} vs ${doubled}`);
+  assert.ok(Math.abs(power(800, 20) - (1 - doubled - mixed)) < 1e-6,
+    `residual ${power(800, 20)} vs ${1 - doubled - mixed}`);
 });
 
 test('the signal disappears when the two pulses stop arriving together', () => {
   // 30 mm of extra path is 100 ps, far outside a 200 fs pulse.
   const { reading, detector } = bench({ dx: -30 });
   assert.equal(reading.state, 'unsynchronized');
-  assert.equal(reading.reason, 'skew');
   assert.ok(Math.abs(reading.skewNs - 30 / 299.792458) < 1e-9, `skew ${reading.skewNs}`);
   assert.ok(!sawWavelength(detector, 450.27), 'signal survived a 100 ps mismatch');
-  assert.match(mixStateText(reading), /No signal: the pulses arrive 100 ps apart/);
+  assert.match(mixStateText(reading), /Only the second harmonics: the pulses arrive 100 ps apart/);
 });
 
 test('the overlap traces a cross-correlation as the delay is scanned', () => {
@@ -171,9 +200,9 @@ test('a CW partner is always present, so it needs no timing', () => {
 });
 
 test('difference frequency is longer than its shorter input, but not always than both', () => {
-  const { reading, detector } = bench({ convert: 'dfg' });
+  const { reading, detector } = bench({ dfg: true });
   assert.equal(reading.state, 'mixing');
-  assert.ok(reading.wl > 1030, `difference frequency ${reading.wl}`);
+  assert.ok(reading.dfgWl > 1030, `difference frequency ${reading.dfgWl}`);
   assert.ok(sawWavelength(detector, 3582.6, 2), 'no difference-frequency light at the detector');
   // 400 nm with 1000 nm lands at 667 nm, between the two inputs.
   assert.ok(Math.abs(mixWavelength('dfg', 400, 1000) - 666.667) < 1e-3);
@@ -228,4 +257,50 @@ test('mixed light is not fed back into the same crystal', () => {
   // 450 nm mixing with 800 nm would appear at 288 nm if the crystal converted
   // its own output again.
   assert.ok(!sawWavelength(detector, 288.4, 2), 'the crystal mixed its own output');
+});
+
+test('nothing is created: outputs and residual add up to the beam', () => {
+  // Every combination of the two knobs, with and without the difference
+  // frequency, must leave the driving beam's power accounted for.
+  for (const shg of [0, 0.3, 0.9, 1]) {
+    for (const mix of [0, 0.5, 1]) {
+      for (const dfg of [false, true]) {
+        const elements = [
+          el('pulsedlaser', 'a', 0, -25, { wavelength: 1030, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 }),
+          el('pulsedlaser', 'b', 0, 25, { wavelength: 800, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 }),
+          el('crystal', 'c', 300, 0, { convert: 'shg', efficiency: shg, mixEfficiency: mix, mixDfg: dfg, aperture: 80 }),
+          el('detector', 'd', 600, 0, { aperture: 120 }),
+        ];
+        traceScene(elements);
+        const detector = detectorReading('d');
+        const total = (detector?.spectrum || []).reduce((sum, s) => sum + s.power, 0);
+        const label = `shg ${shg}, mix ${mix}, dfg ${dfg}`;
+        // Two beams of 1 each go in; everything drawn must come out of them.
+        assert.ok(total <= 2 + 1e-6, `${label}: ${total} out of 2 in`);
+        assert.ok(total > 1.99, `${label}: ${total} — power vanished`);
+      }
+    }
+  }
+});
+
+test('a third colour makes its own pairs, sharing one mixing budget', () => {
+  const elements = [
+    el('pulsedlaser', 'a', 0, -40, { wavelength: 1030, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 }),
+    el('pulsedlaser', 'b', 0, 0, { wavelength: 800, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 }),
+    el('pulsedlaser', 'c2', 0, 40, { wavelength: 600, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 }),
+    el('crystal', 'c', 300, 0, { convert: 'shg', efficiency: 0.2, mixEfficiency: 0.4, aperture: 120 }),
+    el('detector', 'd', 600, 0, { aperture: 160 }),
+  ];
+  traceScene(elements);
+  const detector = detectorReading('d');
+  const lines = [...new Set((detector.spectrum || []).map(s => Math.round(s.wavelength)))];
+  // Every unordered pair mixes: 600+800, 600+1030, 800+1030.
+  for (const [a, b] of [[600, 800], [600, 1030], [800, 1030]]) {
+    const sum = Math.round(mixWavelength('sfg', a, b));
+    assert.ok(lines.some(w => Math.abs(w - sum) <= 1), `${a} + ${b} nm → ${sum} nm missing`);
+  }
+  // And the books still balance across three beams.
+  const total = (detector.spectrum || []).reduce((sum, s) => sum + s.power, 0);
+  assert.ok(total > 2.99 && total <= 3 + 1e-6, `three beams in, ${total} out`);
+  assert.equal(mixReading('c').alsoPairs, 1, 'the 600 nm beam should report both of its pairs');
 });

@@ -206,7 +206,9 @@ export function mixDurationFs(aFs, bFs) {
 // `centerNs` is when the signal peaks at the crystal, absolute on the same
 // scale as the inputs' arrivals; `oplMm` is the path the generated ray
 // carries onward, so the stored phase reproduces that arrival.
-export function mixPulse(rayPulse, partnerPulse, { crystalId, kind, wl, centerNs, oplMm = 0, repRateMHz } = {}) {
+export function mixPulse(rayPulse, partnerPulse, {
+  crystalId, kind, wl, centerNs, oplMm = 0, repRateMHz, partnerPulseOffset = 0, periodNs = 0,
+} = {}) {
   const trains = [rayPulse, partnerPulse].filter(Boolean);
   if (!trains.length) return null;
   const timed = trains.find(t => t.repRateMHz > 0) || trains[0];
@@ -216,11 +218,15 @@ export function mixPulse(rayPulse, partnerPulse, { crystalId, kind, wl, centerNs
   const phaseNs = Number.isFinite(centerNs) ? centerNs - oplMm / C_MM_PER_NS : timed.phaseNs;
   // Both inputs' gates apply: each keeps the path it was imposed at, and is
   // rebased onto this train's epoch so it still switches at the same times.
-  const gates = trains.flatMap(t => {
-    if (!Array.isArray(t.gates) || !t.gates.length) return [];
-    const shift = phaseNs - (Number.isFinite(t.phaseNs) ? t.phaseNs : 0);
-    return t.gates.map(g => ({ ...g, phaseNs: (Number.isFinite(g.phaseNs) ? g.phaseNs : 0) + shift }));
-  });
+  // The partner's gates are rebased against the pulse of ITS train that takes
+  // part, which can be whole periods from its own pulse zero: a gate passing
+  // every second pulse has to be asked about the pulse that actually arrives.
+  const rebase = (train, pulseOffset) => {
+    if (!Array.isArray(train?.gates) || !train.gates.length) return [];
+    const shift = phaseNs - (Number.isFinite(train.phaseNs) ? train.phaseNs : 0) - pulseOffset * periodNs;
+    return train.gates.map(g => ({ ...g, phaseNs: (Number.isFinite(g.phaseNs) ? g.phaseNs : 0) + shift }));
+  };
+  const gates = [...rebase(rayPulse, 0), ...rebase(partnerPulse, partnerPulseOffset)];
   return {
     sourceId: `${trainId}›${crystalId || 'crystal'}:${kind || 'mix'}`,
     syncSourceId: timed.syncSourceId || trainId,
@@ -260,6 +266,7 @@ export function mixOverlap(a, b) {
       factor: 1, skewNs: null, comparable: false, unsupported: false,
       centerNs: timed ? arrivalOf(timed) : null,
       repRateMHz: timed?.pulse?.repRateMHz ?? null,
+      partnerPulseOffset: 0, periodNs: timed ? 1000 / timed.pulse.repRateMHz : 0,
     };
   }
   if (Math.abs(repA - repB) > 1e-9 * Math.max(repA, repB)) {
@@ -268,8 +275,12 @@ export function mixOverlap(a, b) {
   const periodNs = 1000 / repA;
   const tA = arrivalOf(a), tB = arrivalOf(b);
   // The nearest coincidence, not the raw difference: pulse n of one train
-  // meets whichever pulse of the other is closest.
+  // meets whichever pulse of the other is closest. That pulse can be whole
+  // periods away, and which one it is matters to anything slower than the
+  // train — a chopper passing every second pulse, for instance — so the
+  // offset is reported alongside the remainder.
   const wrapped = ((tA - tB) % periodNs + periodNs + periodNs / 2) % periodNs - periodNs / 2;
+  const partnerPulseOffset = Math.round((tA - tB) / periodNs);
   const widthA = Math.max(1, a.pulse.pulseWidthFs || 100) * 1e-6;
   const widthB = Math.max(1, b.pulse.pulseWidthFs || 100) * 1e-6;
   const factor = Math.exp(-4 * Math.LN2 * wrapped * wrapped / (widthA * widthA + widthB * widthB));
@@ -277,5 +288,8 @@ export function mixOverlap(a, b) {
   // pulse, which is what pins the signal down in time.
   const weightA = 1 / (widthA * widthA), weightB = 1 / (widthB * widthB);
   const centerNs = (tA * weightA + (tA - wrapped) * weightB) / (weightA + weightB);
-  return { factor, skewNs: Math.abs(wrapped), comparable: true, unsupported: false, centerNs, repRateMHz: repA };
+  return {
+    factor, skewNs: Math.abs(wrapped), comparable: true, unsupported: false,
+    centerNs, repRateMHz: repA, partnerPulseOffset, periodNs,
+  };
 }

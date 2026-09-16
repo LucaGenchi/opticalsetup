@@ -1,0 +1,276 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 760,
+      "y": 360,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 1560,
+        "h": 720,
+        "background": "white"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 30,
+      "y": 30,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# Finding time zero — sum frequency of two beams\nBoth beams double all the time; the sum-frequency line exists only while their pulses are in the crystal together",
+        "fontSize": 12,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "ir-laser",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 200,
+      "rot": 0,
+      "label": "1032 nm · 200 fs · 80 MHz",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1032,
+        "pulseWidthFs": 200,
+        "repRateMHz": 80,
+        "avgPowerW": 2,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "beamMode": "line"
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "red-laser",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 400,
+      "rot": 0,
+      "label": "790 nm · 200 fs · 80 MHz",
+      "showLabel": true,
+      "params": {
+        "wavelength": 790,
+        "pulseWidthFs": 200,
+        "repRateMHz": 80,
+        "avgPowerW": 2,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "beamMode": "line"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "ir-wavelength",
+      "type": "probe",
+      "x": 560,
+      "y": 200,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "delay",
+      "type": "delayline",
+      "x": 480,
+      "y": 400,
+      "rot": 0,
+      "label": "delay line · ΔL = 200 mm",
+      "showLabel": true,
+      "params": {
+        "moveMode": "static",
+        "delayMm": 200,
+        "aperture": 24
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "red-wavelength",
+      "type": "probe",
+      "x": 700,
+      "y": 400,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "fold",
+      "type": "mirror",
+      "x": 900,
+      "y": 200,
+      "rot": -45,
+      "label": "fold · delay stage",
+      "showLabel": true,
+      "params": {
+        "length": 40,
+        "refl": 100
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "combiner",
+      "type": "dichroic",
+      "x": 900,
+      "y": 400,
+      "rot": -45,
+      "label": "shortpass 900 nm · combiner",
+      "showLabel": true,
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 900,
+        "length": 40
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "focus",
+      "type": "lens",
+      "x": 1000,
+      "y": 400,
+      "rot": 0,
+      "label": "f = 150 mm",
+      "showLabel": true,
+      "params": {
+        "f": 150,
+        "dia": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "crystal",
+      "type": "crystal",
+      "x": 1150,
+      "y": 400,
+      "rot": 0,
+      "label": "χ⁽²⁾ crystal",
+      "showLabel": true,
+      "params": {
+        "convert": "shg",
+        "aperture": 16,
+        "efficiency": 0.3,
+        "mixEfficiency": 0.4,
+        "mixDfg": false,
+        "transmitPump": true
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "reject",
+      "type": "dichroic",
+      "x": 1230,
+      "y": 400,
+      "rot": -45,
+      "label": "shortpass 700 nm",
+      "showLabel": true,
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 700,
+        "length": 30
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "fundamental-dump",
+      "type": "beamdump",
+      "x": 1230,
+      "y": 550,
+      "rot": 90,
+      "label": "1032 + 790 nm",
+      "showLabel": true,
+      "params": {
+        "aperture": 22
+      },
+      "labelPos": "r"
+    },
+    {
+      "id": "spectrometer",
+      "type": "spectrometer",
+      "x": 1420,
+      "y": 400,
+      "rot": 0,
+      "label": "spectrometer",
+      "showLabel": true,
+      "params": {
+        "aperture": 30,
+        "rangeMode": "manual",
+        "rangeMin": 360,
+        "rangeMax": 560,
+        "intensityScale": "density",
+        "labelPeaks": true
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "screen",
+      "type": "display",
+      "x": 1420,
+      "y": 210,
+      "rot": 0,
+      "label": "what the spectrometer shows",
+      "showLabel": true,
+      "params": {
+        "sensorId": "spectrometer",
+        "displayScale": 1.8,
+        "screenOn": true,
+        "displayView": "main"
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "stage-note",
+      "type": "textlabel",
+      "x": 560,
+      "y": 110,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "The 1032 nm beam is folded down onto the combiner, 200 mm of path the other arm does not have.\nA mechanical stage carrying a fold changes the path by 2Δx for a move of Δx; this delay line adds its ΔL directly.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "delay-note",
+      "type": "textlabel",
+      "x": 150,
+      "y": 480,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "ΔL = 200 mm = 0.667 ns matches the fold, so both pulses reach the crystal together and the sum-frequency line is there.\nRetune it by 0.06 mm — 200 fs — and about a quarter of that peak is left; by 0.2 mm it is gone,\nwhile the two second harmonics stay exactly where they were. That is the measurement.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "legend",
+      "type": "textlabel",
+      "x": 30,
+      "y": 650,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Behind the crystal: 395 nm and 516 nm, the two second harmonics, and 447.5 nm, the sum frequency of the pair.\nBoth lasers run at 80 MHz; on a bench they would be locked to one clock, and this model mixes only trains at the same repetition rate.\nPhase matching is not modelled: one crystal at one angle would not give all three lines efficiently, and the polarizations each process needs are not checked.\nDifference-frequency generation is a checkbox on the crystal, left off here: its 3.4 µm line is outside the range this bench would look at.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    }
+  ]
+}

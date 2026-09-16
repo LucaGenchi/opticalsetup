@@ -950,68 +950,79 @@ export const exampleEntries = [
     related: ['aom', 'grating', 'dichroic', 'polarizer', 'objective'],
   },
   {
-    match: 'Finding time zero — a two colour cross correlator',
-    title: 'Finding time zero — a two-colour cross-correlator',
-    tagline: 'Two colours from one laser meet in a crystal: the sum-frequency signal exists only at the delay where their pulses coincide.',
+    match: 'Finding time zero — sum frequency of two beams',
+    title: 'Finding time zero — sum frequency of two beams',
+    tagline: 'Two colours in one crystal: the second harmonics are always there, and the line between them appears only when the pulses coincide.',
     html: `
-      <p>Two beams that have to work together — a pump and a probe, two colours of a
+      <p>Two beams that have to work together — a pump and a probe, the two colours of a
       coherent Raman source, an amplifier and its seed — must reach the sample at the same
       instant. Position is easy to see; timing is not. A picosecond of error is 0.3 mm of
       path, and nothing on the table shows it.</p>
-      <p><strong>Sum-frequency generation is the instrument that shows it.</strong> Mixing
-      in a χ⁽²⁾ crystal is instantaneous: two photons, one from each beam, become one photon
-      at the summed frequency, and that can only happen while both pulses are inside the
-      crystal together. Scan the delay between the two arms and the signal appears, peaks,
-      and goes away again. The peak is <strong>time zero</strong>, and its width is the
-      cross-correlation of the two pulses — the same principle an autocorrelator uses to
-      measure a pulse against a copy of itself${cite(1)}.</p>
-      <p>Two independent lasers will not do. Their pulses have to coincide on every shot,
-      so a real two-colour bench derives both colours from one oscillator: an amplifier and
-      its harmonic, a laser and the parametric source it pumps, or, as here, a fundamental
-      and its second harmonic. Sum-frequency mixing between the light left over after a
-      doubling stage and a parametric output is a working laboratory technique in its own
-      right, used to reach wavelengths neither beam has${cite(2)}.</p>`,
+      <p><strong>A χ⁽²⁾ crystal shows it.</strong> The same susceptibility that doubles a
+      beam also sums two of them, so a crystal that makes a second harmonic makes a sum
+      frequency as well. Doubling needs one beam and happens whatever the timing. Mixing is
+      instantaneous and needs both pulses inside the crystal at once. So the spectrum behind
+      the crystal has a fixed reference and a variable line: the two second harmonics sit
+      where they are, and a third line appears between them only as the delay approaches
+      zero${cite(1)}.</p>
+      <p>That is the standard bench recipe. Focus both beams into one crystal, look at the
+      spectrum, and scan the delay until the third line appears. Its peak is
+      <strong>time zero</strong>, and its width is the cross-correlation of the two pulses.
+      The beams must be synchronous on every shot, so they come from one locked source or
+      from oscillators locked to a common clock. Sum-frequency mixing between two such beams
+      is a working technique in its own right, used to reach wavelengths neither beam
+      has${cite(2)}.</p>`,
     inOpticalSetupTitle: 'What this setup demonstrates',
     inOpticalSetupHtml: `
-      <p>A 1030 nm, 200 fs, 80 MHz laser passes through an SHG crystal that converts 35 % of
-      it to 515 nm. A shortpass dichroic splits the two: the 515 nm harmonic goes straight
-      on, and the 1030 nm fundamental is turned up out of the axis. A second dichroic of the
-      same kind, used the other way round, brings them back together on one axis, and a
-      150 mm lens sits one focal length before the mixing crystal. What comes out is
-      <span class="w">1/λ₃ = 1/515 + 1/1030</span>, or 343.3 nm, and a bandpass filter
-      passes that alone to the detector.</p>
-      <p><strong>The delay.</strong> The fundamental's two mirrors stand 200 mm off the axis
-      and the beam crosses that gap twice, so this arm carries 400 mm — 1.33 ns — of extra
-      path. In this double-pass geometry, moving the stage by Δx changes the delay by
-      <span class="w">2Δx / c</span>. The delay
-      line in the harmonic arm is set to exactly 400 mm, so the two pulses reach the
-      crystal together and the scene opens at time zero: the crystal's <em>Mixing</em>
-      readout says 0 fs apart, 100 % temporal overlap.</p>
-      <p><strong>Scanning it.</strong> Change the delay line and watch the readout. At
-      0.02 mm of extra path — 67 fs — the overlap is 86 %; at 0.06 mm, 200 fs, it is 25 %;
-      at a fifth of a millimetre it falls below the 2 % the workbench still draws, and it
-      says why. That last threshold is where the drawing stops, not a physical edge:
-      Gaussian pulses have no delay at which they abruptly stop overlapping. The
-      trace through zero is the cross-correlation: for two Gaussians of FWHM τ₁ and τ₂
-      arriving Δt apart, the signal follows
-      <span class="w">exp(−4 ln2 Δt² / (τ₁² + τ₂²))</span>. Both colours come from one
-      laser here, so they share a repetition rate by construction — two beams at genuinely
-      different rates are outside what this model draws.</p>`,
-    limitations: `<p>The crystal gates on arrival time and nothing else. There is no phase
-      matching, so the polarizations, crystal cut and angle a real 343 nm stage would need
-      are absent, and any two wavelengths mix here if they coincide in time. The focusing
-      lens is drawn because a real stage focuses, but the overlap of the two foci is not
-      calculated, and neither is the conversion's dependence on intensity: the signal is an
-      authored 30 % of the 515 nm beam, scaled by the temporal overlap. Only that beam is
-      debited; the fundamental's power is not used in the calculation at all. The doubling
-      stage is the same kind of proxy: it keeps the pump's authored 200 fs duration, which
-      is why both envelopes here are 200 fs and why the quarter-height figure above follows
-      from two equal widths. A real second-harmonic stage does not preserve the
-      fundamental's duration.</p>
+      <p>A 1032 nm and a 790 nm laser, both 200 fs at 80 MHz, are combined on a shortpass
+      dichroic and focused into one crystal by a 150 mm lens that sits one focal length in
+      front of it. A shortpass dichroic behind the crystal dumps the two fundamentals, so
+      the spectrometer sees only what the crystal made: <strong>516 nm</strong> and
+      <strong>395 nm</strong>, the two second harmonics, and — at time zero —
+      <strong>447.5 nm</strong>, their sum frequency. The peaks have the width of the
+      200 fs pulses that made them.</p>
+      <p><strong>The delay.</strong> The 1032 nm beam is folded down onto the combiner and
+      so carries 200 mm of path the other arm does not have. The delay line in the 790 nm
+      arm is set to exactly that, so the two pulses reach the crystal together and the
+      example opens with the third line present: the crystal's <em>Two-beam mixing</em>
+      readout says 0 fs apart, 100 % temporal overlap. A real mechanical stage carries a
+      fold, so moving it by Δx changes the path by <span class="w">2Δx</span>; this delay
+      line adds its ΔL directly.</p>
+      <p><strong>Scanning it.</strong> Retune the delay line and watch the spectrum. At
+      0.02 mm — 67 fs — the sum-frequency peak keeps 86 % of its height; at 0.06 mm, 200 fs,
+      a quarter; at 0.2 mm it is gone and the readout says the pulses are 667 fs apart. Throughout, <em>the two second harmonics do
+      not move at all</em>, which is what makes the third line a measurement rather than a
+      brightness change. For two Gaussians of FWHM τ₁ and τ₂ arriving Δt apart, the line
+      follows <span class="w">exp(−4 ln2 Δt² / (τ₁² + τ₂²))</span>. That 2 % floor is where
+      the drawing stops, not a physical edge: Gaussian pulses never stop overlapping
+      abruptly.</p>
+      <p>Both lasers are set to 80 MHz, and the scene <em>assumes they are locked to one
+      clock</em> — two sources that merely share a nominal rate would drift through each
+      other, and equal numbers in the inspector do not by themselves establish
+      synchronisation. This model mixes only trains at the same repetition rate. Difference-frequency generation is a checkbox on
+      the crystal, left off here because its 3.4 µm line falls outside the range this bench
+      would look at.</p>`,
+    limitations: `<p>The crystal gates mixing on arrival time and nothing else. There is no
+      phase matching, so the polarizations, crystal cut and angle each process would need
+      are absent — and in reality one crystal at one angle would not give two second
+      harmonics and their sum frequency with comparable efficiency, which is part of why a
+      bench aligns for the line it wants: this idealised χ⁽²⁾ proxy enables every beam's own
+      second harmonic and every pair's sum frequency, and their simultaneous visibility is an
+      assumption rather than a result. The reverse reading is not safe either — on a real
+      bench a missing sum-frequency peak can mean a polarization, angle or overlap problem
+      rather than a timing one. The focusing lens is drawn because a real setup
+      focuses, but the overlap of the two foci is not calculated, and neither is the
+      conversion's dependence on intensity: each harmonic is an authored 30 % of its beam
+      and the mixed peak an authored share of what doubling leaves of the 790 nm beam,
+      scaled by the temporal overlap; it is drawn generously so the whole scan stays
+      visible. Only that beam is debited for the mixing; the 1032 nm beam's power is not
+      used in the calculation at all. Holding the two second harmonics fixed while the
+      mixed peak rises is the weak-conversion convention this model draws; a strongly
+      depleted experiment would show them change too.</p>
       <p>The drawn width of the correlation is therefore a timing proxy built from the two
       authored pulse durations, not a measurement: it cannot be used to retrieve a pulse
-      width the way a real cross-correlator can, and it assumes ideal Gaussian envelopes
-      with no dispersion between the arms. The two arms are drawn as a single chief ray with
+      width the way a real cross-correlation can, and it assumes ideal Gaussian envelopes
+      with no dispersion between the arms. The two beams are drawn as single chief rays with
       no beam size, and the delay line is an ideal added path with no alignment or beam
       walk.</p>`,
     citations: [

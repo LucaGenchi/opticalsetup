@@ -2,85 +2,90 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+import '../sketch/js/detector-instruments.js';   // registers the spectrometer
 import { registry } from '../sketch/js/elements.js';
 import { detectorReading, mixReading, probeAt, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
 import {
-  crossCorrelatorScene, DELAY_MM, FUNDAMENTAL_NM, HARMONIC_NM, PULSE_FS,
-  REP_RATE_MHZ, STAGE_EXTRA_MM, STAGE_OFFSET_MM, SUM_NM, XCORR_NAME, XCORR_PATH,
+  crossCorrelatorScene, DELAY_MM, FOCAL_MM, FOLD_DROP_MM, IR_NM, IR_SHG_NM, PULSE_FS,
+  RED_NM, RED_SHG_NM, REP_RATE_MHZ, SUM_NM, XCORR_NAME, XCORR_PATH,
 } from '../tools/build-crosscorrelator-example.mjs';
 
-const C_MM_PER_NS = 299.792458;
 const raw = readFileSync(new URL(`../Examples/Ultrashort Pulses/${XCORR_NAME}.json`, import.meta.url), 'utf8');
 
 function traced(detuneMm = 0) {
   const scene = parseSketch(raw, registry);
   if (detuneMm) scene.elements.find(el => el.id === 'delay').params.delayMm += detuneMm;
   traceScene(scene.elements);
-  return { scene, reading: mixReading('mixer'), detector: detectorReading('signal-detector') };
+  return { scene, reading: mixReading('crystal'), detector: detectorReading('spectrometer') };
 }
 
-test('the committed cross-correlator is exactly what its generator writes', () => {
+// What a spectrometer behind the crystal would show, rounded to whole nm.
+const linesBelow = (detector, limit = 700) => [...new Set((detector?.spectrum || [])
+  .map(s => Math.round(s.wavelength)))].filter(w => w < limit).sort((a, b) => a - b);
+const near = (lines, wl, span = 6) => lines.some(w => Math.abs(w - wl) <= span);
+
+test('the committed time-zero example is exactly what its generator writes', () => {
   assert.deepEqual(JSON.parse(raw), crossCorrelatorScene());
 });
 
-test('the delay line matches the stage\'s double pass, so the example opens at time zero', () => {
-  const { M1, M2, splitter, combiner } = XCORR_PATH;
-  // The fundamental leaves the axis, crosses the offset twice, and comes back.
-  const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-  const folded = d(splitter, M1) + d(M1, M2) + d(M2, combiner);
-  const direct = d(splitter, combiner);
-  assert.equal(folded - direct, STAGE_EXTRA_MM, 'the fold does not add 2 × its offset');
-  assert.equal(STAGE_EXTRA_MM, 2 * STAGE_OFFSET_MM);
-  assert.equal(DELAY_MM, STAGE_EXTRA_MM, 'the delay line does not match the fold');
-  // 400 mm is 1.33 ns, which is what the page quotes.
-  assert.ok(Math.abs(DELAY_MM / C_MM_PER_NS - 1.3343) < 1e-3);
-
-  const { reading } = traced();
-  assert.equal(reading.state, 'mixing');
-  assert.equal(reading.skewNs, 0, 'the two arms do not arrive together');
+test('two locked lasers meet in one crystal, one focal length behind the lens', () => {
+  const { scene, reading } = traced();
+  const at = id => scene.elements.find(el => el.id === id);
+  for (const [id, wl] of [['ir-laser', IR_NM], ['red-laser', RED_NM]]) {
+    assert.equal(at(id).params.wavelength, wl);
+    assert.equal(at(id).params.pulseWidthFs, PULSE_FS);
+    assert.equal(at(id).params.repRateMHz, REP_RATE_MHZ, 'the two trains must share a repetition rate');
+  }
+  assert.equal(at('crystal').x - at('focus').x, FOCAL_MM, 'the crystal is not at the lens focus');
+  assert.equal(at('crystal').params.convert, 'shg');
+  assert.equal(at('crystal').params.mixDfg, false, 'DFG should be off in this example');
+  // The folded arm's extra leg is what the delay line makes up.
+  assert.equal(XCORR_PATH.combiner.y - XCORR_PATH.fold.y, FOLD_DROP_MM);
+  assert.equal(at('delay').params.delayMm, DELAY_MM);
+  assert.equal(reading.skewNs, 0, 'the example does not open at time zero');
   assert.equal(reading.overlap, 1);
 });
 
-test('one laser drives both colours, and they mix to the sum frequency', () => {
-  const { scene, reading, detector } = traced();
-  const laser = scene.elements.find(el => el.id === 'laser');
-  assert.equal(laser.params.wavelength, FUNDAMENTAL_NM);
-  assert.equal(laser.params.pulseWidthFs, PULSE_FS);
-  assert.equal(laser.params.repRateMHz, REP_RATE_MHZ);
-  // Both arms are the same train, so the rates cannot disagree.
-  assert.equal(reading.repRateMHz, REP_RATE_MHZ);
-  assert.equal(reading.partnerRepRateMHz, REP_RATE_MHZ);
-  assert.ok(Math.abs(reading.wl - SUM_NM) < 1e-6, `sum frequency ${reading.wl}`);
-  assert.ok(Math.abs(SUM_NM - 343.333) < 1e-3);
+test('at time zero the spectrometer shows three peaks; off it, only the two harmonics', () => {
+  const together = linesBelow(traced().detector);
+  assert.ok(near(together, RED_SHG_NM), `${RED_SHG_NM} nm harmonic missing: ${together}`);
+  assert.ok(near(together, IR_SHG_NM), `${IR_SHG_NM} nm harmonic missing: ${together}`);
+  assert.ok(near(together, SUM_NM, 1), `sum frequency missing: ${together}`);
 
-  // The bandpass leaves only the sum frequency on the detector.
-  assert.ok(detector, 'nothing reached the detector');
-  assert.ok(detector.spectrum.every(s => Math.abs(s.wavelength - SUM_NM) < 1),
-    `${detector.spectrum.map(s => s.wavelength).join(', ')} reached the signal detector`);
+  // Far from zero the pair stops mixing, and nothing else moves.
+  const apart = linesBelow(traced(0.2).detector);
+  assert.ok(near(apart, RED_SHG_NM), 'a second harmonic vanished with the delay');
+  assert.ok(near(apart, IR_SHG_NM), 'a second harmonic vanished with the delay');
+  assert.ok(!near(apart, SUM_NM, 1), 'the sum frequency survived a 667 fs mismatch');
+  assert.equal(traced(0.2).reading.state, 'unsynchronized');
 
+  // The two harmonics are not just present but unchanged.
+  const power = (detector, wl, span) => (detector.spectrum || [])
+    .filter(s => Math.abs(s.wavelength - wl) <= span)
+    .reduce((total, s) => total + s.power, 0);
+  for (const wl of [RED_SHG_NM, IR_SHG_NM]) {
+    const atZero = power(traced().detector, wl, 8);
+    const offZero = power(traced(0.2).detector, wl, 8);
+    assert.ok(Math.abs(atZero - offZero) < 1e-9, `the ${wl} nm harmonic moved with the delay`);
+  }
+});
+
+test('the sum-frequency line follows the Gaussian overlap as the delay is scanned', () => {
+  // 0.06 mm of path is 200 fs, which leaves a quarter of two 200 fs pulses.
+  const { reading, detector } = traced(0.06);
+  assert.ok(Math.abs(reading.overlap - 0.25) < 1e-3, `overlap ${reading.overlap}`);
+  assert.ok(near(linesBelow(detector), SUM_NM, 1), 'the line vanished 200 fs from zero');
+  // Symmetric in sign: only the size of the mismatch matters.
+  assert.ok(Math.abs(traced(-0.06).reading.overlap - reading.overlap) < 1e-9);
+});
+
+test('the probes read the two beams that go in', () => {
+  const { scene } = traced();
   const probe = id => {
     const el = scene.elements.find(e => e.id === id);
     return probeAt(el.x, el.y);
   };
-  assert.ok(Math.abs(probe('fundamental-wavelength').wl - FUNDAMENTAL_NM) < 0.5);
-  assert.ok(Math.abs(probe('harmonic-wavelength').wl - HARMONIC_NM) < 0.5);
-  assert.ok(Math.abs(probe('sum-wavelength').wl - SUM_NM) < 0.5);
-});
-
-test('scanning the delay away from zero extinguishes the signal', () => {
-  // 0.06 mm of path is 200 fs: two 200 fs pulses that far apart keep a
-  // quarter of their overlap, exp(−4 ln2 Δt²/(τ₁²+τ₂²)).
-  const near = traced(0.06);
-  assert.equal(near.reading.state, 'mixing');
-  assert.ok(Math.abs(near.reading.overlap - 0.25) < 1e-3, `overlap ${near.reading.overlap}`);
-  assert.ok(near.detector, 'the signal vanished 200 fs from zero');
-
-  const far = traced(0.2);
-  assert.equal(far.reading.state, 'unsynchronized');
-  assert.equal(far.detector, null, 'a signal survived a 667 fs mismatch');
-
-  // Symmetric: it does not matter which arm is long.
-  const behind = traced(-0.06);
-  assert.ok(Math.abs(behind.reading.overlap - near.reading.overlap) < 1e-9);
+  assert.ok(Math.abs(probe('ir-wavelength').wl - IR_NM) < 0.5);
+  assert.ok(Math.abs(probe('red-wavelength').wl - RED_NM) < 0.5);
 });
