@@ -230,7 +230,10 @@ function mixingOutputs(s, ray, d, data) {
       .reduce((total, other) => total + request(beam, other).ask, 0);
     return asked > 1 ? 1 / asked : 1;
   };
-  const self = { opl: ray.opl, pulse: ray.pulse };
+  // `wl` matters: without it this beam matches none of the partner filters in
+  // beamScale, its own requests are never normalised, and a beam in several
+  // saturated pairs would give away more of itself than it has.
+  const self = { wl: ray.wl, opl: ray.opl, pulse: ray.pulse, bw: ray.bw, spec: ray.spec };
   const ownScale = beamScale(self);
   // This sampling ray's share of its own beam, so a beam drawn as several rays
   // does not hand its partner's whole contribution to each of them.
@@ -282,7 +285,7 @@ function mixingOutputs(s, ray, d, data) {
         // the second line does not conjure more light.
         intensity: total / lines.length,
         pulse: mixPulse(ray.pulse, partner.pulse, {
-          crystalId, kind, wl,
+          crystalId, kind, wl, bandwidthNm: bw,
           centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
           partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
         }),
@@ -1326,9 +1329,12 @@ function emissionAngles(count, axisAngle, bias = AXIS_BIAS) {
 // Below this the two pulses barely meet and the signal is reported as absent
 // rather than as a vanishing sliver.
 const MIN_OVERLAP = 0.02;
-// No single pass of a real crystal converts everything: 60 % is already a very
-// good stage, and letting the workbench author more would draw light no bench
-// would see.
+// An application-imposed ceiling on every authored conversion fraction, not a
+// physical limit: published single-pass second-harmonic conversion and OPO
+// pump depletion both reach well above this. It keeps the workbench's authored
+// fractions in a conservative range for now; raising it for the OPO, whose
+// depletion is a multi-pass result rather than a single-pass efficiency, is
+// tracked separately.
 export const MAX_CONVERSION = 0.6;
 const clampConversion = value => Math.min(MAX_CONVERSION, Math.max(0, Number(value) || 0));
 
@@ -1376,6 +1382,9 @@ function recordProbeBeam(surface, ray) {
   seen.push({
     key,
     wl: ray.wl, opl: ray.opl,
+    // The arriving spectrum, so a process that mixes this beam can use its
+    // width -- including whatever a filter upstream did to it.
+    bw: ray.bw, spec: ray.spec,
     intensity: Math.max(0, ray.intensity || 0),
     pulse: ray.pulse ? { ...ray.pulse } : null,
     gates: (ray.pulse?.gates || []).map(g => ({ ...g })),

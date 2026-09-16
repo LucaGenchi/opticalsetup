@@ -219,7 +219,7 @@ export function mixWidthNm(outWl, aWl, aFwhmNm, bWl, bFwhmNm) {
 // scale as the inputs' arrivals; `oplMm` is the path the generated ray
 // carries onward, so the stored phase reproduces that arrival.
 export function mixPulse(rayPulse, partnerPulse, {
-  crystalId, kind, wl, centerNs, oplMm = 0, repRateMHz, partnerPulseOffset = 0, periodNs = 0,
+  crystalId, kind, wl, bandwidthNm = 0, centerNs, oplMm = 0, repRateMHz, partnerPulseOffset = 0, periodNs = 0,
 } = {}) {
   const trains = [rayPulse, partnerPulse].filter(Boolean);
   if (!trains.length) return null;
@@ -246,7 +246,9 @@ export function mixPulse(rayPulse, partnerPulse, {
     phaseNs,
     gates: gates.length ? gates : undefined,
     centerWavelengthNm: wl,
-    bandwidthNm: 0,
+    // The same width the drawn spectrum carries, so the pulse metadata and the
+    // spectrum describe one output.
+    bandwidthNm,
     pulseShape: 'gauss',
     pulseWidthFs: duration ?? timed.pulseWidthFs,
     transformLimited: false,

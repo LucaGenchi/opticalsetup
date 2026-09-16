@@ -358,3 +358,50 @@ test('the readout describes the whole crystal, not the last ray through it', () 
   assert.equal(reading.alsoPairs, 2, 'the other pairs at this crystal are not counted');
   assert.match(mixStateText(reading), /2 more pairs at this crystal/);
 });
+
+test('a beam in several saturated pairs still gives away only what it has', () => {
+  // At the highest authored share every pair asks for more than its beam can
+  // spare, so the requests have to be scaled on both sides of every pair.
+  for (const mix of [0.4, 0.6]) {
+    for (const order of [[600, 800, 1030], [1030, 600, 800]]) {
+      const elements = order.map((wl, index) =>
+        el('pulsedlaser', `s${index}`, 0, -40 + index * 40, {
+          wavelength: wl, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2,
+        }));
+      elements.push(
+        el('crystal', 'c', 300, 0, { convert: 'shg', efficiency: 0.2, mixEfficiency: mix, aperture: 120 }),
+        el('detector', 'd', 600, 0, { aperture: 150 }),
+      );
+      traceScene(elements);
+      const total = (detectorReading('d')?.spectrum || []).reduce((sum, s) => sum + s.power, 0);
+      assert.ok(total <= 3 + 1e-6 && total > 2.99,
+        `mixing ${mix}, order ${order}: ${total} out of 3 in`);
+    }
+  }
+});
+
+test('the mixed band carries both inputs\' widths, not just the emitting beam\'s', () => {
+  const spanOf = ({ partnerFs = 200, filterPartner = false } = {}) => {
+    const elements = [
+      el('pulsedlaser', 'a', 0, -25, { wavelength: 800, pulseWidthFs: 200, repRateMHz: 80, power: 1, dia: 2 }),
+      el('pulsedlaser', 'b', 0, 25, { wavelength: 1030, pulseWidthFs: partnerFs, repRateMHz: 80, power: 1, dia: 2 }),
+      el('crystal', 'c', 300, 0, { convert: 'shg', efficiency: 0.2, mixEfficiency: 0.3, aperture: 80 }),
+      el('detector', 'd', 600, 0, { aperture: 120 }),
+    ];
+    if (filterPartner) {
+      // A narrow filter in the partner's arm, before the crystal.
+      elements.splice(2, 0, el('filter', 'f', 150, 25, { ftype: 'bandpass', center: 1030, band: 2, trans: 1 }));
+    }
+    traceScene(elements);
+    const band = (detectorReading('d')?.spectrum || []).filter(s => Math.abs(s.wavelength - 450.3) <= 40);
+    assert.ok(band.length > 1, 'the mixed output has no band at all');
+    return Math.max(...band.map(s => s.wavelength)) - Math.min(...band.map(s => s.wavelength));
+  };
+  const both200 = spanOf();
+  const shortPartner = spanOf({ partnerFs: 20 });
+  assert.ok(shortPartner > both200 * 2,
+    `a 20 fs partner should widen the mixed band: ${shortPartner} vs ${both200}`);
+  // And narrowing the partner's spectrum narrows the band it helps make.
+  const filtered = spanOf({ filterPartner: true });
+  assert.ok(filtered < both200, `filtering the partner should narrow the mixed band: ${filtered} vs ${both200}`);
+});

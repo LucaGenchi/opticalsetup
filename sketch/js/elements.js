@@ -4229,8 +4229,9 @@ export const registry = {
         key: 'mixDfg', label: 'Also generate difference frequency', type: 'checkbox', def: false,
         show: p => p.convert === 'shg',
       },
-      // A single pass never converts everything: 60 % is already an excellent
-      // stage, so that is where this stops.
+      // A cap this application imposes rather than a physical limit: published
+      // single-pass conversion and OPO pump depletion both go higher. It keeps
+      // authored fractions conservative for now.
       { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: MAX_CONVERSION, step: 0.05, def: 0.5, show: p => p.convert !== 'none' },
       { key: 'transmitPump', label: 'Transmit residual pump', type: 'checkbox', def: true, show: p => p.convert !== 'none' },
       {
@@ -5001,7 +5002,7 @@ const ELEMENT_HELP = {
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
-  crystal: 'Converts a configurable fraction of pump power — up to 60 %, as a single pass never converts everything — into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, or custom output. The χ⁽²⁾ mode doubles every beam and, when a second wavelength is present, also mixes the pair, drawing on what doubling leaves of both beams so the mixed line sits alongside the two harmonics — but only while their pulses reach the crystal together, which is how time zero is found. OPO mode splits the generated power by Manley–Rowe and gives signal and idler their own linewidths and pulse durations. Phase matching, threshold and cavity dynamics are not simulated.',
+  crystal: 'Converts a configurable fraction of pump power — the workbench caps authored fractions at 60 %, a conservative application limit rather than a physical one — into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, or custom output. The χ⁽²⁾ mode doubles every beam and, when a second wavelength is present, also mixes the pair, drawing on what doubling leaves of both beams so the mixed line sits alongside the two harmonics — but only while their pulses reach the crystal together, which is how time zero is found. OPO mode splits the generated power by Manley–Rowe and gives signal and idler their own linewidths and pulse durations. Phase matching, threshold and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
