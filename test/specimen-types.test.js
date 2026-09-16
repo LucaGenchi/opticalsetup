@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   createElement, registry, newSampleChannel, sampleChannels, specimenTypeOf,
   signalKindsFor, channelWarning, defaultEmissionWl, drivingExcitationWl, specimenTimingText,
+  specimenTimingReadout,
   ramanShifts, ramanStokesWl, LINEAR_SIGNAL_KINDS, NONLINEAR_SIGNAL_KINDS,
   SPECIMEN_TYPES, MODIFIER_KINDS, EMISSION_ORDER,
   FLUOROPHORES, fluorophoreSpec, fluorophoreAbsorption,
@@ -1177,4 +1178,51 @@ test('two arms of one colour are two beams, and the one that meets the pulse is 
   const matched = bench(0, 30);
   assert.equal(matched.reading.state, 'mixing');
   assert.ok(matched.spectrum.some(s => Math.abs(s.wavelength - 650) < 2), 'the matched arm produced no signal');
+});
+
+test('the specimen shows where the two beams are, not only when they are wrong', () => {
+  // A picosecond is a third of a millimetre of path: no drawing at bench scale
+  // can show it, so the number has to be readable while a delay is moved.
+  const bench = extraOplMm => {
+    const laser = (wl, y) => {
+      const source = createElement('pulsedlaser', 0, y);
+      Object.assign(source.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 1000, beamMode: 'line',
+      });
+      return source;
+    };
+    const elements = [laser(800, -6), laser(1040, 6)];
+    if (extraOplMm) {
+      const delay = createElement('delayline', 120, 6);
+      Object.assign(delay.params, { delayMm: extraOplMm, aperture: 10 });
+      elements.push(delay);
+    }
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear',
+      channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+    });
+    elements.push(sample, createElement('detector', 400, 0));
+    traceAll(elements);
+    return { sample, text: specimenTimingReadout(specimenTimingReading(sample.id)) };
+  };
+
+  // Matched, and it says so rather than staying silent.
+  assert.match(bench(0).text, /800 \+ 1040 nm: arriving together, 100% temporal overlap/);
+  // Partly overlapping: the number moves continuously, which is what makes a
+  // delay scan readable.
+  assert.match(bench(0.2).text, /667 fs apart \(0\.2 mm of path\), 54% temporal overlap/);
+  assert.match(bench(30).text, /100 ps apart \(30 mm of path\), 0% temporal overlap/);
+
+  // And the readout is offered on both specimen holders when a two-beam signal
+  // is configured.
+  for (const type of ['sample', 'stage']) {
+    const row = registry[type].params.find(p => p.key === 'pulseTiming');
+    assert.ok(row, `${type} has no timing readout`);
+    const { sample } = bench(0);
+    assert.equal(row.show({ ...sample.params }), true, `${type} hides it from a two-beam specimen`);
+    assert.equal(row.show({ ...sample.params, channels: [ch('fluor')] }), false,
+      `${type} shows it where no signal needs two beams`);
+  }
 });

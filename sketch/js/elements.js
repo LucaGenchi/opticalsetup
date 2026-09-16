@@ -12,7 +12,7 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, MAX_CONVERSION, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt } from './raytrace.js';
+import { compressorGddReading, detectorReading, MAX_CONVERSION, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenTimingReading } from './raytrace.js';
 import { idlerWavelength } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -1485,6 +1485,18 @@ function sampleModeParams() {
       const type = specimenTypeOf(p);
       return type === 'linear' || type === 'nonlinear';
     } },
+    // Arrival timing is a number, not a picture: a picosecond is a third of a
+    // millimetre of path, which no drawing at bench scale can show. A specimen
+    // whose signals depend on it says where the two beams are.
+    {
+      key: 'pulseTiming', label: 'Two-beam timing', type: 'readout', wide: true,
+      show: p => {
+        const type = specimenTypeOf(p);
+        if (type !== 'nonlinear') return false;
+        return sampleChannels(p).some(c => TWO_BEAM_KINDS.has(c.kind) || c.kind === 'shg');
+      },
+      readout: (p, el) => specimenTimingReadout(el ? specimenTimingReading(el.id) : null),
+    },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
     { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
@@ -1984,6 +1996,26 @@ export function mixStateText(reading) {
 // What a specimen's two-beam signals found about arrival timing, in the same
 // terms the crystal uses. A signal that is silent because of timing should say
 // so on the canvas rather than leaving an empty detector to interpret.
+// The same thing as a permanent readout rather than a one-off message: a
+// picosecond of arrival difference is a millimetre of path, far below anything
+// the drawing can show, so the number has to be somewhere you can watch while
+// you move a delay stage.
+export function specimenTimingReadout(reading) {
+  if (!reading) return 'No two-beam signal here yet';
+  if (reading.state === 'oneBeam') return 'One colour only: a second wavelength is needed for CARS, Raman transfer or sum frequency';
+  const pair = `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm`;
+  if (reading.state === 'unsupported') {
+    return `${pair} at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz — timing not modelled between different repetition rates`;
+  }
+  const pathMm = (reading.skewNs || 0) * 299.792458;
+  // Below a femtosecond is matched, not a number worth printing: paths that
+  // cancel algebraically still leave floating-point dust behind.
+  const apart = reading.skewNs > 1e-6
+    ? `${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path)`
+    : 'arriving together';
+  return `${pair}: ${apart}, ${sig3(reading.overlap * 100)}% temporal overlap`;
+}
+
 export function specimenTimingText(reading) {
   if (!reading) return null;
   const what = reading.kind === 'srs' ? 'Stimulated Raman'
