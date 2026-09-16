@@ -1,0 +1,280 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 820,
+      "y": 430,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "w": 1680,
+        "h": 760,
+        "background": "white"
+      }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 30,
+      "y": 30,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# Finding time zero — a two-colour cross-correlator\nSum-frequency generation only happens while both pulses are in the crystal, so the signal itself locates the delay where they meet",
+        "fontSize": 12,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "laser",
+      "type": "pulsedlaser",
+      "x": 100,
+      "y": 520,
+      "rot": 0,
+      "label": "1030 nm · 200 fs · 80 MHz",
+      "showLabel": true,
+      "params": {
+        "wavelength": 1030,
+        "pulseWidthFs": 200,
+        "repRateMHz": 80,
+        "avgPowerW": 2,
+        "transformLimited": true,
+        "pulseShape": "gauss",
+        "beamMode": "line"
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "doubler",
+      "type": "crystal",
+      "x": 300,
+      "y": 520,
+      "rot": 0,
+      "label": "SHG crystal · 515 nm",
+      "showLabel": true,
+      "params": {
+        "convert": "shg",
+        "aperture": 16,
+        "efficiency": 0.35,
+        "transmitPump": true
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "splitter",
+      "type": "dichroic",
+      "x": 460,
+      "y": 520,
+      "rot": 45,
+      "label": "shortpass 700 nm",
+      "showLabel": true,
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 700,
+        "length": 40
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "M1",
+      "type": "mirror",
+      "x": 460,
+      "y": 320,
+      "rot": 45,
+      "label": "M1 · delay stage",
+      "showLabel": true,
+      "params": {
+        "length": 40,
+        "refl": 100
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "M2",
+      "type": "mirror",
+      "x": 1040,
+      "y": 320,
+      "rot": -45,
+      "label": "M2 · delay stage",
+      "showLabel": true,
+      "params": {
+        "length": 40,
+        "refl": 100
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "fundamental-wavelength",
+      "type": "probe",
+      "x": 750,
+      "y": 320,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "delay",
+      "type": "delayline",
+      "x": 760,
+      "y": 520,
+      "rot": 0,
+      "label": "delay line · ΔL = 400 mm",
+      "showLabel": true,
+      "params": {
+        "moveMode": "static",
+        "delayMm": 400,
+        "aperture": 24
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "harmonic-wavelength",
+      "type": "probe",
+      "x": 900,
+      "y": 520,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "combiner",
+      "type": "dichroic",
+      "x": 1040,
+      "y": 520,
+      "rot": -45,
+      "label": "shortpass 700 nm",
+      "showLabel": true,
+      "params": {
+        "dtype": "shortpass",
+        "cutoff": 700,
+        "length": 40
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "focus",
+      "type": "lens",
+      "x": 1140,
+      "y": 520,
+      "rot": 0,
+      "label": "f = 150 mm",
+      "showLabel": true,
+      "params": {
+        "f": 150,
+        "dia": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "mixer",
+      "type": "crystal",
+      "x": 1260,
+      "y": 520,
+      "rot": 0,
+      "label": "SFG crystal",
+      "showLabel": true,
+      "params": {
+        "convert": "sfg",
+        "aperture": 16,
+        "efficiency": 0.3,
+        "transmitPump": true
+      },
+      "labelPos": "t"
+    },
+    {
+      "id": "uv-filter",
+      "type": "filter",
+      "x": 1400,
+      "y": 520,
+      "rot": 0,
+      "label": "bandpass 343 nm",
+      "showLabel": true,
+      "params": {
+        "ftype": "bandpass",
+        "center": 343,
+        "band": 20,
+        "trans": 0.9,
+        "length": 25.4
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "sum-wavelength",
+      "type": "probe",
+      "x": 1465,
+      "y": 520,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "prop": "wl"
+      }
+    },
+    {
+      "id": "signal-detector",
+      "type": "detector",
+      "x": 1530,
+      "y": 520,
+      "rot": 0,
+      "label": "cross-correlation signal",
+      "showLabel": true,
+      "params": {
+        "aperture": 26
+      },
+      "labelPos": "b"
+    },
+    {
+      "id": "stage-note",
+      "type": "textlabel",
+      "x": 620,
+      "y": 230,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "The fundamental stands 200 mm off the axis and crosses it twice, so this arm carries\n2 × 200 mm = 400 mm of extra path: moving the stage by Δx moves the delay by 2Δx / c.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "delay-note",
+      "type": "textlabel",
+      "x": 620,
+      "y": 590,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "The delay line matches it, ΔL = 400 mm = 1.33 ns, so the two pulses reach the crystal together.\nRetune it by 0.06 mm — 30 µm of stage travel — and the 200 fs pulses no longer overlap: the signal goes out.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    },
+    {
+      "id": "legend",
+      "type": "textlabel",
+      "x": 30,
+      "y": 770,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "Both colours come from one laser, so the two trains are synchronous by construction: 515 nm and 1030 nm mix to 343.3 nm only where they coincide in time.\nThe crystal's Mixing readout gives the arrival difference and the overlap; scanning the delay through zero traces the cross-correlation.\nPhase matching, the polarizations the two beams would need, focusing overlap and depletion of either beam are not modelled: the signal is an authored fraction gated by arrival time.",
+        "fontSize": 10,
+        "fill": "#34454d"
+      }
+    }
+  ]
+}

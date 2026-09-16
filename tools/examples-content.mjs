@@ -949,4 +949,70 @@ export const exampleEntries = [
     resources: [],
     related: ['aom', 'grating', 'dichroic', 'polarizer', 'objective'],
   },
+  {
+    match: 'Finding time zero — a two colour cross correlator',
+    title: 'Finding time zero — a two-colour cross-correlator',
+    tagline: 'Two colours from one laser meet in a crystal: the sum-frequency signal exists only at the delay where their pulses coincide.',
+    html: `
+      <p>Two beams that have to work together — a pump and a probe, two colours of a
+      coherent Raman source, an amplifier and its seed — must reach the sample at the same
+      instant. Position is easy to see; timing is not. A picosecond of error is 0.3 mm of
+      path, and nothing on the table shows it.</p>
+      <p><strong>Sum-frequency generation is the instrument that shows it.</strong> Mixing
+      in a χ⁽²⁾ crystal is instantaneous: two photons, one from each beam, become one photon
+      at the summed frequency, and that can only happen while both pulses are inside the
+      crystal together. Scan the delay between the two arms and the signal appears, peaks,
+      and goes away again. The peak is <strong>time zero</strong>, and its width is the
+      cross-correlation of the two pulses — the same principle an autocorrelator uses to
+      measure a pulse against a copy of itself${cite(1)}.</p>
+      <p>Two independent lasers will not do. Their pulses have to coincide on every shot,
+      so a real two-colour bench derives both colours from one oscillator: an amplifier and
+      its harmonic, a laser and the parametric source it pumps, or, as here, a fundamental
+      and its second harmonic. Sum-frequency mixing between the light left over after a
+      doubling stage and a parametric output is a working laboratory technique in its own
+      right, used to reach wavelengths neither beam has${cite(2)}.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A 1030 nm, 200 fs, 80 MHz laser passes through an SHG crystal that converts 35 % of
+      it to 515 nm. A shortpass dichroic splits the two: the 515 nm harmonic goes straight
+      on, and the 1030 nm fundamental is turned up out of the axis. A second dichroic of the
+      same kind, used the other way round, brings them back together on one axis, and a
+      150 mm lens focuses both into the mixing crystal. What comes out is
+      <span class="w">1/λ₃ = 1/515 + 1/1030</span>, or 343.3 nm, and a bandpass filter
+      passes that alone to the detector.</p>
+      <p><strong>The delay.</strong> The fundamental's two mirrors stand 200 mm off the axis
+      and the beam crosses that gap twice, so this arm carries 400 mm — 1.33 ns — of extra
+      path. Moving that stage by Δx changes the delay by
+      <span class="w">2Δx / c</span>, the factor of two every delay stage has. The delay
+      line in the harmonic arm is set to exactly 400 mm, so the two pulses reach the
+      crystal together and the scene opens at time zero: the crystal's <em>Mixing</em>
+      readout says 0 fs apart, 100 % temporal overlap.</p>
+      <p><strong>Scanning it.</strong> Change the delay line and watch the readout. At
+      0.02 mm of extra path — 67 fs — the overlap is 86 %; at 0.06 mm, 200 fs, it is 25 %,
+      and at a fifth of a millimetre the signal is gone and the workbench says why. The
+      trace through zero is the cross-correlation: for two Gaussians of FWHM τ₁ and τ₂
+      arriving Δt apart, the signal follows
+      <span class="w">exp(−4 ln2 Δt² / (τ₁² + τ₂²))</span>. Both colours come from one
+      laser here, so they share a repetition rate by construction — two beams at genuinely
+      different rates are outside what this model draws.</p>`,
+    limitations: `<p>The crystal gates on arrival time and nothing else. There is no phase
+      matching, so the polarizations, crystal cut and angle a real 343 nm stage would need
+      are absent, and any two wavelengths mix here if they coincide in time. The focusing
+      lens is drawn because a real stage focuses, but the overlap of the two foci is not
+      calculated, and neither is the conversion's dependence on intensity: the signal is an
+      authored 30 % of the 515 nm beam, scaled by the temporal overlap. Only that beam is
+      debited; the fundamental's power is not used in the calculation at all.</p>
+      <p>The drawn width of the correlation is therefore a timing proxy built from the two
+      authored pulse durations, not a measurement: it cannot be used to retrieve a pulse
+      width the way a real cross-correlator can, and it assumes ideal Gaussian envelopes
+      with no dispersion between the arms. The two arms are drawn as a single chief ray with
+      no beam size, and the delay line is an ideal added path with no alignment or beam
+      walk.</p>`,
+    citations: [
+      { label: 'RP Photonics Encyclopedia — Autocorrelators', url: 'https://www.rp-photonics.com/autocorrelators.html' },
+      { label: 'R. Quintero-Torres, J. L. Domínguez-Juárez, “Green-Yellow-Orange-Red Spectral Range with Sum-Frequency Generation Using BIBO Crystal Pumped with an Optical Parametric Amplifier,” Photonics 7, 91 (2020)', url: 'https://doi.org/10.3390/photonics7040091' },
+    ],
+    resources: [],
+    related: ['crystal', 'delayline', 'dichroic', 'pulsedlaser', 'probe'],
+  },
 ];

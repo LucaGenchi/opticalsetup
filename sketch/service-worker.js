@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v92';
+const CACHE_NAME = 'opticalsetup-pwa-v93';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
@@ -70,7 +70,8 @@ const PRECACHE_PATHS = [
   "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
   "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
-  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json"
+  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
+  "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20a%20two%20colour%20cross%20correlator.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;
