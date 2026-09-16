@@ -1,3 +1,5 @@
+import { C_MM_PER_NS } from './pulses.js';
+
 // Optical parametric oscillation for the crystal's `convert: 'opo'` mode: a
 // phenomenological singly resonant oscillator, not a cavity simulation.
 //
@@ -149,4 +151,90 @@ export function opoPulse(pumpPulse, wave, { crystalId, role, outputPhase = 'unkn
     durationRaisedToLimit: !transformLimited && belowLimit,
     transformLimitUnavailable: wantsLimit && !transformLimited,
   };
+}
+
+// Sum- and difference-frequency generation for the crystal's `convert: 'sfg'`
+// and `convert: 'dfg'` modes: a second-order process that needs two beams at
+// the crystal at the same time.
+//
+// Energy. SFG adds the photon energies, 1/λ3 = 1/λ1 + 1/λ2, so the output is
+// shorter than either input. DFG subtracts them, 1/λ3 = 1/λ1 − 1/λ2 with λ1
+// the shorter input, so the output is longer than either. Both are written
+// from the pair, never from one beam alone: single-beam illumination produces
+// nothing, which is what makes these modes two-colour experiments.
+//
+// Time. Mixing is instantaneous: the two pulses have to be at the crystal
+// together. `mixOverlap` reports how much of the pair survives their arrival
+// mismatch, and the tracer drops the output entirely below a floor — the
+// signal appears only around time zero, which is how a real cross-correlation
+// finds it. Nothing here models phase matching, depletion or spatial overlap.
+export function mixWavelength(kind, aWl, bWl) {
+  const a = Number(aWl), b = Number(bWl);
+  if (!(a > 0 && b > 0)) return null;
+  const shorter = Math.min(a, b), longer = Math.max(a, b);
+  if (kind === 'sfg') return 1 / (1 / shorter + 1 / longer);
+  if (kind !== 'dfg') return null;
+  // 1/λ3 = 1/λ1 − 1/λ2 has no positive solution for two equal inputs.
+  const inverse = 1 / shorter - 1 / longer;
+  return inverse > 0 ? 1 / inverse : null;
+}
+
+// The product of two Gaussians in time: the mixed pulse is shorter than
+// either input, and a long pulse mixed with a short one takes the short
+// one's duration. This is the undepleted, transform-limited-Gaussian
+// statement, not a propagation calculation.
+export function mixDurationFs(aFs, bFs) {
+  const a = Number(aFs), b = Number(bFs);
+  if (!(a > 0)) return b > 0 ? b : null;
+  if (!(b > 0)) return a;
+  return 1 / Math.sqrt(1 / (a * a) + 1 / (b * b));
+}
+
+// The mixed output's pulse train. It is synchronous with the pair — it exists
+// only while both are present — so it takes the driving beam's repetition
+// rate, timing and gates, with the combined duration above.
+export function mixPulse(rayPulse, partnerPulse, { crystalId, kind, wl } = {}) {
+  if (!rayPulse && !partnerPulse) return null;
+  const base = rayPulse || partnerPulse;
+  const trainId = base.sourceId || '';
+  const duration = mixDurationFs(rayPulse?.pulseWidthFs, partnerPulse?.pulseWidthFs);
+  return {
+    sourceId: `${trainId}›${crystalId || 'crystal'}:${kind || 'mix'}`,
+    syncSourceId: base.syncSourceId || trainId,
+    repRateMHz: base.repRateMHz,
+    phaseNs: base.phaseNs,
+    gates: Array.isArray(base.gates) ? base.gates.map(g => ({ ...g })) : undefined,
+    centerWavelengthNm: wl,
+    bandwidthNm: 0,
+    pulseShape: 'gauss',
+    pulseWidthFs: duration ?? base.pulseWidthFs,
+    transformLimited: false,
+    spectralPhase: 'unknown',
+  };
+}
+
+// How much of a mixed pair survives the mismatch in when the two pulses reach
+// the crystal. Unlike the specimen's `pulseOverlap`, trains at different
+// repetition rates are not waved through: pulses from unrelated rates never
+// coincide, so there is no steady signal. Harmonically related rates are the
+// exception a real bench uses — an 80 MHz beam and a 40 MHz one derived from
+// it meet on every second pulse — so the coincidence is judged on the faster
+// period.
+export function mixOverlap(a, b) {
+  const repA = a?.pulse?.repRateMHz, repB = b?.pulse?.repRateMHz;
+  // A CW beam is always there: only a pulsed pair has to be timed.
+  if (!(repA > 0) || !(repB > 0)) return { factor: 1, skewNs: null, comparable: false, rateMismatch: false };
+  const fast = Math.max(repA, repB), slow = Math.min(repA, repB);
+  const ratio = fast / slow;
+  const harmonic = Math.round(ratio);
+  if (Math.abs(ratio - harmonic) > 1e-6 * harmonic) {
+    return { factor: 0, skewNs: null, comparable: true, rateMismatch: true };
+  }
+  const periodNs = 1000 / fast;
+  const arrivalOf = beam => (beam.opl || 0) / C_MM_PER_NS + (beam.pulse.phaseNs || 0);
+  const offset = ((arrivalOf(a) - arrivalOf(b)) % periodNs + periodNs) % periodNs;
+  const skewNs = Math.min(offset, periodNs - offset);
+  // The wider pulse sets the scale over which the pair still overlaps.
+  const widthNs = Math.max(1, Math.max(a.pulse.pulseWidthFs || 100, b.pulse.pulseWidthFs || 100)) * 1e-6;
+  return { factor: Math.exp(-((skewNs / widthNs) ** 2)), skewNs, comparable: true, rateMismatch: false };
 }

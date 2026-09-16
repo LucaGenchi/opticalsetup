@@ -38,7 +38,7 @@ import {
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
-import { opoPulse, opoWaves, pumpWidthNm } from './parametric.js';
+import { opoPulse, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -152,6 +152,22 @@ function recordOpo(elementId, state) {
 
 export function opoReading(elementId) {
   return opoStates.get(elementId) || null;
+}
+
+// The crystal conversion modes that mix two beams rather than acting on one.
+export const MIX_CONVERTS = new Set(['sfg', 'dfg']);
+
+// crystal element id -> what its last mixing pass found: which pair it mixed,
+// or why it produced nothing. The inspector reads it, and the app raises a
+// toast when a pair is present but not synchronised.
+let mixStates = new Map();
+
+function recordMix(elementId, state) {
+  if (elementId) mixStates.set(elementId, state);
+}
+
+export function mixReading(elementId) {
+  return mixStates.get(elementId) || null;
 }
 
 export function metalensReading(elementId) {
@@ -3346,6 +3362,65 @@ function interact(ray, hit) {
     }
     case 'transmit': {
       const efficiency = Math.min(1, Math.max(0, data.efficiency ?? 1));
+      if (MIX_CONVERTS.has(data.convert)) {
+        // Sum- and difference-frequency generation (see parametric.js).
+        const crystalId = s.el?.id || null;
+        const pass = () => (data.transmitPump ? [{ d }] : []);
+        // The probe pass only records which colours arrive here, so the real
+        // pass afterwards knows what there is to mix with. Both beams go
+        // through it untouched.
+        if (specimenProbe) {
+          recordProbeBeam(s, ray);
+          return [{ d }];
+        }
+        // Light this crystal already made is not fed back into the mixing.
+        if (crystalId && Array.isArray(ray.parametricPath) && ray.parametricPath.includes(crystalId)) return pass();
+        const partner = mixingPartner(ray, data.incidentBeams);
+        if (!partner) {
+          recordMix(crystalId, { state: 'oneBeam', kind: data.convert });
+          return pass();
+        }
+        // One output per pair, not one per beam: the shorter wavelength of
+        // the pair drives it, matching how the specimen's mixing channels
+        // already pick their partner.
+        if (ray.wl > partner.wl) return pass();
+        const wl = mixWavelength(data.convert, ray.wl, partner.wl);
+        if (!(wl > 0)) {
+          recordMix(crystalId, { state: 'invalid', kind: data.convert, partnerWl: partner.wl });
+          return pass();
+        }
+        // Mixing is instantaneous: both pulses must be at the crystal
+        // together. Trains at different repetition rates never line up pulse
+        // for pulse, so they make no steady signal at all.
+        const overlap = mixOverlap({ opl: ray.opl, pulse: ray.pulse }, partner);
+        const reading = {
+          kind: data.convert, wl, partnerWl: partner.wl, driverWl: ray.wl,
+          skewNs: overlap.skewNs, overlap: overlap.factor,
+          repRateMHz: ray.pulse?.repRateMHz ?? null,
+          partnerRepRateMHz: partner.pulse?.repRateMHz ?? null,
+        };
+        if (overlap.rateMismatch || (overlap.comparable && overlap.factor < MIN_OVERLAP)) {
+          recordMix(crystalId, { ...reading, state: 'unsynchronized', reason: overlap.rateMismatch ? 'repRate' : 'skew' });
+          return pass();
+        }
+        recordMix(crystalId, { ...reading, state: 'mixing' });
+        if (!(efficiency > 0)) return pass();
+        const path = [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), crystalId].filter(Boolean);
+        const out = [{
+          d, wl, bw: 0, spec: null, tag: data.convert,
+          intensity: ray.intensity * efficiency * reading.overlap,
+          pulse: mixPulse(ray.pulse, partner.pulse, { crystalId, kind: data.convert, wl }),
+          parametricPath: path,
+          // New light, referenced to the crystal exit like the OPO's outputs.
+          gdd: 0,
+          phaseValid: false,
+          phaseIssue: 'sum/difference frequency output: optical phase relative to the inputs is not modelled',
+        }];
+        // Neither input is depleted by the drawn conversion; the driving beam
+        // loses the converted fraction only when it is shown at all.
+        if (data.transmitPump) out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'p' });
+        return out;
+      }
       if (data.convert === 'opo') {
         // Optical parametric oscillation (see parametric.js for the model).
         const crystalId = s.el?.id || null;
@@ -4160,6 +4235,7 @@ export function traceScene(elements, beams = []) {
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
   opoStates = new Map();
+  mixStates = new Map();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
@@ -4273,6 +4349,7 @@ export function traceScene(elements, beams = []) {
   // emission defaults. SHG/THG-only benches still skip it.
   const needsProbe = surfaces.some(s =>
     (s.kind === 'specimen' && (s.data.channels || []).some(channelNeedsExcitationProbe))
+    || (s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
     || (s.kind === 'attenuate' && s.data.specimen && s.el
         && ['linear', 'nonlinear'].includes(specimenTypeOf(s.el.params))));
   if (needsProbe) {
@@ -4280,7 +4357,8 @@ export function traceScene(elements, beams = []) {
     try {
       emitSources(false);
       for (const s of surfaces) {
-        if (s.kind !== 'specimen' && !(s.kind === 'attenuate' && s.data.specimen)) continue;
+        if (s.kind !== 'specimen' && !(s.kind === 'transmit' && MIX_CONVERTS.has(s.data.convert))
+            && !(s.kind === 'attenuate' && s.data.specimen)) continue;
         const beams = specimenProbe.get(s.id) || [];
         s.data.incidentBeams = beams;
         s.data.incidentWls = beams.map(b => b.wl);

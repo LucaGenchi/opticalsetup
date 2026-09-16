@@ -5,14 +5,14 @@ import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
-  displayActionUpdate, delayLineSweepSpanMm, normalizeSupercontinuumParams,
+  displayActionUpdate, delayLineSweepSpanMm, mixStateText, normalizeSupercontinuumParams,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
 import { polygonScannerState } from './polygon-scanner.js';
-import { traceScene } from './raytrace.js';
+import { mixReading, traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
 import {
@@ -418,6 +418,27 @@ function gridLines(x0, y0, x1, y1, step, color, width) {
 
 function ptsAttr(pts) { return pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '); }
 
+// Crystal id -> the last mixing state it was announced in. A two-beam crystal
+// that stops producing anything is worth saying out loud once: the beams are
+// still drawn, the signal simply is not there, and the reason is timing
+// rather than anything visible on the canvas. Announcing on the transition
+// keeps a delay stage being dragged from repeating the same message.
+const announcedMixStates = new Map();
+
+function announceMixingState(elements) {
+  for (const el of elements) {
+    if (el.type !== 'crystal') continue;
+    const reading = mixReading(el.id);
+    const signature = reading ? `${reading.state}:${reading.reason || ''}` : '';
+    if (announcedMixStates.get(el.id) === signature) continue;
+    announcedMixStates.set(el.id, signature);
+    if (reading?.state !== 'unsynchronized') continue;
+    document.dispatchEvent(new CustomEvent('optics:toast', {
+      detail: { message: mixStateText(reading) },
+    }));
+  }
+}
+
 function renderBeams() {
   const scene = traceScene(animatedOpticalElements(), state.beams);
   const drawables = scene.drawables;
@@ -437,6 +458,7 @@ function renderBeams() {
     }
   }
   beamLayer.innerHTML = s;
+  announceMixingState(state.elements);
   renderPulseLayer();
   syncPulseAnimation();
   notifyPulseState();

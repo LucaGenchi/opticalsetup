@@ -12,7 +12,7 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt } from './raytrace.js';
 import { idlerWavelength } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -1951,6 +1951,34 @@ function opoStateText(reading) {
   if (!reading) return 'No pump within the acceptance window yet';
   if (reading.state === 'invalid') return 'No output: the signal must be longer than the pump';
   return `Converting ${sig3(reading.efficiency * 100)}% of the pump (fixed fraction; no threshold or depletion model)`;
+}
+
+// How a mixing crystal reports what it found. The delay figure is the point
+// of the two-beam modes: scanning a stage until it reads zero is how time
+// zero is found on a real bench.
+export function mixStateText(reading) {
+  if (!reading) return 'No light at the crystal yet';
+  const label = reading.kind === 'dfg' ? 'Difference frequency' : 'Sum frequency';
+  if (reading.state === 'oneBeam') return `${label} needs a second beam of a different wavelength at the crystal`;
+  if (reading.state === 'invalid') return `${label}: these two wavelengths give no positive output wavelength`;
+  const pair = `${sig3(reading.driverWl)} + ${sig3(reading.partnerWl)} nm → ${sig3(reading.wl)} nm`;
+  if (reading.state === 'unsynchronized') {
+    return reading.reason === 'repRate'
+      ? `No signal: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz, so their pulses do not coincide. ${pair} needs the same repetition rate, or one an exact multiple of the other.`
+      : `No signal: the pulses arrive ${formatMixDelay(reading.skewNs)} apart. Match the path lengths, or scan a delay stage to find time zero.`;
+  }
+  const timing = reading.skewNs == null
+    ? 'no pulse timing to match'
+    : `${formatMixDelay(reading.skewNs)} apart, ${sig3(reading.overlap * 100)}% temporal overlap`;
+  return `${pair}, ${timing}`;
+}
+
+function formatMixDelay(skewNs) {
+  if (!(skewNs > 0)) return '0 fs';
+  const fs = skewNs * 1e6;
+  if (fs >= 1e6) return `${sig3(fs / 1e6)} ns`;
+  if (fs >= 1e3) return `${sig3(fs / 1e3)} ps`;
+  return `${sig3(fs)} fs`;
 }
 
 function formatOpoDuration(fs) {
@@ -4143,7 +4171,7 @@ export const registry = {
     size_: el => ({ w: 36, h: (el.params.aperture || 22) + 4 }),
     params: [
       { key: 'aperture', label: 'Crystal aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 22 },
-      { key: 'convert', label: 'Convert λ', type: 'select', def: 'none', options: [['none', 'None'], ['shg', 'SHG (λ/2)'], ['thg', 'THG (λ/3)'], ['sc', 'Supercontinuum (white)'], ['opo', 'OPO (signal + idler)'], ['custom', 'Custom output λ']] },
+      { key: 'convert', label: 'Convert λ', type: 'select', def: 'none', options: [['none', 'None'], ['shg', 'SHG (λ/2)'], ['thg', 'THG (λ/3)'], ['sc', 'Supercontinuum (white)'], ['opo', 'OPO (signal + idler)'], ['sfg', 'SFG (two beams)'], ['dfg', 'DFG (two beams)'], ['custom', 'Custom output λ']] },
       { key: 'outWl', label: 'Output λ (nm)', type: 'number', min: 100, max: 12000, step: 1, def: 532, show: p => p.convert === 'custom' },
       { key: 'pumpWl', label: 'Pump λ (nm)', type: 'number', min: 100, max: 3000, step: 1, def: 532, show: p => p.convert === 'opo' },
       { key: 'signalWl', label: 'Signal λ (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 800, show: p => p.convert === 'opo' },
@@ -4187,6 +4215,10 @@ export const registry = {
       },
       { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5, show: p => p.convert !== 'none' },
       { key: 'transmitPump', label: 'Transmit residual pump', type: 'checkbox', def: true, show: p => p.convert !== 'none' },
+      {
+        key: 'mixState', label: 'Mixing', type: 'readout', wide: true, show: p => p.convert === 'sfg' || p.convert === 'dfg',
+        readout: (p, el) => mixStateText(el ? mixReading(el.id) : null),
+      },
       {
         key: 'opoState', label: 'Oscillation', type: 'readout', wide: true, show: p => p.convert === 'opo',
         readout: (p, el) => opoStateText(el ? opoReading(el.id) : null),
@@ -4950,7 +4982,7 @@ const ELEMENT_HELP = {
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
-  crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, or custom output. OPO mode splits the generated power by Manley–Rowe and gives signal and idler their own linewidths and pulse durations; phase matching, threshold and cavity dynamics are not simulated.',
+  crystal: 'Converts a configurable fraction of pump power into SHG, THG, supercontinuum, OPO, SFG, DFG, or custom output. OPO mode splits the generated power by Manley–Rowe and gives signal and idler their own linewidths and pulse durations; SFG and DFG mix two beams of different wavelengths and produce nothing unless their pulses reach the crystal together. Phase matching, threshold and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
