@@ -92,6 +92,12 @@ export const examples = [
   },
   {
     "group": "Ultrashort Pulses",
+    "name": "Finding time zero — sum frequency of two beams",
+    "path": "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json",
+    "slug": "finding-time-zero-sum-frequency-of-two-beams"
+  },
+  {
+    "group": "Ultrashort Pulses",
     "name": "Ultrashort pulse chirping",
     "path": "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
     "slug": "ultrashort-pulse-chirping"

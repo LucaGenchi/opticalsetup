@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finding time zero — a two-colour cross-correlator — Examples | OpticalSetup</title>
+<meta name="description" content="Two colours from one laser meet in a crystal: the sum-frequency signal exists only at the delay where their pulses coincide.">
+<link rel="canonical" href="https://opticalsetup.com/example-setups/finding-time-zero-a-two-colour-cross-correlator/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Finding time zero — a two-colour cross-correlator — OpticalSetup Examples">
+<meta property="og:description" content="Two colours from one laser meet in a crystal: the sum-frequency signal exists only at the delay where their pulses coincide.">
+<meta property="og:url" content="https://opticalsetup.com/example-setups/finding-time-zero-a-two-colour-cross-correlator/">
+<meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../wiki/assets/wiki.css">
+<link rel="stylesheet" href="../../example-setups/assets/examples.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <a class="brand" href="../../">
+  <svg class="brand-mark" viewBox="0 0 130 85" aria-hidden="true">
+    <g class="mark-accent" stroke-width="4" stroke-linecap="round">
+      <line x1="22" y1="45" x2="29" y2="45"/>
+      <line x1="20.8" y1="47.8" x2="25.8" y2="52.8"/>
+      <line x1="18" y1="49" x2="18" y2="56"/>
+      <line x1="15.2" y1="47.8" x2="10.2" y2="52.8"/>
+      <line x1="14" y1="45" x2="7" y2="45"/>
+      <line x1="15.2" y1="42.2" x2="10.2" y2="37.2"/>
+      <line x1="18" y1="41" x2="18" y2="34"/>
+      <line x1="20.8" y1="42.2" x2="25.8" y2="37.2"/>
+    </g>
+    <line class="mark-accent" x1="29" y1="45" x2="77" y2="45" stroke-width="4" stroke-linecap="round"/>
+    <polygon class="mark-ink" points="64,12 42,68 86,68" fill="none" stroke-width="4.5" stroke-linejoin="round"/>
+    <g class="mark-accent" stroke-width="2.4" stroke-linecap="round">
+      <line x1="77" y1="45" x2="108" y2="22"/>
+      <line x1="77" y1="45" x2="108" y2="34"/>
+      <line x1="77" y1="45" x2="108" y2="45"/>
+      <line x1="77" y1="45" x2="108" y2="56"/>
+      <line x1="77" y1="45" x2="108" y2="68"/>
+    </g>
+    <line class="mark-ink" x1="108" y1="14" x2="108" y2="76" stroke-width="4" stroke-linecap="round"/>
+    <g class="mark-ink" stroke-width="3" stroke-linecap="round">
+      <line x1="108" y1="22" x2="115" y2="22"/>
+      <line x1="108" y1="34" x2="115" y2="34"/>
+      <line x1="108" y1="45" x2="115" y2="45"/>
+      <line x1="108" y1="56" x2="115" y2="56"/>
+      <line x1="108" y1="68" x2="115" y2="68"/>
+    </g>
+  </svg><span class="brand-ink">Optical</span><span class="brand-accent">Setup</span></a>
+    <div class="header-actions">
+      <a class="plain" href="../../wiki/">Wiki</a>
+      <a class="plain" href="../../example-setups/">Examples</a>
+      <a class="plain" href="../../community/">Community</a>
+      <a class="btn" href="../../sketch/">Open the canvas</a>
+    </div>
+  </header>
+  <div class="wiki-shell" style="grid-template-columns: 1fr;">
+    <main class="wiki-article" style="max-width: 760px;">
+      <div class="crumb"><a href="../../example-setups/">Examples</a> / Ultrashort Pulses / Finding time zero — a two-colour cross-correlator</div>
+      <h1>Finding time zero — a two-colour cross-correlator</h1>
+      <p class="tagline" style="margin-top: 10px;">Two colours from one laser meet in a crystal: the sum-frequency signal exists only at the delay where their pulses coincide.</p>
+
+      <a class="place-cta" href="../../sketch/?example=finding-time-zero-a-two-colour-cross-correlator">Open in the canvas →</a>
+
+      <div class="embed-wrap">
+        <iframe class="embed-frame" src="../../sketch/?example=finding-time-zero-a-two-colour-cross-correlator&amp;embed=1"
+          title="Finding time zero — a two-colour cross-correlator — a live trace of this setup"
+          loading="lazy" tabindex="-1" aria-hidden="true"></iframe>
+      </div>
+      <p class="embed-caption">A live trace of the setup above, shown as a picture. Open it in the canvas to take it apart, retune it, and save or export it as your own.</p>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Background</h2>
+      
+      <p>Two beams that have to work together — a pump and a probe, two colours of a
+      coherent Raman source, an amplifier and its seed — must reach the sample at the same
+      instant. Position is easy to see; timing is not. A picosecond of error is 0.3 mm of
+      path, and nothing on the table shows it.</p>
+      <p><strong>Sum-frequency generation is the instrument that shows it.</strong> Mixing
+      in a χ⁽²⁾ crystal is instantaneous: two photons, one from each beam, become one photon
+      at the summed frequency, and that can only happen while both pulses are inside the
+      crystal together. Scan the delay between the two arms and the signal appears, peaks,
+      and goes away again. The peak is <strong>time zero</strong>, and its width is the
+      cross-correlation of the two pulses — the same principle an autocorrelator uses to
+      measure a pulse against a copy of itself<sup class="cite">[<a href="#ref-1">1</a>]</sup>.</p>
+      <p>Two independent lasers will not do. Their pulses have to coincide on every shot,
+      so a real two-colour bench derives both colours from one oscillator: an amplifier and
+      its harmonic, a laser and the parametric source it pumps, or, as here, a fundamental
+      and its second harmonic. Sum-frequency mixing between the light left over after a
+      doubling stage and a parametric output is a working laboratory technique in its own
+      right, used to reach wavelengths neither beam has<sup class="cite">[<a href="#ref-2">2</a>]</sup>.</p>
+
+      <h2 class="section-head sim"><span class="sw"></span>What this setup demonstrates</h2>
+      <div class="sim-block">
+        
+      <p>A 1030 nm, 200 fs, 80 MHz laser passes through an SHG crystal that converts 35 % of
+      it to 515 nm. A shortpass dichroic splits the two: the 515 nm harmonic goes straight
+      on, and the 1030 nm fundamental is turned up out of the axis. A second dichroic of the
+      same kind, used the other way round, brings them back together on one axis, and a
+      150 mm lens sits one focal length before the mixing crystal. What comes out is
+      <span class="w">1/λ₃ = 1/515 + 1/1030</span>, or 343.3 nm, and a bandpass filter
+      passes that alone to the detector.</p>
+      <p><strong>The delay.</strong> The fundamental's two mirrors stand 200 mm off the axis
+      and the beam crosses that gap twice, so this arm carries 400 mm — 1.33 ns — of extra
+      path. In this double-pass geometry, moving the stage by Δx changes the delay by
+      <span class="w">2Δx / c</span>. The delay
+      line in the harmonic arm is set to exactly 400 mm, so the two pulses reach the
+      crystal together and the scene opens at time zero: the crystal's <em>Mixing</em>
+      readout says 0 fs apart, 100 % temporal overlap.</p>
+      <p><strong>Scanning it.</strong> Change the delay line and watch the readout. At
+      0.02 mm of extra path — 67 fs — the overlap is 86 %; at 0.06 mm, 200 fs, it is 25 %;
+      at a fifth of a millimetre it falls below the 2 % the workbench still draws, and it
+      says why. That last threshold is where the drawing stops, not a physical edge:
+      Gaussian pulses have no delay at which they abruptly stop overlapping. The
+      trace through zero is the cross-correlation: for two Gaussians of FWHM τ₁ and τ₂
+      arriving Δt apart, the signal follows
+      <span class="w">exp(−4 ln2 Δt² / (τ₁² + τ₂²))</span>. Both colours come from one
+      laser here, so they share a repetition rate by construction — two beams at genuinely
+      different rates are outside what this model draws.</p>
+        <div class="limitations"><span class="lbl">What you won't see</span><p>The crystal gates on arrival time and nothing else. There is no phase
+      matching, so the polarizations, crystal cut and angle a real 343 nm stage would need
+      are absent, and any two wavelengths mix here if they coincide in time. The focusing
+      lens is drawn because a real stage focuses, but the overlap of the two foci is not
+      calculated, and neither is the conversion's dependence on intensity: the signal is an
+      authored 30 % of the 515 nm beam, scaled by the temporal overlap. Only that beam is
+      debited; the fundamental's power is not used in the calculation at all. The doubling
+      stage is the same kind of proxy: it keeps the pump's authored 200 fs duration, which
+      is why both envelopes here are 200 fs and why the quarter-height figure above follows
+      from two equal widths. A real second-harmonic stage does not preserve the
+      fundamental's duration.</p>
+      <p>The drawn width of the correlation is therefore a timing proxy built from the two
+      authored pulse durations, not a measurement: it cannot be used to retrieve a pulse
+      width the way a real cross-correlator can, and it assumes ideal Gaussian envelopes
+      with no dispersion between the arms. The two arms are drawn as a single chief ray with
+      no beam size, and the delay line is an ideal added path with no alignment or beam
+      walk.</p></div>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>Related components</h2>
+      <div class="related-list">
+        <a href="../../wiki/crystal/"><svg viewBox="-24 -24 48 48" aria-hidden="true"><path d="M -12,-11 L 16,-11 L 12,11 L -16,11 Z" fill="#e4d5f2" stroke="#8a5fb0" stroke-width="1.5"/></svg>Crystal</a><a href="../../wiki/delayline/"><svg viewBox="-26 -26 52 52" aria-hidden="true"><rect x="-18" y="-15" width="36" height="30" rx="3" fill="#d8d1ec" stroke="#69588f" stroke-width="1.4"/><g  fill="none" stroke="#514171" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M -15,0 H -6 L 4,-7 H 11 L 4,0 L 11,7 H 4 L -6,0"/><path d="M -1,-10 V 10" stroke-dasharray="2 2" opacity="0.65"/></g><text x="0" y="13"  text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="700" fill="#44365f">ΔL</text></svg>Mechanical delay line</a><a href="../../wiki/dichroic/"><svg viewBox="-21.7 -21.7 43.4 43.4" aria-hidden="true"><rect x="-3" y="-12.7" width="6" height="25.4" fill="#dfeef7" stroke="#5d7f96" stroke-width="1.5"/><line x1="-3" y1="-12.7" x2="-3" y2="12.7" stroke="#b04ad0" stroke-width="2"/></svg>Dichroic mirror</a><a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/probe/"><svg viewBox="-24 -24 48 48" aria-hidden="true"><circle r="4.5" fill="none" stroke="#e07020" stroke-width="1.6"/><line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/><line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/><line x1="0" y1="-9" x2="0" y2="-22" stroke="#e07020" stroke-width="1"/><g class="probe-card" transform="rotate(0) translate(-42.00,-58.00) scale(1.5)"><rect x="0" y="0" width="56" height="24" rx="4" fill="#fff" stroke="#c9ced6"/><text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text></g></svg>Beam probe (?)</a>
+      </div>
+
+      
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://www.rp-photonics.com/autocorrelators.html" target="_blank" rel="noopener">RP Photonics Encyclopedia — Autocorrelators</a></li><li id="ref-2"><a href="https://doi.org/10.3390/photonics7040091" target="_blank" rel="noopener">R. Quintero-Torres, J. L. Domínguez-Juárez, “Green-Yellow-Orange-Red Spectral Range with Sum-Frequency Generation Using BIBO Crystal Pumped with an Optical Parametric Amplifier,” Photonics 7, 91 (2020)</a></li>
+      </ol>
+
+      
+    </main>
+  </div>
+  <footer class="wiki-footer">Examples are curated and reviewed for pedagogical accuracy — see the <a href="../../community/">community section</a> for setups submitted directly by users, and the <a href="../../wiki/">wiki</a> for how each component actually works.</footer>
+</body>
+</html>
