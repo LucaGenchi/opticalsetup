@@ -74,17 +74,16 @@ function normalizeChannels(value) {
   const kinds = new Set(['fluor', 'raman', 'phase', 'tpef', 'thpef', 'shg', 'thg', 'sfg', 'cars', 'srs']);
   // Sum frequency is no longer a channel of its own: one chi(2) gives both the
   // second harmonic of each beam and the sum frequency of a pair, so a saved
-  // `sfg` channel becomes the second-order channel. A scene that carried both
-  // keeps one of them rather than emitting everything twice.
-  const seenSecondOrder = { taken: false };
-  return value.slice(0, 5).filter(record).map(raw => {
+  // `sfg` channel becomes the second-order channel. Channels that were already
+  // second harmonic are kept exactly as authored, however many there are; only
+  // a converted `sfg` entry is dropped, and only when the scene already has a
+  // second-order channel that now covers it.
+  const kept = value.slice(0, 5).filter(record);
+  const hasSecondOrder = kept.some(raw => raw.kind === 'shg');
+  return kept.map(raw => {
     const named = kinds.has(raw.kind) ? raw.kind : 'fluor';
-    const kind = named === 'sfg' ? 'shg' : named;
-    if (kind === 'shg') {
-      if (seenSecondOrder.taken) return null;
-      seenSecondOrder.taken = true;
-    }
-    return { ...channelFields(raw), kind };
+    if (named === 'sfg') return hasSecondOrder ? null : { ...channelFields(raw), kind: 'shg' };
+    return { ...channelFields(raw), kind: named };
   }).filter(Boolean);
 }
 

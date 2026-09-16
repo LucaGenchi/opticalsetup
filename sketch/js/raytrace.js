@@ -1388,7 +1388,7 @@ function probeBeamKey(ray) {
   const gates = (pulse?.gates || [])
     .map(g => `${g.opl}|${g.frequencyMHz}|${g.duty}|${g.phaseNs}|${g.shape || ''}`).join(';');
   return [
-    ray.wl.toFixed(9), pulse?.sourceId || '',
+    ray.wl.toFixed(9), ray.branch || pulse?.sourceId || '',
     pulse?.repRateMHz ?? '', pulse?.phaseNs ?? '', pulse?.pulseWidthFs ?? '', gates,
   ].join('/');
 }
@@ -1508,21 +1508,32 @@ function specimenMixedOutputs(channel, ray, d, data, elementId) {
     if (partner.wl - ray.wl < MIXING_MIN_SEPARATION_NM) continue;   // the shorter beam emits
     const wl = mixWavelength('sfg', ray.wl, partner.wl);
     if (!(wl > 0)) continue;
-    const overlap = channelOverlap(channel, ray, partner, data.incidentBeams, elementId).factor;
-    if (overlap < MIN_OVERLAP) continue;
+    const overlap = mixOverlap(rayAsBeam(ray, data.incidentBeams), partner);
+    const gate = channelOverlap(channel, ray, partner, data.incidentBeams, elementId).factor;
+    if (gate < MIN_OVERLAP) continue;
     const tint = channelColor(channel, wl);
-    const forward = ray.intensity * eff * overlap;
-    out.push({
-      d, wl, bw: 0, spec: null, pol: undefined, stokes: null,
-      color: tint, sourceId: elementId, intensity: forward, tag: `sfg${Math.round(wl)}`,
+    const forward = ray.intensity * eff * gate;
+    // This light exists only while both pulses are there, so it is the pair's
+    // train -- not the driving beam's, whose duration and transform-limited
+    // claim are not this signal's.
+    const pulse = mixPulse(ray.pulse, partner.pulse, {
+      crystalId: elementId, kind: 'sfg', wl,
+      centerNs: overlap.centerNs, oplMm: ray.opl, repRateMHz: overlap.repRateMHz,
+      partnerPulseOffset: overlap.partnerPulseOffset, periodNs: overlap.periodNs,
     });
+    const child = {
+      d, wl, bw: 0, spec: null, pol: undefined, stokes: null, pulse,
+      color: tint, sourceId: elementId, intensity: forward, tag: `sfg${Math.round(wl)}`,
+    };
+    out.push(child);
     if (channel.epi) {
       const ratio = Math.min(1, Math.max(0, channel.epiRatio ?? 0.15));
       if (ratio > 0) {
         out.push({
-          d: { x: -d.x, y: -d.y }, wl, bw: 0, spec: null, pol: undefined, stokes: null,
-          color: tint, sourceId: elementId, intensity: forward * ratio,
-          power: Number.isFinite(ray.power) ? ray.power * eff * overlap * ratio : undefined,
+          ...child,
+          d: { x: -d.x, y: -d.y },
+          intensity: forward * ratio,
+          power: Number.isFinite(ray.power) ? ray.power * eff * gate * ratio : undefined,
           tag: `esfg${Math.round(wl)}`,
         });
       }
@@ -1533,11 +1544,18 @@ function specimenMixedOutputs(channel, ray, d, data, elementId) {
 
 // The incident beam a mixing channel pairs the current ray with: the longest
 // wavelength present, matching how specimenSignalWl picks the Stokes partner.
+// Where that colour arrives on more than one path -- two arms of a split beam,
+// say -- the one that actually meets this pulse is the partner.
 function mixingPartner(ray, incidentBeams) {
   let best = null;
   for (const beam of incidentBeams || []) {
     if (Math.abs(beam.wl - ray.wl) < MIXING_MIN_SEPARATION_NM) continue;
-    if (!best || beam.wl > best.wl) best = beam;
+    if (!best || beam.wl > best.wl) { best = beam; continue; }
+    if (Math.abs(beam.wl - best.wl) < MIXING_MIN_SEPARATION_NM) {
+      const here = mixOverlap(rayAsBeam(ray, incidentBeams), beam).factor;
+      const there = mixOverlap(rayAsBeam(ray, incidentBeams), best).factor;
+      if (here > there) best = beam;
+    }
   }
   return best;
 }
@@ -4089,7 +4107,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         r.last = hit.surface; r.depth++;
         continue;
       }
-      for (const c of children) {
+      for (const [ci, c] of children.entries()) {
         const childIntensity = c.intensity !== undefined ? c.intensity : r.intensity;
         const childRetainsWeak = r.retainWeak || Boolean(c.retainWeak);
         // Only a genuine branch is charged. A lone child continues the ray it
@@ -4108,6 +4126,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         const childGdd = 'gdd' in c ? c.gdd : r.gdd;
         stack.push({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
+          // A genuine split starts a new branch; a lone child continues the
+          // ray it came from and keeps its branch (the `single` path above).
+          branch: `${r.branch || ''}>${hit.surface.el?.id || ''}:${c.tag ?? ci}`,
           wl: c.wl !== undefined ? c.wl : r.wl,
           bw: c.bw !== undefined ? c.bw : r.bw,
           spec: 'spec' in c ? c.spec : r.spec,
@@ -4519,6 +4540,10 @@ export function traceScene(elements, beams = []) {
         : null;
       return {
         x: o.x, y: o.y, dx: d.x, dy: d.y, wl: srcWl, bw: srcBw, spec: srcSpec, speckle: false,
+        // Which optical path this light is on. Every sampling ray of one beam
+        // shares it; a beamsplitter's two arms do not, so two arms of one
+        // source can be told apart even when they carry the same colour.
+        branch: el.id,
         spectralContinuum: Boolean(srcSpec || srcBw > 0),
         spectralWidthNm: null, spectralLo: null, spectralHi: null,
         pol: typeof p.pol === 'number' ? p.pol : undefined,

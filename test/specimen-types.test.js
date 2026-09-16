@@ -1076,3 +1076,105 @@ test('the specimen says why a two-beam signal is missing', () => {
   assert.equal(rates.state, 'unsupported');
   assert.match(specimenTimingText(rates), /timing not modelled/);
 });
+
+test('retiring the sum-frequency channel keeps every authored channel that still means something', () => {
+  const raw = (kind, extra = {}) => ({
+    kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true, autoColor: true,
+    color: '#22c55e', material: 'lipid', fluorophore: 'custom', retardance: 90, axis: 45,
+    transferEff: 0.1, requireOverlap: true, ...extra,
+  });
+  const load = channels => parseSketch(JSON.stringify({
+    app: 'optics2d', version: 1,
+    elements: [{ id: 's', type: 'sample', x: 0, y: 0, rot: 90, params: { specimenType: 'nonlinear', channels } }],
+  }), registry).elements[0].params.channels;
+
+  // Two authored second-harmonic channels are two channels, not one.
+  const twoHarmonics = load([raw('shg', { eff: 0.1 }), raw('shg', { eff: 0.7, epi: true })]);
+  assert.deepEqual(twoHarmonics.map(c => [c.kind, c.eff, c.epi]), [['shg', 0.1, false], ['shg', 0.7, true]]);
+
+  // A lone sum-frequency channel becomes the second-order channel, settings intact.
+  const converted = load([raw('sfg', { eff: 0.7, epi: true })]);
+  assert.deepEqual(converted.map(c => [c.kind, c.eff, c.epi]), [['shg', 0.7, true]]);
+
+  // Alongside a second-harmonic channel it has nothing left to add.
+  assert.deepEqual(load([raw('shg', { eff: 0.1 }), raw('sfg', { eff: 0.7 })]).map(c => c.kind), ['shg']);
+  // And it converts in place beside unrelated channels.
+  assert.deepEqual(load([raw('cars'), raw('sfg', { eff: 0.4 })]).map(c => c.kind), ['cars', 'shg']);
+});
+
+test('the sum frequency is the pair\'s own pulse, not the beam that drove it', () => {
+  const bench = ({ driverCw = false } = {}) => {
+    const driver = createElement(driverCw ? 'cwlaser' : 'pulsedlaser', 0, -6);
+    Object.assign(driver.params, driverCw
+      ? { wavelength: 800, beamMode: 'line' }
+      : { wavelength: 800, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line' });
+    const partner = createElement('pulsedlaser', 0, 6);
+    Object.assign(partner.params, {
+      wavelength: 1030, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+    });
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear', transmitExc: false, transmission: 0,
+      channels: [ch('shg', { eff: 0.5, requireOverlap: true })],
+    });
+    const detector = createElement('detector', 400, 0);
+    detector.params.aperture = 60;
+    traceAll([driver, partner, sample, detector]);
+    const trains = detectorReading(detector.id)?.pulse?.trains || [];
+    return trains.find(t => Math.abs((t.centerWavelengthNm || 0) - 450.27) < 1);
+  };
+
+  // Two 200 fs pulses make a 141 fs product, not another 200 fs pulse.
+  const both = bench();
+  assert.ok(both, 'no sum-frequency train at the detector');
+  assert.ok(Math.abs(both.pulseWidthFs - 200 / Math.SQRT2) < 0.1, `duration ${both.pulseWidthFs}`);
+  assert.notEqual(both.transformLimited, true, 'the driver\'s transform-limited claim is not this signal\'s');
+
+  // A steady driver cannot make the signal steady: it exists only when the
+  // pulsed partner is there.
+  const withCw = bench({ driverCw: true });
+  assert.ok(withCw, 'a CW driver and a pulsed partner produced no sum frequency');
+  assert.equal(withCw.repRateMHz, 80, 'the signal must carry the pulsed partner\'s train');
+  assert.ok(Math.abs(withCw.pulseWidthFs - 200) < 0.1, `duration ${withCw.pulseWidthFs}`);
+});
+
+test('two arms of one colour are two beams, and the one that meets the pulse is the partner', () => {
+  // Averaging distinct arms would put a signal where neither arm overlaps.
+  const laser = (id, wl, y, x = 0) => {
+    const source = createElement('pulsedlaser', x, y);
+    Object.assign(source.params, {
+      wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+    });
+    return source;
+  };
+  const bench = (earlyX, lateX) => {
+    const elements = [laser('p', 800, -20), laser('e', 1040, 20, earlyX), laser('l', 1040, 40, lateX)];
+    const sample = createElement('sample', 300, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 120, specimenType: 'nonlinear',
+      channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+    });
+    const detector = createElement('detector', 500, 0);
+    detector.params.aperture = 150;
+    elements.push(sample, detector);
+    traceAll(elements);
+    const beams = specimenIncidentBeams(sample.id) || [];
+    const spectrum = detectorReading(detector.id)?.spectrum || [];
+    return { beams, reading: specimenTimingReading(sample.id), spectrum };
+  };
+
+  // Both arms mistimed, symmetrically: their mean is the matched position, and
+  // a model that averaged them would draw a signal that cannot exist.
+  const straddling = bench(-30, 30);
+  assert.equal(straddling.beams.length, 3, 'the two arms must stay two beams');
+  assert.equal(straddling.reading.state, 'unsynchronized');
+  assert.ok(!straddling.spectrum.some(s => Math.abs(s.wavelength - 650) < 2),
+    'two mistimed arms averaged into a signal');
+
+  // One arm matched: that is the partner, and the signal is there.
+  const matched = bench(0, 30);
+  assert.equal(matched.reading.state, 'mixing');
+  assert.ok(matched.spectrum.some(s => Math.abs(s.wavelength - 650) < 2), 'the matched arm produced no signal');
+});
