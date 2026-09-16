@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { mixStateText, registry } from '../sketch/js/elements.js';
 import { mixDurationFs, mixOverlap, mixPulse, mixWavelength } from '../sketch/js/parametric.js';
+import { pulseGateTransmission } from '../sketch/js/pulses.js';
 import { detectorReading, mixReading, traceScene } from '../sketch/js/raytrace.js';
 
 const defaults = type => Object.fromEntries((registry[type].params || []).map(p => [p.key, p.def]));
@@ -176,6 +177,40 @@ test('difference frequency is longer than its shorter input, but not always than
   assert.ok(sawWavelength(detector, 3582.6, 2), 'no difference-frequency light at the detector');
   // 400 nm with 1000 nm lands at 667 nm, between the two inputs.
   assert.ok(Math.abs(mixWavelength('dfg', 400, 1000) - 666.667) < 1e-3);
+});
+
+test('a carried gate keeps switching when it did, whatever path the other beam took', () => {
+  // Gates are defined against their own train's emission time, so carrying one
+  // onto a train with a different epoch needs it rebased. Without that, moving
+  // an always-present CW source switches the signal off through the gate
+  // reference — the same bug as timing the pulse from the CW beam.
+  const gate = { opl: 0, frequencyMHz: 80, duty: 0.5, phaseNs: -0.05 };
+  const partner = { opl: 300, pulse: { repRateMHz: 80, pulseWidthFs: 200, phaseNs: 0, gates: [gate] } };
+  const open = pulseGateTransmission(partner.pulse);
+  assert.equal(open, 1, 'the input itself is not fully passed');
+  for (const driverOpl of [300, 330, 600, 1234.5]) {
+    const overlap = mixOverlap({ opl: driverOpl, pulse: null }, partner);
+    const mixed = mixPulse(null, partner.pulse, {
+      crystalId: 'c', kind: 'sfg', wl: 343,
+      centerNs: overlap.centerNs, oplMm: driverOpl, repRateMHz: overlap.repRateMHz,
+    });
+    assert.equal(pulseGateTransmission(mixed), open, `CW driver at ${driverOpl} mm changed the gating`);
+  }
+});
+
+test('a slow gate survives the choice of coincident pulse', () => {
+  // The pair is matched to the nearest pulse of the other train, which can sit
+  // a whole period away. A chopper slower than the train would see the
+  // difference if the gate were not anchored to its own beam's emission.
+  const gate = { opl: 0, frequencyMHz: 1, duty: 0.5, phaseNs: 0 };
+  const pulse = { repRateMHz: 80, pulseWidthFs: 200, phaseNs: 0, gates: [gate] };
+  const period = 1000 / 80;
+  const base = mixPulse(pulse, null, { crystalId: 'c', kind: 'sfg', wl: 343, centerNs: 0, oplMm: 0, repRateMHz: 80 });
+  const shifted = mixPulse(pulse, null, { crystalId: 'c', kind: 'sfg', wl: 343, centerNs: period, oplMm: 0, repRateMHz: 80 });
+  assert.ok(Math.abs(pulseGateTransmission(base) - pulseGateTransmission(shifted)) < 1e-9,
+    'a full period of epoch shift changed how a slow gate acts');
+  assert.ok(Math.abs(pulseGateTransmission(base) - pulseGateTransmission(pulse)) < 1e-9,
+    'the mixed train is gated differently from the beam that carried the gate');
 });
 
 test('a gate on either beam gates the signal, because both have to be there', () => {

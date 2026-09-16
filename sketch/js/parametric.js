@@ -159,7 +159,8 @@ export function opoPulse(pumpPulse, wave, { crystalId, role, outputPhase = 'unkn
 //
 // Energy. SFG adds the photon energies, 1/λ3 = 1/λ1 + 1/λ2, so the output is
 // shorter than either input. DFG subtracts them, 1/λ3 = 1/λ1 − 1/λ2 with λ1
-// the shorter input, so the output is longer than either. Both are written
+// the shorter input, so the output is longer than that input — though not
+// necessarily longer than the other one: 400 nm with 1000 nm gives 667 nm. Both are written
 // from the pair, never from one beam alone: single-beam illumination produces
 // nothing, which is what makes these modes two-colour experiments.
 //
@@ -195,6 +196,13 @@ export function mixDurationFs(aFs, bFs) {
 // drives it: the centre is the Gaussian product's centre, and a gate on
 // either input gates the signal, because both have to be there.
 //
+// Gates are defined against their own train's emission time, so a gate taken
+// from one input has to be rebased when it is carried onto a train with a
+// different epoch: shifting its phase by the difference between the two
+// emission times leaves it switching at the same absolute instants it did on
+// the beam it was imposed on. Without that, moving a source would move when
+// its own modulator appears to act.
+//
 // `centerNs` is when the signal peaks at the crystal, absolute on the same
 // scale as the inputs' arrivals; `oplMm` is the path the generated ray
 // carries onward, so the stored phase reproduces that arrival.
@@ -204,11 +212,15 @@ export function mixPulse(rayPulse, partnerPulse, { crystalId, kind, wl, centerNs
   const timed = trains.find(t => t.repRateMHz > 0) || trains[0];
   const trainId = timed.sourceId || '';
   const duration = mixDurationFs(rayPulse?.pulseWidthFs, partnerPulse?.pulseWidthFs);
-  // Both inputs' gates apply: each carries the path it was imposed at, so a
-  // modulator on either beam switches the signal off exactly as it should.
-  const gates = trains.flatMap(t => (Array.isArray(t.gates) ? t.gates.map(g => ({ ...g })) : []));
   const rate = repRateMHz ?? timed.repRateMHz;
   const phaseNs = Number.isFinite(centerNs) ? centerNs - oplMm / C_MM_PER_NS : timed.phaseNs;
+  // Both inputs' gates apply: each keeps the path it was imposed at, and is
+  // rebased onto this train's epoch so it still switches at the same times.
+  const gates = trains.flatMap(t => {
+    if (!Array.isArray(t.gates) || !t.gates.length) return [];
+    const shift = phaseNs - (Number.isFinite(t.phaseNs) ? t.phaseNs : 0);
+    return t.gates.map(g => ({ ...g, phaseNs: (Number.isFinite(g.phaseNs) ? g.phaseNs : 0) + shift }));
+  });
   return {
     sourceId: `${trainId}›${crystalId || 'crystal'}:${kind || 'mix'}`,
     syncSourceId: timed.syncSourceId || trainId,

@@ -179,7 +179,7 @@
     {
       "id": "mixer",
       "type": "crystal",
-      "x": 1260,
+      "x": 1290,
       "y": 520,
       "rot": 0,
       "label": "SFG crystal",
@@ -243,7 +243,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "The fundamental stands 200 mm off the axis and crosses it twice, so this arm carries\n2 × 200 mm = 400 mm of extra path: moving the stage by Δx moves the delay by 2Δx / c.",
+        "text": "The fundamental stands 200 mm off the axis and crosses it twice, so this arm carries\n2 × 200 mm = 400 mm of extra path: in this double-pass geometry, moving the stage by Δx moves the delay by 2Δx / c.",
         "fontSize": 10,
         "fill": "#34454d"
       }
@@ -257,7 +257,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "The delay line matches it, ΔL = 400 mm = 1.33 ns, so the two pulses reach the crystal together.\nRetune it by 0.06 mm — 30 µm of stage travel — and the 200 fs pulses no longer overlap: the signal goes out.",
+        "text": "The delay line matches it, ΔL = 400 mm = 1.33 ns, so the two pulses reach the crystal together.\nRetune it by 0.06 mm — 30 µm of stage travel — and about a quarter of the signal is left; by 0.2 mm it falls under the 2 % the workbench still draws.",
         "fontSize": 10,
         "fill": "#34454d"
       }

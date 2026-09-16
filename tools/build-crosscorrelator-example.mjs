@@ -16,8 +16,10 @@
 // moves by 2Δx/c. Here it stands 200 mm off the axis and therefore carries
 // 400 mm — 1.33 ns — more path than the harmonic arm. The delay line in the
 // harmonic arm is set to exactly that, so the two arrive together and the
-// example opens at time zero. Change the path by 60 µm — 30 µm of stage
-// travel — and the 200 fs pulses no longer overlap.
+// example opens at time zero. 60 µm of path — 30 µm of stage travel — leaves
+// about a quarter of the signal, and 0.2 mm drops it under the workbench's
+// 2 % display cutoff. Gaussian pulses have no sharp overlap boundary; that
+// cutoff is where the drawing stops, not where the physics does.
 //
 // What the model does not do: phase matching, the polarizations the two beams
 // would need, the focusing overlap in the crystal, and any depletion of the
@@ -42,6 +44,7 @@ export const SUM_NM = 1 / (1 / HARMONIC_NM + 1 / FUNDAMENTAL_NM);
 // Layout. The axis carries the harmonic arm; the fundamental is folded up over
 // it and brought back down onto the combiner.
 const AXIS = 520;
+export const FOCAL_MM = 150;          // the lens, and where the crystal sits
 export const STAGE_OFFSET_MM = 200;   // how far the fold stands off the axis
 const SPLIT_X = 460, COMBINE_X = 1040;
 export const STAGE_EXTRA_MM = 2 * STAGE_OFFSET_MM;   // its double-pass penalty
@@ -90,8 +93,8 @@ export function crossCorrelatorScene() {
         named(`delay line · ΔL = ${DELAY_MM} mm`, 'b')),
       wavelengthProbe('harmonic-wavelength', { x: 900, y: AXIS }),
       el('combiner', 'dichroic', combiner, harmonicSeparator, { rot: -45, ...named('shortpass 700 nm', 'b') }),
-      el('focus', 'lens', { x: 1140, y: AXIS }, { f: 150, dia: 25.4 }, named('f = 150 mm', 'b')),
-      el('mixer', 'crystal', { x: 1260, y: AXIS }, {
+      el('focus', 'lens', { x: 1140, y: AXIS }, { f: FOCAL_MM, dia: 25.4 }, named(`f = ${FOCAL_MM} mm`, 'b')),
+      el('mixer', 'crystal', { x: 1140 + FOCAL_MM, y: AXIS }, {
         convert: 'sfg', aperture: 16, efficiency: 0.3, transmitPump: true,
       }, named('SFG crystal', 't')),
       el('uv-filter', 'filter', { x: 1400, y: AXIS }, { ftype: 'bandpass', center: 343, band: 20, trans: 0.9, length: 25.4 },
@@ -102,10 +105,10 @@ export function crossCorrelatorScene() {
       el('signal-detector', 'detector', { x: 1530, y: AXIS }, { aperture: 26 }, named('cross-correlation signal')),
       text('stage-note', 620, AXIS - STAGE_OFFSET_MM - 90,
         `The fundamental stands ${STAGE_OFFSET_MM} mm off the axis and crosses it twice, so this arm carries\n`
-        + `2 × ${STAGE_OFFSET_MM} mm = ${STAGE_EXTRA_MM} mm of extra path: moving the stage by Δx moves the delay by 2Δx / c.`, 10),
+        + `2 × ${STAGE_OFFSET_MM} mm = ${STAGE_EXTRA_MM} mm of extra path: in this double-pass geometry, moving the stage by Δx moves the delay by 2Δx / c.`, 10),
       text('delay-note', 620, AXIS + 70,
         `The delay line matches it, ΔL = ${DELAY_MM} mm = ${DELAY_NS.toFixed(2)} ns, so the two pulses reach the crystal together.\n`
-        + 'Retune it by 0.06 mm — 30 µm of stage travel — and the 200 fs pulses no longer overlap: the signal goes out.', 10),
+        + 'Retune it by 0.06 mm — 30 µm of stage travel — and about a quarter of the signal is left; by 0.2 mm it falls under the 2 % the workbench still draws.', 10),
       text('legend', 30, AXIS + 250,
         `Both colours come from one laser, so the two trains are synchronous by construction: 515 nm and ${FUNDAMENTAL_NM} nm mix to ${SUM_NM.toFixed(1)} nm only where they coincide in time.\n`
         + 'The crystal\'s Mixing readout gives the arrival difference and the overlap; scanning the delay through zero traces the cross-correlation.\n'

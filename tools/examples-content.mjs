@@ -977,19 +977,21 @@ export const exampleEntries = [
       it to 515 nm. A shortpass dichroic splits the two: the 515 nm harmonic goes straight
       on, and the 1030 nm fundamental is turned up out of the axis. A second dichroic of the
       same kind, used the other way round, brings them back together on one axis, and a
-      150 mm lens focuses both into the mixing crystal. What comes out is
+      150 mm lens sits one focal length before the mixing crystal. What comes out is
       <span class="w">1/λ₃ = 1/515 + 1/1030</span>, or 343.3 nm, and a bandpass filter
       passes that alone to the detector.</p>
       <p><strong>The delay.</strong> The fundamental's two mirrors stand 200 mm off the axis
       and the beam crosses that gap twice, so this arm carries 400 mm — 1.33 ns — of extra
-      path. Moving that stage by Δx changes the delay by
-      <span class="w">2Δx / c</span>, the factor of two every delay stage has. The delay
+      path. In this double-pass geometry, moving the stage by Δx changes the delay by
+      <span class="w">2Δx / c</span>. The delay
       line in the harmonic arm is set to exactly 400 mm, so the two pulses reach the
       crystal together and the scene opens at time zero: the crystal's <em>Mixing</em>
       readout says 0 fs apart, 100 % temporal overlap.</p>
       <p><strong>Scanning it.</strong> Change the delay line and watch the readout. At
-      0.02 mm of extra path — 67 fs — the overlap is 86 %; at 0.06 mm, 200 fs, it is 25 %,
-      and at a fifth of a millimetre the signal is gone and the workbench says why. The
+      0.02 mm of extra path — 67 fs — the overlap is 86 %; at 0.06 mm, 200 fs, it is 25 %;
+      at a fifth of a millimetre it falls below the 2 % the workbench still draws, and it
+      says why. That last threshold is where the drawing stops, not a physical edge:
+      Gaussian pulses have no delay at which they abruptly stop overlapping. The
       trace through zero is the cross-correlation: for two Gaussians of FWHM τ₁ and τ₂
       arriving Δt apart, the signal follows
       <span class="w">exp(−4 ln2 Δt² / (τ₁² + τ₂²))</span>. Both colours come from one
@@ -1001,7 +1003,11 @@ export const exampleEntries = [
       lens is drawn because a real stage focuses, but the overlap of the two foci is not
       calculated, and neither is the conversion's dependence on intensity: the signal is an
       authored 30 % of the 515 nm beam, scaled by the temporal overlap. Only that beam is
-      debited; the fundamental's power is not used in the calculation at all.</p>
+      debited; the fundamental's power is not used in the calculation at all. The doubling
+      stage is the same kind of proxy: it keeps the pump's authored 200 fs duration, which
+      is why both envelopes here are 200 fs and why the quarter-height figure above follows
+      from two equal widths. A real second-harmonic stage does not preserve the
+      fundamental's duration.</p>
       <p>The drawn width of the correlation is therefore a timing proxy built from the two
       authored pulse durations, not a measurement: it cannot be used to retrieve a pulse
       width the way a real cross-correlator can, and it assumes ideal Gaussian envelopes
