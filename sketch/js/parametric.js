@@ -3,15 +3,108 @@ import { C_MM_PER_NS } from './pulses.js';
 // An application-imposed ceiling on every authored conversion fraction, not a
 // physical limit: published single-pass second-harmonic conversion and OPO
 // pump depletion both reach well above this. It keeps the workbench's authored
-// fractions in a conservative range for now; raising it for the OPO, whose
-// depletion is a multi-pass result rather than a single-pass efficiency, is
-// tracked separately.
+// fractions in a conservative range for now. The OPO has its own control and
+// ceiling below, because its depletion is a multi-pass result rather than a
+// single-pass efficiency.
 //
 // It lives here, in a module nothing else in the chain imports back, because
 // elements.js reads it while building its parameter list: exported from the
 // tracer it sat on an import cycle, and loading the tracer first left it
 // uninitialised.
 export const MAX_CONVERSION = 0.6;
+
+// The OPO's own ceiling. Its control is pump depletion, the fraction of the
+// pump the oscillator removes, which builds up over many round trips of the
+// resonant signal: singly resonant OPOs are reported at 78 % and 93 %. The cap
+// stops short of total depletion, which the ideal plane-wave model reaches
+// only at one operating point.
+export const MAX_OPO_DEPLETION = 0.95;
+
+// Supercontinuum in a bulk crystal: where the spectrum ends, from the pump
+// wavelength and the medium. The anchors are reference data taken from the
+// review by Dubietis, Tamošauskas, Šuminas, Jukna and Couairon, "Ultrafast
+// supercontinuum generation in bulk condensed media", Lith. J. Phys. 57,
+// 113-157 (2017), section 5, each at the pump it was given for. They come
+// from heterogeneous experiments -- different focusing, energies, durations
+// and lengths -- so a band between two anchors is an authored interpolation,
+// not a prediction. Pumps outside the anchors this table includes get no
+// estimate; that is a boundary of this table, not of the literature, which
+// reports other pumps too.
+//
+// Tags after the edge say what kind of reference an anchor is:
+//   'atLeast' -- a red edge limited by the detector: the spectrum went further.
+//   'typical' -- the review's typical span under common conditions, a summary
+//                of several experiments rather than one.
+//   'range'   -- one span the review gives for a range of pumps, placed at
+//                both ends of that range: YAG's blue cut-off, "fairly stable"
+//                at 530 nm across 1.1-1.6 µm, and CaF2's 340 nm-3.3 µm from
+//                combined 2.1-2.2 µm data. They are not two measurements.
+// `transparentFromNm` is the short end of the 10 % transmission range through
+// 1 mm (Table 1).
+export const SC_MEDIA = {
+  yag: {
+    label: 'YAG', transparentFromNm: 210,
+    blue: [[515, 390], [800, 420], [1100, 530, 'range'], [1600, 530, 'range'], [2000, 510], [2150, 450]],
+    red: [[515, 625], [800, 1600], [2000, 2500, 'atLeast'], [2150, 2500, 'atLeast']],
+  },
+  sapphire: {
+    label: 'Sapphire', transparentFromNm: 190,
+    // 1100 nm at 800 nm is the usual tight focusing; loose focusing in a
+    // longer plate reached beyond 1600 nm.
+    blue: [[400, 350], [515, 340], [800, 410, 'typical'], [2000, 470]],
+    red: [[400, 700], [515, 650], [800, 1100, 'typical'], [2000, 2500, 'atLeast']],
+  },
+  fusedsilica: {
+    label: 'Fused silica', transparentFromNm: 180,
+    blue: [[594, 415], [800, 390, 'typical']],
+    red: [[594, 720], [800, 1000, 'typical']],
+  },
+  caf2: {
+    label: 'CaF₂', transparentFromNm: 120,
+    blue: [[800, 300], [2100, 340, 'range'], [2200, 340, 'range']],
+    red: [[800, 2000], [2100, 3300, 'range'], [2200, 3300, 'range']],
+  },
+};
+
+// The two anchors around `x` in a sorted table, or null outside it.
+function bracket(table, x) {
+  if (x < table[0][0] || x > table[table.length - 1][0]) return null;
+  for (let i = 1; i < table.length; i++) {
+    if (x <= table[i][0]) return [table[i - 1], table[i]];
+  }
+  return [table[0], table[0]];
+}
+
+const lerp = ([x0, y0], [x1, y1], x) => (x1 === x0 ? y1 : y0 + (y1 - y0) * (x - x0) / (x1 - x0));
+
+// The band for a pump at `pumpNm` in `medium`:
+//   { state: 'estimate', minNm, maxNm, measured, summary, redAtLeast }
+//   { state: 'unsupported', fromNm, toNm }  -- the pumps the medium has data for
+// Each edge is interpolated linearly in wavelength between its own
+// neighbouring anchors. `measured` is set only when both edges sit on
+// anchors from single experiments at this pump; `summary` when they sit on
+// anchors but one is a typical span or a range summary.
+export function supercontinuumRange(pumpNm, medium) {
+  const data = SC_MEDIA[medium] || SC_MEDIA.yag;
+  const fromNm = Math.max(data.blue[0][0], data.red[0][0]);
+  const toNm = Math.min(data.blue[data.blue.length - 1][0], data.red[data.red.length - 1][0]);
+  const blue = Number.isFinite(pumpNm) ? bracket(data.blue, pumpNm) : null;
+  const red = Number.isFinite(pumpNm) ? bracket(data.red, pumpNm) : null;
+  if (!blue || !red) return { state: 'unsupported', fromNm, toNm };
+  const at = pair => pair.filter(([pump]) => pump === pumpNm);
+  const onAnchors = at(blue).length > 0 && at(red).length > 0;
+  const summarised = [...at(blue), ...at(red)].some(anchor => anchor.includes('typical') || anchor.includes('range'));
+  const redUsed = at(red).length ? at(red) : red;
+  return {
+    state: 'estimate',
+    minNm: Math.max(data.transparentFromNm, lerp(blue[0], blue[1], pumpNm)),
+    maxNm: lerp(red[0], red[1], pumpNm),
+    measured: onAnchors && !summarised,
+    summary: onAnchors && summarised,
+    redAtLeast: redUsed.some(anchor => anchor.includes('atLeast')),
+    fromNm, toNm,
+  };
+}
 
 // Optical parametric oscillation for the crystal's `convert: 'opo'` mode: a
 // phenomenological singly resonant oscillator, not a cavity simulation.
@@ -148,6 +241,18 @@ export function opoPulse(pumpPulse, wave, { crystalId, role, outputPhase = 'unkn
   const transformLimited = wantsLimit && Number.isFinite(limit);
   // Rounding alone must not count as asking for less than the limit.
   const belowLimit = Number.isFinite(limit) && requested < limit * (1 - 1e-9);
+  // Three authored choices. 'transformLimited' sets the duration from the
+  // bandwidth. 'unknown' sets it and claims nothing about the phase, so no
+  // compressor can shorten it. 'positiveChirp' is an explicit assumption: a
+  // coherent Gaussian whose only spectral phase is a positive quadratic one,
+  // so the transform-limited pulse carries the GDD that stretches it to the
+  // set duration, and a compressor downstream can take it back out. Duration
+  // and bandwidth alone could not establish that, which is why it is opt-in.
+  const wantsChirp = outputPhase === 'positiveChirp';
+  const chirped = wantsChirp && Number.isFinite(limit) && requested > limit * (1 + 1e-9);
+  const chirpGddFs2 = chirped
+    ? limit * limit / (4 * Math.LN2) * Math.sqrt((requested / limit) ** 2 - 1)
+    : 0;
   const trainId = pumpPulse.sourceId || '';
   return {
     sourceId: `${trainId}›${crystalId || 'opo'}:${role}`,
@@ -158,10 +263,14 @@ export function opoPulse(pumpPulse, wave, { crystalId, role, outputPhase = 'unkn
     centerWavelengthNm: wave.wl,
     bandwidthNm: wave.bw,
     pulseShape: 'gauss',
-    pulseWidthFs: transformLimited ? limit : belowLimit ? limit : requested,
-    transformLimited,
-    spectralPhase: transformLimited ? 'transformLimited' : 'unknown',
-    durationRaisedToLimit: !transformLimited && belowLimit,
+    // A chirped pulse is described as its transform limit plus the GDD it
+    // carries, which is how every dispersed pulse in the tracer is held.
+    pulseWidthFs: transformLimited || belowLimit || chirped ? limit : requested,
+    transformLimited: transformLimited || chirped || (wantsChirp && belowLimit),
+    spectralPhase: transformLimited || (wantsChirp && belowLimit) ? 'transformLimited' : chirped ? 'positiveChirp' : 'unknown',
+    chirpGddFs2,
+    outputDurationFs: transformLimited || belowLimit ? limit : requested,
+    durationRaisedToLimit: !wantsLimit && belowLimit,
     transformLimitUnavailable: wantsLimit && !transformLimited,
   };
 }

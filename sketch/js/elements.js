@@ -12,8 +12,8 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading } from './raytrace.js';
-import { idlerWavelength, MAX_CONVERSION } from './parametric.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
   formatTimeAxisNs,
@@ -1972,7 +1972,30 @@ const nm4 = x => Number(x.toPrecision(4));
 function opoStateText(reading) {
   if (!reading) return 'No pump within the acceptance window yet';
   if (reading.state === 'invalid') return 'No output: the signal must be longer than the pump';
-  return `Converting ${sig3(reading.efficiency * 100)}% of the pump (fixed fraction; no threshold or depletion model)`;
+  return `Removing ${sig3(reading.efficiency * 100)}% of the pump (authored depletion; no threshold or resonator gain model)`;
+}
+
+// Inspector text for a supercontinuum crystal on the last trace.
+function supercontinuumStateText(reading) {
+  if (!reading) return 'No pump has reached the crystal yet';
+  if (reading.state === 'cw') {
+    return 'No continuum: continuous-wave input is outside this pulsed bulk estimate. Set the range manually to draw one';
+  }
+  const medium = SC_MEDIA[reading.medium]?.label || reading.medium;
+  if (reading.state === 'unsupported') {
+    return `No continuum: this estimate includes reference data for ${medium} pumps from ${reading.fromNm} to ${reading.toNm} nm, `
+      + `not ${nm4(reading.pumpNm)} nm. Set the range manually to draw one`;
+  }
+  const band = `${Math.round(reading.minNm)}–${Math.round(reading.maxNm)} nm`;
+  if (reading.state === 'manual') return `Drawing ${band}, as set`;
+  const source = reading.measured
+    ? 'as reported for one experiment at this pump wavelength'
+    : reading.summary
+      ? 'from a typical span or a range the review summarises for pumps here, not a single measurement'
+      : 'interpolated between reference spectra at nearby pump wavelengths, an illustration rather than a prediction';
+  const red = reading.redAtLeast ? ' The red edge rests on a detector-limited measurement, so the spectrum can reach further.' : '';
+  return `About ${band} from a ${nm4(reading.pumpNm)} nm pump in ${medium}, ${source}.${red}\n`
+    + 'Focusing, pulse energy and duration, chirp and crystal length shift both edges and are not modelled; nor is whether the pump reaches threshold';
 }
 
 // How a mixing crystal reports what it found. The delay figure is the point
@@ -2057,12 +2080,16 @@ function formatOpoDuration(fs) {
 }
 
 function opoWaveText(name, wave, pulse) {
-  const width = wave.bw > 0 ? `${sig3(wave.bw)} nm (${sig3(wave.widthCm)} cm⁻¹)` : 'single-frequency';
-  if (!pulse) return `${name} ${width}`;
-  const note = pulse.transformLimited ? ', transform-limited'
-    : pulse.transformLimitUnavailable ? ', not transform-limited: a zero linewidth has no finite transform-limited duration'
-      : pulse.durationRaisedToLimit ? ', raised to its transform limit' : '';
-  return `${name} ${width}, ${formatOpoDuration(pulse.pulseWidthFs)}${note}`;
+  const width = wave.bw > 0
+    ? `${name} bandwidth ${sig3(wave.bw)} nm (${sig3(wave.widthCm)} cm⁻¹)`
+    : `${name} bandwidth 0 nm (single frequency)`;
+  if (!pulse) return width;
+  const note = pulse.spectralPhase === 'positiveChirp' ? 'chirped'
+    : pulse.durationRaisedToLimit ? 'raised to the transform limit; the set duration is shorter'
+      : pulse.transformLimited ? 'transform limited'
+        : pulse.transformLimitUnavailable || !(wave.bw > 0) ? 'spectral phase unknown: a zero bandwidth has no transform limit'
+          : 'spectral phase unknown';
+  return `${width}\n${name} duration ${formatOpoDuration(pulse.outputDurationFs ?? pulse.pulseWidthFs)} (${note})`;
 }
 
 function opoWidthsText(reading) {
@@ -2070,7 +2097,7 @@ function opoWidthsText(reading) {
   if (!waves) return '—';
   const pulses = reading.pulses || {};
   if (waves.merged) return opoWaveText('Degenerate output', waves.merged, pulses.merged);
-  return `${opoWaveText('Signal', waves.signal, pulses.signal)} · ${opoWaveText('idler', waves.idler, pulses.idler)}`;
+  return `${opoWaveText('Signal', waves.signal, pulses.signal)}\n${opoWaveText('Idler', waves.idler, pulses.idler)}`;
 }
 
 export const registry = {
@@ -4239,7 +4266,7 @@ export const registry = {
     size_: el => ({ w: 36, h: (el.params.aperture || 22) + 4 }),
     params: [
       { key: 'aperture', label: 'Crystal aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 22 },
-      { key: 'convert', label: 'Convert λ', type: 'select', def: 'none', options: [['none', 'None'], ['shg', 'χ⁽²⁾ — SHG, and SFG of two beams'], ['thg', 'THG (λ/3)'], ['sc', 'Supercontinuum (white)'], ['opo', 'OPO (signal + idler)'], ['custom', 'Custom output λ']] },
+      { key: 'convert', label: 'Convert λ', type: 'select', def: 'none', options: [['none', 'None'], ['shg', 'χ⁽²⁾ — SHG, and SFG of two beams'], ['thg', 'THG (λ/3)'], ['sc', 'Supercontinuum (bulk)'], ['opo', 'OPO (signal + idler)'], ['custom', 'Custom output λ']] },
       { key: 'outWl', label: 'Output λ (nm)', type: 'number', min: 100, max: 12000, step: 1, def: 532, show: p => p.convert === 'custom' },
       { key: 'pumpWl', label: 'Pump λ (nm)', type: 'number', min: 100, max: 3000, step: 1, def: 532, show: p => p.convert === 'opo' },
       { key: 'signalWl', label: 'Signal λ (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 800, show: p => p.convert === 'opo' },
@@ -4274,11 +4301,19 @@ export const registry = {
         show: p => p.convert === 'opo' && p.linewidthMode === 'both',
       },
       {
-        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'unknown', show: p => p.convert === 'opo',
-        options: [['unknown', 'Duration set, spectral phase unknown'], ['transformLimited', 'Transform-limited']],
+        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'transformLimited', show: p => p.convert === 'opo',
+        options: [
+          ['transformLimited', 'Transform-limited'],
+          ['unknown', 'Duration set, spectral phase unknown'],
+          ['positiveChirp', 'Duration set, positively chirped (assumed Gaussian)'],
+        ],
+        // Saved OPOs that predate the setting drew a set duration.
+        migrate: p => p.convert === 'opo' ? 'unknown' : 'transformLimited',
       },
       {
-        key: 'durationFactor', label: 'Output ÷ pump duration', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1,
+        // How many times the pump's duration each output lasts: 1 matches the
+        // pump, 2 is twice as long.
+        key: 'durationFactor', label: 'Output duration (× pump duration)', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1,
         show: p => p.convert === 'opo' && p.outputPhase !== 'transformLimited',
       },
       // A chi(2) crystal doubles each beam and mixes any pair at the same
@@ -4293,10 +4328,47 @@ export const registry = {
         key: 'mixDfg', label: 'Also generate difference frequency', type: 'checkbox', def: false,
         show: p => p.convert === 'shg',
       },
+      // A bulk supercontinuum spans a band set by the medium and the pump. The
+      // estimate reads the pump that arrives; scenes saved before it existed
+      // drew a fixed 430-870 nm band and keep it as a manual range.
+      {
+        key: 'scMedium', label: 'Medium', type: 'select', def: 'yag', show: p => p.convert === 'sc',
+        options: Object.entries(SC_MEDIA).map(([key, medium]) => [key, medium.label]),
+      },
+      {
+        key: 'scRange', label: 'Spectral range', type: 'select', def: 'estimate', show: p => p.convert === 'sc',
+        options: [['estimate', 'Estimate from the pump'], ['manual', 'Set manually']],
+        migrate: p => p.convert === 'sc' ? 'manual' : 'estimate',
+      },
+      {
+        key: 'scMinNm', label: 'Shortest λ (nm)', type: 'number', min: 100,
+        max: p => Math.max(101, (p.scMaxNm ?? 870) - 1), step: 5, def: 430,
+        show: p => p.convert === 'sc' && p.scRange === 'manual',
+      },
+      {
+        key: 'scMaxNm', label: 'Longest λ (nm)', type: 'number', min: p => Math.min(11999, (p.scMinNm ?? 430) + 1),
+        max: 12000, step: 5, def: 870,
+        show: p => p.convert === 'sc' && p.scRange === 'manual',
+      },
+      {
+        key: 'scState', label: 'Continuum', type: 'readout', wide: true, show: p => p.convert === 'sc',
+        readout: (p, el) => supercontinuumStateText(el ? supercontinuumReading(el.id) : null),
+      },
       // A cap this application imposes rather than a physical limit: published
-      // single-pass conversion and OPO pump depletion both go higher. It keeps
-      // authored fractions conservative for now.
-      { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: MAX_CONVERSION, step: 0.05, def: 0.5, show: p => p.convert !== 'none' },
+      // single-pass conversion goes higher. It keeps authored fractions
+      // conservative for now. The OPO has its own control below.
+      { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: MAX_CONVERSION, step: 0.05, def: 0.5, show: p => p.convert !== 'none' && p.convert !== 'opo' },
+      // An OPO's figure is how much of the pump it removes, a result of the
+      // signal building up over many round trips rather than a single-pass
+      // efficiency, so it is its own quantity with its own ceiling. Scenes
+      // saved before the split stored it as the shared efficiency.
+      {
+        key: 'opoDepletion', label: 'Pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: MAX_OPO_DEPLETION,
+        show: p => p.convert === 'opo',
+        migrate: (p, raw) => p.convert === 'opo' && Number.isFinite(raw.efficiency)
+          ? Math.min(MAX_OPO_DEPLETION, Math.max(0, raw.efficiency))
+          : MAX_OPO_DEPLETION,
+      },
       { key: 'transmitPump', label: 'Transmit residual pump', type: 'checkbox', def: true, show: p => p.convert !== 'none' },
       {
         key: 'mixState', label: 'Two-beam mixing', type: 'readout', wide: true, show: p => p.convert === 'shg',
@@ -4325,7 +4397,8 @@ export const registry = {
         mixEfficiency: p.mixEfficiency, mixDfg: p.mixDfg,
         linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
         outputPhase: p.outputPhase, durationFactor: p.durationFactor,
-        efficiency: p.efficiency, transmitPump: p.transmitPump,
+        scMedium: p.scMedium, scRange: p.scRange, scMinNm: p.scMinNm, scMaxNm: p.scMaxNm,
+        efficiency: p.efficiency, opoDepletion: p.opoDepletion, transmitPump: p.transmitPump,
       } }];
     },
   },
@@ -4971,7 +5044,7 @@ const DIRECT = {
   pulsecompressor: { resize: { y: 'aperture' }, tune: { key: 'gddFs2', short: 'GDD' } },
   eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
-  crystal: { resize: { y: 'aperture' }, tune: { key: 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
+  crystal: { resize: { y: 'aperture' }, tune: { key: p => p.convert === 'opo' ? 'opoDepletion' : 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
@@ -5066,7 +5139,7 @@ const ELEMENT_HELP = {
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
-  crystal: 'Converts a configurable fraction of pump power — the workbench caps authored fractions at 60 %, a conservative application limit rather than a physical one — into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, or custom output. The χ⁽²⁾ mode doubles every beam and, when a second wavelength is present, also mixes the pair, drawing on what doubling leaves of both beams so the mixed line sits alongside the two harmonics — but only while their pulses reach the crystal together, which is how time zero is found. OPO mode splits the generated power by Manley–Rowe and gives signal and idler their own linewidths and pulse durations. Phase matching, threshold and cavity dynamics are not simulated.',
+  crystal: 'Converts a configurable fraction of pump power — single-pass fractions are capped at 60 %, a conservative application limit rather than a physical one — into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, or custom output. The supercontinuum band is estimated from the pump wavelength and the chosen medium, or set by hand. The χ⁽²⁾ mode doubles every beam and, when a second wavelength is present, also mixes the pair, drawing on what doubling leaves of both beams so the mixed line sits alongside the two harmonics — but only while their pulses reach the crystal together, which is how time zero is found. OPO mode removes an authored pump depletion, up to 95 % since it builds over many round trips, splits it by Manley–Rowe and gives signal and idler their own linewidths and pulse durations. Phase matching, threshold and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',

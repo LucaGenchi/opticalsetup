@@ -13,7 +13,7 @@ function traceOpo({ pumpWl = 532, signalWl = 800, efficiency = 0.6, transmitPump
   const laser = createElement('cwlaser', 0, 0);
   Object.assign(laser.params, { beamMode: 'line', wavelength: pumpWl });
   const crystal = createElement('crystal', 150, 0);
-  Object.assign(crystal.params, { convert: 'opo', pumpWl, signalWl, efficiency, transmitPump });
+  Object.assign(crystal.params, { convert: 'opo', pumpWl, signalWl, opoDepletion: efficiency, transmitPump });
   const detector = createElement('detector', 300, 0);
   traceAll([laser, crystal, detector]);
   return detectorReading(detector.id);

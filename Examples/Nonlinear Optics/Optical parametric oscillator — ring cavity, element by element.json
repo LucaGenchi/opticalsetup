@@ -110,7 +110,7 @@
         "linewidthMode": "pump",
         "outputPhase": "unknown",
         "durationFactor": 1,
-        "efficiency": 0.3,
+        "opoDepletion": 0.3,
         "transmitPump": true
       },
       "labelPos": "b"

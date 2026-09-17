@@ -894,11 +894,14 @@ export const exampleEntries = [
       signal.</p>
       <p>The OPO crystal is set to a 516 nm pump and an 800 nm signal, placing the idler at
       1453.5 nm. The signal is authored with a 10 cm⁻¹ FWHM (0.64 nm) and the pump's 2 ps
-      duration, a time–bandwidth product of 0.60; the idler width, about 3.8 nm, is derived
-      from pump and signal as uncorrelated Gaussians. Beam probes read the wavelength of the
+      duration, a time–bandwidth product of 0.60, longer than the 1.47 ps its bandwidth allows;
+      its pulses are therefore set as <em>positively chirped</em>, a transform-limited pulse
+      carrying the dispersion that stretches it to 2 ps, which a pulse compressor on the
+      output could remove. That is an authored assumption, not a result of the cavity. The
+      idler width, about 3.8 nm, is derived from pump and signal as uncorrelated Gaussians. Beam probes read the wavelength of the
       1032 nm fundamental, the 516 nm pump, the signal circulating in the long arm and the
       residual pump, and spectrum probes show the separated idler and signal.</p>
-      <p>The OPO crystal converts a fixed, illustrative 35 % of the green pump. By photon
+      <p>The OPO crystal removes a fixed, illustrative 35 % of the green pump, its authored pump depletion. By photon
       energy that is 22.6 % of the green as signal and 12.4 % as idler — 11.3 % and 6.2 % of
       the 1032 nm laser, which is what the detectors read against. The idler detector reads
       its 6.2 % in one pass. The tracer sums six output-coupler leaks of the signal before
@@ -1054,5 +1057,59 @@ export const exampleEntries = [
     ],
     resources: [],
     related: ['crystal', 'delayline', 'dichroic', 'pulsedlaser', 'probe'],
+  },
+  {
+    match: 'Near infrared supercontinuum in YAG',
+    title: 'Near infrared supercontinuum in YAG',
+    tagline: 'Femtosecond pulses in a bulk crystal broaden into a continuum; the red side of a 1035 nm pump in YAG is a ready near-infrared band.',
+    html: `
+      <p>Focus intense femtosecond pulses into a transparent crystal and, above the critical
+      power for self-focusing, the beam collapses into a filament whose self-phase
+      modulation broadens the spectrum across hundreds of nanometres on both sides of the
+      pump. Bulk crystals do this with no fiber to couple into and little alignment. Where
+      the spectrum ends depends on the medium and the pump: intensity clamping ties the blue
+      cut-off mostly to the bandgap and the material's dispersion, and the red side grows
+      with the pump wavelength, a looser focus and a longer medium${cite(1)}.</p>
+      <p>YAG is a good match for Yb lasers. Its large nonlinear index starts a continuum at
+      sub-µJ energies, and pumped in the near infrared it gives more infrared light than
+      sapphire${cite(1)}. That red side is useful on its own: Vernuccio and co-workers pumped
+      a 10 mm YAG plate with 1035 nm, 270 fs pulses at 2 MHz, kept the red lobe with a
+      longpass filter, and used 1050–1300 nm as the broadband Stokes of a fingerprint
+      multiplex CARS microscope, alongside an etalon-narrowed pump, a prism compressor and a
+      delay line${cite(2)}.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A 1035 nm, 270 fs, 2 MHz laser is focused by a 100 mm lens into a crystal in
+      <em>Supercontinuum</em> mode with YAG as the medium, and a second lens recollimates the
+      output. The crystal's band is estimated from the pump that arrives: no YAG reference is at
+      1035 nm, so each edge is interpolated between its own neighbours — the blue edge between
+      the 800 nm and 1.1 µm references, the red edge between 800 nm and 2 µm — giving about
+      <strong>506–1776 nm</strong>. The 2 µm red edge was limited by the detector, which is why
+      the crystal's <em>Continuum</em> readout notes that the spectrum can reach further.</p>
+      <p>A longpass dichroic at 1050 nm reflects the residual pump and the visible side of the
+      continuum to one spectrometer and transmits the red side. A bandpass then selects
+      <strong>1050–1300 nm</strong>, and the second spectrometer and its screen show that band.
+      The upper edge is an authored selection: a longpass alone would pass everything out to
+      1776 nm. Change the laser's wavelength or the crystal's medium and the band follows;
+      pump fused silica at 1035 nm, outside the reference data this estimate includes, and the
+      crystal draws no continuum and asks for a manual range.</p>`,
+    limitations: `<p>The continuum is a flat band between estimated edges, not a model of
+      filamentation or self-phase modulation. The edges are interpolated between reference
+      spectra from single experiments and summaries with different focusing, energies,
+      durations and crystal lengths, so they illustrate rather than predict. The 10 mm plate
+      length is drawn for context and does not enter the estimate, and neither do the focus,
+      pulse energy or duration; whether the pump exceeds the critical power, and the damage
+      threshold, are not checked. The converted fraction is authored, and the spectral shape,
+      the continuum's chirp and its pulse duration are not calculated.</p>
+      <p>The rest of the multiplex CARS bench — the pump etalon, the prism compressor for the
+      continuum, the delay, the sample and the CARS detection — is not drawn. The specimen model
+      draws CARS as a single line and does not evaluate a broadband Stokes spectrum against
+      Raman resonances, so it cannot produce a multiplex CARS spectrum.</p>`,
+    citations: [
+      { label: 'A. Dubietis, G. Tamošauskas, R. Šuminas, V. Jukna, A. Couairon, “Ultrafast supercontinuum generation in bulk condensed media,” Lithuanian Journal of Physics 57, 113–157 (2017)', url: 'https://www.lmaleidykla.lt/ojs/index.php/physics/article/view/3541' },
+      { label: 'F. Vernuccio, A. Bresci, B. Talone, A. de la Cadena, C. Ceconello, S. Mantero, C. Sobacchi, R. Vanna, G. Cerullo, D. Polli, “Fingerprint multiplex CARS at high speed based on supercontinuum generation in bulk media and deep learning spectral denoising,” Optics Express 30, 30135–30148 (2022)', url: 'https://doi.org/10.1364/OE.463032' },
+    ],
+    resources: [],
+    related: ['crystal', 'pulsedlaser', 'lens', 'dichroic', 'filter', 'spectrometer'],
   },
 ];

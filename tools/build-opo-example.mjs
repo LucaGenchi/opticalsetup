@@ -108,7 +108,9 @@ export function syncOpoScene() {
       el('crystal', 'crystal', CRYSTAL, {
         convert: 'opo', aperture: 10, pumpWl: 516, signalWl: 800, pumpAcceptanceNm: 1,
         linewidthMode: 'signal', signalLinewidthCm: 10,
-        outputPhase: 'unknown', durationFactor: 1, efficiency: 0.35, transmitPump: true,
+        // 2 ps is longer than a 10 cm⁻¹ transform limit, so the signal is
+        // authored as a positively chirped Gaussian stretched to it.
+        outputPhase: 'positiveChirp', durationFactor: 1, opoDepletion: 0.35, transmitPump: true,
       }, named('OPO crystal', 't')),
       el('M2', 'dichroic', M2, bandReflector, { rot: foldRot(dir(0), TO_M4), ...named('M2', 't') }),
       el('F1', 'mirror', F1, { length: 25.4, refl: 100 }, { rot: foldRot(TO_F1, TO_M3), ...named('F1', 'r') }),
@@ -169,7 +171,7 @@ export function ringOpoScene() {
       el('M1', 'dichroic', RING_M1, bandReflector, { rot: foldRot(toM1, RIGHT), ...named('M1', 'b') }),
       el('crystal', 'crystal', RING_CRYSTAL, {
         convert: 'opo', aperture: 10, pumpWl: 532, signalWl: 800, pumpAcceptanceNm: 1,
-        linewidthMode: 'pump', outputPhase: 'unknown', durationFactor: 1, efficiency: 0.3, transmitPump: true,
+        linewidthMode: 'pump', outputPhase: 'unknown', durationFactor: 1, opoDepletion: 0.3, transmitPump: true,
       }, named('nonlinear crystal', 'b')),
       el('M2', 'dichroic', RING_M2, { ...bandReflector, bandRefl: 80 }, { rot: foldRot(RIGHT, toM3), ...named('M2 · output coupler', 'b') }),
       el('M3', 'dichroic', RING_M3, bandReflector, { rot: foldRot(toM3, RIGHT), ...named('M3', 't') }),
