@@ -8,7 +8,7 @@ import {
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
-  fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal,
+  fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
@@ -3744,7 +3744,7 @@ function interact(ray, hit) {
       const firstState = state => {
         if (elementId && !opoStates.has(elementId)) opoStates.set(elementId, { ...state, tuning: tuningNote });
       };
-      if (!(angleDeg <= Math.max(0, Number(data.acceptanceDeg) || 0) + 1e-9)) {
+      if (!(angleDeg <= OPO_ACCEPTANCE_DEG + 1e-9)) {
         firstState({ state: 'rejected', angleDeg });
         return [];
       }
@@ -3754,32 +3754,44 @@ function interact(ray, hit) {
         return [];
       }
       const efficiency = Math.min(MAX_OPO_DEPLETION, Math.max(0, Number(data.opoDepletion) || 0));
-      const result = opoConversion(ray, { ...data, signalWl: tuning.signalWl }, elementId, efficiency);
+      // Whatever pump arrives is the pump: the window is centred on it.
+      const result = opoConversion(ray, { ...data, pumpWl: ray.wl, pumpAcceptanceNm: 0, signalWl: tuning.signalWl }, elementId, efficiency);
       // The shared helper records converting and invalid readings; the step
       // being played is the element's to add.
       if (elementId && (result.state === 'converting' || result.state === 'invalid') && opoStates.has(elementId)) {
-        opoStates.get(elementId).tuning = tuningNote;
+        Object.assign(opoStates.get(elementId), { tuning: tuningNote, pumpNm: ray.wl });
       }
-      if (result.state === 'outOfWindow') firstState({ state: 'outOfWindow', pumpNm: ray.wl });
       if (result.state === 'badParams') firstState({ state: 'badParams' });
       if (result.state !== 'converting' || !(efficiency > 0)) return [];
-      // A finite beam keeps its width: each accepted sample leaves at the
-      // same height across the port as it entered the aperture. The outputs
-      // take no path inside the box -- their timing is referenced to the
-      // pump's arrival at the aperture, not to a cavity length.
-      const lateral = toLocal(el, hit.p.x, hit.p.y).y;
-      const port = role => {
-        const local = opoPortLocal(role === 'idler' ? 'idler' : 'signal', data);
-        return toWorld(el, local.x, local.y + lateral);
+      // Each output leaves as a beam of its own set diameter, whatever the
+      // pump's width. A sized pump beam's samples keep their places across it:
+      // sample i of K leaves at i/(K-1) of the output diameter, so the output
+      // is drawn as one beam and a clipped pump loses the samples it lost.
+      // A single-ray pump is spread over OPO_OUTPUT_SAMPLES rays sharing its
+      // power. The outputs take no path inside the box: their timing is
+      // referenced to the pump's arrival at the aperture, not to a cavity.
+      const launch = (output, portRole) => {
+        const local = opoPortLocal(portRole, data);
+        const diameter = portRole === 'idler' ? data.idlerBeamMm : data.signalBeamMm;
+        const at = offset => toWorld(el, local.x, local.y + offset);
+        const sampled = Number.isInteger(ray.sample) && ray.sampleCount > 1;
+        if (!(diameter > 0)) return [{ d: axis, origin: at(0), ...output.ray }];
+        if (sampled) {
+          return [{ d: axis, origin: at(diameter * (ray.sample / (ray.sampleCount - 1) - 0.5)), ...output.ray }];
+        }
+        const n = OPO_OUTPUT_SAMPLES;
+        return Array.from({ length: n }, (_, i) => ({
+          d: axis, origin: at(diameter * (i / (n - 1) - 0.5)), ...output.ray,
+          intensity: output.ray.intensity / n,
+          sample: i, sampleCount: n, sampleGrid: 'even',
+        }));
       };
       // At degeneracy signal and idler share a wavelength and leave together
       // through the signal port, whatever the idler toggle says.
-      if (result.waves.degenerate) {
-        return result.outputs.map(output => ({ d: axis, origin: port('signal'), ...output.ray }));
-      }
+      if (result.waves.degenerate) return result.outputs.flatMap(output => launch(output, 'signal'));
       return result.outputs
         .filter(output => output.role !== 'idler' || data.outputIdler)
-        .map(output => ({ d: axis, origin: port(output.role), ...output.ray }));
+        .flatMap(output => launch(output, output.role === 'idler' ? 'idler' : 'signal'));
     }
     case 'transmit': {
       const efficiency = data.convert === 'opo'
@@ -3865,6 +3877,9 @@ function interact(ray, hit) {
     default: return [{ d }];
   }
 }
+
+// How many rays an integrated OPO spreads a single-ray pump over, per output.
+const OPO_OUTPUT_SAMPLES = 9;
 
 // The optical parametric conversion both OPO packagings share: the crystal's
 // OPO mode and the integrated OPO element. It decides whether this pump
@@ -4365,7 +4380,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
             : undefined,
-          sample: r.sample, sampleCount: r.sampleCount, sampleGrid: r.sampleGrid,
+          // A child can start a sampled beam of its own (an OPO spreading a
+          // single-ray pump over its output diameter).
+          sample: 'sample' in c ? c.sample : r.sample,
+          sampleCount: 'sampleCount' in c ? c.sampleCount : r.sampleCount,
+          sampleGrid: 'sampleGrid' in c ? c.sampleGrid : r.sampleGrid,
           writeReference: r.writeReference,
           objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),

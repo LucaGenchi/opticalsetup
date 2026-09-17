@@ -2106,12 +2106,22 @@ function opoWidthsText(reading) {
 // distance below it. The geometry is a packaging convention for this
 // workbench, not the layout of any particular instrument.
 const OPO_BODY_W = 92;
+// Pump light within this angle of the body axis is accepted. A fixed
+// geometric rule, not a calculation of mode matching or coupling efficiency.
+export const OPO_ACCEPTANCE_DEG = 20;
 const opoApertureMm = p => Math.min(30, Math.max(1, Number(p?.aperture) || 6));
+// Output beam diameters; 0 draws that output as a single line.
+export const opoBeamMm = (p, role) => Math.min(30, Math.max(0, Number(role === 'idler' ? p?.idlerBeamMm : p?.signalBeamMm) || 0));
 // The idler port sits far enough below the signal port that the two output
-// bundles, each as wide as the input aperture, never overlap, and the body is
-// tall enough to hold both ports whole.
-const opoIdlerOffset = p => Math.max(14, opoApertureMm(p) + 8);
-const opoBodyH = p => 2 * (opoIdlerOffset(p) + opoApertureMm(p) / 2 + 6);
+// beams never overlap, and the body is tall enough to hold the input aperture
+// and both ports whole.
+const opoIdlerOffset = p => Math.max(14, opoBeamMm(p, 'signal') / 2 + opoBeamMm(p, 'idler') / 2 + 6);
+// The input aperture always sets a minimum height, so the resize handle that
+// drags it visibly resizes the box.
+const opoBodyH = p => 2 * Math.max(
+  opoIdlerOffset(p) + opoBeamMm(p, 'idler') / 2 + 6,
+  opoApertureMm(p) / 2 + 17,
+);
 
 // Where the element sends each output, in its own coordinates.
 export function opoPortLocal(role, params) {
@@ -2140,21 +2150,19 @@ function opoElementStateText(reading, p) {
   const now = Number.isFinite(reading.signalWl) ? ` (${step}signal set to ${nm4(reading.signalWl)} nm)` : '';
   switch (reading.state) {
     case 'rejected':
-      return `No output: the pump arrives ${sig3(reading.angleDeg)}° off the input axis, outside the ±${sig3(Number(p.acceptanceDeg))}° acceptance`;
-    case 'outOfWindow':
-      return `No output: the pump is at ${nm4(reading.pumpNm)} nm, outside ${nm4(Number(p.pumpWl))} ± ${sig3(Number(p.pumpAcceptanceNm))} nm`;
+      return `No output: the pump arrives ${sig3(reading.angleDeg)}° off the input axis, outside the ±${OPO_ACCEPTANCE_DEG}° the input accepts`;
     case 'noProgram':
       return 'No output: the tuning program has no valid signal wavelength';
     case 'badParams':
       return 'No output: the pump and signal wavelengths must be positive numbers';
     case 'invalid':
-      return `No output: the signal must be longer than the pump${now}`;
+      return `No output: the signal must be longer than the ${Number.isFinite(reading.pumpNm) ? `${nm4(reading.pumpNm)} nm ` : ''}pump${now}`;
     case 'converting': {
       if (!(reading.efficiency > 0)) return `Pump accepted, but pump depletion is 0, so nothing is generated${now}`;
       const waves = reading.waves;
       const out = waves?.merged || waves?.degenerate
-        ? `Degenerate: signal and idler at ${nm4(waves.signal.wl)} nm, both from the signal port`
-        : `Signal ${nm4(waves.signal.wl)} nm · idler ${nm4(waves.idler.wl)} nm${p.outputIdler === false ? ' (idler port off)' : ''}`;
+        ? `Pump ${nm4(reading.pumpNm)} nm → degenerate: signal and idler at ${nm4(waves.signal.wl)} nm, both from the signal port`
+        : `Pump ${nm4(reading.pumpNm)} nm → signal ${nm4(waves.signal.wl)} nm · idler ${nm4(waves.idler.wl)} nm${p.outputIdler === false ? ' (idler port off)' : ''}`;
       return `${step ? `${step[0].toUpperCase()}${step.slice(1, -2)}: ` : ''}${out}\n`
         + `Removing ${sig3(reading.efficiency * 100)}% of the pump (authored depletion; no threshold or resonator gain model). `
         + 'The unconverted pump is discarded inside the box';
@@ -4477,10 +4485,9 @@ export const registry = {
     aliases: ['optical parametric oscillator', 'integrated opo', 'tunable source', 'signal idler'],
     size_: el => ({ w: 104, h: opoBodyH(el.params) + 4 }),
     params: [
+      // Any pump that reaches the aperture is converted; the only condition
+      // on its wavelength is that the signal must be longer.
       { key: 'aperture', label: 'Input aperture (mm)', type: 'number', min: 1, max: 30, step: 0.5, def: 6 },
-      { key: 'acceptanceDeg', label: 'Input acceptance (± °)', type: 'number', min: 0, max: 45, step: 0.5, def: 2 },
-      { key: 'pumpWl', label: 'Pump λ (nm)', type: 'number', min: 100, max: 3000, step: 1, def: 516 },
-      { key: 'pumpAcceptanceNm', label: 'Pump acceptance (± nm)', type: 'number', min: 0, max: 100, step: 0.5, def: 1 },
       {
         key: 'tuneMode', label: 'Signal tuning', type: 'select', def: 'fixed',
         options: [['fixed', 'Fixed'], ['sweep', 'Sweep between two wavelengths'], ['steps', 'Step through a list']],
@@ -4492,13 +4499,6 @@ export const registry = {
       { key: 'stepList', label: 'Signal wavelengths (nm, comma-separated; 100–11000)', type: 'text', def: '780, 800, 820', show: p => p.tuneMode === 'steps' },
       { key: 'stepDwellS', label: 'Time at each wavelength (s)', type: 'number', min: 0.1, max: 600, step: 0.1, def: 2, show: p => p.tuneMode === 'steps' },
       { key: 'tuning', label: 'Tuning', type: 'readout', wide: true, readout: p => opoTuningText(p) },
-      {
-        key: 'idlerWl', label: 'Idler λ', type: 'readout', show: p => (p.tuneMode || 'fixed') === 'fixed',
-        readout: p => {
-          const idler = idlerWavelength(p.pumpWl, p.signalWl);
-          return idler === null ? 'None — the signal must be longer than the pump' : `${Number(idler.toPrecision(5))} nm`;
-        },
-      },
       {
         key: 'linewidthMode', label: 'Output linewidths', type: 'select', def: 'pump',
         options: [
@@ -4522,6 +4522,8 @@ export const registry = {
       // Switching the idler port off removes that power from the bench; it is
       // not handed to the signal.
       { key: 'outputIdler', label: 'Output idler', type: 'checkbox', def: true },
+      { key: 'signalBeamMm', label: 'Signal beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 2 },
+      { key: 'idlerBeamMm', label: 'Idler beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 2, show: p => p.outputIdler !== false },
       {
         key: 'opoState', label: 'Oscillation', type: 'readout', wide: true,
         readout: (p, el) => opoElementStateText(el ? opoReading(el.id) : null, p),
@@ -4535,17 +4537,17 @@ export const registry = {
       const p = el.params, hh = opoBodyH(p) / 2, ap = opoApertureMm(p) / 2, idlerY = opoIdlerOffset(p);
       const flip = isFlipped(el) ? 'transform="rotate(180)"' : '';
       const x = OPO_BODY_W / 2;
-      // Each output port is as tall as the input aperture: the accepted bundle
-      // leaves at the heights it entered.
+      // Each output port is drawn as wide as the beam it emits.
+      const sHalf = Math.max(1.5, opoBeamMm(p, 'signal') / 2), iHalf = Math.max(1.5, opoBeamMm(p, 'idler') / 2);
       const idler = p.outputIdler !== false
-        ? `<rect x="${x}" y="${idlerY - ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`
+        ? `<rect x="${x}" y="${idlerY - iHalf}" width="5" height="${2 * iHalf}" fill="#666" stroke="#444" stroke-width="1"/>`
           + `<text x="${x - 5}" y="${idlerY}" text-anchor="end" dominant-baseline="central" font-size="6" fill="#c9d3dc">I</text>`
         : '';
       return `<rect x="${-x}" y="${-hh}" width="${OPO_BODY_W}" height="${2 * hh}" rx="4" fill="#2f3f4c" stroke="#1d272f" stroke-width="1.5"/>`
         + `<text x="0" y="-5" ${flip} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">OPO</text>`
         + `<g stroke="#ffb86b" stroke-width="1.2" opacity="0.95"><path d="M -14,8 L -4,8"/><path d="M 0,5 L 14,5"/><path d="M 0,11 L 14,11"/></g>`
         + `<rect x="${-x - 5}" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`
-        + `<rect x="${x}" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`
+        + `<rect x="${x}" y="${-sHalf}" width="5" height="${2 * sHalf}" fill="#666" stroke="#444" stroke-width="1"/>`
         + `<text x="${x - 5}" y="0" text-anchor="end" dominant-baseline="central" font-size="6" fill="#c9d3dc">S</text>`
         + idler;
     },
@@ -4560,10 +4562,10 @@ export const registry = {
         { x1: -x, y1: -ap, x2: -x, y2: -hh, kind: 'absorb' },
         {
           x1: -x, y1: ap, x2: -x, y2: -ap, kind: 'opoin', data: {
-            pumpWl: p.pumpWl, pumpAcceptanceNm: p.pumpAcceptanceNm, acceptanceDeg: p.acceptanceDeg,
             linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
             outputPhase: p.outputPhase, durationFactor: p.durationFactor, opoDepletion: p.opoDepletion,
             outputIdler: p.outputIdler !== false, aperture: p.aperture,
+            signalBeamMm: opoBeamMm(p, 'signal'), idlerBeamMm: opoBeamMm(p, 'idler'),
             tuning: opoSignalAt(p, el._animationTimeS || 0),
           },
         },

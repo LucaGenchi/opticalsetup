@@ -16,10 +16,14 @@ was built where it differs.
 - **Degeneracy:** everything generated leaves through the signal port and the
   idler toggle does not apply. Luca expects degeneracy not to be reached in
   use.
-- **Input:** a rear aperture with an authored angular acceptance, as a
-  geometric rule rather than a coupling calculation. Each accepted sample of a
-  finite beam keeps its weight and leaves at the height it entered, so the beam
-  keeps its width.
+- **Input (simplified at Luca's request):** a rear aperture with a fixed ±20°
+  angular acceptance, not a setting, as a geometric rule rather than a coupling
+  calculation. There is no pump wavelength or pump window to set: whatever
+  arrives is the pump, and the signal must be longer than it.
+- **Output beams:** signal and idler each have an authored beam diameter
+  (0 = a single line). A sized pump beam's samples keep their order across the
+  output diameter, so clipping still costs power; a single-line pump is spread
+  across the diameter with its power shared.
 - **Timing:** the outputs take no path inside the box; their timing is
   referenced to the pump's arrival at the aperture. Pulse train identity,
   gates, declared chirp and the no-reconversion guard carry over.

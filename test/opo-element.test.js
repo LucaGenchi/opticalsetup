@@ -35,7 +35,7 @@ const centre = reading => {
 };
 
 test('an accepted pump leaves as signal on the axis and idler on the port below, by Manley–Rowe', () => {
-  const { signal, idler, state } = bench({ opo: { pumpWl: 516, signalWl: 800 } });
+  const { signal, idler, state } = bench({ opo: { signalWl: 800 } });
   const waves = opoWaves({ pumpWl: 516, signalWl: 800 });
   assert.equal(state.state, 'converting');
   near(centre(signal), 800, 1, 'signal centre');
@@ -45,7 +45,7 @@ test('an accepted pump leaves as signal on the axis and idler on the port below,
 });
 
 test('the ports rotate with the body', () => {
-  const { signal, idler } = bench({ opo: { pumpWl: 516, signalWl: 800 }, rot: 90, laserAt: { x: 200, y: -100 } });
+  const { signal, idler } = bench({ opo: { signalWl: 800 }, rot: 90, laserAt: { x: 200, y: -100 } });
   assert.ok(signal && signal.signal > 0.5, 'no signal on the rotated signal port');
   assert.ok(idler && idler.signal > 0.2, 'no idler on the rotated idler port');
 });
@@ -66,11 +66,7 @@ test('at degeneracy both waves leave through the signal port, with the idler tog
   }
 });
 
-test('nothing comes out without an accepted pump, and the readout says why', () => {
-  const outOfWindow = bench({ opo: { pumpWl: 532 } });
-  assert.equal(outOfWindow.state.state, 'outOfWindow');
-  assert.equal(outOfWindow.signal, null);
-
+test('nothing comes out without a usable pump, and the readout says why', () => {
   const noProgram = bench({ opo: { tuneMode: 'steps', stepList: 'none, of, these' } });
   assert.equal(noProgram.state.state, 'noProgram');
   assert.equal(noProgram.signal, null);
@@ -78,6 +74,8 @@ test('nothing comes out without an accepted pump, and the readout says why', () 
   const tooShort = bench({ opo: { signalWl: 400 } });
   assert.equal(tooShort.state.state, 'invalid');
   assert.equal(tooShort.signal, null);
+  const invalidText = registry.opo.params.find(p => p.key === 'opoState').readout(tooShort.box.params, tooShort.box);
+  assert.match(invalidText, /longer than the 516 nm pump/);
 
   const zero = bench({ opo: { opoDepletion: 0 } });
   assert.equal(zero.state.state, 'converting');
@@ -86,32 +84,36 @@ test('nothing comes out without an accepted pump, and the readout says why', () 
   assert.match(text, /pump depletion is 0/);
 });
 
-test('a pump beyond the angular acceptance is rejected', () => {
-  const pump = createElement('pulsedlaser', 0, 0);
-  Object.assign(pump.params, GREEN);
-  const box = createElement('opo', 200, 0);
-  box.rot = -10; // the body axis is 10° away from the pump
-  box.params.acceptanceDeg = 2;
-  box.params.aperture = 20;
-  traceScene([pump, box]);
-  const reading = opoReading(box.id);
-  assert.equal(reading.state, 'rejected');
-  near(reading.angleDeg, 10, 1e-6, 'reported angle');
-  box.params.acceptanceDeg = 12;
-  traceScene([pump, box]);
-  assert.equal(opoReading(box.id).state, 'converting');
+test('whatever pump arrives is used, with no wavelength settings', () => {
+  for (const key of ['pumpWl', 'pumpAcceptanceNm', 'acceptanceDeg']) {
+    assert.equal(registry.opo.params.some(p => p.key === key), false, `${key} should not be a setting`);
+  }
+  for (const wavelength of [355, 532, 1030]) {
+    const { state, signal } = bench({ laser: { wavelength }, opo: { signalWl: 1100 } });
+    assert.equal(state.state, 'converting', `${wavelength} nm pump`);
+    near(state.pumpNm, wavelength, 1e-9, 'recorded pump');
+    near(centre(signal), 1100, 2, `${wavelength} nm pump: signal`);
+  }
+  const text = registry.opo.params.find(p => p.key === 'opoState')
+    .readout({ outputIdler: true }, { id: bench({ laser: { wavelength: 532 }, opo: { signalWl: 1100 } }).box.id });
+  assert.match(text, /Pump 532 nm → signal 1100 nm · idler 1030 nm/);
 });
 
-test('a finite beam keeps its sampled weights and its width', () => {
-  const { signal, idler, result } = bench({ laser: { beamMode: 'beam', beamWidth: 4 }, opo: { signalWl: 800, aperture: 8 } });
-  near(signal.signal + idler.signal, MAX_OPO_DEPLETION, 1e-6, 'converted power');
-  // The drawn rays that start at the signal port, in the box's frame.
+test('each output leaves as a beam of its set diameter, whatever the pump width', () => {
   const port = opoPortLocal('signal');
-  const signalPaths = result.drawables.filter(d => d.type === 'path' && d.pts?.length > 1
-    && Math.abs(d.pts[0].x - (200 + port.x)) < 1e-6 && Math.abs(d.pts[0].y - 100) < 5);
-  const heights = [...new Set(signalPaths.map(d => Math.round(d.pts[0].y * 1000) / 1000))];
-  assert.ok(heights.length > 1, 'the beam collapsed to one ray');
-  near(Math.max(...heights) - Math.min(...heights), 4, 0.5, 'output width');
+  const signalStarts = result => [...new Set(result.drawables
+    .filter(d => (d.type === 'path' || d.type === 'poly') && d.pts?.length > 1
+      && Math.abs(d.pts[0].x - (200 + port.x)) < 1e-6 && Math.abs(d.pts[0].y - 100) < 7)
+    .map(d => Math.round((d.pts[0].y - 100) * 1000) / 1000))];
+  for (const laser of [{ beamMode: 'beam', beamWidth: 4 }, { beamMode: 'line' }]) {
+    const { signal, idler, result } = bench({ laser, opo: { signalWl: 800, aperture: 8, signalBeamMm: 5, idlerBeamMm: 3 } });
+    near(signal.signal + idler.signal, MAX_OPO_DEPLETION, 1e-6, `${laser.beamMode} pump: converted power`);
+    const starts = signalStarts(result);
+    assert.ok(starts.length > 1, `${laser.beamMode} pump: the signal collapsed to one ray`);
+    near(Math.max(...starts) - Math.min(...starts), 5, 1e-6, `${laser.beamMode} pump: signal diameter`);
+  }
+  const line = bench({ opo: { signalWl: 800, signalBeamMm: 0 } });
+  assert.equal(signalStarts(line.result).length, 1, 'a zero diameter is a single line');
 });
 
 test('sweep and steps are pure functions of time with exact boundaries', () => {
@@ -146,7 +148,7 @@ test('the element survives a save and reload with its tuning program', () => {
 test('the box converts exactly as a crystal in OPO mode does, for all three pulse choices', () => {
   for (const outputPhase of ['transformLimited', 'unknown', 'positiveChirp']) {
     const settings = {
-      pumpWl: 516, signalWl: 800, pumpAcceptanceNm: 1, linewidthMode: 'both', signalLinewidthCm: 10, idlerLinewidthCm: 10,
+      signalWl: 800, linewidthMode: 'both', signalLinewidthCm: 10, idlerLinewidthCm: 10,
       outputPhase, durationFactor: 1, opoDepletion: 0.6,
     };
     const boxed = bench({ opo: settings });
@@ -154,7 +156,7 @@ test('the box converts exactly as a crystal in OPO mode does, for all three puls
     const pump = createElement('pulsedlaser', 0, 100);
     Object.assign(pump.params, GREEN);
     const xtal = createElement('crystal', 200, 100);
-    Object.assign(xtal.params, { convert: 'opo', transmitPump: false, ...settings });
+    Object.assign(xtal.params, { convert: 'opo', transmitPump: false, pumpWl: 516, pumpAcceptanceNm: 1, ...settings });
     const det = createElement('detector', 400, 100);
     det.params.aperture = 10;
     traceScene([pump, xtal, det]);
@@ -186,7 +188,7 @@ test('light the box generated is never converted by it again', () => {
   combiner.rot = 135;
   Object.assign(combiner.params, { dtype: 'shortpass', cutoff: 600, length: 40 });
   const box = createElement('opo', 250, 100);
-  Object.assign(box.params, { pumpWl: 516, signalWl: 1100, pumpAcceptanceNm: 600, acceptanceDeg: 5, aperture: 30 });
+  Object.assign(box.params, { signalWl: 1100, aperture: 30 });
   const m1 = createElement('mirror', 400, 100); m1.rot = 45; m1.params.length = 80; m1.params.refl = 50;
   const m2 = createElement('mirror', 400, 0); m2.rot = 135; m2.params.length = 80;
   const m3 = createElement('mirror', 100, 0); m3.rot = 45; m3.params.length = 80;
@@ -211,40 +213,41 @@ test('no pump, or a pump that misses the aperture, gives no reading and no outpu
   assert.equal(missed.signal, null);
 });
 
-test('wavelength and angle acceptance are inclusive at their edges', () => {
-  assert.equal(bench({ opo: { pumpWl: 515, pumpAcceptanceNm: 1 } }).state.state, 'converting');
-  assert.equal(bench({ opo: { pumpWl: 514.99, pumpAcceptanceNm: 1 } }).state.state, 'outOfWindow');
-
-  const run = (rot, acceptanceDeg) => {
-    const pump = createElement('pulsedlaser', 0, 0);
-    Object.assign(pump.params, GREEN);
+test('the fixed 20° input acceptance is inclusive at its edge', () => {
+  const run = rot => {
     const box = createElement('opo', 200, 0);
     box.rot = rot;
-    Object.assign(box.params, { acceptanceDeg, aperture: 20 });
+    box.params.aperture = 30;
+    // Aim the horizontal pump at the centre of the tilted rear aperture.
+    const rear = toWorld(box, -46, 0);
+    const pump = createElement('pulsedlaser', rear.x - 150, rear.y);
+    Object.assign(pump.params, GREEN);
     traceScene([pump, box]);
-    return opoReading(box.id).state;
+    return opoReading(box.id);
   };
-  assert.equal(run(-2, 2), 'converting');
-  assert.equal(run(-2.05, 2), 'rejected');
+  assert.equal(run(-20).state, 'converting');
+  const rejected = run(-20.5);
+  assert.equal(rejected.state, 'rejected');
+  near(rejected.angleDeg, 20.5, 1e-6, 'reported angle');
 });
 
 test('a beam wider than the aperture converts only the part that got in', () => {
-  const { signal, idler, result } = bench({ laser: { beamMode: 'beam', beamWidth: 20 }, opo: { signalWl: 800, aperture: 6 } });
+  const { signal, idler, result } = bench({ laser: { beamMode: 'beam', beamWidth: 20 }, opo: { signalWl: 800, aperture: 6, signalBeamMm: 4 } });
   const converted = signal.signal + idler.signal;
   assert.ok(converted > 0.05 && converted < 0.6 * MAX_OPO_DEPLETION, `accepted power ${converted}`);
   const port = opoPortLocal('signal');
   const starts = result.drawables.filter(d => (d.type === 'path' || d.type === 'poly') && d.pts?.length > 1
     && Math.abs(d.pts[0].x - (200 + port.x)) < 1e-6 && Math.abs(d.pts[0].y - 100) < 7).map(d => d.pts[0].y - 100);
-  assert.ok(starts.length > 0 && starts.every(y => Math.abs(y) <= 3 + 1e-6), `signal leaves outside its port: ${starts}`);
+  assert.ok(starts.length > 0 && starts.every(y => Math.abs(y) <= 2 + 1e-6), `signal leaves outside its 4 mm beam: ${starts}`);
 });
 
-test('the idler port and body grow with the aperture so the bundles stay apart and inside', () => {
+test('the idler port and body grow with the beams so the outputs stay apart and inside', () => {
   const box = createElement('opo', 0, 0);
-  box.params.aperture = 30;
+  Object.assign(box.params, { aperture: 30, signalBeamMm: 30, idlerBeamMm: 30 });
   const idler = opoPortLocal('idler', box.params);
-  assert.ok(idler.y - 15 >= 15, 'the two 30 mm bundles overlap');
+  assert.ok(idler.y - 15 >= 15, 'the two 30 mm beams overlap');
   const h = registry.opo.size_(box).h - 4;
-  assert.ok(idler.y + 15 <= h / 2, `idler bundle reaches ${idler.y + 15} mm beyond the ${h / 2} mm half-height`);
+  assert.ok(idler.y + 15 <= h / 2, `idler beam reaches ${idler.y + 15} mm beyond the ${h / 2} mm half-height`);
 });
 
 test('degeneracy uses the signal port for both equal and unequal widths', () => {
@@ -268,5 +271,5 @@ test('outputs keep the pump train timing and take no path inside the box', () =>
 test('the steps readout names the step and the generated waves', () => {
   const { box } = bench({ opo: { tuneMode: 'steps', stepList: '780, 820', stepDwellS: 2 }, time: 2.5 });
   const text = registry.opo.params.find(p => p.key === 'opoState').readout(box.params, box);
-  assert.match(text, /^Step 2 of 2: Signal 820 nm · idler 1392 nm/);
+  assert.match(text, /^Step 2 of 2: Pump 516 nm → signal 820 nm · idler 1392 nm/);
 });

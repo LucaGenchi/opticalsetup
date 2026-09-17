@@ -125,7 +125,7 @@ const demoScenes = {
   opo: () => [
     mkDemo('pulsedlaser', 60, 200, 0, { wavelength: 516, pulseWidthFs: 2000, repRateMHz: 80, beamMode: 'line' },
       { label: '516 nm pump · 2 ps', showLabel: true, labelPos: 't' }),
-    mkDemo('opo', 300, 200, 0, { pumpWl: 516, signalWl: 800, tuneMode: 'fixed' },
+    mkDemo('opo', 300, 200, 0, { signalWl: 800, tuneMode: 'fixed' },
       { label: 'OPO', showLabel: true, labelPos: 't' }),
     mkDemo('probe', 430, 200, 0, { prop: 'wl' }),
     mkDemo('probe', 520, 214, 0, { prop: 'wl' }),
