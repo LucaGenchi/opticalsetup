@@ -12,7 +12,7 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, MAX_CONVERSION, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt } from './raytrace.js';
+import { compressorGddReading, detectorReading, MAX_CONVERSION, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenTimingReading } from './raytrace.js';
 import { idlerWavelength } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -1220,9 +1220,8 @@ export const LINEAR_SIGNAL_KINDS = [
 export const NONLINEAR_SIGNAL_KINDS = [
   ['tpef', 'Two-photon fluorescence (2PEF)'],
   ['thpef', 'Three-photon fluorescence (3PEF)'],
-  ['shg', 'Second harmonic (SHG)'],
+  ['shg', 'χ⁽²⁾ — second harmonic, and sum frequency of two beams'],
   ['thg', 'Third harmonic (THG)'],
-  ['sfg', 'Sum frequency (SFG)'],
   ['cars', 'CARS — anti-Stokes'],
   ['srs', 'Stimulated Raman (SRS)'],
 ];
@@ -1244,6 +1243,8 @@ export const SIGNAL_KINDS = ALL_SIGNAL_KINDS;
 // at the same spot; the others are driven by a single beam. SRS likewise
 // needs two beams — one to carry the modulation and one to receive it.
 export const MIXING_KINDS = new Set(['sfg', 'cars']);
+// Signals that cannot happen with one beam alone. Second harmonic is not one
+// of them: it doubles a single beam, and mixes a pair when there is one.
 export const TWO_BEAM_KINDS = new Set(['sfg', 'cars', 'srs']);
 // Incoherent emission radiates in every direction, so it has no forward/epi
 // distinction to offer. The parametric signals are generated along the
@@ -1398,6 +1399,9 @@ function overlapWarning(channel, records) {
 // SHG, THG and phase contrast derive everything from the ray in front of
 // them, so a specimen made only of those never pays for the probe pass.
 export function channelNeedsExcitationProbe(c) {
+  // Second harmonic now carries the pair's sum frequency too, so it has to
+  // know what else is on the spot.
+  if (c.kind === 'shg') return true;
   if (TWO_BEAM_KINDS.has(c.kind)) return !(c.kind === 'cars' && c.autoWl === false);
   if (c.kind === 'raman') return true;
   // Emission channels need it even when the wavelength is pinned: the
@@ -1481,6 +1485,18 @@ function sampleModeParams() {
       const type = specimenTypeOf(p);
       return type === 'linear' || type === 'nonlinear';
     } },
+    // Arrival timing is a number, not a picture: a picosecond is a third of a
+    // millimetre of path, which no drawing at bench scale can show. A specimen
+    // whose signals depend on it says where the two beams are.
+    {
+      key: 'pulseTiming', label: 'Two-beam timing', type: 'readout', wide: true,
+      show: p => {
+        const type = specimenTypeOf(p);
+        if (type !== 'nonlinear') return false;
+        return sampleChannels(p).some(c => TWO_BEAM_KINDS.has(c.kind) || c.kind === 'shg');
+      },
+      readout: (p, el) => specimenTimingReadout(el ? specimenTimingReading(el.id) : null),
+    },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
     { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
     { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
@@ -1975,6 +1991,44 @@ export function mixStateText(reading) {
   const others = reading.alsoPairs > 0
     ? `; ${reading.alsoPairs} more pair${reading.alsoPairs > 1 ? 's' : ''} at this crystal` : '';
   return `${pair}, ${timing}${others}`;
+}
+
+// What a specimen's two-beam signals found about arrival timing, in the same
+// terms the crystal uses. A signal that is silent because of timing should say
+// so on the canvas rather than leaving an empty detector to interpret.
+// The same thing as a permanent readout rather than a one-off message: a
+// picosecond of arrival difference is a millimetre of path, far below anything
+// the drawing can show, so the number has to be somewhere you can watch while
+// you move a delay stage.
+export function specimenTimingReadout(reading) {
+  if (!reading) return 'No two-beam signal here yet';
+  if (reading.state === 'oneBeam') return 'One colour only: a second wavelength is needed for CARS, Raman transfer or sum frequency';
+  const pair = `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm`;
+  if (reading.state === 'unsupported') {
+    return `${pair} at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz — timing not modelled between different repetition rates`;
+  }
+  const pathMm = (reading.skewNs || 0) * 299.792458;
+  // Below a femtosecond is matched, not a number worth printing: paths that
+  // cancel algebraically still leave floating-point dust behind.
+  const apart = reading.skewNs > 1e-6
+    ? `${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path)`
+    : 'arriving together';
+  return `${pair}: ${apart}, ${sig3(reading.overlap * 100)}% temporal overlap`;
+}
+
+export function specimenTimingText(reading) {
+  if (!reading) return null;
+  const what = reading.kind === 'srs' ? 'Stimulated Raman'
+    : reading.kind === 'cars' ? 'CARS'
+      : 'Sum frequency';
+  if (reading.state === 'unsupported') {
+    return `${what} timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at the same repetition rate are mixed here.`;
+  }
+  if (reading.state === 'unsynchronized') {
+    const pathMm = reading.skewNs * 299.792458;
+    return `${what} needs both pulses at the specimen: they arrive ${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path). Match the arms, or add a delay line.`;
+  }
+  return null;
 }
 
 function formatMixDelay(skewNs) {

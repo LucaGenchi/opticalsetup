@@ -554,6 +554,12 @@ export const exampleEntries = [
         structures, which is exactly what makes the epi channel informative rather than
         redundant.</li>
       </ul>
+      <p><strong>The delay line earns its place.</strong> Both coherent signals need the
+      two pulses inside the focus together, so the stage is not decoration: slide it and the
+      CARS line goes out while the SRS trace flattens to its unmodulated level, with the
+      workbench saying how far apart the pulses now arrive. Scanning it back through zero is
+      how the two arms are matched on a bench in the first place. Moving other components
+      matters only where it changes that path difference.</p>
       <p>Comparing the two mechanisms in one setup is the real lesson. SRS is a change in a
       beam you already have, so it scales linearly with concentration and carries no
       non-resonant background; CARS is a new colour you can filter for cleanly, but sits on
@@ -563,9 +569,17 @@ export const exampleEntries = [
       a lineshape from a susceptibility, and the non-resonant background that complicates
       real CARS is absent. Retuning the pump changes the anti-Stokes wavelength through the
       energy relation, but no vibrational resonance is modelled, so the signal does not
-      rise and fall as you tune across a line. Temporal overlap is likewise not enforced:
-      the delay line is drawn and is physically meaningful, but mistiming the two pulses
-      will not extinguish the signal the way it would on a bench. The 20&nbsp;MHz
+      rise and fall as you tune across a line. Temporal overlap, by contrast, <em>is</em>
+      enforced, and the delay line is the knob for it: the two arms are matched to under a
+      micron of path here, and sliding the retroreflector 1&nbsp;mm along its axis puts the
+      pulses 6.7&nbsp;ps apart — twice the distance, since the beam crosses the stage and
+      comes back. The anti-Stokes line then disappears, and the SRS channel loses its
+      transferred modulation and returns to its unmodulated level, which is what a bench
+      sees. The gate is one qualitative envelope, though, not a process-specific delay
+      response: neither the I<sub>p</sub>²I<sub>s</sub> weighting of a real non-resonant CARS
+      signal nor any resonant dynamics are modelled, the spread of arrival times across a
+      focused cone is not treated as a timing spread, and only trains at the same repetition
+      rate are judged at all. The 20&nbsp;MHz
       modulation is applied to the beam and detected, but no lock-in demodulation happens,
       and the shot-noise-limited sensitivity that makes SRS work in practice is outside
       what a ray tracer can express.</p>`,
