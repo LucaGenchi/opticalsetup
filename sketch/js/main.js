@@ -56,7 +56,7 @@ const FIBER_DEMOS = new Set(['fiber', 'barefiber']);
 // cross-correlation mode only means anything with two sources and two arms, so
 // it needs a scene of its own rather than the one-source embed the component
 // page carries.
-const SCENE_DEMOS = new Set(['crosscorrelator']);
+const SCENE_DEMOS = new Set(['crosscorrelator', 'crystal-supercontinuum', 'crystal-thg']);
 
 // Fibers are drawn paths (state.beams), not registry elements, so their demo
 // scenes return {elements, beams} instead of a bare element array.
@@ -113,6 +113,34 @@ const demoScenes = {
   crystal: () => [
     mkDemo('pulsedlaser', 60, 160, 0, { wavelength: 1064 }),
     mkDemo('crystal', 220, 160, 0, { convert: 'shg', efficiency: 0.4, transmitPump: true }),
+    mkDemo('dichroic', 350, 160, 135, { cutoff: 700 }),
+    mkDemo('probe', 430, 160, 0, { prop: 'wl' }),
+    mkDemo('probe', 350, 260, 0, { prop: 'wl' }),
+    mkDemo('detector', 520, 160),
+    mkDemo('detector', 350, 350, 90),
+  ],
+  // The crystal's other single-beam modes, as extra embeds on its page. The
+  // continuum reads its band from the arriving pump: 1035 nm femtosecond
+  // pulses in YAG, the near-infrared case a multiplex CARS bench uses.
+  'crystal-supercontinuum': () => {
+    const spectrometer = mkDemo('spectrometer', 470, 200, 0, { aperture: 30, labelPeaks: false },
+      { label: 'spectrometer', showLabel: true, labelPos: 'b' });
+    return [
+      mkDemo('pulsedlaser', 60, 200, 0, { wavelength: 1035, pulseWidthFs: 270, repRateMHz: 2, beamMode: 'line' },
+        { label: '1035 nm · 270 fs', showLabel: true, labelPos: 't' }),
+      // The residual pump is dumped so its narrow line does not dwarf the band.
+      mkDemo('crystal', 250, 200, 0, { convert: 'sc', scMedium: 'yag', scRange: 'estimate', efficiency: 0.5, transmitPump: false },
+        { label: 'YAG · supercontinuum', showLabel: true, labelPos: 't' }),
+      spectrometer,
+      mkDemo('display', 470, 60, 0, { sensorId: spectrometer.id, displayScale: 1.2, screenOn: true, displayView: 'main' }),
+    ];
+  },
+  // THG is the app's authored conversion proxy: one crystal emitting λ/3 at a
+  // set fraction, not a cascaded SHG-plus-SFG design.
+  'crystal-thg': () => [
+    mkDemo('pulsedlaser', 60, 160, 0, { wavelength: 1030, beamMode: 'line' }, { label: '1030 nm', showLabel: true, labelPos: 't' }),
+    mkDemo('crystal', 220, 160, 0, { convert: 'thg', efficiency: 0.3, transmitPump: true },
+      { label: 'THG · authored proxy', showLabel: true, labelPos: 't' }),
     mkDemo('dichroic', 350, 160, 135, { cutoff: 700 }),
     mkDemo('probe', 430, 160, 0, { prop: 'wl' }),
     mkDemo('probe', 350, 260, 0, { prop: 'wl' }),

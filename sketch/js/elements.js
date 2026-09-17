@@ -1983,14 +1983,16 @@ function supercontinuumStateText(reading) {
   }
   const medium = SC_MEDIA[reading.medium]?.label || reading.medium;
   if (reading.state === 'unsupported') {
-    return `No continuum: published ${medium} spectra cover pumps from ${reading.fromNm} to ${reading.toNm} nm, `
+    return `No continuum: this estimate includes reference data for ${medium} pumps from ${reading.fromNm} to ${reading.toNm} nm, `
       + `not ${nm4(reading.pumpNm)} nm. Set the range manually to draw one`;
   }
   const band = `${Math.round(reading.minNm)}–${Math.round(reading.maxNm)} nm`;
   if (reading.state === 'manual') return `Drawing ${band}, as set`;
   const source = reading.measured
-    ? 'as reported at this pump wavelength'
-    : 'interpolated between spectra reported at nearby pump wavelengths, an illustration rather than a prediction';
+    ? 'as reported for one experiment at this pump wavelength'
+    : reading.summary
+      ? 'from a typical span or a range the review summarises for pumps here, not a single measurement'
+      : 'interpolated between reference spectra at nearby pump wavelengths, an illustration rather than a prediction';
   const red = reading.redAtLeast ? ' The red edge rests on a detector-limited measurement, so the spectrum can reach further.' : '';
   return `About ${band} from a ${nm4(reading.pumpNm)} nm pump in ${medium}, ${source}.${red}\n`
     + 'Focusing, pulse energy and duration, chirp and crystal length shift both edges and are not modelled; nor is whether the pump reaches threshold';
@@ -2083,9 +2085,10 @@ function opoWaveText(name, wave, pulse) {
     : `${name} bandwidth 0 nm (single frequency)`;
   if (!pulse) return width;
   const note = pulse.spectralPhase === 'positiveChirp' ? 'chirped'
-    : pulse.durationRaisedToLimit ? 'transform limited; the set duration is shorter than the limit'
+    : pulse.durationRaisedToLimit ? 'raised to the transform limit; the set duration is shorter'
       : pulse.transformLimited ? 'transform limited'
-        : 'spectral phase unknown: a zero bandwidth has no transform limit';
+        : pulse.transformLimitUnavailable || !(wave.bw > 0) ? 'spectral phase unknown: a zero bandwidth has no transform limit'
+          : 'spectral phase unknown';
   return `${width}\n${name} duration ${formatOpoDuration(pulse.outputDurationFs ?? pulse.pulseWidthFs)} (${note})`;
 }
 
@@ -4299,7 +4302,11 @@ export const registry = {
       },
       {
         key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'transformLimited', show: p => p.convert === 'opo',
-        options: [['transformLimited', 'Transform-limited'], ['unknown', 'Duration set (chirped when longer than the limit)']],
+        options: [
+          ['transformLimited', 'Transform-limited'],
+          ['unknown', 'Duration set, spectral phase unknown'],
+          ['positiveChirp', 'Duration set, positively chirped (assumed Gaussian)'],
+        ],
         // Saved OPOs that predate the setting drew a set duration.
         migrate: p => p.convert === 'opo' ? 'unknown' : 'transformLimited',
       },

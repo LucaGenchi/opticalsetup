@@ -21,42 +21,48 @@ export const MAX_CONVERSION = 0.6;
 export const MAX_OPO_DEPLETION = 0.95;
 
 // Supercontinuum in a bulk crystal: where the spectrum ends, from the pump
-// wavelength and the medium. Every anchor is one reported experiment from the
+// wavelength and the medium. The anchors are reference data taken from the
 // review by Dubietis, Tamošauskas, Šuminas, Jukna and Couairon, "Ultrafast
 // supercontinuum generation in bulk condensed media", Lith. J. Phys. 57,
-// 113-157 (2017), section 5, with the pump it was measured at. They are
-// heterogeneous experiments -- different focusing, energies, durations and
-// lengths -- so a band between two anchors is an authored interpolation, not
-// a prediction, and pumps outside a medium's anchors get no estimate at all.
+// 113-157 (2017), section 5, each at the pump it was given for. They come
+// from heterogeneous experiments -- different focusing, energies, durations
+// and lengths -- so a band between two anchors is an authored interpolation,
+// not a prediction. Pumps outside the anchors this table includes get no
+// estimate; that is a boundary of this table, not of the literature, which
+// reports other pumps too.
 //
-// `red` edges marked `atLeast` were limited by the detector: the spectrum
-// went further. YAG's blue cut-off was reported as fairly stable at 530 nm
-// across 1.1-1.6 µm pumping, so it is anchored at both ends of that range;
-// CaF2's 340 nm-3.3 µm span combines 2.1 and 2.2 µm pumping, likewise.
+// Tags after the edge say what kind of reference an anchor is:
+//   'atLeast' -- a red edge limited by the detector: the spectrum went further.
+//   'typical' -- the review's typical span under common conditions, a summary
+//                of several experiments rather than one.
+//   'range'   -- one span the review gives for a range of pumps, placed at
+//                both ends of that range: YAG's blue cut-off, "fairly stable"
+//                at 530 nm across 1.1-1.6 µm, and CaF2's 340 nm-3.3 µm from
+//                combined 2.1-2.2 µm data. They are not two measurements.
 // `transparentFromNm` is the short end of the 10 % transmission range through
 // 1 mm (Table 1).
 export const SC_MEDIA = {
   yag: {
     label: 'YAG', transparentFromNm: 210,
-    blue: [[515, 390], [800, 420], [1100, 530], [1600, 530], [2000, 510], [2150, 450]],
+    blue: [[515, 390], [800, 420], [1100, 530, 'range'], [1600, 530, 'range'], [2000, 510], [2150, 450]],
     red: [[515, 625], [800, 1600], [2000, 2500, 'atLeast'], [2150, 2500, 'atLeast']],
   },
   sapphire: {
     label: 'Sapphire', transparentFromNm: 190,
     // 1100 nm at 800 nm is the usual tight focusing; loose focusing in a
     // longer plate reached beyond 1600 nm.
-    blue: [[400, 350], [515, 340], [800, 410], [2000, 470]],
-    red: [[400, 700], [515, 650], [800, 1100], [2000, 2500, 'atLeast']],
+    blue: [[400, 350], [515, 340], [800, 410, 'typical'], [2000, 470]],
+    red: [[400, 700], [515, 650], [800, 1100, 'typical'], [2000, 2500, 'atLeast']],
   },
   fusedsilica: {
     label: 'Fused silica', transparentFromNm: 180,
-    blue: [[594, 415], [800, 390]],
-    red: [[594, 720], [800, 1000]],
+    blue: [[594, 415], [800, 390, 'typical']],
+    red: [[594, 720], [800, 1000, 'typical']],
   },
   caf2: {
     label: 'CaF₂', transparentFromNm: 120,
-    blue: [[800, 300], [2100, 340], [2200, 340]],
-    red: [[800, 2000], [2100, 3300], [2200, 3300]],
+    blue: [[800, 300], [2100, 340, 'range'], [2200, 340, 'range']],
+    red: [[800, 2000], [2100, 3300, 'range'], [2200, 3300, 'range']],
   },
 };
 
@@ -72,11 +78,12 @@ function bracket(table, x) {
 const lerp = ([x0, y0], [x1, y1], x) => (x1 === x0 ? y1 : y0 + (y1 - y0) * (x - x0) / (x1 - x0));
 
 // The band for a pump at `pumpNm` in `medium`:
-//   { state: 'estimate', minNm, maxNm, measured, redAtLeast }
+//   { state: 'estimate', minNm, maxNm, measured, summary, redAtLeast }
 //   { state: 'unsupported', fromNm, toNm }  -- the pumps the medium has data for
 // Each edge is interpolated linearly in wavelength between its own
-// neighbouring anchors. `measured` is set
-// only when both edges sit exactly on reported pumps.
+// neighbouring anchors. `measured` is set only when both edges sit on
+// anchors from single experiments at this pump; `summary` when they sit on
+// anchors but one is a typical span or a range summary.
 export function supercontinuumRange(pumpNm, medium) {
   const data = SC_MEDIA[medium] || SC_MEDIA.yag;
   const fromNm = Math.max(data.blue[0][0], data.red[0][0]);
@@ -84,15 +91,17 @@ export function supercontinuumRange(pumpNm, medium) {
   const blue = Number.isFinite(pumpNm) ? bracket(data.blue, pumpNm) : null;
   const red = Number.isFinite(pumpNm) ? bracket(data.red, pumpNm) : null;
   if (!blue || !red) return { state: 'unsupported', fromNm, toNm };
-  const onAnchor = pair => pair.some(([pump]) => pump === pumpNm);
-  const redAnchors = red.filter(([pump]) => pump === pumpNm);
-  const redUsed = redAnchors.length ? redAnchors : red;
+  const at = pair => pair.filter(([pump]) => pump === pumpNm);
+  const onAnchors = at(blue).length > 0 && at(red).length > 0;
+  const summarised = [...at(blue), ...at(red)].some(anchor => anchor.includes('typical') || anchor.includes('range'));
+  const redUsed = at(red).length ? at(red) : red;
   return {
     state: 'estimate',
     minNm: Math.max(data.transparentFromNm, lerp(blue[0], blue[1], pumpNm)),
     maxNm: lerp(red[0], red[1], pumpNm),
-    measured: onAnchor(blue) && onAnchor(red),
-    redAtLeast: redUsed.some(anchor => anchor[2] === 'atLeast'),
+    measured: onAnchors && !summarised,
+    summary: onAnchors && summarised,
+    redAtLeast: redUsed.some(anchor => anchor.includes('atLeast')),
     fromNm, toNm,
   };
 }
@@ -232,11 +241,15 @@ export function opoPulse(pumpPulse, wave, { crystalId, role, outputPhase = 'unkn
   const transformLimited = wantsLimit && Number.isFinite(limit);
   // Rounding alone must not count as asking for less than the limit.
   const belowLimit = Number.isFinite(limit) && requested < limit * (1 - 1e-9);
-  // Longer than the limit, the output is taken to be linearly and positively
-  // chirped: the transform-limited pulse carries the GDD that stretches a
-  // Gaussian to the requested duration, so a compressor downstream can
-  // take it back out.
-  const chirped = !wantsLimit && Number.isFinite(limit) && !belowLimit && requested > limit * (1 + 1e-9);
+  // Three authored choices. 'transformLimited' sets the duration from the
+  // bandwidth. 'unknown' sets it and claims nothing about the phase, so no
+  // compressor can shorten it. 'positiveChirp' is an explicit assumption: a
+  // coherent Gaussian whose only spectral phase is a positive quadratic one,
+  // so the transform-limited pulse carries the GDD that stretches it to the
+  // set duration, and a compressor downstream can take it back out. Duration
+  // and bandwidth alone could not establish that, which is why it is opt-in.
+  const wantsChirp = outputPhase === 'positiveChirp';
+  const chirped = wantsChirp && Number.isFinite(limit) && requested > limit * (1 + 1e-9);
   const chirpGddFs2 = chirped
     ? limit * limit / (4 * Math.LN2) * Math.sqrt((requested / limit) ** 2 - 1)
     : 0;
@@ -253,8 +266,8 @@ export function opoPulse(pumpPulse, wave, { crystalId, role, outputPhase = 'unkn
     // A chirped pulse is described as its transform limit plus the GDD it
     // carries, which is how every dispersed pulse in the tracer is held.
     pulseWidthFs: transformLimited || belowLimit || chirped ? limit : requested,
-    transformLimited: transformLimited || belowLimit || chirped,
-    spectralPhase: transformLimited || belowLimit ? 'transformLimited' : chirped ? 'positiveChirp' : 'unknown',
+    transformLimited: transformLimited || chirped || (wantsChirp && belowLimit),
+    spectralPhase: transformLimited || (wantsChirp && belowLimit) ? 'transformLimited' : chirped ? 'positiveChirp' : 'unknown',
     chirpGddFs2,
     outputDurationFs: transformLimited || belowLimit ? limit : requested,
     durationRaisedToLimit: !wantsLimit && belowLimit,

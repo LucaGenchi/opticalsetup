@@ -117,7 +117,10 @@ test('both examples are pumped with 2 ps pulses, and the Z cavity signal is 10 c
   }
   const { signal } = traced(SYNC_OPO_NAME);
   near(1e7 * (signal.bandMax - signal.bandMin) / 800 ** 2, 10, 0.1, 'signal FWHM (cm⁻¹)');
-  // 2 ps is longer than a 10 cm⁻¹ limit, so the signal leaves chirped to it.
+  // 2 ps is longer than a 10 cm⁻¹ limit: the example authors a positive chirp,
+  // so the signal is its 1.47 ps limit stretched to 2 ps by the GDD it carries.
+  assert.equal(JSON.parse(read(SYNC_OPO_NAME)).elements.find(el => el.id === 'crystal').params.outputPhase, 'positiveChirp');
+  near(signal.pulse.pulseWidthFs, 1471, 1, 'signal transform limit (fs)');
   near(signal.pulse.stretchedPulseWidthFs, 2000, 1, 'signal duration (fs)');
 });
 

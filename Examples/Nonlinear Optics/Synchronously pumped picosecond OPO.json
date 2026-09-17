@@ -151,9 +151,9 @@
         "pumpAcceptanceNm": 1,
         "linewidthMode": "signal",
         "signalLinewidthCm": 10,
-        "outputPhase": "unknown",
+        "outputPhase": "positiveChirp",
         "durationFactor": 1,
-        "efficiency": 0.35,
+        "opoDepletion": 0.35,
         "transmitPump": true
       },
       "labelPos": "t"

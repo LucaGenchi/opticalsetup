@@ -44,6 +44,12 @@ export const examples = [
   },
   {
     "group": "Nonlinear Optics",
+    "name": "Near infrared supercontinuum in YAG",
+    "path": "../Examples/Nonlinear%20Optics/Near%20infrared%20supercontinuum%20in%20YAG.json",
+    "slug": "near-infrared-supercontinuum-in-yag"
+  },
+  {
+    "group": "Nonlinear Optics",
     "name": "Optical parametric oscillator — ring cavity, element by element",
     "path": "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20ring%20cavity%2C%20element%20by%20element.json",
     "slug": "optical-parametric-oscillator-ring-cavity-element-by-element"
