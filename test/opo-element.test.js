@@ -176,9 +176,97 @@ test('the box converts exactly as a crystal in OPO mode does, for all three puls
 });
 
 test('light the box generated is never converted by it again', () => {
-  // A mirror behind the front ports sends the outputs straight back into the box.
-  const mirror = createElement('mirror', 330, 107);
-  mirror.params.length = 60;
-  const { state } = bench({ opo: { signalWl: 800 }, extra: [mirror] });
-  assert.equal(state.state, 'converting');
+  // The pump reaches the rear aperture through a shortpass dichroic; the
+  // outputs go round three mirrors and that dichroic reflects them back into
+  // the aperture, inside a pump window wide enough to accept them. The first
+  // mirror taps half of each pass to a spectrometer.
+  const pump = createElement('pulsedlaser', 0, 100);
+  Object.assign(pump.params, GREEN);
+  const combiner = createElement('dichroic', 100, 100);
+  combiner.rot = 135;
+  Object.assign(combiner.params, { dtype: 'shortpass', cutoff: 600, length: 40 });
+  const box = createElement('opo', 250, 100);
+  Object.assign(box.params, { pumpWl: 516, signalWl: 1100, pumpAcceptanceNm: 600, acceptanceDeg: 5, aperture: 30 });
+  const m1 = createElement('mirror', 400, 100); m1.rot = 45; m1.params.length = 80; m1.params.refl = 50;
+  const m2 = createElement('mirror', 400, 0); m2.rot = 135; m2.params.length = 80;
+  const m3 = createElement('mirror', 100, 0); m3.rot = 45; m3.params.length = 80;
+  const tap = createElement('detector', 520, 100);
+  tap.params.aperture = 80;
+  traceScene([pump, combiner, box, m1, m2, m3, tap]);
+  // Without the guard the returning 1100 nm signal would be taken as a pump
+  // and read as an invalid signal.
+  const reading = opoReading(box.id);
+  assert.equal(reading.state, 'converting');
+  assert.equal(reading.signalWl, 1100);
+  assert.ok(!detectorReading(tap.id).spectrum.some(s => s.power > 1e-6 && s.wavelength > 3000), 'a cascade idler appeared');
+});
+
+test('no pump, or a pump that misses the aperture, gives no reading and no output', () => {
+  const lonely = createElement('opo', 200, 100);
+  traceScene([lonely]);
+  assert.equal(opoReading(lonely.id), null);
+
+  const missed = bench({ laserAt: { x: 0, y: 100 + 3 + 4 } }); // 6 mm aperture, 7 mm off axis
+  assert.equal(missed.state, null);
+  assert.equal(missed.signal, null);
+});
+
+test('wavelength and angle acceptance are inclusive at their edges', () => {
+  assert.equal(bench({ opo: { pumpWl: 515, pumpAcceptanceNm: 1 } }).state.state, 'converting');
+  assert.equal(bench({ opo: { pumpWl: 514.99, pumpAcceptanceNm: 1 } }).state.state, 'outOfWindow');
+
+  const run = (rot, acceptanceDeg) => {
+    const pump = createElement('pulsedlaser', 0, 0);
+    Object.assign(pump.params, GREEN);
+    const box = createElement('opo', 200, 0);
+    box.rot = rot;
+    Object.assign(box.params, { acceptanceDeg, aperture: 20 });
+    traceScene([pump, box]);
+    return opoReading(box.id).state;
+  };
+  assert.equal(run(-2, 2), 'converting');
+  assert.equal(run(-2.05, 2), 'rejected');
+});
+
+test('a beam wider than the aperture converts only the part that got in', () => {
+  const { signal, idler, result } = bench({ laser: { beamMode: 'beam', beamWidth: 20 }, opo: { signalWl: 800, aperture: 6 } });
+  const converted = signal.signal + idler.signal;
+  assert.ok(converted > 0.05 && converted < 0.6 * MAX_OPO_DEPLETION, `accepted power ${converted}`);
+  const port = opoPortLocal('signal');
+  const starts = result.drawables.filter(d => (d.type === 'path' || d.type === 'poly') && d.pts?.length > 1
+    && Math.abs(d.pts[0].x - (200 + port.x)) < 1e-6 && Math.abs(d.pts[0].y - 100) < 7).map(d => d.pts[0].y - 100);
+  assert.ok(starts.length > 0 && starts.every(y => Math.abs(y) <= 3 + 1e-6), `signal leaves outside its port: ${starts}`);
+});
+
+test('the idler port and body grow with the aperture so the bundles stay apart and inside', () => {
+  const box = createElement('opo', 0, 0);
+  box.params.aperture = 30;
+  const idler = opoPortLocal('idler', box.params);
+  assert.ok(idler.y - 15 >= 15, 'the two 30 mm bundles overlap');
+  const h = registry.opo.size_(box).h - 4;
+  assert.ok(idler.y + 15 <= h / 2, `idler bundle reaches ${idler.y + 15} mm beyond the ${h / 2} mm half-height`);
+});
+
+test('degeneracy uses the signal port for both equal and unequal widths', () => {
+  const unequal = bench({ opo: { signalWl: 1032, outputIdler: true } });
+  assert.equal(unequal.state.waves.merged, null);
+  assert.equal(unequal.state.waves.degenerate, true);
+  assert.equal(unequal.idler, null);
+  const equal = bench({ opo: { signalWl: 1032, linewidthMode: 'both', signalLinewidthCm: 10, idlerLinewidthCm: 10, outputIdler: false } });
+  assert.ok(equal.state.waves.merged);
+  near(equal.signal.signal, MAX_OPO_DEPLETION, 1e-6, 'merged power on the signal port');
+});
+
+test('outputs keep the pump train timing and take no path inside the box', () => {
+  const { signal, result } = bench({ laser: { pulsePhaseNs: 3 }, opo: { signalWl: 800 } });
+  assert.ok(signal.pulse.trains.every(t => t.phaseNs === 3), 'train phase lost');
+  const pumpTrack = result.pulseTracks.find(t => Math.round(t.pulse.centerWavelengthNm) === 516);
+  const signalTrack = result.pulseTracks.find(t => Math.round(t.pulse.centerWavelengthNm) === 800);
+  near(signalTrack.opls[0], pumpTrack.opls[pumpTrack.opls.length - 1], 1e-9, 'optical path at the ports equals the pump path at the aperture');
+});
+
+test('the steps readout names the step and the generated waves', () => {
+  const { box } = bench({ opo: { tuneMode: 'steps', stepList: '780, 820', stepDwellS: 2 }, time: 2.5 });
+  const text = registry.opo.params.find(p => p.key === 'opoState').readout(box.params, box);
+  assert.match(text, /^Step 2 of 2: Signal 820 nm · idler 1392 nm/);
 });

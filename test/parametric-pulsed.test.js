@@ -277,13 +277,23 @@ test('light a crystal generated never converts in it again, even through a wide 
   const m2 = createElement('mirror', 300, 160);
   m1.params.refl = 95;
   m2.params.refl = 95;
-  const { long, short } = opoScene({
-    laser: TISA, crystal: { pumpWl: 800, signalWl: 1200, pumpAcceptanceNm: 2000 }, cutoff: 1800, extra: [m1, m2],
-  });
-  for (const reading of [long, short].filter(Boolean)) {
-    assert.ok(Number.isFinite(reading.signal) && reading.signal <= 1 + PULSED, 'unbounded power');
-    assert.ok(reading.spectrum.every(s => Number.isFinite(s.wavelength) && Number.isFinite(s.power)));
-    assert.ok(!reading.spectrum.some(s => s.wavelength > 3000 && s.power > 1e-6), 'a signal was re-split into a cascade idler');
+  // Generated light passes through whether or not the residual pump is kept.
+  for (const transmitPump of [true, false]) {
+    const { long, short } = opoScene({
+      laser: TISA, crystal: { pumpWl: 800, signalWl: 1200, pumpAcceptanceNm: 2000, transmitPump }, cutoff: 1800, extra: [m1, m2],
+    });
+    for (const reading of [long, short].filter(Boolean)) {
+      assert.ok(Number.isFinite(reading.signal) && reading.signal <= 1 + PULSED, 'unbounded power');
+      assert.ok(reading.spectrum.every(s => Number.isFinite(s.wavelength) && Number.isFinite(s.power)));
+      assert.ok(!reading.spectrum.some(s => s.wavelength > 3000 && s.power > 1e-6), 'a signal was re-split into a cascade idler');
+    }
+    if (!transmitPump) {
+      // With no residual pump, whatever reaches the detectors is generated
+      // light that returned through the crystal unconverted.
+      const generated = [long, short].filter(Boolean).flatMap(r => r.spectrum)
+        .filter(s => s.power > 1e-6 && (Math.abs(s.wavelength - 1200) < 5 || Math.abs(s.wavelength - 2400) < 150));
+      assert.ok(generated.length > 0, 'no generated light got through with the residual pump off');
+    }
   }
 });
 

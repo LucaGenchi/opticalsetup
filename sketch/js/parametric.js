@@ -450,7 +450,8 @@ export function parseWavelengthList(text) {
   let ignored = 0;
   for (const entry of entries) {
     const value = Number(entry);
-    if (Number.isFinite(value) && value > 0 && value <= 20000) values.push(value);
+    // The same bounds as the fixed and sweep wavelength controls.
+    if (Number.isFinite(value) && value >= 100 && value <= 11000) values.push(value);
     else ignored++;
   }
   return { values, ignored };

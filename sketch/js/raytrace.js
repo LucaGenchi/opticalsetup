@@ -3739,7 +3739,11 @@ function interact(ray, hit) {
       const axis = rotPt(1, 0, el.rot || 0);
       const cosine = Math.max(-1, Math.min(1, dot(d, axis)));
       const angleDeg = Math.acos(cosine) / D2R;
-      const firstState = state => { if (elementId && !opoStates.has(elementId)) opoStates.set(elementId, state); };
+      const tuningNote = data.tuning && Number.isInteger(data.tuning.index)
+        ? { index: data.tuning.index, count: data.tuning.count } : null;
+      const firstState = state => {
+        if (elementId && !opoStates.has(elementId)) opoStates.set(elementId, { ...state, tuning: tuningNote });
+      };
       if (!(angleDeg <= Math.max(0, Number(data.acceptanceDeg) || 0) + 1e-9)) {
         firstState({ state: 'rejected', angleDeg });
         return [];
@@ -3751,6 +3755,11 @@ function interact(ray, hit) {
       }
       const efficiency = Math.min(MAX_OPO_DEPLETION, Math.max(0, Number(data.opoDepletion) || 0));
       const result = opoConversion(ray, { ...data, signalWl: tuning.signalWl }, elementId, efficiency);
+      // The shared helper records converting and invalid readings; the step
+      // being played is the element's to add.
+      if (elementId && (result.state === 'converting' || result.state === 'invalid') && opoStates.has(elementId)) {
+        opoStates.get(elementId).tuning = tuningNote;
+      }
       if (result.state === 'outOfWindow') firstState({ state: 'outOfWindow', pumpNm: ray.wl });
       if (result.state === 'badParams') firstState({ state: 'badParams' });
       if (result.state !== 'converting' || !(efficiency > 0)) return [];
@@ -3760,7 +3769,7 @@ function interact(ray, hit) {
       // pump's arrival at the aperture, not to a cavity length.
       const lateral = toLocal(el, hit.p.x, hit.p.y).y;
       const port = role => {
-        const local = opoPortLocal(role === 'idler' ? 'idler' : 'signal');
+        const local = opoPortLocal(role === 'idler' ? 'idler' : 'signal', data);
         return toWorld(el, local.x, local.y + lateral);
       };
       // At degeneracy signal and idler share a wavelength and leave together

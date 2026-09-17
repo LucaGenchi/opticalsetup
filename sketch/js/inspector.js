@@ -453,6 +453,9 @@ function screenLinkHTML(el) {
 export function refreshMeasurements() {
   if (!panel || state.selection?.kind !== 'element') return;
   const sel = findSelected();
+  // An element whose inspector readouts follow the animation clock -- a
+  // tuning OPO -- refreshes those fields in place, without a rebuild.
+  if (sel && registry[sel.type]?.liveReadouts) { refreshReadouts(sel); return; }
   if (!sel || (!registry[sel.type]?.readoutKind && sel.type !== 'display')) return;
   const current = panel.querySelector('[data-measurements]');
   if (!current) return;

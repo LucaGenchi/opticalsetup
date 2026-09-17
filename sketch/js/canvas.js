@@ -371,7 +371,7 @@ function animateMotion(nowMs) {
     renderVoxels();
     renderOverlay();
     const selected = findSelected();
-    if (opticalMotion && selected && (registry[selected.type]?.readoutKind || selected.type === 'display')) onMeasurementsChange();
+    if (opticalMotion && selected && (registry[selected.type]?.readoutKind || registry[selected.type]?.liveReadouts || selected.type === 'display')) onMeasurementsChange();
   }
   motionFrame = requestAnimationFrame(animateMotion);
 }
