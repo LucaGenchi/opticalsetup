@@ -1979,16 +1979,21 @@ function opoStateText(reading) {
 function supercontinuumStateText(reading) {
   if (!reading) return 'No pump has reached the crystal yet';
   if (reading.state === 'cw') {
-    return 'No continuum: a continuous-wave beam lacks the peak power. Use a pulsed pump, or set the range manually';
+    return 'No continuum: continuous-wave input is outside this pulsed bulk estimate. Set the range manually to draw one';
+  }
+  const medium = SC_MEDIA[reading.medium]?.label || reading.medium;
+  if (reading.state === 'unsupported') {
+    return `No continuum: published ${medium} spectra cover pumps from ${reading.fromNm} to ${reading.toNm} nm, `
+      + `not ${nm4(reading.pumpNm)} nm. Set the range manually to draw one`;
   }
   const band = `${Math.round(reading.minNm)}–${Math.round(reading.maxNm)} nm`;
   if (reading.state === 'manual') return `Drawing ${band}, as set`;
-  const medium = SC_MEDIA[reading.medium]?.label || reading.medium;
-  const reach = reading.extrapolated
-    ? `; the pump is outside the wavelengths ${medium} was measured at, so this is extrapolated`
-    : '';
-  return `About ${band} from a ${nm4(reading.pumpNm)} nm pump in ${medium}, interpolated from published spectra${reach}. `
-    + 'Pump energy, focusing and crystal length are not modelled; they move the red edge most';
+  const source = reading.measured
+    ? 'as reported at this pump wavelength'
+    : 'interpolated between spectra reported at nearby pump wavelengths, an illustration rather than a prediction';
+  const red = reading.redAtLeast ? ' The red edge rests on a detector-limited measurement, so the spectrum can reach further.' : '';
+  return `About ${band} from a ${nm4(reading.pumpNm)} nm pump in ${medium}, ${source}.${red}\n`
+    + 'Focusing, pulse energy and duration, chirp and crystal length shift both edges and are not modelled; nor is whether the pump reaches threshold';
 }
 
 // How a mixing crystal reports what it found. The delay figure is the point
@@ -2073,12 +2078,15 @@ function formatOpoDuration(fs) {
 }
 
 function opoWaveText(name, wave, pulse) {
-  const width = wave.bw > 0 ? `${sig3(wave.bw)} nm (${sig3(wave.widthCm)} cm⁻¹)` : 'single-frequency';
-  if (!pulse) return `${name} ${width}`;
-  const note = pulse.transformLimited ? ', transform-limited'
-    : pulse.transformLimitUnavailable ? ', not transform-limited: a zero linewidth has no finite transform-limited duration'
-      : pulse.durationRaisedToLimit ? ', raised to its transform limit' : '';
-  return `${name} ${width}, ${formatOpoDuration(pulse.pulseWidthFs)}${note}`;
+  const width = wave.bw > 0
+    ? `${name} bandwidth ${sig3(wave.bw)} nm (${sig3(wave.widthCm)} cm⁻¹)`
+    : `${name} bandwidth 0 nm (single frequency)`;
+  if (!pulse) return width;
+  const note = pulse.spectralPhase === 'positiveChirp' ? 'chirped'
+    : pulse.durationRaisedToLimit ? 'transform limited; the set duration is shorter than the limit'
+      : pulse.transformLimited ? 'transform limited'
+        : 'spectral phase unknown: a zero bandwidth has no transform limit';
+  return `${width}\n${name} duration ${formatOpoDuration(pulse.outputDurationFs ?? pulse.pulseWidthFs)} (${note})`;
 }
 
 function opoWidthsText(reading) {
@@ -2086,7 +2094,7 @@ function opoWidthsText(reading) {
   if (!waves) return '—';
   const pulses = reading.pulses || {};
   if (waves.merged) return opoWaveText('Degenerate output', waves.merged, pulses.merged);
-  return `${opoWaveText('Signal', waves.signal, pulses.signal)} · ${opoWaveText('idler', waves.idler, pulses.idler)}`;
+  return `${opoWaveText('Signal', waves.signal, pulses.signal)}\n${opoWaveText('Idler', waves.idler, pulses.idler)}`;
 }
 
 export const registry = {
@@ -4290,11 +4298,15 @@ export const registry = {
         show: p => p.convert === 'opo' && p.linewidthMode === 'both',
       },
       {
-        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'unknown', show: p => p.convert === 'opo',
-        options: [['unknown', 'Duration set, spectral phase unknown'], ['transformLimited', 'Transform-limited']],
+        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'transformLimited', show: p => p.convert === 'opo',
+        options: [['transformLimited', 'Transform-limited'], ['unknown', 'Duration set (chirped when longer than the limit)']],
+        // Saved OPOs that predate the setting drew a set duration.
+        migrate: p => p.convert === 'opo' ? 'unknown' : 'transformLimited',
       },
       {
-        key: 'durationFactor', label: 'Output ÷ pump duration', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1,
+        // How many times the pump's duration each output lasts: 1 matches the
+        // pump, 2 is twice as long.
+        key: 'durationFactor', label: 'Output duration (× pump duration)', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1,
         show: p => p.convert === 'opo' && p.outputPhase !== 'transformLimited',
       },
       // A chi(2) crystal doubles each beam and mixes any pair at the same
@@ -4344,9 +4356,11 @@ export const registry = {
       // efficiency, so it is its own quantity with its own ceiling. Scenes
       // saved before the split stored it as the shared efficiency.
       {
-        key: 'opoDepletion', label: 'Pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: 0.5,
+        key: 'opoDepletion', label: 'Pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: MAX_OPO_DEPLETION,
         show: p => p.convert === 'opo',
-        migrate: (p, raw) => Number.isFinite(raw.efficiency) ? Math.min(MAX_OPO_DEPLETION, Math.max(0, raw.efficiency)) : 0.5,
+        migrate: (p, raw) => p.convert === 'opo' && Number.isFinite(raw.efficiency)
+          ? Math.min(MAX_OPO_DEPLETION, Math.max(0, raw.efficiency))
+          : MAX_OPO_DEPLETION,
       },
       { key: 'transmitPump', label: 'Transmit residual pump', type: 'checkbox', def: true, show: p => p.convert !== 'none' },
       {

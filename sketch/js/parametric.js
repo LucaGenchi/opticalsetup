@@ -20,26 +20,33 @@ export const MAX_CONVERSION = 0.6;
 // only at one operating point.
 export const MAX_OPO_DEPLETION = 0.95;
 
-// Supercontinuum in a bulk crystal: where the spectrum ends, estimated from the
-// pump wavelength and the medium. Measured edges, pump nm -> edge nm, from the
-// review by Dubietis et al., "Ultrafast supercontinuum generation in bulk
-// condensed media", arXiv:1706.04356 (2017), sections V.A, V.C and V.D. The
-// blue edge is set mostly by the bandgap and moves little with pump energy;
-// the red edge is carried as a multiple of the pump wavelength, because that
-// is what moves with the pump. `transparentFromNm` is the short end of the
-// transmission range (10 % through 1 mm, Table I of the same review), which no
-// extrapolated edge may pass. Red edges measured at 2 µm and above are
-// detection limits, so they understate the spectrum there.
+// Supercontinuum in a bulk crystal: where the spectrum ends, from the pump
+// wavelength and the medium. Every anchor is one reported experiment from the
+// review by Dubietis, Tamošauskas, Šuminas, Jukna and Couairon, "Ultrafast
+// supercontinuum generation in bulk condensed media", Lith. J. Phys. 57,
+// 113-157 (2017), section 5, with the pump it was measured at. They are
+// heterogeneous experiments -- different focusing, energies, durations and
+// lengths -- so a band between two anchors is an authored interpolation, not
+// a prediction, and pumps outside a medium's anchors get no estimate at all.
+//
+// `red` edges marked `atLeast` were limited by the detector: the spectrum
+// went further. YAG's blue cut-off was reported as fairly stable at 530 nm
+// across 1.1-1.6 µm pumping, so it is anchored at both ends of that range;
+// CaF2's 340 nm-3.3 µm span combines 2.1 and 2.2 µm pumping, likewise.
+// `transparentFromNm` is the short end of the 10 % transmission range through
+// 1 mm (Table 1).
 export const SC_MEDIA = {
   yag: {
     label: 'YAG', transparentFromNm: 210,
-    blue: [[515, 390], [800, 420], [1300, 530], [2000, 510], [2150, 450]],
-    red: [[515, 625], [800, 1600], [2000, 2500]],
+    blue: [[515, 390], [800, 420], [1100, 530], [1600, 530], [2000, 510], [2150, 450]],
+    red: [[515, 625], [800, 1600], [2000, 2500, 'atLeast'], [2150, 2500, 'atLeast']],
   },
   sapphire: {
     label: 'Sapphire', transparentFromNm: 190,
+    // 1100 nm at 800 nm is the usual tight focusing; loose focusing in a
+    // longer plate reached beyond 1600 nm.
     blue: [[400, 350], [515, 340], [800, 410], [2000, 470]],
-    red: [[400, 700], [515, 650], [800, 1100], [2000, 2500]],
+    red: [[400, 700], [515, 650], [800, 1100], [2000, 2500, 'atLeast']],
   },
   fusedsilica: {
     label: 'Fused silica', transparentFromNm: 180,
@@ -48,43 +55,45 @@ export const SC_MEDIA = {
   },
   caf2: {
     label: 'CaF₂', transparentFromNm: 120,
-    blue: [[800, 300], [2000, 340]],
-    red: [[800, 2000], [2000, 3300]],
+    blue: [[800, 300], [2100, 340], [2200, 340]],
+    red: [[800, 2000], [2100, 3300], [2200, 3300]],
   },
 };
 
-// Linear interpolation over a sorted [x, y] table, held flat past either end.
-function interpolate(table, x) {
-  if (x <= table[0][0]) return table[0][1];
-  const last = table[table.length - 1];
-  if (x >= last[0]) return last[1];
+// The two anchors around `x` in a sorted table, or null outside it.
+function bracket(table, x) {
+  if (x < table[0][0] || x > table[table.length - 1][0]) return null;
   for (let i = 1; i < table.length; i++) {
-    const [x1, y1] = table[i];
-    if (x <= x1) {
-      const [x0, y0] = table[i - 1];
-      return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
-    }
+    if (x <= table[i][0]) return [table[i - 1], table[i]];
   }
-  return last[1];
+  return [table[0], table[0]];
 }
 
-// The estimated band for a pump at `pumpNm` in `medium`, or null for a pump
-// the estimate cannot place. `extrapolated` is set when the pump lies outside
-// the wavelengths the medium was measured at.
+const lerp = ([x0, y0], [x1, y1], x) => (x1 === x0 ? y1 : y0 + (y1 - y0) * (x - x0) / (x1 - x0));
+
+// The band for a pump at `pumpNm` in `medium`:
+//   { state: 'estimate', minNm, maxNm, measured, redAtLeast }
+//   { state: 'unsupported', fromNm, toNm }  -- the pumps the medium has data for
+// Each edge is interpolated linearly in wavelength between its own
+// neighbouring anchors. `measured` is set
+// only when both edges sit exactly on reported pumps.
 export function supercontinuumRange(pumpNm, medium) {
   const data = SC_MEDIA[medium] || SC_MEDIA.yag;
-  if (!(Number.isFinite(pumpNm) && pumpNm > 0)) return null;
-  // Outside the measured pumps the blue edge keeps its nearest ratio to the
-  // pump, so a pump far into the blue cannot produce an edge above itself.
-  const [firstPump, firstBlue] = data.blue[0];
-  const blue = pumpNm < firstPump ? pumpNm * firstBlue / firstPump : interpolate(data.blue, pumpNm);
-  const ratio = interpolate(data.red.map(([pump, red]) => [pump, red / pump]), pumpNm);
-  const pumps = [...data.blue, ...data.red].map(([pump]) => pump);
-  const minNm = Math.min(Math.max(blue, data.transparentFromNm), pumpNm * 0.98);
-  const maxNm = Math.max(pumpNm * ratio, pumpNm * 1.02);
+  const fromNm = Math.max(data.blue[0][0], data.red[0][0]);
+  const toNm = Math.min(data.blue[data.blue.length - 1][0], data.red[data.red.length - 1][0]);
+  const blue = Number.isFinite(pumpNm) ? bracket(data.blue, pumpNm) : null;
+  const red = Number.isFinite(pumpNm) ? bracket(data.red, pumpNm) : null;
+  if (!blue || !red) return { state: 'unsupported', fromNm, toNm };
+  const onAnchor = pair => pair.some(([pump]) => pump === pumpNm);
+  const redAnchors = red.filter(([pump]) => pump === pumpNm);
+  const redUsed = redAnchors.length ? redAnchors : red;
   return {
-    minNm, maxNm, medium: data === SC_MEDIA[medium] ? medium : 'yag',
-    extrapolated: pumpNm < Math.min(...pumps) || pumpNm > Math.max(...pumps),
+    state: 'estimate',
+    minNm: Math.max(data.transparentFromNm, lerp(blue[0], blue[1], pumpNm)),
+    maxNm: lerp(red[0], red[1], pumpNm),
+    measured: onAnchor(blue) && onAnchor(red),
+    redAtLeast: redUsed.some(anchor => anchor[2] === 'atLeast'),
+    fromNm, toNm,
   };
 }
 
@@ -223,6 +232,14 @@ export function opoPulse(pumpPulse, wave, { crystalId, role, outputPhase = 'unkn
   const transformLimited = wantsLimit && Number.isFinite(limit);
   // Rounding alone must not count as asking for less than the limit.
   const belowLimit = Number.isFinite(limit) && requested < limit * (1 - 1e-9);
+  // Longer than the limit, the output is taken to be linearly and positively
+  // chirped: the transform-limited pulse carries the GDD that stretches a
+  // Gaussian to the requested duration, so a compressor downstream can
+  // take it back out.
+  const chirped = !wantsLimit && Number.isFinite(limit) && !belowLimit && requested > limit * (1 + 1e-9);
+  const chirpGddFs2 = chirped
+    ? limit * limit / (4 * Math.LN2) * Math.sqrt((requested / limit) ** 2 - 1)
+    : 0;
   const trainId = pumpPulse.sourceId || '';
   return {
     sourceId: `${trainId}›${crystalId || 'opo'}:${role}`,
@@ -233,10 +250,14 @@ export function opoPulse(pumpPulse, wave, { crystalId, role, outputPhase = 'unkn
     centerWavelengthNm: wave.wl,
     bandwidthNm: wave.bw,
     pulseShape: 'gauss',
-    pulseWidthFs: transformLimited ? limit : belowLimit ? limit : requested,
-    transformLimited,
-    spectralPhase: transformLimited ? 'transformLimited' : 'unknown',
-    durationRaisedToLimit: !transformLimited && belowLimit,
+    // A chirped pulse is described as its transform limit plus the GDD it
+    // carries, which is how every dispersed pulse in the tracer is held.
+    pulseWidthFs: transformLimited || belowLimit || chirped ? limit : requested,
+    transformLimited: transformLimited || belowLimit || chirped,
+    spectralPhase: transformLimited || belowLimit ? 'transformLimited' : chirped ? 'positiveChirp' : 'unknown',
+    chirpGddFs2,
+    outputDurationFs: transformLimited || belowLimit ? limit : requested,
+    durationRaisedToLimit: !wantsLimit && belowLimit,
     transformLimitUnavailable: wantsLimit && !transformLimited,
   };
 }

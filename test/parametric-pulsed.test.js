@@ -8,6 +8,7 @@ import {
   waveSpectrum, wavenumberToNmWidth,
 } from '../sketch/js/parametric.js';
 import { spectrumStats, transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
+import { gaussianPulseDurationAfterGDD } from '../sketch/js/glass.js';
 
 // Before this model the OPO's signal and idler inherited the pump's spectrum,
 // so with any pulsed pump a dichroic routed all of the light as if it were
@@ -78,12 +79,17 @@ test('broad outputs are Gaussian in wavenumber, narrow ones stay Gaussian in wav
 });
 
 test('generated pulses are their own trains, synchronised to the pump, with unknown phase', () => {
-  const { long, short } = opoScene({ laser: TISA, crystal: { pumpWl: 800, signalWl: 1200, transmitPump: false }, cutoff: 1800 });
+  // A set duration equal to the output's own limit is neither raised nor
+  // chirped, so its phase stays unknown.
+  const { long, short } = opoScene({ laser: TISA, crystal: { pumpWl: 800, signalWl: 1200, transmitPump: false, outputPhase: 'unknown' }, cutoff: 1800 });
+  // The idler is √2 wider than the pump, so the same 140 fs is longer than
+  // its limit: it leaves positively chirped rather than with unknown phase.
   const idler = long.pulse;
   assert.equal(idler.repRateMHz, 80);
-  assert.equal(idler.pulseWidthFs, 140);
-  assert.equal(idler.transformLimited, false);
-  near(idler.gddFs2, 0, 1e-12, 'idler GDD at the crystal reference plane');
+  near(idler.pulseWidthFs, 140 / Math.SQRT2, 1e-6, 'idler described from its limit');
+  assert.equal(idler.transformLimited, true);
+  assert.ok(idler.gddFs2 > 0, 'idler carries a positive chirp from the crystal');
+  near(idler.stretchedPulseWidthFs, 140, 1e-6, 'idler set duration');
   const train = idler.trains[0];
   near(train.centerWavelengthNm, 2400, 1, 'idler train colour');
 
@@ -112,8 +118,13 @@ test('output durations follow the authored factor, never beat the transform limi
   const pump = { sourceId: 'L', repRateMHz: 80, pulseWidthFs: 140, phaseNs: 0, pulseShape: 'gauss', transformLimited: true };
   const wave = waveSpectrum(1200, TISA_CM);
   const longer = opoPulse(pump, wave, { crystalId: 'X', role: 'signal', durationFactor: 1.4 });
-  near(longer.pulseWidthFs, 196, 1e-9, '1.4× pump duration');
-  assert.equal(longer.spectralPhase, 'unknown');
+  // Longer than the limit, the output is a positively chirped limit pulse.
+  near(longer.outputDurationFs, 196, 1e-9, '1.4× pump duration');
+  near(longer.pulseWidthFs, transformLimitFs(TISA_CM), 1e-9, 'described from its limit');
+  assert.equal(longer.spectralPhase, 'positiveChirp');
+  assert.equal(longer.transformLimited, true, 'a chirped Gaussian carries its GDD like any dispersed pulse');
+  assert.ok(longer.chirpGddFs2 > 0, 'the chirp is positive');
+  near(gaussianPulseDurationAfterGDD(longer.pulseWidthFs, longer.chirpGddFs2), 196, 1e-6, 'the GDD stretches it to the set duration');
   assert.equal(longer.sourceId, 'L›X:signal');
   assert.equal(longer.syncSourceId, 'L');
 
@@ -133,24 +144,25 @@ test('output durations follow the authored factor, never beat the transform limi
 test('a green-pumped ps OPO with authored 10 cm⁻¹ outputs', () => {
   const { long, short, state } = opoScene({
     laser: { wavelength: 516, pulseWidthFs: 2000, transformLimited: false, bandwidth: wavenumberToNmWidth(516, 10), avgPowerW: 3 },
-    crystal: { pumpWl: 516, signalWl: 800, linewidthMode: 'both', signalLinewidthCm: 10, idlerLinewidthCm: 10 }, cutoff: 1000,
+    crystal: { pumpWl: 516, signalWl: 800, linewidthMode: 'both', signalLinewidthCm: 10, idlerLinewidthCm: 10, outputPhase: 'unknown' }, cutoff: 1000,
   });
   near(state.waves.signal.widthCm, 10, 1e-9, 'signal width');
   near(nmToWavenumberWidth(long.wavelength, fwhm(long)), 10, WIDTH * 10, 'idler width');
   near(long.wavelength, idlerWavelength(516, 800), 1e-3, 'idler centre');
   near(long.signal + short.signal, 1, 2 * PULSED, 'energy');
-  assert.equal(long.pulse.pulseWidthFs, 2000);
+  // A set 2 ps is longer than a 10 cm⁻¹ limit, so the output leaves chirped.
+  near(long.pulse.stretchedPulseWidthFs, 2000, 1e-6, 'set duration');
 });
 
 test('a ns OPO takes its signal width from the cavity, and the idler adds the pump width', () => {
   // A few cm⁻¹ is typical of a free-running nanosecond OPO.
   const { long, state } = opoScene({
     laser: { wavelength: 355, pulseWidthFs: 5e6, transformLimited: false, bandwidth: wavenumberToNmWidth(355, 1), avgPowerW: 2, repRateMHz: 0.01 },
-    crystal: { pumpWl: 355, signalWl: 500, linewidthMode: 'signal', signalLinewidthCm: 5 }, cutoff: 800,
+    crystal: { pumpWl: 355, signalWl: 500, linewidthMode: 'signal', signalLinewidthCm: 5, outputPhase: 'unknown' }, cutoff: 800,
   });
   near(state.waves.signal.widthCm, 5, 1e-9, 'signal width');
   near(nmToWavenumberWidth(long.wavelength, fwhm(long)), Math.hypot(1, 5), WIDTH * 5, 'idler width');
-  assert.equal(long.pulse.pulseWidthFs, 5e6);
+  near(long.pulse.stretchedPulseWidthFs, 5e6, 1e-3, 'set duration');
 });
 
 test('a single-frequency CW pump with a single-frequency cavity stays exact', () => {
@@ -302,7 +314,8 @@ test('saved OPO crystals without the new settings keep their fixed-fraction beha
 test('a transform-limited OPO output draws its own dispersion even when the pump could not', () => {
   // The pump is not transform-limited, so its packets carry no GDD history.
   // A signal declared transform-limited must still broaden through glass on
-  // the canvas; one with unknown phase must not.
+  // the canvas, and so must a set duration longer than the limit, which is
+  // a chirped pulse. Only an output with no limit keeps an unknown phase.
   const run = outputPhase => {
     const pump = createElement('pulsedlaser', 60, 160);
     Object.assign(pump.params, { wavelength: 800, pulseWidthFs: 140, transformLimited: false, bandwidth: 10, beamMode: 'line' });
@@ -321,7 +334,7 @@ test('a transform-limited OPO output draws its own dispersion even when the pump
     assert.ok(tracks.some(track => track.gddTrace?.some(event => event.linear)),
       `glass left no dispersion history on the transform-limited ${centre} nm output`);
   }
-  const unknown = run('unknown');
-  assert.ok(unknown.length > 0);
-  for (const track of unknown) assert.equal(track.gddTrace, undefined, 'unknown phase must not claim broadening');
+  const chirped = run('unknown');
+  assert.ok(chirped.length > 0);
+  assert.ok(chirped.some(track => track.gddTrace?.some(event => event.linear)), 'a chirped output drew no dispersion');
 });

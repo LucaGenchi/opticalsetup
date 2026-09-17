@@ -3788,9 +3788,9 @@ function interact(ray, hit) {
         const gen = (wave, pulse, intensity, tag) => ({
           d, wl: wave.wl, bw: wave.bw, spec: wave.spec, intensity, tag, pulse,
           parametricPath: path,
-          // The pulse's reference plane is the crystal exit; its spectral
-          // phase is reported as unknown unless declared transform-limited.
-          gdd: 0,
+          // The pulse's reference plane is the crystal exit. A chirped output
+          // leaves carrying the GDD that stretches it to its set duration.
+          gdd: pulse?.chirpGddFs2 || 0,
           // New light does not carry the pump's reconstructable CW field.
           phaseValid: false,
           phaseIssue: 'parametric output: optical phase relative to the pump is not modelled',
@@ -3828,7 +3828,8 @@ function interact(ray, hit) {
         wl = data.outWl; bw = 0; spec = null; // one fixed output line, whatever the pump's width
       } else if (data.convert === 'sc') {
         // A bulk continuum: estimated from the pump and the medium, or an
-        // authored band. Without pulses there is no peak power to start it.
+        // authored band. The estimate covers pulsed pumps at wavelengths the
+        // medium has published spectra for; anything else needs a manual band.
         const crystalId = s.el?.id || null;
         let band;
         if (data.scRange === 'manual') {
@@ -3838,7 +3839,11 @@ function interact(ray, hit) {
           if (crystalId && !supercontinuumStates.has(crystalId)) supercontinuumStates.set(crystalId, { state: 'cw' });
           return data.transmitPump ? [{ d }] : [];
         } else {
-          band = { state: 'estimate', pumpNm: ray.wl, ...supercontinuumRange(ray.wl, data.scMedium) };
+          band = { pumpNm: ray.wl, medium: data.scMedium, ...supercontinuumRange(ray.wl, data.scMedium) };
+          if (band.state !== 'estimate') {
+            if (crystalId && !supercontinuumStates.has(crystalId)) supercontinuumStates.set(crystalId, band);
+            return data.transmitPump ? [{ d }] : [];
+          }
         }
         if (crystalId) supercontinuumStates.set(crystalId, band);
         wl = (band.minNm + band.maxNm) / 2; bw = band.maxNm - band.minNm; spec = flatSpectrum(band.minNm, band.maxNm);

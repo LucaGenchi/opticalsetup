@@ -117,7 +117,8 @@ test('both examples are pumped with 2 ps pulses, and the Z cavity signal is 10 c
   }
   const { signal } = traced(SYNC_OPO_NAME);
   near(1e7 * (signal.bandMax - signal.bandMin) / 800 ** 2, 10, 0.1, 'signal FWHM (cm⁻¹)');
-  near(signal.pulse.pulseWidthFs, 2000, 1, 'signal duration (fs)');
+  // 2 ps is longer than a 10 cm⁻¹ limit, so the signal leaves chirped to it.
+  near(signal.pulse.stretchedPulseWidthFs, 2000, 1, 'signal duration (fs)');
 });
 
 test('the Z cavity is pumped by frequency-doubled 1032 nm light, with the fundamental dumped', () => {
