@@ -119,6 +119,19 @@ const demoScenes = {
     mkDemo('detector', 520, 160),
     mkDemo('detector', 350, 350, 90),
   ],
+  // The integrated OPO in its simplest use: a green picosecond pump in, the
+  // signal out of the front and the idler out of the port below it, each read
+  // by its own probe.
+  opo: () => [
+    mkDemo('pulsedlaser', 60, 200, 0, { wavelength: 516, pulseWidthFs: 2000, repRateMHz: 80, beamMode: 'line' },
+      { label: '516 nm pump · 2 ps', showLabel: true, labelPos: 't' }),
+    mkDemo('opo', 300, 200, 0, { signalWl: 800, tuneMode: 'fixed' },
+      { label: 'OPO', showLabel: true, labelPos: 't' }),
+    mkDemo('probe', 430, 200, 0, { prop: 'wl' }),
+    mkDemo('probe', 520, 214, 0, { prop: 'wl' }),
+    mkDemo('detector', 600, 200),
+    mkDemo('detector', 600, 214),
+  ],
   // The crystal's other single-beam modes, as extra embeds on its page. The
   // continuum reads its band from the arriving pump: 1035 nm femtosecond
   // pulses in YAG, the near-infrared case a multiplex CARS bench uses.

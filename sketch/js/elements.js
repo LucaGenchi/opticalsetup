@@ -13,7 +13,7 @@ import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, po
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
 import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
-import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, SC_MEDIA } from './parametric.js';
+import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
   formatTimeAxisNs,
@@ -2098,6 +2098,78 @@ function opoWidthsText(reading) {
   const pulses = reading.pulses || {};
   if (waves.merged) return opoWaveText('Degenerate output', waves.merged, pulses.merged);
   return `${opoWaveText('Signal', waves.signal, pulses.signal)}\n${opoWaveText('Idler', waves.idler, pulses.idler)}`;
+}
+
+// ---- Integrated OPO element ----
+// A laser-style box: the pump enters a rear aperture, the signal leaves the
+// front on the body axis and the idler leaves a second front port a fixed
+// distance below it. The geometry is a packaging convention for this
+// workbench, not the layout of any particular instrument.
+const OPO_BODY_W = 92;
+// Pump light within this angle of the body axis is accepted. A fixed
+// geometric rule, not a calculation of mode matching or coupling efficiency.
+export const OPO_ACCEPTANCE_DEG = 20;
+const opoApertureMm = p => Math.min(30, Math.max(1, Number(p?.aperture) || 6));
+// Output beam diameters; 0 draws that output as a single line.
+export const opoBeamMm = (p, role) => Math.min(30, Math.max(0, Number(role === 'idler' ? p?.idlerBeamMm : p?.signalBeamMm) || 0));
+// The idler port sits far enough below the signal port that the two output
+// beams never overlap, and the body is tall enough to hold the input aperture
+// and both ports whole.
+const opoIdlerOffset = p => Math.max(14, opoBeamMm(p, 'signal') / 2 + opoBeamMm(p, 'idler') / 2 + 6);
+// The input aperture always sets a minimum height, so the resize handle that
+// drags it visibly resizes the box.
+const opoBodyH = p => 2 * Math.max(
+  opoIdlerOffset(p) + opoBeamMm(p, 'idler') / 2 + 6,
+  opoApertureMm(p) / 2 + 17,
+);
+
+// Where the element sends each output, in its own coordinates.
+export function opoPortLocal(role, params) {
+  return { x: OPO_BODY_W / 2 + 6, y: role === 'idler' ? opoIdlerOffset(params) : 0 };
+}
+
+function opoTuningText(p) {
+  const mode = p.tuneMode || 'fixed';
+  if (mode === 'sweep') {
+    return `Sweeping the signal ${nm4(Number(p.sweepMinNm))}–${nm4(Number(p.sweepMaxNm))} nm and back every ${sig3(Number(p.sweepPeriodS))} s`;
+  }
+  if (mode === 'steps') {
+    const { values, ignored } = parseWavelengthList(p.stepList);
+    if (!values.length) return 'No valid tuning program: list at least one signal wavelength in nm';
+    const skipped = ignored ? ` · ${ignored} entr${ignored === 1 ? 'y' : 'ies'} not a wavelength, ignored` : '';
+    return `Stepping through ${values.map(nm4).join(', ')} nm, ${sig3(Number(p.stepDwellS))} s each${skipped}`;
+  }
+  return `Fixed at ${nm4(Number(p.signalWl))} nm`;
+}
+
+function opoElementStateText(reading, p) {
+  if (!reading) return 'No pump has reached the input aperture yet';
+  const step = Number.isInteger(reading.tuning?.index)
+    ? `step ${reading.tuning.index + 1} of ${reading.tuning.count}, ` : '';
+  // A setpoint only: this line is used where nothing was generated.
+  const now = Number.isFinite(reading.signalWl) ? ` (${step}signal set to ${nm4(reading.signalWl)} nm)` : '';
+  switch (reading.state) {
+    case 'rejected':
+      return `No output: the pump arrives ${sig3(reading.angleDeg)}° off the input axis, outside the ±${OPO_ACCEPTANCE_DEG}° the input accepts`;
+    case 'noProgram':
+      return 'No output: the tuning program has no valid signal wavelength';
+    case 'badParams':
+      return 'No output: the pump and signal wavelengths must be positive numbers';
+    case 'invalid':
+      return `No output: the signal must be longer than the ${Number.isFinite(reading.pumpNm) ? `${nm4(reading.pumpNm)} nm ` : ''}pump${now}`;
+    case 'converting': {
+      if (!(reading.efficiency > 0)) return `Pump accepted, but pump depletion is 0, so nothing is generated${now}`;
+      const waves = reading.waves;
+      const out = waves?.merged || waves?.degenerate
+        ? `Pump ${nm4(reading.pumpNm)} nm → degenerate: signal and idler at ${nm4(waves.signal.wl)} nm, both from the signal port`
+        : `Pump ${nm4(reading.pumpNm)} nm → signal ${nm4(waves.signal.wl)} nm · idler ${nm4(waves.idler.wl)} nm${p.outputIdler === false ? ' (idler port off)' : ''}`;
+      return `${step ? `${step[0].toUpperCase()}${step.slice(1, -2)}: ` : ''}${out}\n`
+        + `Removing ${sig3(reading.efficiency * 100)}% of the pump (authored depletion; no threshold or resonator gain model). `
+        + 'The unconverted pump is discarded inside the box';
+    }
+    default:
+      return '—';
+  }
 }
 
 export const registry = {
@@ -4403,6 +4475,104 @@ export const registry = {
     },
   },
 
+  // An integrated optical parametric oscillator: the crystal's OPO mode in a
+  // closed box. Nothing comes out without a pump inside its acceptance; the
+  // unconverted pump is discarded inside. See opoConversion() in raytrace.js,
+  // which both packagings share.
+  opo: {
+    label: 'OPO', category: 'Nonlinear Optics', size: { w: 104, h: 44 },
+    liveReadouts: true,
+    aliases: ['optical parametric oscillator', 'integrated opo', 'tunable source', 'signal idler'],
+    size_: el => ({ w: 104, h: opoBodyH(el.params) + 4 }),
+    params: [
+      // Any pump that reaches the aperture is converted; the only condition
+      // on its wavelength is that the signal must be longer.
+      { key: 'aperture', label: 'Input aperture (mm)', type: 'number', min: 1, max: 30, step: 0.5, def: 6 },
+      {
+        key: 'tuneMode', label: 'Signal tuning', type: 'select', def: 'fixed',
+        options: [['fixed', 'Fixed'], ['sweep', 'Sweep between two wavelengths'], ['steps', 'Step through a list']],
+      },
+      { key: 'signalWl', label: 'Signal λ (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 800, show: p => (p.tuneMode || 'fixed') === 'fixed' },
+      { key: 'sweepMinNm', label: 'Sweep from (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 750, show: p => p.tuneMode === 'sweep' },
+      { key: 'sweepMaxNm', label: 'Sweep to (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 950, show: p => p.tuneMode === 'sweep' },
+      { key: 'sweepPeriodS', label: 'Sweep period (s, there and back)', type: 'number', min: 0.5, max: 600, step: 0.5, def: 8, show: p => p.tuneMode === 'sweep' },
+      { key: 'stepList', label: 'Signal wavelengths (nm, comma-separated; 100–11000)', type: 'text', def: '780, 800, 820', show: p => p.tuneMode === 'steps' },
+      { key: 'stepDwellS', label: 'Time at each wavelength (s)', type: 'number', min: 0.1, max: 600, step: 0.1, def: 2, show: p => p.tuneMode === 'steps' },
+      { key: 'tuning', label: 'Tuning', type: 'readout', wide: true, readout: p => opoTuningText(p) },
+      {
+        key: 'linewidthMode', label: 'Output linewidths', type: 'select', def: 'pump',
+        options: [
+          ['pump', 'Signal as wide as the pump'],
+          ['signal', 'Signal width set, idler derived'],
+          ['both', 'Signal and idler widths set'],
+        ],
+      },
+      { key: 'signalLinewidthCm', label: 'Signal linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5, show: p => p.linewidthMode === 'signal' || p.linewidthMode === 'both' },
+      { key: 'idlerLinewidthCm', label: 'Idler linewidth (cm⁻¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5, show: p => p.linewidthMode === 'both' },
+      {
+        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'transformLimited',
+        options: [
+          ['transformLimited', 'Transform-limited'],
+          ['unknown', 'Duration set, spectral phase unknown'],
+          ['positiveChirp', 'Duration set, positively chirped (assumed Gaussian)'],
+        ],
+      },
+      { key: 'durationFactor', label: 'Output duration (× pump duration)', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1, show: p => p.outputPhase !== 'transformLimited' },
+      { key: 'opoDepletion', label: 'Pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: MAX_OPO_DEPLETION },
+      // Switching the idler port off removes that power from the bench; it is
+      // not handed to the signal.
+      { key: 'outputIdler', label: 'Output idler', type: 'checkbox', def: true },
+      { key: 'signalBeamMm', label: 'Signal beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 2 },
+      { key: 'idlerBeamMm', label: 'Idler beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 2, show: p => p.outputIdler !== false },
+      {
+        key: 'opoState', label: 'Oscillation', type: 'readout', wide: true,
+        readout: (p, el) => opoElementStateText(el ? opoReading(el.id) : null, p),
+      },
+      {
+        key: 'opoWidths', label: 'Outputs', type: 'readout', wide: true,
+        readout: (p, el) => opoWidthsText(el ? opoReading(el.id) : null),
+      },
+    ],
+    svg(el) {
+      const p = el.params, hh = opoBodyH(p) / 2, ap = opoApertureMm(p) / 2, idlerY = opoIdlerOffset(p);
+      const flip = isFlipped(el) ? 'transform="rotate(180)"' : '';
+      const x = OPO_BODY_W / 2;
+      // Each output port is drawn as wide as the beam it emits.
+      const sHalf = Math.max(1.5, opoBeamMm(p, 'signal') / 2), iHalf = Math.max(1.5, opoBeamMm(p, 'idler') / 2);
+      const idler = p.outputIdler !== false
+        ? `<rect x="${x}" y="${idlerY - iHalf}" width="5" height="${2 * iHalf}" fill="#666" stroke="#444" stroke-width="1"/>`
+          + `<text x="${x - 5}" y="${idlerY}" text-anchor="end" dominant-baseline="central" font-size="6" fill="#c9d3dc">I</text>`
+        : '';
+      return `<rect x="${-x}" y="${-hh}" width="${OPO_BODY_W}" height="${2 * hh}" rx="4" fill="#2f3f4c" stroke="#1d272f" stroke-width="1.5"/>`
+        + `<text x="0" y="-5" ${flip} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">OPO</text>`
+        + `<g stroke="#ffb86b" stroke-width="1.2" opacity="0.95"><path d="M -14,8 L -4,8"/><path d="M 0,5 L 14,5"/><path d="M 0,11 L 14,11"/></g>`
+        + `<rect x="${-x - 5}" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`
+        + `<rect x="${x}" y="${-sHalf}" width="5" height="${2 * sHalf}" fill="#666" stroke="#444" stroke-width="1"/>`
+        + `<text x="${x - 5}" y="0" text-anchor="end" dominant-baseline="central" font-size="6" fill="#c9d3dc">S</text>`
+        + idler;
+    },
+    surfaces(el) {
+      const p = el.params, hh = opoBodyH(p) / 2, x = OPO_BODY_W / 2;
+      const ap = opoApertureMm(p) / 2;
+      return [
+        { x1: -x, y1: -hh, x2: x, y2: -hh, kind: 'absorb' },
+        { x1: x, y1: -hh, x2: x, y2: hh, kind: 'absorb' },
+        { x1: x, y1: hh, x2: -x, y2: hh, kind: 'absorb' },
+        { x1: -x, y1: hh, x2: -x, y2: ap, kind: 'absorb' },
+        { x1: -x, y1: -ap, x2: -x, y2: -hh, kind: 'absorb' },
+        {
+          x1: -x, y1: ap, x2: -x, y2: -ap, kind: 'opoin', data: {
+            linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
+            outputPhase: p.outputPhase, durationFactor: p.durationFactor, opoDepletion: p.opoDepletion,
+            outputIdler: p.outputIdler !== false, aperture: p.aperture,
+            signalBeamMm: opoBeamMm(p, 'signal'), idlerBeamMm: opoBeamMm(p, 'idler'),
+            tuning: opoSignalAt(p, el._animationTimeS || 0),
+          },
+        },
+      ];
+    },
+  },
+
   glassrod: {
     label: 'Glass rod', category: 'Dispersive elements', size: { w: 64, h: 14 },
     params: [
@@ -5045,6 +5215,7 @@ const DIRECT = {
   eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Δφ', when: p => p.modulate && p.driveMode !== 'switching' } },
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
   crystal: { resize: { y: 'aperture' }, tune: { key: p => p.convert === 'opo' ? 'opoDepletion' : 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
+  opo: { resize: { y: 'aperture' }, tune: { key: 'signalWl', short: 'λs', when: p => (p.tuneMode || 'fixed') === 'fixed' } },
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
@@ -5084,6 +5255,7 @@ export function getDirectManipulation(el) {
 // simulated elements affect traced rays, configurable elements need an active
 // mode, and diagram-only elements are honest visual annotations/placeholders.
 const ELEMENT_HELP = {
+  opo: 'An optical parametric oscillator in a box: pump light entering the rear aperture within its angular and wavelength acceptance becomes a signal on the front axis and an optional idler on a parallel port, by the same phenomenological model as the crystal\'s OPO mode. The signal can be fixed, swept or stepped through a list. The unconverted pump is discarded inside; threshold, gain, cavity length and synchronisation are not simulated.',
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',

@@ -8,7 +8,7 @@ import {
   ISOTROPIC_KINDS, MODIFIER_KINDS, EMISSION_ORDER, EMISSION_OFFSET_NM,
   sumFrequencyWl, carsAntiStokesWl, ramanShifts, ramanStokesWl,
   drivingExcitationWl, channelNeedsExcitationProbe, specimenTypeOf,
-  fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength,
+  fluorophoreSpec, fluorophoreAbsorption, metalensFocalLength, opoPortLocal, OPO_ACCEPTANCE_DEG,
 } from './elements.js';
 import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToColor, D2R, distToSegment } from './util.js';
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
@@ -3729,6 +3729,76 @@ function interact(ray, hit) {
       }
       return out;
     }
+    case 'opoin': {
+      // The integrated OPO's rear aperture. Accepted pump light is converted
+      // by the same model as the crystal's OPO mode and leaves the front
+      // ports along the body axis; everything else stays inside the box.
+      const el = s.el;
+      const elementId = el?.id || null;
+      if (!el) return [];
+      const axis = rotPt(1, 0, el.rot || 0);
+      const cosine = Math.max(-1, Math.min(1, dot(d, axis)));
+      const angleDeg = Math.acos(cosine) / D2R;
+      const tuningNote = data.tuning && Number.isInteger(data.tuning.index)
+        ? { index: data.tuning.index, count: data.tuning.count } : null;
+      const firstState = state => {
+        if (elementId && !opoStates.has(elementId)) opoStates.set(elementId, { ...state, tuning: tuningNote });
+      };
+      if (!(angleDeg <= OPO_ACCEPTANCE_DEG + 1e-9)) {
+        firstState({ state: 'rejected', angleDeg });
+        return [];
+      }
+      const tuning = data.tuning || {};
+      if (!Number.isFinite(tuning.signalWl)) {
+        firstState({ state: 'noProgram' });
+        return [];
+      }
+      const efficiency = Math.min(MAX_OPO_DEPLETION, Math.max(0, Number(data.opoDepletion) || 0));
+      // Whatever pump arrives is the pump: the window is centred on it.
+      const result = opoConversion(ray, { ...data, pumpWl: ray.wl, pumpAcceptanceNm: 0, signalWl: tuning.signalWl }, elementId, efficiency);
+      // The shared helper records converting and invalid readings; the step
+      // being played is the element's to add.
+      if (elementId && (result.state === 'converting' || result.state === 'invalid') && opoStates.has(elementId)) {
+        Object.assign(opoStates.get(elementId), { tuning: tuningNote, pumpNm: ray.wl });
+      }
+      if (result.state === 'badParams') firstState({ state: 'badParams' });
+      if (result.state !== 'converting' || !(efficiency > 0)) return [];
+      // Each output leaves as a beam of its own set diameter, whatever the
+      // pump's width. A sized pump beam's samples keep their places across it:
+      // sample i of K leaves at i/(K-1) of the output diameter, so the output
+      // is drawn as one beam and a clipped pump loses the samples it lost.
+      // A single-ray pump is spread over OPO_OUTPUT_SAMPLES rays sharing its
+      // power. The outputs take no path inside the box: their timing is
+      // referenced to the pump's arrival at the aperture, not to a cavity.
+      const launch = (output, portRole) => {
+        const local = opoPortLocal(portRole, data);
+        const diameter = portRole === 'idler' ? data.idlerBeamMm : data.signalBeamMm;
+        const at = offset => toWorld(el, local.x, local.y + offset);
+        const sampled = Number.isInteger(ray.sample) && ray.sampleCount > 1;
+        if (!(diameter > 0)) return [{ d: axis, origin: at(0), ...output.ray }];
+        if (sampled) {
+          return [{ d: axis, origin: at(diameter * (ray.sample / (ray.sampleCount - 1) - 0.5)), ...output.ray }];
+        }
+        // Each spatial sample keeps the converted ray's tracing intensity --
+        // the quantity continuation cutoffs read -- and carries an equal share
+        // of its power, as a sized source's samples do. The pump's incoming
+        // attenuation is kept in that power.
+        const n = OPO_OUTPUT_SAMPLES;
+        const pumpPower = Number.isFinite(ray.power) ? ray.power : ray.intensity;
+        const converted = ray.intensity > 0 ? pumpPower * output.ray.intensity / ray.intensity : 0;
+        return Array.from({ length: n }, (_, i) => ({
+          d: axis, origin: at(diameter * (i / (n - 1) - 0.5)), ...output.ray,
+          power: converted / n,
+          sample: i, sampleCount: n, sampleGrid: 'even',
+        }));
+      };
+      // At degeneracy signal and idler share a wavelength and leave together
+      // through the signal port, whatever the idler toggle says.
+      if (result.waves.degenerate) return result.outputs.flatMap(output => launch(output, 'signal'));
+      return result.outputs
+        .filter(output => output.role !== 'idler' || data.outputIdler)
+        .flatMap(output => launch(output, output.role === 'idler' ? 'idler' : 'signal'));
+    }
     case 'transmit': {
       const efficiency = data.convert === 'opo'
         ? Math.min(MAX_OPO_DEPLETION, Math.max(0, Number(data.opoDepletion ?? data.efficiency) || 0))
@@ -3742,74 +3812,13 @@ function interact(ray, hit) {
       if (specimenProbe && MIX_CONVERTS.has(data.convert)) recordProbeBeam(s, ray);
       if (data.convert === 'opo') {
         // Optical parametric oscillation (see parametric.js for the model).
-        const crystalId = s.el?.id || null;
         const pass = () => [{ d }];
-        // Light is never converted twice by the same crystal, however broad
-        // its spectrum or wide the acceptance: a resonating signal would
-        // otherwise re-split on every round trip, branching exponentially.
-        // A different crystal may still convert it.
-        if (crystalId && Array.isArray(ray.parametricPath) && ray.parametricPath.includes(crystalId)) return pass();
-        const pumpWl = Number(data.pumpWl ?? 532);
-        const sig = Number(data.signalWl ?? 800);
-        if (!(Number.isFinite(pumpWl) && pumpWl > 0
-            && Number.isFinite(sig) && sig > 0)) {
-          return data.transmitPump ? pass() : [];
-        }
-        // Phase matching accepts pump light whose centre lies within an
-        // authored window; everything else passes unconverted.
-        const acceptance = Math.max(0, Number(data.pumpAcceptanceNm ?? 1));
-        if (!(Math.abs(ray.wl - pumpWl) <= acceptance)) return pass();
-        // The cavity holds the signal; the idler follows the pump that arrives.
-        const waves = opoWaves({
-          pumpWl: ray.wl, pumpFwhmNm: pumpWidthNm(ray), signalWl: sig,
-          linewidthMode: data.linewidthMode,
-          signalLinewidthCm: data.signalLinewidthCm, idlerLinewidthCm: data.idlerLinewidthCm,
-        });
-        // A signal at or above the pump frequency leaves no positive idler.
-        // Treat that as no conversion, while still honouring the user's
-        // choice about whether the unconverted pump is shown or dumped.
-        if (!waves) {
-          recordOpo(crystalId, { state: 'invalid' });
-          return data.transmitPump ? pass() : [];
-        }
-
-        const phase = { outputPhase: data.outputPhase, durationFactor: data.durationFactor, crystalId };
-        const pulses = waves.merged
-          ? { merged: opoPulse(ray.pulse, waves.merged, { ...phase, role: 'degenerate' }) }
-          : {
-            signal: opoPulse(ray.pulse, waves.signal, { ...phase, role: 'signal' }),
-            idler: opoPulse(ray.pulse, waves.idler, { ...phase, role: 'idler' }),
-          };
-        recordOpo(crystalId, { state: 'converting', efficiency, waves, pulses });
-        if (!(efficiency > 0)) return data.transmitPump ? pass() : [];
-
-        const converted = ray.intensity * efficiency;
-        const path = [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), crystalId].filter(Boolean);
-        const gen = (wave, pulse, intensity, tag) => ({
-          d, wl: wave.wl, bw: wave.bw, spec: wave.spec, intensity, tag, pulse,
-          parametricPath: path,
-          // The pulse's reference plane is the crystal exit. A chirped output
-          // leaves carrying the GDD that stretches it to its set duration.
-          gdd: pulse?.chirpGddFs2 || 0,
-          // New light does not carry the pump's reconstructable CW field.
-          phaseValid: false,
-          phaseIssue: 'parametric output: optical phase relative to the pump is not modelled',
-        });
-        let out;
-        if (waves.merged) {
-          // At degeneracy with equal widths, signal and idler are one beam
-          // carrying their combined power.
-          out = [gen(waves.merged, pulses.merged, converted, 's=i')];
-        } else {
-          // One signal and one idler photon are created per pump photon. Their
-          // photon fluxes are equal, so P_s/P_i = nu_s/nu_i = lambda_i/lambda_s.
-          // At degeneracy with different widths they stay two coincident beams,
-          // each with its own spectrum.
-          out = [
-            gen(waves.signal, pulses.signal, converted * waves.signalShare, 's'),
-            gen(waves.idler, pulses.idler, converted * (1 - waves.signalShare), 'i'),
-          ];
-        }
+        const result = opoConversion(ray, data, s.el?.id || null, efficiency);
+        // Pump outside the window, and light this crystal already generated,
+        // pass straight through regardless of the residual toggle.
+        if (result.state === 'reconverted' || result.state === 'outOfWindow') return pass();
+        if (result.state !== 'converting' || !(efficiency > 0)) return data.transmitPump ? pass() : [];
+        const out = result.outputs.map(output => ({ d, ...output.ray }));
         if (data.transmitPump && efficiency < 0.999) out.push({ d, intensity: ray.intensity * (1 - efficiency), tag: 'p' });
         return out;
       }
@@ -3873,6 +3882,77 @@ function interact(ray, hit) {
     }
     default: return [{ d }];
   }
+}
+
+// How many rays an integrated OPO spreads a single-ray pump over, per output,
+// with equal power weights across the authored diameter.
+const OPO_OUTPUT_SAMPLES = 9;
+
+// The optical parametric conversion both OPO packagings share: the crystal's
+// OPO mode and the integrated OPO element. It decides whether this pump
+// converts, records the reading, and returns the generated waves with their
+// power, spectrum and pulse already worked out; the caller only routes them.
+//   state 'reconverted' -- light this element already generated (never
+//                          converted twice, or a resonating signal would
+//                          re-split on every round trip)
+//   state 'badParams'   -- a non-finite or non-positive pump or signal
+//   state 'outOfWindow' -- pump centre outside the authored acceptance
+//   state 'invalid'     -- a signal at or beyond the pump frequency: no idler
+//   state 'converting'  -- outputs: [{ role, ray }] with role 'signal',
+//                          'idler' or 'merged', and `ray` a child without `d`
+function opoConversion(ray, data, elementId, efficiency) {
+  if (elementId && Array.isArray(ray.parametricPath) && ray.parametricPath.includes(elementId)) {
+    return { state: 'reconverted' };
+  }
+  const pumpWl = Number(data.pumpWl ?? 532);
+  const sig = Number(data.signalWl ?? 800);
+  if (!(Number.isFinite(pumpWl) && pumpWl > 0 && Number.isFinite(sig) && sig > 0)) return { state: 'badParams' };
+  // Phase matching accepts pump light whose centre lies within an authored
+  // window; everything else is not converted.
+  const acceptance = Math.max(0, Number(data.pumpAcceptanceNm ?? 1));
+  if (!(Math.abs(ray.wl - pumpWl) <= acceptance)) return { state: 'outOfWindow' };
+  // The cavity holds the signal; the idler follows the pump that arrives.
+  const waves = opoWaves({
+    pumpWl: ray.wl, pumpFwhmNm: pumpWidthNm(ray), signalWl: sig,
+    linewidthMode: data.linewidthMode,
+    signalLinewidthCm: data.signalLinewidthCm, idlerLinewidthCm: data.idlerLinewidthCm,
+  });
+  if (!waves) {
+    recordOpo(elementId, { state: 'invalid', signalWl: sig });
+    return { state: 'invalid' };
+  }
+  const phase = { outputPhase: data.outputPhase, durationFactor: data.durationFactor, crystalId: elementId };
+  const pulses = waves.merged
+    ? { merged: opoPulse(ray.pulse, waves.merged, { ...phase, role: 'degenerate' }) }
+    : {
+      signal: opoPulse(ray.pulse, waves.signal, { ...phase, role: 'signal' }),
+      idler: opoPulse(ray.pulse, waves.idler, { ...phase, role: 'idler' }),
+    };
+  recordOpo(elementId, { state: 'converting', efficiency, waves, pulses, signalWl: sig });
+  const converted = ray.intensity * efficiency;
+  const path = [...(Array.isArray(ray.parametricPath) ? ray.parametricPath : []), elementId].filter(Boolean);
+  const gen = (wave, pulse, intensity, tag) => ({
+    wl: wave.wl, bw: wave.bw, spec: wave.spec, intensity, tag, pulse,
+    parametricPath: path,
+    // The pulse's reference plane is where the light is generated. A chirped
+    // output leaves carrying the GDD that stretches it to its set duration.
+    gdd: pulse?.chirpGddFs2 || 0,
+    // New light does not carry the pump's reconstructable CW field.
+    phaseValid: false,
+    phaseIssue: 'parametric output: optical phase relative to the pump is not modelled',
+  });
+  // At degeneracy with equal widths, signal and idler are one beam carrying
+  // their combined power. Otherwise one signal and one idler photon are
+  // created per pump photon; their photon fluxes are equal, so
+  // P_s/P_i = nu_s/nu_i = lambda_i/lambda_s. At degeneracy with different
+  // widths they stay two coincident beams, each with its own spectrum.
+  const outputs = waves.merged
+    ? [{ role: 'merged', ray: gen(waves.merged, pulses.merged, converted, 's=i') }]
+    : [
+      { role: 'signal', ray: gen(waves.signal, pulses.signal, converted * waves.signalShare, 's') },
+      { role: 'idler', ray: gen(waves.idler, pulses.idler, converted * (1 - waves.signalShare), 'i') },
+    ];
+  return { state: 'converting', efficiency, waves, pulses, outputs };
 }
 
 // trace all rays of one source; returns finished polylines.
@@ -4307,7 +4387,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
             ? r.power * (c.intensity !== undefined && r.intensity > 0 ? c.intensity / r.intensity : 1)
             : undefined,
-          sample: r.sample, sampleCount: r.sampleCount, sampleGrid: r.sampleGrid,
+          // A child can start a sampled beam of its own (an OPO spreading a
+          // single-ray pump over its output diameter).
+          sample: 'sample' in c ? c.sample : r.sample,
+          sampleCount: 'sampleCount' in c ? c.sampleCount : r.sampleCount,
+          sampleGrid: 'sampleGrid' in c ? c.sampleGrid : r.sampleGrid,
           writeReference: r.writeReference,
           objectives: Array.isArray(r.objectives) ? r.objectives.map(objective => ({ ...objective })) : [],
           hidden: r.hidden || Boolean(c.hidden),

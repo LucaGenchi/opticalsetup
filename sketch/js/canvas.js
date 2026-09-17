@@ -237,12 +237,13 @@ function animatedChopper(el) {
 
 function animatedOpticalElements() {
   if (!hasGalvoMotion() && !hasAodScan() && !hasPhaseModulation() && !hasStageMotion()
-    && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence()) return state.elements;
+    && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence() && !hasOpoTuning()) return state.elements;
   return state.elements.map(el => {
     if (isScanningMirror(el)) {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params, el.type === 'polygonscanner') };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
+    if (el.type === 'opo') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
@@ -265,6 +266,7 @@ function animatedVisualElements() {
       return { ...el, _animationTimeS: galvoAnimationSeconds(el.params, el.type === 'polygonscanner') };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
+    if (el.type === 'opo') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
@@ -298,11 +300,17 @@ function hasMotion() {
     || (el.type === 'chopper' && el.params.modulate)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
     || (el.type === 'retroreflector' && el.params.moveMode === 'linear'))
-    || hasAotfSequence();
+    || hasAotfSequence() || hasOpoTuning();
 }
 
 // A sequential AOTF steps between its selected lines, so the traced spectrum
 // changes with the clock exactly as a scanning galvo's angle does.
+// An integrated OPO that sweeps or steps its signal changes the traced
+// wavelengths with the clock, as a sequential AOTF does.
+function hasOpoTuning() {
+  return state.elements.some(el => el.type === 'opo' && (el.params.tuneMode === 'sweep' || el.params.tuneMode === 'steps'));
+}
+
 function hasAotfSequence() {
   return state.elements.some(el => el.type === 'aotf'
     && el.params.modMode === 'cycle'
@@ -356,14 +364,14 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
+    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence() || hasOpoTuning();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();
     renderVoxels();
     renderOverlay();
     const selected = findSelected();
-    if (opticalMotion && selected && (registry[selected.type]?.readoutKind || selected.type === 'display')) onMeasurementsChange();
+    if (opticalMotion && selected && (registry[selected.type]?.readoutKind || registry[selected.type]?.liveReadouts || selected.type === 'display')) onMeasurementsChange();
   }
   motionFrame = requestAnimationFrame(animateMotion);
 }
