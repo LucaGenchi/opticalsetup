@@ -273,3 +273,38 @@ test('the steps readout names the step and the generated waves', () => {
   const text = registry.opo.params.find(p => p.key === 'opoState').readout(box.params, box);
   assert.match(text, /^Step 2 of 2: Pump 516 nm → signal 820 nm · idler 1392 nm/);
 });
+
+test('a spread output survives downstream optics exactly as a sized one does, at low depletion', () => {
+  // Spatial samples keep the tracing intensity that continuation cutoffs read;
+  // only their power is shared. Dividing the intensity instead switched a
+  // spread beam off at a clear lens while it still reached a bare detector.
+  const run = ({ laser, diameter, withLens, role }) => {
+    const pump = createElement('pulsedlaser', 0, 100);
+    Object.assign(pump.params, GREEN, laser);
+    const box = createElement('opo', 200, 100);
+    Object.assign(box.params, {
+      signalWl: 800, opoDepletion: 0.1, outputIdler: role === 'idler', signalBeamMm: diameter, idlerBeamMm: diameter,
+    });
+    const port = opoPortLocal(role, box.params);
+    const y = 100 + port.y;
+    const extra = withLens ? [Object.assign(createElement('lens', 320, y), {})] : [];
+    if (withLens) Object.assign(extra[0].params, { f: 1000, dia: 25.4 });
+    const det = createElement('detector', 500, y);
+    det.params.aperture = 12;
+    // Block the other port so each role is read on its own.
+    traceScene([pump, box, ...extra, det]);
+    return detectorReading(det.id)?.spectrum
+      .filter(s => role === 'signal' ? Math.abs(s.wavelength - 800) < 5 : Math.abs(s.wavelength - 1453.5) < 20)
+      .reduce((sum, s) => sum + s.power, 0) ?? 0;
+  };
+  for (const role of ['signal', 'idler']) {
+    const reference = run({ laser: { beamMode: 'line' }, diameter: 0, withLens: false, role });
+    assert.ok(reference > 0.02, `${role}: reference ${reference}`);
+    for (const withLens of [false, true]) {
+      for (const [laser, diameter] of [[{ beamMode: 'line' }, 0], [{ beamMode: 'line' }, 2], [{ beamMode: 'beam', beamWidth: 2 }, 2]]) {
+        const got = run({ laser, diameter, withLens, role });
+        near(got, reference, 1e-6, `${role}, ${laser.beamMode} pump, D=${diameter}, lens ${withLens}`);
+      }
+    }
+  }
+});

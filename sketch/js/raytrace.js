@@ -3779,10 +3779,16 @@ function interact(ray, hit) {
         if (sampled) {
           return [{ d: axis, origin: at(diameter * (ray.sample / (ray.sampleCount - 1) - 0.5)), ...output.ray }];
         }
+        // Each spatial sample keeps the converted ray's tracing intensity --
+        // the quantity continuation cutoffs read -- and carries an equal share
+        // of its power, as a sized source's samples do. The pump's incoming
+        // attenuation is kept in that power.
         const n = OPO_OUTPUT_SAMPLES;
+        const pumpPower = Number.isFinite(ray.power) ? ray.power : ray.intensity;
+        const converted = ray.intensity > 0 ? pumpPower * output.ray.intensity / ray.intensity : 0;
         return Array.from({ length: n }, (_, i) => ({
           d: axis, origin: at(diameter * (i / (n - 1) - 0.5)), ...output.ray,
-          intensity: output.ray.intensity / n,
+          power: converted / n,
           sample: i, sampleCount: n, sampleGrid: 'even',
         }));
       };
@@ -3878,7 +3884,8 @@ function interact(ray, hit) {
   }
 }
 
-// How many rays an integrated OPO spreads a single-ray pump over, per output.
+// How many rays an integrated OPO spreads a single-ray pump over, per output,
+// with equal power weights across the authored diameter.
 const OPO_OUTPUT_SAMPLES = 9;
 
 // The optical parametric conversion both OPO packagings share: the crystal's
