@@ -13,7 +13,7 @@ import {
 import '../sketch/js/detector-instruments.js';
 import {
   traceAll, traceScene, detectorReading, specimenIncidentBeams, specimenSignalWl, specimenIncidentWls,
-  specimenTimingReading, srsTransferGate,
+  specimenSrsNote, specimenTimingReading, srsTransferGate,
 } from '../sketch/js/raytrace.js';
 import { gateTransmissionAt } from '../sketch/js/pulses.js';
 import { parseSketch } from '../sketch/js/state.js';
@@ -1398,6 +1398,9 @@ test('an unchecked channel never hides a checked channel\'s timing verdict', () 
     const { text, hasSignal } = run(order);
     assert.match(text, /100 ps apart \(30 mm of path\), 0% temporal overlap/, `${order}: ${text}`);
     assert.ok(hasSignal, `${order}: the unchecked channel should still draw its schematic signal`);
+  }
+});
+
 test('stimulated Raman transfer follows the donor\'s ON state, whatever levels its gate uses', () => {
   // A modulator can express "on" as a gate's high half (a chopper) or its low
   // half (a polarization modulator read through an analyzer), and a gate can be
@@ -1441,4 +1444,67 @@ test('stimulated Raman transfer follows the donor\'s ON state, whatever levels i
       assert.ok(sawOn && sawOff, `${gateName}: the scan never reached both the on and the off donor`);
     }
   }
+});
+
+test('the transferred modulation asks the donor about the photons that are actually there', () => {
+  // Arms a whole pulse period apart overlap perfectly, one pulse index apart:
+  // the donor photons meeting a receiver pulse left their source 12.5 ns
+  // earlier, and the transfer has to be evaluated for those photons.
+  const period = 1000 / 80;
+  const periodMm = period * 299.792458;
+  const channel = ch('srs', { transferEff: 0.3, requireOverlap: true });
+  const donorGate = { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 1, low: 0 };
+  const pulse = { repRateMHz: 80, pulseWidthFs: 200, phaseNs: 0 };
+  for (const [label, receiverOpl, donorOpl] of [
+    ['donor a period behind', 0, periodMm],
+    ['receiver a period behind', periodMm, 0],
+    ['equal arms', 0, 0],
+  ]) {
+    const donor = { wl: 1030, opl: donorOpl, pulse: { ...pulse, gates: [donorGate] }, gates: [donorGate] };
+    const receiver = { wl: 780, opl: receiverOpl, pulse: { ...pulse } };
+    const transfer = srsTransferGate(channel, receiver, [donor], null);
+    assert.ok(transfer, `${label}: no transfer between perfectly overlapping pulses`);
+    for (let t = 0; t < 100; t += 0.5) {
+      const pairedDonorEmission = t + (receiverOpl - donorOpl) / 299.792458;
+      const expected = 1 - 0.3 * gateTransmissionAt(donorGate, pairedDonorEmission);
+      const factor = gateTransmissionAt(transfer, t);
+      assert.ok(Math.abs(factor - expected) < 1e-9,
+        `${label}: receiver emission ${t} ns gave ${factor}, expected ${expected}`);
+    }
+  }
+});
+
+test('stimulated Raman configurations outside the model are not drawn, and say why', () => {
+  const channel = ch('srs', { transferEff: 0.3, requireOverlap: false });
+  const pulse = { repRateMHz: 80, pulseWidthFs: 200, phaseNs: 0 };
+  const chopper = { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 1, low: 0 };
+  const closed = { opl: 0, frequencyMHz: 1, duty: 1, phaseNs: 0, shape: 'square', high: 0, low: 0 };
+  const beam = (wl, gates = []) => ({ wl, opl: 0, pulse: { ...pulse, gates }, gates, key: `${wl}:${gates.length}` });
+  const run = (receiver, beams) => {
+    traceScene([]);   // resets per-trace notes
+    const id = 'sample-under-test';
+    const transfer = srsTransferGate(channel, receiver, beams, id);
+    return { transfer, note: specimenSrsNote(id) };
+  };
+
+  // A donor behind two modulators: keeping only the last one would draw a
+  // transfer while an earlier one blocks the donor completely.
+  const composite = run({ wl: 780, opl: 0, pulse: { ...pulse } }, [beam(1030, [closed, chopper])]);
+  assert.equal(composite.transfer, null, 'a donor passing two modulators must not be reduced to its last one');
+  assert.match(composite.note, /more than one modulator/);
+
+  // Two modulated beams that could each drive the receiver.
+  const twoDonors = run({ wl: 780, opl: 0, pulse: { ...pulse } }, [beam(1030, [chopper]), beam(1100, [chopper])]);
+  assert.equal(twoDonors.transfer, null);
+  assert.match(twoDonors.note, /more than one modulated beam/);
+
+  // Both beams of the pair modulated.
+  const both = run({ wl: 780, opl: 0, pulse: { ...pulse, gates: [chopper] } }, [beam(1030, [chopper])]);
+  assert.equal(both.transfer, null);
+  assert.match(both.note, /both beams are modulated/);
+
+  // The ordinary single-donor case still transfers, and leaves no note.
+  const ordinary = run({ wl: 780, opl: 0, pulse: { ...pulse } }, [beam(1030, [chopper])]);
+  assert.ok(ordinary.transfer, 'the supported configuration stopped transferring');
+  assert.equal(ordinary.note, null);
 });

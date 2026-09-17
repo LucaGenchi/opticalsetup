@@ -12,8 +12,8 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, MAX_CONVERSION, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenTimingReading } from './raytrace.js';
-import { idlerWavelength } from './parametric.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading } from './raytrace.js';
+import { idlerWavelength, MAX_CONVERSION } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
   formatTimeAxisNs,
@@ -1495,7 +1495,11 @@ function sampleModeParams() {
         if (type !== 'nonlinear') return false;
         return sampleChannels(p).some(c => TWO_BEAM_KINDS.has(c.kind) || c.kind === 'shg');
       },
-      readout: (p, el) => specimenTimingReadout(el ? specimenTimingReading(el.id) : null),
+      readout: (p, el) => {
+        const timing = specimenTimingReadout(el ? specimenTimingReading(el.id) : null);
+        const srs = el ? specimenSrsNote(el.id) : null;
+        return srs ? `${timing}. Stimulated Raman transfer not drawn: ${srs}.` : timing;
+      },
     },
     { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
     { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },

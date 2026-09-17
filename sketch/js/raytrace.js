@@ -38,7 +38,7 @@ import {
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
-import { opoPulse, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
+import { MAX_CONVERSION, opoPulse, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -182,6 +182,18 @@ function recordMix(elementId, pair) {
 // specimen element id -> what its two-beam channels found about arrival
 // timing this pass, so a silent signal can say why.
 let specimenTimingStates = new Map();
+
+// specimen element id -> why stimulated Raman transfer was not drawn, when the
+// configuration is outside what the model covers.
+let specimenSrsNotes = new Map();
+
+function recordSrsNote(elementId, note) {
+  if (elementId) specimenSrsNotes.set(elementId, note);
+}
+
+export function specimenSrsNote(elementId) {
+  return specimenSrsNotes.get(elementId) || null;
+}
 
 function recordSpecimenTiming(elementId, reading) {
   if (!elementId) return;
@@ -1348,13 +1360,6 @@ function emissionAngles(count, axisAngle, bias = AXIS_BIAS) {
 // Below this the two pulses barely meet and the signal is reported as absent
 // rather than as a vanishing sliver.
 const MIN_OVERLAP = 0.02;
-// An application-imposed ceiling on every authored conversion fraction, not a
-// physical limit: published single-pass second-harmonic conversion and OPO
-// pump depletion both reach well above this. It keeps the workbench's authored
-// fractions in a conservative range for now; raising it for the OPO, whose
-// depletion is a multi-pass result rather than a single-pass efficiency, is
-// tracked separately.
-export const MAX_CONVERSION = 0.6;
 const clampConversion = value => Math.min(MAX_CONVERSION, Math.max(0, Number(value) || 0));
 
 // The wavelength one signal channel produces for a ray of wavelength rayWl.
@@ -1457,14 +1462,37 @@ function gateEffectiveLevels(gate) {
 }
 
 export function srsTransferGate(channel, ray, incidentBeams, elementId) {
-  if ((ray.pulse?.gates || []).length) return null; // this beam is the donor
-  const donor = (incidentBeams || []).find(b =>
+  const beams = incidentBeams || [];
+  const modulatedPartners = beams.filter(b =>
     Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM && b.gates?.length);
-  if (!donor) return null;
+  // What this model covers is one unmodulated beam receiving the modulation of
+  // one other beam through one modulator. Anything beyond that is not drawn,
+  // and says so, rather than being drawn as though it were modelled.
+  if ((ray.pulse?.gates || []).length) {
+    // This beam is itself modulated, so it is the donor of the usual pair --
+    // unless another beam is modulated too.
+    if (modulatedPartners.length) {
+      recordSrsNote(elementId, 'both beams are modulated, and transfer between two modulated beams is not modelled');
+    }
+    return null;
+  }
+  if (!modulatedPartners.length) return null;
+  if (modulatedPartners.length > 1) {
+    recordSrsNote(elementId, 'more than one modulated beam could drive it, and only a single modulated partner is modelled');
+    return null;
+  }
+  const donor = modulatedPartners[0];
+  if (donor.gates.length > 1) {
+    // The donor's transmission is the product of every modulator it passed; a
+    // single gate cannot carry that, and keeping only one of them would draw a
+    // transfer while the donor is blocked.
+    recordSrsNote(elementId, 'the modulated beam passes more than one modulator, and a composite modulation is not modelled');
+    return null;
+  }
   // Both pulses must be at the spot together for the interaction to happen.
-  const overlap = channelOverlap(channel, ray, donor, incidentBeams, elementId).factor;
+  const overlap = channelOverlap(channel, ray, donor, beams, elementId).factor;
   if (overlap < MIN_OVERLAP) return null;
-  const source = donor.gates[donor.gates.length - 1];
+  const source = donor.gates[0];
   const depth = Math.min(0.5, Math.max(0.01, channel.transferEff ?? 0.1)) * overlap;
   // The two beams are not symmetric. Energy flows from the blue photon to
   // the red one, so when the PUMP (the shorter wavelength) carries the
@@ -1485,9 +1513,20 @@ export function srsTransferGate(channel, ray, incidentBeams, elementId) {
   const brightest = Math.max(levels.high, levels.low);
   const darkest = Math.min(levels.high, levels.low);
   if (!(brightest - darkest > 1e-9)) return null; // the donor is not modulated
+  // A normalised display proxy, not a Raman transfer law: any donor contrast is
+  // stretched to the full authored excursion, so a donor swinging 0.8 to 1.0
+  // transfers as much as one swinging 0 to 1, and a steady donor transfers
+  // nothing. The depth is transferEff times the temporal overlap.
   const follow = level => 1 + sign * depth * (level - darkest) / (brightest - darkest);
+  // A gate is evaluated at its own beam's emission time. The donor photons that
+  // meet a receiver pulse at the specimen left their source earlier or later
+  // by the difference in the two paths -- by a whole pulse period, even, when
+  // the arms differ by one -- so the transferred gate is moved by that path
+  // difference to ask the donor about the photons that are actually there.
+  const receiverOpl = rayAsBeam(ray, beams).opl;
+  const pathShift = (Number.isFinite(receiverOpl) ? receiverOpl : 0) - (Number.isFinite(donor.opl) ? donor.opl : 0);
   return {
-    opl: source.opl, frequencyMHz: source.frequencyMHz, duty: source.duty,
+    opl: source.opl + pathShift, frequencyMHz: source.frequencyMHz, duty: source.duty,
     phaseNs: source.phaseNs, shape: source.shape, symmetry: source.symmetry,
     depth, invert: false,
     high: follow(levels.high),
@@ -4524,6 +4563,7 @@ export function traceScene(elements, beams = []) {
   opoStates = new Map();
   mixStates = new Map();
   specimenTimingStates = new Map();
+  specimenSrsNotes = new Map();
 
   // Sources are emitted twice when a specimen needs two-colour mixing: once
   // as a cheap probe that only records which wavelengths reach each specimen
