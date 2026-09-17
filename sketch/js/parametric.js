@@ -1,5 +1,18 @@
 import { C_MM_PER_NS } from './pulses.js';
 
+// An application-imposed ceiling on every authored conversion fraction, not a
+// physical limit: published single-pass second-harmonic conversion and OPO
+// pump depletion both reach well above this. It keeps the workbench's authored
+// fractions in a conservative range for now; raising it for the OPO, whose
+// depletion is a multi-pass result rather than a single-pass efficiency, is
+// tracked separately.
+//
+// It lives here, in a module nothing else in the chain imports back, because
+// elements.js reads it while building its parameter list: exported from the
+// tracer it sat on an import cycle, and loading the tracer first left it
+// uninitialised.
+export const MAX_CONVERSION = 0.6;
+
 // Optical parametric oscillation for the crystal's `convert: 'opo'` mode: a
 // phenomenological singly resonant oscillator, not a cavity simulation.
 //

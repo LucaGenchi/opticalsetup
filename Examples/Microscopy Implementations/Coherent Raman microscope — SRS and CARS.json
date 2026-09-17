@@ -141,7 +141,7 @@
         "length": 20,
         "commandAngle": 0,
         "scanMode": "static",
-        "scanAmplitude": 1,
+        "scanAmplitude": 2,
         "scanFrequencyHz": 100,
         "scanPhaseDeg": 0,
         "refl": 100,
@@ -194,7 +194,7 @@
       "id": "e227dxsg",
       "type": "dichroic",
       "x": 975,
-      "y": 175,
+      "y": 177,
       "rot": 45,
       "label": "SP700",
       "showLabel": true,
@@ -204,6 +204,7 @@
         "cutoff": 700,
         "center": 550,
         "band": 50,
+        "bandRefl": 100,
         "length": 25.4
       }
     },
@@ -259,6 +260,7 @@
         "cutoff": 700,
         "center": 550,
         "band": 50,
+        "bandRefl": 100,
         "length": 25.4
       }
     },
@@ -443,6 +445,7 @@
         "cutoff": 1000,
         "center": 550,
         "band": 50,
+        "bandRefl": 100,
         "length": 25.4
       }
     },
@@ -485,7 +488,12 @@
       "params": {
         "aperture": 26,
         "gain": 10,
-        "saturation": 100
+        "darkInput": 1e-05,
+        "saturation": 100,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 2
       }
     },
     {
@@ -528,7 +536,12 @@
       "params": {
         "aperture": 26,
         "gain": 10,
-        "saturation": 100
+        "darkInput": 1e-05,
+        "saturation": 100,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 2
       }
     },
     {
@@ -680,14 +693,14 @@
       "rot": 0,
       "label": "",
       "showLabel": false,
+      "labelPos": "t",
       "params": {
         "shape": "rect",
         "w": 210,
         "h": 80,
         "fill": "#ff0000",
         "opacity": 35
-      },
-      "labelPos": "t"
+      }
     },
     {
       "id": "eb0ch8om",
@@ -725,10 +738,14 @@
       "rot": 180,
       "label": "SRS channel",
       "showLabel": true,
+      "labelPos": "t",
       "params": {
-        "aperture": 26
-      },
-      "labelPos": "t"
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
+      }
     },
     {
       "id": "ewqehdbt",
@@ -753,6 +770,7 @@
       "rot": 0,
       "label": "SP1000",
       "showLabel": true,
+      "labelPos": "t",
       "params": {
         "ftype": "shortpass",
         "cutoff": 1000,
@@ -760,8 +778,7 @@
         "band": 40,
         "trans": 0.5,
         "length": 25.4
-      },
-      "labelPos": "t"
+      }
     },
     {
       "id": "egy525hq",
@@ -799,7 +816,11 @@
       "label": "Intensity modulation",
       "showLabel": true,
       "params": {
-        "aperture": 26
+        "aperture": 26,
+        "timeSpanNs": 0,
+        "timeOffsetNs": 0,
+        "sync": false,
+        "riseTimeNs": 1
       }
     },
     {

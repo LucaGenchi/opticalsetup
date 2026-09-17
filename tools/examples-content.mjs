@@ -538,8 +538,10 @@ export const exampleEntries = [
         <li><strong>Stimulated Raman loss.</strong> An electro-optic modulator and polarizer
         impose a 20&nbsp;MHz intensity modulation on the <em>Stokes</em> beam. Where the
         vibration is driven, energy transfers from pump to Stokes, so the <em>pump</em>
-        comes out slightly depleted and carries that 20&nbsp;MHz modulation as a
-        copy. The SRS channel therefore sits at 780&nbsp;nm — the pump — and a beamsplitter
+        comes out slightly depleted and carries that 20&nbsp;MHz modulation in antiphase:
+        it dips while the Stokes is on and recovers while it is off. That dip is the loss
+        that names the scheme; with the modulation on the pump instead, the Stokes would
+        rise in step with it — stimulated Raman gain. The SRS channel therefore sits at 780&nbsp;nm — the pump — and a beamsplitter
         picks off part of the modulated 1030&nbsp;nm Stokes onto a second detector as the
         reference. Moving the modulation onto one beam and detecting it on the other is what
         lifts a signal of one part in ten thousand out of the laser noise.</li>
