@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opticalsetup-pwa-v97';
+const CACHE_NAME = 'opticalsetup-pwa-v98';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.

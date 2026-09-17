@@ -1997,11 +1997,17 @@ export function mixStateText(reading) {
 // terms the crystal uses. A signal that is silent because of timing should say
 // so on the canvas rather than leaving an empty detector to interpret.
 // The same thing as a permanent readout rather than a one-off message: a
-// picosecond of arrival difference is a millimetre of path, far below anything
+// picosecond of arrival difference is about 0.3 mm of path, far below anything
 // the drawing can show, so the number has to be somewhere you can watch while
 // you move a delay stage.
 export function specimenTimingReadout(reading) {
-  if (!reading) return 'No two-beam signal here yet';
+  // No reading means nothing was timed -- which is not the same as no signal:
+  // a channel with the overlap requirement switched off still draws its
+  // schematic two-beam signal, it just is not checked.
+  if (!reading) return 'No two-beam timing measured yet';
+  if (reading.state === 'ignored') {
+    return `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm: pulse-overlap requirement off, so arrival timing is not checked`;
+  }
   if (reading.state === 'oneBeam') return 'One colour only: a second wavelength is needed for CARS, Raman transfer or sum frequency';
   const pair = `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm`;
   if (reading.state === 'unsupported') {
