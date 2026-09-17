@@ -1081,10 +1081,11 @@ export const exampleEntries = [
     inOpticalSetupHtml: `
       <p>A 1035 nm, 270 fs, 2 MHz laser is focused by a 100 mm lens into a crystal in
       <em>Supercontinuum</em> mode with YAG as the medium, and a second lens recollimates the
-      output. The crystal's band is estimated from the pump that arrives: 1035 nm lies between
-      YAG reference spectra at 800 nm and at 1.1–1.6 µm pumping, so each edge is interpolated,
-      giving about <strong>506–1776 nm</strong>. The crystal's <em>Continuum</em> readout says so,
-      and says that the red edge rests on a measurement limited by the detector.</p>
+      output. The crystal's band is estimated from the pump that arrives: no YAG reference is at
+      1035 nm, so each edge is interpolated between its own neighbours — the blue edge between
+      the 800 nm and 1.1 µm references, the red edge between 800 nm and 2 µm — giving about
+      <strong>506–1776 nm</strong>. The 2 µm red edge was limited by the detector, which is why
+      the crystal's <em>Continuum</em> readout notes that the spectrum can reach further.</p>
       <p>A longpass dichroic at 1050 nm reflects the residual pump and the visible side of the
       continuum to one spectrometer and transmits the red side. A bandpass then selects
       <strong>1050–1300 nm</strong>, and the second spectrometer and its screen show that band.
