@@ -13,8 +13,9 @@ import {
 import '../sketch/js/detector-instruments.js';
 import {
   traceAll, traceScene, detectorReading, specimenIncidentBeams, specimenSignalWl, specimenIncidentWls,
-  specimenTimingReading,
+  specimenTimingReading, srsTransferGate,
 } from '../sketch/js/raytrace.js';
+import { gateTransmissionAt } from '../sketch/js/pulses.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { wavelengthToColor } from '../sketch/js/util.js';
 import { C_MM_PER_NS, pulseMarkers, pulseOverlap } from '../sketch/js/pulses.js';
@@ -1397,5 +1398,47 @@ test('an unchecked channel never hides a checked channel\'s timing verdict', () 
     const { text, hasSignal } = run(order);
     assert.match(text, /100 ps apart \(30 mm of path\), 0% temporal overlap/, `${order}: ${text}`);
     assert.ok(hasSignal, `${order}: the unchecked channel should still draw its schematic signal`);
+test('stimulated Raman transfer follows the donor\'s ON state, whatever levels its gate uses', () => {
+  // A modulator can express "on" as a gate's high half (a chopper) or its low
+  // half (a polarization modulator read through an analyzer), and a gate can be
+  // inverted. The transferred excursion must land while the donor is actually
+  // transmitting in every case — a loss for a pump receiver, a gain for a
+  // Stokes receiver.
+  const pulse = { repRateMHz: 80, pulseWidthFs: 1000, phaseNs: 0 };
+  const channel = ch('srs', { transferEff: 0.3, requireOverlap: false });
+  const gates = {
+    chopper: { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 1, low: 0 },
+    'modulator read through an analyzer': { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 0, low: 1 },
+    'inverted chopper': { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 1, low: 0, invert: true },
+    'sine modulator': { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'sine', depth: 1 },
+  };
+  const cases = [
+    // Stokes modulated, pump detected: stimulated Raman LOSS on the pump.
+    { receiverWl: 780, donorWl: 1030, expect: 'loss' },
+    // Pump modulated, Stokes detected: stimulated Raman GAIN on the Stokes.
+    { receiverWl: 1030, donorWl: 780, expect: 'gain' },
+  ];
+  for (const [gateName, donorGate] of Object.entries(gates)) {
+    for (const { receiverWl, donorWl, expect } of cases) {
+      const donor = { wl: donorWl, opl: 0, pulse: { ...pulse, gates: [donorGate] }, gates: [donorGate] };
+      const receiver = { wl: receiverWl, opl: 0, pulse: { ...pulse } };
+      const transfer = srsTransferGate(channel, receiver, [donor], null);
+      assert.ok(transfer, `${gateName}: no transfer`);
+      // Every one of these gates swings its donor between 0 and 1, so the
+      // receiver's factor must be exactly 1 ± 0.3 × (how much of the donor is
+      // through) at every instant — a dip for a pump, a rise for a Stokes.
+      const sign = expect === 'loss' ? -1 : 1;
+      let sawOn = false, sawOff = false;
+      for (let t = 0; t < 50; t += 0.25) {
+        const donorOn = gateTransmissionAt(donorGate, t);
+        const factor = gateTransmissionAt(transfer, t);
+        const expected = 1 + sign * 0.3 * donorOn;
+        assert.ok(Math.abs(factor - expected) < 1e-9,
+          `${gateName}, ${expect} at t=${t} ns: donor ${donorOn.toFixed(4)} gave ${factor}, expected ${expected}`);
+        if (donorOn > 0.999) sawOn = true;
+        if (donorOn < 1e-9) sawOff = true;
+      }
+      assert.ok(sawOn && sawOff, `${gateName}: the scan never reached both the on and the off donor`);
+    }
   }
 });

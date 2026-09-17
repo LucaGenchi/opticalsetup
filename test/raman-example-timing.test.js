@@ -6,6 +6,7 @@ import '../sketch/js/detector-instruments.js';
 import { registry, specimenTimingText } from '../sketch/js/elements.js';
 import { detectorReading, specimenIncidentBeams, specimenTimingReading, traceScene } from '../sketch/js/raytrace.js';
 import { parseSketch } from '../sketch/js/state.js';
+import { gateTransmissionAt } from '../sketch/js/pulses.js';
 
 const raw = readFileSync(
   new URL('../Examples/Microscopy Implementations/Coherent Raman microscope — SRS and CARS.json', import.meta.url),
@@ -67,4 +68,31 @@ test('the stimulated Raman channel loses its loss, not its beam', () => {
   assert.ok(matched.readings[srsId] < detuned.readings[srsId],
     `${srsId}: ${matched.readings[srsId]} should sit below its unmodulated ${detuned.readings[srsId]}`);
   assert.ok(detuned.readings[srsId] > 0.5, 'the receiving beam itself must still be there');
+});
+
+test('the example is a stimulated Raman LOSS scheme: the pump dips while the Stokes is on', () => {
+  // The 1030 nm Stokes carries the 20 MHz modulation and the SRS channel reads
+  // the 780 nm pump. Energy flows from pump to Stokes, so the pump must be
+  // lowest exactly when the Stokes is present — not when it is blocked, which
+  // against the Stokes would read as a gain.
+  const scene = parseSketch(raw, registry);
+  traceScene(scene.elements);
+  const trains = id => detectorReading(id)?.pulse?.trains || [];
+  const pumpGate = trains('ef2uydcv').find(t => Math.round(t.centerWavelengthNm) === 780)?.gates?.[0];
+  const stokesGate = trains('e9xabqr6').find(t => Math.round(t.centerWavelengthNm) === 1030)?.gates?.[0];
+  assert.ok(pumpGate && stokesGate, 'both modulations must reach their detectors');
+
+  let stokesOn = 0, stokesOff = 0;
+  for (let t = 0; t < 50; t += 0.5) {   // one 20 MHz period, at the same emission times
+    const stokes = gateTransmissionAt(stokesGate, t);
+    const pump = gateTransmissionAt(pumpGate, t);
+    if (stokes > 0.5) {
+      assert.ok(pump < 1 - 1e-6, `t=${t} ns: the pump should be depleted while the Stokes is on (${pump})`);
+      stokesOn++;
+    } else {
+      assert.ok(Math.abs(pump - 1) < 1e-6, `t=${t} ns: the pump should be unperturbed while the Stokes is off (${pump})`);
+      stokesOff++;
+    }
+  }
+  assert.ok(stokesOn > 0 && stokesOff > 0, 'the Stokes should spend part of the period on and part off');
 });

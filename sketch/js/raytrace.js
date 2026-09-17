@@ -1445,7 +1445,18 @@ function rayAsBeam(ray, beams) {
   return { wl: ray.wl, opl: record ? record.opl : ray.opl, pulse: ray.pulse, bw: ray.bw, spec: ray.spec };
 }
 
-function srsTransferGate(channel, ray, incidentBeams, elementId) {
+// The two transmission levels a gate swings its beam between, as the beam
+// actually sees them: `high` holds during the first `duty` of each period and
+// `low` for the rest, with the per-shape defaults and any inversion applied.
+function gateEffectiveLevels(gate) {
+  const depth = Math.min(1, Math.max(0, gate.depth ?? 1));
+  const square = !gate.shape || gate.shape === 'square';
+  const high = Number.isFinite(gate.high) ? gate.high : 1;
+  const low = Number.isFinite(gate.low) ? gate.low : (square ? 0 : 1 - depth);
+  return gate.invert ? { high: 1 - high, low: 1 - low } : { high, low };
+}
+
+export function srsTransferGate(channel, ray, incidentBeams, elementId) {
   if ((ray.pulse?.gates || []).length) return null; // this beam is the donor
   const donor = (incidentBeams || []).find(b =>
     Math.abs(b.wl - ray.wl) >= MIXING_MIN_SEPARATION_NM && b.gates?.length);
@@ -1460,15 +1471,27 @@ function srsTransferGate(channel, ray, incidentBeams, elementId) {
   // modulation the Stokes beam is amplified while the pump is on — that is
   // stimulated Raman GAIN, and the receiving beam rises above its
   // unmodulated level. When the STOKES beam carries it, the pump is
-  // depleted while the Stokes is on — stimulated Raman LOSS, a dip. Both
-  // excursions happen during the donor's own "on" half, so they differ in
-  // sign, not in phase.
+  // depleted while the Stokes is on — stimulated Raman LOSS, a dip.
   const receiverIsStokes = donor.wl < ray.wl;
+  const sign = receiverIsStokes ? 1 : -1;
+  // Whichever of the donor gate's two levels actually lets the donor through
+  // is when the transfer happens. That is not always the gate's `high` half:
+  // a polarization modulator read through an analyzer can block its beam
+  // during `high` and pass it during `low`, and putting the effect on `high`
+  // regardless landed a loss while the donor was off -- which reads, against
+  // the donor, as a gain. So each level of the transferred gate follows how
+  // much of the donor that level passes.
+  const levels = gateEffectiveLevels(source);
+  const brightest = Math.max(levels.high, levels.low);
+  const darkest = Math.min(levels.high, levels.low);
+  if (!(brightest - darkest > 1e-9)) return null; // the donor is not modulated
+  const follow = level => 1 + sign * depth * (level - darkest) / (brightest - darkest);
   return {
     opl: source.opl, frequencyMHz: source.frequencyMHz, duty: source.duty,
-    phaseNs: source.phaseNs, shape: source.shape, depth, invert: false,
-    high: receiverIsStokes ? 1 + depth : 1 - depth,
-    low: 1,
+    phaseNs: source.phaseNs, shape: source.shape, symmetry: source.symmetry,
+    depth, invert: false,
+    high: follow(levels.high),
+    low: follow(levels.low),
   };
 }
 
