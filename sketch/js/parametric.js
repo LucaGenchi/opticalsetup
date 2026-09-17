@@ -265,9 +265,12 @@ export function opoPulse(pumpPulse, wave, { crystalId, role, outputPhase = 'unkn
     pulseShape: 'gauss',
     // A chirped pulse is described as its transform limit plus the GDD it
     // carries, which is how every dispersed pulse in the tracer is held.
-    pulseWidthFs: transformLimited || belowLimit || chirped ? limit : requested,
-    transformLimited: transformLimited || chirped || (wantsChirp && belowLimit),
-    spectralPhase: transformLimited || (wantsChirp && belowLimit) ? 'transformLimited' : chirped ? 'positiveChirp' : 'unknown',
+    pulseWidthFs: transformLimited || belowLimit || (wantsChirp && Number.isFinite(limit)) ? limit : requested,
+    // Under the chirp assumption a duration at or below the limit is simply
+    // the transform-limited pulse: no chirp is left to add.
+    transformLimited: transformLimited || chirped || (wantsChirp && Number.isFinite(limit)),
+    spectralPhase: transformLimited || (wantsChirp && Number.isFinite(limit) && !chirped) ? 'transformLimited'
+      : chirped ? 'positiveChirp' : 'unknown',
     chirpGddFs2,
     outputDurationFs: transformLimited || belowLimit ? limit : requested,
     durationRaisedToLimit: !wantsLimit && belowLimit,
@@ -428,4 +431,50 @@ export function mixOverlap(a, b) {
     factor, skewNs: Math.abs(wrapped), comparable: true, unsupported: false,
     centerNs, repRateMHz: repA, partnerPulseOffset, periodNs,
   };
+}
+
+// Signal tuning for the integrated OPO element: what signal wavelength the
+// oscillator is set to at a moment of animation time. A pure function of the
+// time, so a paused frame, an export and a live trace at the same time agree,
+// and the saved fixed wavelength is never rewritten.
+//   'fixed' -- the authored signalWl.
+//   'sweep' -- a triangle between sweepMinNm (t = 0) and sweepMaxNm (t = T/2),
+//              back at the minimum at t = T; a collapsed range is fixed.
+//   'steps' -- the listed wavelengths in authored order, duplicates kept (a
+//              repeat lengthens that dwell), index floor(t / dwell) mod N.
+// Time is clamped to t >= 0. Returns { signalWl, index?, count?, ignored? }, or
+// { signalWl: null, reason } when there is no valid program.
+export function parseWavelengthList(text) {
+  const entries = String(text ?? '').split(/[,;\s]+/).filter(Boolean);
+  const values = [];
+  let ignored = 0;
+  for (const entry of entries) {
+    const value = Number(entry);
+    if (Number.isFinite(value) && value > 0 && value <= 20000) values.push(value);
+    else ignored++;
+  }
+  return { values, ignored };
+}
+
+export function opoSignalAt(params = {}, seconds = 0) {
+  const t = Math.max(0, Number(seconds) || 0);
+  const mode = params.tuneMode || 'fixed';
+  if (mode === 'sweep') {
+    const lo = Number(params.sweepMinNm), hi = Number(params.sweepMaxNm);
+    if (!(Number.isFinite(lo) && lo > 0 && Number.isFinite(hi) && hi > 0)) return { signalWl: null, reason: 'range' };
+    const period = Number(params.sweepPeriodS);
+    if (lo === hi || !(period > 0)) return { signalWl: lo };
+    const phase = (t % period) / period;
+    const fraction = phase <= 0.5 ? phase * 2 : 2 - phase * 2;
+    return { signalWl: lo + (hi - lo) * fraction };
+  }
+  if (mode === 'steps') {
+    const { values, ignored } = parseWavelengthList(params.stepList);
+    if (!values.length) return { signalWl: null, reason: 'list', ignored };
+    const dwell = Number(params.stepDwellS);
+    const index = dwell > 0 ? Math.floor(t / dwell) % values.length : 0;
+    return { signalWl: values[index], index, count: values.length, ignored };
+  }
+  const fixed = Number(params.signalWl);
+  return Number.isFinite(fixed) && fixed > 0 ? { signalWl: fixed } : { signalWl: null, reason: 'fixed' };
 }

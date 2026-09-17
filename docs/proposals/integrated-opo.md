@@ -1,8 +1,43 @@
 # Proposal: an integrated OPO element
 
-Status: **draft**. The design is to be agreed in the pull request, and
-implementation is assigned to bertona88. It follows the crystal OPO work in
-#164 and should start from that branch's behaviour once it is merged.
+Status: **implemented in #166**, with the design agreed in that PR. Luca
+accepted bertona88's defaults with two changes: the unconverted pump is
+discarded rather than given a port, and degeneracy uses the single signal port.
+The sections below are the original proposal; **Agreed design** records what
+was built where it differs.
+
+## Agreed design
+
+- **Ports:** signal S on the body axis, idler I a fixed 14 mm below it and
+  parallel, both rotating with the body. There is no pump port: the
+  unconverted pump, light outside the angular acceptance and pump outside the
+  wavelength window are discarded inside the box. *Output idler* removes the
+  idler's power; it is never handed to the signal.
+- **Degeneracy:** everything generated leaves through the signal port and the
+  idler toggle does not apply. Luca expects degeneracy not to be reached in
+  use.
+- **Input:** a rear aperture with an authored angular acceptance, as a
+  geometric rule rather than a coupling calculation. Each accepted sample of a
+  finite beam keeps its weight and leaves at the height it entered, so the beam
+  keeps its width.
+- **Timing:** the outputs take no path inside the box; their timing is
+  referenced to the pump's arrival at the aperture. Pulse train identity,
+  gates, declared chirp and the no-reconversion guard carry over.
+- **Tuning:** a pure function of animation time (`opoSignalAt` in
+  `parametric.js`). Sweep is at its minimum at t = 0, its maximum at T/2 and
+  its minimum again at T; a collapsed range is fixed. Steps keep the authored
+  order and duplicates, use index floor(t / dwell) mod N, and report entries
+  that are not wavelengths; an empty list is "no valid tuning program". The
+  saved signal wavelength is never rewritten, and the on-canvas λ knob only
+  appears in Fixed mode. Spectrometers read the instantaneous line; they do not
+  accumulate a sweep.
+- **Shared model:** `opoConversion()` in `raytrace.js` holds the spectral,
+  pulse, depletion and guard calculations for both the crystal and the element.
+  The crystal routes its outputs collinearly as before; the element routes the
+  same outputs to its ports.
+- **Readouts:** no pump yet, pump rejected by angle, pump outside the
+  wavelength window, no valid tuning program, invalid signal, zero depletion,
+  and converting (with the signal set on the last trace).
 
 ## What is being asked for
 

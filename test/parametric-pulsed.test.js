@@ -346,6 +346,10 @@ test('an explicitly chirped output is its transform limit plus the GDD that stre
   assert.equal(unknown.chirpGddFs2, 0);
   near(unknown.pulseWidthFs, 196, 1e-9, 'set duration kept');
 
+  const atLimit = opoPulse(pump, wave, { crystalId: 'X', role: 'signal', outputPhase: 'positiveChirp', durationFactor: limit / 140 });
+  assert.equal(atLimit.spectralPhase, 'transformLimited', 'a duration equal to the limit carries no chirp and is not unknown');
+  assert.equal(atLimit.chirpGddFs2, 0);
+
   const short = opoPulse(pump, wave, { crystalId: 'X', role: 'signal', outputPhase: 'positiveChirp', durationFactor: 0.1 });
   assert.equal(short.spectralPhase, 'transformLimited', 'shorter than the limit cannot be chirped down to it');
   near(short.pulseWidthFs, limit, 1e-9);
