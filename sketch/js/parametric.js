@@ -3,15 +3,90 @@ import { C_MM_PER_NS } from './pulses.js';
 // An application-imposed ceiling on every authored conversion fraction, not a
 // physical limit: published single-pass second-harmonic conversion and OPO
 // pump depletion both reach well above this. It keeps the workbench's authored
-// fractions in a conservative range for now; raising it for the OPO, whose
-// depletion is a multi-pass result rather than a single-pass efficiency, is
-// tracked separately.
+// fractions in a conservative range for now. The OPO has its own control and
+// ceiling below, because its depletion is a multi-pass result rather than a
+// single-pass efficiency.
 //
 // It lives here, in a module nothing else in the chain imports back, because
 // elements.js reads it while building its parameter list: exported from the
 // tracer it sat on an import cycle, and loading the tracer first left it
 // uninitialised.
 export const MAX_CONVERSION = 0.6;
+
+// The OPO's own ceiling. Its control is pump depletion, the fraction of the
+// pump the oscillator removes, which builds up over many round trips of the
+// resonant signal: singly resonant OPOs are reported at 78 % and 93 %. The cap
+// stops short of total depletion, which the ideal plane-wave model reaches
+// only at one operating point.
+export const MAX_OPO_DEPLETION = 0.95;
+
+// Supercontinuum in a bulk crystal: where the spectrum ends, estimated from the
+// pump wavelength and the medium. Measured edges, pump nm -> edge nm, from the
+// review by Dubietis et al., "Ultrafast supercontinuum generation in bulk
+// condensed media", arXiv:1706.04356 (2017), sections V.A, V.C and V.D. The
+// blue edge is set mostly by the bandgap and moves little with pump energy;
+// the red edge is carried as a multiple of the pump wavelength, because that
+// is what moves with the pump. `transparentFromNm` is the short end of the
+// transmission range (10 % through 1 mm, Table I of the same review), which no
+// extrapolated edge may pass. Red edges measured at 2 µm and above are
+// detection limits, so they understate the spectrum there.
+export const SC_MEDIA = {
+  yag: {
+    label: 'YAG', transparentFromNm: 210,
+    blue: [[515, 390], [800, 420], [1300, 530], [2000, 510], [2150, 450]],
+    red: [[515, 625], [800, 1600], [2000, 2500]],
+  },
+  sapphire: {
+    label: 'Sapphire', transparentFromNm: 190,
+    blue: [[400, 350], [515, 340], [800, 410], [2000, 470]],
+    red: [[400, 700], [515, 650], [800, 1100], [2000, 2500]],
+  },
+  fusedsilica: {
+    label: 'Fused silica', transparentFromNm: 180,
+    blue: [[594, 415], [800, 390]],
+    red: [[594, 720], [800, 1000]],
+  },
+  caf2: {
+    label: 'CaF₂', transparentFromNm: 120,
+    blue: [[800, 300], [2000, 340]],
+    red: [[800, 2000], [2000, 3300]],
+  },
+};
+
+// Linear interpolation over a sorted [x, y] table, held flat past either end.
+function interpolate(table, x) {
+  if (x <= table[0][0]) return table[0][1];
+  const last = table[table.length - 1];
+  if (x >= last[0]) return last[1];
+  for (let i = 1; i < table.length; i++) {
+    const [x1, y1] = table[i];
+    if (x <= x1) {
+      const [x0, y0] = table[i - 1];
+      return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+    }
+  }
+  return last[1];
+}
+
+// The estimated band for a pump at `pumpNm` in `medium`, or null for a pump
+// the estimate cannot place. `extrapolated` is set when the pump lies outside
+// the wavelengths the medium was measured at.
+export function supercontinuumRange(pumpNm, medium) {
+  const data = SC_MEDIA[medium] || SC_MEDIA.yag;
+  if (!(Number.isFinite(pumpNm) && pumpNm > 0)) return null;
+  // Outside the measured pumps the blue edge keeps its nearest ratio to the
+  // pump, so a pump far into the blue cannot produce an edge above itself.
+  const [firstPump, firstBlue] = data.blue[0];
+  const blue = pumpNm < firstPump ? pumpNm * firstBlue / firstPump : interpolate(data.blue, pumpNm);
+  const ratio = interpolate(data.red.map(([pump, red]) => [pump, red / pump]), pumpNm);
+  const pumps = [...data.blue, ...data.red].map(([pump]) => pump);
+  const minNm = Math.min(Math.max(blue, data.transparentFromNm), pumpNm * 0.98);
+  const maxNm = Math.max(pumpNm * ratio, pumpNm * 1.02);
+  return {
+    minNm, maxNm, medium: data === SC_MEDIA[medium] ? medium : 'yag',
+    extrapolated: pumpNm < Math.min(...pumps) || pumpNm > Math.max(...pumps),
+  };
+}
 
 // Optical parametric oscillation for the crystal's `convert: 'opo'` mode: a
 // phenomenological singly resonant oscillator, not a cavity simulation.

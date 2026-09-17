@@ -38,7 +38,7 @@ import {
   applyTransmission, fringeVisibility, resolveSourceSpectrum,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
-import { MAX_CONVERSION, opoPulse, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
+import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
 import { asphereSag, asphereSlope } from './asphere.js';
 
 // polylines from the most recent traceAll, kept for beam probes
@@ -152,6 +152,13 @@ function recordOpo(elementId, state) {
 
 export function opoReading(elementId) {
   return opoStates.get(elementId) || null;
+}
+
+// crystal element id -> the band its last pump ray drew as a supercontinuum.
+let supercontinuumStates = new Map();
+
+export function supercontinuumReading(elementId) {
+  return supercontinuumStates.get(elementId) || null;
 }
 
 // The crystal conversion modes that mix two beams rather than acting on one.
@@ -3723,7 +3730,9 @@ function interact(ray, hit) {
       return out;
     }
     case 'transmit': {
-      const efficiency = data.convert && data.convert !== 'none'
+      const efficiency = data.convert === 'opo'
+        ? Math.min(MAX_OPO_DEPLETION, Math.max(0, Number(data.opoDepletion ?? data.efficiency) || 0))
+        : data.convert && data.convert !== 'none'
         ? clampConversion(data.efficiency ?? 1)
         : Math.min(1, Math.max(0, data.efficiency ?? 1));
       // The probe pass records which colours reach a mixing crystal, so the
@@ -3817,7 +3826,23 @@ function interact(ray, hit) {
         spec = scaleSpectrum(ray.spec, 1 / order);
       } else if (data.convert === 'custom' || data.convert === 'cars') {
         wl = data.outWl; bw = 0; spec = null; // one fixed output line, whatever the pump's width
-      } else if (data.convert === 'sc') { wl = 650; bw = 440; spec = flatSpectrum(wl - bw / 2, wl + bw / 2); } // supercontinuum
+      } else if (data.convert === 'sc') {
+        // A bulk continuum: estimated from the pump and the medium, or an
+        // authored band. Without pulses there is no peak power to start it.
+        const crystalId = s.el?.id || null;
+        let band;
+        if (data.scRange === 'manual') {
+          const lo = Number(data.scMinNm ?? 430), hi = Number(data.scMaxNm ?? 870);
+          band = { state: 'manual', minNm: Math.min(lo, hi), maxNm: Math.max(lo, hi) };
+        } else if (!ray.pulse) {
+          if (crystalId && !supercontinuumStates.has(crystalId)) supercontinuumStates.set(crystalId, { state: 'cw' });
+          return data.transmitPump ? [{ d }] : [];
+        } else {
+          band = { state: 'estimate', pumpNm: ray.wl, ...supercontinuumRange(ray.wl, data.scMedium) };
+        }
+        if (crystalId) supercontinuumStates.set(crystalId, band);
+        wl = (band.minNm + band.maxNm) / 2; bw = band.maxNm - band.minNm; spec = flatSpectrum(band.minNm, band.maxNm);
+      }
       // A crystal with a non-zero chi(2) does not choose between doubling and
       // mixing: it does both. Each beam's second harmonic is drawn whatever
       // else is present, and any second colour at the crystal is mixed with it
@@ -4561,6 +4586,7 @@ export function traceScene(elements, beams = []) {
   cellSpectrumCache = new Map();
   specimenIncident = new Map();
   opoStates = new Map();
+  supercontinuumStates = new Map();
   mixStates = new Map();
   specimenTimingStates = new Map();
   specimenSrsNotes = new Map();

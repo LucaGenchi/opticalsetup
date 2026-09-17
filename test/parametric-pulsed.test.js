@@ -30,7 +30,7 @@ function opoScene({ source = 'pulsedlaser', laser = {}, crystal = {}, cutoff, ex
   const pump = createElement(source, 60, 160);
   Object.assign(pump.params, laser);
   const xtal = createElement('crystal', 220, 160);
-  Object.assign(xtal.params, { convert: 'opo', efficiency: 0.6, transmitPump: true, ...crystal });
+  Object.assign(xtal.params, { convert: 'opo', opoDepletion: 0.6, transmitPump: true, ...crystal });
   const split = createElement('dichroic', 350, 160);
   split.rot = 135;
   split.params.cutoff = cutoff;
@@ -98,7 +98,7 @@ test('pump, signal and idler recombined on one detector are three synchronised t
   const pump = createElement('pulsedlaser', 60, 160);
   Object.assign(pump.params, TISA);
   const xtal = createElement('crystal', 220, 160);
-  Object.assign(xtal.params, { convert: 'opo', pumpWl: 800, signalWl: 1200, efficiency: 0.6 });
+  Object.assign(xtal.params, { convert: 'opo', pumpWl: 800, signalWl: 1200, opoDepletion: 0.6 });
   const det = createElement('detector', 400, 160);
   traceScene([pump, xtal, det]);
   const reading = detectorReading(det.id);
@@ -157,7 +157,7 @@ test('a single-frequency CW pump with a single-frequency cavity stays exact', ()
   const { long, short, state } = opoScene({
     source: 'cwlaser', laser: { wavelength: 1064, avgPowerW: 15 },
     // 0.6 is the ceiling the crystal allows: no single pass converts everything.
-    crystal: { pumpWl: 1064, signalWl: 1550, linewidthMode: 'signal', signalLinewidthCm: 0, efficiency: 0.6 },
+    crystal: { pumpWl: 1064, signalWl: 1550, linewidthMode: 'signal', signalLinewidthCm: 0, opoDepletion: 0.6 },
     cutoff: 2500,
   });
   const idler = idlerWavelength(1064, 1550);
@@ -178,7 +178,7 @@ test('degeneracy with equal widths is one beam; with different widths, two coinc
   assert.ok(unequal.degenerate && !unequal.merged, 'pump-wide signal and quadrature idler differ in width');
   near(unequal.idler.wl, 1600, 1e-9, 'coincident idler');
 
-  const { long, short } = opoScene({ laser: TISA, crystal: { pumpWl: 800, signalWl: 1600, efficiency: 0.4 }, cutoff: 1200 });
+  const { long, short } = opoScene({ laser: TISA, crystal: { pumpWl: 800, signalWl: 1600, opoDepletion: 0.4 }, cutoff: 1200 });
   near(long.signal, 0.4, PULSED, 'degenerate power');
   near(short.signal, 0.6, PULSED, 'residual pump');
   assert.equal(long.pulse.trains.length, 2, 'signal and idler trains');
@@ -193,7 +193,7 @@ test('a line signal and a band idler at degeneracy keep their own spectra throug
     Object.assign(pump.params, TISA);
     const xtal = createElement('crystal', 220, 160);
     Object.assign(xtal.params, {
-      convert: 'opo', pumpWl: 800, signalWl, efficiency: 0.6, transmitPump: false,
+      convert: 'opo', pumpWl: 800, signalWl, opoDepletion: 0.6, transmitPump: false,
       linewidthMode: 'both', signalLinewidthCm: 0, idlerLinewidthCm: 100,
     });
     const band = createElement('filter', 320, 160);
@@ -248,9 +248,9 @@ test('light is never converted twice by the same crystal, even after another cry
   const input = createElement('dichroic', 120, 160);
   Object.assign(input.params, { dtype: 'shortpass', cutoff: 850 });
   const a = createElement('crystal', 200, 160);
-  Object.assign(a.params, { convert: 'opo', pumpWl: 800, signalWl: 5000, efficiency: 0.5, pumpAcceptanceNm: 2000 });
+  Object.assign(a.params, { convert: 'opo', pumpWl: 800, signalWl: 5000, opoDepletion: 0.5, pumpAcceptanceNm: 2000 });
   const b = createElement('crystal', 300, 160);
-  Object.assign(b.params, { convert: 'opo', pumpWl: 952, signalWl: 1500, efficiency: 0.5 });
+  Object.assign(b.params, { convert: 'opo', pumpWl: 952, signalWl: 1500, opoDepletion: 0.5 });
   const output = createElement('mirror', 400, 160);
   Object.assign(output.params, { refl: 50, showTransmitted: true });
   const det = createElement('detector', 500, 160);
