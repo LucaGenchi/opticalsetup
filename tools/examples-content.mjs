@@ -1107,7 +1107,7 @@ export const exampleEntries = [
       Raman resonances, so it cannot produce a multiplex CARS spectrum.</p>`,
     citations: [
       { label: 'A. Dubietis, G. Tamošauskas, R. Šuminas, V. Jukna, A. Couairon, “Ultrafast supercontinuum generation in bulk condensed media,” Lithuanian Journal of Physics 57, 113–157 (2017)', url: 'https://www.lmaleidykla.lt/ojs/index.php/physics/article/view/3541' },
-      { label: 'F. Vernuccio et al., “Fingerprint multiplex CARS at high speed based on supercontinuum generation in bulk media and deep learning spectral denoising,” Optics Express 30, 30135 (2022)', url: 'https://opg.optica.org/oe/fulltext.cfm?uri=oe-30-17-30135' },
+      { label: 'F. Vernuccio, A. Bresci, B. Talone, A. de la Cadena, C. Ceconello, S. Mantero, C. Sobacchi, R. Vanna, G. Cerullo, D. Polli, “Fingerprint multiplex CARS at high speed based on supercontinuum generation in bulk media and deep learning spectral denoising,” Optics Express 30, 30135–30148 (2022)', url: 'https://doi.org/10.1364/OE.463032' },
     ],
     resources: [],
     related: ['crystal', 'pulsedlaser', 'lens', 'dichroic', 'filter', 'spectrometer'],
