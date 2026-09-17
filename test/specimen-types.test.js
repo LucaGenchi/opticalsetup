@@ -1324,3 +1324,42 @@ test('a scene carrying both second harmonic and sum frequency keeps the harmonic
     assert.equal(only.requireOverlap, true);
   }
 });
+
+test('with the overlap requirement off, the readout says timing is not checked', () => {
+  // An unchecked channel still draws its schematic signal, so the readout must
+  // not suggest there is no two-beam signal at all.
+  const bench = requireOverlap => {
+    const laser = (wl, y) => {
+      const source = createElement('pulsedlaser', 0, y);
+      Object.assign(source.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+      });
+      return source;
+    };
+    const delay = createElement('delayline', 120, 6);
+    Object.assign(delay.params, { delayMm: 30, aperture: 10 });
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear', channels: [ch('cars', { eff: 0.5, requireOverlap })],
+    });
+    const detector = createElement('detector', 400, 0);
+    detector.params.aperture = 60;
+    traceAll([laser(800, -6), laser(1040, 6), delay, sample, detector]);
+    return {
+      text: specimenTimingReadout(specimenTimingReading(sample.id)),
+      hasSignal: (detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650) < 2),
+    };
+  };
+
+  const unchecked = bench(false);
+  assert.ok(unchecked.hasSignal, 'with the requirement off the schematic signal is drawn');
+  assert.match(unchecked.text, /800 \+ 1040 nm: pulse-overlap requirement off, so arrival timing is not checked/);
+
+  // With it on, the same 30 mm mismatch is timed and reported.
+  const checked = bench(true);
+  assert.ok(!checked.hasSignal);
+  assert.match(checked.text, /100 ps apart/);
+
+  assert.equal(specimenTimingReadout(null), 'No two-beam timing measured yet');
+});

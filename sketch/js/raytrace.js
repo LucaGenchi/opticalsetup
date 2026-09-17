@@ -186,8 +186,10 @@ let specimenTimingStates = new Map();
 function recordSpecimenTiming(elementId, reading) {
   if (!elementId) return;
   const held = specimenTimingStates.get(elementId);
-  // A channel that is mixing has more to say than one that cannot.
+  // A channel that is mixing has more to say than one that cannot, and one that
+  // was actually timed has more to say than one whose check is switched off.
   if (held && held.state === 'mixing' && reading.state !== 'mixing') return;
+  if (held && held.state !== 'ignored' && reading.state === 'ignored') return;
   specimenTimingStates.set(elementId, reading);
 }
 
@@ -1480,7 +1482,12 @@ function srsTransferGate(channel, ray, incidentBeams, elementId) {
 // not modelled rather than waved through at full strength.
 function channelOverlap(channel, ray, partner, beams, elementId) {
   if (!partner) return { factor: 1, state: 'oneBeam' };
-  if (channel.requireOverlap === false) return { factor: 1, state: 'ignored' };
+  if (channel.requireOverlap === false) {
+    // Say that timing was deliberately not checked, rather than leaving the
+    // readout to look as if no two-beam signal were there at all.
+    recordSpecimenTiming(elementId, { kind: channel.kind, driverWl: ray.wl, partnerWl: partner.wl, state: 'ignored' });
+    return { factor: 1, state: 'ignored' };
+  }
   const overlap = mixOverlap(rayAsBeam(ray, beams), partner);
   const reading = {
     kind: channel.kind, driverWl: ray.wl, partnerWl: partner.wl,
