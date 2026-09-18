@@ -2,6 +2,8 @@
 // two-photon lithography lab. The query contract is deliberately small and
 // versioned so the destination can validate every value independently.
 
+import { authoredPulseTiming } from './glass.js';
+
 export const TWO_PHOTON_LAB_URL = 'https://twophotonlithography.com/lab';
 
 const finite = value => typeof value === 'number' && Number.isFinite(value);
@@ -12,7 +14,8 @@ function formatQueryNumber(value) {
 
 export function buildTwoPhotonHandoffUrl(laser, baseUrl = TWO_PHOTON_LAB_URL, options = {}) {
   if (laser?.type !== 'pulsedlaser') return null;
-  const p = laser.params;
+  // The duration handed over is the one the laser emits, chirp included.
+  const p = { ...laser.params, pulseWidthFs: authoredPulseTiming(laser.params).durationFs };
   if (![p.wavelength, p.avgPowerW, p.repRateMHz, p.pulseWidthFs].every(finite)) return null;
   if (p.wavelength <= 0 || p.avgPowerW < 0 || p.repRateMHz <= 0 || p.pulseWidthFs <= 0) return null;
   if (p.wavelength < 500 || p.wavelength > 1064

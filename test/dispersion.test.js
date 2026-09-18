@@ -353,8 +353,21 @@ test('an autocorrelation too wide for the window says so instead of clipping', (
   // wider than a ±0.5 ps window, so drawing it would be a lie
   const svg = reg.display.svg(screen, scene);
   assert.doesNotMatch(svg, /data-autocorrelation=/);
-  assert.match(svg, /WIDER THAN SPAN/);
-  assert.match(svg, /WIDEN THE TIME SPAN/);
+  assert.match(svg, /WIDER THAN ±0\.5 PS/);
+  assert.match(svg, /WIDEN THE TIME SPAN OR USE AUTO/);
+  // The note sits on its own rows: the state and the advice must not share
+  // a line, where they overprinted.
+  const rows = [...svg.matchAll(/<text x="(-?[\d.]+)" y="(-?[\d.]+)"[^>]*>(AUTOCORRELATION [^<]*|WIDEN[^<]*)<\/text>/g)]
+    .map(m => m[2]);
+  assert.equal(new Set(rows).size, rows.length, 'state and advice on separate rows');
+
+  // Auto picks a span that holds the trace and its wings, and labels it.
+  meter.params.timeSpanPs = 'auto';
+  traceAll(scene, []);
+  const auto = reg.display.svg(screen, scene);
+  assert.match(auto, /data-autocorrelation=/, 'drawn under Auto');
+  assert.match(auto, /AUTO −5 ps/, 'a 2.83 ps trace takes the ±5 ps span');
+  assert.equal(createElement('autocorrelator', 0, 0).params.timeSpanPs, 'auto', 'Auto is the default for a new instrument');
 
   // and at a window that holds it, the trace comes back
   meter.params.timeSpanPs = 5;

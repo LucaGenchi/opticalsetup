@@ -7,8 +7,10 @@ import {
   idlerWavelength, nmToWavenumberWidth, opoPulse, opoWaves, transformLimitFs,
   waveSpectrum, wavenumberToNmWidth,
 } from '../sketch/js/parametric.js';
-import { spectrumStats, transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
-import { DISPERSION_UNAVAILABLE, gaussianPulseDurationAfterGDD } from '../sketch/js/glass.js';
+import { spectrumStats, transformLimitedBandwidthNm, transformLimitedDurationFs } from '../sketch/js/spectrum.js';
+import {
+  DISPERSION_UNAVAILABLE, authoredPulseTiming, chirpGddForDuration, gaussianPulseDurationAfterGDD,
+} from '../sketch/js/glass.js';
 import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
 
 const close = (actual, expected, tolerance, label = '') =>
@@ -136,26 +138,36 @@ test('output durations follow the authored factor, never beat the transform limi
 // Picosecond OPOs for coherent Raman imaging run near 2 ps and 10 cm⁻¹; the
 // two 10 cm⁻¹ outputs here are illustrative.
 test('a green-pumped ps OPO with authored 10 cm⁻¹ outputs', () => {
+  // A chirped laser is authored as bandwidth + GDD: this is the GDD that
+  // emits 2 ps from a 10 cm⁻¹ spectrum.
+  const pumpBandwidth = wavenumberToNmWidth(516, 10);
+  const pumpGdd = chirpGddForDuration(transformLimitedDurationFs(pumpBandwidth, 516, 'gauss'), 2000, 'gauss');
   const { long, short, state } = opoScene({
-    laser: { wavelength: 516, pulseWidthFs: 2000, transformLimited: false, bandwidth: wavenumberToNmWidth(516, 10), avgPowerW: 3 },
+    laser: { wavelength: 516, transformLimited: false, bandwidth: pumpBandwidth, chirpGddFs2: pumpGdd, avgPowerW: 3 },
     crystal: { pumpWl: 516, signalWl: 800, linewidthMode: 'both', signalLinewidthCm: 10, idlerLinewidthCm: 10, outputPhase: 'unknown' }, cutoff: 1000,
   });
   near(state.waves.signal.widthCm, 10, 1e-9, 'signal width');
   near(nmToWavenumberWidth(long.wavelength, fwhm(long)), 10, WIDTH * 10, 'idler width');
   near(long.wavelength, idlerWavelength(516, 800), 1e-3, 'idler centre');
   near(long.signal + short.signal, 1, 2 * PULSED, 'energy');
-  assert.equal(long.pulse.pulseWidthFs, 2000);
+  near(long.pulse.pulseWidthFs, 2000, 1e-6, 'the pump duration carried to the idler');
 });
 
 test('a ns OPO takes its signal width from the cavity, and the idler adds the pump width', () => {
   // A few cm⁻¹ is typical of a free-running nanosecond OPO.
+  // A 5 ns, 1 cm⁻¹ multi-longitudinal-mode pump is far longer than its
+  // bandwidth's ~15 ps transform limit, and no quadratic chirp explains that:
+  // the laser's controls (transform-limited, or bandwidth + GDD) cannot author
+  // it. The spectrum is what this test is about, so the pump keeps its 1 cm⁻¹
+  // and emits at its transform limit; the idler carries whatever it emits.
+  const pumpParams = { wavelength: 355, transformLimited: false, bandwidth: wavenumberToNmWidth(355, 1), avgPowerW: 2, repRateMHz: 0.01 };
   const { long, state } = opoScene({
-    laser: { wavelength: 355, pulseWidthFs: 5e6, transformLimited: false, bandwidth: wavenumberToNmWidth(355, 1), avgPowerW: 2, repRateMHz: 0.01 },
+    laser: pumpParams,
     crystal: { pumpWl: 355, signalWl: 500, linewidthMode: 'signal', signalLinewidthCm: 5, outputPhase: 'unknown' }, cutoff: 800,
   });
   near(state.waves.signal.widthCm, 5, 1e-9, 'signal width');
   near(nmToWavenumberWidth(long.wavelength, fwhm(long)), Math.hypot(1, 5), WIDTH * 5, 'idler width');
-  assert.equal(long.pulse.pulseWidthFs, 5e6);
+  near(long.pulse.pulseWidthFs, authoredPulseTiming({ ...pumpParams, pulseShape: 'gauss' }).durationFs, 1e-6, 'the pump duration carried to the idler');
 });
 
 test('a single-frequency CW pump with a single-frequency cavity stays exact', () => {

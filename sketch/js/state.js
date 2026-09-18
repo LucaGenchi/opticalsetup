@@ -3,7 +3,8 @@
 import { distinctPoints, rotPt } from './util.js';
 import { boundaryBounds, normalizeBoundaryPoints, normalizePolygonPoints } from './polygon.js';
 import { migrateLegacyObjectiveParams, normalizeObjectiveParams } from './objective.js';
-import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT } from './glass.js';
+import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT, chirpGddForDuration } from './glass.js';
+import { transformLimitedDurationFs } from './spectrum.js';
 import { normalizeSurfaceTable } from './lensgroup.js';
 import { normalizeAotfChannels } from './aotf.js';
 import { normalizeFiberDispersion, normalizeHollowCore } from './fiber.js';
@@ -191,6 +192,29 @@ function migrateLegacyLaserParams(rawParams, migratedType) {
   return p;
 }
 
+// A pulsed laser saved before chirp was authored as a GDD stored a duration
+// and a bandwidth instead. It opens with the same bandwidth and a GDD chosen
+// to reproduce that duration, so its emitted pulse is unchanged. The sign is
+// the one it was saved with, or positive when it had none -- an assumption,
+// taken deliberately during the rollout rather than keeping a separate
+// "phase unspecified" state. A pair shorter than its transform limit had no
+// chirp to find, and opens at the limit. A 0 nm train cannot be chirped: it
+// opens transform-limited at the saved duration.
+function migrateChirpedLaserParams(rawParams, def) {
+  if (rawParams.transformLimited !== false || rawParams.chirpGddFs2 !== undefined) return rawParams;
+  const defaultOf = key => def?.params?.find(spec => spec.key === key)?.def;
+  const p = { ...rawParams };
+  const bandwidth = Number(p.bandwidth);
+  if (!(bandwidth > 0)) return { ...p, transformLimited: true };
+  const shape = p.pulseShape === 'sech2' ? 'sech2' : 'gauss';
+  const wavelength = finite(Number(p.wavelength)) ? Number(p.wavelength) : Number(defaultOf('wavelength'));
+  const duration = finite(Number(p.pulseWidthFs)) ? Number(p.pulseWidthFs) : Number(defaultOf('pulseWidthFs'));
+  const tau0 = transformLimitedDurationFs(bandwidth, wavelength, shape);
+  p.chirpGddFs2 = chirpGddForDuration(tau0, duration, shape);
+  p.inputChirp = p.inputChirp === 'negative' ? 'negative' : 'positive';
+  return p;
+}
+
 function normalizeElement(raw, definitions, used) {
   if (!record(raw) || typeof raw.type !== 'string') throw new Error('Sketch contains an invalid element');
   const wasLegacyLaser = raw.type === 'laser';
@@ -224,6 +248,7 @@ function normalizeElement(raw, definitions, used) {
   if (wasLegacyLaser) {
     rawParams = migrateLegacyLaserParams(rawParams, raw.type);
   }
+  if (raw.type === 'pulsedlaser') rawParams = migrateChirpedLaserParams(rawParams, def);
   // Older continuum sketches could store reversed endpoints while the tracer
   // sorted them. Preserve that emitted band before applying dependent bounds.
   if (raw.type === 'sclaser' && finite(rawParams.scMin) && finite(rawParams.scMax)

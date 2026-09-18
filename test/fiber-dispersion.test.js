@@ -5,7 +5,8 @@ import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
 import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { fiberPropagation, normalizeFiberDispersion } from '../sketch/js/fiber.js';
-import { DISPERSION_UNAVAILABLE, gddGroupDelayDifferenceFs, sech2PulseDurationAfterGDD } from '../sketch/js/glass.js';
+import { gaussianPulseDurationAfterGDD, gddGroupDelayDifferenceFs, sech2PulseDurationAfterGDD } from '../sketch/js/glass.js';
+import { transformLimitedDurationFs } from '../sketch/js/spectrum.js';
 
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-7, `${actual} ≠ ${expected}`);
 const fiber = (overrides = {}) => ({
@@ -65,15 +66,16 @@ test('zero and missing settings preserve legacy fiber behavior; the duration fol
   close(run(legacy).reading.pulse.stretchedPulseWidthFs, 100);
   close(run(fiber({ beta2Ps2PerKm: 0 })).reading.pulse.stretchedPulseWidthFs, 100);
   close(run(fiber({ lengthM: 0 })).reading.pulse.gddFs2, 3600);
-  // Explicit phase knowledge decides, not the pulse shape: an unknown phase
-  // is unavailable after the fiber's GDD, a named sign or a transform-limited
-  // sech² pulse is derived.
-  const unknown = run(fiber(), [], false, { transformLimited: false, bandwidth: 10, inputChirp: 'unknown' }).reading.pulse;
-  assert.equal(unknown.stretchedPulseWidthFs, null);
-  assert.equal(unknown.dispersionModel, DISPERSION_UNAVAILABLE.unknownPhase);
-  const signed = run(fiber(), [], false, { transformLimited: false, bandwidth: 10, inputChirp: 'positive' }).reading.pulse;
-  assert.ok(signed.stretchedPulseWidthFs > 100);
-  assert.match(signed.dispersionModel, /positive input chirp/);
+  // The laser's authored chirp and the fiber's GDD add: 36 000 fs² stretches
+  // a positively chirped pulse further and first compresses a negatively
+  // chirped one. (Unknown phase comes only from bench-generated light now,
+  // and is covered with the duration model.)
+  const chirped = sign => run(fiber(), [], false,
+    { transformLimited: false, bandwidth: 10, inputChirp: sign, chirpGddFs2: 30000 }).reading.pulse;
+  const tau0 = transformLimitedDurationFs(10, 800, 'gauss');
+  close(chirped('positive').stretchedPulseWidthFs, gaussianPulseDurationAfterGDD(tau0, 66000));
+  close(chirped('negative').stretchedPulseWidthFs, gaussianPulseDurationAfterGDD(tau0, 6000));
+  assert.match(chirped('negative').dispersionModel, /negative chirp 30,000 fs²/);
   close(run(fiber(), [], false, { pulseShape: 'sech2' }).reading.pulse.stretchedPulseWidthFs,
     sech2PulseDurationAfterGDD(100, 36000));
   assert.equal(run(fiber(), [], false, { temporalMode: 'cw' }).reading.pulse, null);

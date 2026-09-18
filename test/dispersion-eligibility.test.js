@@ -103,14 +103,28 @@ function read(elements) {
   return detectorReading(det.id)?.pulse;
 }
 
-test('an Unknown input chirp is unavailable after glass, and its sign choices still disperse', () => {
-  const unknown = read([laser({ pulseWidthFs: 200, transformLimited: false, bandwidth: 10, inputChirp: 'unknown' }), rod(300)]);
+// Light whose phase nobody authored: an OPO signal declared "spectral phase
+// unknown". The laser itself no longer offers Unknown.
+function unknownPhaseSource(x = 200) {
+  const pump = laser({ wavelength: 516, pulseWidthFs: 2000, transformLimited: true });
+  const crystal = createElement('crystal', x, 0);
+  Object.assign(crystal.params, { convert: 'opo', pumpWl: 516, signalWl: 800, outputPhase: 'unknown', transmitPump: false });
+  return [pump, crystal];
+}
+const signalTrain = pulse => pulse.trains.find(t => Math.abs(t.centerWavelengthNm - 800) < 5);
+
+test('unknown phase is unavailable after glass; a signed laser GDD disperses either way', () => {
+  const unknown = signalTrain(read([...unknownPhaseSource(), rod(350)]));
   assert.equal(unknown.stretchedPulseWidthFs, null);
   assert.equal(unknown.dispersionModel, DISPERSION_UNAVAILABLE.unknownPhase);
-  const positive = read([laser({ pulseWidthFs: 200, transformLimited: false, bandwidth: 10, inputChirp: 'positive' }), rod(300)]);
-  const negative = read([laser({ pulseWidthFs: 200, transformLimited: false, bandwidth: 10, inputChirp: 'negative' }), rod(300)]);
+  // 200 fs / 10 nm at 800 nm is ±5991.7 fs² of chirp, now authored directly.
+  const chirped = sign => laser({ transformLimited: false, bandwidth: 10, inputChirp: sign, chirpGddFs2: 5991.7 });
+  const positive = read([chirped('positive'), rod(300)]);
+  const negative = read([chirped('negative'), rod(300)]);
+  close(positive.pulseWidthFs, 200, 0.01, 'emitted');
   close(positive.stretchedPulseWidthFs, 322.0, 0.5);
   close(negative.stretchedPulseWidthFs, 104.3, 0.5);
+  assert.match(negative.dispersionModel, /negative chirp 5,992 fs²/);
 });
 
 test('a continuum filtered before the glass is unavailable, not stretched as the full band', () => {
@@ -160,18 +174,22 @@ test('a detector screen says the duration is unavailable instead of drawing the 
   await import('../sketch/js/detector-instruments.js');
   const { registry } = await import('../sketch/js/elements.js');
   const { traceAll } = await import('../sketch/js/raytrace.js');
-  const source = laser({ pulseWidthFs: 200, transformLimited: false, bandwidth: 10, inputChirp: 'unknown' });
+  const [pump, crystal] = unknownPhaseSource(150);
   const meter = createElement('autocorrelator', 500, 0);
   meter.params.aperture = 34;
   const screen = createElement('display', 650, 0);
   Object.assign(screen.params, { sensorId: meter.id, screenOn: true });
-  const scene = [source, rod(300), meter, screen];
+  // A dichroic passes the 800 nm signal and turns the idler away, so the
+  // screen reads one unknown-phase train.
+  const splitter = createElement('dichroic', 400, 0);
+  Object.assign(splitter.params, { dtype: 'shortpass', cutoff: 1000 });
+  const scene = [pump, crystal, rod(300), splitter, meter, screen];
   traceAll(scene, []);
   const svg = registry.display.svg(screen, scene);
   assert.doesNotMatch(svg, /data-autocorrelation=/, 'no trace built on a width nobody predicted');
   assert.match(svg, /DURATION UNAVAILABLE/);
   assert.match(svg, /UNAVAILABLE/);
-  assert.doesNotMatch(svg, /200 fs/, 'the configured width is not presented as what arrives');
+  assert.doesNotMatch(svg, /2000 fs|2,000 fs/, 'the configured width is not presented as what arrives');
 });
 
 // --- Second review round ----------------------------------------------------
