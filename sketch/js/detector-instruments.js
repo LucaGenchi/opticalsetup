@@ -8,10 +8,12 @@ import { detectorReading } from './raytrace.js';
 import { enhancedReading, objectImageAtCamera, pmtVerdict } from './detector-measurements.js';
 import { fwhmToSigma } from './spectrum.js';
 import { scopeTrace } from './pulses.js';
+import { envelopeAutocorrelation } from './pulse-field.js';
 import { formatTimeAxisNs, probeTimeWindowNs, syncedTimeWindowNs, arrivalDelayNs } from './probe.js';
 import {
   autocorrelationReading, crossCorrelationReading, correlationShapeValue, crossCorrelationPair,
   crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN, autoScopeHalfSpanFs,
+  sampledAutocorrelationReading,
 } from './glass.js';
 import { esc, formatSignal, smoothPath, wavelengthToColor } from './util.js';
 
@@ -894,16 +896,31 @@ function autocorrelationPlot(sensor, reading) {
   if (!reading.pulse || reading.pulse.mixed) return null;
   const assumed = sensor.params?.assumedShape || 'gauss';
   const actual = reading.pulse.pulseShape || 'gauss';
+  // A computed envelope is autocorrelated numerically: the trace is its own,
+  // not a Gaussian or sech² curve, and the duration is still that trace's
+  // FWHM over the assumed shape's factor, as on a real instrument.
+  let ac, shapeAt, sampled = false;
   if (reading.pulse.pulseShape === 'sampled' && !reading.pulse.fieldIssue) {
-    return { note: 'SAMPLED ENVELOPE|AUTOCORRELATION NOT MODELED' };
+    const envelope = reading.pulse.envelope;
+    const trace = envelope ? envelopeAutocorrelation(envelope) : null;
+    ac = trace ? sampledAutocorrelationReading(trace, envelope.fwhmFs, assumed) : null;
+    if (!ac) return { note: 'SAMPLED ENVELOPE|AUTOCORRELATION UNAVAILABLE' };
+    sampled = true;
+    const step = trace.tauFs[1] - trace.tauFs[0], first = trace.tauFs[0];
+    shapeAt = tau => {
+      const x = (tau - first) / step, i = Math.floor(x);
+      if (i < 0 || i >= trace.trace.length - 1) return 0;
+      return trace.trace[i] + (trace.trace[i + 1] - trace.trace[i]) * (x - i);
+    };
+  } else {
+    if (!Number.isFinite(reading.pulse.stretchedPulseWidthFs) && reading.pulse.dispersionModel) {
+      return { note: 'DURATION UNAVAILABLE|' + String(reading.pulse.dispersionModel).split(' — ')[0].toUpperCase() };
+    }
+    const arriving = Number.isFinite(reading.pulse.stretchedPulseWidthFs)
+      ? reading.pulse.stretchedPulseWidthFs : reading.pulse.pulseWidthFs;
+    ac = autocorrelationReading(arriving, assumed, actual);
+    if (!ac) return null;
   }
-  if (!Number.isFinite(reading.pulse.stretchedPulseWidthFs) && reading.pulse.dispersionModel) {
-    return { note: 'DURATION UNAVAILABLE|' + String(reading.pulse.dispersionModel).split(' — ')[0].toUpperCase() };
-  }
-  const arriving = Number.isFinite(reading.pulse.stretchedPulseWidthFs)
-    ? reading.pulse.stretchedPulseWidthFs : reading.pulse.pulseWidthFs;
-  const ac = autocorrelationReading(arriving, assumed, actual);
-  if (!ac) return null;
   const fsLabel = v => (v < 1000 ? `${Math.round(v)} FS` : `${(v / 1000).toFixed(2)} PS`);
 
   const baseline = 8, height = 19;
@@ -926,7 +943,7 @@ function autocorrelationPlot(sensor, reading) {
   // curve and the half-maximum chord drawn across it cannot disagree -- they
   // did for sech² sources, where the argument was scaled twice over and the
   // curve fell to half maximum at a quarter of the trace width.
-  const shape = tau => correlationShapeValue(tau, ac.traceFwhmFs, actual);
+  const shape = sampled ? shapeAt : tau => correlationShapeValue(tau, ac.traceFwhmFs, actual);
 
   const steps = Math.max(96, Math.min(600, Math.ceil((2 * spanFs) / Math.max(1e-9, ac.traceFwhmFs / 10))));
   const points = [];
@@ -952,7 +969,8 @@ function autocorrelationPlot(sensor, reading) {
     // upper-left corner where the wings are flat, clear of the header line.
     `<text x="-35" y="-8.2" font-size="6.2" font-weight="780" fill="#ecf7fa">${esc(fs(ac.inferredPulseWidthFs))}</text>` +
     `<text x="-35" y="-3.4" font-size="3.2" fill="${ac.shapeMismatch ? '#fca5a5' : '#7892a1'}">` +
-    `${ac.shapeMismatch ? `ASSUMES ${assumed === 'sech2' ? 'SECH²' : 'GAUSS'}, SOURCE ${actual === 'sech2' ? 'SECH²' : 'GAUSS'}` : `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)}`}</text>`;
+    `${sampled ? `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)} · FIELD ${esc(fs(ac.truePulseWidthFs))}`
+      : ac.shapeMismatch ? `ASSUMES ${assumed === 'sech2' ? 'SECH²' : 'GAUSS'}, SOURCE ${actual === 'sech2' ? 'SECH²' : 'GAUSS'}` : `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)}`}</text>`;
 }
 
 function panel(sensor, reading, elements, view) {

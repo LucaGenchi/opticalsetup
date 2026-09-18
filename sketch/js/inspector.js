@@ -10,6 +10,7 @@ import {
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
 import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
+import { envelopeAutocorrelation } from './pulse-field.js';
 import { pulseTransmissionAt } from './pulses.js';
 import {
   FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion, HOLLOW_CORE_FIELDS, normalizeHollowCore,
@@ -17,7 +18,7 @@ import {
 } from './fiber.js';
 import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
-  bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN,
+  bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN, sampledAutocorrelationReading,
 } from './glass.js';
 import { pmtVerdict } from './detector-measurements.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
@@ -294,8 +295,23 @@ function autocorrelatorRows(rd, source) {
       <dt>Autocorrelation</dt><dd>Continuous wave — no pulse to measure</dd>`;
   if (rd.pulse.mixed) return `
       <dt>Autocorrelation</dt><dd>Mixed pulse trains — one trace cannot separate them</dd>`;
-  if (rd.pulse.pulseShape === 'sampled' && !rd.pulse.fieldIssue) return `
-      <dt>Autocorrelation</dt><dd>Sampled-envelope autocorrelation is not modeled; the computed pulse intensity is plotted below.</dd>`;
+  if (rd.pulse.pulseShape === 'sampled' && !rd.pulse.fieldIssue) {
+    // The computed envelope's own intensity autocorrelation, read the way the
+    // instrument reads any trace: FWHM over the assumed shape's factor. The
+    // envelope's true FWHM is known here, so the assumption's error is shown.
+    const envelope = rd.pulse.envelope;
+    const trace = envelope ? envelopeAutocorrelation(envelope) : null;
+    const assumedShape = source?.params?.assumedShape || 'gauss';
+    const sampled = trace ? sampledAutocorrelationReading(trace, envelope.fwhmFs, assumedShape) : null;
+    if (!sampled) return `
+      <dt>Autocorrelation</dt><dd>Unavailable for this computed envelope</dd>`;
+    const f = v => `${v < 100 ? v.toFixed(1) : Math.round(v).toLocaleString()} fs`;
+    const off = (sampled.errorRatio - 1) * 100;
+    return `
+      <dt>Autocorrelation FWHM</dt><dd>${f(sampled.traceFwhmFs)} (numerical, from the computed field)</dd>
+      <dt>Inferred duration</dt><dd>${f(sampled.inferredPulseWidthFs)} · assuming ${assumedShape === 'sech2' ? 'sech²' : 'Gaussian'} (÷${sampled.assumedFactor.toFixed(3)})</dd>
+      <dt>Field FWHM</dt><dd>${f(sampled.truePulseWidthFs)} — the assumption reads ${Math.abs(off).toFixed(0)}% ${off >= 0 ? 'long' : 'short'}; this pulse's own ratio is ${sampled.trueFactor.toFixed(3)}</dd>`;
+  }
   const assumed = source?.params?.assumedShape || 'gauss';
   const actual = rd.pulse.pulseShape || 'gauss';
   const derived = Number.isFinite(rd.pulse.stretchedPulseWidthFs)

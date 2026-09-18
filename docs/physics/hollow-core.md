@@ -3,7 +3,7 @@
 Open **Examples → Ultrashort Pulses → Hollow-core pulse compressor**.
 The native scene contains an enabled 800 nm Gaussian pulsed laser, an argon
 capillary (the ordinary fiber tool with its model set to Hollow core · argon),
-a 10% diagnostic tap, a signed-GDD compressor, two general detectors and their
+a 10% diagnostic tap, a signed-GDD compressor, two autocorrelators and their
 linked screens. The tap measures the fiber output before compensation; the
 other detector measures the compressed pulse. The layout is illustrative,
 not a reconstruction of a specific experiment.
@@ -45,9 +45,14 @@ phase, and therefore the example's broadening, directly.
 
 Select the cable to inspect captured energy, calculated β₂, accumulated
 nonlinear phase, spectrum RMS width and the output temporal intensity curve.
-Select either detector for its current temporal curve and computed intensity
-FWHM, including additional downstream GDD. The general-detector screens show
-the arriving duration; their Spectrum view shows the propagated spectrum.
+Select either autocorrelator for its computed intensity FWHM, including
+additional downstream GDD, and its autocorrelation. The screens draw the
+numerical intensity autocorrelation of the computed pulse and report the
+duration as an instrument does — the trace's FWHM over the assumed shape's
+factor — beside the field's true FWHM. Before compression the pulse is close
+to Gaussian (autocorrelation ratio 1.398; the Gaussian assumption reads 101 fs
+for 102 fs); after compression its self-phase-modulation wings raise the ratio
+to 1.644, and the Gaussian assumption reads 54 fs for a 46.8 fs pulse.
 FWHM spans the outermost half-maximum crossings if the pulse has several peaks;
 it should not be interpreted as the duration of one clean isolated pulse.
 
@@ -126,9 +131,12 @@ The model excludes higher-order dispersion, wall resonances, multiple spatial
 modes, self-steepening, ionization/plasma, Raman response, nonlinear coupling
 between sources, coupling optics outside the capillary and pressure gradients.
 It is not an anti-resonant-fiber design solver, supercontinuum/UV source model,
-or a calibrated compressor prescription. Gaussian autocorrelation
-approximations and generic beam-probe durations are suppressed for sampled
-fields rather than reporting an invented Gaussian pulse.
+or a calibrated compressor prescription. Autocorrelators compute the intensity
+autocorrelation of the sampled envelope numerically, A(τ) = ∫ I(t) I(t+τ) dt,
+by FFT on a zero-padded grid (checked: a Gaussian gives √2 and a sech² 1.543 to
+four digits); they do not model the doubling crystal or the detector.
+Cross-correlation of two sampled envelopes and generic beam-probe durations
+remain unavailable rather than reporting an invented Gaussian pulse.
 
 ## Numerical limits and validation
 
