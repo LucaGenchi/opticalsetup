@@ -1495,7 +1495,7 @@ export const wikiEntries = [
         and a bounded split-step calculation adds Kerr self-phase modulation for one intact,
         transform-limited Gaussian pulse train, so the spectrum broadens and a compressor
         downstream can shorten the pulse. The cable's panel says which of four states it is
-        in: a computed envelope; Kerr off, which is exact linear propagation; a linear-only
+        in: a computed envelope; Kerr off, which is linear propagation within the β₂ model; a linear-only
         approximation, when the pulse is outside the solver's bounds or not one it can take —
         the light then continues with argon's linear dispersion and every readout downstream,
         spectrum and power included, is labelled as such; or no argon data, outside
@@ -1646,7 +1646,7 @@ export const wikiEntries = [
         and a bounded split-step calculation adds Kerr self-phase modulation for one intact,
         transform-limited Gaussian pulse train, so the spectrum broadens and a compressor
         downstream can shorten the pulse. The cable's panel says which of four states it is
-        in: a computed envelope; Kerr off, which is exact linear propagation; a linear-only
+        in: a computed envelope; Kerr off, which is linear propagation within the β₂ model; a linear-only
         approximation, when the pulse is outside the solver's bounds or not one it can take —
         the light then continues with argon's linear dispersion and every readout downstream,
         spectrum and power included, is labelled as such; or no argon data, outside

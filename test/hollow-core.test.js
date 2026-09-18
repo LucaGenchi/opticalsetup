@@ -280,3 +280,35 @@ test('an ordinary fiber neither carries nor saves capillary settings', () => {
   for (const key of ['fiberModel', 'kerrEnabled', 'coreDiameterUm', 'gasPressureBar']) assert.equal(key in parsed, false, key);
   assert.equal(example().beams[0].gasPressureBar, 2);
 });
+
+test('a second capillary does not rebuild a field from light already unavailable upstream', () => {
+  // The reviewer's reproduction: a refused capillary feeding a Kerr-off one
+  // through closely spaced connectors.
+  const out = { mode: 'diverge', na: 0.01, focal: 20, dia: 4 };
+  const capillary = (id, x0, x1, core, kerr) => ({ id, kind: 'fiber', bare: true,
+    pts: [{ x: x0, y: 0 }, { x: x1, y: 0 }], propagate: true, inputNA: 0.22, width: 4, fiberModel: 'argon',
+    lengthM: 1, coreDiameterUm: core, gasPressureBar: 2, kerrEnabled: kerr, lossDbPerM: 0.1, out0: out, out1: out });
+  const run = beams => {
+    const source = createElement('pulsedlaser', 0, 0);
+    source.id = 'chain-laser';
+    Object.assign(source.params, { wavelength: 800, pulseWidthFs: 100, transformLimited: true, beamMode: 'line', avgPowerW: 1, repRateMHz: 0.001 });
+    const det = createElement('detector', 300, 0);
+    det.id = 'chain-det';
+    det.params.aperture = 40;
+    const scene = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [source, det], beams }), registry);
+    traceScene(scene.elements, scene.beams);
+    return { states: beams.map(b => fiberReading(b.id)?.state), reading: detectorReading('chain-det') };
+  };
+  for (const kerr of [false, true]) {
+    const chained = run([capillary('c1', 100, 150, 250, true), capillary('c2', 150.3, 200.3, 1000, kerr)]);
+    assert.deepEqual(chained.states, ['linearOnly', 'linearOnly'], `second capillary Kerr ${kerr ? 'on' : 'off'}`);
+    assert.equal(chained.reading.pulse.stretchedPulseWidthFs, null);
+    assert.equal(chained.reading.pulse.envelope, null);
+    assert.deepEqual(chained.reading.approximations, [LINEAR_ONLY]);
+  }
+  // Control: the same Kerr-off capillary fed directly computes its field.
+  const direct = run([capillary('c2', 100, 150, 1000, false)]);
+  assert.deepEqual(direct.states, ['kerrOff']);
+  close(direct.reading.pulse.stretchedPulseWidthFs, 100.01481656697831, 1e-9);
+  assert.deepEqual(direct.reading.approximations, []);
+});

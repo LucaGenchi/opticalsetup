@@ -330,7 +330,7 @@ export function pulseEnvelopeHTML(envelope) {
 }
 
 // What the capillary did on the last trace. Each state is named so a user can
-// tell a computed field from exact linear propagation (Kerr off), from a
+// tell a computed field from linear propagation within the β₂ model (Kerr off), from a
 // labelled linear-only continuation (the solver refused), from no argon data
 // at this wavelength at all.
 export function fiberMeasurementHTML(beam) {
@@ -342,7 +342,7 @@ export function fiberMeasurementHTML(beam) {
   switch (rd.state) {
     case 'field':
     case 'kerrOff':
-      return card(rd.state === 'kerrOff' ? 'Argon capillary · Kerr off: exact linear propagation' : 'Argon capillary · computed envelope',
+      return card(rd.state === 'kerrOff' ? 'Argon capillary · Kerr off: linear propagation within the β₂ model' : 'Argon capillary · computed envelope',
         `<dl class="measurement-grid">${energy}${beta}
         <dt>Nonlinear phase</dt><dd>${rd.bIntegral.toFixed(2)} rad</dd>
         <dt>Output FWHM</dt><dd>${rd.metrics.fwhmFs.toFixed(1)} fs</dd>

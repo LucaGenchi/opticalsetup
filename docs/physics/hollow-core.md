@@ -126,7 +126,12 @@ What happens outside them, by case:
   claimed: geometric continuation with its own caveat, group index 1 for
   timing, and no fiber GDD.
 - **Kerr off** is not a refusal: the solver propagates the field with γ = 0,
-  exactly, and the inspector says “Kerr off: exact linear propagation”.
+  and the inspector says “Kerr off: linear propagation within the β₂ model”
+  (within that model, not physically exact: the grid is finite and higher
+  orders are omitted).
+- **A chained capillary** never rebuilds a field from light that is already
+  unavailable upstream: after a refused or out-of-range capillary the next
+  one refuses too, Kerr on or off, and keeps the upstream reason and caveat.
 
 Extreme downstream GDD that exceeds the time window makes the duration
 unavailable at that detector; the Gaussian model is never asked to stand in
@@ -148,7 +153,7 @@ core switches the panel to *linear-only approximation*; the beam still reaches
 both detectors; both screens show *UNAVAILABLE* and the linear-only strip, in
 the Spectrum view too; and the detector inspector shows the *Caveat* row.
 Returning to 2 bar / 250 µm restores 102 / 45.3 fs exactly. Kerr off reads
-“exact linear propagation”, 100 / 101 fs. 10 bar at 250 µm stays valid and
+“linear propagation within the β₂ model”, 100 / 101 fs. 10 bar at 250 µm stays valid and
 compresses to 21.3 fs. A reload restores the refused state with its labels.
 At 1024 px there is no horizontal overflow and the inspector fits. The console
 shows no errors throughout.

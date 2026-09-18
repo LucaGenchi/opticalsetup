@@ -1848,7 +1848,7 @@ function buildSurfaces(elements, beams) {
 //    claimed; the light continues geometrically with a caveat, never with the
 //    ordinary fiber's group index and β₂ passed off as argon's;
 //  - the Kerr solver accepts the pulse: a sampled field and its spectrum
-//    replace the incoming ones (with Kerr off this is exact linear propagation
+//    replace the incoming ones (with Kerr off this is linear propagation within the β₂ model
 //    of the same field);
 //  - the solver refuses, or the pulse is not one it can take: the light
 //    continues with argon's linear β₂ only, its old field cleared, and every
@@ -1877,13 +1877,22 @@ function hollowCoreEmission(c, b, lengthMm, lossDbPerM) {
     hollowReadings.set(b.id, { ok: false, state: 'noEnergy', reason: 'No coupled pulse energy.', energyJ, coefficients, kerr });
     return { dark: true };
   }
+  // A refusal keeps whatever was already unknown upstream: an earlier
+  // fiber's reason and caveat are not replaced by this one's.
   const refuse = reason => {
     hollowReadings.set(b.id, { ok: false, state: 'linearOnly', reason, energyJ, coefficients, kerr });
     return {
-      output: { ...linear, pulse: { ...pulse, field: null, fieldIssue: LINEAR_ONLY } },
-      approximation: LINEAR_ONLY,
+      output: { ...linear, pulse: { ...pulse, field: null, fieldIssue: pulse.fieldIssue || LINEAR_ONLY } },
+      approximation: c.approximation || LINEAR_ONLY,
     };
   };
+  // Light whose temporal state is already unknown -- a refused or
+  // out-of-range capillary upstream, a generated continuum -- cannot become
+  // an intact Gaussian again just because this solver could run on its
+  // source's settings. That holds with Kerr off as well as on.
+  if (pulse.fieldIssue || c.approximation || pulse.durationUnknown) {
+    return refuse('The light arriving is already unavailable as a computed pulse upstream, so no field is built from it.');
+  }
   const expectedBandwidth = transformLimitedBandwidthNm(pulse.pulseWidthFs, c.wl);
   const intactSpectrum = c.spec?.kind === 'gauss' && Math.abs(c.spec.center - c.wl) < 1e-6
     && Math.abs(c.spec.fwhm - expectedBandwidth) <= 1e-6 * Math.max(1, expectedBandwidth);
