@@ -228,12 +228,35 @@ export const wikiEntries = [
         is what drives the travelling packet overlay, the oscilloscope view on a
         photodetector, chopper and AOM/EOM gating, and the two-colour temporal overlap
         that CARS and SFG require.</p>
-        <p>Bandwidth follows the pulse: while <em>Transform-limited</em> is on, the
-        spectral width is computed from the duration and the chosen envelope shape, so a
-        shorter pulse automatically becomes a wider spectrum. Turning it off exposes the
-        bandwidth directly for a chirped or spectrally shaped pulse; setting it to 0&nbsp;nm
-        models an idealized monochromatic pulse train. Peak power is reported back as a
-        derived readout, never entered.</p>
+        <p><em>Transform-limited pulses</em> decides what you author. On, you set the pulse
+        duration and envelope shape, and the bandwidth beneath is computed from them, so a
+        shorter pulse automatically becomes a wider spectrum. Off, you set the bandwidth, the
+        chirp's sign — <em>Positively</em> or <em>Negatively chirped (quadratic)</em> — and its
+        GDD in fs²; the transform-limited duration and the emitted pulse duration beneath are
+        computed. The duration is therefore always derived and can never fall below the limit
+        the bandwidth sets. Switching to chirped initializes the bandwidth from the current
+        transform-limited pulse and resets the GDD to zero, so the emitted pulse is unchanged;
+        previous chirped settings are replaced. Switching to transform-limited restores the
+        last transform-limited duration and can change the spectrum. Pulse
+        energy (average power ÷ repetition rate) and peak power are readouts, never entered;
+        for a chirped sech² pulse the peak power is an estimate, since a dispersed sech² pulse
+        does not keep an exact sech² profile.</p>
+        <p>The laser offers no “phase unknown”. That is a simplification of authoring, not a
+        claim that every real laser carries a known quadratic phase: a multi-longitudinal-mode
+        nanosecond laser, for instance, is far longer than its bandwidth's transform limit
+        without being chirped, and cannot be described this way — author it transform-limited
+        at its duration. Light generated on the bench can still have an unknown phase (see
+        the crystal and OPO pages). A sketch saved before these controls opens with its
+        bandwidth and the GDD that reproduces its saved duration, with the sign it was saved
+        with or positive — provided that GDD fits the 10⁷&nbsp;fs² range; beyond it the GDD
+        is clamped and the duration changes. A train saved at 0&nbsp;nm opens
+        transform-limited at its duration. The bandwidth field's fixed bounds hold the
+        transform-limited bandwidth of every authorable pulse (1&nbsp;fs to 1&nbsp;ms) at
+        every allowed wavelength, so the spectrum a switch to chirped starts from is kept
+        through a save and reload, and no wavelength or shape edit moves it. A chirped
+        bandwidth can imply a transform limit outside the 1&nbsp;fs – 1&nbsp;ms the
+        transform-limited field accepts; that is why switching to transform-limited does not
+        derive a duration from it.</p>
         <p><em>Show pulse dynamics</em> is a drawing choice only — switching it off leaves
         the beam rendered as a steady CW line while every bit of the pulse physics above
         keeps running.</p>
@@ -241,22 +264,58 @@ export const wikiEntries = [
         <p>Every pulsed detector reports accumulated group-delay dispersion (GDD) in
         fs². Catalogue-glass bodies add their traced distance through the selected
         Sellmeier material; zero-thickness lenses and objectives add the clearly marked
-        estimates described on their own pages. For a transform-limited Gaussian input,
-        the detector also reports the corresponding broadened duration, and the travelling
-        packet length follows that duration locally: it grows through glass and contracts
-        when a Pulse Compressor cancels the accumulated GDD. GDD remains the
+        estimates described on their own pages. A chirped laser's GDD is its own
+        quadratic phase, added once to the path's: glass of the opposite sign therefore
+        compresses the pulse to its transform limit before stretching it again. Light whose
+        phase nobody authored — an OPO or crystal output declared “spectral phase unknown”,
+        say — reports its configured duration only where the path's modeled dispersion adds
+        up to zero (“Configured duration · zero net modeled dispersion”), and is shown as
+        unavailable anywhere else. Unknown does not mean uncompressible; it means the phase
+        that would decide it is not known.</p>
+        <p>The duration model also declines, and says why on the detector's <em>Duration
+        model</em> row, when a filter, dichroic, etalon or AOTF has reshaped the pulse's
+        spectrum — filtering changes a duration by itself, and dispersion accumulated before
+        the filter describes wavelengths it removed — and when parts of one beam reach a
+        detector by paths whose dispersion differs — separate paths do not compensate each
+        other the way glass and a compressor in sequence do, so equal and opposite GDD on two
+        arms is not one transform-limited pulse. Small differences, within 0.1&nbsp;rad of
+        quadratic phase across the bandwidth and 2&nbsp;% in duration, are treated as one path;
+        that is a display tolerance, not a claim that distinct fields combine. The model also
+        declines when an aperture catches only part of a pulse that a prism or grating has
+        fanned out by wavelength: the arriving samples must carry at least 95&nbsp;% of the
+        emitted spectral weight. Elements that transmit the pulse's whole band evenly, such
+        as a neutral density filter or a dichroic far from its edge, leave the duration
+        alone.</p>
+        <p>Sech² pulses use the same signed-phase construction, but their dispersed FWHM is
+        read from a deterministic numerical Fourier-propagation table rather than the
+        Gaussian formula. Interpolation was checked against a denser calculation to 0.12%
+        over |GDD|/τ₀² ≤ 20 and continues with the 2π·0.315 large-dispersion asymptote.
+        Detector, autocorrelator, probe, scope, and travelling packet all consume this one
+        duration model. GDD remains the
         primary number because it is additive and meaningful even when a 150&nbsp;fs pulse
         changes too little to notice.</p>`,
       formulas: [
-        { tex: '\\tau_{out}=\\tau_{in}\\sqrt{1+\\left(4\\ln 2\\,\\mathrm{GDD}/\\tau_{in}^{2}\\right)^2}', caption: 'Second-order broadening of a transform-limited Gaussian pulse.' },
+        { tex: '\\tau_{out}=\\tau_0\\sqrt{1+\\left(4\\ln 2\\,(\\phi_{in}+\\mathrm{GDD})/\\tau_0^{2}\\right)^2}', caption: 'Gaussian duration from the bandwidth-limited width τ₀ and the signed sum of input and path GDD.' },
+        { tex: '\\tau_0 = K\\,\\lambda^2/(c\\,\\Delta\\lambda)', caption: 'Transform-limited duration of the authored bandwidth, with K = 0.441 (Gaussian) or 0.315 (sech²). A chirped laser emits τ_out with φ_in its authored signed GDD and no path GDD.' },
       ],
       limitations: `<p>There is no modeled gain medium, cavity, or mode-locking mechanism —
         repetition rate, duration, and shape are configured directly. The duration estimate
-        uses second-order GDD only and is shown only for a transform-limited Gaussian input;
-        pre-existing chirp, third- and higher-order dispersion, self-phase modulation, and
-        material absorption are not inferred. Divergence and M² are not modeled.</p>`,
+        represents only quadratic phase for Gaussian and sech² inputs. It does not reconstruct
+        arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
+        distortion, or material absorption. Source GDD is bounded to ±10⁷&nbsp;fs², a range
+        for input, not a physical validity threshold; a quadratic phase alone does not make a
+        stretched pulse an accurate model of a real stretcher's output. Spectral reshaping is detected from a filter's or dichroic's
+        passband edges falling inside the pulse's emitted band, and, for smooth transmissions
+        such as an etalon or AOTF, from the band sampled and cross-checked against the integrated
+        transmission. Wavelength-dependent clipping inside one fanned-out sample is not
+        detected, only samples that miss entirely. Divergence and
+        M² are not modeled.</p>`,
     },
     related: ['cwlaser', 'sclaser', 'pulsecompressor', 'objective', 'stage'],
+    citations: [
+      { label: 'M. Karpiński et al., “Control and Measurement of Quantum Light Pulses for Quantum Information Science and Technology,” Advanced Quantum Technologies 4, 2000150 (2021) — quadratic spectral phase and dispersive pulse broadening', url: 'https://doi.org/10.1002/qute.202000150' },
+      { label: 'P. Lazaridis, G. Debarge and P. Gallion, “Time–bandwidth product of chirped sech² pulses,” Optics Letters 20, 1160–1162 (1995) — exact sech² chirp/time-bandwidth relation', url: 'https://doi.org/10.1364/OL.20.001160' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Mode Locking', url: 'https://www.rp-photonics.com/mode_locking.html' },
       { label: 'RP Photonics Encyclopedia — Time–Bandwidth Product', url: 'https://www.rp-photonics.com/time_bandwidth_product.html' },
@@ -294,17 +353,22 @@ export const wikiEntries = [
         loss. A negative setting compresses only when it cancels positive GDD already on
         the path — placed before any glass, the same negative magnitude broadens a
         transform-limited pulse instead.</p>
-        <p>For a transform-limited Gaussian source, the travelling packet overlay reads the
-        local accumulated GDD along each traced segment. Its envelope grows continuously
-        through catalogue glass and changes at the compressor, so the same pulse can be
-        watched stretching and then returning toward its input length. The true duration,
-        GDD, and stretch factor remain available numerically at a downstream detector.</p>`,
+        <p>For Gaussian and sech² sources, the travelling packet overlay reads the local
+        accumulated GDD along each traced segment. A chirped source also carries a signed
+        input GDD inferred from its bandwidth and duration, so a compressor can shorten it
+        to the transform limit and further GDD stretches it again. Flat-top supercontinua
+        use the endpoint group-delay difference across their full band. The true duration,
+        model name, GDD, and stretch or compression factor remain available numerically at a
+        downstream detector.</p>`,
       formulas: [],
       limitations: `<p>This is a lumped second-order phase proxy, not a physical compressor
         prescription. It does not trace the compressor's internal grating, prism, or
         chirped-mirror geometry; it does not model carrier phase, third-order dispersion,
-        spatial chirp, pulse-front tilt, nonlinear phase, or an independently authored
-        input chirp. On-screen packet length is a qualitative glyph with an 8× display cap;
+        spatial chirp, pulse-front tilt, nonlinear phase, or arbitrary spectral phase. Input
+        chirp is limited to the positive/negative quadratic-phase estimate implied by the
+        authored duration and bandwidth; a pulse whose phase is unknown, whose spectrum was
+        reshaped, or whose paths disagree reads unavailable at a detector, and its packet keeps
+        its configured length on the canvas as a glyph, not a prediction. On-screen packet length is a qualitative glyph;
         detector numbers retain the unclamped second-order result.</p>`,
     },
     related: ['pulsedlaser', 'glassrod', 'prism', 'detector'],
@@ -365,8 +429,8 @@ export const wikiEntries = [
         sech²) are set directly rather than derived: in a real source they depend on the
         pump and on the nonlinear fibre that generated the continuum, neither of which is
         modelled here, and a continuum fresh out of the fibre is typically heavily chirped
-        and picoseconds long. The autocorrelator and the beam probe report the duration
-        you set.</p>
+        and picoseconds long. The duration you set is therefore the input to the propagation
+        estimate, not a claim that the continuum is transform-limited.</p>
         <p>The one limit the setting cannot cross is the transform limit. No pulse can be
         shorter than its own spectrum allows, so the duration has a floor set by the
         band, which the inspector shows as <em>Transform limit</em>. For a band hundreds of
@@ -376,19 +440,43 @@ export const wikiEntries = [
         fallen below the new floor. Widening the band never shortens the duration you set.
         The two endpoints are kept at least 10&nbsp;nm apart: typing one past the other
         stops it a step short, because a band of zero width has no transform limit at
-        all.</p>`,
+        all.</p>
+        <h3>Broad-band temporal spread</h3>
+        <p>A centre-wavelength GDD is not extended across this flat band. For every traced
+        length of catalogue glass, OpticalSetup evaluates the Sellmeier group index at both
+        authored endpoints and accumulates their signed group-delay difference. The displayed
+        duration is the input duration and that endpoint spread added in quadrature. This is
+        a robust first arrival-to-last arrival estimate for the declared flat spectrum, and
+        detector, scope, probe and pulse packets use the same accumulated value.</p>
+        <p>The authored duration acts as a floor. A compressor can take the path's spread back
+        out, but not the chirp the source was authored with, so a fully compensated continuum
+        returns to the duration you set, not towards its transform limit. Compensation is also
+        only ever partial: a single GDD value cancels the glass's dispersion at one wavelength,
+        while the Sellmeier curvature across hundreds of nanometres remains. Through 100&nbsp;mm
+        of N-BK7, a 400–900&nbsp;nm continuum spreads to about 20&nbsp;ps; a compressor set to
+        exactly cancel the centre-wavelength GDD still leaves about 4&nbsp;ps, and the best
+        a single GDD reaches is under 1&nbsp;ps.</p>
+        <p>Once a filter, dichroic or AOTF cuts into the continuum, the duration is shown as
+        unavailable, whether the filter sits before the glass or after it. The accumulated
+        spread belongs to endpoints the filter may have removed, and reconstructing the slice
+        would need each wavelength's own delay history rather than a single number.</p>`,
       formulas: [
         { tex: '\\Delta t_{\\min} = \\frac{K}{c\\left(1/\\lambda_{\\min} - 1/\\lambda_{\\max}\\right)}', caption: 'The shortest pulse the band can carry. The denominator is the exact frequency span of the band, not the λ²/Δλ approximation, which drifts by several percent once the band is hundreds of nanometres wide. K is the time–bandwidth product of the chosen envelope: 0.441 for Gaussian, 0.315 for sech².' },
+        { tex: '\\Delta T=L\\,[n_g(\\lambda_{max})-n_g(\\lambda_{min})]/c,\\qquad \\tau_{out}\\approx\\sqrt{\\tau_{in}^{2}+\\Delta T^{2}}', caption: 'Flat-band endpoint group-delay-spread model used for each traced catalogue-glass length.' },
       ],
       limitations: `<p>The spectrum is an idealized flat top, not a measured shape with the
         peaks, dips, and edge roll-off of a real continuum, and its shape does not change
         with pump power. No broadening is simulated: the band is declared, not generated
         from a pump and a nonlinear fibre. Pulse-to-pulse spectral noise, a real limitation
-        of these sources, is not represented. Dispersion does not yet stretch these pulses:
-        the duration stays as set through glass and compressors, although a real continuum
-        spreads strongly across its band.</p>`,
+        of these sources, is not represented. The endpoint estimate is not a propagated
+        complex field: it cannot reproduce sub-pulses, wavelength-dependent intensity,
+        non-monotonic group delay, higher-order phase inside the band, or nonlinear evolution.
+        It is a bounded temporal-span estimate, not a pulse-reconstruction claim.</p>`,
     },
     related: ['cwlaser', 'pulsedlaser', 'prism', 'filter'],
+    citations: [
+      { label: 'J. M. Dudley, G. Genty and S. Coen, “Supercontinuum generation in photonic crystal fiber,” Reviews of Modern Physics 78, 1135–1184 (2006) — temporal structure, coherence and higher-order dispersion limits of real continua', url: 'https://doi.org/10.1103/RevModPhys.78.1135' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Supercontinuum Generation', url: 'https://www.rp-photonics.com/supercontinuum_generation.html' },
       { label: 'RP Photonics Encyclopedia — Photonic Crystal Fibers', url: 'https://www.rp-photonics.com/photonic_crystal_fibers.html' },
@@ -4750,10 +4838,15 @@ export const wikiEntries = [
         <p>The Autocorrelator reports the pulse duration of whatever pulse train reaches its
         face — and reports it the way a real instrument does, as a trace width with an
         assumption divided out, rather than as a number read off the source.</p>
-        <p><strong>Time span</strong> sets the horizontal axis in both modes &mdash; &plusmn;0.5,
-        &plusmn;1, &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps &mdash; and it is a setting rather
-        than an automatic, so two traces of different duration on the same span look as different
-        as they are. A trace too wide for the window is reported rather than clipped.</p>
+        <p><strong>Time span</strong> sets the horizontal axis &mdash; &plusmn;0.5, &plusmn;1,
+        &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps, or <strong>Auto</strong>, the default for a
+        new autocorrelator. Auto takes the narrowest of those spans whose half-width is at least
+        1.5 trace FWHMs, where a Gaussian trace has fallen to 0.2&nbsp;% of its peak, so the wings
+        are drawn rather than clipped; it steps between the standard spans rather than
+        rescaling continuously, labels the axis <em>AUTO</em>, and applies to autocorrelation
+        only. A fixed span keeps two traces of different duration looking as different as they
+        are, which is why cross-correlation stays fixed. A trace too wide for the chosen window
+        is reported rather than clipped, and an unavailable duration draws no trace.</p>
         <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
         (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
         instrument works out for itself, because in a laboratory it is not something the
@@ -4761,7 +4854,7 @@ export const wikiEntries = [
         reading changes — a Gaussian assumption on a sech² source reads about 9% long, and
         the inspector says so explicitly, naming the true duration beside the inferred one.
         That disagreement is the lesson the component exists to teach.</p>
-        <p>For a transform-limited Gaussian source, the reading is taken from the pulse that
+        <p>The reading is taken from the pulse that
         <em>arrives</em> rather than the one that was emitted. Put a
         <a href="../glassrod/">glass rod</a> in the path and the autocorrelator measures the
         stretched duration; add a <a href="../pulsecompressor/">pulse compressor</a> with the
@@ -4769,12 +4862,15 @@ export const wikiEntries = [
         <em>Ultrashort pulse chirping</em> example is built around exactly that comparison,
         with three autocorrelators reading the same pulse under three different dispersion
         conditions.</p>
-        <p>That qualification is not decoration. The broadening is computed from a closed-form
-        Gaussian result, so it is only derived when the source is both transform-limited and
-        Gaussian. Switch the source to sech&sup2;, or clear its transform-limited box, and no
-        stretched duration exists to report: the instrument falls back to the duration
-        configured on the source, and the inspector says so in as many words rather than
-        letting a dispersion measurement be read out of a number that never moved.</p>
+        <p>The duration-model row states where that arriving width came from: closed-form
+        Gaussian GDD, numerically tabulated sech² GDD, a bandwidth-derived positive or negative
+        input chirp, a flat-band endpoint group-delay spread, or the explicit 0&nbsp;nm
+        bandwidth exception. Where the model declines — unknown spectral phase, a reshaped
+        spectrum, or paths of different dispersion — the instrument shows <em>Duration
+        unavailable</em> and names the reason, with the source's configured duration listed as
+        the setting it is, not as a measurement. The autocorrelation still cannot determine chirp itself; it is
+        displaying the scene's propagation model and then applying the instrument's chosen
+        deconvolution factor.</p>
         <h3>Cross-correlation mode</h3>
         <p><strong>Measurement mode</strong> switches the same box between correlating one
         source against itself and correlating <em>two</em> sources against each other. In
@@ -5570,7 +5666,7 @@ export const wikiEntries = [
     realWorld: { html: `<p>A detector's readout electronics turn its electrical output into numbers or plots. A display shows the information measured by the connected instrument; a cable to the display is a signal connection, not another optical path.</p>` },
     inOpticalSetup: {
       html: `<p>Select <em>Sensor input</em> to link the screen to a detector. Available views follow that sensor's capabilities, and the display adapts its information density to its drawn size. The cable carries data only: moving the screen or routing its cable across a beam cannot attenuate or deflect the light.</p><p>The example links a screen to a power meter behind a neutral-density filter. Change the filter transmission to change the reading, then move the screen to see that its position has no optical effect.</p>`,
-      limitations: `<p>The screen does not measure light itself or add properties absent from the linked sensor. It models no electronics noise, cable delay, or acquisition hardware.</p>`,
+      limitations: `<p>The screen does not measure light itself or add properties absent from the linked sensor. It models no electronics noise, cable delay, or acquisition hardware.</p><p>The pulse entry shows the duration that arrives: dispersed where the duration model answers, <em>Unavailable</em> where it declines, and the source's configured duration only where no model applies, such as a mixture of trains. Before this, it always repeated the configured duration, so a screen on a setup with glass in the beam now reads a different, dispersed number.</p>`,
     }, related: ['generaldetector', 'powermeter', 'camera', 'probe'],
   },
   {
@@ -5666,7 +5762,7 @@ export const wikiEntries = [
         <p><strong>OPO mode</strong> models a singly resonant oscillator phenomenologically. Set the pump wavelength the crystal is phase-matched for, its acceptance window, and the resonant signal wavelength; the idler is shown as a readout. Pump light converts when its centre lies inside the acceptance window, whatever its bandwidth. The signal stays where the cavity holds it and the idler follows the arriving pump by energy conservation. Signal and idler light generated by this OPO, and its descendants, is not converted again by the same OPO; a returning residual pump may convert again, and another crystal can convert the generated light. Its figure is <em>Pump depletion</em>, the fraction of the pump the oscillator removes, divided between signal and idler by the lossless Manley–Rowe split. It is a separate control from the single-pass modes' conversion efficiency because it is a different measurement: depletion builds up as the resonant signal is amplified over many round trips, and singly resonant OPOs are reported at 78 % depletion${cite(21)}. It goes up to 95 %; scenes saved when the OPO shared the conversion efficiency carry that value over.</p>
         <p><strong>Linewidths</strong> are handled as FWHM in wavenumber. <em>Signal as wide as the pump</em> is a heuristic for synchronously pumped fs and ps OPOs; <em>Signal width set</em> suits ns and CW OPOs, where the cavity sets it; in both, the idler is derived as the uncorrelated Gaussian sum. <em>Signal and idler widths set</em> takes both from a measured or specified system. A zero width is a single line and a narrow width a Gaussian in wavelength; an output wider than 1 % of its frequency is represented by a finite sampled wavelength distribution drawn from its Gaussian in wavenumber, which leans toward long wavelengths. Dichroics, filters and spectrometers downstream act on these new spectra rather than on the pump's. At exactly twice the pump wavelength, signal and idler with equal widths form one degenerate beam; with different widths they stay two coincident beams, each with its own spectrum.</p>
         <p><strong>Pulses.</strong> Signal and idler are pulse trains of their own, synchronised to the pump: they keep its repetition rate, arrival timing and modulation gates, so with a pulsed pump and <em>Transmit residual pump</em> on, a detector reached by all three outputs sees a non-degenerate pump, signal and idler as three separate trains. There are three choices. By default they are <em>Transform-limited</em>: each duration follows from its own bandwidth. The two <em>Duration set</em> choices make each output last the pump's duration times <em>Output duration (× pump duration)</em> — 1 matches the pump, 2 is twice as long — and a duration shorter than the output's transform limit is raised to the limit. With <em>spectral phase unknown</em> nothing is claimed about the phase, so the model cannot predict compression and a compressor does not shorten the drawn pulse. <em>Positively chirped (assumed Gaussian)</em> is an explicit assumption that the output is a coherent Gaussian whose only spectral phase is a positive quadratic one: it is drawn as the transform-limited pulse carrying the group delay dispersion that stretches it to the set duration, so a compressor downstream can remove it. Duration and bandwidth alone do not establish that — excess bandwidth can be incoherent, as in a nanosecond OPO — which is why it is a choice rather than a default. An output with zero linewidth is a drawing convention for an idealised monochromatic pulse train, like a pulsed source set to 0 nm: it has no finite transform-limited duration, so it keeps its set one with its spectral phase unknown. Group delay dispersion is counted from the crystal exit. The inspector's <em>Outputs</em> readout lists each output's bandwidth, in nm and cm⁻¹, and its duration, marked transform limited, chirped or spectral phase unknown.</p>`,
-      limitations: `<p>Mixing gates on arrival time only. No phase matching, polarization condition, focusing or spatial overlap is checked, so any two wavelengths mix if they coincide in time — a real crystal at one angle would not produce two second harmonics and their sum frequency with comparable efficiency, and each process would need its own polarizations. Doubling reserves its authored fraction of each beam first, and the mixing draws an authored share of what is left of both beams of a pair, each debited for what it gave; every pair a beam takes part in shares that one budget. The proportions are a drawing convention chosen to put the three lines in the same range — equal fractional contributions from both beams, not the photon-energy-weighted depletion a real stage would show — and not a power-dependent conversion prediction, and the two harmonics staying put while a mixed line rises is a weak-conversion convention. Every unordered pair of colours is formed, each emitted once by its shorter wavelength, so three colours give three mixed lines. Light this crystal generated is not mixed again by it. The mixed output's width is the two inputs' widths added in quadrature in wavenumber, which is the uncorrelated-Gaussian estimate rather than a calculated conversion spectrum, and the overlap factor is an ideal-Gaussian timing proxy rather than a cross-correlation of the real pulse shapes.</p><p>No mode calculates phase matching, d<sub>eff</sub>, crystal length, acceptance bandwidths, spatial or temporal walk-off, or the dependence of conversion on intensity: SHG and THG convert every wavelength at the authored fraction, and no crystal material is selected. Supercontinuum is a flat band, not a model of filamentation, self-phase modulation or soliton dynamics. Its estimated edges come from reported experiments and review summaries with different focusing, energies, durations and crystal lengths, none of which the estimate reads, and bands between reported pumps are linear interpolations. Red edges reported at 2 µm and beyond were limited by the detector, so the band understates the red side there. Whether the pump exceeds the critical power, the damage threshold, disconnected bands such as CaF₂ shows at longer pumps, and the spectral shape inside the band are not modelled; the converted fraction is authored like the other modes. Harmonic spectra are scaled rather than calculated from the field, as described above.</p><p>OPO mode is a phenomenological model rather than a cavity simulation. Phase matching is not calculated from material data: the signal wavelength and acceptance window are authored, and crystal choice or temperature do not affect them. No threshold, resonant gain or self-consistent pump-depletion dynamics are calculated: the authored depletion removes the same fraction at any pump power, and that fraction is removed from a retained pump. Ray round trips and authored output-coupler losses are traced; resonant gain, synchronisation-dependent conversion, build-up time, group-velocity walk-off and spatial mode overlap are not calculated. Output durations are authored or set from the Gaussian transform limit; no general spectral-phase evolution is calculated. Pump spectra are reduced to a Gaussian of the same FWHM, taken from the spectrum where available and otherwise from the bandwidth, so structured spectral shapes are not carried into the outputs; and the idler width assumes uncorrelated Gaussian fluctuations unless both widths are set. A detector retains separate trains; its aggregate pulse summary suppresses duration and repetition-rate fields when train settings differ, and otherwise uses the shared settings with aggregate dispersion information. Use separate detectors for output-specific pulse readings.</p>`,
+      limitations: `<p>Mixing gates on arrival time only. No phase matching, polarization condition, focusing or spatial overlap is checked, so any two wavelengths mix if they coincide in time — a real crystal at one angle would not produce two second harmonics and their sum frequency with comparable efficiency, and each process would need its own polarizations. Doubling reserves its authored fraction of each beam first, and the mixing draws an authored share of what is left of both beams of a pair, each debited for what it gave; every pair a beam takes part in shares that one budget. The proportions are a drawing convention chosen to put the three lines in the same range — equal fractional contributions from both beams, not the photon-energy-weighted depletion a real stage would show — and not a power-dependent conversion prediction, and the two harmonics staying put while a mixed line rises is a weak-conversion convention. Every unordered pair of colours is formed, each emitted once by its shorter wavelength, so three colours give three mixed lines. Light this crystal generated is not mixed again by it. The mixed output's width is the two inputs' widths added in quadrature in wavenumber, which is the uncorrelated-Gaussian estimate rather than a calculated conversion spectrum, and the overlap factor is an ideal-Gaussian timing proxy rather than a cross-correlation of the real pulse shapes.</p><p>No mode calculates phase matching, d<sub>eff</sub>, crystal length, acceptance bandwidths, spatial or temporal walk-off, or the dependence of conversion on intensity: SHG and THG convert every wavelength at the authored fraction, and no crystal material is selected. Supercontinuum is a flat band, not a model of filamentation, self-phase modulation or soliton dynamics. Its estimated edges come from reported experiments and review summaries with different focusing, energies, durations and crystal lengths, none of which the estimate reads, and bands between reported pumps are linear interpolations. Red edges reported at 2 µm and beyond were limited by the detector, so the band understates the red side there. Whether the pump exceeds the critical power, the damage threshold, disconnected bands such as CaF₂ shows at longer pumps, and the spectral shape inside the band are not modelled; the converted fraction is authored like the other modes. The continuum's duration is not modelled either: it is timed to the pump's pulses, but its detectors read the duration as unavailable rather than repeating the pump's. Harmonic spectra are scaled rather than calculated from the field, as described above.</p><p>OPO mode is a phenomenological model rather than a cavity simulation. Phase matching is not calculated from material data: the signal wavelength and acceptance window are authored, and crystal choice or temperature do not affect them. No threshold, resonant gain or self-consistent pump-depletion dynamics are calculated: the authored depletion removes the same fraction at any pump power, and that fraction is removed from a retained pump. Ray round trips and authored output-coupler losses are traced; resonant gain, synchronisation-dependent conversion, build-up time, group-velocity walk-off and spatial mode overlap are not calculated. Output durations are authored or set from the Gaussian transform limit; no general spectral-phase evolution is calculated. Pump spectra are reduced to a Gaussian of the same FWHM, taken from the spectrum where available and otherwise from the bandwidth, so structured spectral shapes are not carried into the outputs; and the idler width assumes uncorrelated Gaussian fluctuations unless both widths are set. A detector retains separate trains; its aggregate pulse summary suppresses duration and repetition-rate fields when train settings differ, and otherwise uses the shared settings with aggregate dispersion information. Use separate detectors for output-specific pulse readings.</p>`,
     },
     citations: [
       { label: 'R. W. Boyd, “The Nonlinear Optical Susceptibility,” chapter 1 of Nonlinear Optics, 3rd edition, Academic Press (2008)', url: 'https://doi.org/10.1016/B978-0-12-369470-6.00001-0' },

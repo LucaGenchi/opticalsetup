@@ -385,10 +385,15 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         <p>The Autocorrelator reports the pulse duration of whatever pulse train reaches its
         face — and reports it the way a real instrument does, as a trace width with an
         assumption divided out, rather than as a number read off the source.</p>
-        <p><strong>Time span</strong> sets the horizontal axis in both modes &mdash; &plusmn;0.5,
-        &plusmn;1, &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps &mdash; and it is a setting rather
-        than an automatic, so two traces of different duration on the same span look as different
-        as they are. A trace too wide for the window is reported rather than clipped.</p>
+        <p><strong>Time span</strong> sets the horizontal axis &mdash; &plusmn;0.5, &plusmn;1,
+        &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps, or <strong>Auto</strong>, the default for a
+        new autocorrelator. Auto takes the narrowest of those spans whose half-width is at least
+        1.5 trace FWHMs, where a Gaussian trace has fallen to 0.2&nbsp;% of its peak, so the wings
+        are drawn rather than clipped; it steps between the standard spans rather than
+        rescaling continuously, labels the axis <em>AUTO</em>, and applies to autocorrelation
+        only. A fixed span keeps two traces of different duration looking as different as they
+        are, which is why cross-correlation stays fixed. A trace too wide for the chosen window
+        is reported rather than clipped, and an unavailable duration draws no trace.</p>
         <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
         (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
         instrument works out for itself, because in a laboratory it is not something the
@@ -396,7 +401,7 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         reading changes — a Gaussian assumption on a sech² source reads about 9% long, and
         the inspector says so explicitly, naming the true duration beside the inferred one.
         That disagreement is the lesson the component exists to teach.</p>
-        <p>For a transform-limited Gaussian source, the reading is taken from the pulse that
+        <p>The reading is taken from the pulse that
         <em>arrives</em> rather than the one that was emitted. Put a
         <a href="../glassrod/">glass rod</a> in the path and the autocorrelator measures the
         stretched duration; add a <a href="../pulsecompressor/">pulse compressor</a> with the
@@ -404,12 +409,15 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         <em>Ultrashort pulse chirping</em> example is built around exactly that comparison,
         with three autocorrelators reading the same pulse under three different dispersion
         conditions.</p>
-        <p>That qualification is not decoration. The broadening is computed from a closed-form
-        Gaussian result, so it is only derived when the source is both transform-limited and
-        Gaussian. Switch the source to sech&sup2;, or clear its transform-limited box, and no
-        stretched duration exists to report: the instrument falls back to the duration
-        configured on the source, and the inspector says so in as many words rather than
-        letting a dispersion measurement be read out of a number that never moved.</p>
+        <p>The duration-model row states where that arriving width came from: closed-form
+        Gaussian GDD, numerically tabulated sech² GDD, a bandwidth-derived positive or negative
+        input chirp, a flat-band endpoint group-delay spread, or the explicit 0&nbsp;nm
+        bandwidth exception. Where the model declines — unknown spectral phase, a reshaped
+        spectrum, or paths of different dispersion — the instrument shows <em>Duration
+        unavailable</em> and names the reason, with the source's configured duration listed as
+        the setting it is, not as a measurement. The autocorrelation still cannot determine chirp itself; it is
+        displaying the scene's propagation model and then applying the instrument's chosen
+        deconvolution factor.</p>
         <h3>Cross-correlation mode</h3>
         <p><strong>Measurement mode</strong> switches the same box between correlating one
         source against itself and correlating <em>two</em> sources against each other. In

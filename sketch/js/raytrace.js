@@ -31,11 +31,12 @@ import {
 } from './polarization.js';
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
-  gaussianPulseDurationAfterGDD, glassGVD, glassIndex, isDispersiveGlass,
+  gddGroupDelayDifferenceFs, glassGVD, glassGroupDelayDifferenceFs, glassIndex,
+  isDispersiveGlass, authoredPulseTiming, pulseDurationAfterDispersion, pulseDurationAcrossPaths, PATHS_DISAGREE, DISPERSION_UNAVAILABLE,
 } from './glass.js';
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
-  applyTransmission, fringeVisibility, resolveSourceSpectrum,
+  applyTransmission as applySpectralTransmission, fringeVisibility, resolveSourceSpectrum, supercontinuumTransformLimitFs,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
@@ -739,6 +740,8 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     spectralContinuum: ray.spectralContinuum === true,
     spectralWidthNm: Number.isFinite(ray.spectralWidthNm) ? ray.spectralWidthNm : null,
     spectralLo: Number.isFinite(ray.spectralLo) ? ray.spectralLo : null,
+    fanLo: Number.isFinite(ray.fanLo) ? ray.fanLo : null,
+    fanHi: Number.isFinite(ray.fanHi) ? ray.fanHi : null,
     spectralHi: Number.isFinite(ray.spectralHi) ? ray.spectralHi : null,
     sourceId: ray.sourceId || null,
     sample: Number.isInteger(ray.sample) ? ray.sample : null,
@@ -774,6 +777,8 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     interference: surface.data.interference !== false,
     pathDelayNs: Number.isFinite(oplMm) ? oplMm / C_MM_PER_NS : 0,
     gddFs2: Number.isFinite(ray.gdd) ? ray.gdd : 0,
+    groupDelayDifferenceFs: Number.isFinite(ray.groupDelayDifferenceFs)
+      ? ray.groupDelayDifferenceFs : 0,
     pulse: ray.pulse ? { ...ray.pulse } : null,
   };
 }
@@ -959,7 +964,17 @@ export function detectorReading(elementId) {
       hitGroups.set(key, group);
     }
     const trains = [...hitGroups.values()].map(sourceHits => {
-      const p = sourceHits[0].pulse;
+      // Every arrival's own record counts, not just the first: a filter
+      // crossing part of a beam marks only the rays it touched, and which
+      // half arrives first must not decide whether the train is valid. An
+      // invalid record anywhere decides for the train, and records that
+      // disagree about phase or duration make it unavailable too.
+      const records = [...new Set(sourceHits.map(h => h.pulse))];
+      const invalidRecord = records.find(r => r.fieldIssue || r.spectrumReshaped || r.durationUnknown);
+      const provenance = r => [r.transformLimited === true, r.spectralPhase || '', r.inputChirp || '',
+        r.pulseWidthFs, r.bandwidthNm, r.pulseShape || 'gauss'].join('|');
+      const recordsDisagree = !invalidRecord && new Set(records.map(provenance)).size > 1;
+      const p = invalidRecord || sourceHits[0].pulse;
       const centerWavelength = Number.isFinite(p.centerWavelengthNm)
         ? p.centerWavelengthNm : sourceHits[0].wl;
       const nearestDistance = Math.min(...sourceHits.map(h => Math.abs(h.wl - centerWavelength)));
@@ -978,7 +993,22 @@ export function detectorReading(elementId) {
       const arrivingCenterNm = arrivingWeight > 0
         ? sourceHits.reduce((sum, h) => sum + h.wl * Math.max(0, h.power || 0), 0) / arrivingWeight
         : sourceHits[0]?.wl;
-      const canBroaden = p.transformLimited === true && (p.pulseShape || 'gauss') === 'gauss';
+      const groupDelayDifferenceFs = weighted('groupDelayDifferenceFs');
+      // Every centre-wavelength arrival is a path this train took; the model
+      // answers only when those paths agree on one duration.
+      let duration = pulseDurationAcrossPaths(p, centerHits.map(h => ({
+        gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
+      })));
+      // A prism or grating fans the pulse into wavelength samples, and an
+      // aperture can then catch only some of them. The duration model assumes
+      // the whole band arrives, so where the arriving cells leave part of it
+      // uncovered it declines -- after any earlier reason to decline.
+      if (duration?.available !== false && recordsDisagree) {
+        duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.recordsDiffer };
+      }
+      if (duration?.available !== false && !fannedBandCovered(p, sourceHits)) {
+        duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.partialFan };
+      }
       return {
         repRateMHz: p.repRateMHz,
         pulseWidthFs: p.pulseWidthFs,
@@ -986,9 +1016,12 @@ export function detectorReading(elementId) {
         gates: Array.isArray(p.gates) ? p.gates.map(g => ({ ...g })) : [],
         pathDelayNs: Math.min(...sourceHits.map(h => h.pathDelayNs)),
         gddFs2,
-        stretchedPulseWidthFs: canBroaden
-          ? gaussianPulseDurationAfterGDD(p.pulseWidthFs, gddFs2)
-          : null,
+        groupDelayDifferenceFs,
+        stretchedPulseWidthFs: duration?.durationFs ?? null,
+        dispersionModel: duration?.model ?? null,
+        transformLimitFs: duration?.transformLimitFs ?? null,
+        inputGddFs2: duration?.inputGddFs2 ?? null,
+        totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
         // A cross-correlation is between two specific trains, so it needs each
         // one's own shape and colour rather than the aggregate's -- the whole
         // point is that the two arms differ.
@@ -1032,7 +1065,14 @@ export function detectorReading(elementId) {
     const trainWeight = trains.length || 1;
     const gddFs2 = trains.reduce((sum, train) => sum + train.gddFs2, 0) / trainWeight;
     const gddValues = trains.map(train => train.gddFs2);
-    const canBroaden = first.transformLimited === true && (first.pulseShape || 'gauss') === 'gauss';
+    // Several trains with the same settings share one readout only when they
+    // also agree on a duration; otherwise the pairing of train 0's width with
+    // the mean GDD would describe no pulse that actually arrives.
+    const widths = trains.map(train => train.stretchedPulseWidthFs);
+    const trainsAgree = trains.length === 1 || (widths.every(Number.isFinite)
+      && (Math.max(...widths) - Math.min(...widths)) / Math.max(1e-9, widths[0]) <= 0.02);
+    const duration = mixed ? null : trainsAgree ? trains[0]
+      : { stretchedPulseWidthFs: null, dispersionModel: PATHS_DISAGREE, totalGddFs2: null };
     pulse = {
       sources: Math.max(1, sources.size),
       mixed,
@@ -1047,9 +1087,12 @@ export function detectorReading(elementId) {
       branches,
       gddFs2,
       gddRangeFs2: [Math.min(...gddValues), Math.max(...gddValues)],
-      stretchedPulseWidthFs: !mixed && canBroaden
-        ? gaussianPulseDurationAfterGDD(first.pulseWidthFs, gddFs2)
-        : null,
+      groupDelayDifferenceFs: duration?.groupDelayDifferenceFs ?? null,
+      stretchedPulseWidthFs: duration?.stretchedPulseWidthFs ?? null,
+      dispersionModel: duration?.dispersionModel ?? null,
+      transformLimitFs: duration?.transformLimitFs ?? null,
+      inputGddFs2: duration?.inputGddFs2 ?? null,
+      totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
       earliestPathDelayNs: delays.length ? Math.min(...delays) : 0,
       arrivalSpreadPs: delays.length ? (Math.max(...delays) - Math.min(...delays)) * 1000 : 0,
     };
@@ -1786,6 +1829,8 @@ function fiberEmissionRays(c) {
     // The fiber's own chromatic dispersion is not modelled, but dispersion
     // already accumulated before coupling must survive the relaunch.
     gddStart: Number.isFinite(c.gdd) ? c.gdd : 0,
+    groupDelayDifferenceStartFs: Number.isFinite(c.groupDelayDifferenceFs)
+      ? c.groupDelayDifferenceFs : 0,
   };
   if (cfg.mode === 'focus') {
     const f = Math.max(2, cfg.focal || 20), ap = Math.max(1, cfg.dia || 6);
@@ -2645,11 +2690,18 @@ function interact(ray, hit) {
         ? Math.min(1000000, Math.max(-1000000, Number(data.gddFs2))) : 0;
       const efficiency = Math.min(1, Math.max(0.01, Number(data.efficiency) || 1));
       const incoming = Number.isFinite(ray.gdd) ? ray.gdd : 0;
+      const delayChange = gddGroupDelayDifferenceFs(
+        applied, ray.pulse?.spectrumLoNm, ray.pulse?.spectrumHiNm,
+      );
+      const incomingDelayDifference = Number.isFinite(ray.groupDelayDifferenceFs)
+        ? ray.groupDelayDifferenceFs : 0;
       recordCompressor(s.el?.id, incoming, incoming + applied);
       return [{
         d,
         intensity: ray.intensity * efficiency,
         gdd: incoming + applied,
+        groupDelayDifferenceFs: incomingDelayDifference
+          + (Number.isFinite(delayChange) ? delayChange : 0),
       }];
     }
     case 'attenuate': {
@@ -2741,10 +2793,17 @@ function interact(ray, hit) {
         ? glassGVD(data.gddMaterial, ray.wl) : null;
       const estimatedGdd = Number.isFinite(materialGVD) && Number.isFinite(data.gddThicknessMm)
         ? materialGVD * Math.max(0, data.gddThicknessMm) : 0;
+      const delayChange = data.gddMaterial && Number.isFinite(data.gddThicknessMm)
+        ? glassGroupDelayDifferenceFs(
+          data.gddMaterial, ray.pulse?.spectrumLoNm, ray.pulse?.spectrumHiNm,
+          Math.max(0, data.gddThicknessMm),
+        ) : null;
       return [{
         d: bent,
         intensity: ray.intensity * T,
         gdd: (Number.isFinite(ray.gdd) ? ray.gdd : 0) + estimatedGdd,
+        groupDelayDifferenceFs: (Number.isFinite(ray.groupDelayDifferenceFs)
+          ? ray.groupDelayDifferenceFs : 0) + (Number.isFinite(delayChange) ? delayChange : 0),
       }];
     }
     case 'refract': {
@@ -2817,6 +2876,7 @@ function interact(ray, hit) {
       // budgets, as a partial mirror's are.
       const inBandR = data.dtype === 'notch' ? Math.min(1, Math.max(0, (data.bandRefl ?? 100) / 100)) : 1;
       const partial = inBandR < 1;
+      notePulseSelection(wl => (dichroicTransmits(wl, data) ? 1 : 1 - inBandR), passbandOf(data));
       if (!ray.bw) {
         if (dichroicTransmits(ray.wl, data)) return [{ d }];
         if (!partial) return [{ d: reflect(d, n) }];
@@ -2864,6 +2924,7 @@ function interact(ray, hit) {
     case 'filter': {
       const f = data;
       if (f.ftype === 'nd') return [{ d, intensity: ray.intensity * f.trans }];
+      notePulseSelection(wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; }, passbandOf(f));
       if (!ray.bw) {
         const pb0 = passbandOf(f);
         return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
@@ -2889,6 +2950,7 @@ function interact(ray, hit) {
       // broadband cases go through the same numeric integration.
       const cosTheta = Math.min(1, Math.max(1e-6, Math.abs(dot(d, n))));
       const T = wl => etalonAiryTransmission(wl, cosTheta, data);
+      notePulseSelection(T);
       const rd = reflect(d, n);
       if (!ray.bw) {
         const t = T(ray.wl);
@@ -2954,6 +3016,12 @@ function interact(ray, hit) {
             dispersed: m !== 0 && ray.bw > 0,
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
+            // The slice of the band this order sample stands for, kept apart
+            // from spectralLo/Hi so spectrometers go on reading a grating's
+            // output as they always have. Only the duration model's fan
+            // coverage check reads it.
+            ...(ray.bw > 0 && Number.isFinite(wls[i].spectralLo)
+              ? { fanLo: wls[i].spectralLo, fanHi: wls[i].spectralHi } : {}),
             intensity: ray.intensity * wls[i].weight / counts[i],
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
           });
@@ -3000,6 +3068,7 @@ function interact(ray, hit) {
           return child;
         };
         const transmission = aotfChannelTransmission(c, passband);
+        notePulseSelection(transmission);
 
         if (!ray.bw) {
           // A single wavelength is simply attenuated by how far it sits from
@@ -3866,6 +3935,23 @@ function interact(ray, hit) {
       const conv = { d, wl, intensity: ray.intensity * efficiency };
       if (bw !== undefined) conv.bw = bw;
       if (spec !== undefined) conv.spec = spec;
+      // A continuum generated here is a pulse of its own: a new, flat band and
+      // a spectral phase nobody knows. It carries a record that says so --
+      // timed to the pump, as the OPO's outputs are -- instead of the pump's,
+      // whose bandwidth and duration describe different light.
+      if (data.convert === 'sc' && ray.pulse && spec?.kind === 'flat') {
+        const [lo, hi] = spectrumSupport(spec);
+        const trainId = ray.pulse.sourceId || '';
+        conv.pulse = {
+          ...ray.pulse,
+          sourceId: `${trainId}›${s.el?.id || 'crystal'}:sc`,
+          syncSourceId: ray.pulse.syncSourceId || trainId,
+          centerWavelengthNm: wl, bandwidthNm: bw,
+          spectrumKind: 'flat', spectrumLoNm: lo, spectrumHiNm: hi,
+          transformLimited: false, transformLimitFs: null, spectralPhase: 'unknown', durationUnknown: true,
+          field: null, fieldIssue: null, spectrumReshaped: false,
+        };
+      }
       // samples can co-transmit the excitation beam alongside the converted signal
       if (data.transmitExc && wl !== ray.wl) {
         conv.tag = 'c';
@@ -3957,6 +4043,122 @@ function opoConversion(ray, data, elementId, efficiency) {
 
 // trace all rays of one source; returns finished polylines.
 // `couplings` collects light captured by fiber input connectors.
+// Whether an element reshapes a pulse's spectrum. A dispersive element fans a
+// broadband ray into wavelength samples, so by the time a filter acts, each
+// ray may be one sample and the filter shows up only as samples that vanish:
+// comparing a ray's spectrum with its parent's cannot see that. What can is
+// the element itself -- whether its transmission varies across the band the
+// pulse was emitted with. Every spectrally selective interaction goes through
+// applyTransmission() below, which asks exactly that of the ray being traced.
+// A dichroic far from its edge, or a neutral density filter, transmits the
+// band evenly and leaves the pulse's duration alone.
+let interactionRay = null;
+let interactionReshapesPulse = false;
+function pulseBand(pulse) {
+  if (!pulse) return null;
+  if (pulse.spectrumKind === 'flat' && Number.isFinite(pulse.spectrumLoNm) && Number.isFinite(pulse.spectrumHiNm)
+    && pulse.spectrumHiNm > pulse.spectrumLoNm) {
+    return flatSpectrum(pulse.spectrumLoNm, pulse.spectrumHiNm);
+  }
+  const bw = Number(pulse.bandwidthNm), center = Number(pulse.centerWavelengthNm);
+  return bw > 0 && center > 0 ? gaussianSpectrum(center, bw) : null;
+}
+// Where the pulse's emitted band carries at least 1 % of its peak weight.
+const BAND_GRID = 257;
+function pulseBandRegion(pulse) {
+  const band = pulseBand(pulse);
+  if (!band) return null;
+  const [lo, hi] = spectrumSupport(band);
+  const weights = Array.from({ length: BAND_GRID }, (_, i) => spectrumWeight(band, lo + (hi - lo) * i / (BAND_GRID - 1)));
+  const peak = Math.max(...weights);
+  const kept = weights.map((w, i) => (w >= 0.01 * peak ? i : -1)).filter(i => i >= 0);
+  if (!kept.length) return null;
+  const at = i => lo + (hi - lo) * i / (BAND_GRID - 1);
+  return { band, lo: at(kept[0]), hi: at(kept.at(-1)), points: kept.map(at) };
+}
+// Whether one interaction reshapes the band. Box filters -- bandpass,
+// longpass, shortpass, notch -- name their edges, and an edge inside the band
+// is decisive whatever a sample grid would have seen: a 1 nm passband lying
+// between two sample points is still a 1 nm slice. For smooth transmissions
+// (etalon, AOTF) the band is sampled, and two backstops catch what the samples
+// miss: the ray's own wavelength or cell transmitting differently from the
+// sampled value, and applyTransmission() integrating to a different fraction.
+// Uniform attenuation passes all three and leaves the duration alone.
+function sampledBandTransmission(region, transmissionFn) {
+  let tMin = Infinity, tMax = -Infinity;
+  for (const wl of region.points) {
+    const t = Math.max(0, Math.min(1, Number(transmissionFn(wl)) || 0));
+    tMin = Math.min(tMin, t); tMax = Math.max(tMax, t);
+  }
+  return { tMin, tMax };
+}
+// Light a specimen or crystal generated at a new colour can still carry the
+// pump's pulse record. That record's band then says nothing about this
+// light's spectrum, so it is not used to judge a filter acting on it.
+function rayWithinPulseBand(ray, region) {
+  const lo = Math.min(...[ray.wl - (ray.bw || 0) / 2, ray.spectralLo, ray.fanLo].filter(Number.isFinite));
+  const hi = Math.max(...[ray.wl + (ray.bw || 0) / 2, ray.spectralHi, ray.fanHi].filter(Number.isFinite));
+  return hi >= region.lo && lo <= region.hi;
+}
+function notePulseSelection(transmissionFn, edges = []) {
+  const pulse = interactionRay?.pulse;
+  if (!pulse || pulse.spectrumReshaped || interactionReshapesPulse) return null;
+  const region = pulseBandRegion(pulse);
+  if (!region || !rayWithinPulseBand(interactionRay, region)) return null;
+  if (edges.some(e => Number.isFinite(e) && e > region.lo && e < region.hi)) {
+    interactionReshapesPulse = true;
+    return null;
+  }
+  const { tMin, tMax } = sampledBandTransmission(region, transmissionFn);
+  if (!(tMax - tMin <= 0.01)) { interactionReshapesPulse = true; return null; }
+  const uniform = (tMin + tMax) / 2;
+  const ray = interactionRay;
+  const own = [ray.wl, ray.spectralLo, ray.spectralHi].filter(Number.isFinite);
+  if (own.some(wl => Math.abs(Math.max(0, Math.min(1, Number(transmissionFn(wl)) || 0)) - uniform) > 0.01)) {
+    interactionReshapesPulse = true;
+    return null;
+  }
+  return uniform;
+}
+function applyTransmission(spec, centerWl, transmissionFn) {
+  const uniform = notePulseSelection(transmissionFn);
+  const result = applySpectralTransmission(spec, centerWl, transmissionFn);
+  // The integration runs on a finer grid than the band sample: a passband it
+  // finds, where the samples saw none, is a reshaping they missed.
+  if (Number.isFinite(uniform) && Math.abs((result?.fraction ?? 0) - uniform) > 0.01) interactionReshapesPulse = true;
+  return result;
+}
+
+// Whether the wavelength cells of a fanned-out pulse that reach a detector
+// still carry the band it was emitted with. Measured as the share of the
+// emitted spectral weight inside the arriving cells, which must be 95 % or
+// more: the tracer drops the faint outermost samples of a Gaussian on its own
+// (about 2.4 % of the weight), while an aperture catching part of a prism fan
+// removes a fifth or more. Light that was never fanned out carries no cells,
+// and a uniformly clipped broadband beam keeps its whole band, so both pass.
+// This is a bounded guard: it sees samples that miss entirely, not a sample
+// clipped partly more than its neighbours.
+export const FAN_COVERAGE = 0.95;
+function fannedBandCovered(pulse, hits) {
+  const cellOf = h => (Number.isFinite(h.fanLo) && Number.isFinite(h.fanHi) ? [h.fanLo, h.fanHi]
+    : Number.isFinite(h.spectralLo) && Number.isFinite(h.spectralHi) ? [h.spectralLo, h.spectralHi] : null);
+  const region = pulseBandRegion(pulse);
+  if (!region) return true;
+  const band = region.band;
+  // Only arrivals the pulse record describes: converted light is left out.
+  const cells = hits.filter(h => rayWithinPulseBand(h, region)).map(cellOf).filter(c => c && c[1] > c[0]);
+  if (!cells.length) return true;
+  const [lo, hi] = spectrumSupport(band);
+  let total = 0, covered = 0;
+  for (let i = 0; i < BAND_GRID; i++) {
+    const wl = lo + (hi - lo) * (i + 0.5) / BAND_GRID;
+    const w = Math.max(0, spectrumWeight(band, wl));
+    total += w;
+    if (cells.some(([a, b]) => wl >= a && wl <= b)) covered += w;
+  }
+  return !(total > 0) || covered / total >= FAN_COVERAGE;
+}
+
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
   const done = [];
   let retainedWeakBranches = 0;
@@ -3966,14 +4168,18 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
     const opl = Number.isFinite(r.oplStart) ? r.oplStart : 0;
     const gdd = Number.isFinite(r.gddStart) ? r.gddStart
       : Number.isFinite(r.gdd) ? r.gdd : 0;
-    const visualizesDispersion = r.pulse?.transformLimited === true
-      && (r.pulse?.pulseShape || 'gauss') === 'gauss';
+    const groupDelayDifferenceFs = Number.isFinite(r.groupDelayDifferenceStartFs)
+      ? r.groupDelayDifferenceStartFs
+      : Number.isFinite(r.groupDelayDifferenceFs) ? r.groupDelayDifferenceFs : 0;
+    const visualizesDispersion = Boolean(r.pulse);
     return {
-      ...r, opl, gdd, pts: [{ x: r.x, y: r.y }], opls: [opl],
+      ...r, opl, gdd, groupDelayDifferenceFs, pts: [{ x: r.x, y: r.y }], opls: [opl],
       // Sparse local-GDD events exist only for pulses whose duration the app
       // can honestly derive. `linear` marks propagation through real glass;
       // a lens or compressor is an instantaneous step at one optical path.
       gddTrace: visualizesDispersion ? [{ opl, gdd, linear: false }] : null,
+      groupDelayDifferenceTrace: visualizesDispersion
+        ? [{ opl, value: groupDelayDifferenceFs, linear: false }] : null,
       segmentIntensities: [], segmentHistories: [], segmentEvents: [],
       sig: '', depth: 0, last: null,
     };
@@ -3993,6 +4199,19 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           r.gddTrace.push({ opl: oplStart, gdd: gddStart, linear: false });
         }
         r.gddTrace.push({ opl: r.opl, gdd: r.gdd, linear: true });
+      }
+      const lo = r.pulse?.spectrumLoNm, hi = r.pulse?.spectrumHiNm;
+      const spreadStart = r.groupDelayDifferenceFs;
+      const delayDifference = glassGroupDelayDifferenceFs(r.mediumMaterial, lo, hi, length);
+      if (Number.isFinite(delayDifference)) r.groupDelayDifferenceFs += delayDifference;
+      if (r.groupDelayDifferenceTrace && r.groupDelayDifferenceFs !== spreadStart) {
+        const last = r.groupDelayDifferenceTrace.at(-1);
+        if (!last || last.opl !== oplStart || last.value !== spreadStart) {
+          r.groupDelayDifferenceTrace.push({ opl: oplStart, value: spreadStart, linear: false });
+        }
+        r.groupDelayDifferenceTrace.push({
+          opl: r.opl, value: r.groupDelayDifferenceFs, linear: true,
+        });
       }
     }
     r.segmentIntensities.push(r.intensity);
@@ -4153,10 +4372,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             sourceId: r.pulse?.sourceId,
             gddFs2: Number.isFinite(r.gdd) ? r.gdd : 0,
             pulseWidthFs: r.pulse?.pulseWidthFs,
-            stretchedPulseWidthFs: r.pulse?.transformLimited === true
-              && (r.pulse?.pulseShape || 'gauss') === 'gauss'
-              ? gaussianPulseDurationAfterGDD(r.pulse.pulseWidthFs, r.gdd)
-              : null,
+            stretchedPulseWidthFs: pulseDurationAfterDispersion(
+              r.pulse, r.gdd, r.groupDelayDifferenceFs)?.durationFs ?? null,
             wavelengthNm: r.wl,
             objectiveNA: r.objectives?.length === 1 && Number.isFinite(r.objectives[0].na)
               ? r.objectives[0].na
@@ -4218,6 +4435,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             beam: fb, end: hit.surface.data.end, wl: r.wl, bw: r.bw, spec: r.spec,
             intensity: r.intensity, power: r.power, pol: r.pol, stokes: cloneStokes(r.stokes),
             pulse: r.pulse, opl: r.opl, gdd: r.gdd,
+            groupDelayDifferenceFs: r.groupDelayDifferenceFs,
             sourceId: r.sourceId || null,
             originId: r.originId || null,
             coherenceLengthMm: r.coherenceLengthMm || 0,
@@ -4234,7 +4452,10 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // clearing it here covers that route too.
       const carriedEvan = r.carriedEvan;
       r.carriedEvan = null;
+      interactionRay = r; interactionReshapesPulse = false;
       const children = interact(r, hit);
+      const reshaped = interactionReshapesPulse;
+      interactionRay = null; interactionReshapesPulse = false;
       if (children.length === 0) break;
       recordCoherentArrival(r, hit, children, coherent?.arrivals);
       for (const child of children) {
@@ -4246,6 +4467,16 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         child.fieldGroupCount = override.fieldGroupCount;
         child.retainZeroField = override.retainZeroField;
         child.coherentlySuppressed = override.coherentlySuppressed;
+      }
+      // A filter, dichroic or grating order that changes the shape of a
+      // pulse's spectrum changes its duration by itself, and leaves the
+      // dispersion accumulated so far describing wavelengths it has removed.
+      // Mark the pulse so the duration model declines downstream. Light an
+      // element generated brings a pulse of its own and is left alone.
+      if (reshaped && r.pulse) {
+        for (const child of children) {
+          if (!('pulse' in child)) child.pulse = { ...r.pulse, spectrumReshaped: true };
+        }
       }
       const c0 = children[0];
       const single = children.length === 1 && !c0.tag
@@ -4284,6 +4515,14 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           }
           r.gdd = c0.gdd;
         }
+        if ('groupDelayDifferenceFs' in c0) {
+          if (r.groupDelayDifferenceTrace && c0.groupDelayDifferenceFs !== r.groupDelayDifferenceFs) {
+            r.groupDelayDifferenceTrace.push({
+              opl: r.opl, value: c0.groupDelayDifferenceFs, linear: false,
+            });
+          }
+          r.groupDelayDifferenceFs = c0.groupDelayDifferenceFs;
+        }
         r.last = hit.surface; r.depth++;
         continue;
       }
@@ -4304,6 +4543,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
         }
         const ox = c.origin ? c.origin.x : hit.p.x, oy = c.origin ? c.origin.y : hit.p.y;
         const childGdd = 'gdd' in c ? c.gdd : r.gdd;
+        const childDelayDifference = 'groupDelayDifferenceFs' in c
+          ? c.groupDelayDifferenceFs : r.groupDelayDifferenceFs;
         stack.push({
           x: ox, y: oy, dx: c.d.x, dy: c.d.y,
           // Anything that reaches here starts a new branch string: a real
@@ -4325,6 +4566,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralWidthNm : null,
           spectralLo: Number.isFinite(c.spectralLo) ? c.spectralLo
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralLo : null,
+          fanLo: Number.isFinite(c.fanLo) ? c.fanLo : (c.wl === undefined || c.wl === r.wl) ? r.fanLo : null,
+          fanHi: Number.isFinite(c.fanHi) ? c.fanHi : (c.wl === undefined || c.wl === r.wl) ? r.fanHi : null,
           spectralHi: Number.isFinite(c.spectralHi) ? c.spectralHi
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralHi : null,
           speckle: c.speckle || r.speckle || false,
@@ -4374,13 +4617,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           keepWeak: 'keepWeak' in c ? c.keepWeak : r.keepWeak,
           ior: 'ior' in c ? c.ior : (r.ior || 1),
           gdd: childGdd,
-          // A child with a pulse of its own (light an OPO generated) has its
-          // dispersion drawn only if that pulse's duration is derivable, not
-          // because its parent's was.
-          gddTrace: ('pulse' in c
-            ? c.pulse?.transformLimited === true && (c.pulse?.pulseShape || 'gauss') === 'gauss'
-            : r.gddTrace)
+          // A child with a pulse of its own (light an OPO generated) carries
+          // its own dispersion trace; without one it continues its parent's.
+          gddTrace: ('pulse' in c ? Boolean(c.pulse) : r.gddTrace)
             ? [{ opl: r.opl, gdd: childGdd, linear: false }] : null,
+          groupDelayDifferenceFs: childDelayDifference,
+          groupDelayDifferenceTrace: ('pulse' in c ? Boolean(c.pulse) : r.groupDelayDifferenceTrace)
+            ? [{ opl: r.opl, value: childDelayDifference, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
           intensity: childIntensity,
@@ -4628,6 +4871,9 @@ function collectPulseTracks(paths, K, fixedColor, pulseTracks) {
       pts: r.pts.slice(0, lit + 1).map(p => ({ x: p.x, y: p.y })),
       opls: r.opls.slice(0, lit + 1),
       ...(r.gddTrace ? { gddTrace: r.gddTrace.map(event => ({ ...event })) } : {}),
+      ...(r.groupDelayDifferenceTrace ? {
+        groupDelayDifferenceTrace: r.groupDelayDifferenceTrace.map(event => ({ ...event })),
+      } : {}),
       pulse: { ...r.pulse },
       bw: r.bw || 0,
       color: rayColor(r, fixedColor),
@@ -4700,15 +4946,35 @@ export function traceScene(elements, beams = []) {
     // Each source type's own rule for arriving at the three lives in
     // resolveSourceSpectrum(), so nothing here branches on element type.
     const { wl: srcWl, bw: srcBw, spec: srcSpec } = resolveSourceSpectrum(el.type, p);
+    const support = spectrumSupport(srcSpec);
     const K = local.length;
+    // A pulsed laser's emitted duration, transform limit and signed chirp
+    // come from the one accessor its readouts use too.
+    const timing = el.type === 'pulsedlaser' ? authoredPulseTiming(p) : null;
     const pulse = p.temporalMode === 'pulsed' ? {
       sourceId: el.id,
       repRateMHz: Math.min(1000000, Math.max(0.001, p.repRateMHz || 80)),
-      pulseWidthFs: Math.min(1000000000, Math.max(1, p.pulseWidthFs || 100)),
+      // A laser's record carries exactly the duration its readout shows; the
+      // accessor already bounds a transform-limited duration to its field.
+      pulseWidthFs: timing && Number.isFinite(timing.durationFs) && timing.durationFs > 0 ? timing.durationFs
+        : Math.min(1000000000, Math.max(1, p.pulseWidthFs || 100)),
       phaseNs: Math.min(1000000, Math.max(-1000000, p.pulsePhaseNs || 0)),
       centerWavelengthNm: srcWl,
+      bandwidthNm: srcBw,
+      spectrumKind: srcSpec?.kind || null,
+      spectrumLoNm: support?.[0] ?? null,
+      spectrumHiNm: support?.[1] ?? null,
+      transformLimitFs: el.type === 'sclaser'
+        ? supercontinuumTransformLimitFs(p.scMin ?? 300, p.scMax ?? 700, p.pulseShape)
+        : timing?.transformLimitFs ?? null,
       pulseShape: p.pulseShape || 'gauss',
-      transformLimited: p.transformLimited === true,
+      transformLimited: timing ? timing.transformLimited : p.transformLimited === true,
+      // The source's own quadratic phase, stated once here and added to the
+      // path's GDD by the duration model; it is never also put on the ray.
+      ...(timing && !timing.transformLimited ? {
+        inputGddFs2: timing.inputGddFs2,
+        inputChirp: timing.inputGddFs2 < 0 ? 'negative' : 'positive',
+      } : {}),
     } : null;
     const rays0 = local.map(r => {
       const o = toWorld(el, r.x, r.y);
@@ -4743,6 +5009,7 @@ export function traceScene(elements, beams = []) {
         objectives: [],
         evan: r.evan || false, evanLen: r.evanLen,
         medium: initialBody?.id || null, mediumMaterial: initialMaterial, ior: initialIor,
+        groupDelayDifferenceFs: 0,
         intensity: 1, power: 1 / Math.max(1, K), sample: r.sample !== undefined ? r.sample : null,
         sampleCount: K,
         sampleGrid: r.sampleGrid === 'edges' ? 'edges' : null,

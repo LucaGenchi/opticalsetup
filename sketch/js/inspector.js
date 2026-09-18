@@ -13,7 +13,7 @@ import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHits
 import { pulseTransmissionAt } from './pulses.js';
 import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
-  bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS,
+  bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN,
 } from './glass.js';
 import { pmtVerdict } from './detector-measurements.js';
 import { transformLimitedBandwidthNm } from './spectrum.js';
@@ -239,7 +239,7 @@ function cameraAxisHalfSpan(source) {
 // as they approach, hiding the motion the scope exists to show.
 function applyScopeSpanForMode(sel) {
   if ((sel.params.measurementMode || 'auto') !== 'cross') {
-    sel.params.timeSpanPs = DEFAULT_SCOPE_SPAN_PS;
+    sel.params.timeSpanPs = AUTO_SCOPE_SPAN;
     return;
   }
   const rd = detectorReading(sel.id);
@@ -294,6 +294,11 @@ function autocorrelatorRows(rd, source) {
   const actual = rd.pulse.pulseShape || 'gauss';
   const derived = Number.isFinite(rd.pulse.stretchedPulseWidthFs)
     ? rd.pulse.stretchedPulseWidthFs : null;
+  // When the duration model declines, a trace built on the configured width
+  // would present the source's setting as what arrives. Say so instead.
+  if (derived === null && rd.pulse.dispersionModel) return `
+      <dt>Autocorrelation</dt><dd>Unavailable — ${esc(rd.pulse.dispersionModel)}</dd>
+      <dt>Configured at source</dt><dd>${Number(rd.pulse.pulseWidthFs).toLocaleString()} fs (the setting, not a prediction here)</dd>`;
   const reading = autocorrelationReading(derived ?? rd.pulse.pulseWidthFs, assumed, actual);
   if (!reading) return `
       <dt>Autocorrelation</dt><dd>—</dd>`;
@@ -303,8 +308,7 @@ function autocorrelatorRows(rd, source) {
   return `
       <dt>Autocorrelation FWHM</dt><dd>${fs(reading.traceFwhmFs)}</dd>
       <dt>Inferred duration</dt><dd>${fs(reading.inferredPulseWidthFs)} · assuming ${shapeName(assumed)} (÷${reading.assumedFactor.toFixed(3)})</dd>
-      ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}
-      ${derived === null ? `<dt>Note</dt><dd>Shows the configured duration: a chirped or non-Gaussian input has no derivable stretch</dd>` : ''}`;
+      ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}`;
 }
 
 function measurementHTML(el) {
@@ -348,20 +352,23 @@ function measurementHTML(el) {
     : '';
   let stretchText = '';
   if (rd.pulse && !rd.pulse.mixed) {
-    if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
+    if (!Number.isFinite(rd.pulse.stretchedPulseWidthFs) && rd.pulse.dispersionModel) {
+      stretchText = 'Unavailable';
+    } else if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
       const factor = rd.pulse.stretchedPulseWidthFs / rd.pulse.pulseWidthFs;
-      stretchText = factor <= 1.01
+      stretchText = factor < 0.99
+        ? `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}× · compressed)`
+        : factor <= 1.01
         ? 'Negligible at this pulse duration'
         : `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}×)`;
-    } else {
-      stretchText = 'Needs a transform-limited Gaussian input';
     }
   }
   const pulseRows = rd.pulse ? `
       <dt>Pulse train</dt><dd>${pulseTrain}</dd>
       ${rd.pulse.mixed ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
       <dt>Accumulated GDD</dt><dd>${gddText}</dd>
-      ${stretchText ? `<dt>Stretched duration</dt><dd>${stretchText}</dd>` : ''}
+      ${stretchText ? `<dt>Dispersed duration</dt><dd>${stretchText}</dd>` : ''}
+      ${!rd.pulse.mixed && rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
   const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color);
@@ -861,7 +868,7 @@ export function renderInspector() {
             const gdd = `${Math.abs(gddFs2) < 10 ? gddFs2.toFixed(1) : Math.round(gddFs2).toLocaleString()} fs² GDD`;
             const duration = Number.isFinite(stretchedPulseWidthFs)
               ? `${stretchedPulseWidthFs.toFixed(stretchedPulseWidthFs < 100 ? 1 : 0)} fs at the sample`
-              : 'broadening needs a transform-limited Gaussian input';
+              : 'dispersed duration unavailable for this pulse (the detector’s Duration model says why)';
             return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>` +
               `<div class="hint">Traced centre-wavelength path: ${esc(gdd)} · ${esc(duration)}. The handoff keeps the configured source duration; confirm and apply this qualitative broadening in the lab.</div>`;
           }).join('');
@@ -1384,9 +1391,19 @@ export function applyInput(inp, rebuild = false) {
   // Switching TL off reveals it — seed it from the width the pulse actually
   // had a moment ago, so the spectrum stays continuous across the toggle
   // instead of jumping to an unrelated stored default.
+  // Switching to chirped initializes the bandwidth from the current
+  // transform-limited pulse and resets the GDD to zero, so the emitted pulse
+  // is unchanged; previous chirped settings are replaced. Every authorable
+  // duration's bandwidth fits the bandwidth field. Switching to
+  // transform-limited restores the last transform-limited duration and can
+  // change the spectrum: deriving a duration from the chirped bandwidth could
+  // imply one outside the 1 fs – 1 ms the transform-limited field accepts.
   if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === false) {
+    // Every authorable duration's bandwidth lies inside the field's fixed
+    // bounds, so the value a save writes is the value a reload keeps.
     sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(
       sel.params.pulseWidthFs, sel.params.wavelength, sel.params.pulseShape || 'gauss'));
+    sel.params.chirpGddFs2 = 0;
     changed();
     renderInspector();
     return;

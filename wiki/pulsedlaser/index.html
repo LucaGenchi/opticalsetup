@@ -190,12 +190,35 @@
         is what drives the travelling packet overlay, the oscilloscope view on a
         photodetector, chopper and AOM/EOM gating, and the two-colour temporal overlap
         that CARS and SFG require.</p>
-        <p>Bandwidth follows the pulse: while <em>Transform-limited</em> is on, the
-        spectral width is computed from the duration and the chosen envelope shape, so a
-        shorter pulse automatically becomes a wider spectrum. Turning it off exposes the
-        bandwidth directly for a chirped or spectrally shaped pulse; setting it to 0&nbsp;nm
-        models an idealized monochromatic pulse train. Peak power is reported back as a
-        derived readout, never entered.</p>
+        <p><em>Transform-limited pulses</em> decides what you author. On, you set the pulse
+        duration and envelope shape, and the bandwidth beneath is computed from them, so a
+        shorter pulse automatically becomes a wider spectrum. Off, you set the bandwidth, the
+        chirp's sign — <em>Positively</em> or <em>Negatively chirped (quadratic)</em> — and its
+        GDD in fs²; the transform-limited duration and the emitted pulse duration beneath are
+        computed. The duration is therefore always derived and can never fall below the limit
+        the bandwidth sets. Switching to chirped initializes the bandwidth from the current
+        transform-limited pulse and resets the GDD to zero, so the emitted pulse is unchanged;
+        previous chirped settings are replaced. Switching to transform-limited restores the
+        last transform-limited duration and can change the spectrum. Pulse
+        energy (average power ÷ repetition rate) and peak power are readouts, never entered;
+        for a chirped sech² pulse the peak power is an estimate, since a dispersed sech² pulse
+        does not keep an exact sech² profile.</p>
+        <p>The laser offers no “phase unknown”. That is a simplification of authoring, not a
+        claim that every real laser carries a known quadratic phase: a multi-longitudinal-mode
+        nanosecond laser, for instance, is far longer than its bandwidth's transform limit
+        without being chirped, and cannot be described this way — author it transform-limited
+        at its duration. Light generated on the bench can still have an unknown phase (see
+        the crystal and OPO pages). A sketch saved before these controls opens with its
+        bandwidth and the GDD that reproduces its saved duration, with the sign it was saved
+        with or positive — provided that GDD fits the 10⁷&nbsp;fs² range; beyond it the GDD
+        is clamped and the duration changes. A train saved at 0&nbsp;nm opens
+        transform-limited at its duration. The bandwidth field's fixed bounds hold the
+        transform-limited bandwidth of every authorable pulse (1&nbsp;fs to 1&nbsp;ms) at
+        every allowed wavelength, so the spectrum a switch to chirped starts from is kept
+        through a save and reload, and no wavelength or shape edit moves it. A chirped
+        bandwidth can imply a transform limit outside the 1&nbsp;fs – 1&nbsp;ms the
+        transform-limited field accepts; that is why switching to transform-limited does not
+        derive a duration from it.</p>
         <p><em>Show pulse dynamics</em> is a drawing choice only — switching it off leaves
         the beam rendered as a steady CW line while every bit of the pulse physics above
         keeps running.</p>
@@ -203,14 +226,38 @@
         <p>Every pulsed detector reports accumulated group-delay dispersion (GDD) in
         fs². Catalogue-glass bodies add their traced distance through the selected
         Sellmeier material; zero-thickness lenses and objectives add the clearly marked
-        estimates described on their own pages. For a transform-limited Gaussian input,
-        the detector also reports the corresponding broadened duration, and the travelling
-        packet length follows that duration locally: it grows through glass and contracts
-        when a Pulse Compressor cancels the accumulated GDD. GDD remains the
+        estimates described on their own pages. A chirped laser's GDD is its own
+        quadratic phase, added once to the path's: glass of the opposite sign therefore
+        compresses the pulse to its transform limit before stretching it again. Light whose
+        phase nobody authored — an OPO or crystal output declared “spectral phase unknown”,
+        say — reports its configured duration only where the path's modeled dispersion adds
+        up to zero (“Configured duration · zero net modeled dispersion”), and is shown as
+        unavailable anywhere else. Unknown does not mean uncompressible; it means the phase
+        that would decide it is not known.</p>
+        <p>The duration model also declines, and says why on the detector's <em>Duration
+        model</em> row, when a filter, dichroic, etalon or AOTF has reshaped the pulse's
+        spectrum — filtering changes a duration by itself, and dispersion accumulated before
+        the filter describes wavelengths it removed — and when parts of one beam reach a
+        detector by paths whose dispersion differs — separate paths do not compensate each
+        other the way glass and a compressor in sequence do, so equal and opposite GDD on two
+        arms is not one transform-limited pulse. Small differences, within 0.1&nbsp;rad of
+        quadratic phase across the bandwidth and 2&nbsp;% in duration, are treated as one path;
+        that is a display tolerance, not a claim that distinct fields combine. The model also
+        declines when an aperture catches only part of a pulse that a prism or grating has
+        fanned out by wavelength: the arriving samples must carry at least 95&nbsp;% of the
+        emitted spectral weight. Elements that transmit the pulse's whole band evenly, such
+        as a neutral density filter or a dichroic far from its edge, leave the duration
+        alone.</p>
+        <p>Sech² pulses use the same signed-phase construction, but their dispersed FWHM is
+        read from a deterministic numerical Fourier-propagation table rather than the
+        Gaussian formula. Interpolation was checked against a denser calculation to 0.12%
+        over |GDD|/τ₀² ≤ 20 and continues with the 2π·0.315 large-dispersion asymptote.
+        Detector, autocorrelator, probe, scope, and travelling packet all consume this one
+        duration model. GDD remains the
         primary number because it is additive and meaningful even when a 150&nbsp;fs pulse
         changes too little to notice.</p>
 <div class="formula">
-      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>τ</mi><mrow><mi>o</mi><mi>u</mi><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>τ</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub><msqrt><mrow><mn>1</mn><mo>+</mo><msup><mrow><mo fence="true">(</mo><mn>4</mn><mi>ln</mi><mo>⁡</mo><mn>2</mn><mtext> </mtext><mrow><mi mathvariant="normal">G</mi><mi mathvariant="normal">D</mi><mi mathvariant="normal">D</mi></mrow><mi mathvariant="normal">/</mi><msubsup><mi>τ</mi><mrow><mi>i</mi><mi>n</mi></mrow><mn>2</mn></msubsup><mo fence="true">)</mo></mrow><mn>2</mn></msup></mrow></msqrt></mrow><annotation encoding="application/x-tex">\tau_{out}=\tau_{in}\sqrt{1+\left(4\ln 2\,\mathrm{GDD}/\tau_{in}^{2}\right)^2}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">o</span><span class="mord mathnormal mtight">u</span><span class="mord mathnormal mtight">t</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.84em;vertical-align:-0.4446em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">in</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3954em;"><span class="svg-align" style="top:-3.8em;"><span class="pstrut" style="height:3.8em;"></span><span class="mord" style="padding-left:1em;"><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="minner"><span class="minner"><span class="mopen delimcenter" style="top:0em;">(</span><span class="mord">4</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">ln</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathrm">GDD</span></span><span class="mord">/</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7959em;"><span style="top:-2.4231em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">in</span></span></span></span><span style="top:-3.0448em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2769em;"><span></span></span></span></span></span></span><span class="mclose delimcenter" style="top:0em;">)</span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.9999em;"><span style="top:-3.2488em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span><span style="top:-3.3554em;"><span class="pstrut" style="height:3.8em;"></span><span class="hide-tail" style="min-width:1.02em;height:1.88em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.88em" viewBox="0 0 400000 1944" preserveAspectRatio="xMinYMin slice"><path d="M983 90
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>τ</mi><mrow><mi>o</mi><mi>u</mi><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>τ</mi><mn>0</mn></msub><msqrt><mrow><mn>1</mn><mo>+</mo><msup><mrow><mo fence="true">(</mo><mn>4</mn><mi>ln</mi><mo>⁡</mo><mn>2</mn><mtext> </mtext><mo stretchy="false">(</mo><msub><mi>ϕ</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub><mo>+</mo><mrow><mi mathvariant="normal">G</mi><mi mathvariant="normal">D</mi><mi mathvariant="normal">D</mi></mrow><mo stretchy="false">)</mo><mi mathvariant="normal">/</mi><msubsup><mi>τ</mi><mn>0</mn><mn>2</mn></msubsup><mo fence="true">)</mo></mrow><mn>2</mn></msup></mrow></msqrt></mrow><annotation encoding="application/x-tex">\tau_{out}=\tau_0\sqrt{1+\left(4\ln 2\,(\phi_{in}+\mathrm{GDD})/\tau_0^{2}\right)^2}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">o</span><span class="mord mathnormal mtight">u</span><span class="mord mathnormal mtight">t</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.84em;vertical-align:-0.4393em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.4007em;"><span class="svg-align" style="top:-3.8em;"><span class="pstrut" style="height:3.8em;"></span><span class="mord" style="padding-left:1em;"><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="minner"><span class="minner"><span class="mopen delimcenter" style="top:0em;">(</span><span class="mord">4</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">ln</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">ϕ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">in</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathrm">GDD</span></span><span class="mclose">)</span><span class="mord">/</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7959em;"><span style="top:-2.4337em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span><span style="top:-3.0448em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2663em;"><span></span></span></span></span></span></span><span class="mclose delimcenter" style="top:0em;">)</span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.9999em;"><span style="top:-3.2488em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span><span style="top:-3.3607em;"><span class="pstrut" style="height:3.8em;"></span><span class="hide-tail" style="min-width:1.02em;height:1.88em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.88em" viewBox="0 0 400000 1944" preserveAspectRatio="xMinYMin slice"><path d="M983 90
 l0 -0
 c4,-6.7,10,-10,18,-10 H400000v40
 H1013.1s-83.4,268,-264.1,840c-180.7,572,-277,876.3,-289,913c-4.7,4.7,-12.7,7,-24,7
@@ -219,14 +266,24 @@ c-10,12,-21,25,-33,39s-32,39,-32,39c-6,-5.3,-15,-14,-27,-26s25,-30,25,-30
 c26.7,-32.7,52,-63,76,-91s52,-60,52,-60s208,722,208,722
 c56,-175.3,126.3,-397.3,211,-666c84.7,-268.7,153.8,-488.2,207.5,-658.5
 c53.7,-170.3,84.5,-266.8,92.5,-289.5z
-M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.4446em;"><span></span></span></span></span></span></span></span></span></span></div>
-      <div class="caption">Second-order broadening of a transform-limited Gaussian pulse.</div>
+M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.4393em;"><span></span></span></span></span></span></span></span></span></span></div>
+      <div class="caption">Gaussian duration from the bandwidth-limited width τ₀ and the signed sum of input and path GDD.</div>
+    </div><div class="formula">
+      <div class="katex-render"><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>τ</mi><mn>0</mn></msub><mo>=</mo><mi>K</mi><mtext> </mtext><msup><mi>λ</mi><mn>2</mn></msup><mi mathvariant="normal">/</mi><mo stretchy="false">(</mo><mi>c</mi><mtext> </mtext><mi mathvariant="normal">Δ</mi><mi>λ</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\tau_0 = K\,\lambda^2/(c\,\Delta\lambda)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1132em;">τ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1132em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1.1141em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0715em;">K</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">λ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mord">/</span><span class="mopen">(</span><span class="mord mathnormal">c</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">Δ</span><span class="mord mathnormal">λ</span><span class="mclose">)</span></span></span></span></span></div>
+      <div class="caption">Transform-limited duration of the authored bandwidth, with K = 0.441 (Gaussian) or 0.315 (sech²). A chirped laser emits τ_out with φ_in its authored signed GDD and no path GDD.</div>
     </div>
         <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>There is no modeled gain medium, cavity, or mode-locking mechanism —
         repetition rate, duration, and shape are configured directly. The duration estimate
-        uses second-order GDD only and is shown only for a transform-limited Gaussian input;
-        pre-existing chirp, third- and higher-order dispersion, self-phase modulation, and
-        material absorption are not inferred. Divergence and M² are not modeled.</p></div>
+        represents only quadratic phase for Gaussian and sech² inputs. It does not reconstruct
+        arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
+        distortion, or material absorption. Source GDD is bounded to ±10⁷&nbsp;fs², a range
+        for input, not a physical validity threshold; a quadratic phase alone does not make a
+        stretched pulse an accurate model of a real stretcher's output. Spectral reshaping is detected from a filter's or dichroic's
+        passband edges falling inside the pulse's emitted band, and, for smooth transmissions
+        such as an etalon or AOTF, from the band sampled and cross-checked against the integrated
+        transmission. Wavelength-dependent clipping inside one fanned-out sample is not
+        detected, only samples that miss entirely. Divergence and
+        M² are not modeled.</p></div>
       </div>
 
 
@@ -236,6 +293,10 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
       </div>
 
 
+      <h2 class="section-head real"><span class="sw"></span>References</h2>
+      <ol class="reference-list">
+        <li id="ref-1"><a href="https://doi.org/10.1002/qute.202000150" target="_blank" rel="noopener">M. Karpiński et al., “Control and Measurement of Quantum Light Pulses for Quantum Information Science and Technology,” Advanced Quantum Technologies 4, 2000150 (2021) — quadratic spectral phase and dispersive pulse broadening</a></li><li id="ref-2"><a href="https://doi.org/10.1364/OL.20.001160" target="_blank" rel="noopener">P. Lazaridis, G. Debarge and P. Gallion, “Time–bandwidth product of chirped sech² pulses,” Optics Letters 20, 1160–1162 (1995) — exact sech² chirp/time-bandwidth relation</a></li>
+      </ol>
 
 
       <h2 class="section-head real"><span class="sw"></span>Further reading</h2>

@@ -26,7 +26,9 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
-import { glassIndex, isDispersiveGlass, GLASS_OPTIONS } from './glass.js';
+import {
+  authoredPulseTiming, glassIndex, isDispersiveGlass, GLASS_OPTIONS, MAX_BANDWIDTH_NM, MAX_SOURCE_GDD_FS2, MIN_BANDWIDTH_NM,
+} from './glass.js';
 import {
   MIN_CEMENT_GAP, MAX_SURFACE_ROWS, PRESET_OPTIONS, normalizeSurfaceTable, surfaceRowsOf, surfaceTableAxialColour,
   surfaceTableCardinals, surfaceTableSummary, surfaceTableToBodies,
@@ -1903,10 +1905,31 @@ function laserSource(el) {
 // by the shape factor relating an envelope's FWHM duration to its true peak.
 const PEAK_SHAPE_FACTOR = { gauss: 0.9394, sech2: 0.8815 };
 
+// Energy in each pulse: average power over repetition rate.
+export function pulseEnergyJ(params = {}) {
+  const avg = Number(params.avgPowerW), repHz = Number(params.repRateMHz) * 1e6;
+  return avg > 0 && repHz > 0 ? avg / repHz : null;
+}
+function formatFs(fs) {
+  if (!(fs > 0) || !Number.isFinite(fs)) return '—';
+  if (fs >= 1e6) return `${Number((fs / 1e6).toPrecision(4))} ns`;
+  if (fs >= 1000) return `${Number((fs / 1000).toPrecision(4))} ps`;
+  return `${Number(fs.toPrecision(4))} fs`;
+}
+const ENERGY_UNITS = [[1, 'J'], [1e-3, 'mJ'], [1e-6, 'µJ'], [1e-9, 'nJ'], [1e-12, 'pJ'], [1e-15, 'fJ']];
+export function formatEnergy(joules) {
+  if (!(joules > 0)) return '—';
+  const [scale, unit] = ENERGY_UNITS.find(([f]) => joules >= f) || ENERGY_UNITS.at(-1);
+  return `${Number((joules / scale).toPrecision(3))} ${unit}`;
+}
+
+// Peak power from the emitted duration. A chirped Gaussian stays Gaussian, so
+// its shape factor holds exactly; a dispersed sech² pulse does not keep an
+// exact sech² profile, so there the figure is an estimate.
 export function peakPowerW(params = {}) {
   const avg = Number(params.avgPowerW);
   const repHz = Number(params.repRateMHz) * 1e6;
-  const tau = Number(params.pulseWidthFs) * 1e-15;
+  const tau = Number(authoredPulseTiming(params).durationFs) * 1e-15;
   if (!(avg > 0) || !(repHz > 0) || !(tau > 0)) return null;
   const shape = PEAK_SHAPE_FACTOR[params.pulseShape] ?? PEAK_SHAPE_FACTOR.gauss;
   return shape * (avg / repHz) / tau;
@@ -2226,33 +2249,62 @@ export const registry = {
       { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
       ...beamShapeParams(3),
       ...pulseTrainParams(),
-      { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150 },
-      { key: 'transformLimited', label: 'Transform-limited (time–bandwidth product)', type: 'checkbox', def: true },
+      // Two ways to author a pulse. Transform-limited: the duration and shape,
+      // with the bandwidth they imply shown beneath. Chirped: the bandwidth,
+      // a quadratic chirp's sign and its GDD, with the transform-limited and
+      // emitted durations shown beneath -- so the duration is always derived
+      // and can never fall below the limit the bandwidth sets. The laser
+      // offers no "phase unknown": that is a simplification of authoring,
+      // not a claim that every real laser has a known quadratic phase.
+      { key: 'transformLimited', label: 'Transform-limited pulses', type: 'checkbox', def: true },
+      { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150,
+        show: p => p.transformLimited !== false },
       {
         // The envelope shape matters either way: it sets the time–bandwidth
-        // constant while transform-limited, and the peak-power shape factor
-        // always.
+        // constant, and the peak-power shape factor.
         key: 'pulseShape', label: 'Pulse shape', type: 'select', def: 'gauss',
         options: [['gauss', 'Gaussian'], ['sech2', 'Sech²']],
       },
-      // Bandwidth is one row that changes hands. While transform-limited it is
-      // an output — the minimum width this duration and shape allow — so it is
-      // shown read-only next to Peak power. Switching that off hands the field
-      // to the user, which is how a chirped pulse is described: a spectrum
-      // wider than its duration requires. 0 nm stays a deliberate, valid
-      // setting — an idealized monochromatic pulse train.
       {
         key: 'bandwidthTL', label: 'Bandwidth (nm)', type: 'readout',
         readout: p => String(Number(transformLimitedBandwidthNm(p.pulseWidthFs, p.wavelength, p.pulseShape).toPrecision(4))),
-        show: p => p.transformLimited,
+        show: p => p.transformLimited !== false,
       },
       {
-        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 0, max: 400, step: 0.5, def: 5,
-        show: p => !p.transformLimited,
+        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number',
+        min: MIN_BANDWIDTH_NM, max: MAX_BANDWIDTH_NM, step: 0.5, def: 5,
+        show: p => p.transformLimited === false,
+      },
+      {
+        key: 'durationTL', label: 'Transform-limited duration', type: 'readout',
+        readout: p => formatFs(authoredPulseTiming(p).transformLimitFs),
+        show: p => p.transformLimited === false,
+      },
+      {
+        key: 'inputChirp', label: 'Chirp', type: 'select', def: 'positive',
+        options: [['positive', 'Positively chirped (quadratic)'], ['negative', 'Negatively chirped (quadratic)']],
+        show: p => p.transformLimited === false,
+      },
+      {
+        key: 'chirpGddFs2', label: 'Chirp GDD (fs²)', type: 'number', min: 0, max: MAX_SOURCE_GDD_FS2, step: 100, def: 0,
+        show: p => p.transformLimited === false,
+      },
+      {
+        key: 'durationChirped', label: 'Pulse duration', type: 'readout',
+        readout: p => formatFs(authoredPulseTiming(p).durationFs),
+        show: p => p.transformLimited === false,
       },
       POL_PARAM,
       P.autoColor, P.color,
-      { key: 'peakPower', label: 'Peak power', type: 'readout', readout: p => formatPower(peakPowerW(p)) },
+      { key: 'pulseEnergy', label: 'Pulse energy', type: 'readout', readout: p => formatEnergy(pulseEnergyJ(p)) },
+      {
+        key: 'peakPower', label: 'Peak power', type: 'readout',
+        readout: p => {
+          const text = formatPower(peakPowerW(p));
+          const estimate = p.transformLimited === false && p.pulseShape === 'sech2' && Number(p.chirpGddFs2) > 0;
+          return estimate ? `≈ ${text} (estimate)` : text;
+        },
+      },
       SHOW_PULSE_PARAM,
       pinnedParam('temporalMode', 'pulsed'),
     ],
