@@ -1397,13 +1397,13 @@ export function applyInput(inp, rebuild = false) {
   // Switching TL off reveals it — seed it from the width the pulse actually
   // had a moment ago, so the spectrum stays continuous across the toggle
   // instead of jumping to an unrelated stored default.
-  // Each mode keeps its own values. Going chirped starts from the
-  // transform-limited pulse's own spectrum with no GDD, so the emitted pulse
-  // is unchanged -- and every authorable duration's bandwidth fits the
-  // bandwidth field. Going back to transform-limited restores the duration
-  // last set in that mode rather than deriving one from the chirped
-  // bandwidth, which could imply a duration outside the 1 fs – 1 ms the
-  // transform-limited field accepts.
+  // Switching to chirped initializes the bandwidth from the current
+  // transform-limited pulse and resets the GDD to zero, so the emitted pulse
+  // is unchanged; previous chirped settings are replaced. Every authorable
+  // duration's bandwidth fits the bandwidth field. Switching to
+  // transform-limited restores the last transform-limited duration and can
+  // change the spectrum: deriving a duration from the chirped bandwidth could
+  // imply one outside the 1 fs – 1 ms the transform-limited field accepts.
   if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === false) {
     // Every authorable duration's bandwidth lies inside the field's fixed
     // bounds, so the value a save writes is the value a reload keeps.
