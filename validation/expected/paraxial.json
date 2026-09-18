@@ -1,0 +1,313 @@
+{
+ "app": "sketch/js/elements.js: thickLensCardinals; sketch/js/polarization.js: retarder, analyzerTransmission; sketch/js/etalon.js: reflectivityForFinesse, finesseForReflectivity",
+ "cases": [
+  {
+   "expected": {
+    "bfd": 95.91833426,
+    "f": 97.58070263
+   },
+   "inputs": {
+    "dia": 25.4,
+    "glass": "nbk7",
+    "r1": 100,
+    "r2": -100,
+    "thickness": 5,
+    "wavelengthNm": 587.6
+   },
+   "name": "biconvex N-BK7 100/-100 x 5 mm",
+   "tolerance": {
+    "bfd": 1e-09,
+    "f": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "bfd": 97.40186855,
+    "f": 100.0390021
+   },
+   "inputs": {
+    "dia": 25.4,
+    "glass": "nbk7",
+    "r1": 51.7,
+    "r2": 0,
+    "thickness": 4,
+    "wavelengthNm": 587.6
+   },
+   "name": "plano-convex N-BK7 51.7 mm",
+   "tolerance": {
+    "bfd": 1e-09,
+    "f": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "bfd": 126.1909612,
+    "f": 135.1012862
+   },
+   "inputs": {
+    "dia": 25.4,
+    "glass": "nsf11",
+    "r1": 40,
+    "r2": 60,
+    "thickness": 6,
+    "wavelengthNm": 587.6
+   },
+   "name": "meniscus N-SF11 40/60 x 6 mm",
+   "tolerance": {
+    "bfd": 1e-09,
+    "f": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "bfd": 30.52310726,
+    "f": 34.91301965
+   },
+   "inputs": {
+    "dia": 25.4,
+    "glass": "silica",
+    "r1": 30,
+    "r2": -30,
+    "thickness": 12,
+    "wavelengthNm": 587.6
+   },
+   "name": "thick biconvex silica 30/-30 x 12 mm",
+   "tolerance": {
+    "bfd": 1e-09,
+    "f": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": 6.123233996e-17,
+    "s2": 6.123233996e-17,
+    "s3": -1.0
+   },
+   "inputs": {
+    "axisDeg": 45,
+    "inputAngleDeg": 0,
+    "retardanceDeg": 90
+   },
+   "name": "retarder axis 45 deg, retardance 90 deg, on linear 0 deg",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": 0.5,
+    "s2": 5.302876194e-17,
+    "s3": 0.8660254038
+   },
+   "inputs": {
+    "axisDeg": 0,
+    "inputAngleDeg": 30,
+    "retardanceDeg": 90
+   },
+   "name": "retarder axis 0 deg, retardance 90 deg, on linear 30 deg",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": 2.220446049e-16,
+    "s2": 1.0,
+    "s3": -8.659560562e-17
+   },
+   "inputs": {
+    "axisDeg": 22.5,
+    "inputAngleDeg": 0,
+    "retardanceDeg": 180
+   },
+   "name": "retarder axis 22.5 deg, retardance 180 deg, on linear 0 deg",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": -0.4013465084,
+    "s2": 0.5949771634,
+    "s3": 0.6963642403
+   },
+   "inputs": {
+    "axisDeg": 10,
+    "inputAngleDeg": 60,
+    "retardanceDeg": 45
+   },
+   "name": "retarder axis 10 deg, retardance 45 deg, on linear 60 deg",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "s1": -0.25,
+    "s2": 0.4330127019,
+    "s3": 0.8660254038
+   },
+   "inputs": {
+    "axisDeg": -30,
+    "inputAngleDeg": 90,
+    "retardanceDeg": 270
+   },
+   "name": "retarder axis -30 deg, retardance 270 deg, on linear 90 deg",
+   "tolerance": {
+    "s1": 1e-09,
+    "s2": 1e-09,
+    "s3": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "transmission": 1.0
+   },
+   "inputs": {
+    "axisDeg": 0,
+    "inputAngleDeg": 0
+   },
+   "name": "analyzer at 0 deg on linear 0 deg (Malus)",
+   "tolerance": {
+    "transmission": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "transmission": 0.0
+   },
+   "inputs": {
+    "axisDeg": 90,
+    "inputAngleDeg": 0
+   },
+   "name": "analyzer at 90 deg on linear 0 deg (Malus)",
+   "tolerance": {
+    "transmission": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "transmission": 0.75
+   },
+   "inputs": {
+    "axisDeg": 60,
+    "inputAngleDeg": 30
+   },
+   "name": "analyzer at 60 deg on linear 30 deg (Malus)",
+   "tolerance": {
+    "transmission": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "transmission": 0.5
+   },
+   "inputs": {
+    "axisDeg": 0,
+    "inputAngleDeg": 45
+   },
+   "name": "analyzer at 0 deg on linear 45 deg (Malus)",
+   "tolerance": {
+    "transmission": 1e-09
+   }
+  },
+  {
+   "absolute": true,
+   "expected": {
+    "transmission": 0.1169777784
+   },
+   "inputs": {
+    "axisDeg": 80,
+    "inputAngleDeg": 10
+   },
+   "name": "analyzer at 80 deg on linear 10 deg (Malus)",
+   "tolerance": {
+    "transmission": 1e-09
+   }
+  },
+  {
+   "expected": {
+    "finesse": 5.0,
+    "reflectivity": 0.5387967552
+   },
+   "inputs": {
+    "finesse": 5
+   },
+   "name": "mirror reflectivity for finesse 5",
+   "tolerance": {
+    "finesse": 1e-08,
+    "reflectivity": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "finesse": 19.0,
+    "reflectivity": 0.8477587271
+   },
+   "inputs": {
+    "finesse": 19
+   },
+   "name": "mirror reflectivity for finesse 19",
+   "tolerance": {
+    "finesse": 1e-08,
+    "reflectivity": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "finesse": 50.0,
+    "reflectivity": 0.9391110692
+   },
+   "inputs": {
+    "finesse": 50
+   },
+   "name": "mirror reflectivity for finesse 50",
+   "tolerance": {
+    "finesse": 1e-08,
+    "reflectivity": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "finesse": 200.0,
+    "reflectivity": 0.9844149223
+   },
+   "inputs": {
+    "finesse": 200
+   },
+   "name": "mirror reflectivity for finesse 200",
+   "tolerance": {
+    "finesse": 1e-08,
+    "reflectivity": 1e-08
+   }
+  }
+ ],
+ "citations": [
+  "E. Hecht, Optics, 5th ed., section 6.2 (thick lens), section 8.13 (Stokes parameters and Mueller matrices)",
+  "D. H. Goldstein, Polarized Light, 3rd ed., ch. 6 (Mueller matrices of retarders and polarizers)",
+  "M. Born and E. Wolf, Principles of Optics, section 7.6 (Fabry-Perot finesse)"
+ ],
+ "fidelity": "computed",
+ "id": "paraxial",
+ "reference": "ABCD system matrix; Goldstein Mueller matrices; Airy finesse inverted by bisection",
+ "reference_file": "validation/reference/paraxial.py",
+ "scope": "Paraxial (Gaussian) optics for the lens; fully polarized Stokes vectors; lossless etalon mirrors of equal reflectivity.",
+ "title": "Thick singlet cardinal points, Stokes retarder and analyzer, etalon finesse"
+}

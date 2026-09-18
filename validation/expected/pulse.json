@@ -1,0 +1,239 @@
+{
+ "app": "sketch/js/spectrum.js: transformLimitedBandwidthNm; sketch/js/glass.js: gaussianPulseDurationAfterGDD, sech2PulseDurationAfterGDD, AUTOCORRELATION_FACTORS",
+ "cases": [
+  {
+   "expected": {
+    "bandwidthNm": 9.421380484,
+    "tbp": 0.4413216895
+   },
+   "inputs": {
+    "pulseWidthFs": 100,
+    "shape": "gauss",
+    "wavelengthNm": 800
+   },
+   "name": "gauss time-bandwidth product",
+   "tolerance": {
+    "bandwidthNm": 0.002,
+    "tbp": 0.002
+   }
+  },
+  {
+   "expected": {
+    "factor": 1.414213722
+   },
+   "inputs": {
+    "shape": "gauss"
+   },
+   "name": "gauss autocorrelation FWHM factor",
+   "tolerance": {
+    "factor": 0.001
+   }
+  },
+  {
+   "expected": {
+    "bandwidthNm": 6.722647538,
+    "tbp": 0.3149060984
+   },
+   "inputs": {
+    "pulseWidthFs": 100,
+    "shape": "sech2",
+    "wavelengthNm": 800
+   },
+   "name": "sech2 time-bandwidth product",
+   "tolerance": {
+    "bandwidthNm": 0.002,
+    "tbp": 0.002
+   }
+  },
+  {
+   "expected": {
+    "factor": 1.542813184
+   },
+   "inputs": {
+    "shape": "sech2"
+   },
+   "name": "sech2 autocorrelation FWHM factor",
+   "tolerance": {
+    "factor": 0.001
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 121.6739904
+   },
+   "inputs": {
+    "gddFs2": 2500.0,
+    "pulseWidthFs": 100.0,
+    "shape": "gauss"
+   },
+   "name": "gauss 100 fs after 0.25 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 139.7547189
+   },
+   "inputs": {
+    "gddFs2": 2500.0,
+    "pulseWidthFs": 100.0,
+    "shape": "sech2"
+   },
+   "name": "sech2 100 fs after 0.25 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 170.9331649
+   },
+   "inputs": {
+    "gddFs2": 5000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "gauss"
+   },
+   "name": "gauss 100 fs after 0.5 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 187.8173147
+   },
+   "inputs": {
+    "gddFs2": 5000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "sech2"
+   },
+   "name": "sech2 100 fs after 0.5 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 294.7413875
+   },
+   "inputs": {
+    "gddFs2": 10000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "gauss"
+   },
+   "name": "gauss 100 fs after 1 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 278.6263911
+   },
+   "inputs": {
+    "gddFs2": 10000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "sech2"
+   },
+   "name": "sech2 100 fs after 1 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 563.4625157
+   },
+   "inputs": {
+    "gddFs2": 20000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "gauss"
+   },
+   "name": "gauss 100 fs after 2 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 458.0663307
+   },
+   "inputs": {
+    "gddFs2": 20000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "sech2"
+   },
+   "name": "sech2 100 fs after 2 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 1389.896709
+   },
+   "inputs": {
+    "gddFs2": 50000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "gauss"
+   },
+   "name": "gauss 100 fs after 5 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 1021.567036
+   },
+   "inputs": {
+    "gddFs2": 50000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "sech2"
+   },
+   "name": "sech2 100 fs after 5 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 2774.392102
+   },
+   "inputs": {
+    "gddFs2": 100000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "gauss"
+   },
+   "name": "gauss 100 fs after 10 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  },
+  {
+   "expected": {
+    "durationFs": 1995.305551
+   },
+   "inputs": {
+    "gddFs2": 100000.0,
+    "pulseWidthFs": 100.0,
+    "shape": "sech2"
+   },
+   "name": "sech2 100 fs after 10 tau^2 of GDD",
+   "tolerance": {
+    "durationFs": 0.002
+   }
+  }
+ ],
+ "citations": [
+  "J.-C. Diels and W. Rudolph, Ultrashort Laser Pulse Phenomena, 2nd ed., ch. 1 (time-bandwidth products, autocorrelation factors)",
+  "G. P. Agrawal, Nonlinear Fiber Optics, ch. 3 (Gaussian pulse broadening under GVD)"
+ ],
+ "fidelity": "computed",
+ "id": "pulse",
+ "reference": "Direct Fourier propagation of the analytic envelopes on a 16384-point grid",
+ "reference_file": "validation/reference/pulse.py",
+ "scope": "Transform-limited input, second-order spectral phase only; no third-order dispersion or amplitude reshaping.",
+ "title": "Transform limit, quadratic-phase stretching, autocorrelation factors"
+}
