@@ -14,6 +14,7 @@ import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToCo
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
+import { fiberPropagation } from './fiber.js';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -1796,7 +1797,13 @@ function fiberEmissionRays(c) {
   const K = 9, rays = [];
   const ng = Math.min(2.2, Math.max(1, b.groupIndex || 1.468));
   const lossDbPerM = Math.min(100, Math.max(0, b.lossDbPerM ?? 0.2));
-  const lengthMm = polylineLength(pts);
+  // A set physical length stands for cable coiled out of the drawing: it
+  // sets delay, loss and dispersion together, and the drawing stays put.
+  const { lengthMm, gddFs2 } = fiberPropagation(b, polylineLength(pts));
+  // β₂ is one value for the whole band, like the compressor's lumped GDD, so
+  // a broad band's endpoint spread follows from it the same way.
+  const fiberDelayDifference = gddFs2
+    ? gddGroupDelayDifferenceFs(gddFs2, c.pulse?.spectrumLoNm, c.pulse?.spectrumHiNm) : 0;
   const transmission = 10 ** (-(lossDbPerM * lengthMm / 1000) / 10);
   const common = {
     wl: c.wl, bw: c.bw || 0, spec: c.spec || null, speckle: false, intensity: Math.min(1, c.intensity * transmission),
@@ -1804,11 +1811,11 @@ function fiberEmissionRays(c) {
     pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, sourceId: c.sourceId || null,
     originId: c.originId || null,
     oplStart: (c.opl || 0) + lengthMm * ng + 2,
-    // The fiber's own chromatic dispersion is not modelled, but dispersion
-    // already accumulated before coupling must survive the relaunch.
-    gddStart: Number.isFinite(c.gdd) ? c.gdd : 0,
-    groupDelayDifferenceStartFs: Number.isFinite(c.groupDelayDifferenceFs)
-      ? c.groupDelayDifferenceFs : 0,
+    // Dispersion accumulated before coupling survives the relaunch, and the
+    // fiber's own signed GDD adds to it.
+    gddStart: (Number.isFinite(c.gdd) ? c.gdd : 0) + gddFs2,
+    groupDelayDifferenceStartFs: (Number.isFinite(c.groupDelayDifferenceFs) ? c.groupDelayDifferenceFs : 0)
+      + (Number.isFinite(fiberDelayDifference) ? fiberDelayDifference : 0),
   };
   if (cfg.mode === 'focus') {
     const f = Math.max(2, cfg.focal || 20), ap = Math.max(1, cfg.dia || 6);
