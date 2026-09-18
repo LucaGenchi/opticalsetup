@@ -1,0 +1,227 @@
+{
+ "app": "sketch/js/fiber.js: hollowCoreCoefficients, marcatiliLossDbPerM",
+ "cases": [
+  {
+   "expected": {
+    "beta2Fs2PerM": 28.37056046,
+    "effectiveAreaM2": 2.010619298e-08,
+    "gammaPerWM": 7.787441401e-09,
+    "gasBeta2Fs2PerM": 36.87089624,
+    "groupIndex": 1.000526099,
+    "waveguideBeta2Fs2PerM": -8.500335782
+   },
+   "inputs": {
+    "coreDiameterUm": 250,
+    "gasPressureBar": 2,
+    "wavelengthNm": 800
+   },
+   "name": "250 um core, 2 bar, 800 nm",
+   "tolerance": {
+    "beta2Fs2PerM": 0.0005,
+    "effectiveAreaM2": 1e-08,
+    "gammaPerWM": 1e-08,
+    "gasBeta2Fs2PerM": 0.0005,
+    "groupIndex": 1e-09,
+    "waveguideBeta2Fs2PerM": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "beta2Fs2PerM": -8.500335782,
+    "effectiveAreaM2": 2.010619298e-08,
+    "gammaPerWM": 0.0,
+    "gasBeta2Fs2PerM": 0.0,
+    "groupIndex": 1.000003,
+    "waveguideBeta2Fs2PerM": -8.500335782
+   },
+   "inputs": {
+    "coreDiameterUm": 250,
+    "gasPressureBar": 0,
+    "wavelengthNm": 800
+   },
+   "name": "250 um core, 0 bar, 800 nm",
+   "tolerance": {
+    "beta2Fs2PerM": 0.0005,
+    "effectiveAreaM2": 1e-08,
+    "gammaPerWM": 1e-08,
+    "gasBeta2Fs2PerM": 0.0005,
+    "groupIndex": 1e-09,
+    "waveguideBeta2Fs2PerM": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "beta2Fs2PerM": 34.7458123,
+    "effectiveAreaM2": 8.042477193e-08,
+    "gammaPerWM": 1.94686035e-09,
+    "gasBeta2Fs2PerM": 36.87089624,
+    "groupIndex": 1.000523848,
+    "waveguideBeta2Fs2PerM": -2.125083946
+   },
+   "inputs": {
+    "coreDiameterUm": 500,
+    "gasPressureBar": 2,
+    "wavelengthNm": 800
+   },
+   "name": "500 um core, 2 bar, 800 nm",
+   "tolerance": {
+    "beta2Fs2PerM": 0.0005,
+    "effectiveAreaM2": 1e-08,
+    "gammaPerWM": 1e-08,
+    "gasBeta2Fs2PerM": 0.0005,
+    "groupIndex": 1e-09,
+    "waveguideBeta2Fs2PerM": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "beta2Fs2PerM": -36.28033859,
+    "effectiveAreaM2": 7.238229474e-09,
+    "gammaPerWM": 8.400691911e-09,
+    "gasBeta2Fs2PerM": 14.11325092,
+    "groupIndex": 1.000272801,
+    "waveguideBeta2Fs2PerM": -50.39358951
+   },
+   "inputs": {
+    "coreDiameterUm": 150,
+    "gasPressureBar": 1,
+    "wavelengthNm": 1030
+   },
+   "name": "150 um core, 1 bar, 1030 nm",
+   "tolerance": {
+    "beta2Fs2PerM": 0.0005,
+    "effectiveAreaM2": 1e-08,
+    "gammaPerWM": 1e-08,
+    "gasBeta2Fs2PerM": 0.0005,
+    "groupIndex": 1e-09,
+    "waveguideBeta2Fs2PerM": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "beta2Fs2PerM": -34.03125893,
+    "effectiveAreaM2": 2.010619298e-08,
+    "gammaPerWM": 6.028986891e-09,
+    "gasBeta2Fs2PerM": 27.79332684,
+    "groupIndex": 1.00078178,
+    "waveguideBeta2Fs2PerM": -61.82458576
+   },
+   "inputs": {
+    "coreDiameterUm": 250,
+    "gasPressureBar": 3,
+    "wavelengthNm": 1550
+   },
+   "name": "250 um core, 3 bar, 1550 nm",
+   "tolerance": {
+    "beta2Fs2PerM": 0.0005,
+    "effectiveAreaM2": 1e-08,
+    "gammaPerWM": 1e-08,
+    "gasBeta2Fs2PerM": 0.0005,
+    "groupIndex": 1e-09,
+    "waveguideBeta2Fs2PerM": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "beta2Fs2PerM": 58.75421583,
+    "effectiveAreaM2": 2.89529179e-08,
+    "gammaPerWM": 8.400691911e-09,
+    "gasBeta2Fs2PerM": 60.3290155,
+    "groupIndex": 1.000542835,
+    "waveguideBeta2Fs2PerM": -1.574799672
+   },
+   "inputs": {
+    "coreDiameterUm": 300,
+    "gasPressureBar": 2,
+    "wavelengthNm": 515
+   },
+   "name": "300 um core, 2 bar, 515 nm",
+   "tolerance": {
+    "beta2Fs2PerM": 0.0005,
+    "effectiveAreaM2": 1e-08,
+    "gammaPerWM": 1e-08,
+    "gasBeta2Fs2PerM": 0.0005,
+    "groupIndex": 1e-09,
+    "waveguideBeta2Fs2PerM": 1e-08
+   }
+  },
+  {
+   "expected": {
+    "lossDbPerM": 0.00185
+   },
+   "inputs": {
+    "coreDiameterUm": 2000,
+    "wallIndex": 1.5,
+    "wavelengthNm": 1000
+   },
+   "name": "Marcatili-Schmeltzer worked example (nu 1.50, 1 um, a 1 mm)",
+   "published": true,
+   "tolerance": {
+    "lossDbPerM": 0.003
+   }
+  },
+  {
+   "expected": {
+    "lossDbPerM": 2.848182475
+   },
+   "inputs": {
+    "coreDiameterUm": 150,
+    "wavelengthNm": 800
+   },
+   "name": "Marcatili loss, 150 um core at 800 nm, silica wall",
+   "tolerance": {
+    "lossDbPerM": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "lossDbPerM": 0.6152074146
+   },
+   "inputs": {
+    "coreDiameterUm": 250,
+    "wavelengthNm": 800
+   },
+   "name": "Marcatili loss, 250 um core at 800 nm, silica wall",
+   "tolerance": {
+    "lossDbPerM": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "lossDbPerM": 0.07690092683
+   },
+   "inputs": {
+    "coreDiameterUm": 500,
+    "wavelengthNm": 800
+   },
+   "name": "Marcatili loss, 500 um core at 800 nm, silica wall",
+   "tolerance": {
+    "lossDbPerM": 1e-06
+   }
+  },
+  {
+   "expected": {
+    "lossDbPerM": 1.021060314
+   },
+   "inputs": {
+    "coreDiameterUm": 250,
+    "wavelengthNm": 1030
+   },
+   "name": "Marcatili loss, 250 um core at 1030 nm, silica wall",
+   "tolerance": {
+    "lossDbPerM": 1e-06
+   }
+  }
+ ],
+ "citations": [
+  "E. R. Peck and D. J. Fisher, J. Opt. Soc. Am. 54, 1362 (1964), argon refractivity",
+  "E. A. J. Marcatili and R. A. Schmeltzer, Bell Syst. Tech. J. 43, 1783 (1964), hollow dielectric waveguides",
+  "S. Zahedpour, J. K. Wahlstrand and H. M. Milchberg, Opt. Lett. 40, 5794 (2015), argon n2"
+ ],
+ "fidelity": "computed",
+ "id": "argon-capillary",
+ "reference": "Peck-Fisher refractivity with finite-difference derivatives; Marcatili-Schmeltzer HE11 formulas evaluated directly, including the paper's worked value",
+ "reference_file": "validation/reference/argon_capillary.py",
+ "scope": "468-2059 nm (the refractivity fit), smooth straight silica capillary, Gaussian effective-area convention pi (0.64 a)^2, n2 scaled with pressure only.",
+ "title": "Argon hollow capillary: dispersion, Kerr coefficient, ideal loss"
+}
