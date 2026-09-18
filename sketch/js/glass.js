@@ -277,6 +277,8 @@ export const DISPERSION_UNAVAILABLE = {
   reshaped: 'Spectrum reshaped after emission — dispersed duration unavailable',
   sampled: 'Sampled envelope unavailable — dispersed duration unavailable',
   belowLimit: 'Duration shorter than its bandwidth allows — dispersed duration unavailable',
+  partialFan: 'Only part of the fanned-out spectrum reaches this detector — dispersed duration unavailable',
+  generated: 'Continuum generated on the bench — its duration is not modelled',
 };
 
 function declinedDuration(model, extra = {}) {
@@ -315,6 +317,10 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
   // already accumulated belongs to wavelengths that may since have been
   // removed, so neither the source spectrum nor the surviving one gives an
   // honest answer from a single accumulated number.
+  // A continuum a crystal generated has no authored duration of its own --
+  // the record's width is the pump's -- so there is nothing to disperse,
+  // filtered or not.
+  if (pulse?.durationUnknown) return declinedDuration(DISPERSION_UNAVAILABLE.generated, { totalGddFs2: gdd });
   if (pulse?.spectrumReshaped) return declinedDuration(DISPERSION_UNAVAILABLE.reshaped, { totalGddFs2: gdd });
   const undispersed = Math.abs(gdd) < 1e-9 && Math.abs(delayDifference) < 1e-9;
   if (!(bandwidth > 0) && pulse?.transformLimited !== true) return {
@@ -344,7 +350,7 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
     durationFs: input, available: true, transformLimitFs: null, inputGddFs2: null, totalGddFs2: gdd, model,
   });
   if (sign === null) {
-    return undispersed ? configuredOnly('Spectral phase unknown · no dispersion on this path')
+    return undispersed ? configuredOnly('Configured duration · zero net modeled dispersion · spectral phase unknown')
       : declinedDuration(DISPERSION_UNAVAILABLE.unknownPhase, { totalGddFs2: gdd });
   }
   const center = Number(pulse?.centerWavelengthNm);
@@ -353,7 +359,7 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
   // A configured duration shorter than its bandwidth permits is not a chirped
   // pulse, and there is no phase from which to predict what glass does to it.
   if (!(tau0 > 0) || !Number.isFinite(tau0) || input + 1e-9 < tau0) {
-    return undispersed ? configuredOnly('Duration below its transform limit · no dispersion on this path')
+    return undispersed ? configuredOnly('Configured duration · zero net modeled dispersion · below its transform limit')
       : declinedDuration(DISPERSION_UNAVAILABLE.belowLimit, {
         transformLimitFs: Number.isFinite(tau0) ? tau0 : null, totalGddFs2: gdd,
       });
@@ -387,26 +393,47 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
 }
 
 // The duration a set of arrivals would report, or a declined result when
-// they disagree. Rays of one train reaching a detector by paths of different
-// dispersion -- two interferometer arms, say -- form no single pulse this
-// model can describe, so beyond a 2 % spread in the durations the paths imply
-// it declines instead of averaging their GDD.
+// they are not one pulse. Rays of one train reaching a detector by paths of
+// different dispersion -- two interferometer arms, say -- carry different
+// spectral phases, and GDD on separate arrivals does not compensate the way
+// GDD in sequence on one ray does: +5000 fs² on one arm and −5000 fs² on the
+// other give equal widths, yet their mean describes neither. So the paths
+// must agree in phase, not merely in width. Three tests, all required:
+//  - the quadratic phase each path adds, relative to their mean, stays within
+//    0.1 rad at the edge of the pulse's FWHM bandwidth;
+//  - a broad band's endpoint delays agree within 2 % of the duration;
+//  - every path's own duration, and the mean-GDD duration, agree within 2 %.
+// The 2 % and 0.1 rad are a display heuristic for small variations -- the
+// few fs² across a thick lens's aperture -- not a proof that distinct fields
+// combine into one pulse.
 export const PATH_SPREAD_TOLERANCE = 0.02;
+export const PATH_PHASE_TOLERANCE_RAD = 0.1;
 export const PATHS_DISAGREE = 'Paths with different dispersion reach this detector — duration unavailable';
+const TIME_BANDWIDTH = { gauss: 0.441, sech2: 0.315 };
 export function pulseDurationAcrossPaths(pulse, paths) {
   const list = (paths || []).filter(p => Number.isFinite(p?.gddFs2));
   if (!list.length) return pulseDurationAfterDispersion(pulse, 0, 0);
-  const results = list.map(p => pulseDurationAfterDispersion(pulse, p.gddFs2, p.groupDelayDifferenceFs || 0));
-  const weight = list.reduce((sum, p) => sum + Math.max(0, p.weight ?? 1), 0) || list.length;
-  const mean = key => list.reduce((sum, p) => sum + (p[key] || 0) * (Math.max(0, p.weight ?? 1) || 1), 0) / weight;
-  const central = pulseDurationAfterDispersion(pulse, mean('gddFs2'), mean('groupDelayDifferenceFs'));
+  const weightOf = p => (Number.isFinite(p.weight) && p.weight > 0 ? p.weight : 1);
+  const weight = list.reduce((sum, p) => sum + weightOf(p), 0);
+  const mean = key => list.reduce((sum, p) => sum + (p[key] || 0) * weightOf(p), 0) / weight;
+  const meanGdd = mean('gddFs2'), meanDelay = mean('groupDelayDifferenceFs');
+  const central = pulseDurationAfterDispersion(pulse, meanGdd, meanDelay);
   if (!central || central.available === false) return central;
-  const widths = results.map(r => r?.durationFs);
-  if (widths.some(w => !Number.isFinite(w))) return declinedDuration(PATHS_DISAGREE, { totalGddFs2: central.totalGddFs2 });
-  const lo = Math.min(...widths), hi = Math.max(...widths);
-  if ((hi - lo) / Math.max(1e-9, central.durationFs) > PATH_SPREAD_TOLERANCE) {
-    return declinedDuration(PATHS_DISAGREE, { totalGddFs2: central.totalGddFs2 });
+  const disagree = declinedDuration(PATHS_DISAGREE, { totalGddFs2: central.totalGddFs2 });
+  if (list.length === 1) return central;
+  const tau0 = Number(central.transformLimitFs);
+  if (tau0 > 0) {
+    const tbp = TIME_BANDWIDTH[pulse?.pulseShape === 'sech2' ? 'sech2' : 'gauss'];
+    const halfWidth = Math.PI * tbp / tau0; // half the FWHM angular bandwidth, rad/fs
+    const phase = list.map(p => Math.abs(p.gddFs2 - meanGdd) * halfWidth * halfWidth / 2);
+    if (Math.max(...phase) > PATH_PHASE_TOLERANCE_RAD) return disagree;
   }
+  const delaySpread = Math.max(...list.map(p => Math.abs((p.groupDelayDifferenceFs || 0) - meanDelay)));
+  if (delaySpread > PATH_SPREAD_TOLERANCE * central.durationFs) return disagree;
+  const widths = list.map(p => pulseDurationAfterDispersion(pulse, p.gddFs2, p.groupDelayDifferenceFs || 0)?.durationFs);
+  if (widths.some(w => !Number.isFinite(w))) return disagree;
+  const all = [...widths, central.durationFs];
+  if ((Math.max(...all) - Math.min(...all)) / Math.max(1e-9, central.durationFs) > PATH_SPREAD_TOLERANCE) return disagree;
   return central;
 }
 
