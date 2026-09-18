@@ -279,6 +279,7 @@ export const DISPERSION_UNAVAILABLE = {
   belowLimit: 'Duration shorter than its bandwidth allows — dispersed duration unavailable',
   partialFan: 'Only part of the fanned-out spectrum reaches this detector — dispersed duration unavailable',
   generated: 'Continuum generated on the bench — its duration is not modelled',
+  recordsDiffer: 'Parts of this beam carry different pulse histories — duration unavailable',
 };
 
 function declinedDuration(model, extra = {}) {

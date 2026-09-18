@@ -978,7 +978,17 @@ export function detectorReading(elementId) {
       hitGroups.set(key, group);
     }
     const trains = [...hitGroups.values()].map(sourceHits => {
-      const p = sourceHits[0].pulse;
+      // Every arrival's own record counts, not just the first: a filter
+      // crossing part of a beam marks only the rays it touched, and which
+      // half arrives first must not decide whether the train is valid. An
+      // invalid record anywhere decides for the train, and records that
+      // disagree about phase or duration make it unavailable too.
+      const records = [...new Set(sourceHits.map(h => h.pulse))];
+      const invalidRecord = records.find(r => r.fieldIssue || r.spectrumReshaped || r.durationUnknown);
+      const provenance = r => [r.transformLimited === true, r.spectralPhase || '', r.inputChirp || '',
+        r.pulseWidthFs, r.bandwidthNm, r.pulseShape || 'gauss'].join('|');
+      const recordsDisagree = !invalidRecord && new Set(records.map(provenance)).size > 1;
+      const p = invalidRecord || sourceHits[0].pulse;
       const centerWavelength = Number.isFinite(p.centerWavelengthNm)
         ? p.centerWavelengthNm : sourceHits[0].wl;
       const nearestDistance = Math.min(...sourceHits.map(h => Math.abs(h.wl - centerWavelength)));
@@ -1024,6 +1034,9 @@ export function detectorReading(elementId) {
       // aperture can then catch only some of them. The duration model assumes
       // the whole band arrives, so where the arriving cells leave part of it
       // uncovered it declines -- after any earlier reason to decline.
+      if (duration?.available !== false && recordsDisagree) {
+        duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.recordsDiffer };
+      }
       if (duration?.available !== false && !fannedBandCovered(p, sourceHits)) {
         duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.partialFan };
       }

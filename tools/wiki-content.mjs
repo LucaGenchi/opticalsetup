@@ -1475,7 +1475,7 @@ export const wikiEntries = [
         with wavelength. Nine rays are launched from the output end, which sets how finely
         the emerging cone is sampled.</p>
         <p>The fiber's own chromatic dispersion is a <strong>single signed β₂</strong>,
-        entered in ps²/km at your laser's wavelength and applied as a lumped GDD of
+        entered in ps²/km at a reference wavelength and applied, as a constant across the band, as a lumped GDD of
         β₂ × length: 1&nbsp;ps²/km is 1&nbsp;fs²/mm, so 36&nbsp;ps²/km over 1&nbsp;m adds
         36&nbsp;000&nbsp;fs². It adds to whatever dispersion the pulse already carries, and a
         compressor of the opposite sign takes it back out. <em>Physical length</em> sets the
@@ -1626,7 +1626,7 @@ export const wikiEntries = [
         with wavelength. Nine rays are launched from the output end, which sets how finely
         the emerging cone is sampled.</p>
         <p>The fiber's own chromatic dispersion is a <strong>single signed β₂</strong>,
-        entered in ps²/km at your laser's wavelength and applied as a lumped GDD of
+        entered in ps²/km at a reference wavelength and applied, as a constant across the band, as a lumped GDD of
         β₂ × length: 1&nbsp;ps²/km is 1&nbsp;fs²/mm, so 36&nbsp;ps²/km over 1&nbsp;m adds
         36&nbsp;000&nbsp;fs². It adds to whatever dispersion the pulse already carries, and a
         compressor of the opposite sign takes it back out. <em>Physical length</em> sets the
