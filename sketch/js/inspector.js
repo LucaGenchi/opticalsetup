@@ -17,7 +17,7 @@ import {
   bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN,
 } from './glass.js';
 import { pmtVerdict } from './detector-measurements.js';
-import { authoredBandwidthBoundsNm, authoredPulseTiming, MAX_PULSE_FS, MIN_PULSE_FS } from './glass.js';
+import { MAX_PULSE_FS, MIN_PULSE_FS } from './glass.js';
 import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import {
@@ -1402,18 +1402,19 @@ export function applyInput(inp, rebuild = false) {
   // keeps the bandwidth and drops the chirp, so the duration becomes that
   // bandwidth's limit; transform-limited → chirped starts with no chirp.
   if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === false) {
-    // Rounded for the field, then kept inside the bandwidth's own bounds, so
-    // the value a save writes is the value a reload keeps.
-    const [bwLo, bwHi] = authoredBandwidthBoundsNm(sel.params);
-    sel.params.bandwidth = Math.min(bwHi, Math.max(bwLo, roundSig(transformLimitedBandwidthNm(
-      sel.params.pulseWidthFs, sel.params.wavelength, sel.params.pulseShape || 'gauss'))));
+    // Every authorable duration's bandwidth lies inside the field's fixed
+    // bounds, so the value a save writes is the value a reload keeps.
+    sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(
+      sel.params.pulseWidthFs, sel.params.wavelength, sel.params.pulseShape || 'gauss'));
     sel.params.chirpGddFs2 = 0;
     changed();
     renderInspector();
     return;
   }
   if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === true) {
-    const limit = authoredPulseTiming(sel.params).transformLimitFs;
+    // From the chirped bandwidth the pulse had a moment ago -- the mode has
+    // already been switched, so the accessor would read the old duration.
+    const limit = transformLimitedDurationFs(sel.params.bandwidth, sel.params.wavelength, sel.params.pulseShape || 'gauss');
     if (Number.isFinite(limit) && limit > 0) sel.params.pulseWidthFs = Math.min(MAX_PULSE_FS, Math.max(MIN_PULSE_FS, roundSig(limit)));
     changed();
     renderInspector();

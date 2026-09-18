@@ -246,12 +246,13 @@ export const wikiEntries = [
         at its duration. Light generated on the bench can still have an unknown phase (see
         the crystal and OPO pages). A sketch saved before these controls opens with its
         bandwidth and the GDD that reproduces its saved duration, with the sign it was saved
-        with or positive — provided that GDD fits the 10⁷&nbsp;fs² range and the bandwidth the
-        range the transform-limited mode can author (the bandwidths of 1&nbsp;fs to
-        1&nbsp;ms pulses at that wavelength); beyond them the value is clamped and the
-        duration changes. A train saved at 0&nbsp;nm opens transform-limited at its duration.
-        The bandwidth field accepts exactly that authorable range, so a spectrum carried
-        across the mode toggle is kept through a save and reload.</p>
+        with or positive — provided that GDD fits the 10⁷&nbsp;fs² range; beyond it the GDD
+        is clamped and the duration changes. A train saved at 0&nbsp;nm opens
+        transform-limited at its duration. The bandwidth field's fixed bounds hold the
+        transform-limited bandwidth of every authorable pulse (1&nbsp;fs to 1&nbsp;ms) at
+        every allowed wavelength, so a spectrum carried across the mode toggle — in
+        either direction — is kept through a save and reload, and no wavelength or
+        shape edit moves it.</p>
         <p><em>Show pulse dynamics</em> is a drawing choice only — switching it off leaves
         the beam rendered as a steady CW line while every bit of the pulse physics above
         keeps running.</p>
