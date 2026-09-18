@@ -421,8 +421,23 @@ test('the example\'s screens draw both autocorrelations; cross-correlation of co
   for (const id of ['hcf-before-screen', 'hcf-after-screen']) {
     const svg = registry.display.svg(scene.elements.find(e => e.id === id), scene.elements);
     assert.match(svg, /data-autocorrelation="\d+"/, id);
-    assert.match(svg, /FIELD \d/, `${id} shows the true FWHM beside the reading`);
+    assert.match(svg, /SIM \d/, `${id} shows the simulated FWHM beside the reading`);
   }
   const trains = [detectorReading('hcf-before').pulse.trains[0], detectorReading('hcf-output').pulse.trains[0]];
   assert.match(crossCorrelationPair({ pulse: { trains } }).reason, /NOT MODELED/);
+});
+
+test('the numerical autocorrelation equals direct summation even for light at the window edges', async () => {
+  const { envelopeAutocorrelation } = await import('../sketch/js/pulse-field.js');
+  // A non-power-of-two, asymmetric array with both endpoints loaded: any
+  // circular wrap-around would add the far end onto the near lags.
+  const n = 37, timeFs = Array.from({ length: n }, (_, i) => i * 2);
+  const intensity = Array.from({ length: n }, (_, i) => (i === 0 || i === n - 1 ? 1 : 0.3 + 0.5 * Math.sin(i) ** 2));
+  const ac = envelopeAutocorrelation({ timeFs, intensity });
+  const direct = k => { let s = 0; for (let i = 0; i + Math.abs(k) < n; i++) s += intensity[i] * intensity[i + Math.abs(k)]; return s; };
+  const peak = direct(0);
+  for (let k = -(n - 1); k <= n - 1; k++) close(ac.trace[k + n - 1], direct(k) / peak, 1e-12);
+  // A constant window is a triangle reaching zero at ±(n−1) samples.
+  const flat = envelopeAutocorrelation({ timeFs, intensity: Array(n).fill(1) });
+  for (let k = -(n - 1); k <= n - 1; k++) close(flat.trace[k + n - 1], 1 - Math.abs(k) / n, 1e-12);
 });

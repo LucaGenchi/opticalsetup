@@ -310,7 +310,7 @@ function autocorrelatorRows(rd, source) {
     return `
       <dt>Autocorrelation FWHM</dt><dd>${f(sampled.traceFwhmFs)} (numerical, from the computed field)</dd>
       <dt>Inferred duration</dt><dd>${f(sampled.inferredPulseWidthFs)} · assuming ${assumedShape === 'sech2' ? 'sech²' : 'Gaussian'} (÷${sampled.assumedFactor.toFixed(3)})</dd>
-      <dt>Field FWHM</dt><dd>${f(sampled.truePulseWidthFs)} — the assumption reads ${Math.abs(off).toFixed(0)}% ${off >= 0 ? 'long' : 'short'}; this pulse's own ratio is ${sampled.trueFactor.toFixed(3)}</dd>`;
+      <dt>Simulated intensity FWHM</dt><dd>${f(sampled.truePulseWidthFs)} (model knowledge, not measured) — the assumption reads ${Math.abs(off).toFixed(0)}% ${off >= 0 ? 'long' : 'short'}; this pulse's own ratio is ${sampled.trueFactor.toFixed(3)}</dd>`;
   }
   const assumed = source?.params?.assumedShape || 'gauss';
   const actual = rd.pulse.pulseShape || 'gauss';

@@ -969,7 +969,7 @@ function autocorrelationPlot(sensor, reading) {
     // upper-left corner where the wings are flat, clear of the header line.
     `<text x="-35" y="-8.2" font-size="6.2" font-weight="780" fill="#ecf7fa">${esc(fs(ac.inferredPulseWidthFs))}</text>` +
     `<text x="-35" y="-3.4" font-size="3.2" fill="${ac.shapeMismatch ? '#fca5a5' : '#7892a1'}">` +
-    `${sampled ? `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)} · FIELD ${esc(fs(ac.truePulseWidthFs))}`
+    `${sampled ? `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)} · SIM ${esc(fs(ac.truePulseWidthFs))}`
       : ac.shapeMismatch ? `ASSUMES ${assumed === 'sech2' ? 'SECH²' : 'GAUSS'}, SOURCE ${actual === 'sech2' ? 'SECH²' : 'GAUSS'}` : `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)}`}</text>`;
 }
 

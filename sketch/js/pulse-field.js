@@ -148,6 +148,14 @@ export function propagateEnvelope({ pulseWidthFs, energyJ, wavelengthNm, lengthM
 // trace is normalised to its peak at zero delay; its FWHM is measured the
 // same way the envelope's is. Cached per envelope, since screens and the
 // inspector ask for it on every redraw.
+//
+// Preconditions: `timeFs` is a uniform, increasing grid; the samples are
+// finite; and the envelope is contained in its window. Padding prevents
+// wrap-around but cannot recover wings cut off at the window's edge -- the
+// production caller's envelopes come from fieldMetrics, which rejects any
+// with 1e-5 or more of their energy at the edges. The FWHM, like the
+// envelope's, runs between the outermost half-height crossings, so for a
+// trace with separate lobes it spans all of them.
 const autocorrelations = new WeakMap();
 export function envelopeAutocorrelation(envelope) {
   const intensity = envelope?.intensity, timeFs = envelope?.timeFs;
