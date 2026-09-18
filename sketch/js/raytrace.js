@@ -1449,6 +1449,7 @@ function coherentPlansEqual(left, right) {
 // still be the whole point of the setup, so branches flagged keepWeak are
 // held to a far lower floor than the generic negligible-ray cull.
 const MIN_WEAK_INT = 1e-5;
+const BAND_SELECTING_SURFACES = new Set(['filter', 'dichroic', 'etalon']);
 
 // Two beams count as "different colours" for wave mixing only if they are
 // resolvably apart; the same laser sampled twice must not mix with itself.
@@ -2800,6 +2801,41 @@ function etalonAiryTransmission(wl, cosTheta, data) {
   return Math.max(0, Math.min(1, t));
 }
 
+// The mean Airy transmission over [lo, hi] nm, weighted by `weight(nm)`
+// (flat when omitted), resolved at any finesse. The transmission is periodic in
+// the round-trip phase φ = 4π d cosθ / λ, and over φ one fringe integrates in
+// closed form:
+//   ∫ dφ / (1 + F sin²(φ/2)) = (2/s) [atan(s tan(φ/2 − kπ)) + kπ],  s = √(1+F),
+// with k the nearest whole number of half-turns, which keeps it continuous.
+// Only the Jacobian dλ/dφ = λ²/(4π d cosθ) and the spectral weight are taken
+// piecewise constant, over pieces far wider than a fringe can make a fixed
+// grid of samples wrong: a 0.01 nm linewidth over a 60 nm slice was
+// overestimated 6.7 times by sampling.
+export function etalonMeanTransmission(lo, hi, cosTheta, data, weight = null) {
+  if (!(hi > lo)) return etalonAiryTransmission(lo, cosTheta, data);
+  const R = data.R;
+  const oneMinusR = Math.max(1e-6, 1 - R);
+  const surfaceT = Math.max(0, 1 - R - data.loss);
+  const peak = (surfaceT * surfaceT) / (oneMinusR * oneMinusR);
+  const scale = Math.sqrt(1 + (4 * R) / (oneMinusR * oneMinusR));
+  const optical = 4 * Math.PI * data.spacingNm * cosTheta;
+  const G = phi => {
+    const k = Math.round(phi / 2 / Math.PI);
+    return (2 / scale) * (Math.atan(scale * Math.tan(phi / 2 - k * Math.PI)) + k * Math.PI);
+  };
+  const PIECES = 256;
+  let transmitted = 0, total = 0;
+  for (let i = 0; i < PIECES; i++) {
+    const a = lo + (hi - lo) * i / PIECES, b = lo + (hi - lo) * (i + 1) / PIECES, mid = (a + b) / 2;
+    const w = weight ? Math.max(0, Number(weight(mid)) || 0) : 1;
+    if (!(w > 0)) continue;
+    // ∫ T dλ over the piece = (dλ/dφ at its middle) · peak · ∫ dφ/(1+F sin²).
+    transmitted += w * (mid * mid / optical) * peak * (G(optical / a) - G(optical / b));
+    total += w * (b - a);
+  }
+  return total > 0 ? Math.max(0, Math.min(1, transmitted / total)) : 0;
+}
+
 // Below this fraction a fringe (or its complement) is treated as fully
 // blocked / fully transmitted — keeps a near-grazing or badly-mistuned
 // etalon from spawning vanishingly weak child rays that can never register
@@ -2888,32 +2924,6 @@ const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
   stokesHigh: applyRetarder(polMod.stokesHigh, axisDeg, retardanceDeg),
   stokesLow: applyRetarder(polMod.stokesLow, axisDeg, retardanceDeg),
 });
-
-// A filter's transmitted children, before the weak-ray exemption.
-function filterChildren(ray, d, f) {
-  if (!ray.bw) {
-    const pb0 = passbandOf(f);
-    const cell = sampleCell(ray);
-    if (cell) {
-      const { inside, outside } = splitCell(cell, pb0);
-      if (!inside) return [];
-      return outside.length ? [cellChild(ray, d, cell, inside[0], inside[1], 'T')] : [{ d }];
-    }
-    return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
-  }
-  if (ray.spec && ray.spec.kind !== 'flat') {
-    const T = wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; };
-    const trans = applyTransmission(ray.spec, ray.wl, T);
-    return trans ? [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction }] : [];
-  }
-  // flat (supercontinuum) or unspecified box: transmitted spectrum is
-  // the exact overlap of the beam band and the passband
-  const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], passbandOf(f));
-  if (!ix || ix[1] - ix[0] < 0.5) return [];
-  const c = bandChild(ray, d, ix[0], ix[1], null);
-  delete c.tag;
-  return [c];
-}
 
 // interaction -> array of child rays [{d, wl?, intensity?, tag?}] ; [] = absorbed
 function interact(ray, hit) {
@@ -3243,11 +3253,28 @@ function interact(ray, hit) {
       const f = data;
       if (f.ftype === 'nd') return [{ d, intensity: ray.intensity * f.trans }];
       notePulseSelection(wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; }, passbandOf(f));
-      // What a wavelength filter passes is the band the user selected, often a
-      // thin slice of a broad source (1 nm of a 500 nm continuum is 0.2 % of
-      // it), so like an AOTF line it is held to the weak-ray floor rather than
-      // culled at the next optic.
-      return filterChildren(ray, d, f).map(child => ({ ...child, keepWeak: true }));
+      if (!ray.bw) {
+        const pb0 = passbandOf(f);
+        const cell = sampleCell(ray);
+        if (cell) {
+          const { inside, outside } = splitCell(cell, pb0);
+          if (!inside) return [];
+          return outside.length ? [cellChild(ray, d, cell, inside[0], inside[1], 'T')] : [{ d }];
+        }
+        return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
+      }
+      if (ray.spec && ray.spec.kind !== 'flat') {
+        const T = wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; };
+        const trans = applyTransmission(ray.spec, ray.wl, T);
+        return trans ? [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction }] : [];
+      }
+      // flat (supercontinuum) or unspecified box: transmitted spectrum is
+      // the exact overlap of the beam band and the passband
+      const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], passbandOf(f));
+      if (!ix || ix[1] - ix[0] < 0.5) return [];
+      const c = bandChild(ray, d, ix[0], ix[1], null);
+      delete c.tag;
+      return [c];
     }
     case 'etalon': {
       // Off-resonance light reflects (it's two coatings, not an absorber),
@@ -3260,23 +3287,27 @@ function interact(ray, hit) {
       notePulseSelection(T);
       const rd = reflect(d, n);
       if (!ray.bw) {
-        // A fanned-out sample averages the Airy curve over the slice it stands
-        // for, with the same machinery a broadband ray is integrated by; the
-        // children stay monochromatic and keep the slice's bounds.
+        // A fanned-out sample takes the Airy curve's fringe-resolved mean over
+        // the slice it stands for. The children stay monochromatic and keep
+        // the slice's bounds: this is the slice's power, not its comb -- a
+        // second etalon or narrow filter downstream sees the slice as flat.
         const cell = sampleCell(ray);
-        const t = cell
-          ? (applyTransmission(flatSpectrum(cell[0], cell[1]), ray.wl, T)?.fraction ?? 0)
-          : T(ray.wl);
+        const t = cell ? etalonMeanTransmission(cell[0], cell[1], cosTheta, data) : T(ray.wl);
         const out = [];
         if (t > ETALON_FLOOR) out.push({ d, intensity: ray.intensity * t, tag: 'T' });
         if (1 - t > ETALON_FLOOR) out.push({ d: rd, intensity: ray.intensity * (1 - t), tag: 'R' });
         return out;
       }
       const out = [];
+      // The sampled comb gives each port's spectrum its shape; how much light
+      // each port takes is the fringe-resolved mean, which the fixed grid of
+      // that comb cannot give at high finesse.
+      const [lo, hi] = ray.spec ? spectrumSupport(ray.spec) : [ray.wl - ray.bw / 2, ray.wl + ray.bw / 2];
+      const t = etalonMeanTransmission(lo, hi, cosTheta, data, ray.spec ? nm => spectrumWeight(ray.spec, nm) : null);
       const trans = applyTransmission(ray.spec, ray.wl, T);
-      if (trans) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction, tag: 'T' });
+      if (trans && t > ETALON_FLOOR) out.push({ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * t, tag: 'T' });
       const refl = applyTransmission(ray.spec, ray.wl, wl => 1 - T(wl));
-      if (refl) out.push({ d: rd, wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * refl.fraction, tag: 'R' });
+      if (refl && 1 - t > ETALON_FLOOR) out.push({ d: rd, wl: refl.wl, bw: refl.bw, spec: refl.spec, intensity: ray.intensity * (1 - t), tag: 'R' });
       return out;
     }
     case 'split': {
@@ -4785,6 +4816,13 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       r.carriedEvan = null;
       interactionRay = r; interactionReshapesPulse = false;
       const children = interact(r, hit);
+      // What a wavelength-selective element passes is the band the user chose,
+      // often a thin slice of a broad source -- 1 nm of a 500 nm continuum is
+      // 0.2 % of it -- so, like an AOTF line, it is held to the weak-ray floor
+      // instead of being culled at the next optic.
+      if (BAND_SELECTING_SURFACES.has(hit.surface.kind) && !(hit.surface.kind === 'filter' && hit.surface.data.ftype === 'nd')) {
+        for (const child of children) if (!('keepWeak' in child)) child.keepWeak = true;
+      }
       const reshaped = interactionReshapesPulse;
       interactionRay = null; interactionReshapesPulse = false;
       if (children.length === 0) break;
