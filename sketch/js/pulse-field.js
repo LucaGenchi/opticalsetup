@@ -141,6 +141,50 @@ export function propagateEnvelope({ pulseWidthFs, energyJ, wavelengthNm, lengthM
   return { ok: true, field, metrics, spectrum, bIntegral, maxPeakPowerW, spectralRmsTHz: spectralStats.rms * 1000, steps };
 }
 
+// Intensity autocorrelation of a sampled envelope, A(tau) = ∫ I(t) I(t+tau) dt,
+// which is what an intensity autocorrelator records. Computed through the
+// Wiener–Khinchin relation, |F{I}|² transformed back, on a grid padded to
+// twice the envelope's window so the correlation does not wrap around. The
+// trace is normalised to its peak at zero delay; its FWHM is measured the
+// same way the envelope's is. Cached per envelope, since screens and the
+// inspector ask for it on every redraw.
+//
+// Preconditions: `timeFs` is a uniform, increasing grid; the samples are
+// finite; and the envelope is contained in its window. Padding prevents
+// wrap-around but cannot recover wings cut off at the window's edge -- the
+// production caller's envelopes come from fieldMetrics, which rejects any
+// with 1e-5 or more of their energy at the edges. The FWHM, like the
+// envelope's, runs between the outermost half-height crossings, so for a
+// trace with separate lobes it spans all of them.
+const autocorrelations = new WeakMap();
+export function envelopeAutocorrelation(envelope) {
+  const intensity = envelope?.intensity, timeFs = envelope?.timeFs;
+  if (!Array.isArray(intensity) || !Array.isArray(timeFs) || intensity.length < 4) return null;
+  if (autocorrelations.has(intensity)) return autocorrelations.get(intensity);
+  const n = intensity.length, dt = timeFs[1] - timeFs[0];
+  let size = 1;
+  while (size < 2 * n) size *= 2;
+  const re = new Float64Array(size), im = new Float64Array(size);
+  for (let i = 0; i < n; i++) re[i] = Math.max(0, intensity[i]);
+  fft(re, im);
+  for (let i = 0; i < size; i++) { re[i] = re[i] * re[i] + im[i] * im[i]; im[i] = 0; }
+  fft(re, im, true);
+  // Lag k sits at index k (and size − k for negative lags): unwrap to a
+  // centred trace over ±(n − 1) samples.
+  const lags = [], trace = [];
+  for (let k = -(n - 1); k <= n - 1; k++) {
+    lags.push(k * dt);
+    trace.push(re[(k + size) % size]);
+  }
+  const peak = trace[n - 1];
+  if (!(peak > 0)) return null;
+  const normalised = trace.map(v => Math.max(0, v) / peak);
+  const stats = distribution(normalised, dt);
+  const result = stats ? { tauFs: lags, trace: normalised, fwhmFs: stats.fwhm } : null;
+  autocorrelations.set(intensity, result);
+  return result;
+}
+
 // The intensity FWHM of a pulse with a given power spectrum and a purely
 // quadratic spectral phase. `density(nm)` is the spectral power per nm over
 // [loNm, hiNm]; it is taken to angular frequency with its Jacobian, its square

@@ -627,6 +627,26 @@ function computeFilteredPulseDuration(pulse, pieces, pathGddFs2) {
 // wrong one is the classic way to misreport a duration.
 export const AUTOCORRELATION_FACTORS = { gauss: Math.SQRT2, sech2: 1.543 };
 
+// The same instrument reading for a pulse whose envelope was computed rather
+// than assumed: the trace is the envelope's measured intensity autocorrelation
+// (envelopeAutocorrelation in pulse-field.js), and the duration is still what a
+// real autocorrelator reports -- that trace's FWHM divided by the factor of the
+// shape the user assumes. The envelope's own FWHM is known here, so the error
+// that assumption makes can be shown too.
+export function sampledAutocorrelationReading(autocorrelation, envelopeFwhmFs, assumed = 'gauss') {
+  const traceFwhmFs = Number(autocorrelation?.fwhmFs);
+  if (!(traceFwhmFs > 0)) return null;
+  const assumedFactor = AUTOCORRELATION_FACTORS[assumed] ?? Math.SQRT2;
+  const inferredPulseWidthFs = traceFwhmFs / assumedFactor;
+  const truePulseWidthFs = Number(envelopeFwhmFs);
+  return {
+    traceFwhmFs, assumedFactor, inferredPulseWidthFs,
+    truePulseWidthFs: truePulseWidthFs > 0 ? truePulseWidthFs : null,
+    errorRatio: truePulseWidthFs > 0 ? inferredPulseWidthFs / truePulseWidthFs : null,
+    trueFactor: truePulseWidthFs > 0 ? traceFwhmFs / truePulseWidthFs : null,
+  };
+}
+
 // Where a sech^2 profile falls to half its peak, in units of its own FWHM:
 // 2*arccosh(sqrt 2) = 1.762747174039086. Used to draw correlation curves; the
 // 1.543 deconvolution factor above stays at its published rounding because

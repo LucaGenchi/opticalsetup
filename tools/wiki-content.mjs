@@ -4905,6 +4905,13 @@ export const wikiEntries = [
         only. A fixed span keeps two traces of different duration looking as different as they
         are, which is why cross-correlation stays fixed. A trace too wide for the chosen window
         is reported rather than clipped, and an unavailable duration draws no trace.</p>
+        <p>A pulse whose envelope was computed rather than assumed — the output of the
+        hollow-core capillary — is autocorrelated numerically: the screen draws its own
+        intensity autocorrelation, not a Gaussian or sech² curve, and the duration is still that
+        trace's FWHM divided by the assumed shape's factor. Because the true envelope is known
+        there, the reading shows it beside the inferred one (<em>FIELD</em>), so the error of the
+        assumption is visible — about 16&nbsp;% for the compressed pulse of the hollow-core
+        example.</p>
         <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
         (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
         instrument works out for itself, because in a laboratory it is not something the
