@@ -303,7 +303,11 @@ function pulseEnvelopeAtSample(track, sample, target) {
   const sampled = track.pulse.field ? fieldMetrics(track.pulse.field, gddFs2)?.fwhmFs : null;
   const derived = track.pulse.field
     ? { durationFs: Number.isFinite(sampled) ? sampled : null, model: 'Sampled envelope · argon capillary' }
-    : pulseDurationAfterDispersion(track.pulse, gddFs2, groupDelayDifferenceFs);
+    : pulseDurationAfterDispersion(track.pulse,
+      // A filtered pulse is timed by a numerical transform; inside glass the
+      // GDD changes every frame, so it is taken to three significant figures
+      // (under 0.1 % in the duration) and the answers are reused.
+      track.pulse.spectrumReshaped && gddFs2 ? Number(gddFs2.toPrecision(3)) : gddFs2, groupDelayDifferenceFs);
   const pulseWidthFs = Number.isFinite(derived?.durationFs)
     ? derived.durationFs : inputPulseWidthFs;
   const stretchFactor = pulseWidthFs / inputPulseWidthFs;

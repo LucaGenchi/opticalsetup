@@ -127,22 +127,30 @@ test('unknown phase is unavailable after glass; a signed laser GDD disperses eit
   assert.match(negative.dispersionModel, /negative chirp 5,992 fs²/);
 });
 
-test('a continuum filtered before the glass is unavailable, not stretched as the full band', () => {
+test('a filtered continuum is timed from the band that survives, wherever the filter stands', () => {
   const full = read([continuum(), rod(350)]);
   assert.ok(full.stretchedPulseWidthFs > 20000);
-  const sliced = read([continuum(), bandpass(200, 650, 300), rod(350)]);
-  assert.equal(sliced.stretchedPulseWidthFs, null);
-  assert.equal(sliced.dispersionModel, DISPERSION_UNAVAILABLE.reshaped);
+  // A filter changes amplitude, not phase: the same filter before or after
+  // the same glass leaves the same pulse.
+  const before = read([continuum(), bandpass(200, 650, 300), rod(350)]);
+  const after = read([continuum(), rod(250), bandpass(450, 650, 300)]);
+  for (const sliced of [before, after]) {
+    assert.match(sliced.dispersionModel, /^Filtered continuum · linear-chirp estimate/);
+    assert.ok(sliced.stretchedPulseWidthFs > 0 && sliced.stretchedPulseWidthFs < full.stretchedPulseWidthFs,
+      'narrower than the full band, which the glass stretches across 500 nm');
+  }
+  close(before.stretchedPulseWidthFs, after.stretchedPulseWidthFs, 0.05 * after.stretchedPulseWidthFs, 'before vs after');
 });
 
-test('a continuum filtered after the glass is unavailable, and a compressor does not recover it', () => {
-  // The glass has already accumulated delay between endpoints the filter then
-  // removes, so neither band's endpoints describe what arrives.
+test('a compressor takes back the glass on a filtered continuum, not the source\'s own sweep', () => {
   const after = read([continuum(), rod(250), bandpass(450, 650, 300)]);
-  assert.equal(after.stretchedPulseWidthFs, null);
-  assert.equal(after.dispersionModel, DISPERSION_UNAVAILABLE.reshaped);
-  const compressed = read([continuum(), rod(250), bandpass(450, 650, 300), compressor(550, -8000)]);
-  assert.equal(compressed.stretchedPulseWidthFs, null, 'no fabricated compression after reshaping');
+  const compressed = read([continuum(), rod(250), bandpass(450, 650, 300), compressor(550, -after.totalGddFs2)]);
+  assert.ok(compressed.stretchedPulseWidthFs < after.stretchedPulseWidthFs, 'the glass comes back out');
+  // 500-800 nm is 0.46 of the 400-900 nm continuum's frequency span: that
+  // share of its 500 fs sweep has no sign to undo.
+  const share = (1 / 500 - 1 / 800) / (1 / 400 - 1 / 900);
+  assert.ok(compressed.stretchedPulseWidthFs >= 500 * share, 'the source part stays');
+  close(compressed.totalGddFs2, 0, 1e-6);
 });
 
 test('attenuation that leaves the spectrum intact keeps the duration', () => {
@@ -154,9 +162,11 @@ test('attenuation that leaves the spectrum intact keeps the duration', () => {
   // A bandpass far wider than the pulse's band transmits it evenly too.
   const wide = read([laser({ pulseWidthFs: 100, transformLimited: true }), bandpass(150, 800, 200), rod(300)]);
   close(wide.stretchedPulseWidthFs, plain.stretchedPulseWidthFs, 1e-9);
-  // A narrow one cuts into it, and the duration is no longer predicted.
+  // A narrow one cuts into it: the pulse is timed from the 5 nm that pass,
+  // which alone allow no less than about 190 fs.
   const narrow = read([laser({ pulseWidthFs: 100, transformLimited: true }), bandpass(150, 800, 5), rod(300)]);
-  assert.equal(narrow.stretchedPulseWidthFs, null);
+  assert.match(narrow.dispersionModel, /^Filtered spectrum · numerical transform/);
+  assert.ok(narrow.transformLimitFs > 180 && narrow.stretchedPulseWidthFs >= narrow.transformLimitFs);
 });
 
 test('one beam split across glass and air into a single detector is unavailable', () => {
@@ -217,18 +227,21 @@ function notch(x, center, band) {
 test('a passband or notch between sample points is still detected, before or after the glass', () => {
   // The reviewer's bench: 651 nm, 1 nm lies off every sampling grid point.
   for (const center of [650, 651, 651.37]) {
-    const direct = read([continuum(), bandpass(200, center, 1)]);
-    if (direct) assert.equal(direct.stretchedPulseWidthFs, null, `bandpass ${center} nm`);
-    const before = read([continuum(), bandpass(200, center, 1), rod(350)]);
-    if (before) assert.equal(before.stretchedPulseWidthFs, null, `bandpass ${center} nm before glass`);
-    const after = read([continuum(), rod(250), bandpass(450, center, 1)]);
-    if (after) assert.equal(after.stretchedPulseWidthFs, null, `bandpass ${center} nm after glass`);
-    assert.ok(direct || before || after, 'some light reaches a detector');
+    // Detected, so timed from the 1 nm that passes: about 1.2 ps, its sinc
+    // transform limit, and not the full band's 20 ps.
+    for (const [label, pulse] of [
+      ['directly', read([continuum(), bandpass(200, center, 1)])],
+      ['before glass', read([continuum(), bandpass(200, center, 1), rod(350)])],
+      ['after glass', read([continuum(), rod(250), bandpass(450, center, 1)])],
+    ]) {
+      assert.ok(pulse, `bandpass ${center} nm ${label}: light arrives`);
+      assert.match(pulse.dispersionModel, /^Filtered continuum/, `bandpass ${center} nm ${label}`);
+      close(pulse.stretchedPulseWidthFs, 1250, 60, `bandpass ${center} nm ${label}`);
+    }
   }
   // A notch removes a 1 nm slice from the transmitted continuum.
   const notched = read([continuum(), rod(250), notch(450, 651.37, 1)]);
-  assert.equal(notched.stretchedPulseWidthFs, null);
-  assert.equal(notched.dispersionModel, DISPERSION_UNAVAILABLE.reshaped);
+  assert.match(notched.dispersionModel, /^Filtered continuum/);
   // A notch well outside a narrow pulse's band leaves it alone.
   const plain = read([laser({ pulseWidthFs: 100, transformLimited: true }), rod(300)]);
   const farNotch = read([laser({ pulseWidthFs: 100, transformLimited: true }), notch(150, 651.37, 1), rod(300)]);
@@ -288,11 +301,9 @@ test('a filter crossing part of a beam gives the same answer whichever half arri
     traceScene([source, filter, det]);
     return detectorReading(det.id).pulse;
   };
-  for (const y of [-4, 4]) {
-    const pulse = partly(y, { ftype: 'bandpass', center: 800, band: 5 });
-    assert.equal(pulse.stretchedPulseWidthFs, null, `filter at y = ${y}`);
-    assert.equal(pulse.dispersionModel, DISPERSION_UNAVAILABLE.reshaped);
-  }
+  const halves = [-4, 4].map(y => partly(y, { ftype: 'bandpass', center: 800, band: 5 }));
+  for (const pulse of halves) assert.match(pulse.dispersionModel, /^Filtered spectrum/);
+  close(halves[0].stretchedPulseWidthFs, halves[1].stretchedPulseWidthFs, 1e-6, 'mirror images agree');
   // Controls: uniform attenuation across part of the beam, and no filter.
   for (const y of [-4, 4]) close(partly(y, { ftype: 'nd', trans: 0.5 }).stretchedPulseWidthFs, 100, 1e-9);
   const plain = read([laser({ pulseWidthFs: 100, transformLimited: true, beamMode: 'beam', beamWidth: 12 })]);

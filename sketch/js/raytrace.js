@@ -44,7 +44,7 @@ import {
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
   gddGroupDelayDifferenceFs, glassGVD, glassGroupDelayDifferenceFs, glassIndex,
-  isDispersiveGlass, authoredPulseTiming, pulseDurationAfterDispersion, pulseDurationAcrossPaths, PATHS_DISAGREE, DISPERSION_UNAVAILABLE,
+  isDispersiveGlass, authoredPulseTiming, pulseDurationAfterDispersion, pulseDurationAcrossPaths, filteredPulseDuration, PATHS_DISAGREE, DISPERSION_UNAVAILABLE, PATH_PHASE_TOLERANCE_RAD,
 } from './glass.js';
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
@@ -812,6 +812,35 @@ function recordDetectorHit(ray, hit) {
   detectorHits.get(id).push(detectorSample(ray, hit.surface, hit.u, ray.opl, ray.sig || '', false));
 }
 
+// The duration of a filtered train, from every piece of spectrum that
+// arrives. The path GDD is the power-weighted mean over the arrivals: pieces
+// at different wavelengths legitimately carry different GDD, the glass's at
+// each. Arrivals at the same wavelength that took paths with different
+// dispersion are separate pulses, and then there is no one duration.
+function filteredTrainDuration(pulse, hits) {
+  const pieces = hits.map(h => pulseSpectrumPiece(h, h.pulse, Math.max(0, h.power || 0)));
+  if (pieces.some(piece => !piece)) return pulseDurationAfterDispersion({ ...pulse, filteredPieces: null }, 0, 0);
+  const weight = hits.reduce((sum, h) => sum + Math.max(0, h.power || 0), 0);
+  const gdd = weight > 0 ? hits.reduce((sum, h) => sum + (h.gddFs2 || 0) * Math.max(0, h.power || 0), 0) / weight : 0;
+  const cNmFs = 299.792458;
+  const byWavelength = new Map();
+  hits.forEach((h, i) => {
+    const key = Math.round(h.wl * 1e6);
+    const group = byWavelength.get(key) || [];
+    group.push(i);
+    byWavelength.set(key, group);
+  });
+  for (const group of byWavelength.values()) {
+    const values = group.map(i => hits[i].gddFs2 || 0);
+    const spread = Math.max(...values) - Math.min(...values);
+    const halfWidth = Math.max(...group.map(i => Math.PI * cNmFs * (1 / pieces[i].lo - 1 / pieces[i].hi)));
+    if (spread * halfWidth * halfWidth / 2 > PATH_PHASE_TOLERANCE_RAD) {
+      return { durationFs: null, available: false, model: PATHS_DISAGREE, totalGddFs2: null };
+    }
+  }
+  return filteredPulseDuration(pulse, pieces, gdd);
+}
+
 // Qualitative measurement at a one-sided detector face. Scalar detectors use
 // relative ray weight; a camera's `signal` is the sum of its final
 // pixel-integrated profile and can therefore include coherent cross terms.
@@ -992,11 +1021,15 @@ export function detectorReading(elementId) {
       // invalid record anywhere decides for the train, and records that
       // disagree about phase or duration make it unavailable too.
       const records = [...new Set(sourceHits.map(h => h.pulse))];
-      const invalidRecord = records.find(r => r.fieldIssue || r.spectrumReshaped || r.durationUnknown);
+      // A filtered record is not invalid: its duration is worked out from the
+      // spectrum that arrives. One that is unavailable for another reason
+      // still decides for the train.
+      const invalidRecord = records.find(r => r.fieldIssue || r.durationUnknown);
+      const filteredRecord = invalidRecord ? null : records.find(r => r.spectrumReshaped);
       const provenance = r => [r.transformLimited === true, r.spectralPhase || '', r.inputChirp || '',
         r.pulseWidthFs, r.bandwidthNm, r.pulseShape || 'gauss'].join('|');
       const recordsDisagree = !invalidRecord && new Set(records.map(provenance)).size > 1;
-      const p = invalidRecord || sourceHits[0].pulse;
+      const p = invalidRecord || filteredRecord || sourceHits[0].pulse;
       const centerWavelength = Number.isFinite(p.centerWavelengthNm)
         ? p.centerWavelengthNm : sourceHits[0].wl;
       const nearestDistance = Math.min(...sourceHits.map(h => Math.abs(h.wl - centerWavelength)));
@@ -1035,9 +1068,10 @@ export function detectorReading(elementId) {
         ? (envelope
           ? { durationFs: envelope.fwhmFs, available: true, model: 'Sampled envelope · argon capillary' }
           : { durationFs: null, available: false, model: fieldIssue || 'Pulse exceeds the numerical time window.' })
-        : pulseDurationAcrossPaths(p, centerHits.map(h => ({
-          gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
-        })));
+        : filteredRecord ? filteredTrainDuration(p, sourceHits)
+          : pulseDurationAcrossPaths(p, centerHits.map(h => ({
+            gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
+          })));
       // A prism or grating fans the pulse into wavelength samples, and an
       // aperture can then catch only some of them. The duration model assumes
       // the whole band arrives, so where the arriving cells leave part of it
@@ -1045,7 +1079,7 @@ export function detectorReading(elementId) {
       if (duration?.available !== false && recordsDisagree) {
         duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.recordsDiffer };
       }
-      if (duration?.available !== false && !fannedBandCovered(p, sourceHits)) {
+      if (duration?.available !== false && !filteredRecord && !fannedBandCovered(p, sourceHits)) {
         duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.partialFan };
       }
       return {
@@ -2504,16 +2538,31 @@ function wlSamples(ray, maxK = Infinity) {
   // Halving those two hands a mercury lamp's 365 and 1014 nm lines half the
   // power they emit and, after renormalising, pushes it into the lines in
   // between.
+  const cellLo = index => (index === 0 ? lo : (samples[index - 1].wl + samples[index].wl) / 2);
+  const cellHi = index => (index === samples.length - 1 ? hi : (samples[index].wl + samples[index + 1].wl) / 2);
+  // A band a filter has left is weighted by the spectrum integrated over each
+  // cell. Weighting it by the density at the node gave its two outer cells
+  // nothing -- their nodes sit on the passband edges, where the sampled
+  // profile falls to zero -- and the band came out narrower than the light.
+  // An emitted Gaussian or flat band keeps the node rule.
+  const cellWeight = index => {
+    const a = cellLo(index), b = cellHi(index);
+    if (!(b > a)) return 0;
+    let sum = 0;
+    for (let i = 0; i < 32; i++) sum += Math.max(0, spectrumWeight(ray.spec, a + (b - a) * (i + 0.5) / 32));
+    return sum * (b - a) / 32;
+  };
   const weighted = discrete ? samples : samples.map((sample, index) => ({
     ...sample,
-    weight: sample.weight * (index === 0 || index === samples.length - 1 ? 0.5 : 1),
+    weight: ray.spec?.kind === 'sampled' ? cellWeight(index)
+      : sample.weight * (index === 0 || index === samples.length - 1 ? 0.5 : 1),
   }));
   const total = weighted.reduce((sum, sample) => sum + sample.weight, 0);
   return weighted.map((sample, index) => ({
     ...sample,
     weight: sample.weight / total,
-    spectralLo: index === 0 ? lo : (samples[index - 1].wl + sample.wl) / 2,
-    spectralHi: index === samples.length - 1 ? hi : (sample.wl + samples[index + 1].wl) / 2,
+    spectralLo: cellLo(index),
+    spectralHi: cellHi(index),
   }));
 }
 
@@ -2766,6 +2815,10 @@ function bandChild(ray, d, lo, hi, tag) {
   const nbw = hi - lo < 2 ? 0 : hi - lo;
   return {
     d, wl: (lo + hi) / 2, bw: nbw, spec: nbw > 0 ? flatSpectrum(lo, hi) : null, tag,
+    // Under 2 nm the slice travels monochromatic, as a fanned sample does,
+    // and like one keeps the slice it carries: a 1 nm bandpass passes 1 nm of
+    // continuum, which a spectrometer and the pulse duration both read.
+    ...(nbw > 0 ? {} : { spectralContinuum: true, spectralLo: lo, spectralHi: hi, spectralWidthNm: hi - lo }),
     intensity: ray.intensity * Math.min(1, Math.max(0, (hi - lo) / ray.bw)),
   };
 }
@@ -2835,6 +2888,32 @@ const retardPolMod = (polMod, axisDeg, retardanceDeg) => ({
   stokesHigh: applyRetarder(polMod.stokesHigh, axisDeg, retardanceDeg),
   stokesLow: applyRetarder(polMod.stokesLow, axisDeg, retardanceDeg),
 });
+
+// A filter's transmitted children, before the weak-ray exemption.
+function filterChildren(ray, d, f) {
+  if (!ray.bw) {
+    const pb0 = passbandOf(f);
+    const cell = sampleCell(ray);
+    if (cell) {
+      const { inside, outside } = splitCell(cell, pb0);
+      if (!inside) return [];
+      return outside.length ? [cellChild(ray, d, cell, inside[0], inside[1], 'T')] : [{ d }];
+    }
+    return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
+  }
+  if (ray.spec && ray.spec.kind !== 'flat') {
+    const T = wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; };
+    const trans = applyTransmission(ray.spec, ray.wl, T);
+    return trans ? [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction }] : [];
+  }
+  // flat (supercontinuum) or unspecified box: transmitted spectrum is
+  // the exact overlap of the beam band and the passband
+  const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], passbandOf(f));
+  if (!ix || ix[1] - ix[0] < 0.5) return [];
+  const c = bandChild(ray, d, ix[0], ix[1], null);
+  delete c.tag;
+  return [c];
+}
 
 // interaction -> array of child rays [{d, wl?, intensity?, tag?}] ; [] = absorbed
 function interact(ray, hit) {
@@ -3164,28 +3243,11 @@ function interact(ray, hit) {
       const f = data;
       if (f.ftype === 'nd') return [{ d, intensity: ray.intensity * f.trans }];
       notePulseSelection(wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; }, passbandOf(f));
-      if (!ray.bw) {
-        const pb0 = passbandOf(f);
-        const cell = sampleCell(ray);
-        if (cell) {
-          const { inside, outside } = splitCell(cell, pb0);
-          if (!inside) return [];
-          return outside.length ? [cellChild(ray, d, cell, inside[0], inside[1], 'T')] : [{ d }];
-        }
-        return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
-      }
-      if (ray.spec && ray.spec.kind !== 'flat') {
-        const T = wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; };
-        const trans = applyTransmission(ray.spec, ray.wl, T);
-        return trans ? [{ d, wl: trans.wl, bw: trans.bw, spec: trans.spec, intensity: ray.intensity * trans.fraction }] : [];
-      }
-      // flat (supercontinuum) or unspecified box: transmitted spectrum is
-      // the exact overlap of the beam band and the passband
-      const ix = bandIntersect([ray.wl - ray.bw / 2, ray.wl + ray.bw / 2], passbandOf(f));
-      if (!ix || ix[1] - ix[0] < 0.5) return [];
-      const c = bandChild(ray, d, ix[0], ix[1], null);
-      delete c.tag;
-      return [c];
+      // What a wavelength filter passes is the band the user selected, often a
+      // thin slice of a broad source (1 nm of a 500 nm continuum is 0.2 % of
+      // it), so like an AOTF line it is held to the weak-ray floor rather than
+      // culled at the next optic.
+      return filterChildren(ray, d, f).map(child => ({ ...child, keepWeak: true }));
     }
     case 'etalon': {
       // Off-resonance light reflects (it's two coatings, not an absorber),
@@ -4314,6 +4376,23 @@ function pulseBand(pulse) {
   const bw = Number(pulse.bandwidthNm), center = Number(pulse.centerWavelengthNm);
   return bw > 0 && center > 0 ? gaussianSpectrum(center, bw) : null;
 }
+// The piece of a pulse's spectrum one ray (or detector hit) carries, for the
+// filtered-duration model: its own spectrum when it has a bandwidth, or --
+// for a wavelength sample of a fanned-out band -- the band it was cut from,
+// restricted to its slice. That band is the spectrum the last filter left
+// when the slice was cut after it, and the emitted band otherwise; the slice
+// itself is drawn flat, but the light in it keeps the band's shape.
+function pulseSpectrumPiece(ray, pulse, power = 1) {
+  if (ray.bw > 0 && ray.spec && ray.spec.kind !== 'lines') {
+    const [lo, hi] = spectrumSupport(ray.spec);
+    return hi > lo ? { spec: ray.spec, lo, hi, power } : null;
+  }
+  if (!ray.spectralContinuum || !(ray.spectralHi > ray.spectralLo)) return null;
+  const parent = (pulse?.filteredPieces || []).find(p => p.lo <= ray.spectralLo + 1e-9 && p.hi >= ray.spectralHi - 1e-9);
+  const spec = parent?.spec || pulseBand(pulse) || flatSpectrum(ray.spectralLo, ray.spectralHi);
+  const lo = Math.max(ray.spectralLo, parent?.lo ?? -Infinity), hi = Math.min(ray.spectralHi, parent?.hi ?? Infinity);
+  return hi > lo ? { spec, lo, hi, power } : null;
+}
 // Where the pulse's emitted band carries at least 1 % of its peak weight.
 const BAND_GRID = 257;
 function pulseBandRegion(pulse) {
@@ -4727,7 +4806,11 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       // element generated brings a pulse of its own and is left alone.
       if (reshaped && r.pulse) {
         for (const child of children) {
-          if (!('pulse' in child)) child.pulse = { ...r.pulse, spectrumReshaped: true };
+          if ('pulse' in child) continue;
+          // The piece that survived goes with the record, so the duration can
+          // be worked out from it downstream.
+          const piece = pulseSpectrumPiece({ ...r, ...child }, r.pulse);
+          child.pulse = { ...r.pulse, spectrumReshaped: true, filteredPieces: piece ? [piece] : null };
         }
       }
       // A sampled field describes one spectrum. Once an element changes the

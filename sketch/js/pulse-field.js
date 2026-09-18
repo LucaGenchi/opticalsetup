@@ -140,3 +140,65 @@ export function propagateEnvelope({ pulseWidthFs, energyJ, wavelengthNm, lengthM
   }
   return { ok: true, field, metrics, spectrum, bIntegral, maxPeakPowerW, spectralRmsTHz: spectralStats.rms * 1000, steps };
 }
+
+// The intensity FWHM of a pulse with a given power spectrum and a purely
+// quadratic spectral phase. `density(nm)` is the spectral power per nm over
+// [loNm, hiNm]; it is taken to angular frequency with its Jacobian, its square
+// root is the field amplitude, and the pulse is its transform. Returns the
+// duration at `gddFs2` and the transform limit (gddFs2 = 0).
+//
+// A strongly chirped pulse needs a time window far longer than its transform
+// limit. Past MAX_SPECTRAL_POINTS the stationary-phase limit is used instead,
+// where the intensity is the spectrum mapped to time, t = GDD·Ω -- exact to
+// well under a percent by then, since that only happens once GDD·Δω² ≫ 1.
+const MAX_SPECTRAL_POINTS = 1 << 15;
+export function quadraticPhasePulse(density, loNm, hiNm, gddFs2 = 0) {
+  const cNmFs = 299.792458;
+  if (!(hiNm > loNm) || !(loNm > 0) || !Number.isFinite(gddFs2)) return null;
+  const wLo = 2 * Math.PI * cNmFs / hiNm, wHi = 2 * Math.PI * cNmFs / loNm, width = wHi - wLo;
+  // Power per unit angular frequency, from power per nm: |dλ/dω| = λ²/(2πc).
+  const spectral = w => {
+    const nm = 2 * Math.PI * cNmFs / w;
+    return nm >= loNm && nm <= hiNm ? Math.max(0, Number(density(nm)) || 0) * nm * nm / (2 * Math.PI * cNmFs) : 0;
+  };
+  // Centre on the power-weighted mean frequency.
+  let total = 0, first = 0;
+  for (let i = 0; i < 2048; i++) {
+    const w = wLo + width * (i + 0.5) / 2048, s = spectral(w);
+    total += s; first += s * w;
+  }
+  if (!(total > 0)) return null;
+  const w0 = first / total;
+  const at = (gdd, stretched) => {
+    // The window has to hold the transform limit (about 2π/width) and the
+    // chirp's spread (|GDD|·width) several times over; the grid spans four
+    // times the band so the time step resolves the transform limit.
+    const span = 4 * width;
+    const needed = 3 * (Math.abs(gdd) * width + 40 * Math.PI / width);
+    const step = Math.min(width / 512, 2 * Math.PI / needed);
+    const n = 2 ** Math.ceil(Math.log2(span / step));
+    if (n > MAX_SPECTRAL_POINTS) return stretched();
+    const dt = 2 * Math.PI / (n * step);
+    const re = new Float64Array(n), im = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const k = i < n / 2 ? i : i - n, offset = k * step;
+      // (-1)^k centres the pulse in the window so its FWHM is contiguous.
+      const a = Math.sqrt(spectral(w0 + offset)) * (k % 2 ? -1 : 1);
+      const phi = gdd * offset * offset / 2;
+      re[i] = a * Math.cos(phi); im[i] = a * Math.sin(phi);
+    }
+    fft(re, im, true);
+    const stats = distribution(powers(re, im), dt);
+    return stats && stats.edge < 1e-4 ? stats.fwhm : stretched();
+  };
+  const mapped = () => {
+    const samples = Array.from({ length: 4096 }, (_, i) => spectral(wLo + width * (i + 0.5) / 4096));
+    const stats = distribution(samples, width / 4096);
+    return stats ? stats.fwhm * Math.abs(gddFs2) : null;
+  };
+  const transformLimitFs = at(0, () => null);
+  const durationFs = gddFs2 ? at(gddFs2, mapped) : transformLimitFs;
+  return Number.isFinite(durationFs) && durationFs > 0
+    ? { durationFs, transformLimitFs: Number.isFinite(transformLimitFs) ? transformLimitFs : null, bandwidthRadPerFs: width }
+    : null;
+}
