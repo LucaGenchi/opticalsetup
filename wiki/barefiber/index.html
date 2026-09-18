@@ -273,14 +273,21 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         than a straight one, and the loss figure is applied uniformly rather than varying
         with wavelength. Nine rays are launched from the output end, which sets how finely
         the emerging cone is sampled.</p>
-        <p>Most significantly, <strong>the fiber's own chromatic dispersion is not
-        modelled</strong>. Dispersion accumulated elsewhere in the setup is carried through
-        correctly, but the fiber itself neither stretches nor compresses a pulse, so a
-        femtosecond pulse emerges from a long fiber exactly as long as it went in. Real
-        fiber is one of the most dispersive elements in any ultrafast setup. Fiber
-        <strong>dispersion</strong> — and <strong>wavelength conversion</strong>, covering
-        the nonlinear behaviour that makes fiber a source as well as a conduit — are both
-        candidates for a future release.</p></div>
+        <p>The fiber's own chromatic dispersion is a <strong>single signed β₂</strong>,
+        entered in ps²/km at a reference wavelength and applied, as a constant across the band, as a lumped GDD of
+        β₂ × length: 1&nbsp;ps²/km is 1&nbsp;fs²/mm, so 36&nbsp;ps²/km over 1&nbsp;m adds
+        36&nbsp;000&nbsp;fs². It adds to whatever dispersion the pulse already carries, and a
+        compressor of the opposite sign takes it back out. <em>Physical length</em> sets the
+        length used for delay, loss and dispersion together, so a coil of many metres can be
+        drawn as a short cable; left at 0 the drawn length is used, as in sketches from
+        before these controls existed, and β₂ at 0 adds no dispersion. A broad band gains
+        the endpoint delay spread that one β₂ implies, the same approximation the pulse
+        compressor uses. Duration readouts downstream follow the pulse's authored phase, and
+        read unavailable where that phase is unknown.</p>
+        <p>One β₂ is all there is: no third- or higher-order dispersion, no wavelength
+        dependence of β₂ across a broad band, no modal or polarisation-mode dispersion, and
+        no nonlinear propagation — self-phase modulation, soliton dynamics and wavelength
+        conversion in the fiber itself are not simulated.</p></div>
       </div>
 
 

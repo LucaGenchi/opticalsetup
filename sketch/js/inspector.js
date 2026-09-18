@@ -11,6 +11,7 @@ import {
 } from './elements.js';
 import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
+import { FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion } from './fiber.js';
 import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
   bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN,
@@ -970,6 +971,11 @@ export function renderInspector() {
         propagationFields += numberField('Input NA', 'data-k="inputNA"', b.inputNA ?? 0.22, { min: 0.01, max: 0.95, step: 0.01 });
         propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
         propagationFields += field('Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
+        const dispersion = normalizeFiberDispersion(b);
+        for (const spec of FIBER_PROPAGATION_FIELDS) {
+          propagationFields += field(spec.label, `<input type="number" data-k="${spec.key}" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${dispersion[spec.key]}">`);
+        }
+        propagationFields += `<div class="hint">Physical length sets delay, loss and dispersion without changing the drawing. GDD = 1000 × β₂ × length in metres (fs²). Enter β₂ at your reference wavelength; it is applied as a constant across the band, and 0 adds no dispersion. Downstream durations follow the total GDD where the pulse's phase is known. No higher-order, modal or nonlinear propagation.</div>`;
         // one output spec per fiber end; migrate legacy single-spec fibers
         for (const end of [0, 1]) {
           if (!b['out' + end]) b['out' + end] = { mode: b.outMode || 'diverge', na: b.na ?? 0.12, focal: b.focal ?? 20, dia: b.outDia ?? 6 };

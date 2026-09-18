@@ -7,6 +7,7 @@ import { LEGACY_GLASS_ID, LEGACY_GLASS_REPLACEMENT, chirpGddForDuration } from '
 import { transformLimitedDurationFs } from './spectrum.js';
 import { normalizeSurfaceTable } from './lensgroup.js';
 import { normalizeAotfChannels } from './aotf.js';
+import { normalizeFiberDispersion } from './fiber.js';
 
 // Elements whose boundary refracts and therefore carries per-surface
 // transmission of its own.
@@ -341,6 +342,7 @@ function normalizeBeam(raw, used) {
       inputNA: clamp(finite(raw.inputNA) ? raw.inputNA : 0.22, 0.01, 0.95),
       groupIndex: clamp(finite(raw.groupIndex) ? raw.groupIndex : 1.468, 1, 2.2),
       lossDbPerM: clamp(finite(raw.lossDbPerM) ? raw.lossDbPerM : 0.2, 0, 100),
+      ...normalizeFiberDispersion(raw),
       out0: normalizeFiberOutput(raw.out0),
       out1: normalizeFiberOutput(raw.out1),
     };
