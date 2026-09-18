@@ -44,7 +44,7 @@ import {
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
   gddGroupDelayDifferenceFs, glassGVD, glassGroupDelayDifferenceFs, glassIndex,
-  isDispersiveGlass, pulseDurationAfterDispersion, pulseDurationAcrossPaths, PATHS_DISAGREE,
+  isDispersiveGlass, pulseDurationAfterDispersion, pulseDurationAcrossPaths, PATHS_DISAGREE, DISPERSION_UNAVAILABLE,
 } from './glass.js';
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
@@ -754,6 +754,8 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     spectralContinuum: ray.spectralContinuum === true,
     spectralWidthNm: Number.isFinite(ray.spectralWidthNm) ? ray.spectralWidthNm : null,
     spectralLo: Number.isFinite(ray.spectralLo) ? ray.spectralLo : null,
+    fanLo: Number.isFinite(ray.fanLo) ? ray.fanLo : null,
+    fanHi: Number.isFinite(ray.fanHi) ? ray.fanHi : null,
     spectralHi: Number.isFinite(ray.spectralHi) ? ray.spectralHi : null,
     sourceId: ray.sourceId || null,
     sample: Number.isInteger(ray.sample) ? ray.sample : null,
@@ -1011,13 +1013,20 @@ export function detectorReading(elementId) {
       } : null;
       // Every centre-wavelength arrival is a path this train took; the model
       // answers only when those paths agree on one duration.
-      const duration = p.field
+      let duration = p.field
         ? (envelope
           ? { durationFs: envelope.fwhmFs, available: true, model: 'Sampled envelope · argon capillary' }
           : { durationFs: null, available: false, model: fieldIssue || 'Pulse exceeds the numerical time window.' })
         : pulseDurationAcrossPaths(p, centerHits.map(h => ({
           gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
         })));
+      // A prism or grating fans the pulse into wavelength samples, and an
+      // aperture can then catch only some of them. The duration model assumes
+      // the whole band arrives, so where the arriving cells leave part of it
+      // uncovered it declines -- after any earlier reason to decline.
+      if (duration?.available !== false && !fannedBandCovered(p, sourceHits)) {
+        duration = { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.partialFan };
+      }
       return {
         repRateMHz: p.repRateMHz,
         pulseWidthFs: p.pulseWidthFs,
@@ -2990,7 +2999,7 @@ function interact(ray, hit) {
       // budgets, as a partial mirror's are.
       const inBandR = data.dtype === 'notch' ? Math.min(1, Math.max(0, (data.bandRefl ?? 100) / 100)) : 1;
       const partial = inBandR < 1;
-      notePulseSelection(wl => (dichroicTransmits(wl, data) ? 1 : 1 - inBandR));
+      notePulseSelection(wl => (dichroicTransmits(wl, data) ? 1 : 1 - inBandR), passbandOf(data));
       if (!ray.bw) {
         if (dichroicTransmits(ray.wl, data)) return [{ d }];
         if (!partial) return [{ d: reflect(d, n) }];
@@ -3038,7 +3047,7 @@ function interact(ray, hit) {
     case 'filter': {
       const f = data;
       if (f.ftype === 'nd') return [{ d, intensity: ray.intensity * f.trans }];
-      notePulseSelection(wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; });
+      notePulseSelection(wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; }, passbandOf(f));
       if (!ray.bw) {
         const pb0 = passbandOf(f);
         return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
@@ -3130,6 +3139,12 @@ function interact(ray, hit) {
             dispersed: m !== 0 && ray.bw > 0,
             d: norm(add(mul(n, sOut * c), mul(t, sd))),
             wl: wls[i].wl, bw: 0, spec: null,
+            // The slice of the band this order sample stands for, kept apart
+            // from spectralLo/Hi so spectrometers go on reading a grating's
+            // output as they always have. Only the duration model's fan
+            // coverage check reads it.
+            ...(ray.bw > 0 && Number.isFinite(wls[i].spectralLo)
+              ? { fanLo: wls[i].spectralLo, fanHi: wls[i].spectralHi } : {}),
             intensity: ray.intensity * wls[i].weight / counts[i],
             tag: 'm' + m + (wls.length > 1 ? 'w' + i : ''),
           });
@@ -4043,6 +4058,23 @@ function interact(ray, hit) {
       const conv = { d, wl, intensity: ray.intensity * efficiency };
       if (bw !== undefined) conv.bw = bw;
       if (spec !== undefined) conv.spec = spec;
+      // A continuum generated here is a pulse of its own: a new, flat band and
+      // a spectral phase nobody knows. It carries a record that says so --
+      // timed to the pump, as the OPO's outputs are -- instead of the pump's,
+      // whose bandwidth and duration describe different light.
+      if (data.convert === 'sc' && ray.pulse && spec?.kind === 'flat') {
+        const [lo, hi] = spectrumSupport(spec);
+        const trainId = ray.pulse.sourceId || '';
+        conv.pulse = {
+          ...ray.pulse,
+          sourceId: `${trainId}›${s.el?.id || 'crystal'}:sc`,
+          syncSourceId: ray.pulse.syncSourceId || trainId,
+          centerWavelengthNm: wl, bandwidthNm: bw,
+          spectrumKind: 'flat', spectrumLoNm: lo, spectrumHiNm: hi,
+          transformLimited: false, transformLimitFs: null, spectralPhase: 'unknown', durationUnknown: true,
+          field: null, fieldIssue: null, spectrumReshaped: false,
+        };
+      }
       // samples can co-transmit the excitation beam alongside the converted signal
       if (data.transmitExc && wl !== ray.wl) {
         conv.tag = 'c';
@@ -4154,33 +4186,100 @@ function pulseBand(pulse) {
   const bw = Number(pulse.bandwidthNm), center = Number(pulse.centerWavelengthNm);
   return bw > 0 && center > 0 ? gaussianSpectrum(center, bw) : null;
 }
-function transmissionReshapesBand(pulse, transmissionFn) {
+// Where the pulse's emitted band carries at least 1 % of its peak weight.
+const BAND_GRID = 257;
+function pulseBandRegion(pulse) {
   const band = pulseBand(pulse);
-  if (!band) return false;
+  if (!band) return null;
   const [lo, hi] = spectrumSupport(band);
-  const peak = Math.max(...Array.from({ length: 65 }, (_, i) => spectrumWeight(band, lo + (hi - lo) * i / 64)));
+  const weights = Array.from({ length: BAND_GRID }, (_, i) => spectrumWeight(band, lo + (hi - lo) * i / (BAND_GRID - 1)));
+  const peak = Math.max(...weights);
+  const kept = weights.map((w, i) => (w >= 0.01 * peak ? i : -1)).filter(i => i >= 0);
+  if (!kept.length) return null;
+  const at = i => lo + (hi - lo) * i / (BAND_GRID - 1);
+  return { band, lo: at(kept[0]), hi: at(kept.at(-1)), points: kept.map(at) };
+}
+// Whether one interaction reshapes the band. Box filters -- bandpass,
+// longpass, shortpass, notch -- name their edges, and an edge inside the band
+// is decisive whatever a sample grid would have seen: a 1 nm passband lying
+// between two sample points is still a 1 nm slice. For smooth transmissions
+// (etalon, AOTF) the band is sampled, and two backstops catch what the samples
+// miss: the ray's own wavelength or cell transmitting differently from the
+// sampled value, and applyTransmission() integrating to a different fraction.
+// Uniform attenuation passes all three and leaves the duration alone.
+function sampledBandTransmission(region, transmissionFn) {
   let tMin = Infinity, tMax = -Infinity;
-  for (let i = 0; i <= 64; i++) {
-    const wl = lo + (hi - lo) * i / 64;
-    if (spectrumWeight(band, wl) < 0.01 * peak) continue;
+  for (const wl of region.points) {
     const t = Math.max(0, Math.min(1, Number(transmissionFn(wl)) || 0));
     tMin = Math.min(tMin, t); tMax = Math.max(tMax, t);
   }
-  return Number.isFinite(tMin) && tMax - tMin > 0.01;
+  return { tMin, tMax };
 }
-// Spectrally selective interactions call this with their transmission. The
-// ones that act through applyTransmission() do so automatically; the flat-band
-// and single-wavelength shortcuts in the filter, dichroic and AOTF cases call
-// it directly, since a wavelength sample of a fanned-out pulse still belongs
-// to a band the element is cutting.
-function notePulseSelection(transmissionFn) {
+// Light a specimen or crystal generated at a new colour can still carry the
+// pump's pulse record. That record's band then says nothing about this
+// light's spectrum, so it is not used to judge a filter acting on it.
+function rayWithinPulseBand(ray, region) {
+  const lo = Math.min(...[ray.wl - (ray.bw || 0) / 2, ray.spectralLo, ray.fanLo].filter(Number.isFinite));
+  const hi = Math.max(...[ray.wl + (ray.bw || 0) / 2, ray.spectralHi, ray.fanHi].filter(Number.isFinite));
+  return hi >= region.lo && lo <= region.hi;
+}
+function notePulseSelection(transmissionFn, edges = []) {
   const pulse = interactionRay?.pulse;
-  if (pulse && !pulse.spectrumReshaped && !interactionReshapesPulse
-    && transmissionReshapesBand(pulse, transmissionFn)) interactionReshapesPulse = true;
+  if (!pulse || pulse.spectrumReshaped || interactionReshapesPulse) return null;
+  const region = pulseBandRegion(pulse);
+  if (!region || !rayWithinPulseBand(interactionRay, region)) return null;
+  if (edges.some(e => Number.isFinite(e) && e > region.lo && e < region.hi)) {
+    interactionReshapesPulse = true;
+    return null;
+  }
+  const { tMin, tMax } = sampledBandTransmission(region, transmissionFn);
+  if (!(tMax - tMin <= 0.01)) { interactionReshapesPulse = true; return null; }
+  const uniform = (tMin + tMax) / 2;
+  const ray = interactionRay;
+  const own = [ray.wl, ray.spectralLo, ray.spectralHi].filter(Number.isFinite);
+  if (own.some(wl => Math.abs(Math.max(0, Math.min(1, Number(transmissionFn(wl)) || 0)) - uniform) > 0.01)) {
+    interactionReshapesPulse = true;
+    return null;
+  }
+  return uniform;
 }
 function applyTransmission(spec, centerWl, transmissionFn) {
-  notePulseSelection(transmissionFn);
-  return applySpectralTransmission(spec, centerWl, transmissionFn);
+  const uniform = notePulseSelection(transmissionFn);
+  const result = applySpectralTransmission(spec, centerWl, transmissionFn);
+  // The integration runs on a finer grid than the band sample: a passband it
+  // finds, where the samples saw none, is a reshaping they missed.
+  if (Number.isFinite(uniform) && Math.abs((result?.fraction ?? 0) - uniform) > 0.01) interactionReshapesPulse = true;
+  return result;
+}
+
+// Whether the wavelength cells of a fanned-out pulse that reach a detector
+// still carry the band it was emitted with. Measured as the share of the
+// emitted spectral weight inside the arriving cells, which must be 95 % or
+// more: the tracer drops the faint outermost samples of a Gaussian on its own
+// (about 2.4 % of the weight), while an aperture catching part of a prism fan
+// removes a fifth or more. Light that was never fanned out carries no cells,
+// and a uniformly clipped broadband beam keeps its whole band, so both pass.
+// This is a bounded guard: it sees samples that miss entirely, not a sample
+// clipped partly more than its neighbours.
+export const FAN_COVERAGE = 0.95;
+function fannedBandCovered(pulse, hits) {
+  const cellOf = h => (Number.isFinite(h.fanLo) && Number.isFinite(h.fanHi) ? [h.fanLo, h.fanHi]
+    : Number.isFinite(h.spectralLo) && Number.isFinite(h.spectralHi) ? [h.spectralLo, h.spectralHi] : null);
+  const region = pulseBandRegion(pulse);
+  if (!region) return true;
+  const band = region.band;
+  // Only arrivals the pulse record describes: converted light is left out.
+  const cells = hits.filter(h => rayWithinPulseBand(h, region)).map(cellOf).filter(c => c && c[1] > c[0]);
+  if (!cells.length) return true;
+  const [lo, hi] = spectrumSupport(band);
+  let total = 0, covered = 0;
+  for (let i = 0; i < BAND_GRID; i++) {
+    const wl = lo + (hi - lo) * (i + 0.5) / BAND_GRID;
+    const w = Math.max(0, spectrumWeight(band, wl));
+    total += w;
+    if (cells.some(([a, b]) => wl >= a && wl <= b)) covered += w;
+  }
+  return !(total > 0) || covered / total >= FAN_COVERAGE;
 }
 
 function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent = null) {
@@ -4601,6 +4700,8 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralWidthNm : null,
           spectralLo: Number.isFinite(c.spectralLo) ? c.spectralLo
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralLo : null,
+          fanLo: Number.isFinite(c.fanLo) ? c.fanLo : (c.wl === undefined || c.wl === r.wl) ? r.fanLo : null,
+          fanHi: Number.isFinite(c.fanHi) ? c.fanHi : (c.wl === undefined || c.wl === r.wl) ? r.fanHi : null,
           spectralHi: Number.isFinite(c.spectralHi) ? c.spectralHi
             : (c.wl === undefined || c.wl === r.wl) ? r.spectralHi : null,
           speckle: c.speckle || r.speckle || false,
