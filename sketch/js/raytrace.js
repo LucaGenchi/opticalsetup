@@ -2762,6 +2762,45 @@ function bandChild(ray, d, lo, hi, tag) {
   };
 }
 
+// A wavelength sample fanned out by dispersive refraction travels with bw 0 —
+// it has to, or the next glass surface would fan it out all over again — but
+// it still stands for a slice [spectralLo, spectralHi] of a continuum, and a
+// detector already integrates across that slice. A filter or dichroic has to
+// as well: judging the slice by its node alone passed a whole 60 nm sample of
+// a 400-900 nm supercontinuum through a 1 nm bandpass. The slice is taken as
+// flat inside, which is what the detector assumes when it paints it.
+function sampleCell(ray) {
+  if (ray.bw || !ray.spectralContinuum) return null;
+  const lo = ray.spectralLo, hi = ray.spectralHi;
+  return Number.isFinite(lo) && Number.isFinite(hi) && hi > lo ? [lo, hi] : null;
+}
+
+// The part of a cell inside a passband and the (up to two) parts outside it.
+function splitCell(cell, pb) {
+  const eps = 1e-9 * (cell[1] - cell[0]);
+  const ix = bandIntersect(cell, pb);
+  return {
+    inside: ix && ix[1] - ix[0] > eps ? ix : null,
+    outside: [[cell[0], Math.min(cell[1], pb[0])], [Math.max(cell[0], pb[1]), cell[1]]]
+      .filter(([lo, hi]) => hi - lo > eps),
+  };
+}
+
+// A still-monochromatic child carrying the piece [lo, hi] of its parent's cell,
+// with the power that piece holds. The node wavelength stays where it lies in
+// the piece — it set the ray's direction — and otherwise moves to the piece's
+// middle so the colour and label describe light the ray actually carries. The
+// tag keeps the child off the single-child fast path, which would drop the
+// narrowed bounds.
+function cellChild(ray, d, cell, lo, hi, tag, share = 1) {
+  return {
+    d, tag,
+    wl: ray.wl >= lo && ray.wl <= hi ? ray.wl : (lo + hi) / 2,
+    spectralContinuum: true, spectralLo: lo, spectralHi: hi, spectralWidthNm: hi - lo,
+    intensity: ray.intensity * share * (hi - lo) / (cell[1] - cell[0]),
+  };
+}
+
 // A polarization modulation (from a switching EOM) meeting an analyzer:
 // Malus's law is evaluated separately for the two modulation states, giving
 // the two transmission levels of a real square temporal gate plus the
@@ -3047,6 +3086,28 @@ function interact(ray, hit) {
       const inBandR = data.dtype === 'notch' ? Math.min(1, Math.max(0, (data.bandRefl ?? 100) / 100)) : 1;
       const partial = inBandR < 1;
       notePulseSelection(wl => (dichroicTransmits(wl, data) ? 1 : 1 - inBandR), passbandOf(data));
+      const cell = sampleCell(ray);
+      if (cell) {
+        const { inside, outside } = splitCell(cell, passbandOf(data));
+        const rd = reflect(d, n);
+        // A cell wholly on one side of every edge behaves as its node does.
+        if (!inside || !outside.length) {
+          const transmits = dichroicTransmits(ray.wl, data);
+          if (transmits || !partial) return [{ d: transmits ? d : rd }];
+        }
+        const notch = data.dtype === 'notch';
+        const out = [];
+        if (inside) {
+          if (!notch) out.push(cellChild(ray, d, cell, inside[0], inside[1], 'T'));
+          else {
+            if (inBandR > 0) out.push({ ...cellChild(ray, rd, cell, inside[0], inside[1], 'R', inBandR), retainWeak: partial });
+            if (partial) out.push({ ...cellChild(ray, d, cell, inside[0], inside[1], 'Tb', 1 - inBandR), retainWeak: true });
+          }
+        }
+        outside.forEach(([lo, hi], i) => out.push(
+          cellChild(ray, notch ? d : rd, cell, lo, hi, `${notch ? 'T' : 'R'}${i}`)));
+        return out;
+      }
       if (!ray.bw) {
         if (dichroicTransmits(ray.wl, data)) return [{ d }];
         if (!partial) return [{ d: reflect(d, n) }];
@@ -3097,6 +3158,12 @@ function interact(ray, hit) {
       notePulseSelection(wl => { const pb = passbandOf(f); return wl >= pb[0] && wl <= pb[1] ? 1 : 0; }, passbandOf(f));
       if (!ray.bw) {
         const pb0 = passbandOf(f);
+        const cell = sampleCell(ray);
+        if (cell) {
+          const { inside, outside } = splitCell(cell, pb0);
+          if (!inside) return [];
+          return outside.length ? [cellChild(ray, d, cell, inside[0], inside[1], 'T')] : [{ d }];
+        }
         return ray.wl >= pb0[0] && ray.wl <= pb0[1] ? [{ d }] : [];
       }
       if (ray.spec && ray.spec.kind !== 'flat') {
@@ -3123,7 +3190,13 @@ function interact(ray, hit) {
       notePulseSelection(T);
       const rd = reflect(d, n);
       if (!ray.bw) {
-        const t = T(ray.wl);
+        // A fanned-out sample averages the Airy curve over the slice it stands
+        // for, with the same machinery a broadband ray is integrated by; the
+        // children stay monochromatic and keep the slice's bounds.
+        const cell = sampleCell(ray);
+        const t = cell
+          ? (applyTransmission(flatSpectrum(cell[0], cell[1]), ray.wl, T)?.fraction ?? 0)
+          : T(ray.wl);
         const out = [];
         if (t > ETALON_FLOOR) out.push({ d, intensity: ray.intensity * t, tag: 'T' });
         if (1 - t > ETALON_FLOOR) out.push({ d: rd, intensity: ray.intensity * (1 - t), tag: 'R' });
