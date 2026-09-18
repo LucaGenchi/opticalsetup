@@ -26,7 +26,9 @@ import {
   pointInBoundary, sampleBoundary,
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
-import { authoredPulseTiming, glassIndex, isDispersiveGlass, GLASS_OPTIONS, MAX_SOURCE_GDD_FS2 } from './glass.js';
+import {
+  authoredBandwidthBoundsNm, authoredPulseTiming, glassIndex, isDispersiveGlass, GLASS_OPTIONS, MAX_SOURCE_GDD_FS2,
+} from './glass.js';
 import {
   MIN_CEMENT_GAP, MAX_SURFACE_ROWS, PRESET_OPTIONS, normalizeSurfaceTable, surfaceRowsOf, surfaceTableAxialColour,
   surfaceTableCardinals, surfaceTableSummary, surfaceTableToBodies,
@@ -2269,7 +2271,8 @@ export const registry = {
         show: p => p.transformLimited !== false,
       },
       {
-        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 0.1, max: 400, step: 0.5, def: 5,
+        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number',
+        min: p => authoredBandwidthBoundsNm(p)[0], max: p => authoredBandwidthBoundsNm(p)[1], step: 0.5, def: 5,
         show: p => p.transformLimited === false,
       },
       {
