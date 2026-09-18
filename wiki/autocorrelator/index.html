@@ -385,10 +385,15 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         <p>The Autocorrelator reports the pulse duration of whatever pulse train reaches its
         face — and reports it the way a real instrument does, as a trace width with an
         assumption divided out, rather than as a number read off the source.</p>
-        <p><strong>Time span</strong> sets the horizontal axis in both modes &mdash; &plusmn;0.5,
-        &plusmn;1, &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps &mdash; and it is a setting rather
-        than an automatic, so two traces of different duration on the same span look as different
-        as they are. A trace too wide for the window is reported rather than clipped.</p>
+        <p><strong>Time span</strong> sets the horizontal axis &mdash; &plusmn;0.5, &plusmn;1,
+        &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps, or <strong>Auto</strong>, the default for a
+        new autocorrelator. Auto takes the narrowest of those spans whose half-width is at least
+        1.5 trace FWHMs, where a Gaussian trace has fallen to 0.2&nbsp;% of its peak, so the wings
+        are drawn rather than clipped; it steps between the standard spans rather than
+        rescaling continuously, labels the axis <em>AUTO</em>, and applies to autocorrelation
+        only. A fixed span keeps two traces of different duration looking as different as they
+        are, which is why cross-correlation stays fixed. A trace too wide for the chosen window
+        is reported rather than clipped, and an unavailable duration draws no trace.</p>
         <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
         (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
         instrument works out for itself, because in a laboratory it is not something the

@@ -11,7 +11,7 @@ import { scopeTrace } from './pulses.js';
 import { formatTimeAxisNs, probeTimeWindowNs, syncedTimeWindowNs, arrivalDelayNs } from './probe.js';
 import {
   autocorrelationReading, crossCorrelationReading, correlationShapeValue, crossCorrelationPair,
-  crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS, DEFAULT_SCOPE_SPAN_PS,
+  crossScopeHalfSpanFs, CROSS_SCOPE_SPANS_PS, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN, autoScopeHalfSpanFs,
 } from './glass.js';
 import { esc, formatSignal, smoothPath, wavelengthToColor } from './util.js';
 
@@ -157,9 +157,15 @@ registry.autocorrelator.params.push({
 // pick a timebase and watch the traces walk across it. Switching mode picks a
 // sensible setting once (see applyScopeSpanForMode in inspector.js), and from
 // then on it is yours.
+// Auto is the default for a new autocorrelator: it takes the narrowest
+// standard span that holds the trace with its wings (autoScopeHalfSpanFs), so
+// a long pulse is drawn instead of refused. It steps between the standard
+// spans rather than rescaling continuously, and applies to autocorrelation
+// only: in cross-correlation mode the timebase stays fixed, since rescaling
+// would hide the delay the user is scanning.
 registry.autocorrelator.params.push({
-  key: 'timeSpanPs', label: 'Time span', type: 'select', def: DEFAULT_SCOPE_SPAN_PS,
-  options: CROSS_SCOPE_SPANS_PS.map(ps => [ps, `±${ps} ps`]),
+  key: 'timeSpanPs', label: 'Time span', type: 'select', def: AUTO_SCOPE_SPAN,
+  options: [[AUTO_SCOPE_SPAN, 'Auto (fits the trace)'], ...CROSS_SCOPE_SPANS_PS.map(ps => [ps, `±${ps} ps`])],
 });
 // The same timebase controls the beam probe carries, on the two instruments
 // whose readout is a trace against time. Sync makes a group of them share one
@@ -889,11 +895,12 @@ function autocorrelationPlot(sensor, reading) {
   // same apparent width, so three traces of 150, 731 and 150 fs would look
   // identical and only their labels would differ -- which defeats the
   // comparison such a scene exists to make.
-  const spanFs = crossScopeHalfSpanFs(sensor.params);
+  const auto = sensor.params?.timeSpanPs === AUTO_SCOPE_SPAN;
+  const spanFs = auto ? autoScopeHalfSpanFs(ac.traceFwhmFs) : crossScopeHalfSpanFs(sensor.params);
   // Centred on zero, so the trace fits while its half-maximum chord does.
   if (ac.traceFwhmFs / 2 > spanFs) {
-    return { note: `AUTOCORRELATION ${fsLabel(ac.traceFwhmFs)} WIDER THAN SPAN ±${spanFs / 1000} ps`
-      + '|WIDEN THE TIME SPAN' };
+    return { note: `AUTOCORRELATION ${fsLabel(ac.traceFwhmFs)} WIDER THAN ±${spanFs / 1000} PS`
+      + (auto ? '|BEYOND THE WIDEST SPAN' : '|WIDEN THE TIME SPAN OR USE AUTO') };
   }
   const xAt = fs => -35 + 70 * (fs + spanFs) / (2 * spanFs);
   const yAt = v => baseline - Math.max(0, Math.min(1, v)) * height;
@@ -922,7 +929,7 @@ function autocorrelationPlot(sensor, reading) {
     // the half-maximum chord is the measurement itself, so draw it
     `<line x1="${halfLeft}" y1="${halfY}" x2="${halfRight}" y2="${halfY}" stroke="#fca5a5" stroke-width="0.6" stroke-dasharray="1.6 1.2" opacity="0.85"/>` +
     `<text x="${xAt(0).toFixed(2)}" y="${(baseline + 5.4)}" text-anchor="middle" font-size="3.4" fill="#5f7d8e">0 DELAY</text>` +
-    `<text x="-35" y="${(baseline + 5.4)}" font-size="3.4" fill="#5f7d8e">−${spanFs / 1000} ps</text>` +
+    `<text x="-35" y="${(baseline + 5.4)}" font-size="3.4" fill="#5f7d8e">${auto ? 'AUTO ' : ''}−${spanFs / 1000} ps</text>` +
     `<text x="35" y="${(baseline + 5.4)}" text-anchor="end" font-size="3.4" fill="#5f7d8e">+${spanFs / 1000} ps</text>` +
     // The curve peaks at centre, so the inferred duration sits in the empty
     // upper-left corner where the wings are flat, clear of the header line.
@@ -956,14 +963,14 @@ function panel(sensor, reading, elements, view) {
     if (svg) return header(name, 'CROSS-CORRELATION', reading.pulse) + svg;
     const [state, hint] = String(note).split('|');
     return header(name, 'CROSS-CORRELATION', reading.pulse)
-      + metrics(hint ? [['STATE', state], ['', hint]] : [['STATE', state]]);
+      + metrics(hint ? [['STATE', state], ['', hint]] : [['STATE', state]], 1);
   }
   if (sensor.type === 'autocorrelator') {
     const plot = autocorrelationPlot(sensor, reading);
     if (plot && plot.note) {
       const [state, hint] = String(plot.note).split('|');
       return header(name, 'AUTOCORRELATION', reading.pulse)
-        + metrics(hint ? [['STATE', state], ['', hint]] : [['STATE', state]]);
+        + metrics(hint ? [['STATE', state], ['', hint]] : [['STATE', state]], 1);
     }
     if (plot) return header(name, 'AUTOCORRELATION', reading.pulse) + plot;
     return header(name, 'AUTOCORRELATION', reading.pulse) + metrics([

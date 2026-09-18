@@ -155,7 +155,7 @@ test('the pulsed laser swaps its derived bandwidth for an editable one when tran
   assert.equal(derived.show({ transformLimited: false }), false);
   assert.equal(bandwidth.show({ transformLimited: true }), false);
   assert.equal(bandwidth.show({ transformLimited: false }), true, 'editable for a chirped pulse');
-  assert.equal(bandwidth.min, 0, '0 nm is a valid monochromatic pulse train');
+  assert.equal(bandwidth.min, 0.1, 'a chirped pulse needs a bandwidth to be chirped across');
 
   // the read-only value is the real transform limit for the configured pulse
   const laser = createElement('pulsedlaser');

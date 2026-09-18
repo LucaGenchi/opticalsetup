@@ -32,7 +32,7 @@ import {
 import { arcParameterAtPoint, circularArcThrough } from './polygon.js';
 import {
   gddGroupDelayDifferenceFs, glassGVD, glassGroupDelayDifferenceFs, glassIndex,
-  isDispersiveGlass, pulseDurationAfterDispersion, pulseDurationAcrossPaths, PATHS_DISAGREE, DISPERSION_UNAVAILABLE,
+  isDispersiveGlass, authoredPulseTiming, pulseDurationAfterDispersion, pulseDurationAcrossPaths, PATHS_DISAGREE, DISPERSION_UNAVAILABLE,
 } from './glass.js';
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
@@ -4948,10 +4948,13 @@ export function traceScene(elements, beams = []) {
     const { wl: srcWl, bw: srcBw, spec: srcSpec } = resolveSourceSpectrum(el.type, p);
     const support = spectrumSupport(srcSpec);
     const K = local.length;
+    // A pulsed laser's emitted duration, transform limit and signed chirp
+    // come from the one accessor its readouts use too.
+    const timing = el.type === 'pulsedlaser' ? authoredPulseTiming(p) : null;
     const pulse = p.temporalMode === 'pulsed' ? {
       sourceId: el.id,
       repRateMHz: Math.min(1000000, Math.max(0.001, p.repRateMHz || 80)),
-      pulseWidthFs: Math.min(1000000000, Math.max(1, p.pulseWidthFs || 100)),
+      pulseWidthFs: Math.min(1000000000, Math.max(1, timing?.durationFs || p.pulseWidthFs || 100)),
       phaseNs: Math.min(1000000, Math.max(-1000000, p.pulsePhaseNs || 0)),
       centerWavelengthNm: srcWl,
       bandwidthNm: srcBw,
@@ -4960,13 +4963,15 @@ export function traceScene(elements, beams = []) {
       spectrumHiNm: support?.[1] ?? null,
       transformLimitFs: el.type === 'sclaser'
         ? supercontinuumTransformLimitFs(p.scMin ?? 300, p.scMax ?? 700, p.pulseShape)
-        : null,
+        : timing?.transformLimitFs ?? null,
       pulseShape: p.pulseShape || 'gauss',
-      transformLimited: p.transformLimited === true,
-      // Unknown (or missing, in a sketch saved before the choice existed)
-      // stays unknown: a duration longer than the bandwidth allows is not by
-      // itself evidence of which chirp the pulse carries.
-      inputChirp: p.inputChirp === 'negative' || p.inputChirp === 'positive' ? p.inputChirp : 'unknown',
+      transformLimited: timing ? timing.transformLimited : p.transformLimited === true,
+      // The source's own quadratic phase, stated once here and added to the
+      // path's GDD by the duration model; it is never also put on the ray.
+      ...(timing && !timing.transformLimited ? {
+        inputGddFs2: timing.inputGddFs2,
+        inputChirp: timing.inputGddFs2 < 0 ? 'negative' : 'positive',
+      } : {}),
     } : null;
     const rays0 = local.map(r => {
       const o = toWorld(el, r.x, r.y);

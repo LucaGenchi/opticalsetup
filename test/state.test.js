@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { registry, createElement } from '../sketch/js/elements.js';
+import { authoredPulseTiming } from '../sketch/js/glass.js';
 import {
   state, changed, parseSketch, deserialize, replaceScene, pushUndo, undo, redo, canUndo, canRedo,
 } from '../sketch/js/state.js';
@@ -72,6 +73,10 @@ test('a legacy pulsed laser loads as the pulsed source, keeping its own spectral
   assert.equal(loadedBand.params.transformLimited, false, 'the old default was off');
   assert.equal(loadedBand.params.bandwidth, 40);
   assert.equal(loadedBand.params.pulseWidthFs, 120);
+  // Chirp is now authored as a GDD: the saved pair opens with the GDD that
+  // reproduces the saved 120 fs.
+  assert.ok(loadedBand.params.chirpGddFs2 > 0);
+  assert.ok(Math.abs(authoredPulseTiming(loadedBand.params).durationFs - 120) < 1e-6);
 
   // A monochromatic pulsed laser still stored an unused bandwidth alongside
   // bwMode:'mono'. Folding bwMode in is what stops that stale number from
@@ -79,7 +84,8 @@ test('a legacy pulsed laser loads as the pulsed source, keeping its own spectral
   const mono = { type: 'laser', x: 0, y: 0, params: { temporalMode: 'pulsed', bwMode: 'mono', bandwidth: 40 } };
   const [loadedMono] = parseSketch(file([mono]), registry).elements;
   assert.equal(loadedMono.type, 'pulsedlaser');
-  assert.equal(loadedMono.params.bandwidth, 0);
+  // A 0 nm train cannot be chirped, so it opens transform-limited.
+  assert.equal(loadedMono.params.transformLimited, true);
 });
 
 test('a legacy laser set to supercontinuum loads as the SC source with the band it used to trace', () => {
