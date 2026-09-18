@@ -294,6 +294,11 @@ function autocorrelatorRows(rd, source) {
   const actual = rd.pulse.pulseShape || 'gauss';
   const derived = Number.isFinite(rd.pulse.stretchedPulseWidthFs)
     ? rd.pulse.stretchedPulseWidthFs : null;
+  // When the duration model declines, a trace built on the configured width
+  // would present the source's setting as what arrives. Say so instead.
+  if (derived === null && rd.pulse.dispersionModel) return `
+      <dt>Autocorrelation</dt><dd>Unavailable — ${esc(rd.pulse.dispersionModel)}</dd>
+      <dt>Configured at source</dt><dd>${Number(rd.pulse.pulseWidthFs).toLocaleString()} fs (the setting, not a prediction here)</dd>`;
   const reading = autocorrelationReading(derived ?? rd.pulse.pulseWidthFs, assumed, actual);
   if (!reading) return `
       <dt>Autocorrelation</dt><dd>—</dd>`;
@@ -303,8 +308,7 @@ function autocorrelatorRows(rd, source) {
   return `
       <dt>Autocorrelation FWHM</dt><dd>${fs(reading.traceFwhmFs)}</dd>
       <dt>Inferred duration</dt><dd>${fs(reading.inferredPulseWidthFs)} · assuming ${shapeName(assumed)} (÷${reading.assumedFactor.toFixed(3)})</dd>
-      ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}
-      ${rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}`;
+      ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}`;
 }
 
 function measurementHTML(el) {
@@ -348,7 +352,9 @@ function measurementHTML(el) {
     : '';
   let stretchText = '';
   if (rd.pulse && !rd.pulse.mixed) {
-    if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
+    if (!Number.isFinite(rd.pulse.stretchedPulseWidthFs) && rd.pulse.dispersionModel) {
+      stretchText = 'Unavailable';
+    } else if (Number.isFinite(rd.pulse.stretchedPulseWidthFs)) {
       const factor = rd.pulse.stretchedPulseWidthFs / rd.pulse.pulseWidthFs;
       stretchText = factor < 0.99
         ? `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}× · compressed)`
@@ -862,7 +868,7 @@ export function renderInspector() {
             const gdd = `${Math.abs(gddFs2) < 10 ? gddFs2.toFixed(1) : Math.round(gddFs2).toLocaleString()} fs² GDD`;
             const duration = Number.isFinite(stretchedPulseWidthFs)
               ? `${stretchedPulseWidthFs.toFixed(stretchedPulseWidthFs < 100 ? 1 : 0)} fs at the sample`
-              : 'broadening needs a transform-limited Gaussian input';
+              : 'dispersed duration unavailable for this pulse (the detector’s Duration model says why)';
             return `<a class="two-photon-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open Two-Photon Lab with ${esc(name)} <span aria-hidden="true">↗</span></a>` +
               `<div class="hint">Traced centre-wavelength path: ${esc(gdd)} · ${esc(duration)}. The handoff keeps the configured source duration; confirm and apply this qualitative broadening in the lab.</div>`;
           }).join('');

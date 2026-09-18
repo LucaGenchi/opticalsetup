@@ -136,11 +136,20 @@ test('0 nm bandwidth stays unstretched, and packet and detector use the same chi
   close(local.pulseWidthFs, reading.pulse.stretchedPulseWidthFs, 1e-4);
 });
 
-test('legacy pulsed-laser saves gain a safe positive input-chirp default', () => {
+test('a sketch saved before Input chirp existed opens as Unknown, not as an assumed up-chirp', () => {
+  // A new laser still assumes the commonest case; an old save carries no
+  // evidence of a sign, so it must not acquire one on load.
+  assert.equal(createElement('pulsedlaser', 0, 0).params.inputChirp, 'positive');
   const laser = createElement('pulsedlaser', 0, 0);
   laser.params.transformLimited = false;
   delete laser.params.inputChirp;
   const saved = JSON.stringify({ app: 'optics2d', version: 1, elements: [laser], beams: [] });
   const [loaded] = parseSketch(saved, registry).elements;
-  assert.equal(loaded.params.inputChirp, 'positive');
+  assert.equal(loaded.params.inputChirp, 'unknown');
+  // An explicit choice, Unknown included, survives a save and reload.
+  for (const chirp of ['positive', 'negative', 'unknown']) {
+    laser.params.inputChirp = chirp;
+    const text = JSON.stringify({ app: 'optics2d', version: 1, elements: [laser], beams: [] });
+    assert.equal(parseSketch(text, registry).elements[0].params.inputChirp, chirp);
+  }
 });

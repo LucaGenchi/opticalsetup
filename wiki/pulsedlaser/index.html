@@ -209,6 +209,21 @@
         chirp</em> supplies the sign that duration and bandwidth alone cannot reveal. Glass
         of the opposite sign can therefore compress the pulse to its transform limit before
         stretching it again.</p>
+        <p>Duration and bandwidth fix only the size of that phase. Positive and Negative are
+        explicit assumptions of a purely quadratic phase; a new laser starts on Positive, the
+        commonest case for amplified pulses. <em>Unknown</em> claims nothing: the configured
+        duration is reported where the beam has met no dispersion, and after any glass,
+        compressor or fiber the dispersed duration is shown as unavailable rather than
+        derived from a phase nobody specified. A sketch saved before this control existed
+        opens as Unknown for the same reason. Unknown does not mean uncompressible; it means
+        the phase that would decide it is not known.</p>
+        <p>The duration model also declines, and says why on the detector's <em>Duration
+        model</em> row, when a filter, dichroic, etalon or AOTF has reshaped the pulse's
+        spectrum — filtering changes a duration by itself, and dispersion accumulated before
+        the filter describes wavelengths it removed — and when parts of one beam reach a
+        detector by paths whose dispersion would give durations more than 2&nbsp;% apart.
+        Elements that transmit the pulse's whole band evenly, such as a neutral density
+        filter or a dichroic far from its edge, leave the duration alone.</p>
         <p>Sech² pulses use the same signed-phase construction, but their dispersed FWHM is
         read from a deterministic numerical Fourier-propagation table rather than the
         Gaussian formula. Interpolation was checked against a denser calculation to 0.12%
@@ -248,7 +263,10 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         represents only quadratic phase for Gaussian and sech² inputs. It does not reconstruct
         arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
         distortion, or material absorption. A duration-bandwidth pair below its transform
-        limit is reported as inconsistent rather than assigned invented phase. Divergence and
+        limit is reported as inconsistent rather than assigned invented phase, and its dispersed
+        duration is unavailable. Spectral reshaping is detected by whether an element's
+        transmission varies across the band the pulse was emitted with; a prism fan clipped by a
+        detector's aperture is not detected as reshaping. Divergence and
         M² are not modeled.</p></div>
       </div>
 

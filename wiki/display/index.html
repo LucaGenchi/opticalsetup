@@ -154,7 +154,7 @@
       <h2 class="section-head sim"><span class="sw"></span>In OpticalSetup</h2>
       <div class="sim-block">
         <p>Select <em>Sensor input</em> to link the screen to a detector. Available views follow that sensor's capabilities, and the display adapts its information density to its drawn size. The cable carries data only: moving the screen or routing its cable across a beam cannot attenuate or deflect the light.</p><p>The example links a screen to a power meter behind a neutral-density filter. Change the filter transmission to change the reading, then move the screen to see that its position has no optical effect.</p>
-        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The screen does not measure light itself or add properties absent from the linked sensor. It models no electronics noise, cable delay, or acquisition hardware.</p></div>
+        <div class="limitations"><span class="lbl">Simplified vs. reality</span><p>The screen does not measure light itself or add properties absent from the linked sensor. It models no electronics noise, cable delay, or acquisition hardware.</p><p>The pulse entry shows the duration that arrives: dispersed where the duration model answers, <em>Unavailable</em> where it declines, and the source's configured duration only where no model applies, such as a mixture of trains. Before this, it always repeated the configured duration, so a screen on a setup with glass in the beam now reads a different, dispersed number.</p></div>
       </div>
 
 

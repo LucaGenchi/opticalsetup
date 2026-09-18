@@ -2250,10 +2250,21 @@ export const registry = {
         key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number', min: 0, max: 400, step: 0.5, def: 5,
         show: p => !p.transformLimited,
       },
+      // Duration and bandwidth fix the size of the chirp, never its sign or
+      // even whether it is a pure quadratic phase. A new laser assumes the
+      // commonest case, an up-chirped Gaussian; Unknown claims nothing, and
+      // dispersion then leaves the duration unavailable rather than invented.
+      // A sketch saved before this choice existed carries no evidence of a
+      // sign, so it opens as Unknown rather than as an assumed up-chirp.
       {
         key: 'inputChirp', label: 'Input chirp', type: 'select', def: 'positive',
-        options: [['positive', 'Positive (up-chirped)'], ['negative', 'Negative (down-chirped)']],
+        options: [
+          ['positive', 'Positive (up-chirped, assumed quadratic)'],
+          ['negative', 'Negative (down-chirped, assumed quadratic)'],
+          ['unknown', 'Unknown (duration set, phase not known)'],
+        ],
         show: p => !p.transformLimited && Number(p.bandwidth) > 0,
+        migrate: () => 'unknown',
       },
       POL_PARAM,
       P.autoColor, P.color,

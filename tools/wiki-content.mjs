@@ -247,6 +247,21 @@ export const wikiEntries = [
         chirp</em> supplies the sign that duration and bandwidth alone cannot reveal. Glass
         of the opposite sign can therefore compress the pulse to its transform limit before
         stretching it again.</p>
+        <p>Duration and bandwidth fix only the size of that phase. Positive and Negative are
+        explicit assumptions of a purely quadratic phase; a new laser starts on Positive, the
+        commonest case for amplified pulses. <em>Unknown</em> claims nothing: the configured
+        duration is reported where the beam has met no dispersion, and after any glass,
+        compressor or fiber the dispersed duration is shown as unavailable rather than
+        derived from a phase nobody specified. A sketch saved before this control existed
+        opens as Unknown for the same reason. Unknown does not mean uncompressible; it means
+        the phase that would decide it is not known.</p>
+        <p>The duration model also declines, and says why on the detector's <em>Duration
+        model</em> row, when a filter, dichroic, etalon or AOTF has reshaped the pulse's
+        spectrum — filtering changes a duration by itself, and dispersion accumulated before
+        the filter describes wavelengths it removed — and when parts of one beam reach a
+        detector by paths whose dispersion would give durations more than 2&nbsp;% apart.
+        Elements that transmit the pulse's whole band evenly, such as a neutral density
+        filter or a dichroic far from its edge, leave the duration alone.</p>
         <p>Sech² pulses use the same signed-phase construction, but their dispersed FWHM is
         read from a deterministic numerical Fourier-propagation table rather than the
         Gaussian formula. Interpolation was checked against a denser calculation to 0.12%
@@ -264,7 +279,10 @@ export const wikiEntries = [
         represents only quadratic phase for Gaussian and sech² inputs. It does not reconstruct
         arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
         distortion, or material absorption. A duration-bandwidth pair below its transform
-        limit is reported as inconsistent rather than assigned invented phase. Divergence and
+        limit is reported as inconsistent rather than assigned invented phase, and its dispersed
+        duration is unavailable. Spectral reshaping is detected by whether an element's
+        transmission varies across the band the pulse was emitted with; a prism fan clipped by a
+        detector's aperture is not detected as reshaping. Divergence and
         M² are not modeled.</p>`,
     },
     related: ['cwlaser', 'sclaser', 'pulsecompressor', 'objective', 'stage'],
@@ -322,7 +340,9 @@ export const wikiEntries = [
         chirped-mirror geometry; it does not model carrier phase, third-order dispersion,
         spatial chirp, pulse-front tilt, nonlinear phase, or arbitrary spectral phase. Input
         chirp is limited to the positive/negative quadratic-phase estimate implied by the
-        authored duration and bandwidth. On-screen packet length is a qualitative glyph;
+        authored duration and bandwidth; a pulse whose phase is unknown, whose spectrum was
+        reshaped, or whose paths disagree reads unavailable at a detector, and its packet keeps
+        its configured length on the canvas as a glyph, not a prediction. On-screen packet length is a qualitative glyph;
         detector numbers retain the unclamped second-order result.</p>`,
     },
     related: ['pulsedlaser', 'glassrod', 'prism', 'detector'],
@@ -401,7 +421,19 @@ export const wikiEntries = [
         authored endpoints and accumulates their signed group-delay difference. The displayed
         duration is the input duration and that endpoint spread added in quadrature. This is
         a robust first arrival-to-last arrival estimate for the declared flat spectrum, and
-        detector, scope, probe and pulse packets use the same accumulated value.</p>`,
+        detector, scope, probe and pulse packets use the same accumulated value.</p>
+        <p>The authored duration acts as a floor. A compressor can take the path's spread back
+        out, but not the chirp the source was authored with, so a fully compensated continuum
+        returns to the duration you set, not towards its transform limit. Compensation is also
+        only ever partial: a single GDD value cancels the glass's dispersion at one wavelength,
+        while the Sellmeier curvature across hundreds of nanometres remains. Through 100&nbsp;mm
+        of N-BK7, a 400–900&nbsp;nm continuum spreads to about 20&nbsp;ps; a compressor set to
+        exactly cancel the centre-wavelength GDD still leaves about 4&nbsp;ps, and the best
+        a single GDD reaches is under 1&nbsp;ps.</p>
+        <p>Once a filter, dichroic or AOTF cuts into the continuum, the duration is shown as
+        unavailable, whether the filter sits before the glass or after it. The accumulated
+        spread belongs to endpoints the filter may have removed, and reconstructing the slice
+        would need each wavelength's own delay history rather than a single number.</p>`,
       formulas: [
         { tex: '\\Delta t_{\\min} = \\frac{K}{c\\left(1/\\lambda_{\\min} - 1/\\lambda_{\\max}\\right)}', caption: 'The shortest pulse the band can carry. The denominator is the exact frequency span of the band, not the λ²/Δλ approximation, which drifts by several percent once the band is hundreds of nanometres wide. K is the time–bandwidth product of the chosen envelope: 0.441 for Gaussian, 0.315 for sech².' },
         { tex: '\\Delta T=L\\,[n_g(\\lambda_{max})-n_g(\\lambda_{min})]/c,\\qquad \\tau_{out}\\approx\\sqrt{\\tau_{in}^{2}+\\Delta T^{2}}', caption: 'Flat-band endpoint group-delay-spread model used for each traced catalogue-glass length.' },
@@ -4802,7 +4834,10 @@ export const wikiEntries = [
         <p>The duration-model row states where that arriving width came from: closed-form
         Gaussian GDD, numerically tabulated sech² GDD, a bandwidth-derived positive or negative
         input chirp, a flat-band endpoint group-delay spread, or the explicit 0&nbsp;nm
-        bandwidth exception. The autocorrelation still cannot determine chirp itself; it is
+        bandwidth exception. Where the model declines — unknown spectral phase, a reshaped
+        spectrum, or paths of different dispersion — the instrument shows <em>Duration
+        unavailable</em> and names the reason, with the source's configured duration listed as
+        the setting it is, not as a measurement. The autocorrelation still cannot determine chirp itself; it is
         displaying the scene's propagation model and then applying the instrument's chosen
         deconvolution factor.</p>
         <h3>Cross-correlation mode</h3>
@@ -5600,7 +5635,7 @@ export const wikiEntries = [
     realWorld: { html: `<p>A detector's readout electronics turn its electrical output into numbers or plots. A display shows the information measured by the connected instrument; a cable to the display is a signal connection, not another optical path.</p>` },
     inOpticalSetup: {
       html: `<p>Select <em>Sensor input</em> to link the screen to a detector. Available views follow that sensor's capabilities, and the display adapts its information density to its drawn size. The cable carries data only: moving the screen or routing its cable across a beam cannot attenuate or deflect the light.</p><p>The example links a screen to a power meter behind a neutral-density filter. Change the filter transmission to change the reading, then move the screen to see that its position has no optical effect.</p>`,
-      limitations: `<p>The screen does not measure light itself or add properties absent from the linked sensor. It models no electronics noise, cable delay, or acquisition hardware.</p>`,
+      limitations: `<p>The screen does not measure light itself or add properties absent from the linked sensor. It models no electronics noise, cable delay, or acquisition hardware.</p><p>The pulse entry shows the duration that arrives: dispersed where the duration model answers, <em>Unavailable</em> where it declines, and the source's configured duration only where no model applies, such as a mixture of trains. Before this, it always repeated the configured duration, so a screen on a setup with glass in the beam now reads a different, dispersed number.</p>`,
     }, related: ['generaldetector', 'powermeter', 'camera', 'probe'],
   },
   {

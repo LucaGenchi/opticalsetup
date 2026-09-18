@@ -8,7 +8,11 @@ import {
   waveSpectrum, wavenumberToNmWidth,
 } from '../sketch/js/parametric.js';
 import { spectrumStats, transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
-import { gaussianPulseDurationAfterGDD } from '../sketch/js/glass.js';
+import { DISPERSION_UNAVAILABLE, gaussianPulseDurationAfterGDD } from '../sketch/js/glass.js';
+import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
+
+const close = (actual, expected, tolerance, label = '') =>
+  assert.ok(Math.abs(actual - expected) <= tolerance, `${label} ${actual} is not within ${tolerance} of ${expected}`);
 
 // Before this model the OPO's signal and idler inherited the pump's spectrum,
 // so with any pulsed pump a dichroic routed all of the light as if it were
@@ -310,10 +314,11 @@ test('saved OPO crystals without the new settings keep their fixed-fraction beha
   near(short.signal, 0.4 + 0.6 * waves.signalShare, 1e-9, 'pump + signal');
 });
 
-test('a transform-limited OPO output draws its own dispersion even when the pump could not', () => {
-  // The pump is not transform-limited, so its packets carry no GDD history.
-  // A signal declared transform-limited must still broaden through glass on
-  // the canvas; one with unknown phase must not.
+test('a transform-limited OPO output broadens through glass; one with unknown phase is unavailable, not invented', () => {
+  // The pump's own phase is unknown (a legacy-style laser with no chirp
+  // sign). A signal declared transform-limited must still broaden through
+  // glass on the canvas; one with unknown phase must neither broaden nor be
+  // given a chirp it was never declared to have.
   const run = outputPhase => {
     const pump = createElement('pulsedlaser', 60, 160);
     Object.assign(pump.params, { wavelength: 800, pulseWidthFs: 140, transformLimited: false, bandwidth: 10, beamMode: 'line' });
@@ -322,8 +327,11 @@ test('a transform-limited OPO output draws its own dispersion even when the pump
     const glass = createElement('glassrod', 320, 160);
     glass.params.material = 'nbk7';
     const det = createElement('detector', 500, 160);
+    det.params.aperture = 40;
     const { pulseTracks } = traceScene([pump, xtal, glass, det]);
-    return pulseTracks.filter(track => track.pulse.centerWavelengthNm > 1000);
+    const tracks = pulseTracks.filter(track => track.pulse.centerWavelengthNm > 1000);
+    tracks.reading = detectorReading(det.id);
+    return tracks;
   };
   // The glass fans each output into spectral samples, so look per colour.
   const limited = run('transformLimited');
@@ -334,7 +342,16 @@ test('a transform-limited OPO output draws its own dispersion even when the pump
   }
   const unknown = run('unknown');
   assert.ok(unknown.length > 0);
-  for (const track of unknown) assert.equal(track.gddTrace, undefined, 'unknown phase must not claim broadening');
+  for (const track of unknown) {
+    const end = pulseEnvelopeAtOpticalPath(track, track.opls.at(-1) - 1e-6);
+    assert.equal(end.stretchFactor, 1, 'unknown phase must not claim broadening on the canvas');
+  }
+  const trains = unknown.reading.pulse.trains.filter(t => t.centerWavelengthNm > 1000);
+  assert.ok(trains.length > 0);
+  for (const train of trains) {
+    assert.equal(train.stretchedPulseWidthFs, null, 'unknown phase has no predictable dispersed duration');
+    assert.equal(train.dispersionModel, DISPERSION_UNAVAILABLE.unknownPhase);
+  }
 });
 
 test('an explicitly chirped output is its transform limit plus the GDD that stretches it', () => {
@@ -365,8 +382,11 @@ test('an explicitly chirped output is its transform limit plus the GDD that stre
   near(short.pulseWidthFs, limit, 1e-9);
 });
 
-test('unknown phase stays uncompressible on the bench; an explicit chirp compresses', () => {
-  const run = outputPhase => {
+test('a compressor cannot claim to shorten an unknown-phase output; an explicit chirp compresses to its limit', () => {
+  // "Unknown" does not mean uncompressible: it means the phase that would
+  // decide it is not known, so a compressor leaves the duration unavailable
+  // rather than inventing either answer.
+  const run = (outputPhase, compressorGddFs2 = 0) => {
     const laser = createElement('pulsedlaser', 60, 160);
     Object.assign(laser.params, { wavelength: 516, pulseWidthFs: 2000, bandwidth: wavenumberToNmWidth(516, 10), beamMode: 'line' });
     const xtal = createElement('crystal', 200, 160);
@@ -374,15 +394,40 @@ test('unknown phase stays uncompressible on the bench; an explicit chirp compres
       convert: 'opo', pumpWl: 516, signalWl: 800, linewidthMode: 'both', signalLinewidthCm: 10, idlerLinewidthCm: 10,
       outputPhase, transmitPump: false,
     });
+    const extra = [];
+    if (compressorGddFs2) {
+      const compressor = createElement('pulsecompressor', 350, 160);
+      compressor.params.gddFs2 = compressorGddFs2;
+      extra.push(compressor);
+    }
     const det = createElement('detector', 500, 160);
-    const { pulseTracks } = traceScene([laser, xtal, det]);
-    return { reading: detectorReading(det.id), tracks: pulseTracks.filter(t => Math.abs(t.pulse.centerWavelengthNm - 800) < 5) };
+    const { pulseTracks } = traceScene([laser, xtal, ...extra, det]);
+    const reading = detectorReading(det.id);
+    return {
+      reading,
+      train: reading?.pulse?.trains.find(t => Math.abs(t.centerWavelengthNm - 800) < 5),
+      tracks: pulseTracks.filter(t => Math.abs(t.pulse.centerWavelengthNm - 800) < 5),
+    };
   };
+  // With no dispersion on the path, the configured duration is the answer
+  // whatever the phase.
   const unknown = run('unknown');
   assert.ok(unknown.tracks.length > 0);
-  for (const track of unknown.tracks) assert.equal(track.gddTrace, undefined, 'unknown phase must not claim a compressible chirp');
+  assert.ok(Number.isFinite(unknown.train.stretchedPulseWidthFs));
+  close(unknown.train.stretchedPulseWidthFs, unknown.train.pulseWidthFs, 1e-6);
   const chirped = run('positiveChirp');
-  const train = chirped.reading.pulse.trains.find(t => Math.abs(t.centerWavelengthNm - 800) < 5);
-  assert.ok(train, 'no signal train');
+  assert.ok(chirped.train, 'no signal train');
   assert.ok(chirped.reading.pulse.trains.every(t => t.gddFs2 > 0), 'the chirp should reach the detector');
+  // The chirp is carried as GDD on the ray, so it is counted once: the
+  // detector reads the set duration, not a doubly stretched one.
+  const limit = chirped.train.transformLimitFs;
+  assert.ok(chirped.train.stretchedPulseWidthFs > limit * 1.05);
+  assert.match(chirped.train.dispersionModel, /positive chirp carried as GDD/);
+  // Taking that GDD back out returns the explicit chirp to its limit ...
+  const compressed = run('positiveChirp', -chirped.train.gddFs2);
+  close(compressed.train.stretchedPulseWidthFs, limit, limit * 1e-6);
+  // ... while the same compressor on an unknown phase predicts nothing.
+  const unknownCompressed = run('unknown', -chirped.train.gddFs2);
+  assert.equal(unknownCompressed.train.stretchedPulseWidthFs, null);
+  assert.equal(unknownCompressed.train.dispersionModel, DISPERSION_UNAVAILABLE.unknownPhase);
 });

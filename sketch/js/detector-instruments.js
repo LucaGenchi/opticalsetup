@@ -764,7 +764,15 @@ function formatPower(watts, signal) {
 }
 
 function pulseRate(pulse) { return !pulse ? 'CW' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.repRateMHz)} MHz`; }
-function pulseDuration(pulse) { return !pulse ? '—' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.pulseWidthFs)} fs`; }
+// The duration that arrives: dispersed where the model answers, UNAVAILABLE
+// where it declines, and the configured width only when no model ran.
+function pulseDuration(pulse) {
+  if (!pulse) return '—';
+  if (pulse.mixed) return 'MIXED';
+  if (Number.isFinite(pulse.stretchedPulseWidthFs)) return `${compactNumber(pulse.stretchedPulseWidthFs)} fs`;
+  if (pulse.dispersionModel) return 'UNAVAILABLE';
+  return `${compactNumber(pulse.pulseWidthFs)} fs`;
+}
 
 // The cross-correlation screen, built to behave like the scope you actually
 // watch while hunting time zero. The axis here is LABORATORY ARRIVAL TIME, not
@@ -866,6 +874,9 @@ function autocorrelationPlot(sensor, reading) {
   if (!reading.pulse || reading.pulse.mixed) return null;
   const assumed = sensor.params?.assumedShape || 'gauss';
   const actual = reading.pulse.pulseShape || 'gauss';
+  if (!Number.isFinite(reading.pulse.stretchedPulseWidthFs) && reading.pulse.dispersionModel) {
+    return { note: 'DURATION UNAVAILABLE|' + String(reading.pulse.dispersionModel).split(' — ')[0].toUpperCase() };
+  }
   const arriving = Number.isFinite(reading.pulse.stretchedPulseWidthFs)
     ? reading.pulse.stretchedPulseWidthFs : reading.pulse.pulseWidthFs;
   const ac = autocorrelationReading(arriving, assumed, actual);

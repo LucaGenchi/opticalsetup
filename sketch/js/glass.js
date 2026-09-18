@@ -263,6 +263,41 @@ function gddForSech2Duration(transformLimitedFwhmFs, durationFs) {
 // drawing. Narrowband pulses use bandwidth to recover their transform limit
 // and therefore the magnitude of authored input chirp. A flat supercontinuum
 // uses the signed endpoint group-delay difference accumulated along the path.
+//
+// The model only answers when the phase it needs is known. It declines --
+// `durationFs: null`, `available: false`, with a model string that says why --
+// for a pulse whose spectral phase was declared unknown, for a sampled
+// envelope whose field is gone, for a spectrum reshaped since emission, and
+// for a duration shorter than its bandwidth allows. A declined result is not
+// "uncompressible": the phase that would decide it is simply not known. The
+// one exception is a path with no dispersion at all, where the configured
+// duration is the answer whatever the phase.
+export const DISPERSION_UNAVAILABLE = {
+  unknownPhase: 'Spectral phase unknown — dispersed duration unavailable',
+  reshaped: 'Spectrum reshaped after emission — dispersed duration unavailable',
+  sampled: 'Sampled envelope unavailable — dispersed duration unavailable',
+  belowLimit: 'Duration shorter than its bandwidth allows — dispersed duration unavailable',
+};
+
+function declinedDuration(model, extra = {}) {
+  return {
+    durationFs: null, available: false, transformLimitFs: null, inputGddFs2: null, totalGddFs2: null,
+    ...extra, model,
+  };
+}
+
+// Phase is authored in two places: the pulsed laser's Input chirp, and the
+// crystal/OPO outputs' spectral phase. A pulse that is not transform-limited
+// derives a chirp only when one of them names a sign; anything else, including
+// a sketch saved before the choice existed, is unknown.
+function authoredChirpSign(pulse) {
+  if (pulse?.transformLimited === true) return 0;
+  if (pulse?.spectralPhase === 'unknown') return null;
+  if (pulse?.inputChirp === 'positive') return 1;
+  if (pulse?.inputChirp === 'negative') return -1;
+  return null;
+}
+
 export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDifferenceFs = 0) {
   const input = Number(pulse?.pulseWidthFs);
   const bandwidthKnown = Number.isFinite(Number(pulse?.bandwidthNm));
@@ -270,17 +305,33 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
   const shape = pulse?.pulseShape === 'sech2' ? 'sech2' : 'gauss';
   const gdd = Number(pathGddFs2), delayDifference = Number(groupDelayDifferenceFs);
   if (!(input > 0) || !Number.isFinite(gdd) || !Number.isFinite(delayDifference)) return null;
+  // A sampled envelope is answered by its field, never by this model: if the
+  // caller got here, that field is gone or invalid, and the pulse is neither a
+  // chirped Gaussian nor a flat band.
+  if (pulse?.pulseShape === 'sampled' || pulse?.fieldIssue) {
+    return declinedDuration(pulse?.fieldIssue || DISPERSION_UNAVAILABLE.sampled, { totalGddFs2: gdd });
+  }
+  // Filtering a pulse changes its duration by itself, and the dispersion
+  // already accumulated belongs to wavelengths that may since have been
+  // removed, so neither the source spectrum nor the surviving one gives an
+  // honest answer from a single accumulated number.
+  if (pulse?.spectrumReshaped) return declinedDuration(DISPERSION_UNAVAILABLE.reshaped, { totalGddFs2: gdd });
+  const undispersed = Math.abs(gdd) < 1e-9 && Math.abs(delayDifference) < 1e-9;
   if (!(bandwidth > 0) && pulse?.transformLimited !== true) return {
     durationFs: input,
+    available: true,
     transformLimitFs: null,
     inputGddFs2: 0,
     totalGddFs2: gdd,
     model: '0 nm bandwidth — unchanged',
   };
   if (pulse?.spectrumKind === 'flat') {
+    // The authored continuum duration is a floor here: a compressor can take
+    // the path's spread back out, not the chirp the source was authored with.
     const duration = Math.sqrt(input * input + delayDifference * delayDifference);
     return Number.isFinite(duration) ? {
       durationFs: duration,
+      available: true,
       transformLimitFs: Number.isFinite(pulse.transformLimitFs) ? pulse.transformLimitFs : null,
       inputGddFs2: null,
       totalGddFs2: gdd,
@@ -288,41 +339,75 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
       model: 'Flat-band endpoint group-delay spread',
     } : null;
   }
+  const sign = authoredChirpSign(pulse);
+  const configuredOnly = model => ({
+    durationFs: input, available: true, transformLimitFs: null, inputGddFs2: null, totalGddFs2: gdd, model,
+  });
+  if (sign === null) {
+    return undispersed ? configuredOnly('Spectral phase unknown · no dispersion on this path')
+      : declinedDuration(DISPERSION_UNAVAILABLE.unknownPhase, { totalGddFs2: gdd });
+  }
   const center = Number(pulse?.centerWavelengthNm);
   const tau0 = pulse?.transformLimited === true
     ? input : transformLimitedDurationFs(bandwidth, center, shape);
   // A configured duration shorter than its bandwidth permits is not a chirped
-  // pulse. Keep the readout finite and explicit rather than inventing phase.
-  if (!(tau0 > 0) || !Number.isFinite(tau0) || input + 1e-9 < tau0) return {
-    durationFs: input,
-    transformLimitFs: Number.isFinite(tau0) ? tau0 : null,
-    inputGddFs2: null,
-    totalGddFs2: gdd,
-    model: 'Bandwidth-duration pair is below its transform limit',
-  };
+  // pulse, and there is no phase from which to predict what glass does to it.
+  if (!(tau0 > 0) || !Number.isFinite(tau0) || input + 1e-9 < tau0) {
+    return undispersed ? configuredOnly('Duration below its transform limit · no dispersion on this path')
+      : declinedDuration(DISPERSION_UNAVAILABLE.belowLimit, {
+        transformLimitFs: Number.isFinite(tau0) ? tau0 : null, totalGddFs2: gdd,
+      });
+  }
   let initialMagnitude = 0;
-  if (pulse?.transformLimited !== true && input > tau0 * (1 + 1e-12)) {
+  if (sign !== 0 && input > tau0 * (1 + 1e-12)) {
     initialMagnitude = shape === 'sech2'
       ? gddForSech2Duration(tau0, input)
       : tau0 * tau0 / (4 * Math.LN2) * Math.sqrt((input / tau0) ** 2 - 1);
   }
   if (!Number.isFinite(initialMagnitude)) return null;
-  const sign = pulse?.inputChirp === 'negative' ? -1 : 1;
-  const inputGdd = initialMagnitude * sign;
+  const inputGdd = initialMagnitude * (sign || 1);
   const totalGdd = inputGdd + gdd;
   const duration = shape === 'sech2'
     ? sech2PulseDurationAfterGDD(tau0, totalGdd)
     : gaussianPulseDurationAfterGDD(tau0, totalGdd);
   if (!Number.isFinite(duration)) return null;
-  const state = pulse?.transformLimited === true ? 'transform-limited'
-    : `${sign < 0 ? 'negative' : 'positive'} input chirp`;
+  // An OPO's chirped output is held as its transform limit plus the GDD it
+  // carries on the ray, so it is already in `gdd` and must not be added again.
+  const state = pulse?.spectralPhase === 'positiveChirp' ? 'positive chirp carried as GDD'
+    : sign === 0 ? 'transform-limited'
+      : `${sign < 0 ? 'negative' : 'positive'} input chirp`;
   return {
     durationFs: duration,
+    available: true,
     transformLimitFs: tau0,
     inputGddFs2: inputGdd,
     totalGddFs2: totalGdd,
     model: `${shape === 'sech2' ? 'Sech² numerical GDD' : 'Gaussian GDD'} · ${state}`,
   };
+}
+
+// The duration a set of arrivals would report, or a declined result when
+// they disagree. Rays of one train reaching a detector by paths of different
+// dispersion -- two interferometer arms, say -- form no single pulse this
+// model can describe, so beyond a 2 % spread in the durations the paths imply
+// it declines instead of averaging their GDD.
+export const PATH_SPREAD_TOLERANCE = 0.02;
+export const PATHS_DISAGREE = 'Paths with different dispersion reach this detector — duration unavailable';
+export function pulseDurationAcrossPaths(pulse, paths) {
+  const list = (paths || []).filter(p => Number.isFinite(p?.gddFs2));
+  if (!list.length) return pulseDurationAfterDispersion(pulse, 0, 0);
+  const results = list.map(p => pulseDurationAfterDispersion(pulse, p.gddFs2, p.groupDelayDifferenceFs || 0));
+  const weight = list.reduce((sum, p) => sum + Math.max(0, p.weight ?? 1), 0) || list.length;
+  const mean = key => list.reduce((sum, p) => sum + (p[key] || 0) * (Math.max(0, p.weight ?? 1) || 1), 0) / weight;
+  const central = pulseDurationAfterDispersion(pulse, mean('gddFs2'), mean('groupDelayDifferenceFs'));
+  if (!central || central.available === false) return central;
+  const widths = results.map(r => r?.durationFs);
+  if (widths.some(w => !Number.isFinite(w))) return declinedDuration(PATHS_DISAGREE, { totalGddFs2: central.totalGddFs2 });
+  const lo = Math.min(...widths), hi = Math.max(...widths);
+  if ((hi - lo) / Math.max(1e-9, central.durationFs) > PATH_SPREAD_TOLERANCE) {
+    return declinedDuration(PATHS_DISAGREE, { totalGddFs2: central.totalGddFs2 });
+  }
+  return central;
 }
 
 // Intensity-autocorrelation deconvolution factors: the measured trace is
@@ -380,6 +465,11 @@ export function crossCorrelationPair(reading) {
   if (!reading?.pulse) return { reason: 'NO PULSE' };
   if (trains.length < 2) return { reason: 'ONLY ONE BEAM PRESENT' };
   if (trains.length > 2) return { reason: `${trains.length} TRAINS — NEEDS EXACTLY 2` };
+  // A declined duration cannot be correlated: substituting the configured
+  // width would draw a trace the arriving pulses do not make.
+  if (trains.some(train => !Number.isFinite(train.stretchedPulseWidthFs) && train.dispersionModel)) {
+    return { reason: 'DURATION UNAVAILABLE' };
+  }
   const arm = train => ({
     pulseWidthFs: Number.isFinite(train.stretchedPulseWidthFs)
       ? train.stretchedPulseWidthFs : train.pulseWidthFs,

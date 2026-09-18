@@ -157,8 +157,10 @@ normals; its paraxial readouts still depend only on vertex curvature. It does no
 phase or interference; it also does not model diffraction-limited propagation,
 higher-order pulse dispersion, arbitrary spectral phase or pulse-shape distortion, or
 laboratory-specific calibration. Input chirp is a signed quadratic-phase estimate derived
-from duration and bandwidth; broad flat-top supercontinua instead use endpoint group-delay
-spread. The pulse
+from duration and bandwidth when its sign is authored; broad flat-top supercontinua instead
+use endpoint group-delay spread. Where the phase is unknown, the spectrum has been reshaped
+by a filter, or paths of different dispersion meet at one detector, the dispersed duration
+is reported as unavailable rather than derived. The pulse
 compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
 
 Its bounded coherent model applies only to sized monochromatic CW sources and
