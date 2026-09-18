@@ -1,0 +1,41 @@
+name: CI
+
+# Runs the same checks AGENTS.md asks for before any hand-off, on every pull
+# request and on every push to main. Make this a required status check on
+# main so that a red suite can never reach the live site.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Syntax check every JavaScript entry point
+        run: |
+          set -e
+          for file in sketch/js/*.js serve.mjs tools/*.mjs scripts/*.mjs; do
+            node --check "$file"
+          done
+
+      - name: Whitespace and patch sanity
+        run: git diff --check origin/${{ github.base_ref || 'main' }}...HEAD || git diff --check HEAD~1 HEAD
+
+      - name: Regression suite
+        run: npm test

@@ -1,0 +1,85 @@
+{
+ "elements": 7,
+ "beams": 0,
+ "drawables": {
+  "count": 7,
+  "byType": {
+   "path": 7
+  },
+  "colors": {
+   "#ff4200": 7
+  },
+  "points": 16,
+  "sum": [
+   5244,
+   4982
+  ],
+  "bbox": [
+   146,
+   120,
+   600,
+   481
+  ],
+  "digest": "49715a9b"
+ },
+ "pulseTracks": 0,
+ "writeHits": 0,
+ "signalHits": 0,
+ "readouts": {
+  "detector:exqbe65y": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 633,
+    "bandMin": 633,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#ff4200",
+    "convergence": null,
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.5,
+    "detectorType": "Photodetector",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.5,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "detector",
+    "samples": 2,
+    "saturated": false,
+    "signal": 0.5,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.5,
+      "sourceId": "eun826tk"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#ff4200",
+      "continuum": false,
+      "power": 0.5,
+      "sourceId": "eun826tk",
+      "wavelength": 633,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 1.94844141e-13,
+    "wavelength": 633
+   }
+  }
+ },
+ "fibers": {}
+}

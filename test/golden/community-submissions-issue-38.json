@@ -1,0 +1,226 @@
+{
+ "elements": 9,
+ "beams": 1,
+ "drawables": {
+  "count": 99,
+  "byType": {
+   "path": 42,
+   "poly": 57
+  },
+  "colors": {
+   "#00b5ff": 6,
+   "#75ff00": 6,
+   "#7c3aed": 12,
+   "#7f00d7": 6,
+   "#cbd8ea": 33,
+   "#dbe7f5": 12,
+   "#f97316": 12,
+   "#ff0000": 6,
+   "#ffbe00": 6
+  },
+  "points": 348,
+  "sum": [
+   157740.919,
+   -58050.5508
+  ],
+  "bbox": [
+   192.095,
+   -450,
+   706.1085,
+   18.1161
+  ],
+  "digest": "2e566469"
+ },
+ "pulseTracks": 0,
+ "writeHits": 0,
+ "signalHits": 0,
+ "readouts": {
+  "camera:e7gjktsb": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 663.7,
+    "bandMin": 408.9,
+    "centroid": 19.904611,
+    "coherentPaths": 0,
+    "color": "#ffce2f",
+    "convergence": {
+     "diverging": true,
+     "fullAngleDeg": 18.6239158,
+     "slopePerMm": 0.00410427555
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": {
+     "length": 64,
+     "sum": 0.0472315299,
+     "min": 0,
+     "max": 0.00815609365,
+     "every16th": [
+      0,
+      0,
+      0.00323903774,
+      0
+     ]
+    },
+    "depositedSignal": 0.0472315299,
+    "detectorType": "Camera sensor",
+    "gain": null,
+    "interference": {
+     "applied": false,
+     "coherentSources": 0,
+     "excludedHits": 0,
+     "fallbackReason": null,
+     "partial": false,
+     "pathCount": 0,
+     "phaseIssues": [],
+     "reason": "insufficient coherent overlap"
+    },
+    "normalizedStokes": null,
+    "outputSignal": 0.0472315299,
+    "polarization": "Unpolarized",
+    "profile": {
+     "length": 64,
+     "sum": 0.0472315299,
+     "min": 0,
+     "max": 0.00815609365,
+     "every16th": [
+      0,
+      0,
+      0.00323903774,
+      0
+     ]
+    },
+    "profileColors": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     "#9700ff",
+     "#9700ff",
+     "#9700ff",
+     "#9700ff",
+     "#9700ff",
+     "#9700ff",
+     "#9700ff",
+     "#1d92ff",
+     "#00b5ff",
+     "#00b5ff",
+     "#00b5ff",
+     "#00b5ff",
+     "#00b5ff",
+     null,
+     null,
+     "#75ff00",
+     "#75ff00",
+     "#75ff00",
+     "#75ff00",
+     null,
+     null,
+     null,
+     null,
+     "#ffbe00",
+     "#ffbe00",
+     "#ffbe00",
+     "#ffbe00",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     "#ff0000",
+     "#ff0000",
+     "#ff0000",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "profileMode": "deposited",
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "camera",
+    "samples": 30,
+    "saturated": false,
+    "signal": 0.0472315299,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.0472315299,
+      "sourceId": "e0strxb7"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#7f00d7",
+      "continuum": false,
+      "power": 0.00128958739,
+      "sourceId": "e0strxb7",
+      "wavelength": 408.9,
+      "widthNm": null
+     },
+     {
+      "bandId": null,
+      "color": "#00b5ff",
+      "continuum": false,
+      "power": 0.00526232167,
+      "sourceId": "e0strxb7",
+      "wavelength": 472.6,
+      "widthNm": null
+     },
+     {
+      "bandId": null,
+      "color": "#75ff00",
+      "continuum": false,
+      "power": 0.0122352645,
+      "sourceId": "e0strxb7",
+      "wavelength": 536.3,
+      "widthNm": null
+     },
+     {
+      "bandId": null,
+      "color": "#ffbe00",
+      "continuum": false,
+      "power": 0.0162090919,
+      "sourceId": "e0strxb7",
+      "wavelength": 600,
+      "widthNm": null
+     },
+     {
+      "bandId": null,
+      "color": "#ff0000",
+      "continuum": false,
+      "power": 0.0122352645,
+      "sourceId": "e0strxb7",
+      "wavelength": 663.7,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 84.0531329,
+    "wavelength": 580.587969
+   }
+  }
+ },
+ "fibers": {}
+}
