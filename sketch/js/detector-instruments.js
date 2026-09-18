@@ -973,7 +973,7 @@ function autocorrelationPlot(sensor, reading) {
     `${sampled ? `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)} · SIM ${esc(fs(ac.truePulseWidthFs))}`
       // A filtered pulse's width is computed from its spectrum, but its shape
       // is not carried: the curve is the assumed shape at that width.
-      : filtered ? 'FILTERED · WIDTH COMPUTED, SHAPE ASSUMED'
+      : filtered ? 'FILTERED · SHAPE ASSUMED'
       : ac.shapeMismatch ? `ASSUMES ${assumed === 'sech2' ? 'SECH²' : 'GAUSS'}, SOURCE ${actual === 'sech2' ? 'SECH²' : 'GAUSS'}` : `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)}`}</text>`;
 }
 

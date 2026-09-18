@@ -335,9 +335,9 @@ export const DISPERSION_UNAVAILABLE = {
   partialFan: 'Only part of the fanned-out spectrum reaches this detector — dispersed duration unavailable',
   generated: 'Continuum generated on the bench — its duration is not modelled',
   recordsDiffer: 'Parts of this beam carry different pulse histories — duration unavailable',
-  unresolved: 'Filtered spectrum could not be transformed at this dispersion — duration unavailable',
-  broadGdd: 'Dispersion varies too much across the filtered band for one quadratic phase — duration unavailable',
-  etalon: 'An etalon\'s fringe comb is not carried for timing — duration unavailable',
+  unresolved: 'Filtered spectrum not resolvable — its transform at this dispersion exceeds the numerical window',
+  broadGdd: 'Band too broad for one quadratic phase — the GDD along the path varies across it; duration unavailable',
+  etalon: 'Etalon comb not carried for timing — its fringes and phase are not modelled; duration unavailable',
 };
 
 function declinedDuration(model, extra = {}) {
