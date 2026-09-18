@@ -1,0 +1,32 @@
+{
+ "elements": 15,
+ "beams": 0,
+ "drawables": {
+  "count": 260,
+  "byType": {
+   "poly": 240,
+   "path": 20
+  },
+  "colors": {
+   "#0046ff": 130,
+   "#8b1a1a": 130
+  },
+  "points": 1000,
+  "sum": [
+   505700,
+   292900
+  ],
+  "bbox": [
+   172,
+   215,
+   796,
+   378
+  ],
+  "digest": "7b176557"
+ },
+ "pulseTracks": 2,
+ "writeHits": 0,
+ "signalHits": 2,
+ "readouts": {},
+ "fibers": {}
+}

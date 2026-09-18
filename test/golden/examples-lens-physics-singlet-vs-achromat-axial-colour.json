@@ -1,0 +1,40 @@
+{
+ "elements": 31,
+ "beams": 0,
+ "drawables": {
+  "count": 1456,
+  "byType": {
+   "poly": 1344,
+   "path": 112
+  },
+  "colors": {
+   "#0020ff": 156,
+   "#00f5ff": 156,
+   "#62ff00": 156,
+   "#8300b5": 156,
+   "#a10000": 156,
+   "#cbd8ea": 52,
+   "#f0ff00": 156,
+   "#f40000": 156,
+   "#ff0000": 156,
+   "#ff7b00": 156
+  },
+  "points": 5600,
+  "sum": [
+   1812583.51,
+   2399000
+  ],
+  "bbox": [
+   134,
+   240,
+   358,
+   530
+  ],
+  "digest": "cafd0083"
+ },
+ "pulseTracks": 0,
+ "writeHits": 0,
+ "signalHits": 0,
+ "readouts": {},
+ "fibers": {}
+}

@@ -1,0 +1,196 @@
+{
+ "elements": 120,
+ "beams": 13,
+ "drawables": {
+  "count": 1131,
+  "byType": {
+   "path": 243,
+   "poly": 888
+  },
+  "colors": {
+   "#50ff00": 110,
+   "#8b00d4": 240,
+   "#8b1a1a": 781
+  },
+  "points": 4038,
+  "sum": [
+   12781906.1,
+   3597564.26
+  ],
+  "bbox": [
+   132,
+   -188.7046,
+   4255.3463,
+   1988.7046
+  ],
+  "digest": "c80bb1f1"
+ },
+ "pulseTracks": 67,
+ "writeHits": 0,
+ "signalHits": 0,
+ "readouts": {
+  "crystal:nif-e022": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e030": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e038": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e046": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e054": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e062": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e070": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e078": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e086": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e094": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "crystal:nif-e102": {
+   "mix": {
+    "state": "oneBeam"
+   }
+  },
+  "detector:nif-e107": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 351,
+    "bandMin": 351,
+    "centroid": null,
+    "coherentPaths": 0,
+    "color": "#a700ff",
+    "convergence": {
+     "diverging": false,
+     "fullAngleDeg": 1.49673548,
+     "slopePerMm": -0.00305359491
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": null,
+    "depositedSignal": 0.008019,
+    "detectorType": "Photodetector",
+    "gain": null,
+    "interference": null,
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.008019,
+    "polarization": "Linear 0°",
+    "profile": null,
+    "profileColors": null,
+    "profileMode": null,
+    "profileScale": "absolute",
+    "pulse": {
+     "arrivalSpreadPs": 1.04049419,
+     "branches": [
+      {
+       "gates": [],
+       "weight": 0.008019
+      }
+     ],
+     "dispersionModel": "Gaussian GDD · transform-limited",
+     "earliestPathDelayNs": 37.932462,
+     "envelope": null,
+     "fieldIssue": null,
+     "gddFs2": 773.845604,
+     "gddRangeFs2": [
+      773.845604,
+      773.845604
+     ],
+     "groupDelayDifferenceFs": -0.000111740279,
+     "inputGddFs2": 0,
+     "mixed": false,
+     "phaseNs": 0,
+     "pulseShape": "gauss",
+     "pulseWidthFs": 20000000,
+     "repRateMHz": 0.001,
+     "sources": 1,
+     "stretchedPulseWidthFs": 20000000,
+     "totalGddFs2": 773.845604,
+     "trains": [
+      {
+       "centerWavelengthNm": 351,
+       "dispersionModel": "Gaussian GDD · transform-limited",
+       "envelope": null,
+       "fieldIssue": null,
+       "gates": [],
+       "gddFs2": 773.845604,
+       "groupDelayDifferenceFs": -0.000111740279,
+       "inputGddFs2": 0,
+       "pathDelayNs": 37.932462,
+       "phaseNs": 0,
+       "pulseShape": "gauss",
+       "pulseWidthFs": 20000000,
+       "repRateMHz": 0.001,
+       "stretchedPulseWidthFs": 20000000,
+       "totalGddFs2": 773.845604,
+       "transformLimitFs": 20000000
+      }
+     ],
+     "transformLimitFs": 20000000,
+     "transformLimited": true
+    },
+    "readoutKind": "detector",
+    "samples": 9,
+    "saturated": false,
+    "signal": 0.008019,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.008019,
+      "sourceId": "nif-e007"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#8b00d4",
+      "continuum": false,
+      "power": 0.008019,
+      "sourceId": "nif-e007",
+      "wavelength": 351,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 8.55482245,
+    "wavelength": 351
+   }
+  }
+ },
+ "fibers": {}
+}

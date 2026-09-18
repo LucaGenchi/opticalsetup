@@ -1,0 +1,200 @@
+{
+ "elements": 10,
+ "beams": 0,
+ "drawables": {
+  "count": 50,
+  "byType": {
+   "poly": 44,
+   "path": 6
+  },
+  "colors": {
+   "#a3ff00": 50
+  },
+  "points": 188,
+  "sum": [
+   75040.1198,
+   35720
+  ],
+  "bbox": [
+   202,
+   163,
+   512.5,
+   217
+  ],
+  "digest": "52a21f75"
+ },
+ "pulseTracks": 0,
+ "writeHits": 0,
+ "signalHits": 0,
+ "readouts": {
+  "camera:focal-plane": {
+   "detector": {
+    "approximations": [],
+    "bandMax": 550,
+    "bandMin": 550,
+    "centroid": -2.52323397e-16,
+    "coherentPaths": 0,
+    "color": "#a3ff00",
+    "convergence": {
+     "diverging": true,
+     "fullAngleDeg": 17.5122817,
+     "slopePerMm": 428368.499
+    },
+    "dark": false,
+    "darkOutput": null,
+    "depositedProfile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.2112,
+     0.2112,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "depositedSignal": 0.4224,
+    "detectorType": "Camera sensor",
+    "gain": null,
+    "interference": {
+     "applied": false,
+     "coherentSources": 0,
+     "excludedHits": 12,
+     "fallbackReason": null,
+     "partial": false,
+     "pathCount": 0,
+     "phaseIssues": [
+      "carrier phase is not modeled through conicmirror"
+     ],
+     "reason": "disabled"
+    },
+    "normalizedStokes": {
+     "s1": 1,
+     "s2": 0,
+     "s3": 0
+    },
+    "outputSignal": 0.4224,
+    "polarization": "Linear 0°",
+    "profile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0.2112,
+     0.2112,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "profileColors": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     "#a3ff00",
+     "#a3ff00",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "profileMode": "deposited",
+    "profileScale": "absolute",
+    "pulse": null,
+    "readoutKind": "camera",
+    "samples": 12,
+    "saturated": false,
+    "signal": 0.4224,
+    "snr": null,
+    "sourceFractions": [
+     {
+      "fraction": 0.442368,
+      "sourceId": "source"
+     }
+    ],
+    "spectrum": [
+     {
+      "bandId": null,
+      "color": "#a3ff00",
+      "continuum": false,
+      "power": 0.4224,
+      "sourceId": "source",
+      "wavelength": 550,
+      "widthNm": null
+     }
+    ],
+    "spotSpan": 7.13514126e-7,
+    "wavelength": 550
+   }
+  }
+ },
+ "fibers": {}
+}
