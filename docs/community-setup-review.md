@@ -18,7 +18,7 @@ Two merges, both on github.com, both just the ordinary green **Merge pull reques
 
 ### Step 1 — review and approve the submission
 
-1. Open the [Pull Requests tab](https://github.com/LucaGenchi/optics-sketch/pulls).
+1. Open the [Pull Requests tab](https://github.com/LucaGenchi/opticalsetup/pulls).
 2. Open the PR titled **"Propose community setup: ..."**.
 3. Read the description (it links back to the source GitHub issue and the submitter's write-up) and check the **Files changed** tab for the raw scene JSON.
 4. Optional — sanity-check it visually before merging; see "Verifying locally" below.
@@ -27,14 +27,14 @@ Two merges, both on github.com, both just the ordinary green **Merge pull reques
 
 ### Step 2 — publish the generated pages
 
-1. Give it a minute or two after merging Step 1 for the "Publish approved community setups" workflow to run. You can watch it on the [Actions tab](https://github.com/LucaGenchi/optics-sketch/actions) if you want.
+1. Give it a minute or two after merging Step 1 for the "Publish approved community setups" workflow to run. You can watch it on the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions) if you want.
 2. A new PR titled **"Publish approved community setups"** appears automatically.
 3. Open it and check the **Files changed** tab — it should touch exactly `community/<slug>/index.html` and `sketch/js/community-data.js`, nothing else. There's nothing to hand-edit; it's pure generated output.
 4. Click **Merge pull request**. The setup is now live.
 
 ### If the "Publish" PR never shows up
 
-Check the [Actions tab](https://github.com/LucaGenchi/optics-sketch/actions) for a failed "Publish approved community setups" run and read its log. If the workflow itself is broken and you need to publish manually from a local checkout:
+Check the [Actions tab](https://github.com/LucaGenchi/opticalsetup/actions) for a failed "Publish approved community setups" run and read its log. If the workflow itself is broken and you need to publish manually from a local checkout:
 
 ```bash
 git checkout main && git pull

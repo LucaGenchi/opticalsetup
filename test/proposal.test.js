@@ -13,7 +13,7 @@ test('example proposal handoff prefills the dedicated GitHub issue form', () => 
     description: 'Shows two paths recombining at a beamsplitter.',
     shareURL,
   }));
-  assert.equal(issue.origin + issue.pathname, 'https://github.com/LucaGenchi/optics-sketch/issues/new');
+  assert.equal(issue.origin + issue.pathname, 'https://github.com/LucaGenchi/opticalsetup/issues/new');
   assert.equal(issue.searchParams.get('template'), 'example-proposal.yml');
   assert.equal(issue.searchParams.get('title'), '[Example proposal] Balanced interferometer');
   assert.equal(issue.searchParams.get('setup_name'), 'Balanced interferometer');
