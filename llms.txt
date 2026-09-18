@@ -1,6 +1,6 @@
 # OpticalSetup
 
-> OpticalSetup is a browser-based 2D optical setup builder with qualitative live ray tracing. Its scene files are versioned JSON, and self-contained share links store the complete scene in the URL fragment.
+> OpticalSetup is a browser-based 2D optical workbench: exact geometric ray tracing plus bounded, validated estimates of dispersion, spectra, power and polarization. Its scene files are versioned JSON, and self-contained share links store the complete scene in the URL fragment.
 
 Use the scene-builder skill when a user asks an LLM or implementation agent to create an OpticalSetup scene from natural language and return a working share link. The repository remains authoritative for supported components, parameters, validation, and serialization.
 

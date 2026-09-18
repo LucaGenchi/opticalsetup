@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OpticalSetup — 2D optical setup builder with live ray tracing</title>
-<meta name="description" content="Sketch 2D optical setups and see the ray paths trace live. Free, no signup, runs entirely in your browser. Export publication-ready SVG/PNG figures or share a self-contained link.">
+<title>OpticalSetup — draw, trace, measure and share optical setups</title>
+<meta name="description" content="Draw a 2D optical setup and trace it live: exact geometric optics plus checked estimates of pulse duration, spectra, power and polarization. Free, no signup, runs in your browser. Export SVG/PNG or share a self-contained link.">
 <link rel="canonical" href="https://opticalsetup.com/">
 <meta name="robots" content="index, follow">
 
 <meta property="og:type" content="website">
-<meta property="og:title" content="OpticalSetup — 2D optical setup builder with live ray tracing">
-<meta property="og:description" content="Sketch 2D optical setups and see the ray paths trace live. Free, no signup, runs entirely in your browser.">
+<meta property="og:title" content="OpticalSetup — draw, trace, measure and share optical setups">
+<meta property="og:description" content="Draw a 2D optical setup, trace it live, read what your detectors receive, and share it as a link or a paper-ready figure. Free, no signup.">
 <meta property="og:url" content="https://opticalsetup.com/">
 <meta property="og:site_name" content="OpticalSetup">
 <meta property="og:image" content="https://opticalsetup.com/assets/og-image.jpg">
@@ -18,7 +18,7 @@
 <meta property="og:image:height" content="1254">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="OpticalSetup — 2D optical setup builder with live ray tracing">
-<meta name="twitter:description" content="Sketch 2D optical setups and see the ray paths trace live. Free, no signup, runs entirely in your browser.">
+<meta name="twitter:description" content="Draw a 2D optical setup, trace it live, read what your detectors receive, and share it as a link or a paper-ready figure. Free, no signup.">
 <meta name="twitter:image" content="https://opticalsetup.com/assets/og-image.jpg">
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 85'%3E%3Cg stroke='%231361fa' stroke-width='6' stroke-linecap='round'%3E%3Cline x1='22' y1='45' x2='29' y2='45'/%3E%3Cline x1='18' y1='49' x2='18' y2='56'/%3E%3Cline x1='14' y1='45' x2='7' y2='45'/%3E%3Cline x1='18' y1='41' x2='18' y2='34'/%3E%3C/g%3E%3Cline x1='29' y1='45' x2='77' y2='45' stroke='%231361fa' stroke-width='6' stroke-linecap='round'/%3E%3Cpolygon points='64,12 42,68 86,68' fill='none' stroke='%230a1a33' stroke-width='7' stroke-linejoin='round'/%3E%3Cg stroke='%231361fa' stroke-width='4' stroke-linecap='round'%3E%3Cline x1='77' y1='45' x2='112' y2='28'/%3E%3Cline x1='77' y1='45' x2='112' y2='45'/%3E%3Cline x1='77' y1='45' x2='112' y2='62'/%3E%3C/g%3E%3C/svg%3E">
@@ -69,12 +69,13 @@
 
   <main>
     <section class="hero">
-      <h1>Sketch optical setups. Watch the rays trace live.</h1>
+      <h1>Draw the optical setup. Trace it, measure it, share it.</h1>
       <p class="hero-sub">
-        A free, browser-based 2D workbench for lasers, lenses, mirrors, and everything
-        between the source and the detector. Place components on a virtual optical
-        table and the beam paths update in real time — no install, no account, no
-        server storing your work.
+        A free, browser-based 2D optical workbench. Place lasers, lenses, mirrors,
+        fibers and detectors on a virtual table: the beams trace as you move
+        things, the detectors read power, spectrum, polarization and pulse
+        duration, and the whole setup travels as a link or a paper-ready figure.
+        No install, no account, nothing stored on a server.
       </p>
       <div class="hero-actions">
         <a class="btn btn-primary btn-lg" href="/sketch/">Open the canvas →</a>
@@ -83,10 +84,12 @@
 
     <section class="features" aria-label="Highlights">
       <div class="feature">
-        <h2>Live ray tracing</h2>
-        <p>Every optical element in your scene is physically simulated — move a
-          component and the light path recalculates instantly, exactly as it
-          would on an optical bench.</p>
+        <h2>Geometric optics, traced exactly</h2>
+        <p>Refraction, reflection, diffraction orders and dispersion are computed
+          from the real surface geometry and catalogue glass data every time a
+          component moves. Spherical, conic and aspheric surfaces are intersected
+          analytically, so a parabola collimates and a sphere aberrates, as on
+          the bench.</p>
       </div>
       <div class="feature">
         <h2>A real element library</h2>
@@ -114,11 +117,13 @@
           account, no server-side scene storage.</p>
       </div>
       <div class="feature">
-        <h2>Honest about what's simulated</h2>
-        <p>OpticalSetup shows you how light behaves geometrically, not exact
-          numerical predictions — it's built for building intuition, not for
-          specifying real hardware tolerances. Read the wiki related to each
-          optical element for additional information.</p>
+        <h2>Estimates you can check</h2>
+        <p>Pulse duration after dispersion, the spectrum out of a hollow-core
+          fiber, power at a detector, polarization through waveplates: the
+          quantitative models are tested against independent reference
+          implementations, and every readout says whether it is exact, an
+          estimate, or outside the model. The wiki states, element by element,
+          what is modelled and what is not.</p>
       </div>
     </section>
 
@@ -129,15 +134,17 @@
           LED, or broadband point source.</li>
         <li><strong>Place optics in the beam</strong>: lenses, mirrors, filters,
           splitters, anything the light should pass through.</li>
-        <li><strong>Add a detector</strong> and select it to read the signal,
-          spectrum, or polarization the tracer computed.</li>
+        <li><strong>Add a detector</strong> and select it to read the power,
+          spectrum, polarization or pulse duration it receives.</li>
       </ol>
     </section>
   </main>
 
   <footer class="site-footer">
-    <p>OpticalSetup is a qualitative ray-tracing sketch tool, not a calibrated
-      optical design package.
+    <p>OpticalSetup is a 2D optical workbench: exact geometric optics, plus
+      checked estimates of dispersion, spectra, power and polarization, each
+      labelled with what it does and does not model. It is not a calibrated
+      lens-design package.
       <a href="https://github.com/LucaGenchi/opticalsetup">Source on GitHub</a>.</p>
     <p>Do you have feedback? You can contact us:
       <a href="https://www.linkedin.com/in/lucagenchi/" target="_blank" rel="noopener">Luca Genchi, PhD</a>
