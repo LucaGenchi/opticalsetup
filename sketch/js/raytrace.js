@@ -1965,7 +1965,12 @@ function fiberEmissionRays(c) {
   let capillaryLoss = null;
   if (b.fiberModel === 'argon') {
     capillaryLoss = capillaryLossDbPerM(b, c.wl, lossDbPerM);
-    lossDbPerM = Math.min(100, Math.max(0, capillaryLoss.totalDbPerM));
+    // A computed loss is the model's, whatever its size: a narrow, short
+    // capillary can exceed the manual field's 100 dB/m, and capping it would
+    // deliver energy the model says is lost. Only a typed value is bounded,
+    // by its input field.
+    if (capillaryLoss.model === 'manual') lossDbPerM = Math.min(100, Math.max(0, capillaryLoss.totalDbPerM));
+    else if (Number.isFinite(capillaryLoss.totalDbPerM) && capillaryLoss.totalDbPerM >= 0) lossDbPerM = capillaryLoss.totalDbPerM;
   }
   // A set physical length stands for cable coiled out of the drawing: it
   // sets delay, loss and dispersion together, and the drawing stays put.

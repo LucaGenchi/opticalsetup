@@ -371,3 +371,24 @@ test('a chirped laser starts the solver at its transform limit, its GDD counted 
     close(reading.pulse.stretchedPulseWidthFs, gaussianPulseDurationAfterGDD(tau0, 300 + pathGdd), 2e-3);
   }
 });
+
+test('a computed loss above 100 dB/m is applied in full, to the field and to the rays', () => {
+  // The reviewer's reproduction: 50 µm core, 1 cm, +100 dB/m extra, Kerr off.
+  // The model gives about 176.9 dB/m; the manual field's 100 dB/m ceiling must
+  // not cap it, or the capillary delivers energy the model says is lost.
+  const scene = example();
+  Object.assign(scene.beams[0], { coreDiameterUm: 50, lengthM: 0.01, extraLossDbPerM: 100, kerrEnabled: false });
+  const model = capillaryLossDbPerM(scene.beams[0], 800, 0);
+  assert.ok(model.totalDbPerM > 170, `${model.totalDbPerM} dB/m`);
+  const result = trace(scene);
+  assert.equal(result.fiber.state, 'kerrOff');
+  close(result.fiber.loss.totalDbPerM, model.totalDbPerM, 1e-12);
+  const required = 10 ** (-model.totalDbPerM * 0.01 / 10);
+  close(result.after.pulse.envelope.energyJ / 30e-6 / 0.9, required, 1e-6);
+  // The rays carry the same attenuation as the field.
+  const lossless = example();
+  Object.assign(lossless.beams[0], { coreDiameterUm: 50, lengthM: 0.01, lossModel: 'manual', lossDbPerM: 0, kerrEnabled: false });
+  close(result.after.signal / trace(lossless).after.signal, required, 1e-6);
+  // A typed manual loss stays bounded by its field.
+  assert.equal(normalizeHollowCore({ lossModel: 'manual' }).lossModel, 'manual');
+});

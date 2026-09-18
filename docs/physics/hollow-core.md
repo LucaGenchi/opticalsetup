@@ -100,6 +100,12 @@ solver applies the one value computed at the carrier to its whole broadened
 field; wavelength-dependent attenuation across the spectrum is not modelled.
 The example previously used a typed 0.1 dB/m, about six times below this
 prediction; the computed loss moves its compressed pulse from 45.3 to 46.8 fs.
+A computed loss is applied in full, however large — a short, narrow capillary
+with extra loss can exceed 100 dB/m — and only a typed manual value is bounded
+by its input field. During the rollout, an argon fiber saved without a loss
+model opens with the computed loss rather than keeping its typed value: the
+bundled example was updated deliberately, and any argon fiber saved elsewhere
+changes the same way.
 
 **Chirped sources.** A pulsed laser authored as bandwidth + signed GDD
 starts the solver at its transform limit with that GDD as the initial phase,
