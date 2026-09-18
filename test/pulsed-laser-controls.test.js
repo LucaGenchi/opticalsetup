@@ -62,3 +62,34 @@ test('pulse energy and peak power follow the emitted pulse', () => {
   laser.params.pulseShape = 'sech2';
   assert.match(spec('peakPower').readout(laser.params), /estimate/, 'a dispersed sech² is not an exact sech²');
 });
+
+test('a spectrum carried across the mode toggle survives a save and reload, at both extremes', async () => {
+  // The reviewer's reproduction: a 1 ns transform-limited pulse toggled to
+  // chirped computed 0.00094 nm, which reload then clamped to 0.1 nm -- a pulse
+  // 106 times shorter -- and a 1 fs pulse's 941.5 nm was clamped to 400 nm.
+  const { state, parseSketch } = await import('../sketch/js/state.js');
+  const { initInspector, renderInspector, applyInput } = await import('../sketch/js/inspector.js');
+  initInspector({ innerHTML: '', querySelector: () => null, querySelectorAll: () => [] });
+  const toggle = (laser, checked) => {
+    Object.assign(state, { elements: [laser], beams: [], selection: { kind: 'element', id: laser.id }, embedMode: false });
+    renderInspector();
+    applyInput({ dataset: { p: 'transformLimited' }, type: 'checkbox', checked }, true);
+  };
+  const reopen = laser => parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [laser], beams: [] }), registry).elements[0];
+  for (const duration of [1e6, 1e9, 1, 50]) {
+    const laser = createElement('pulsedlaser', 0, 0);
+    Object.assign(laser.params, { wavelength: 800, transformLimited: true, pulseWidthFs: duration });
+    toggle(laser, false);
+    const before = authoredPulseTiming(laser.params);
+    const after = reopen(laser);
+    assert.equal(after.params.bandwidth, laser.params.bandwidth, `${duration} fs: bandwidth kept`);
+    close(authoredPulseTiming(after.params).durationFs, before.durationFs, before.durationFs * 1e-12, `${duration} fs`);
+    // And back: the duration it returns to is also kept through a reload.
+    toggle(laser, true);
+    assert.equal(reopen(laser).params.pulseWidthFs, laser.params.pulseWidthFs, `${duration} fs back to transform-limited`);
+  }
+  // The accessor, the field and a reload agree on the bounds.
+  const edge = createElement('pulsedlaser', 0, 0);
+  Object.assign(edge.params, { wavelength: 800, transformLimited: false, bandwidth: 5000 });
+  close(authoredPulseTiming(edge.params).durationFs, authoredPulseTiming(reopen(edge).params).durationFs, 1e-12, 'clamped alike');
+});
