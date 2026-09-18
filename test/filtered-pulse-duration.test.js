@@ -184,3 +184,24 @@ test('an etalon keeps a pulse\'s power but does not time it from a comb it does 
   assert.equal(reading.pulse.stretchedPulseWidthFs, null);
   assert.equal(reading.pulse.dispersionModel, DISPERSION_UNAVAILABLE.etalon);
 });
+
+test('an etalon after a filter still declines timing, at the detector and on its packets', async () => {
+  // The reviewer's reproduction: the bandpass reshapes first, so the etalon's
+  // own reshaping is not re-detected; its timing limit is marked regardless.
+  const { pulseEnvelopeAtOpticalPath } = await import('../sketch/js/pulses.js');
+  const source = laser({ transformLimited: true, pulseWidthFs: 20 });
+  const etalon = at('etalon', 400, { centerWavelength: 800, fsr: 20, bandwidth: 2, peakTransmission: 98 });
+  const det = createElement('detector', 800, 0);
+  det.params.aperture = 40;
+  const { pulseTracks } = traceScene([source, bandpass(200, 800, 10), etalon, det]);
+  const reading = detectorReading(det.id);
+  assert.ok(reading.signal > 0);
+  assert.equal(reading.pulse.stretchedPulseWidthFs, null);
+  assert.equal(reading.pulse.dispersionModel, DISPERSION_UNAVAILABLE.etalon);
+  const after = pulseTracks.filter(track => track.pulse?.etalonComb);
+  assert.ok(after.length > 0, 'the tracks after the etalon carry the mark');
+  for (const track of after) {
+    const packet = pulseEnvelopeAtOpticalPath(track, (track.opls[0] + track.opls.at(-1)) / 2);
+    assert.equal(packet.dispersionModel, DISPERSION_UNAVAILABLE.etalon);
+  }
+});

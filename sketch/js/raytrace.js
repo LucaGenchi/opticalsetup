@@ -4866,12 +4866,17 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // The piece that survived goes with the record, so the duration can
           // be worked out from it downstream.
           const piece = pulseSpectrumPiece({ ...r, ...child }, r.pulse);
-          child.pulse = {
-            ...r.pulse, spectrumReshaped: true, filteredPieces: piece ? [piece] : null,
-            // An etalon's output keeps its power but not its comb (and not the
-            // etalon's own transfer phase), so it is not timed from it.
-            ...(hit.surface.kind === 'etalon' ? { etalonComb: true } : {}),
-          };
+          child.pulse = { ...r.pulse, spectrumReshaped: true, filteredPieces: piece ? [piece] : null };
+        }
+      }
+      // An etalon's output keeps its power but not its comb (and not the
+      // etalon's own transfer phase), so it is not timed from it. This is
+      // marked on its own terms: a pulse an earlier filter already reshaped is
+      // not re-detected as reshaping here, and must not slip past the mark.
+      if (hit.surface.kind === 'etalon' && r.pulse && (reshaped || r.pulse.spectrumReshaped)) {
+        for (const child of children) {
+          if ('pulse' in child && child.pulse !== r.pulse && !child.pulse?.spectrumReshaped) continue;
+          child.pulse = { ...(child.pulse || r.pulse), spectrumReshaped: true, etalonComb: true };
         }
       }
       // A sampled field describes one spectrum. Once an element changes the
