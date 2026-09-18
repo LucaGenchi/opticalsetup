@@ -228,12 +228,26 @@ export const wikiEntries = [
         is what drives the travelling packet overlay, the oscilloscope view on a
         photodetector, chopper and AOM/EOM gating, and the two-colour temporal overlap
         that CARS and SFG require.</p>
-        <p>Bandwidth follows the pulse: while <em>Transform-limited</em> is on, the
-        spectral width is computed from the duration and the chosen envelope shape, so a
-        shorter pulse automatically becomes a wider spectrum. Turning it off exposes the
-        bandwidth directly for a chirped or spectrally shaped pulse; setting it to 0&nbsp;nm
-        models an idealized monochromatic pulse train. Peak power is reported back as a
-        derived readout, never entered.</p>
+        <p><em>Transform-limited pulses</em> decides what you author. On, you set the pulse
+        duration and envelope shape, and the bandwidth beneath is computed from them, so a
+        shorter pulse automatically becomes a wider spectrum. Off, you set the bandwidth, the
+        chirp's sign — <em>Positively</em> or <em>Negatively chirped (quadratic)</em> — and its
+        GDD in fs²; the transform-limited duration and the emitted pulse duration beneath are
+        computed. The duration is therefore always derived and can never fall below the limit
+        the bandwidth sets. Switching between the two keeps the spectrum: going chirped starts
+        with no GDD, going transform-limited drops the chirp and keeps the bandwidth. Pulse
+        energy (average power ÷ repetition rate) and peak power are readouts, never entered;
+        for a chirped sech² pulse the peak power is an estimate, since a dispersed sech² pulse
+        does not keep an exact sech² profile.</p>
+        <p>The laser offers no “phase unknown”. That is a simplification of authoring, not a
+        claim that every real laser carries a known quadratic phase: a multi-longitudinal-mode
+        nanosecond laser, for instance, is far longer than its bandwidth's transform limit
+        without being chirped, and cannot be described this way — author it transform-limited
+        at its duration. Light generated on the bench can still have an unknown phase (see
+        the crystal and OPO pages). A sketch saved before these controls opens with its
+        bandwidth and the GDD that reproduces its saved duration, with the sign it was saved
+        with or positive; a train saved at 0&nbsp;nm opens transform-limited at its
+        duration.</p>
         <p><em>Show pulse dynamics</em> is a drawing choice only — switching it off leaves
         the beam rendered as a steady CW line while every bit of the pulse physics above
         keeps running.</p>
@@ -241,20 +255,14 @@ export const wikiEntries = [
         <p>Every pulsed detector reports accumulated group-delay dispersion (GDD) in
         fs². Catalogue-glass bodies add their traced distance through the selected
         Sellmeier material; zero-thickness lenses and objectives add the clearly marked
-        estimates described on their own pages. For a Gaussian input, the configured
-        bandwidth sets the transform-limited duration. When the authored pulse is longer,
-        OpticalSetup interprets the difference as quadratic spectral phase; <em>Input
-        chirp</em> supplies the sign that duration and bandwidth alone cannot reveal. Glass
-        of the opposite sign can therefore compress the pulse to its transform limit before
-        stretching it again.</p>
-        <p>Duration and bandwidth fix only the size of that phase. Positive and Negative are
-        explicit assumptions of a purely quadratic phase; a new laser starts on Positive, the
-        commonest case for amplified pulses. <em>Unknown</em> claims nothing: where the path's
-        modeled dispersion adds up to zero, the configured duration is shown and labelled as
-        such (“Configured duration · zero net modeled dispersion”); anywhere else the dispersed
-        duration is shown as unavailable rather than derived from a phase nobody specified. A sketch saved before this control existed
-        opens as Unknown for the same reason. Unknown does not mean uncompressible; it means
-        the phase that would decide it is not known.</p>
+        estimates described on their own pages. A chirped laser's GDD is its own
+        quadratic phase, added once to the path's: glass of the opposite sign therefore
+        compresses the pulse to its transform limit before stretching it again. Light whose
+        phase nobody authored — an OPO or crystal output declared “spectral phase unknown”,
+        say — reports its configured duration only where the path's modeled dispersion adds
+        up to zero (“Configured duration · zero net modeled dispersion”), and is shown as
+        unavailable anywhere else. Unknown does not mean uncompressible; it means the phase
+        that would decide it is not known.</p>
         <p>The duration model also declines, and says why on the detector's <em>Duration
         model</em> row, when a filter, dichroic, etalon or AOTF has reshaped the pulse's
         spectrum — filtering changes a duration by itself, and dispersion accumulated before
@@ -279,15 +287,15 @@ export const wikiEntries = [
         changes too little to notice.</p>`,
       formulas: [
         { tex: '\\tau_{out}=\\tau_0\\sqrt{1+\\left(4\\ln 2\\,(\\phi_{in}+\\mathrm{GDD})/\\tau_0^{2}\\right)^2}', caption: 'Gaussian duration from the bandwidth-limited width τ₀ and the signed sum of input and path GDD.' },
-        { tex: '|\\phi_{in}|=\\frac{\\tau_0^2}{4\\ln 2}\\sqrt{(\\tau_{in}/\\tau_0)^2-1}', caption: 'Magnitude of the quadratic input phase inferred from a Gaussian pulse whose configured duration exceeds its transform limit; the Input chirp control supplies the missing sign.' },
+        { tex: '\\tau_0 = K\\,\\lambda^2/(c\\,\\Delta\\lambda)', caption: 'Transform-limited duration of the authored bandwidth, with K = 0.441 (Gaussian) or 0.315 (sech²). A chirped laser emits τ_out with φ_in its authored signed GDD and no path GDD.' },
       ],
       limitations: `<p>There is no modeled gain medium, cavity, or mode-locking mechanism —
         repetition rate, duration, and shape are configured directly. The duration estimate
         represents only quadratic phase for Gaussian and sech² inputs. It does not reconstruct
         arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
-        distortion, or material absorption. A duration-bandwidth pair below its transform
-        limit is reported as inconsistent rather than assigned invented phase, and its dispersed
-        duration is unavailable. Spectral reshaping is detected from a filter's or dichroic's
+        distortion, or material absorption. Source GDD is bounded to ±10⁷&nbsp;fs², a range
+        for input, not a physical validity threshold; a quadratic phase alone does not make a
+        stretched pulse an accurate model of a real stretcher's output. Spectral reshaping is detected from a filter's or dichroic's
         passband edges falling inside the pulse's emitted band, and, for smooth transmissions
         such as an etalon or AOTF, from the band sampled and cross-checked against the integrated
         transmission. Wavelength-dependent clipping inside one fanned-out sample is not
@@ -4835,10 +4843,15 @@ export const wikiEntries = [
         <p>The Autocorrelator reports the pulse duration of whatever pulse train reaches its
         face — and reports it the way a real instrument does, as a trace width with an
         assumption divided out, rather than as a number read off the source.</p>
-        <p><strong>Time span</strong> sets the horizontal axis in both modes &mdash; &plusmn;0.5,
-        &plusmn;1, &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps &mdash; and it is a setting rather
-        than an automatic, so two traces of different duration on the same span look as different
-        as they are. A trace too wide for the window is reported rather than clipped.</p>
+        <p><strong>Time span</strong> sets the horizontal axis &mdash; &plusmn;0.5, &plusmn;1,
+        &plusmn;5, &plusmn;10 or &plusmn;25&nbsp;ps, or <strong>Auto</strong>, the default for a
+        new autocorrelator. Auto takes the narrowest of those spans whose half-width is at least
+        1.5 trace FWHMs, where a Gaussian trace has fallen to 0.2&nbsp;% of its peak, so the wings
+        are drawn rather than clipped; it steps between the standard spans rather than
+        rescaling continuously, labels the axis <em>AUTO</em>, and applies to autocorrelation
+        only. A fixed span keeps two traces of different duration looking as different as they
+        are, which is why cross-correlation stays fixed. A trace too wide for the chosen window
+        is reported rather than clipped, and an unavailable duration draws no trace.</p>
         <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
         (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
         instrument works out for itself, because in a laboratory it is not something the

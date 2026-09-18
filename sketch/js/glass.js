@@ -259,6 +259,52 @@ function gddForSech2Duration(transformLimitedFwhmFs, durationFs) {
   return tau0 * tau0 * (lo + hi) / 2;
 }
 
+// The chirp that stretches a pulse of transform limit tau0 to a given duration,
+// by inverting the Gaussian formula or the sech² table. Used only to convert a
+// laser saved as duration + bandwidth into the bandwidth + GDD it is now
+// authored as; below the limit there is no chirp to find, so it returns 0.
+export function chirpGddForDuration(transformLimitFs, durationFs, shape = 'gauss') {
+  const tau0 = Number(transformLimitFs), duration = Number(durationFs);
+  if (!(tau0 > 0) || !(duration > tau0 * (1 + 1e-12))) return 0;
+  const magnitude = shape === 'sech2'
+    ? gddForSech2Duration(tau0, duration)
+    : tau0 * tau0 / (4 * Math.LN2) * Math.sqrt((duration / tau0) ** 2 - 1);
+  return Number.isFinite(magnitude) ? magnitude : 0;
+}
+
+// What a pulsed laser emits, from its authored controls. The one accessor
+// every reader uses -- the tracer's pulse record, peak power, pulse energy,
+// the inspector's readouts and the two-photon hand-off -- so the duration they
+// quote cannot drift apart.
+//  - Transform-limited: the duration and shape are authored; the transform
+//    limit is that duration and no GDD is carried.
+//  - Chirped: the bandwidth, a sign and a non-negative GDD magnitude are
+//    authored; the transform limit follows from the bandwidth and the emitted
+//    duration from the signed GDD, so it can never fall below the limit.
+// The signed GDD is the canonical value; sign and magnitude are two controls
+// over it and cannot disagree.
+export const MAX_SOURCE_GDD_FS2 = 1e7;
+export function authoredPulseTiming(params = {}) {
+  const shape = params.pulseShape === 'sech2' ? 'sech2' : 'gauss';
+  if (params.transformLimited !== false) {
+    const tau = Math.min(1e9, Math.max(1, Number(params.pulseWidthFs) || 100));
+    return { transformLimited: true, transformLimitFs: tau, inputGddFs2: 0, durationFs: tau, shape };
+  }
+  const bandwidth = Math.max(0, Number(params.bandwidth) || 0);
+  const tau0 = transformLimitedDurationFs(bandwidth, Number(params.wavelength), shape);
+  const magnitude = Math.min(MAX_SOURCE_GDD_FS2, Math.max(0, Number(params.chirpGddFs2) || 0));
+  const gdd = magnitude * (params.inputChirp === 'negative' ? -1 : 1);
+  const durationFs = !(tau0 > 0) || !Number.isFinite(tau0) ? null
+    : shape === 'sech2' ? sech2PulseDurationAfterGDD(tau0, gdd) : gaussianPulseDurationAfterGDD(tau0, gdd);
+  return {
+    transformLimited: false,
+    transformLimitFs: Number.isFinite(tau0) && tau0 > 0 ? tau0 : null,
+    inputGddFs2: gdd,
+    durationFs: Number.isFinite(durationFs) ? durationFs : null,
+    shape,
+  };
+}
+
 // One duration model shared by detector readouts, probes, scopes and packet
 // drawing. Narrowband pulses use bandwidth to recover their transform limit
 // and therefore the magnitude of authored input chirp. A flat supercontinuum
@@ -345,6 +391,19 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
       groupDelayDifferenceFs: delayDifference,
       model: 'Flat-band endpoint group-delay spread',
     } : null;
+  }
+  // A laser authored as bandwidth + signed GDD states its phase outright:
+  // no inversion from duration is needed or wanted.
+  if (pulse?.transformLimited !== true && Number.isFinite(pulse?.inputGddFs2) && Number(pulse?.transformLimitFs) > 0) {
+    const tau0 = Number(pulse.transformLimitFs), inputGdd = Number(pulse.inputGddFs2);
+    const totalGdd = inputGdd + gdd;
+    const duration = shape === 'sech2' ? sech2PulseDurationAfterGDD(tau0, totalGdd) : gaussianPulseDurationAfterGDD(tau0, totalGdd);
+    if (!Number.isFinite(duration)) return null;
+    const state = inputGdd === 0 ? 'no chirp set' : `${inputGdd < 0 ? 'negative' : 'positive'} chirp ${Math.abs(inputGdd).toLocaleString('en-US', { maximumFractionDigits: 0 })} fs²`;
+    return {
+      durationFs: duration, available: true, transformLimitFs: tau0, inputGddFs2: inputGdd, totalGddFs2: totalGdd,
+      model: `${shape === 'sech2' ? 'Sech² numerical GDD' : 'Gaussian GDD'} · ${state}`,
+    };
   }
   const sign = authoredChirpSign(pulse);
   const configuredOnly = model => ({
@@ -529,6 +588,19 @@ export function crossScopeHalfSpanFs(params) {
       CROSS_SCOPE_SPANS_PS[0]) * 1000;
   }
   return DEFAULT_SCOPE_SPAN_PS * 1000;
+}
+
+// Auto time span for an autocorrelation: the narrowest standard span whose
+// half-width is at least 1.5 trace FWHMs. A Gaussian trace has fallen to
+// 0.2 % of its peak there, so its wings reach the baseline on screen instead
+// of being clipped at the edge, while the trace still fills a readable share
+// of the window. The standard steps keep it from drifting with the pulse: it
+// only moves when the trace crosses one of them. Beyond the widest span it
+// returns that span and the screen says the trace does not fit.
+export const AUTO_SCOPE_SPAN = 'auto';
+export function autoScopeHalfSpanFs(traceFwhmFs) {
+  const needed = 1.5 * Math.max(0, Number(traceFwhmFs) || 0);
+  return (CROSS_SCOPE_SPANS_PS.find(ps => ps * 1000 >= needed) ?? CROSS_SCOPE_SPANS_PS.at(-1)) * 1000;
 }
 
 // The timebase that shows a given pair best: the narrowest setting that still

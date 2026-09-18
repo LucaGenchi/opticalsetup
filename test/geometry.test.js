@@ -232,7 +232,8 @@ test('pulsed lasers produce optical-path tracks and physical detector arrival ti
   assert.equal(tracedPulse.pulseShape, 'gauss');
   assert.equal(tracedPulse.transformLimited, true);
   assert.ok(tracedPulse.bandwidthNm > 0, 'pulse track carries the spectrum needed for dispersion');
-  assert.equal(tracedPulse.inputChirp, 'positive');
+  assert.equal(tracedPulse.transformLimitFs, 120);
+  assert.equal(tracedPulse.inputGddFs2, undefined, 'a transform-limited pulse carries no source chirp');
   const reading = detectorReading(detector.id);
   assert.ok(reading.pulse);
   assert.ok(Math.abs(reading.pulse.earliestPathDelayNs - 1) < 1e-9);

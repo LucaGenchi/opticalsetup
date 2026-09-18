@@ -14,10 +14,10 @@ import { pulseTransmissionAt } from './pulses.js';
 import { FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion } from './fiber.js';
 import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
-  bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS,
+  bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN,
 } from './glass.js';
 import { pmtVerdict } from './detector-measurements.js';
-import { transformLimitedBandwidthNm } from './spectrum.js';
+import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import {
   OBJECTIVE_MEDIA, normalizeObjectiveParams, objectiveMediumKey, objectiveWorkingDistance,
@@ -240,7 +240,7 @@ function cameraAxisHalfSpan(source) {
 // as they approach, hiding the motion the scope exists to show.
 function applyScopeSpanForMode(sel) {
   if ((sel.params.measurementMode || 'auto') !== 'cross') {
-    sel.params.timeSpanPs = DEFAULT_SCOPE_SPAN_PS;
+    sel.params.timeSpanPs = AUTO_SCOPE_SPAN;
     return;
   }
   const rd = detectorReading(sel.id);
@@ -1397,9 +1397,20 @@ export function applyInput(inp, rebuild = false) {
   // Switching TL off reveals it — seed it from the width the pulse actually
   // had a moment ago, so the spectrum stays continuous across the toggle
   // instead of jumping to an unrelated stored default.
+  // Both directions keep the spectrum continuous. Chirped → transform-limited
+  // keeps the bandwidth and drops the chirp, so the duration becomes that
+  // bandwidth's limit; transform-limited → chirped starts with no chirp.
   if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === false) {
     sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(
       sel.params.pulseWidthFs, sel.params.wavelength, sel.params.pulseShape || 'gauss'));
+    sel.params.chirpGddFs2 = 0;
+    changed();
+    renderInspector();
+    return;
+  }
+  if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === true) {
+    const limit = transformLimitedDurationFs(sel.params.bandwidth, sel.params.wavelength, sel.params.pulseShape || 'gauss');
+    if (Number.isFinite(limit) && limit > 0) sel.params.pulseWidthFs = roundSig(limit);
     changed();
     renderInspector();
     return;

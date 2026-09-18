@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry } from '../sketch/js/elements.js';
 import {
-  glassGroupDelayDifferenceFs, glassGroupIndex, pulseDurationAfterDispersion,
-  sech2PulseDurationAfterGDD,
+  authoredPulseTiming, chirpGddForDuration, glassGroupDelayDifferenceFs, glassGroupIndex,
+  pulseDurationAfterDispersion, sech2PulseDurationAfterGDD,
 } from '../sketch/js/glass.js';
 import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
@@ -88,16 +88,21 @@ test('the flat-band model uses Sellmeier endpoint group delay, not centre GDD', 
   assert.match(reading.pulse.dispersionModel, /Flat-band endpoint/);
 });
 
+// A chirped laser is authored as bandwidth + signed GDD; these tests ask for
+// the GDD that emits a 200 fs pulse, so the numbers match the earlier model.
+const chirpFor = (bandwidth, shape, duration = 200) =>
+  chirpGddForDuration(transformLimitedDurationFs(bandwidth, 800, shape), duration, shape);
+
 test('Gaussian, sech² and supercontinuum sources all acquire a finite duration through one glass slab', () => {
   const gaussian = createElement('pulsedlaser', 0, 0);
   Object.assign(gaussian.params, {
-    wavelength: 800, pulseWidthFs: 200, transformLimited: false,
-    bandwidth: 10, pulseShape: 'gauss', inputChirp: 'positive',
+    wavelength: 800, transformLimited: false, bandwidth: 10, pulseShape: 'gauss',
+    inputChirp: 'positive', chirpGddFs2: chirpFor(10, 'gauss'),
   });
   const sech = createElement('pulsedlaser', 0, 0);
   Object.assign(sech.params, {
-    wavelength: 800, pulseWidthFs: 200, transformLimited: false,
-    bandwidth: 7, pulseShape: 'sech2', inputChirp: 'positive',
+    wavelength: 800, transformLimited: false, bandwidth: 7, pulseShape: 'sech2',
+    inputChirp: 'positive', chirpGddFs2: chirpFor(7, 'sech2'),
   });
   const continuum = createElement('sclaser', 0, 0);
   Object.assign(continuum.params, { scMin: 690, scMax: 700, pulseWidthFs: 250 });
@@ -105,24 +110,25 @@ test('Gaussian, sech² and supercontinuum sources all acquire a finite duration 
   for (const source of [gaussian, sech, continuum]) {
     const { reading } = slabBench(source);
     assert.ok(Number.isFinite(reading?.pulse?.stretchedPulseWidthFs), source.type);
-    assert.ok(reading.pulse.stretchedPulseWidthFs > source.params.pulseWidthFs, source.type);
+    assert.ok(reading.pulse.stretchedPulseWidthFs > reading.pulse.pulseWidthFs, source.type);
+    if (source.type === 'pulsedlaser') close(reading.pulse.pulseWidthFs, 200, 1e-6, 'the emitted duration');
   }
 });
 
-test('0 nm bandwidth stays unstretched, and packet and detector use the same chirped duration', () => {
-  const monochromatic = createElement('pulsedlaser', 0, 0);
-  Object.assign(monochromatic.params, {
-    wavelength: 800, pulseWidthFs: 200, transformLimited: false,
-    bandwidth: 0, pulseShape: 'gauss', inputChirp: 'negative',
-  });
-  const mono = slabBench(monochromatic).reading.pulse;
-  close(mono.stretchedPulseWidthFs, 200);
-  assert.equal(mono.dispersionModel, '0 nm bandwidth — unchanged');
+test('a 0 nm train opens transform-limited, and packet and detector use the same chirped duration', () => {
+  // A chirped pulse needs a bandwidth; a train saved at 0 nm opens
+  // transform-limited at its saved duration.
+  const saved = createElement('pulsedlaser', 0, 0);
+  Object.assign(saved.params, { wavelength: 800, pulseWidthFs: 200, transformLimited: false, bandwidth: 0 });
+  delete saved.params.chirpGddFs2;
+  const [loaded] = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [saved], beams: [] }), registry).elements;
+  assert.equal(loaded.params.transformLimited, true);
+  assert.equal(loaded.params.pulseWidthFs, 200);
 
   const chirped = createElement('pulsedlaser', 0, 0);
   Object.assign(chirped.params, {
-    wavelength: 800, pulseWidthFs: 200, transformLimited: false,
-    bandwidth: 10, pulseShape: 'gauss', inputChirp: 'positive',
+    wavelength: 800, transformLimited: false, bandwidth: 10, pulseShape: 'gauss',
+    inputChirp: 'positive', chirpGddFs2: chirpFor(10, 'gauss'),
   });
   const { reading, scene } = slabBench(chirped);
   const tracks = scene.pulseTracks.filter(candidate => candidate.opls.length >= 3);
@@ -136,20 +142,33 @@ test('0 nm bandwidth stays unstretched, and packet and detector use the same chi
   close(local.pulseWidthFs, reading.pulse.stretchedPulseWidthFs, 1e-4);
 });
 
-test('a sketch saved before Input chirp existed opens as Unknown, not as an assumed up-chirp', () => {
-  // A new laser still assumes the commonest case; an old save carries no
-  // evidence of a sign, so it must not acquire one on load.
+test('a laser saved as duration + bandwidth opens as bandwidth + GDD with the same emitted pulse', () => {
+  // Chirp is now authored as a signed GDD. An older save stored a duration
+  // and a bandwidth instead; it opens with the GDD that reproduces that
+  // duration, the sign it was saved with or positive when it had none.
   assert.equal(createElement('pulsedlaser', 0, 0).params.inputChirp, 'positive');
-  const laser = createElement('pulsedlaser', 0, 0);
-  laser.params.transformLimited = false;
-  delete laser.params.inputChirp;
-  const saved = JSON.stringify({ app: 'optics2d', version: 1, elements: [laser], beams: [] });
-  const [loaded] = parseSketch(saved, registry).elements;
-  assert.equal(loaded.params.inputChirp, 'unknown');
-  // An explicit choice, Unknown included, survives a save and reload.
-  for (const chirp of ['positive', 'negative', 'unknown']) {
-    laser.params.inputChirp = chirp;
+  for (const [savedChirp, expectedSign] of [[undefined, 'positive'], ['negative', 'negative'], ['unknown', 'positive']]) {
+    const laser = createElement('pulsedlaser', 0, 0);
+    Object.assign(laser.params, { wavelength: 800, pulseWidthFs: 200, transformLimited: false, bandwidth: 10 });
+    delete laser.params.chirpGddFs2;
+    if (savedChirp === undefined) delete laser.params.inputChirp; else laser.params.inputChirp = savedChirp;
     const text = JSON.stringify({ app: 'optics2d', version: 1, elements: [laser], beams: [] });
-    assert.equal(parseSketch(text, registry).elements[0].params.inputChirp, chirp);
+    const [loaded] = parseSketch(text, registry).elements;
+    assert.equal(loaded.params.inputChirp, expectedSign, String(savedChirp));
+    close(authoredPulseTiming(loaded.params).durationFs, 200, 1e-6, 'emitted duration preserved');
+    close(loaded.params.chirpGddFs2, 5991.7, 0.1, 'GDD recovered from the saved pair');
   }
+  // Below its transform limit the saved pair had no chirp to find: it opens
+  // at the limit.
+  const impossible = createElement('pulsedlaser', 0, 0);
+  Object.assign(impossible.params, { wavelength: 800, pulseWidthFs: 50, transformLimited: false, bandwidth: 10 });
+  delete impossible.params.chirpGddFs2;
+  const [atLimit] = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [impossible], beams: [] }), registry).elements;
+  assert.equal(atLimit.params.chirpGddFs2, 0);
+  close(authoredPulseTiming(atLimit.params).durationFs, transformLimitedDurationFs(10, 800, 'gauss'), 1e-9);
+  // A saved GDD, sign and bandwidth survive a save and reload unchanged.
+  const authored = createElement('pulsedlaser', 0, 0);
+  Object.assign(authored.params, { transformLimited: false, bandwidth: 12, inputChirp: 'negative', chirpGddFs2: 7000 });
+  const [again] = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [authored], beams: [] }), registry).elements;
+  assert.deepEqual([again.params.bandwidth, again.params.inputChirp, again.params.chirpGddFs2], [12, 'negative', 7000]);
 });
