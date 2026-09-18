@@ -2867,8 +2867,13 @@ function bandChild(ray, d, lo, hi, tag) {
 // a 400-900 nm supercontinuum through a 1 nm bandpass. The slice is taken as
 // flat inside, which is what the detector assumes when it paints it.
 function sampleCell(ray) {
-  if (ray.bw || !ray.spectralContinuum) return null;
-  const lo = ray.spectralLo, hi = ray.spectralHi;
+  if (ray.bw) return null;
+  if (ray.spectralContinuum && Number.isFinite(ray.spectralLo) && Number.isFinite(ray.spectralHi) && ray.spectralHi > ray.spectralLo) {
+    return [ray.spectralLo, ray.spectralHi];
+  }
+  // A grating order's sample keeps its slice as fanLo/fanHi instead, so that
+  // spectrometers go on drawing it as a line; a filter still has to cut it.
+  const lo = ray.fanLo, hi = ray.fanHi;
   return Number.isFinite(lo) && Number.isFinite(hi) && hi > lo ? [lo, hi] : null;
 }
 
@@ -2894,6 +2899,8 @@ function cellChild(ray, d, cell, lo, hi, tag, share = 1) {
     d, tag,
     wl: ray.wl >= lo && ray.wl <= hi ? ray.wl : (lo + hi) / 2,
     spectralContinuum: true, spectralLo: lo, spectralHi: hi, spectralWidthNm: hi - lo,
+    // A grating sample's own record of its slice narrows with it.
+    ...(Number.isFinite(ray.fanLo) ? { fanLo: lo, fanHi: hi } : {}),
     intensity: ray.intensity * share * (hi - lo) / (cell[1] - cell[0]),
   };
 }
@@ -4418,10 +4425,11 @@ function pulseSpectrumPiece(ray, pulse, power = 1) {
     const [lo, hi] = spectrumSupport(ray.spec);
     return hi > lo ? { spec: ray.spec, lo, hi, power } : null;
   }
-  if (!ray.spectralContinuum || !(ray.spectralHi > ray.spectralLo)) return null;
-  const parent = (pulse?.filteredPieces || []).find(p => p.lo <= ray.spectralLo + 1e-9 && p.hi >= ray.spectralHi - 1e-9);
-  const spec = parent?.spec || pulseBand(pulse) || flatSpectrum(ray.spectralLo, ray.spectralHi);
-  const lo = Math.max(ray.spectralLo, parent?.lo ?? -Infinity), hi = Math.min(ray.spectralHi, parent?.hi ?? Infinity);
+  const cell = sampleCell(ray);
+  if (!cell) return null;
+  const parent = (pulse?.filteredPieces || []).find(p => p.lo <= cell[0] + 1e-9 && p.hi >= cell[1] - 1e-9);
+  const spec = parent?.spec || pulseBand(pulse) || flatSpectrum(cell[0], cell[1]);
+  const lo = Math.max(cell[0], parent?.lo ?? -Infinity), hi = Math.min(cell[1], parent?.hi ?? Infinity);
   return hi > lo ? { spec, lo, hi, power } : null;
 }
 // Where the pulse's emitted band carries at least 1 % of its peak weight.

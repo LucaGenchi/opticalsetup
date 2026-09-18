@@ -101,3 +101,34 @@ test('a broad filtered continuum after glass is stretched by the glass across wh
   assert.ok(longpass.stretchedPulseWidthFs > 500 && longpass.stretchedPulseWidthFs < 1500, `${longpass.stretchedPulseWidthFs}`);
   assert.ok(unfiltered.stretchedPulseWidthFs > 10 * longpass.stretchedPulseWidthFs);
 });
+
+test('a grating order and a filter give the same pulse in either order', () => {
+  // A grating keeps each order sample's slice as fanLo/fanHi; a filter cuts it
+  // as it cuts a slice of a glass-fanned band.
+  const angle = Math.atan2(2880, -5264);
+  const through = (filterFirst, source) => {
+    const filter = at('filter', 120, { ftype: 'bandpass', center: 800, band: 10, length: 300 });
+    const grating = at('grating', 200, { lines: 600, orders: '1' });
+    if (!filterFirst) {
+      Object.assign(filter, { x: 200 + 150 * Math.cos(angle), y: 150 * Math.sin(angle), rot: angle * 180 / Math.PI });
+    }
+    const det = createElement('detector', 200 + 300 * Math.cos(angle), 300 * Math.sin(angle));
+    det.rot = angle * 180 / Math.PI;
+    det.params.aperture = 300;
+    traceScene(filterFirst ? [source(), filter, grating, det] : [source(), grating, filter, det]);
+    return detectorReading(det.id);
+  };
+  const tl = () => laser({ transformLimited: true, pulseWidthFs: 20 });
+  const sc = () => {
+    const source = createElement('sclaser', 0, 0);
+    Object.assign(source.params, { temporalMode: 'pulsed', beamMode: 'line', scMin: 700, scMax: 900, pulseWidthFs: 500 });
+    return source;
+  };
+  for (const [label, source, share] of [['laser', tl, 0.2], ['continuum', sc, 10 / 200]]) {
+    const first = through(true, source), after = through(false, source);
+    close(after.signal, share, 0.01, `${label}: 10 nm of the band passes`);
+    close(first.signal, after.signal, 0.03 * after.signal, `${label}: power either way`);
+    close(first.pulse.stretchedPulseWidthFs, after.pulse.stretchedPulseWidthFs, 0.02 * after.pulse.stretchedPulseWidthFs, `${label}: duration either way`);
+    close(after.pulse.stretchedPulseWidthFs, 190, 5, `${label}: the 10 nm limit`);
+  }
+});
