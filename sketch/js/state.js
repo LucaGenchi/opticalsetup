@@ -194,8 +194,8 @@ function migrateLegacyLaserParams(rawParams, migratedType) {
 // A pulsed laser saved before chirp was authored as a GDD stored a duration
 // and a bandwidth instead. It opens with the same bandwidth and a GDD chosen
 // to reproduce that duration, so its emitted pulse is unchanged -- provided
-// that GDD fits the 1e7 fs² range and the bandwidth the authorable range;
-// beyond them normalisation clamps the value and the duration changes. The sign is
+// that GDD fits the 1e7 fs² range; beyond it normalisation clamps the GDD
+// and the duration changes. The sign is
 // the one it was saved with, or positive when it had none -- an assumption,
 // taken deliberately during the rollout rather than keeping a separate
 // "phase unspecified" state. A pair shorter than its transform limit had no
