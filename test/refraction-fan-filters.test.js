@@ -69,3 +69,10 @@ test('a filter that passes the whole band leaves the fanned spectrometer reading
   assert.equal(plain.bandMin, 400);
   assert.equal(plain.bandMax, 900);
 });
+
+test('a spectrometer shows a fanned flat continuum flat, with no spike where two slices meet', () => {
+  const samples = fanThrough(null, 'spectrometer').spectrum;
+  const interior = samples.slice(1, -1).map(s => s.power);
+  const mean = interior.reduce((a, b) => a + b, 0) / interior.length;
+  for (const power of interior) assert.ok(Math.abs(power / mean - 1) < 0.02, `${power} vs ${mean}`);
+});

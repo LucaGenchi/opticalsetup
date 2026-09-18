@@ -633,10 +633,18 @@ function detectorSpectrum(hits) {
       area *= integrationStep;
       if (!(area > 0)) continue;
       targetPower += component.power;
+      // A flat slice is binned by how much of each display bin it covers.
+      // Point-sampling it would count a grid point on the edge two adjacent
+      // slices share in both of them: the slices a prism or glass rod cuts a
+      // flat continuum into then showed a spike twice the band's height at
+      // every junction.
+      const flat = component.spec.kind === 'flat';
       for (let i = 0; i < count; i++) {
         const wl = lo + step * i;
-        const edgeWeight = i === 0 || i === count - 1 ? 0.5 : 1;
-        powers[i] += component.power * spectrumWeight(component.spec, wl) / area * step * edgeWeight;
+        const weight = flat
+          ? Math.max(0, Math.min(wl + step / 2, componentHi) - Math.max(wl - step / 2, componentLo)) / step
+          : spectrumWeight(component.spec, wl) * (i === 0 || i === count - 1 ? 0.5 : 1);
+        powers[i] += component.power * weight / area * step;
       }
     }
     const sampledPower = powers.reduce((sum, power) => sum + power, 0);
