@@ -241,11 +241,16 @@ h2.section-head.sim .sw { background: var(--accent); }
 }
 .related-list a:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
 
+/* A full-width rule like the header's, with the text held to the content
+   column. The padding alone centres that column -- it used to be combined with
+   a 1180px max-width, and on a window wider than about 2360px the two pads
+   outgrew the box and squeezed the text to one word per line. The extra 20px
+   matches .wiki-shell's own gutter, so the text starts where the cards do;
+   100% rather than 100vw keeps the scrollbar out of that arithmetic. */
 footer.wiki-footer {
   border-top: 1px solid var(--border);
-  padding: 22px max(20px, calc((100vw - 1180px) / 2)) 60px;
+  padding: 22px max(20px, calc((100% - 1180px) / 2 + 20px)) 60px;
   color: var(--muted); font-size: 12.5px;
-  max-width: 1180px; margin: 0 auto;
 }
 
 /* ---------- index hub page ---------- */
@@ -255,7 +260,7 @@ footer.wiki-footer {
 .hub-groups { padding-bottom: 60px; }
 .hub-group { margin-top: 40px; }
 .hub-group h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); font-weight: 700; margin-bottom: 16px; }
-.hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
 .hub-sub { font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase;
   color: var(--muted); font-weight: 650; margin: 18px 0 10px; }
 .hub-group h2 + .hub-sub { margin-top: 0; }
@@ -270,3 +275,8 @@ footer.wiki-footer {
 .hub-card .info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .hub-card .name { font-weight: 650; color: var(--text); font-size: 14px; }
 .hub-card .desc { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; }
+
+/* Give complete introductions room to breathe at every column count. */
+.hub-card { align-items: flex-start; }
+.hub-card .name, .hub-card .desc { overflow-wrap: anywhere; }
+.hub-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

@@ -5,13 +5,15 @@ import { state, changed, pushUndo, findSelected } from './state.js';
 import {
   registry, getSize, boxAnchor, getVisualBounds, getDirectManipulation, createElement, labelSVG,
   stageOffsetAt, retroOffsetAt, voxelDepthFactor, displayCableSVG, specimenTypeOf,
-  displayActionUpdate, delayLineSweepSpanMm, normalizeSupercontinuumParams,
+  displayActionUpdate, delayLineSweepSpanMm, mixStateText, normalizeSupercontinuumParams,
+  specimenTimingText,
 } from './elements.js';
 import {
   OBJECTIVE_FRONT_X, normalizeObjectiveParams, objectiveBackFocalPlaneX, objectiveWorkingDistance,
 } from './objective.js';
 import { immersionLayerSVG } from './immersion.js';
-import { traceScene } from './raytrace.js';
+import { polygonScannerState } from './polygon-scanner.js';
+import { mixReading, specimenTimingReading, traceScene } from './raytrace.js';
 import { pulseArrivalsAtPath, pulseMarkers } from './pulses.js';
 import { toLocal, toWorld, rotPt, distToSegment, distinctPoints, manualBeamSVG, esc } from './util.js';
 import {
@@ -214,8 +216,9 @@ const ILLUSTRATIVE_MAX_CYCLE_S = 12;
 // would need ~1000 real seconds per sweep even at 1 ms/s — it falls back to
 // the same illustrative wall-clock treatment as the piezo stage and the
 // retroreflector, so the mirror still visibly scans instead of freezing.
-function galvoAnimationSeconds(params) {
-  const hz = Math.max(0.01, params.scanFrequencyHz || 1);
+function galvoAnimationSeconds(params, polygon = false) {
+  const hz = polygon ? Math.max(0.01, polygonScannerState(params).lineRateHz)
+    : Math.max(0.01, params.scanFrequencyHz || 1);
   // Mechanics mode deliberately opts every mechanical element out of the
   // simulated clock, regardless of frequency — see pulsePlayback.mechanicsMode.
   if (!pulsePlayback.mechanicsMode) {
@@ -234,12 +237,13 @@ function animatedChopper(el) {
 
 function animatedOpticalElements() {
   if (!hasGalvoMotion() && !hasAodScan() && !hasPhaseModulation() && !hasStageMotion()
-    && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence()) return state.elements;
+    && !hasRetroMotion() && !hasDelaySweep() && !hasAotfSequence() && !hasOpoTuning()) return state.elements;
   return state.elements.map(el => {
-    if (el.type === 'galvo' && el.params.scanMode !== 'static') {
-      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
+    if (isScanningMirror(el)) {
+      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params, el.type === 'polygonscanner') };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
+    if (el.type === 'opo') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
@@ -258,10 +262,11 @@ function animatedOpticalElements() {
 function animatedVisualElements() {
   if (!hasMotion() && !hasSignalSpotStage()) return state.elements;
   return state.elements.map(el => {
-    if (el.type === 'galvo' && el.params.scanMode !== 'static') {
-      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params) };
+    if (isScanningMirror(el)) {
+      return { ...el, _animationTimeS: galvoAnimationSeconds(el.params, el.type === 'polygonscanner') };
     }
     if (el.type === 'aotf') return { ...el, _animationTimeS: motionTimeSeconds };
+    if (el.type === 'opo') return { ...el, _animationTimeS: motionTimeSeconds };
     if (el.type === 'aod' && el.params.scanMode !== 'static') {
       return { ...el, _simulationTimeNs: simulatedTimeNs() };
     }
@@ -287,7 +292,7 @@ function renderImmersion() {
 }
 
 function hasMotion() {
-  return state.elements.some(el => (el.type === 'galvo' && el.params.scanMode !== 'static')
+  return state.elements.some(el => isScanningMirror(el)
     || (el.type === 'aod' && el.params.scanMode !== 'static')
     || (el.type === 'phasemodulator' && el.params.driveMode !== 'static')
     || (el.type === 'delayline' && el.params.moveMode === 'linear'
@@ -295,19 +300,31 @@ function hasMotion() {
     || (el.type === 'chopper' && el.params.modulate)
     || (el.type === 'stage' && el.params.pzMode && el.params.pzMode !== 'static')
     || (el.type === 'retroreflector' && el.params.moveMode === 'linear'))
-    || hasAotfSequence();
+    || hasAotfSequence() || hasOpoTuning();
 }
 
 // A sequential AOTF steps between its selected lines, so the traced spectrum
 // changes with the clock exactly as a scanning galvo's angle does.
+// An integrated OPO that sweeps or steps its signal changes the traced
+// wavelengths with the clock, as a sequential AOTF does.
+function hasOpoTuning() {
+  return state.elements.some(el => el.type === 'opo' && (el.params.tuneMode === 'sweep' || el.params.tuneMode === 'steps'));
+}
+
 function hasAotfSequence() {
   return state.elements.some(el => el.type === 'aotf'
     && el.params.modMode === 'cycle'
     && Array.isArray(el.params.channels) && el.params.channels.length > 1);
 }
 
+function isScanningMirror(el) {
+  return (el.type === 'galvo' && el.params.scanMode !== 'static')
+    || (el.type === 'polygonscanner' && el.params.scanMode !== 'static'
+      && polygonScannerState(el.params).rpm > 0);
+}
+
 function hasGalvoMotion() {
-  return state.elements.some(el => el.type === 'galvo' && el.params.scanMode !== 'static');
+  return state.elements.some(isScanningMirror);
 }
 
 function hasAodScan() {
@@ -347,14 +364,14 @@ function animateMotion(nowMs) {
   motionTimeSeconds = Math.max(0, (nowMs - motionStartMs) / 1000);
   if (nowMs - motionLastRenderMs >= 1000 / 30) {
     motionLastRenderMs = nowMs;
-    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence();
+    const opticalMotion = hasGalvoMotion() || hasAodScan() || hasPhaseModulation() || hasDelaySweep() || hasStageMotion() || hasRetroMotion() || hasAotfSequence() || hasOpoTuning();
     if (hasStageMotion()) renderImmersion();
     if (opticalMotion) renderBeams();
     renderElements();
     renderVoxels();
     renderOverlay();
     const selected = findSelected();
-    if (opticalMotion && selected && (registry[selected.type]?.readoutKind || selected.type === 'display')) onMeasurementsChange();
+    if (opticalMotion && selected && (registry[selected.type]?.readoutKind || registry[selected.type]?.liveReadouts || selected.type === 'display')) onMeasurementsChange();
   }
   motionFrame = requestAnimationFrame(animateMotion);
 }
@@ -410,6 +427,30 @@ function gridLines(x0, y0, x1, y1, step, color, width) {
 
 function ptsAttr(pts) { return pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '); }
 
+// Crystal id -> the last mixing state it was announced in. A two-beam crystal
+// that stops producing anything is worth saying out loud once: the beams are
+// still drawn, the signal simply is not there, and the reason is timing
+// rather than anything visible on the canvas. Announcing on the transition
+// keeps a delay stage being dragged from repeating the same message.
+const announcedMixStates = new Map();
+
+function announceMixingState(elements) {
+  for (const el of elements) {
+    // A crystal's mixing and a specimen's two-beam signals fail the same way,
+    // and both are worth saying out loud once.
+    const crystal = el.type === 'crystal';
+    const specimen = el.type === 'sample' || el.type === 'stage';
+    if (!crystal && !specimen) continue;
+    const reading = crystal ? mixReading(el.id) : specimenTimingReading(el.id);
+    const signature = reading ? `${reading.kind || ''}:${reading.state}` : '';
+    if (announcedMixStates.get(el.id) === signature) continue;
+    announcedMixStates.set(el.id, signature);
+    if (reading?.state !== 'unsynchronized' && reading?.state !== 'unsupported') continue;
+    const message = crystal ? mixStateText(reading) : specimenTimingText(reading);
+    if (message) document.dispatchEvent(new CustomEvent('optics:toast', { detail: { message } }));
+  }
+}
+
 function renderBeams() {
   const scene = traceScene(animatedOpticalElements(), state.beams);
   const drawables = scene.drawables;
@@ -429,6 +470,7 @@ function renderBeams() {
     }
   }
   beamLayer.innerHTML = s;
+  announceMixingState(state.elements);
   renderPulseLayer();
   syncPulseAnimation();
   notifyPulseState();

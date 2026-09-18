@@ -283,7 +283,16 @@ ${header(base)}
 async function main() {
   const manifestByName = new Map(examples.map(e => [e.name, e]));
 
+  // Keys pageHTML() actually renders. Anything else would be dropped in
+  // silence -- an entry once set formulas and html2, and half its prose never
+  // reached the page -- so fail the build instead.
+  const RENDERED = new Set(['match', 'title', 'tagline', 'html', 'inOpticalSetupTitle', 'inOpticalSetupHtml',
+    'limitations', 'citations', 'resources', 'related']);
   for (const entry of exampleEntries) {
+    const stray = Object.keys(entry).filter(key => !RENDERED.has(key));
+    if (stray.length) {
+      throw new Error(`examples-content.mjs "${entry.match}": unrecognized key(s) ${stray.join(', ')} would not be rendered`);
+    }
     if (!manifestByName.has(entry.match)) {
       throw new Error(`examples-content.mjs references unknown example "${entry.match}" — check sketch/js/examples-data.js (run tools/build-examples.mjs first if you just added or renamed an Examples/ file)`);
     }

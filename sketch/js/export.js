@@ -7,6 +7,7 @@ import {
 import { traceScene } from './raytrace.js';
 import { pulseMarkers } from './pulses.js';
 import { pulsePeriodNs, pulsesReadAsCW } from './timescale.js';
+import { polygonScannerState } from './polygon-scanner.js';
 import { encodeGIF, imageDataToRGB332, validateGIFOptions } from './gif.js';
 import { immersionLayerSVG } from './immersion.js';
 import { download, manualBeamSVG, rotPt } from './util.js';
@@ -80,8 +81,10 @@ function animatedElementsAt(seconds, playback) {
   const mechanicsMode = playback?.mechanicsMode === true;
   return state.elements.map(source => {
     let el = { ...source, _animationTimeS: motionTimeSeconds, _simulationTimeNs: simulationTimeNs };
-    if (source.type === 'galvo' && source.params.scanMode !== 'static') {
-      const hz = Math.max(0.01, source.params.scanFrequencyHz || 1);
+    if ((source.type === 'galvo' || source.type === 'polygonscanner') && source.params.scanMode !== 'static') {
+      const hz = source.type === 'polygonscanner'
+        ? Math.max(0.01, polygonScannerState(source.params).lineRateHz)
+        : Math.max(0.01, source.params.scanFrequencyHz || 1);
       const followsSimulationClock = !mechanicsMode && hz * speed / 1e9 * 12 >= 1;
       el._animationTimeS = followsSimulationClock
         ? simulationTimeNs / 1e9

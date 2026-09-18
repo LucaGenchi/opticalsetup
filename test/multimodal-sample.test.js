@@ -174,21 +174,24 @@ test('SHG and THG are generated from each beam illuminating the specimen', () =>
   assert.ok(thg.includes(267) && thg.includes(347), `both third harmonics expected, got ${thg}`);
 });
 
-// ---------------- 5 + 6. SFG, and stacking up to five signals ----------------
+// ------- 5 + 6. the chi(2) channel, and stacking up to five signals -------
 
-test('SFG needs two colours and lands at their sum frequency', () => {
-  assert.deepEqual(detectedWls(singleColourBench([ch('sfg', { eff: 0.5 })])), [800]);
-  const wls = detectedWls(twoColourBench([ch('sfg', { eff: 0.5 })]));
-  assert.ok(wls.includes(452), `expected the 452 nm sum-frequency signal, got ${wls}`);
-  assert.ok(MIXING_KINDS.has('sfg') && MIXING_KINDS.has('cars'));
+test('the second-order channel doubles one beam and sums two', () => {
+  // One beam: its second harmonic, and nothing to mix with.
+  assert.deepEqual(detectedWls(singleColourBench([ch('shg', { eff: 0.5 })])), [400, 800]);
+  // Two beams: both harmonics, and their sum frequency between them.
+  const wls = detectedWls(twoColourBench([ch('shg', { eff: 0.5 })]));
+  for (const expected of [400, 452, 520]) {
+    assert.ok(wls.includes(expected), `expected ${expected} nm, got ${wls}`);
+  }
+  assert.ok(MIXING_KINDS.has('cars'));
 });
 
-test('a multimodal specimen emits all five signal kinds at once from one crossing', () => {
+test('a multimodal specimen emits every signal it carries from one crossing', () => {
   const wls = detectedWls(twoColourBench([
     ch('fluor', { wl: 520, eff: 0.1 }),
     ch('shg', { eff: 0.1 }),
     ch('thg', { eff: 0.1 }),
-    ch('sfg', { eff: 0.1 }),
     ch('cars', { eff: 0.1 }),
   ]));
   // SHG of both beams (400, 520), THG of both (267, 347), SFG (452),

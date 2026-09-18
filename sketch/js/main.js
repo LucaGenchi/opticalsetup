@@ -56,7 +56,7 @@ const FIBER_DEMOS = new Set(['fiber', 'barefiber']);
 // cross-correlation mode only means anything with two sources and two arms, so
 // it needs a scene of its own rather than the one-source embed the component
 // page carries.
-const SCENE_DEMOS = new Set(['crosscorrelator']);
+const SCENE_DEMOS = new Set(['crosscorrelator', 'crystal-supercontinuum', 'crystal-thg']);
 
 // Fibers are drawn paths (state.beams), not registry elements, so their demo
 // scenes return {elements, beams} instead of a bare element array.
@@ -81,6 +81,141 @@ function fiberDemo({ bare }) {
 }
 
 const demoScenes = {
+  eye: () => {
+    const eye = mkDemo('eye', 280, 160, 0, { diameter: 30, pupil: 10, focus: 30 });
+    return [mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }), eye,
+      mkDemo('display', 280, 260, 0, { sensorId: eye.id, displayScale: 0.55 })];
+  },
+  generaldetector: () => {
+    const sensor = mkDemo('generaldetector', 350, 160);
+    return [mkDemo('pulsedlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }), sensor,
+      mkDemo('display', 350, 265, 0, { sensorId: sensor.id, displayScale: 0.6 })];
+  },
+  display: () => {
+    const sensor = mkDemo('powermeter', 350, 160);
+    return [mkDemo('cwlaser', 60, 160, 0, { avgPowerW: 0.2, beamMode: 'beam', beamWidth: 12 }),
+      mkDemo('filter', 210, 160, 0, { ftype: 'nd', trans: 0.25 }), sensor,
+      mkDemo('display', 350, 265, 0, { sensorId: sensor.id, displayScale: 0.65 })];
+  },
+  delayline: () => [
+    mkDemo('pulsedlaser', 60, 180),
+    mkDemo('probe', 150, 180, 0, { prop: 'time', timeSpanNs: 1 }),
+    mkDemo('delayline', 265, 180, 0, { delayMm: 100 }),
+    mkDemo('probe', 380, 180, 0, { prop: 'time', timeSpanNs: 1 }),
+    mkDemo('detector', 470, 180),
+  ],
+  chopper: () => {
+    const sensor = mkDemo('detector', 400, 160);
+    return [mkDemo('cwlaser', 60, 160),
+      mkDemo('chopper', 230, 160, 0, { frequencyHz: 1000, chopDuty: 0.5 }), sensor,
+      mkDemo('display', 400, 265, 0, { sensorId: sensor.id, displayScale: 0.55 })];
+  },
+  crystal: () => [
+    mkDemo('pulsedlaser', 60, 160, 0, { wavelength: 1064 }),
+    mkDemo('crystal', 220, 160, 0, { convert: 'shg', efficiency: 0.4, transmitPump: true }),
+    mkDemo('dichroic', 350, 160, 135, { cutoff: 700 }),
+    mkDemo('probe', 430, 160, 0, { prop: 'wl' }),
+    mkDemo('probe', 350, 260, 0, { prop: 'wl' }),
+    mkDemo('detector', 520, 160),
+    mkDemo('detector', 350, 350, 90),
+  ],
+  // The integrated OPO in its simplest use: a green picosecond pump in, the
+  // signal out of the front and the idler out of the port below it, each read
+  // by its own probe.
+  opo: () => [
+    mkDemo('pulsedlaser', 60, 200, 0, { wavelength: 516, pulseWidthFs: 2000, repRateMHz: 80, beamMode: 'line' },
+      { label: '516 nm pump · 2 ps', showLabel: true, labelPos: 't' }),
+    mkDemo('opo', 300, 200, 0, { signalWl: 800, tuneMode: 'fixed' },
+      { label: 'OPO', showLabel: true, labelPos: 't' }),
+    mkDemo('probe', 430, 200, 0, { prop: 'wl' }),
+    mkDemo('probe', 520, 214, 0, { prop: 'wl' }),
+    mkDemo('detector', 600, 200),
+    mkDemo('detector', 600, 214),
+  ],
+  // The crystal's other single-beam modes, as extra embeds on its page. The
+  // continuum reads its band from the arriving pump: 1035 nm femtosecond
+  // pulses in YAG, the near-infrared case a multiplex CARS bench uses.
+  'crystal-supercontinuum': () => {
+    const spectrometer = mkDemo('spectrometer', 470, 200, 0, { aperture: 30, labelPeaks: false },
+      { label: 'spectrometer', showLabel: true, labelPos: 'b' });
+    return [
+      mkDemo('pulsedlaser', 60, 200, 0, { wavelength: 1035, pulseWidthFs: 270, repRateMHz: 2, beamMode: 'line' },
+        { label: '1035 nm · 270 fs', showLabel: true, labelPos: 't' }),
+      // The residual pump is dumped so its narrow line does not dwarf the band.
+      mkDemo('crystal', 250, 200, 0, { convert: 'sc', scMedium: 'yag', scRange: 'estimate', efficiency: 0.5, transmitPump: false },
+        { label: 'YAG · supercontinuum', showLabel: true, labelPos: 't' }),
+      spectrometer,
+      mkDemo('display', 470, 60, 0, { sensorId: spectrometer.id, displayScale: 1.2, screenOn: true, displayView: 'main' }),
+    ];
+  },
+  // THG is the app's authored conversion proxy: one crystal emitting λ/3 at a
+  // set fraction, not a cascaded SHG-plus-SFG design.
+  'crystal-thg': () => [
+    mkDemo('pulsedlaser', 60, 160, 0, { wavelength: 1030, beamMode: 'line' }, { label: '1030 nm', showLabel: true, labelPos: 't' }),
+    mkDemo('crystal', 220, 160, 0, { convert: 'thg', efficiency: 0.3, transmitPump: true },
+      { label: 'THG · authored proxy', showLabel: true, labelPos: 't' }),
+    mkDemo('dichroic', 350, 160, 135, { cutoff: 700 }),
+    mkDemo('probe', 430, 160, 0, { prop: 'wl' }),
+    mkDemo('probe', 350, 260, 0, { prop: 'wl' }),
+    mkDemo('detector', 520, 160),
+    mkDemo('detector', 350, 350, 90),
+  ],
+  sample: () => [
+    mkDemo('cwlaser', 40, 150, 0, { wavelength: 488, beamMode: 'beam', beamWidth: 12 }),
+    mkDemo('lens', 150, 150, 0, { f: 60, dia: 25 }),
+    mkDemo('sample', 210, 150, 90, {
+      specimenType: 'linear', transmitExc: true, transmission: 0.9, aperture: 44,
+      channels: [{ kind: 'fluor', wl: 520, eff: 0.35, epi: false, epiRatio: 0.15,
+        autoWl: false, autoColor: true, color: '#22c55e', material: 'lipid',
+        fluorophore: 'custom', retardance: 90, axis: 45, transferEff: 0.1, requireOverlap: true }],
+    }),
+    mkDemo('lens', 285, 150, 0, { f: 55, dia: 50 }),
+    mkDemo('filter', 345, 150, 0, { ftype: 'longpass', cutoff: 500, length: 50 }),
+    mkDemo('pmt', 440, 150, 0, { aperture: 40, gain: 1e5, saturation: 1e6, darkInput: 1e-6 }),
+  ],
+  stage: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 8 }),
+    mkDemo('stage', 240, 160, 90, { pzMode: 'xy', pzTravelXY: 16, pzFreqXY: 0.3,
+      specimenType: 'linear', transmitExc: true, transmission: 0.8 }),
+    mkDemo('detector', 400, 160),
+  ],
+  objarrow: () => [
+    mkDemo('objarrow', 60, 160, 0, { height: 22, spread: 10, showImage: true }),
+    mkDemo('lens', 260, 160, 0, { f: 100, dia: 50.8 }),
+    mkDemo('textlabel', 395, 220, 0, { text: 'Image: 1:1, inverted', fontSize: 12 }),
+  ],
+  probe: () => [
+    mkDemo('sclaser', 60, 180),
+    mkDemo('probe', 240, 180, 0, { prop: 'spectrum' }),
+    mkDemo('detector', 430, 180),
+  ],
+  figureframe: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }),
+    mkDemo('lens', 200, 160, 0, { f: 80 }),
+    mkDemo('detector', 340, 160, 0, { aperture: 40 }),
+    mkDemo('figureframe', 205, 160, 0, { w: 370, h: 180 }),
+  ],
+  highlight: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 12 }),
+    mkDemo('lens', 220, 160, 0, { f: 80 }),
+    mkDemo('detector', 380, 160, 0, { aperture: 40 }),
+    mkDemo('highlight', 220, 160, 0, { w: 110, h: 100 }),
+  ],
+  box: () => [
+    mkDemo('cwlaser', 60, 160),
+    mkDemo('box', 230, 160, 0, { text: 'Enclosure', behavior: 'block' }),
+    mkDemo('detector', 400, 160),
+  ],
+  gascell: () => [
+    mkDemo('cwlaser', 60, 160),
+    mkDemo('gascell', 235, 160, 0, { windowLeft: true, windowRight: true }),
+    mkDemo('detector', 400, 160),
+  ],
+  window: () => [
+    mkDemo('cwlaser', 60, 160, 0, { beamMode: 'beam', beamWidth: 10 }),
+    mkDemo('window', 230, 160),
+    mkDemo('detector', 400, 160),
+  ],
   fiber: () => fiberDemo({ bare: false }),
   barefiber: () => fiberDemo({ bare: true }),
   mirror: () => [
@@ -598,6 +733,53 @@ const demoScenes = {
     mkDemo('cwlaser', 60, 200, 0),
     mkDemo('galvo', 220, 200, 45, { scanMode: 'sine', scanAmplitude: 8, scanFrequencyHz: 0.4 }),
     mkDemo('box', 220, 60, 0, { text: '', w: 200, h: 2, behavior: 'block', fill: '#f2f3f5' }, { label: 'screen — the reflected beam sweeps back and forth', showLabel: true, labelPos: 't' }),
+  ],
+  // The beam enters at the facet midpoint (one apothem from the hub along the
+  // 315 degree normal), and the window is the widest one this 25.9 mm facet can
+  // scan before the 6 mm beam starts to straddle two facets at a transition.
+  polygonscanner: () => [
+    mkDemo('cwlaser', 50, 194.150635, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 6 }),
+    mkDemo('polygonscanner', 240, 160, 315, { diameter: 100, dutyCycle: 56 }),
+    mkDemo('lens', 205.849365, 260, 90, { f: 100, dia: 100 }),
+    mkDemo('box', 205.849365, 360, 0, { text: '', w: 110, h: 10, behavior: 'block', fill: '#f2f3f5' },
+      { label: 'successive line sweeps; blanked between facets', showLabel: true, labelPos: 'b' }),
+    mkDemo('textlabel', 330, 120, 0, {
+      text: '### Inspect the scan\n'
+        + '12 facets x 1,000 RPM / 60 = **200 lines/s**\n'
+        + '\n'
+        + '**Green hub:** the scan window is open\n'
+        + '**Amber hub:** ideal synchronized blanking\n'
+        + '\n'
+        + 'Motion is slowed for inspection; the facet\n'
+        + 'rate readout always gives the physical rate.', fontSize: 11,
+    }),
+    mkDemo('textlabel', 330, 290, 0, {
+      text: 'The window is **56%**, not the 71% a datasheet might quote: that belongs to a head\n'
+        + 'with its own wheel geometry. Here a 6 mm beam on a 25.9 mm facet stays on one facet\n'
+        + 'for 56% of each period. Widen it past that and the beam straddles two facets at a\n'
+        + 'transition, leaving in two directions at once -- real behaviour, and what the\n'
+        + 'blanking exists to hide.', fontSize: 10,
+    }),
+  ],
+  // On-axis: a tilt of even five degrees costs this parabola a 5.9 mm caustic,
+  // so the demo keeps the beam on the axis, where an exact conic earns its
+  // keep -- k = -1 puts every ray through one point, k = 0 does not.
+  conicmirror: () => [
+    mkDemo('cwlaser', 60, 200, 0, { wavelength: 532, beamMode: 'beam', beamWidth: 50 }),
+    mkDemo('conicmirror', 320, 200, 0,
+      { dia: 70, hole: 0, radius: -200, conic: -1, facing: 'left', refl: 98 },
+      { label: 'parabola, k = -1', showLabel: true, labelPos: 'r' }),
+    // Marked with an annotation, not an object: anything solid on the axis
+    // here would be in the beam, and a drawn optic that light passes through
+    // reads as a bug rather than as a label.
+    mkDemo('arrowann', 220, 262, 90, { len: 44, width: 1.5, fill: '#8a8f98' },
+      { label: 'focus (f = R/2 = 100 mm)', showLabel: true, labelPos: 'b' }),
+    mkDemo('textlabel', 60, 332, 0, {
+      text: 'The collimated beam comes back to a **single point**: a parabola images infinity\n'
+        + 'onto its focus exactly. Set the conic constant to **k = 0** and the same mirror\n'
+        + 'becomes a sphere, whose outer rays cross about 2 mm early -- spherical aberration,\n'
+        + 'computed from the surface rather than assumed.', fontSize: 11,
+    }),
   ],
   aod: () => [
     mkDemo('cwlaser', 40, 200, 0, { wavelength: 532, beamMode: 'line' }),

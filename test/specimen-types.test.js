@@ -3,14 +3,19 @@ import assert from 'node:assert/strict';
 
 import {
   createElement, registry, newSampleChannel, sampleChannels, specimenTypeOf,
-  signalKindsFor, channelWarning, defaultEmissionWl, drivingExcitationWl,
+  signalKindsFor, channelWarning, defaultEmissionWl, drivingExcitationWl, specimenTimingText,
+  specimenTimingReadout,
   ramanShifts, ramanStokesWl, LINEAR_SIGNAL_KINDS, NONLINEAR_SIGNAL_KINDS,
   SPECIMEN_TYPES, MODIFIER_KINDS, EMISSION_ORDER,
   FLUOROPHORES, fluorophoreSpec, fluorophoreAbsorption,
   displayViewsFor, resolvedDisplayView, displayActionUpdate, getSize,
 } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
-import { traceAll, traceScene, detectorReading, specimenSignalWl, specimenIncidentWls } from '../sketch/js/raytrace.js';
+import {
+  traceAll, traceScene, detectorReading, specimenIncidentBeams, specimenSignalWl, specimenIncidentWls,
+  specimenSrsNote, specimenTimingReading, srsTransferGate,
+} from '../sketch/js/raytrace.js';
+import { gateTransmissionAt } from '../sketch/js/pulses.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { wavelengthToColor } from '../sketch/js/util.js';
 import { C_MM_PER_NS, pulseMarkers, pulseOverlap } from '../sketch/js/pulses.js';
@@ -51,8 +56,10 @@ test('a specimen is one of four types, and only two of them carry signals', () =
   assert.deepEqual(signalKindsFor('absorbing'), []);
   assert.deepEqual(signalKindsFor('resin'), []);
   assert.deepEqual(signalKindsFor('linear').map(([id]) => id), ['fluor', 'raman', 'phase']);
+  // Sum frequency is not its own kind any more: one chi(2) channel gives both
+  // the second harmonic of a beam and the sum frequency of a pair.
   assert.deepEqual(signalKindsFor('nonlinear').map(([id]) => id),
-    ['tpef', 'thpef', 'shg', 'thg', 'sfg', 'cars', 'srs']);
+    ['tpef', 'thpef', 'shg', 'thg', 'cars', 'srs']);
 });
 
 test('both the plain sample and the piezo holder offer the same specimen types', () => {
@@ -307,7 +314,7 @@ test('SRS stops when the two arms are no longer path-matched, and the toggle ove
     'the overlap requirement can be switched off per channel');
 });
 
-test('CARS and SFG also need the pulses to coincide', () => {
+test('CARS and the second-order channel need the pulses to coincide', () => {
   const mixed = (kind, extraOplMm, requireOverlap = true) => {
     const makeLaser = (wl, y) => {
       const laser = createElement('pulsedlaser', 0, y);
@@ -339,8 +346,15 @@ test('CARS and SFG also need the pulses to coincide', () => {
   assert.ok(!mixed('cars', 5).includes(650), 'a mismatched arm switches CARS off');
   assert.ok(mixed('cars', 5, false).includes(650), 'unless the requirement is switched off');
 
-  assert.ok(mixed('sfg', 0).includes(452), 'matched arms give the sum-frequency line');
-  assert.ok(!mixed('sfg', 5).includes(452), 'a mismatched arm switches SFG off');
+  // The chi(2) channel doubles each beam whatever the timing, and adds their
+  // sum frequency only while the pulses coincide.
+  const together = mixed('shg', 0), apart = mixed('shg', 5);
+  assert.ok(together.includes(452), 'matched arms give the sum-frequency line');
+  assert.ok(!apart.includes(452), 'a mismatched arm switches the sum frequency off');
+  for (const harmonic of [400, 520]) {
+    assert.ok(together.includes(harmonic), `the ${harmonic} nm harmonic is missing`);
+    assert.ok(apart.includes(harmonic), `the ${harmonic} nm harmonic should not depend on timing`);
+  }
 });
 
 test('a mismatched pair is explained, in picoseconds and in millimetres of path', () => {
@@ -984,4 +998,513 @@ test('sample thickness is a presentation control that never moves the optical su
     const thickSurface = surfaceOf(el);
     assert.deepEqual(thinSurface, thickSurface, `${type} thickness must not move or change the optical surface`);
   }
+});
+
+test('a focused beam is timed as one beam, not as a spread of sampling rays', () => {
+  // A converging beam is traced as many rays whose paths differ across the
+  // cone. Timing a ray of one beam against an arbitrary sampled ray of the
+  // other made a matched pair look picoseconds apart and silenced the signal —
+  // which is what a correctly built two-colour microscope hit.
+  const laser = (wl, y) => {
+    const source = createElement('pulsedlaser', 0, y);
+    Object.assign(source.params, {
+      wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 1000,
+      beamMode: 'size', dia: 6,
+    });
+    return source;
+  };
+  const elements = [laser(800, -30), laser(1040, 30)];
+  // Both beams through one lens, so each arrives as a cone of rays.
+  const lens = createElement('lens', 150, 0);
+  Object.assign(lens.params, { f: 150, dia: 80 });
+  const sample = createElement('sample', 300, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 60, specimenType: 'nonlinear',
+    channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+  });
+  const detector = createElement('detector', 500, 0);
+  detector.params.aperture = 120;
+  elements.push(lens, sample, detector);
+  traceAll(elements);
+
+  const beams = specimenIncidentBeams(sample.id) || [];
+  assert.equal(beams.length, 2, `two beams reach the specimen, not ${beams.length} records`);
+  const [a, b] = beams.sort((x, y) => x.wl - y.wl);
+  assert.ok(Math.abs(a.opl - b.opl) < 1e-6, `the arms are matched: ${a.opl} vs ${b.opl}`);
+
+  const reading = specimenTimingReading(sample.id);
+  assert.equal(reading.state, 'mixing', 'matched beams were judged out of time');
+  assert.ok(reading.overlap > 0.99, `overlap ${reading.overlap}`);
+  const spectrum = detectorReading(detector.id)?.spectrum || [];
+  assert.ok(spectrum.some(s => Math.abs(s.wavelength - 650) < 2), 'no anti-Stokes line from a matched pair');
+});
+
+test('the specimen says why a two-beam signal is missing', () => {
+  const bench = ({ extraOplMm = 0, partnerRepMHz = 80 } = {}) => {
+    const laser = (wl, y, repRateMHz) => {
+      const source = createElement('pulsedlaser', 0, y);
+      Object.assign(source.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz, pulseWidthFs: 200, beamMode: 'line',
+      });
+      return source;
+    };
+    const elements = [laser(800, -6, 80), laser(1040, 6, partnerRepMHz)];
+    if (extraOplMm) {
+      const delay = createElement('delayline', 120, 6);
+      Object.assign(delay.params, { delayMm: extraOplMm, aperture: 10 });
+      elements.push(delay);
+    }
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear',
+      channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+    });
+    elements.push(sample, createElement('detector', 400, 0));
+    traceAll(elements);
+    return specimenTimingReading(sample.id);
+  };
+
+  assert.equal(bench().state, 'mixing');
+  assert.equal(specimenTimingText(bench()), null, 'a working signal says nothing');
+
+  const late = bench({ extraOplMm: 30 });
+  assert.equal(late.state, 'unsynchronized');
+  assert.match(specimenTimingText(late), /CARS needs both pulses at the specimen.*100 ps apart \(30 mm of path\)/);
+
+  // Unrelated repetition rates are outside the model rather than simply late.
+  const rates = bench({ partnerRepMHz: 37 });
+  assert.equal(rates.state, 'unsupported');
+  assert.match(specimenTimingText(rates), /timing not modelled/);
+});
+
+test('retiring the sum-frequency channel keeps every authored channel that still means something', () => {
+  const raw = (kind, extra = {}) => ({
+    kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true, autoColor: true,
+    color: '#22c55e', material: 'lipid', fluorophore: 'custom', retardance: 90, axis: 45,
+    transferEff: 0.1, requireOverlap: true, ...extra,
+  });
+  const load = channels => parseSketch(JSON.stringify({
+    app: 'optics2d', version: 1,
+    elements: [{ id: 's', type: 'sample', x: 0, y: 0, rot: 90, params: { specimenType: 'nonlinear', channels } }],
+  }), registry).elements[0].params.channels;
+
+  // Two authored second-harmonic channels are two channels, not one.
+  const twoHarmonics = load([raw('shg', { eff: 0.1 }), raw('shg', { eff: 0.7, epi: true })]);
+  assert.deepEqual(twoHarmonics.map(c => [c.kind, c.eff, c.epi]), [['shg', 0.1, false], ['shg', 0.7, true]]);
+
+  // A lone sum-frequency channel becomes the second-order channel, settings intact.
+  const converted = load([raw('sfg', { eff: 0.7, epi: true })]);
+  assert.deepEqual(converted.map(c => [c.kind, c.eff, c.epi]), [['shg', 0.7, true]]);
+
+  // Alongside a second-harmonic channel it has nothing left to add.
+  assert.deepEqual(load([raw('shg', { eff: 0.1 }), raw('sfg', { eff: 0.7 })]).map(c => c.kind), ['shg']);
+  // And it converts in place beside unrelated channels.
+  assert.deepEqual(load([raw('cars'), raw('sfg', { eff: 0.4 })]).map(c => c.kind), ['cars', 'shg']);
+});
+
+test('the sum frequency is the pair\'s own pulse, not the beam that drove it', () => {
+  const bench = ({ driverCw = false } = {}) => {
+    const driver = createElement(driverCw ? 'cwlaser' : 'pulsedlaser', 0, -6);
+    Object.assign(driver.params, driverCw
+      ? { wavelength: 800, beamMode: 'line' }
+      : { wavelength: 800, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line' });
+    const partner = createElement('pulsedlaser', 0, 6);
+    Object.assign(partner.params, {
+      wavelength: 1030, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+    });
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear', transmitExc: false, transmission: 0,
+      channels: [ch('shg', { eff: 0.5, requireOverlap: true })],
+    });
+    const detector = createElement('detector', 400, 0);
+    detector.params.aperture = 60;
+    traceAll([driver, partner, sample, detector]);
+    const trains = detectorReading(detector.id)?.pulse?.trains || [];
+    return trains.find(t => Math.abs((t.centerWavelengthNm || 0) - 450.27) < 1);
+  };
+
+  // Two 200 fs pulses make a 141 fs product, not another 200 fs pulse.
+  const both = bench();
+  assert.ok(both, 'no sum-frequency train at the detector');
+  assert.ok(Math.abs(both.pulseWidthFs - 200 / Math.SQRT2) < 0.1, `duration ${both.pulseWidthFs}`);
+  assert.notEqual(both.transformLimited, true, 'the driver\'s transform-limited claim is not this signal\'s');
+
+  // A steady driver cannot make the signal steady: it exists only when the
+  // pulsed partner is there.
+  const withCw = bench({ driverCw: true });
+  assert.ok(withCw, 'a CW driver and a pulsed partner produced no sum frequency');
+  assert.equal(withCw.repRateMHz, 80, 'the signal must carry the pulsed partner\'s train');
+  assert.ok(Math.abs(withCw.pulseWidthFs - 200) < 0.1, `duration ${withCw.pulseWidthFs}`);
+});
+
+test('one laser split in two is two beams, and only the arm that meets the pulse is the partner', () => {
+  // Branch identity, tested on a real split: one 800 nm laser through a
+  // beamsplitter, its two arms independently delayed, and a 1040 nm beam to
+  // mix with. Both arms carry the same source, so only the path they took
+  // tells them apart -- and averaging them would put a signal where neither
+  // arm overlaps.
+  const bench = ({ delayMm, order = 'forward' } = {}) => {
+    const pump = createElement('pulsedlaser', 0, 0);
+    Object.assign(pump.params, {
+      wavelength: 800, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+    });
+    const splitter = createElement('bs', 100, 0);
+    splitter.rot = 90;
+    Object.assign(splitter.params, { ratio: 0.5, size: 25.4 });
+    const fold = createElement('mirror', 100, 60);
+    fold.rot = 135;
+    Object.assign(fold.params, { length: 25.4, refl: 100 });
+    // The delay sits in the transmitted arm only, so the two arms move apart.
+    const delay = createElement('delayline', 250, 0);
+    Object.assign(delay.params, { delayMm, aperture: 24 });
+    // The partner colour, arriving 445 mm along: the mean of the two arms
+    // when they straddle it.
+    const probe = createElement('pulsedlaser', -45, 30);
+    Object.assign(probe.params, {
+      wavelength: 1040, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+    });
+    const sample = createElement('sample', 400, 30);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 200, specimenType: 'nonlinear',
+      channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+    });
+    const detector = createElement('detector', 600, 30);
+    detector.params.aperture = 200;
+    const optics = [pump, splitter, fold, delay, probe];
+    traceAll([...(order === 'forward' ? optics : [...optics].reverse()), sample, detector]);
+    const beams = specimenIncidentBeams(sample.id) || [];
+    return {
+      beams,
+      arms: beams.filter(b => Math.round(b.wl) === 800),
+      reading: specimenTimingReading(sample.id),
+      hasSignal: (detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650) < 3),
+    };
+  };
+
+  // Arms 15 mm either side of the partner: their mean is exactly matched.
+  const straddling = bench({ delayMm: 30 });
+  assert.equal(straddling.arms.length, 2, 'the split must give two 800 nm beams');
+  const [armA, armB] = straddling.arms;
+  assert.equal(armA.pulse.sourceId, armB.pulse.sourceId, 'both arms come from the one laser');
+  assert.notEqual(armA.branch, armB.branch, 'the two arms must be told apart by the path they took');
+  assert.ok(Math.abs(Math.abs(armA.opl - armB.opl) - 30) < 1e-6,
+    `the delay line should separate the arms by 30 mm: ${armA.opl} and ${armB.opl}`);
+  const partner = straddling.beams.find(b => Math.round(b.wl) === 1040);
+  assert.ok(Math.abs((armA.opl + armB.opl) / 2 - partner.opl) < 1e-6,
+    'the arms must straddle the partner, so that their mean would look matched');
+  assert.ok(Math.abs(armA.opl - partner.opl) > 10 && Math.abs(armB.opl - partner.opl) > 10,
+    'neither arm may actually overlap the partner');
+  assert.equal(straddling.reading.state, 'unsynchronized');
+  assert.ok(!straddling.hasSignal, 'two mistimed arms were averaged into a signal');
+
+  // Move one arm onto the partner: that arm is the partner now.
+  const matched = bench({ delayMm: 45 });
+  assert.equal(matched.arms.length, 2, 'still two arms');
+  assert.equal(matched.reading.state, 'mixing');
+  assert.ok(matched.hasSignal, 'the matched arm produced no signal');
+
+  // The order the scene happens to be built in must not decide any of it.
+  const reversed = bench({ delayMm: 45, order: 'reverse' });
+  assert.equal(reversed.reading.state, 'mixing');
+  assert.equal(reversed.hasSignal, matched.hasSignal);
+  assert.equal(bench({ delayMm: 30, order: 'reverse' }).hasSignal, false);
+});
+
+test('the sampling rays that draw one beam stay one beam', () => {
+  // The other half of the same rule: a focused cone is many rays on one path,
+  // and they must not be timed against each other.
+  const laser = (wl, y) => {
+    const source = createElement('pulsedlaser', 0, y);
+    Object.assign(source.params, {
+      wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 1000, beamMode: 'size', dia: 6,
+    });
+    return source;
+  };
+  const lens = createElement('lens', 150, 0);
+  Object.assign(lens.params, { f: 150, dia: 80 });
+  const sample = createElement('sample', 300, 0);
+  sample.rot = 90;
+  Object.assign(sample.params, {
+    aperture: 60, specimenType: 'nonlinear',
+    channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+  });
+  const detector = createElement('detector', 500, 0);
+  detector.params.aperture = 120;
+  traceAll([laser(800, -30), laser(1040, 30), lens, sample, detector]);
+
+  const beams = specimenIncidentBeams(sample.id) || [];
+  assert.equal(beams.length, 2, `two beams reach the specimen, not ${beams.length} records`);
+  assert.equal(new Set(beams.map(b => b.branch)).size, 2, 'each beam is one branch');
+  const [a, b] = beams.sort((x, y) => x.wl - y.wl);
+  assert.ok(Math.abs(a.opl - b.opl) < 1e-6, `the arms are matched: ${a.opl} vs ${b.opl}`);
+  assert.equal(specimenTimingReading(sample.id).state, 'mixing');
+  assert.ok((detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650) < 2),
+    'no anti-Stokes line from a matched pair');
+});
+
+test('the specimen shows where the two beams are, not only when they are wrong', () => {
+  // A picosecond is a third of a millimetre of path: no drawing at bench scale
+  // can show it, so the number has to be readable while a delay is moved.
+  const bench = extraOplMm => {
+    const laser = (wl, y) => {
+      const source = createElement('pulsedlaser', 0, y);
+      Object.assign(source.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 1000, beamMode: 'line',
+      });
+      return source;
+    };
+    const elements = [laser(800, -6), laser(1040, 6)];
+    if (extraOplMm) {
+      const delay = createElement('delayline', 120, 6);
+      Object.assign(delay.params, { delayMm: extraOplMm, aperture: 10 });
+      elements.push(delay);
+    }
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear',
+      channels: [ch('cars', { eff: 0.5, requireOverlap: true })],
+    });
+    elements.push(sample, createElement('detector', 400, 0));
+    traceAll(elements);
+    return { sample, text: specimenTimingReadout(specimenTimingReading(sample.id)) };
+  };
+
+  // Matched, and it says so rather than staying silent.
+  assert.match(bench(0).text, /800 \+ 1040 nm: arriving together, 100% temporal overlap/);
+  // Partly overlapping: the number moves continuously, which is what makes a
+  // delay scan readable.
+  assert.match(bench(0.2).text, /667 fs apart \(0\.2 mm of path\), 54% temporal overlap/);
+  assert.match(bench(30).text, /100 ps apart \(30 mm of path\), 0% temporal overlap/);
+
+  // And the readout is offered on both specimen holders when a two-beam signal
+  // is configured.
+  for (const type of ['sample', 'stage']) {
+    const row = registry[type].params.find(p => p.key === 'pulseTiming');
+    assert.ok(row, `${type} has no timing readout`);
+    const { sample } = bench(0);
+    assert.equal(row.show({ ...sample.params }), true, `${type} hides it from a two-beam specimen`);
+    assert.equal(row.show({ ...sample.params, channels: [ch('fluor')] }), false,
+      `${type} shows it where no signal needs two beams`);
+  }
+});
+
+test('a scene carrying both second harmonic and sum frequency keeps the harmonic channel', () => {
+  // The authored migration choice: the surviving chi(2) channel covers what
+  // the sum-frequency entry did, and that entry's own settings go with it
+  // rather than the scene emitting each signal twice.
+  const raw = (kind, extra = {}) => ({
+    kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true, autoColor: true,
+    color: '#22c55e', material: 'lipid', fluorophore: 'custom', retardance: 90, axis: 45,
+    transferEff: 0.1, requireOverlap: true, ...extra,
+  });
+  const load = channels => parseSketch(JSON.stringify({
+    app: 'optics2d', version: 1,
+    elements: [{ id: 's', type: 'sample', x: 0, y: 0, rot: 90, params: { specimenType: 'nonlinear', channels } }],
+  }), registry).elements[0].params.channels;
+
+  const conflicting = [
+    raw('shg', { eff: 0.1, epi: false, autoWl: true, color: '#22c55e', requireOverlap: true }),
+    raw('sfg', { eff: 0.7, epi: true, epiRatio: 0.4, autoWl: false, wl: 400, color: '#ff0000', requireOverlap: false }),
+  ];
+  for (const order of [conflicting, [...conflicting].reverse()]) {
+    const loaded = load(order);
+    assert.equal(loaded.length, 1, 'one second-order channel survives, whichever order they were saved in');
+    const [only] = loaded;
+    assert.equal(only.kind, 'shg');
+    // The harmonic channel's own settings, not the retired entry's.
+    assert.equal(only.eff, 0.1);
+    assert.equal(only.epi, false);
+    assert.equal(only.autoWl, true);
+    assert.equal(only.color, '#22c55e');
+    assert.equal(only.requireOverlap, true);
+  }
+});
+
+test('with the overlap requirement off, the readout says timing is not checked', () => {
+  // An unchecked channel still draws its schematic signal, so the readout must
+  // not suggest there is no two-beam signal at all.
+  const bench = requireOverlap => {
+    const laser = (wl, y) => {
+      const source = createElement('pulsedlaser', 0, y);
+      Object.assign(source.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+      });
+      return source;
+    };
+    const delay = createElement('delayline', 120, 6);
+    Object.assign(delay.params, { delayMm: 30, aperture: 10 });
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear', channels: [ch('cars', { eff: 0.5, requireOverlap })],
+    });
+    const detector = createElement('detector', 400, 0);
+    detector.params.aperture = 60;
+    traceAll([laser(800, -6), laser(1040, 6), delay, sample, detector]);
+    return {
+      text: specimenTimingReadout(specimenTimingReading(sample.id)),
+      hasSignal: (detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650) < 2),
+    };
+  };
+
+  const unchecked = bench(false);
+  assert.ok(unchecked.hasSignal, 'with the requirement off the schematic signal is drawn');
+  assert.match(unchecked.text, /800 \+ 1040 nm: pulse-overlap requirement off, so arrival timing is not checked/);
+
+  // With it on, the same 30 mm mismatch is timed and reported.
+  const checked = bench(true);
+  assert.ok(!checked.hasSignal);
+  assert.match(checked.text, /100 ps apart/);
+
+  assert.equal(specimenTimingReadout(null), 'No two-beam timing measured yet');
+});
+
+test('an unchecked channel never hides a checked channel\'s timing verdict', () => {
+  // Two CARS channels on one specimen, one with the overlap check and one
+  // without, in both orders: the readout must keep the real verdict.
+  const run = order => {
+    const laser = (wl, y) => {
+      const source = createElement('pulsedlaser', 0, y);
+      Object.assign(source.params, {
+        wavelength: wl, temporalMode: 'pulsed', repRateMHz: 80, pulseWidthFs: 200, beamMode: 'line',
+      });
+      return source;
+    };
+    const delay = createElement('delayline', 120, 6);
+    Object.assign(delay.params, { delayMm: 30, aperture: 10 });
+    const sample = createElement('sample', 200, 0);
+    sample.rot = 90;
+    const checked = ch('cars', { eff: 0.5, requireOverlap: true });
+    const unchecked = ch('cars', { eff: 0.5, requireOverlap: false });
+    Object.assign(sample.params, {
+      aperture: 40, specimenType: 'nonlinear',
+      channels: order === 'checked-first' ? [checked, unchecked] : [unchecked, checked],
+    });
+    const detector = createElement('detector', 400, 0);
+    detector.params.aperture = 60;
+    traceAll([laser(800, -6), laser(1040, 6), delay, sample, detector]);
+    return {
+      text: specimenTimingReadout(specimenTimingReading(sample.id)),
+      hasSignal: (detectorReading(detector.id)?.spectrum || []).some(s => Math.abs(s.wavelength - 650) < 2),
+    };
+  };
+  for (const order of ['checked-first', 'unchecked-first']) {
+    const { text, hasSignal } = run(order);
+    assert.match(text, /100 ps apart \(30 mm of path\), 0% temporal overlap/, `${order}: ${text}`);
+    assert.ok(hasSignal, `${order}: the unchecked channel should still draw its schematic signal`);
+  }
+});
+
+test('stimulated Raman transfer follows the donor\'s ON state, whatever levels its gate uses', () => {
+  // A modulator can express "on" as a gate's high half (a chopper) or its low
+  // half (a polarization modulator read through an analyzer), and a gate can be
+  // inverted. The transferred excursion must land while the donor is actually
+  // transmitting in every case — a loss for a pump receiver, a gain for a
+  // Stokes receiver.
+  const pulse = { repRateMHz: 80, pulseWidthFs: 1000, phaseNs: 0 };
+  const channel = ch('srs', { transferEff: 0.3, requireOverlap: false });
+  const gates = {
+    chopper: { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 1, low: 0 },
+    'modulator read through an analyzer': { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 0, low: 1 },
+    'inverted chopper': { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 1, low: 0, invert: true },
+    'sine modulator': { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'sine', depth: 1 },
+  };
+  const cases = [
+    // Stokes modulated, pump detected: stimulated Raman LOSS on the pump.
+    { receiverWl: 780, donorWl: 1030, expect: 'loss' },
+    // Pump modulated, Stokes detected: stimulated Raman GAIN on the Stokes.
+    { receiverWl: 1030, donorWl: 780, expect: 'gain' },
+  ];
+  for (const [gateName, donorGate] of Object.entries(gates)) {
+    for (const { receiverWl, donorWl, expect } of cases) {
+      const donor = { wl: donorWl, opl: 0, pulse: { ...pulse, gates: [donorGate] }, gates: [donorGate] };
+      const receiver = { wl: receiverWl, opl: 0, pulse: { ...pulse } };
+      const transfer = srsTransferGate(channel, receiver, [donor], null);
+      assert.ok(transfer, `${gateName}: no transfer`);
+      // Every one of these gates swings its donor between 0 and 1, so the
+      // receiver's factor must be exactly 1 ± 0.3 × (how much of the donor is
+      // through) at every instant — a dip for a pump, a rise for a Stokes.
+      const sign = expect === 'loss' ? -1 : 1;
+      let sawOn = false, sawOff = false;
+      for (let t = 0; t < 50; t += 0.25) {
+        const donorOn = gateTransmissionAt(donorGate, t);
+        const factor = gateTransmissionAt(transfer, t);
+        const expected = 1 + sign * 0.3 * donorOn;
+        assert.ok(Math.abs(factor - expected) < 1e-9,
+          `${gateName}, ${expect} at t=${t} ns: donor ${donorOn.toFixed(4)} gave ${factor}, expected ${expected}`);
+        if (donorOn > 0.999) sawOn = true;
+        if (donorOn < 1e-9) sawOff = true;
+      }
+      assert.ok(sawOn && sawOff, `${gateName}: the scan never reached both the on and the off donor`);
+    }
+  }
+});
+
+test('the transferred modulation asks the donor about the photons that are actually there', () => {
+  // Arms a whole pulse period apart overlap perfectly, one pulse index apart:
+  // the donor photons meeting a receiver pulse left their source 12.5 ns
+  // earlier, and the transfer has to be evaluated for those photons.
+  const period = 1000 / 80;
+  const periodMm = period * 299.792458;
+  const channel = ch('srs', { transferEff: 0.3, requireOverlap: true });
+  const donorGate = { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 1, low: 0 };
+  const pulse = { repRateMHz: 80, pulseWidthFs: 200, phaseNs: 0 };
+  for (const [label, receiverOpl, donorOpl] of [
+    ['donor a period behind', 0, periodMm],
+    ['receiver a period behind', periodMm, 0],
+    ['equal arms', 0, 0],
+  ]) {
+    const donor = { wl: 1030, opl: donorOpl, pulse: { ...pulse, gates: [donorGate] }, gates: [donorGate] };
+    const receiver = { wl: 780, opl: receiverOpl, pulse: { ...pulse } };
+    const transfer = srsTransferGate(channel, receiver, [donor], null);
+    assert.ok(transfer, `${label}: no transfer between perfectly overlapping pulses`);
+    for (let t = 0; t < 100; t += 0.5) {
+      const pairedDonorEmission = t + (receiverOpl - donorOpl) / 299.792458;
+      const expected = 1 - 0.3 * gateTransmissionAt(donorGate, pairedDonorEmission);
+      const factor = gateTransmissionAt(transfer, t);
+      assert.ok(Math.abs(factor - expected) < 1e-9,
+        `${label}: receiver emission ${t} ns gave ${factor}, expected ${expected}`);
+    }
+  }
+});
+
+test('stimulated Raman configurations outside the model are not drawn, and say why', () => {
+  const channel = ch('srs', { transferEff: 0.3, requireOverlap: false });
+  const pulse = { repRateMHz: 80, pulseWidthFs: 200, phaseNs: 0 };
+  const chopper = { opl: 0, frequencyMHz: 20, duty: 0.5, phaseNs: 0, shape: 'square', high: 1, low: 0 };
+  const closed = { opl: 0, frequencyMHz: 1, duty: 1, phaseNs: 0, shape: 'square', high: 0, low: 0 };
+  const beam = (wl, gates = []) => ({ wl, opl: 0, pulse: { ...pulse, gates }, gates, key: `${wl}:${gates.length}` });
+  const run = (receiver, beams) => {
+    traceScene([]);   // resets per-trace notes
+    const id = 'sample-under-test';
+    const transfer = srsTransferGate(channel, receiver, beams, id);
+    return { transfer, note: specimenSrsNote(id) };
+  };
+
+  // A donor behind two modulators: keeping only the last one would draw a
+  // transfer while an earlier one blocks the donor completely.
+  const composite = run({ wl: 780, opl: 0, pulse: { ...pulse } }, [beam(1030, [closed, chopper])]);
+  assert.equal(composite.transfer, null, 'a donor passing two modulators must not be reduced to its last one');
+  assert.match(composite.note, /more than one modulator/);
+
+  // Two modulated beams that could each drive the receiver.
+  const twoDonors = run({ wl: 780, opl: 0, pulse: { ...pulse } }, [beam(1030, [chopper]), beam(1100, [chopper])]);
+  assert.equal(twoDonors.transfer, null);
+  assert.match(twoDonors.note, /more than one modulated beam/);
+
+  // Both beams of the pair modulated.
+  const both = run({ wl: 780, opl: 0, pulse: { ...pulse, gates: [chopper] } }, [beam(1030, [chopper])]);
+  assert.equal(both.transfer, null);
+  assert.match(both.note, /both beams are modulated/);
+
+  // The ordinary single-donor case still transfers, and leaves no note.
+  const ordinary = run({ wl: 780, opl: 0, pulse: { ...pulse } }, [beam(1030, [chopper])]);
+  assert.ok(ordinary.transfer, 'the supported configuration stopped transferring');
+  assert.equal(ordinary.note, null);
 });
