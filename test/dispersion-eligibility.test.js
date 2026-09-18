@@ -255,3 +255,28 @@ test('a continuum the crystal generates carries its own record: timed to the pum
   assert.equal(bare.stretchedPulseWidthFs, null);
   assert.equal(bare.repRateMHz, 2, 'still timed to the pump');
 });
+
+// --- Third review round ----------------------------------------------------
+
+test('a filter crossing part of a beam gives the same answer whichever half arrives first', () => {
+  // The reviewer's reproduction: a 6 mm bandpass at y = −4 or +4 across a
+  // 12 mm beam. Mirror-image partial filtering must agree.
+  const partly = (y, filterParams) => {
+    const source = laser({ pulseWidthFs: 100, transformLimited: true, beamMode: 'beam', beamWidth: 12 });
+    const filter = createElement('filter', 200, y);
+    Object.assign(filter.params, { length: 6, ...filterParams });
+    const det = createElement('detector', 500, 0);
+    det.params.aperture = 40;
+    traceScene([source, filter, det]);
+    return detectorReading(det.id).pulse;
+  };
+  for (const y of [-4, 4]) {
+    const pulse = partly(y, { ftype: 'bandpass', center: 800, band: 5 });
+    assert.equal(pulse.stretchedPulseWidthFs, null, `filter at y = ${y}`);
+    assert.equal(pulse.dispersionModel, DISPERSION_UNAVAILABLE.reshaped);
+  }
+  // Controls: uniform attenuation across part of the beam, and no filter.
+  for (const y of [-4, 4]) close(partly(y, { ftype: 'nd', trans: 0.5 }).stretchedPulseWidthFs, 100, 1e-9);
+  const plain = read([laser({ pulseWidthFs: 100, transformLimited: true, beamMode: 'beam', beamWidth: 12 })]);
+  close(plain.stretchedPulseWidthFs, 100, 1e-9);
+});
