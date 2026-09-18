@@ -1,7 +1,7 @@
 // GitHub handoff for community setup proposals. Authentication and final
 // submission stay on GitHub; the static app only prepares a prefilled form.
 
-const REPOSITORY = 'LucaGenchi/optics-sketch';
+const REPOSITORY = 'LucaGenchi/opticalsetup';
 const ISSUE_TEMPLATE = 'example-proposal.yml';
 
 // GitHub documents that overlong issue URLs can be rejected with HTTP 414 but

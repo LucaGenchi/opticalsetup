@@ -11,12 +11,12 @@ Use the scene-builder skill when a user asks an LLM or implementation agent to c
 
 ## Authoritative implementation
 
-- [Source repository](https://github.com/LucaGenchi/optics-sketch): Current application and scene behavior.
-- [Scene state and validation](https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/state.js): Versioned scene envelope, normalization, parsing, and serialization.
-- [Element registry](https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/elements.js): Supported optical element types, defaults, parameters, rendering, and optical behavior.
-- [Detector registry extension](https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/detector-instruments.js): Additional detector types installed into the element registry.
-- [Share-link codec](https://github.com/LucaGenchi/optics-sketch/blob/main/sketch/js/share.js): Current `#sketch=` payload encoding and decoding.
-- [Example scenes](https://github.com/LucaGenchi/optics-sketch/tree/main/Examples): Working scenes to use as structural and layout references.
+- [Source repository](https://github.com/LucaGenchi/opticalsetup): Current application and scene behavior.
+- [Scene state and validation](https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/state.js): Versioned scene envelope, normalization, parsing, and serialization.
+- [Element registry](https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/elements.js): Supported optical element types, defaults, parameters, rendering, and optical behavior.
+- [Detector registry extension](https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/detector-instruments.js): Additional detector types installed into the element registry.
+- [Share-link codec](https://github.com/LucaGenchi/opticalsetup/blob/main/sketch/js/share.js): Current `#sketch=` payload encoding and decoding.
+- [Example scenes](https://github.com/LucaGenchi/opticalsetup/tree/main/Examples): Working scenes to use as structural and layout references.
 
 ## Application
 

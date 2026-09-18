@@ -74,16 +74,25 @@ the toolbar, palette, canvas, and inspector do not overflow.
   rendering/export code. Clamp user-controlled numerical inputs at their schema
   boundary.
 - Diagram-only elements must not silently absorb or redirect rays.
-- Preserve save-file compatibility. Normalize legacy/malformed sketches instead
-  of assuming all fields are present.
+- Normalize malformed sketches instead of assuming all fields are present.
+  Backward compatibility with old save files is deliberately *not* maintained
+  at this stage: prefer a clear "unsupported" error over silent migration
+  code, and do not add new migration shims unless the user asks for one.
 - Keep visual hierarchy workbench-like: the canvas is primary, wavelength color
   communicates optical energy, and controls should explain their current mode.
 - Do not add advanced physics merely to make a component look functional. A
   clear capability note is preferable to misleading behavior.
 
+## License
+
+OpticalSetup is free software under the GNU General Public License,
+version 3 or (at your option) any later version; see `LICENSE`. Every
+contribution is accepted under the same terms. Do not add code or content
+under a license that is incompatible with the GPL.
+
 ## Git and delivery
 
-- `origin` is `https://github.com/LucaGenchi/optics-sketch.git`.
+- `origin` is `https://github.com/LucaGenchi/opticalsetup.git`.
 - Keep commits focused and describe behavior, not implementation trivia.
 - Run the full verification above before committing or opening a PR.
 - In PR descriptions, state user-visible behavior, physics limitations, and the
