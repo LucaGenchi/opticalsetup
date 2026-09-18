@@ -234,8 +234,10 @@ export const wikiEntries = [
         chirp's sign — <em>Positively</em> or <em>Negatively chirped (quadratic)</em> — and its
         GDD in fs²; the transform-limited duration and the emitted pulse duration beneath are
         computed. The duration is therefore always derived and can never fall below the limit
-        the bandwidth sets. Switching between the two keeps the spectrum: going chirped starts
-        with no GDD, going transform-limited drops the chirp and keeps the bandwidth. Pulse
+        the bandwidth sets. Each mode keeps its own values: going chirped starts from the
+        transform-limited pulse's own spectrum with no GDD, so the emitted pulse is unchanged;
+        going back to transform-limited restores the duration last set in that mode, so
+        switching off and on without editing returns the same pulse. Pulse
         energy (average power ÷ repetition rate) and peak power are readouts, never entered;
         for a chirped sech² pulse the peak power is an estimate, since a dispersed sech² pulse
         does not keep an exact sech² profile.</p>
@@ -250,9 +252,11 @@ export const wikiEntries = [
         is clamped and the duration changes. A train saved at 0&nbsp;nm opens
         transform-limited at its duration. The bandwidth field's fixed bounds hold the
         transform-limited bandwidth of every authorable pulse (1&nbsp;fs to 1&nbsp;ms) at
-        every allowed wavelength, so a spectrum carried across the mode toggle — in
-        either direction — is kept through a save and reload, and no wavelength or
-        shape edit moves it.</p>
+        every allowed wavelength, so the spectrum a switch to chirped starts from is kept
+        through a save and reload, and no wavelength or shape edit moves it. A chirped
+        bandwidth can imply a transform limit outside the 1&nbsp;fs – 1&nbsp;ms the
+        transform-limited field accepts; that is why switching back does not derive a
+        duration from it.</p>
         <p><em>Show pulse dynamics</em> is a drawing choice only — switching it off leaves
         the beam rendered as a steady CW line while every bit of the pulse physics above
         keeps running.</p>

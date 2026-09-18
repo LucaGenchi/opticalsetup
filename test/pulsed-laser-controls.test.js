@@ -94,20 +94,35 @@ test('a spectrum carried across the mode toggle survives a save and reload, at b
   close(authoredPulseTiming(edge.params).durationFs, authoredPulseTiming(reopen(edge).params).durationFs, 1e-12, 'clamped alike');
 });
 
-test('chirped → transform-limited lands on the chirped bandwidth\'s limit, not a stale duration', async () => {
-  // The reviewer's reproduction: default 150 fs, then 5 nm, +135000 fs², then
-  // transform-limited. It must emit the 5 nm limit, about 188.3 fs.
-  const { state } = await import('../sketch/js/state.js');
+test('each mode keeps its own values across the toggle, however far the chirped bandwidth goes', async () => {
+  // Going back to transform-limited restores the duration last set in that
+  // mode instead of deriving one from the chirped bandwidth -- which can imply
+  // a limit outside 1 fs – 1 ms (900 nm at 400 nm implies 0.26 fs) that the
+  // field would have to clamp. Off and on without edits returns the same pulse.
+  const { state, parseSketch } = await import('../sketch/js/state.js');
   const { initInspector, renderInspector, applyInput } = await import('../sketch/js/inspector.js');
   initInspector({ innerHTML: '', querySelector: () => null, querySelectorAll: () => [] });
+  const toggle = (laser, checked) => {
+    Object.assign(state, { elements: [laser], beams: [], selection: { kind: 'element', id: laser.id }, embedMode: false });
+    renderInspector();
+    applyInput({ dataset: { p: 'transformLimited' }, type: 'checkbox', checked }, true);
+  };
+  const reopen = laser => parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [laser], beams: [] }), registry).elements[0];
   const laser = createElement('pulsedlaser', 0, 0);
-  Object.assign(laser.params, { wavelength: 800, transformLimited: false, bandwidth: 5, inputChirp: 'positive', chirpGddFs2: 135000 });
-  assert.equal(laser.params.pulseWidthFs, 150, 'a stale stored duration is present');
-  Object.assign(state, { elements: [laser], beams: [], selection: { kind: 'element', id: laser.id }, embedMode: false });
-  renderInspector();
-  applyInput({ dataset: { p: 'transformLimited' }, type: 'checkbox', checked: true }, true);
-  close(laser.params.pulseWidthFs, 188.3, 0.05, 'the 5 nm transform limit');
-  close(transformLimitedBandwidthNm(laser.params.pulseWidthFs, 800, 'gauss'), 5, 0.002, 'the spectrum is kept');
+  Object.assign(laser.params, { wavelength: 800, transformLimited: true, pulseWidthFs: 150 });
+  toggle(laser, false);
+  toggle(laser, true);
+  assert.equal(laser.params.pulseWidthFs, 150, 'off and on with no edits: the same pulse');
+  // The reviewer's out-of-range case: chirped at 400 nm, 900 nm, then back.
+  toggle(laser, false);
+  Object.assign(laser.params, { wavelength: 400, bandwidth: 900, chirpGddFs2: 0 });
+  close(authoredPulseTiming(laser.params).durationFs, 0.2615, 1e-3, 'the chirped pulse keeps its implied 0.26 fs');
+  toggle(laser, true);
+  assert.equal(laser.params.pulseWidthFs, 150, 'transform-limited returns to its own duration, unclamped');
+  assert.equal(laser.params.bandwidth, 900, 'the chirped bandwidth is kept for the next time');
+  const back = reopen(laser);
+  assert.equal(back.params.pulseWidthFs, 150);
+  assert.equal(back.params.bandwidth, 900);
 });
 
 test('after a wavelength or shape edit, the spectrum, the timing and a reload agree', async () => {
@@ -131,5 +146,20 @@ test('after a wavelength or shape edit, the spectrum, the timing and a reload ag
     const reopened = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [laser], beams: [] }), registry).elements[0];
     assert.equal(resolveSourceSpectrum('pulsedlaser', reopened.params).bw, emitted, `${key}: reload keeps the spectrum`);
     close(authoredPulseTiming(reopened.params).durationFs, timing.durationFs, 1e-12, `${key}: reload keeps the timing`);
+  }
+});
+
+test('the tracer\'s pulse record carries exactly the duration the readout shows', async () => {
+  const { traceScene } = await import('../sketch/js/raytrace.js');
+  for (const params of [
+    { wavelength: 400, transformLimited: false, bandwidth: 900, chirpGddFs2: 0 },   // implies 0.26 fs
+    { wavelength: 800, transformLimited: false, bandwidth: 5, chirpGddFs2: 135000 },
+    { wavelength: 800, transformLimited: true, pulseWidthFs: 150 },
+  ]) {
+    const laser = createElement('pulsedlaser', 0, 0);
+    Object.assign(laser.params, { beamMode: 'line', ...params });
+    const det = createElement('detector', 200, 0);
+    const { pulseTracks } = traceScene([laser, det]);
+    close(pulseTracks[0].pulse.pulseWidthFs, authoredPulseTiming(laser.params).durationFs, 1e-12, JSON.stringify(params));
   }
 });

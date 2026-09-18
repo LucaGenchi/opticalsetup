@@ -5140,7 +5140,10 @@ export function traceScene(elements, beams = []) {
       sourceId: el.id,
       avgPowerW: Number.isFinite(p.avgPowerW) ? Math.max(0, p.avgPowerW) : 0,
       repRateMHz: Math.min(1000000, Math.max(0.001, p.repRateMHz || 80)),
-      pulseWidthFs: Math.min(1000000000, Math.max(1, timing?.durationFs || p.pulseWidthFs || 100)),
+      // A laser's record carries exactly the duration its readout shows; the
+      // accessor already bounds a transform-limited duration to its field.
+      pulseWidthFs: timing && Number.isFinite(timing.durationFs) && timing.durationFs > 0 ? timing.durationFs
+        : Math.min(1000000000, Math.max(1, p.pulseWidthFs || 100)),
       phaseNs: Math.min(1000000, Math.max(-1000000, p.pulsePhaseNs || 0)),
       centerWavelengthNm: srcWl,
       bandwidthNm: srcBw,
