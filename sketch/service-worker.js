@@ -1,11 +1,8 @@
-const CACHE_NAME = 'opticalsetup-pwa-v69';
+const CACHE_NAME = 'opticalsetup-pwa-v104';
 
 // Keep this explicit so a successful install guarantees that the complete
 // build-free workbench and its bundled examples are available offline.
 const PRECACHE_PATHS = [
-  "./js/fiber.js",
-  "./js/pulse-field.js",
-  "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
   "./",
   "./index.html",
   "./manifest.webmanifest",
@@ -17,10 +14,12 @@ const PRECACHE_PATHS = [
   "./icons/apple-touch-icon.png",
   "./js/acousto-optic.js",
   "./js/asphere.js",
+  "./js/conic-mirror.js",
   "./js/aotf.js",
   "./js/electro-optic.js",
   "./js/camera-profile.js",
   "./js/canvas.js",
+  "./js/polygon-scanner.js",
   "./js/clipboard.js",
   "./js/lamps.js",
   "./js/probe.js",
@@ -32,6 +31,7 @@ const PRECACHE_PATHS = [
   "./js/examples-data.js",
   "./js/export.js",
   "./js/gif.js",
+  "./js/fiber.js",
   "./js/glass.js",
   "./js/inspector.js",
   "./js/immersion.js",
@@ -39,9 +39,11 @@ const PRECACHE_PATHS = [
   "./js/main.js",
   "./js/markdown.js",
   "./js/objective.js",
+  "./js/parametric.js",
   "./js/polarization.js",
   "./js/polygon.js",
   "./js/proposal.js",
+  "./js/pulse-field.js",
   "./js/pulses.js",
   "./js/pwa.js",
   "./js/qr.js",
@@ -62,9 +64,18 @@ const PRECACHE_PATHS = [
   "../Examples/Lens%20Physics/Spherical%20aberration%20%E2%80%94%20sphere%20vs%20asphere%20vs%20ideal%20lens.json",
   "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
   "../Examples/Optics%20Bench/Michelson%20interferometer.json",
+  "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
   "../Examples/Microscopy%20Implementations/Coherent%20Raman%20microscope%20%E2%80%94%20SRS%20and%20CARS.json",
   "../Examples/Microscopy%20Implementations/Multiphoton%20microscope%20%E2%80%94%20SHG%20and%20two%20photon%20fluorescence.json",
-  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json"
+  "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20ring%20cavity%2C%20element%20by%20element.json",
+  "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20picosecond%20OPO.json",
+  "../Examples/Nonlinear%20Optics/Near%20infrared%20supercontinuum%20in%20YAG.json",
+  "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
+  "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
+  "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
+  "../Examples/Ultrashort%20Pulses/Hollow-core%20pulse%20compressor.json",
+  "../Examples/Ultrashort%20Pulses/Ultrashort%20pulse%20chirping.json",
+  "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json"
 ];
 
 const APP_ENTRY = new URL('./', self.location.href).href;

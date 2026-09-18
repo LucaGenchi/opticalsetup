@@ -750,7 +750,7 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 .field.field-wide { display: grid; grid-template-columns: 1fr; gap: 5px; }
 .field.field-wide .readout {
   flex: none; width: 100%; min-height: 0; display: block;
-  padding: 6px 8px; line-height: 1.4;
+  padding: 6px 8px; line-height: 1.4; white-space: pre-line;
 }
 .field input[type="color"] { flex: 0 0 40px; width: 40px; height: 26px; padding: 1px; border: 1px solid var(--border); border-radius: 5px; background: none; }
 .field input[type="checkbox"] {
@@ -913,6 +913,12 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 :root[data-theme="dark"] .camera-profile-note { color: #d7a756; }
 :root[data-theme="dark"] .no-signal .signal-light { background: #707b88; }
 
+/* Labels outside an optic and the tuning-pill text sit on the dark canvas,
+   unlike the light-painted optical surfaces themselves. */
+:root[data-theme="dark"] #overlayLayer text[fill="#6547b3"],
+:root[data-theme="dark"] :is(.palitem svg, #elementLayer) text[fill="#6a4a80"] { fill: #d8b4fe; }
+:root[data-theme="dark"] :is(.palitem svg, #elementLayer) text[fill="#7a6430"] { fill: #e9c77b; }
+
 :root[data-theme="dark"] :is(.palitem svg, #elementLayer) :is(
   [stroke="#111"],
   [stroke="#222b31"],
@@ -934,6 +940,13 @@ main { flex: 1; display: flex; min-height: 0; position: relative; }
 :root[data-theme="dark"] :is(#manualLayer, #overlayLayer) [fill="rgba(255,255,255,0.96)"] {
   fill: var(--floating-strong);
 }
+
+/* Probe cards have their own paper background; theme it together with the
+   neutral labels so the global light-text rule cannot erase their readings. */
+:root[data-theme="dark"] #elementLayer .probe-card [fill="#fff"] { fill: var(--surface); }
+:root[data-theme="dark"] #elementLayer .probe-card text { fill: var(--text); }
+:root[data-theme="dark"] #elementLayer .probe-card [stroke="#c9ced6"] { stroke: var(--border); }
+:root[data-theme="dark"] #elementLayer .probe-card [stroke="#888"] { stroke: var(--muted); }
 
 :root.theme-transition :is(
   body, #toolbar, #palette, #inspector, #canvas, button, select, input, textarea,

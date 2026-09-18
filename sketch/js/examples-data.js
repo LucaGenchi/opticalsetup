@@ -43,6 +43,24 @@ export const examples = [
     "slug": "multiphoton-microscope-shg-and-two-photon-fluorescence"
   },
   {
+    "group": "Nonlinear Optics",
+    "name": "Near infrared supercontinuum in YAG",
+    "path": "../Examples/Nonlinear%20Optics/Near%20infrared%20supercontinuum%20in%20YAG.json",
+    "slug": "near-infrared-supercontinuum-in-yag"
+  },
+  {
+    "group": "Nonlinear Optics",
+    "name": "Optical parametric oscillator — ring cavity, element by element",
+    "path": "../Examples/Nonlinear%20Optics/Optical%20parametric%20oscillator%20%E2%80%94%20ring%20cavity%2C%20element%20by%20element.json",
+    "slug": "optical-parametric-oscillator-ring-cavity-element-by-element"
+  },
+  {
+    "group": "Nonlinear Optics",
+    "name": "Synchronously pumped picosecond OPO",
+    "path": "../Examples/Nonlinear%20Optics/Synchronously%20pumped%20picosecond%20OPO.json",
+    "slug": "synchronously-pumped-picosecond-opo"
+  },
+  {
     "group": "Optics Bench",
     "name": "Mach–Zehnder interferometer",
     "path": "../Examples/Optics%20Bench/Mach%E2%80%93Zehnder%20interferometer.json",
@@ -53,6 +71,36 @@ export const examples = [
     "name": "Michelson interferometer",
     "path": "../Examples/Optics%20Bench/Michelson%20interferometer.json",
     "slug": "michelson-interferometer"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "Gregorian telescope — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/Gregorian%20telescope%20%E2%80%94%20element%20by%20element.json",
+    "slug": "gregorian-telescope-element-by-element"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "IR Cassegrain objective — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/IR%20Cassegrain%20objective%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ir-cassegrain-objective-element-by-element"
+  },
+  {
+    "group": "Reflective Imaging Systems",
+    "name": "Ritchey–Chrétien telescope — element by element",
+    "path": "../Examples/Reflective%20Imaging%20Systems/Ritchey%E2%80%93Chr%C3%A9tien%20telescope%20%E2%80%94%20element%20by%20element.json",
+    "slug": "ritchey-chretien-telescope-element-by-element"
+  },
+  {
+    "group": "Scanning",
+    "name": "Polygon scanner — line scanning",
+    "path": "../Examples/Scanning/Polygon%20scanner%20%E2%80%94%20line%20scanning.json",
+    "slug": "polygon-scanner-line-scanning"
+  },
+  {
+    "group": "Ultrashort Pulses",
+    "name": "Finding time zero — sum frequency of two beams",
+    "path": "../Examples/Ultrashort%20Pulses/Finding%20time%20zero%20%E2%80%94%20sum%20frequency%20of%20two%20beams.json",
+    "slug": "finding-time-zero-sum-frequency-of-two-beams"
   },
   {
     "group": "Ultrashort Pulses",

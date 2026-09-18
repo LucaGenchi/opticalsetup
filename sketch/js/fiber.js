@@ -49,6 +49,11 @@ export function hollowCoreCoefficients(fiber, wavelengthNm) {
   const u = 2.4048255577, k = 2 * Math.PI / lambdaM;
   const gasBeta2 = lambdaM ** 3 / (2 * Math.PI * c * c) * d2n * 1e42;
   const waveguideBeta2 = -u * u * lambdaM ** 3 / (8 * Math.PI ** 3 * c * c * a * a) * 1e30;
+  // Effective area of the Gaussian that best couples to the HE11 mode: its
+  // 1/e field radius is 0.6435a (98 % overlap with J0(2.405 r/a)), rounded to
+  // 0.64a, so A_eff = π(0.64a)² = 0.410 πa². The J0 mode's own
+  // (∫|E|²dA)²/∫|E|⁴dA is 0.477 πa², which would make γ 16 % smaller. This is
+  // the Gaussian convention, chosen and documented, not the exact mode.
   const effectiveAreaM2 = Math.PI * (0.64 * a) ** 2;
   // Near-IR n2 = 1.01e-23 m²/W at 1 atm (Zahedpour et al., Table 1).
   const n2 = 1.01e-23 * p.gasPressureBar / 1.01325;

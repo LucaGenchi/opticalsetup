@@ -5,7 +5,7 @@ import { fft, propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.j
 import { hollowCoreCoefficients, normalizeHollowCore } from '../sketch/js/fiber.js';
 import { registry, createElement } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
-import { traceScene, detectorReading, fiberReading } from '../sketch/js/raytrace.js';
+import { traceScene, detectorReading, fiberReading, LINEAR_ONLY, ARGON_OUT_OF_RANGE } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import { initInspector, renderInspector, applyInput } from '../sketch/js/inspector.js';
 import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
@@ -134,8 +134,17 @@ test('invalid inputs, extreme conditions and altered input spectra produce expli
   scene.beams[0].gasPressureBar = 10; scene.beams[0].coreDiameterUm = 50;
   const extreme = trace(scene);
   assert.equal(extreme.fiber.ok, false);
-  assert.equal(extreme.after, null);
   assert.ok(extreme.fiber.reason);
+  // A refusal is not zero energy: the light continues with argon's linear
+  // dispersion, and every downstream readout says it is only that. Neither
+  // the compressor on the way nor the analytic duration model may turn it
+  // back into a prediction.
+  assert.equal(extreme.fiber.state, 'linearOnly');
+  assert.ok(extreme.after, 'light still reaches the output detector');
+  assert.deepEqual(extreme.after.approximations, [LINEAR_ONLY]);
+  assert.equal(extreme.after.pulse.stretchedPulseWidthFs, null);
+  assert.equal(extreme.after.pulse.envelope, null);
+  assert.equal(extreme.after.pulse.dispersionModel, LINEAR_ONLY);
   assert.ok(extreme.pulseTracks.every(t => t.opls.every(Number.isFinite)));
   assert.deepEqual(normalizeHollowCore({ gasPressureBar: Infinity, coreDiameterUm: -1 }).coreDiameterUm, 50);
   const shaped = example();
@@ -185,4 +194,89 @@ test('mixed sources and spectral filtering after the fiber do not retain a false
   const r = trace(shaped);
   assert.ok(r.after && r.after.pulse.fieldIssue);
   assert.equal(r.after.pulse.stretchedPulseWidthFs, null);
+});
+
+// --- Continuation, caveats and states (review of #143) ----------------------
+
+const byId = (scene, id) => scene.elements.find(e => e.id === id);
+
+test('zero coupled pulse energy keeps the capillary dark', () => {
+  const scene = example();
+  byId(scene, 'hcf-laser').params.avgPowerW = 0;
+  const result = trace(scene);
+  assert.equal(result.fiber.state, 'noEnergy');
+  assert.equal(result.after, null);
+  assert.equal(result.before, null);
+});
+
+test('Kerr off is exact linear propagation, distinct from a refusal', () => {
+  const scene = example();
+  scene.beams[0].kerrEnabled = false;
+  const off = trace(scene);
+  assert.equal(off.fiber.ok, true);
+  assert.equal(off.fiber.state, 'kerrOff');
+  assert.deepEqual(off.after.approximations, []);
+  assert.ok(Number.isFinite(off.after.pulse.stretchedPulseWidthFs));
+  const refused = example();
+  byId(refused, 'hcf-laser').params.avgPowerW = 1;
+  const r = trace(refused);
+  assert.equal(r.fiber.state, 'linearOnly');
+  assert.deepEqual(r.after.approximations, [LINEAR_ONLY]);
+});
+
+test('a valid → refused → valid transition leaves no stale field, caveat or cache behind', () => {
+  const scene = example();
+  const first = trace(scene);
+  const laser = byId(scene, 'hcf-laser');
+  const saved = laser.params.avgPowerW;
+  laser.params.avgPowerW = 1;
+  const refused = trace(scene);
+  assert.equal(refused.fiber.state, 'linearOnly');
+  laser.params.avgPowerW = saved;
+  const again = trace(scene);
+  assert.equal(again.fiber.state, 'field');
+  assert.deepEqual(again.after.approximations, []);
+  close(again.after.pulse.stretchedPulseWidthFs, first.after.pulse.stretchedPulseWidthFs, 1e-12);
+  close(again.before.pulse.stretchedPulseWidthFs, first.before.pulse.stretchedPulseWidthFs, 1e-12);
+});
+
+test('outside the argon data the light continues geometrically, never as an ordinary fiber called argon', () => {
+  const scene = example();
+  byId(scene, 'hcf-laser').params.wavelength = 450; // below Peck–Fisher's 467.9 nm
+  const result = trace(scene);
+  assert.equal(result.fiber.state, 'outOfRange');
+  assert.equal(hollowCoreCoefficients(scene.beams[0], 450), null);
+  assert.ok(result.after, 'geometric continuation still reaches the detector');
+  assert.deepEqual(result.after.approximations, [ARGON_OUT_OF_RANGE]);
+  // Only the compressor's own GDD arrives: no β₂ was claimed for the fiber.
+  close(result.after.pulse.gddFs2, -650, 1e-9);
+  assert.equal(result.after.pulse.stretchedPulseWidthFs, null);
+});
+
+test('a field that no longer fits its window is unavailable, not a Gaussian estimate', () => {
+  const scene = example();
+  byId(scene, 'hcf-compressor').params.gddFs2 = -900000;
+  const result = trace(scene);
+  assert.equal(result.fiber.state, 'field');
+  assert.equal(result.after.pulse.stretchedPulseWidthFs, null);
+  assert.equal(result.after.pulse.envelope, null);
+  assert.match(result.after.pulse.dispersionModel, /numerical time window/);
+});
+
+test('detector screens downstream of a refusal carry the linear-only caveat', () => {
+  const scene = example();
+  byId(scene, 'hcf-laser').params.avgPowerW = 1;
+  traceScene(scene.elements, scene.beams);
+  const screen = byId(scene, 'hcf-after-screen');
+  const svg = registry.display.svg(screen, scene.elements);
+  assert.match(svg, /LINEAR-ONLY APPROX/);
+  assert.match(svg, /data-caveat="Linear-only approximation; nonlinear output unavailable"/);
+});
+
+test('an ordinary fiber neither carries nor saves capillary settings', () => {
+  const parsed = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [], beams: [{
+    id: 'f', kind: 'fiber', pts: [{ x: 0, y: 0 }, { x: 100, y: 0 }], propagate: true,
+  }] }), registry).beams[0];
+  for (const key of ['fiberModel', 'kerrEnabled', 'coreDiameterUm', 'gasPressureBar']) assert.equal(key in parsed, false, key);
+  assert.equal(example().beams[0].gasPressureBar, 2);
 });

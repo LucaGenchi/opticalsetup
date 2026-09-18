@@ -55,6 +55,23 @@ export const lineSpectrum = lines => {
   return kept.length ? { kind: 'lines', lines: kept } : null;
 };
 
+// The same spectrum with every wavelength multiplied by `factor`: an n-th
+// harmonic is the pump scaled by 1/n. Widths scale with the wavelengths, which
+// treats each spectral component as converted at its own wavelength. That
+// multiplies the frequency width by n, whereas the n-th harmonic of a
+// transform-limited Gaussian pulse is only sqrt(n) wider -- set by the
+// autoconvolution of its field, which this qualitative model does not compute.
+export function scaleSpectrum(spec, factor) {
+  if (!spec || !(factor > 0)) return null;
+  if (spec.kind === 'gauss') return gaussianSpectrum(spec.center * factor, spec.fwhm * factor);
+  if (spec.kind === 'flat') return flatSpectrum(spec.lo * factor, spec.hi * factor);
+  if (spec.kind === 'lines') return lineSpectrum(spec.lines.map(l => ({ nm: l.nm * factor, w: l.w })));
+  // A filtered profile keeps its shape: the grid stretches with the
+  // wavelengths and every weight stays where it was.
+  if (spec.kind === 'sampled' && Array.isArray(spec.w)) return { kind: 'sampled', lo: spec.lo * factor, hi: spec.hi * factor, w: [...spec.w] };
+  return null;
+}
+
 export function spectrumSupport(spec) {
   if (!spec) return null;
   if (spec.kind === 'lines') {
@@ -244,6 +261,20 @@ export function transformLimitedDurationFs(bandwidthNm, wavelengthNm, shape = 'g
   const dl = Math.max(1e-9, bandwidthNm);
   const lambda = Math.max(1, wavelengthNm);
   return (lambda * lambda * K) / (C_NM_PER_FS * dl);
+}
+
+// The shortest pulse a supercontinuum band could form: the transform limit of
+// the frequency span it covers. The span is taken exactly, c(1/λmin − 1/λmax),
+// not through the λ²/Δλ small-band approximation above, which is off by
+// several percent once the band is hundreds of nm wide. A zero-width band is
+// monochromatic, and no finite pulse is transform-limited on no bandwidth at
+// all, so it has no finite limit.
+export function supercontinuumTransformLimitFs(scMin, scMax, shape = 'gauss') {
+  const K = TBP_K[shape] ?? TBP_K.gauss;
+  const lo = Math.max(1, Math.min(scMin, scMax));
+  const hi = Math.max(1, scMin, scMax);
+  const spanPerFs = C_NM_PER_FS * (1 / lo - 1 / hi);
+  return spanPerFs > 0 ? K / spanPerFs : Infinity;
 }
 
 // Every emitting element resolves to the same three-value spectral contract

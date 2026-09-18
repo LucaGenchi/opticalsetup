@@ -44,7 +44,8 @@ figures as SVG or PNG.
   optical functions, modulators (AOM/AOD/AOTF/EOM/chopper), mechanical pulse-delay lines,
   a signed-GDD pulse compressor,
   nonlinear crystals (SHG, THG,
-  supercontinuum, OPO), fibers with per-end output specs, detectors, a focusing
+  supercontinuum, OPO), fibers with per-end output specs, physical length and a
+  signed β₂, detectors, a focusing
   human eye, freeform glass/prisms with straight or circular-arc sides, and free
   annotations (arrows, labels, beam probes, and a canvas-only figure frame).
 - **Honest capability states**: the component library and inspector distinguish
@@ -54,11 +55,21 @@ figures as SVG or PNG.
 - **Pulsed timing**: pulsed lasers animate wavelength-colored packets along the
   traced path. Physical mode uses optical-path delay and the configured repetition
   rate; schematic mode keeps packets visible at workbench scale while detector
-  delays remain physical. For transform-limited Gaussian pulses, each packet's
-  envelope length follows the GDD accumulated at its current position, so glass
-  visibly stretches it and an opposite-GDD pulse compressor shortens it again.
+  delays remain physical. Gaussian and sech² packet envelopes follow the GDD
+  accumulated at their current position, including an authored input-chirp sign;
+  flat-top supercontinua use the Sellmeier endpoint group-delay spread. Glass can
+  therefore stretch or compress a pulse, and an opposite-GDD pulse compressor can
+  return it toward its bandwidth-limited duration.
   Mechanical delay lines add folded optical path, while AOMs
-  support square gating or graded sinusoidal intensity modulation. Playback can be
+  support square, sine, or sawtooth RF modulation — the square drive by its duty
+  cycle, the two continuous ones by a modulation depth. A ramp's rise fraction
+  sweeps it from a falling sawtooth through a triangle to a rising one. A square-gated AOM can
+  also draw both diffraction orders chunked in opposition, so the switching stays
+  visible on a beam drawn as a steady line; it is a drawing choice only, and
+  detector readings are identical either way. Detector time traces use an
+  absolute vertical axis — full height is one whole source beam — so modulation
+  efficiency reads as the contrast it sets: at 0.5 the diffracted order peaks
+  halfway while the undiffracted one only falls halfway, in opposition. Playback can be
   paused, reset, and time-scaled. A chopper gates pulse trains in time and draws
   CW light as a chunked on/off pattern matching its duty cycle (in Hz, matching a
   real mechanical wheel), visible identically on the live canvas and in exports.
@@ -108,6 +119,27 @@ figures as SVG or PNG.
   bundled examples continue to load without a network connection; sketches still
   autosave locally in the browser.
 
+## Reflective imaging systems, element by element
+
+**Examples → Reflective Imaging Systems → IR Cassegrain objective — element by element**
+opens an editable reflective objective with separate conic primary and secondary,
+a real central opening, pupil stops, and a sensor at the computed focus. Its
+companion example page explains the illustrative prescription and four control
+experiments. The new **Conic mirror** palette element supports spherical,
+parabolic, elliptical and hyperbolic profiles with exact intersections/normals,
+a bounded opening, a selectable coated side, and absorptive reflectivity losses.
+It models a 2D surface, not diffraction, a coating spectrum or a commercial
+Schwarzschild prescription.
+
+Two telescopes share that category and one geometry, so the only thing
+separating them is the shape of two surfaces. The **Gregorian** pairs a
+parabolic primary with a concave elliptical secondary beyond the prime focus:
+each surface images the one pair of points its own shape images exactly, so the
+pair is exact too. The **Ritchey–Chrétien** makes both mirrors hyperbolic and
+gives up a perfect axis to cancel coma across the field — the trade behind
+nearly every large research telescope. Its example page measures both against a
+classical Cassegrain on and off axis.
+
 ## Simulation scope
 
 OpticalSetup is a qualitative geometric-optics workbench, not a calibrated optical
@@ -124,40 +156,13 @@ normals; its paraxial readouts still depend only on vertex curvature. It does no
   calibrated off-axis aberrations. Outside the bounded coherent cases below,
   the app does not model carrier
 phase or interference; it also does not model diffraction-limited propagation,
-higher-order pulse dispersion, arbitrary user-supplied spectral phase, input chirp beyond its configured
-state, or laboratory-specific calibration. The pulse
+higher-order pulse dispersion, arbitrary spectral phase or pulse-shape distortion, or
+laboratory-specific calibration. Input chirp is a signed quadratic-phase estimate derived
+from duration and bandwidth when its sign is authored; broad flat-top supercontinua instead
+use endpoint group-delay spread. Where the phase is unknown, the spectrum has been reshaped
+by a filter, or paths of different dispersion meet at one detector, the dispersed duration
+is reported as unavailable rather than derived. The pulse
 compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
-
-Connectorized and bare fibers expose **Physical length (m)** and signed
-**Dispersion β₂ (ps²/km)** in the Propagation inspector. Length 0 uses the drawn
-path in millimetres; a positive length represents a cable or coil independently
-of its drawing and controls delay, loss and dispersion together. β₂ defaults to
-0 to preserve existing sketches. Enter a measured or specified coefficient at
-the source wavelength: it is treated as constant, not inferred from the fiber's
-NA or group index. Added GDD in fs² is `1000 × β₂ × lengthM`.
-
-For example, set a Gaussian transform-limited pulsed laser to 100 fs, fiber
-length to 1 m and β₂ to 36 ps²/km. A downstream detector reports 36000 fs²
-GDD and approximately 1003 fs stretched duration; the output pulse markers
-also widen. Set β₂ to 0 for the 100 fs control, double length to double GDD,
-or add a −36000 fs² pulse compressor to recover 100 fs. This is an illustrative
-coefficient, not a calibrated fiber preset. Signed GDD is summed along the path
-before applying the Gaussian intensity-FWHM formula
-`τ = τ₀ sqrt(1 + (4 ln(2) GDD / τ₀²)²)`.
-The linear model preserves the spectrum and adds dispersion at the output;
-it does not animate propagation inside the cable or model third-order,
-intermodal, polarization-mode or nonlinear effects. Duration estimates are
-available only for the existing transform-limited Gaussian source model.
-See [Newport's dispersion tutorial](https://www.newport.com/n/the-effect-of-dispersion-on-ultrashort-pulses/)
-for the second-order Gaussian approximation.
-
-Fibers also offer an opt-in **Hollow core · argon** model: a bounded scalar
-Fourier-envelope calculation with capillary/gas β₂, Kerr self-phase modulation
-and loss. Pressure, core diameter and captured laser pulse energy change the
-calculated spectrum and temporal field; a downstream GDD compressor can then
-shorten the pulse. Open **Ultrashort Pulses → Hollow-core pulse compressor**
-for the native 100 fs → approximately 45 fs example, controls and detector
-screens. See [the physics, limits and validation note](docs/physics/hollow-core.md).
 
 Its bounded coherent model applies only to sized monochromatic CW sources and
 explicitly supported ideal surfaces. It carries optical path plus the unitary phase of
@@ -182,8 +187,10 @@ limited spot size, field angle, aberrations, or fabrication tolerances.
 
 The AOM, AOD, and AOTF are separate user-facing tools built around a shared
 qualitative acousto-optic interaction. The AOD couples RF frequency to a calibrated
-angular scan range, scales that deflection with wavelength, applies the matching
-optical frequency shift, and can animate triangle or sawtooth scans. Its centre
+angular scan range, scales that deflection with wavelength, and can animate triangle
+or sawtooth scans. Neither it nor the AOM applies the optical frequency shift: at
+7.6e-5 nm for 80 MHz at 532 nm it is far finer than the nearest-nanometre resolution
+every wavelength readout here uses, so the AOM has no drive-frequency control. Its centre
 angle and scan range are user-supplied device specifications; the model does not
 derive them from a crystal cut, acoustic velocity, transducer geometry, RF power,
 or Bragg-efficiency curve.
@@ -207,7 +214,8 @@ manufacturer prescriptions, and EFL is no longer exposed as an unrestricted canv
 control. Magnification is reported from EFL against a 200 mm
 reference tube lens rather than typed in, because it belongs to the objective plus
 whichever tube lens is actually in the sketch. The equivalent refracting plane sits at
-`front tip + WD − EFL`, always inside the barrel, so collimated light focuses exactly
+`front tip + WD − EFL` and can lie outside the drawn barrel for long-working-distance
+designs. It is an equivalent plane, not a physical glass surface. Collimated light focuses exactly
 one working distance past the tip, an external tube lens produces the reported
 magnification, and the back focal plane one EFL behind the plane is a real traced
 conjugate that light focused on leaves collimated. Nothing is drawn at that plane; an
@@ -270,7 +278,12 @@ content file rather than hand-written HTML:
 
 - `wiki/` — one page per component covering its real-world physics and
   exactly how OpticalSetup simplifies it, generated by
-  `tools/build-wiki.mjs` from `tools/wiki-content.mjs`.
+  `tools/build-wiki.mjs` from `tools/wiki-content.mjs`. Every visible registry
+  component has an article; new components must include one before rebuilding.
+  Keep each article's `summary` to a complete 10–28 word introduction (at most
+  190 characters). The index cards, page introductions, and social previews
+  share this copy; detailed behavior belongs in the article sections. Icons,
+  palette order, and categories continue to follow the component registry.
 - `example-setups/` — one page per curated Example with real-world
   background, an honest note on what the qualitative tracer won't show, and
   references, generated by `tools/build-examples-pages.mjs` from

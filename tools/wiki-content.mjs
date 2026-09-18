@@ -1,4 +1,4 @@
-// Structured content for the OpticalSetup wiki. One entry per flagship
+// Structured content for the OpticalSetup wiki. One entry per visible
 // component. `tools/build-wiki.mjs` turns this into static pages, pulling
 // the live icon and current defaults straight from the component registry
 // so the wiki can never silently drift from what the app actually ships.
@@ -43,6 +43,7 @@ export const wikiToolSubjects = [
 export const wikiEntries = [
   {
     type: 'cwlaser',
+    summary: "Emits a steady, collimated beam with a chosen wavelength and power, for tracing continuous illumination through an optical setup.",
     title: 'CW Laser',
     category: 'Sources',
     realWorld: {
@@ -186,6 +187,7 @@ export const wikiEntries = [
 
   {
     type: 'pulsedlaser',
+    summary: "Emits a train of short laser pulses with adjustable duration and repetition rate, for exploring bandwidth, dispersion, and arrival timing.",
     title: 'Pulsed Laser',
     category: 'Sources',
     realWorld: {
@@ -239,22 +241,55 @@ export const wikiEntries = [
         <p>Every pulsed detector reports accumulated group-delay dispersion (GDD) in
         fs². Catalogue-glass bodies add their traced distance through the selected
         Sellmeier material; zero-thickness lenses and objectives add the clearly marked
-        estimates described on their own pages. For a transform-limited Gaussian input,
-        the detector also reports the corresponding broadened duration, and the travelling
-        packet length follows that duration locally: it grows through glass and contracts
-        when a Pulse Compressor cancels the accumulated GDD. GDD remains the
+        estimates described on their own pages. For a Gaussian input, the configured
+        bandwidth sets the transform-limited duration. When the authored pulse is longer,
+        OpticalSetup interprets the difference as quadratic spectral phase; <em>Input
+        chirp</em> supplies the sign that duration and bandwidth alone cannot reveal. Glass
+        of the opposite sign can therefore compress the pulse to its transform limit before
+        stretching it again.</p>
+        <p>Duration and bandwidth fix only the size of that phase. Positive and Negative are
+        explicit assumptions of a purely quadratic phase; a new laser starts on Positive, the
+        commonest case for amplified pulses. <em>Unknown</em> claims nothing: the configured
+        duration is reported where the beam has met no dispersion, and after any glass,
+        compressor or fiber the dispersed duration is shown as unavailable rather than
+        derived from a phase nobody specified. A sketch saved before this control existed
+        opens as Unknown for the same reason. Unknown does not mean uncompressible; it means
+        the phase that would decide it is not known.</p>
+        <p>The duration model also declines, and says why on the detector's <em>Duration
+        model</em> row, when a filter, dichroic, etalon or AOTF has reshaped the pulse's
+        spectrum — filtering changes a duration by itself, and dispersion accumulated before
+        the filter describes wavelengths it removed — and when parts of one beam reach a
+        detector by paths whose dispersion would give durations more than 2&nbsp;% apart.
+        Elements that transmit the pulse's whole band evenly, such as a neutral density
+        filter or a dichroic far from its edge, leave the duration alone.</p>
+        <p>Sech² pulses use the same signed-phase construction, but their dispersed FWHM is
+        read from a deterministic numerical Fourier-propagation table rather than the
+        Gaussian formula. Interpolation was checked against a denser calculation to 0.12%
+        over |GDD|/τ₀² ≤ 20 and continues with the 2π·0.315 large-dispersion asymptote.
+        Detector, autocorrelator, probe, scope, and travelling packet all consume this one
+        duration model. GDD remains the
         primary number because it is additive and meaningful even when a 150&nbsp;fs pulse
         changes too little to notice.</p>`,
       formulas: [
-        { tex: '\\tau_{out}=\\tau_{in}\\sqrt{1+\\left(4\\ln 2\\,\\mathrm{GDD}/\\tau_{in}^{2}\\right)^2}', caption: 'Second-order broadening of a transform-limited Gaussian pulse.' },
+        { tex: '\\tau_{out}=\\tau_0\\sqrt{1+\\left(4\\ln 2\\,(\\phi_{in}+\\mathrm{GDD})/\\tau_0^{2}\\right)^2}', caption: 'Gaussian duration from the bandwidth-limited width τ₀ and the signed sum of input and path GDD.' },
+        { tex: '|\\phi_{in}|=\\frac{\\tau_0^2}{4\\ln 2}\\sqrt{(\\tau_{in}/\\tau_0)^2-1}', caption: 'Magnitude of the quadratic input phase inferred from a Gaussian pulse whose configured duration exceeds its transform limit; the Input chirp control supplies the missing sign.' },
       ],
       limitations: `<p>There is no modeled gain medium, cavity, or mode-locking mechanism —
         repetition rate, duration, and shape are configured directly. The duration estimate
-        uses second-order GDD only and is shown only for a transform-limited Gaussian input;
-        pre-existing chirp, third- and higher-order dispersion, self-phase modulation, and
-        material absorption are not inferred. Divergence and M² are not modeled.</p>`,
+        represents only quadratic phase for Gaussian and sech² inputs. It does not reconstruct
+        arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
+        distortion, or material absorption. A duration-bandwidth pair below its transform
+        limit is reported as inconsistent rather than assigned invented phase, and its dispersed
+        duration is unavailable. Spectral reshaping is detected by whether an element's
+        transmission varies across the band the pulse was emitted with; a prism fan clipped by a
+        detector's aperture is not detected as reshaping. Divergence and
+        M² are not modeled.</p>`,
     },
     related: ['cwlaser', 'sclaser', 'pulsecompressor', 'objective', 'stage'],
+    citations: [
+      { label: 'M. Karpiński et al., “Control and Measurement of Quantum Light Pulses for Quantum Information Science and Technology,” Advanced Quantum Technologies 4, 2000150 (2021) — quadratic spectral phase and dispersive pulse broadening', url: 'https://doi.org/10.1002/qute.202000150' },
+      { label: 'P. Lazaridis, G. Debarge and P. Gallion, “Time–bandwidth product of chirped sech² pulses,” Optics Letters 20, 1160–1162 (1995) — exact sech² chirp/time-bandwidth relation', url: 'https://doi.org/10.1364/OL.20.001160' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Mode Locking', url: 'https://www.rp-photonics.com/mode_locking.html' },
       { label: 'RP Photonics Encyclopedia — Time–Bandwidth Product', url: 'https://www.rp-photonics.com/time_bandwidth_product.html' },
@@ -263,6 +298,7 @@ export const wikiEntries = [
 
   {
     type: 'pulsecompressor',
+    summary: "Adds positive or negative group-delay dispersion to a pulse, shortening it when the correction cancels dispersion accumulated earlier in the setup.",
     title: 'Pulse Compressor',
     category: 'Pulse Timing',
     realWorld: {
@@ -291,17 +327,22 @@ export const wikiEntries = [
         loss. A negative setting compresses only when it cancels positive GDD already on
         the path — placed before any glass, the same negative magnitude broadens a
         transform-limited pulse instead.</p>
-        <p>For a transform-limited Gaussian source, the travelling packet overlay reads the
-        local accumulated GDD along each traced segment. Its envelope grows continuously
-        through catalogue glass and changes at the compressor, so the same pulse can be
-        watched stretching and then returning toward its input length. The true duration,
-        GDD, and stretch factor remain available numerically at a downstream detector.</p>`,
+        <p>For Gaussian and sech² sources, the travelling packet overlay reads the local
+        accumulated GDD along each traced segment. A chirped source also carries a signed
+        input GDD inferred from its bandwidth and duration, so a compressor can shorten it
+        to the transform limit and further GDD stretches it again. Flat-top supercontinua
+        use the endpoint group-delay difference across their full band. The true duration,
+        model name, GDD, and stretch or compression factor remain available numerically at a
+        downstream detector.</p>`,
       formulas: [],
       limitations: `<p>This is a lumped second-order phase proxy, not a physical compressor
         prescription. It does not trace the compressor's internal grating, prism, or
         chirped-mirror geometry; it does not model carrier phase, third-order dispersion,
-        spatial chirp, pulse-front tilt, nonlinear phase, or an independently authored
-        input chirp. On-screen packet length is a qualitative glyph with an 8× display cap;
+        spatial chirp, pulse-front tilt, nonlinear phase, or arbitrary spectral phase. Input
+        chirp is limited to the positive/negative quadratic-phase estimate implied by the
+        authored duration and bandwidth; a pulse whose phase is unknown, whose spectrum was
+        reshaped, or whose paths disagree reads unavailable at a detector, and its packet keeps
+        its configured length on the canvas as a glyph, not a prediction. On-screen packet length is a qualitative glyph;
         detector numbers retain the unclamped second-order result.</p>`,
     },
     related: ['pulsedlaser', 'glassrod', 'prism', 'detector'],
@@ -313,6 +354,7 @@ export const wikiEntries = [
 
   {
     type: 'sclaser',
+    summary: "Emits a pulsed beam across a configurable spectral band, for exploring wavelength separation, filtering, and broadband illumination in one setup.",
     title: 'Supercontinuum laser',
     category: 'Sources',
     realWorld: {
@@ -357,16 +399,58 @@ export const wikiEntries = [
         colour — which is why a prism turns this source into a visible rainbow even though
         the undispersed beam is drawn as a single broadband white line.</p>
         <p>It carries the same pulse train as the Pulsed Laser, since a real supercontinuum
-        inherits its pump's timing, but exposes no pulse duration of its own: that is a
-        property of whatever generated the continuum upstream, which is not modeled here.</p>`,
-      formulas: [],
+        inherits its pump's timing. Its pulse duration and envelope (Gaussian or
+        sech²) are set directly rather than derived: in a real source they depend on the
+        pump and on the nonlinear fibre that generated the continuum, neither of which is
+        modelled here, and a continuum fresh out of the fibre is typically heavily chirped
+        and picoseconds long. The duration you set is therefore the input to the propagation
+        estimate, not a claim that the continuum is transform-limited.</p>
+        <p>The one limit the setting cannot cross is the transform limit. No pulse can be
+        shorter than its own spectrum allows, so the duration has a floor set by the
+        band, which the inspector shows as <em>Transform limit</em>. For a band hundreds of
+        nanometres wide that floor is around a femtosecond and never gets in the way. A
+        narrow band raises it: 690–700&nbsp;nm cannot carry a Gaussian pulse shorter than
+        71&nbsp;fs. Narrowing the band or changing the envelope lifts a duration that has
+        fallen below the new floor. Widening the band never shortens the duration you set.
+        The two endpoints are kept at least 10&nbsp;nm apart: typing one past the other
+        stops it a step short, because a band of zero width has no transform limit at
+        all.</p>
+        <h3>Broad-band temporal spread</h3>
+        <p>A centre-wavelength GDD is not extended across this flat band. For every traced
+        length of catalogue glass, OpticalSetup evaluates the Sellmeier group index at both
+        authored endpoints and accumulates their signed group-delay difference. The displayed
+        duration is the input duration and that endpoint spread added in quadrature. This is
+        a robust first arrival-to-last arrival estimate for the declared flat spectrum, and
+        detector, scope, probe and pulse packets use the same accumulated value.</p>
+        <p>The authored duration acts as a floor. A compressor can take the path's spread back
+        out, but not the chirp the source was authored with, so a fully compensated continuum
+        returns to the duration you set, not towards its transform limit. Compensation is also
+        only ever partial: a single GDD value cancels the glass's dispersion at one wavelength,
+        while the Sellmeier curvature across hundreds of nanometres remains. Through 100&nbsp;mm
+        of N-BK7, a 400–900&nbsp;nm continuum spreads to about 20&nbsp;ps; a compressor set to
+        exactly cancel the centre-wavelength GDD still leaves about 4&nbsp;ps, and the best
+        a single GDD reaches is under 1&nbsp;ps.</p>
+        <p>Once a filter, dichroic or AOTF cuts into the continuum, the duration is shown as
+        unavailable, whether the filter sits before the glass or after it. The accumulated
+        spread belongs to endpoints the filter may have removed, and reconstructing the slice
+        would need each wavelength's own delay history rather than a single number.</p>`,
+      formulas: [
+        { tex: '\\Delta t_{\\min} = \\frac{K}{c\\left(1/\\lambda_{\\min} - 1/\\lambda_{\\max}\\right)}', caption: 'The shortest pulse the band can carry. The denominator is the exact frequency span of the band, not the λ²/Δλ approximation, which drifts by several percent once the band is hundreds of nanometres wide. K is the time–bandwidth product of the chosen envelope: 0.441 for Gaussian, 0.315 for sech².' },
+        { tex: '\\Delta T=L\\,[n_g(\\lambda_{max})-n_g(\\lambda_{min})]/c,\\qquad \\tau_{out}\\approx\\sqrt{\\tau_{in}^{2}+\\Delta T^{2}}', caption: 'Flat-band endpoint group-delay-spread model used for each traced catalogue-glass length.' },
+      ],
       limitations: `<p>The spectrum is an idealized flat top, not a measured shape with the
         peaks, dips, and edge roll-off of a real continuum, and its shape does not change
         with pump power. No broadening is simulated: the band is declared, not generated
         from a pump and a nonlinear fibre. Pulse-to-pulse spectral noise, a real limitation
-        of these sources, is not represented.</p>`,
+        of these sources, is not represented. The endpoint estimate is not a propagated
+        complex field: it cannot reproduce sub-pulses, wavelength-dependent intensity,
+        non-monotonic group delay, higher-order phase inside the band, or nonlinear evolution.
+        It is a bounded temporal-span estimate, not a pulse-reconstruction claim.</p>`,
     },
     related: ['cwlaser', 'pulsedlaser', 'prism', 'filter'],
+    citations: [
+      { label: 'J. M. Dudley, G. Genty and S. Coen, “Supercontinuum generation in photonic crystal fiber,” Reviews of Modern Physics 78, 1135–1184 (2006) — temporal structure, coherence and higher-order dispersion limits of real continua', url: 'https://doi.org/10.1103/RevModPhys.78.1135' },
+    ],
     resources: [
       { label: 'RP Photonics Encyclopedia — Supercontinuum Generation', url: 'https://www.rp-photonics.com/supercontinuum_generation.html' },
       { label: 'RP Photonics Encyclopedia — Photonic Crystal Fibers', url: 'https://www.rp-photonics.com/photonic_crystal_fibers.html' },
@@ -375,6 +459,7 @@ export const wikiEntries = [
 
   {
     type: 'pointsource',
+    summary: "Emits light in all directions with a monochromatic, broadband, or gas-discharge spectrum, for exploring collection and collimation by nearby optics.",
     title: 'Point source',
     category: 'Sources',
     realWorld: {
@@ -491,6 +576,7 @@ export const wikiEntries = [
 
   {
     type: 'mirror',
+    summary: "Reflects light from a flat surface with adjustable size and reflectivity, for folding beam paths and controlling the power sent onward.",
     title: 'Mirror',
     category: 'Mirrors',
     realWorld: {
@@ -529,6 +615,7 @@ export const wikiEntries = [
 
   {
     type: 'lens',
+    summary: "Focuses light with a positive thin-lens focal length, providing a simple paraxial model for collimation, image formation, and beam relays.",
     title: 'Thin convex lens',
     category: 'Lenses',
     realWorld: {
@@ -573,6 +660,7 @@ export const wikiEntries = [
 
   {
     type: 'metalens',
+    summary: "Focuses light through a flat phase-gradient model with adjustable efficiency, using either diffractive chromatic focusing or an idealized achromatic band.",
     title: 'Metalens',
     category: 'Lenses',
     realWorld: {
@@ -644,6 +732,7 @@ export const wikiEntries = [
 
   {
     type: 'lensc',
+    summary: "Spreads light with a negative thin-lens focal length, for exploring virtual foci, beam expansion, and the behavior of diverging optical systems.",
     title: 'Thin concave lens',
     category: 'Lenses',
     realWorld: {
@@ -685,6 +774,7 @@ export const wikiEntries = [
 
   {
     type: 'thicklens',
+    summary: "Refracts light through two separated spherical or flat glass surfaces, exposing the effects of thickness, spherical aberration, chromatic focus, and dispersion.",
     title: 'Thick spherical lens',
     category: 'Lenses',
     realWorld: {
@@ -774,6 +864,7 @@ export const wikiEntries = [
 
   {
     type: 'asphericlens',
+    summary: "Refracts light through conic and polynomial lens surfaces, so changing the surface shape directly changes ray intersections, focusing, and spherical aberration.",
     title: 'Aspheric lens',
     category: 'Lenses',
     realWorld: {
@@ -903,6 +994,7 @@ export const wikiEntries = [
 
   {
     type: 'lensgroup',
+    summary: "Traces an editable sequence of glass surfaces and air gaps, for exploring compound lenses, achromatic doublets, aperture stops, and material dispersion.",
     title: 'Lens group',
     category: 'Lenses',
     realWorld: {
@@ -994,6 +1086,7 @@ export const wikiEntries = [
 
   {
     type: 'telescope',
+    summary: "Combines two thin lenses separated by their focal lengths, for changing beam diameter and comparing the geometry of afocal optical relays.",
     title: 'Conjugated thin lens pair',
     category: 'Lenses',
     realWorld: {
@@ -1035,6 +1128,7 @@ export const wikiEntries = [
 
   {
     type: 'objective',
+    summary: "Focuses light through an equivalent lens and pupil model, with adjustable working distance, numerical aperture, immersion medium, and generic objective presets.",
     title: 'Objective',
     category: 'Lenses',
     realWorld: {
@@ -1116,9 +1210,9 @@ export const wikiEntries = [
         <p>OpticalSetup traces the objective as one equivalent refracting plane of focal
         length EFL, but it does <em>not</em> put that plane at the front tip. It sits one
         focal length short of the nominal focus — at the front tip plus
-        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for a real objective means
-        somewhere inside the barrel. That single choice is what makes three things true at
-        once:</p>
+        <span class="w">WD&nbsp;&minus;&nbsp;EFL</span> — which for most objectives means
+        somewhere inside the barrel, and for long-working-distance designs ahead of the front
+        tip (see below). That single choice is what makes three things true at once:</p>
         <ul>
           <li>Collimated light from the tube-lens side focuses <em>exactly</em> one working
           distance beyond the physical front tip, so the drawn focus is the working
@@ -1265,6 +1359,7 @@ export const wikiEntries = [
 
   {
     type: 'fiber',
+    summary: "Guides light along a drawn path between connectorized ends, with configurable acceptance, propagation loss, group delay, and an output cone at each end.",
     title: 'Optical fiber',
     category: 'Fibers',
     realWorld: {
@@ -1370,14 +1465,21 @@ export const wikiEntries = [
         than a straight one, and the loss figure is applied uniformly rather than varying
         with wavelength. Nine rays are launched from the output end, which sets how finely
         the emerging cone is sampled.</p>
-        <p>Most significantly, <strong>the fiber's own chromatic dispersion is not
-        modelled</strong>. Dispersion accumulated elsewhere in the setup is carried through
-        correctly, but the fiber itself neither stretches nor compresses a pulse, so a
-        femtosecond pulse emerges from a long fiber exactly as long as it went in. Real
-        fiber is one of the most dispersive elements in any ultrafast setup. Fiber
-        <strong>dispersion</strong> — and <strong>wavelength conversion</strong>, covering
-        the nonlinear behaviour that makes fiber a source as well as a conduit — are both
-        candidates for a future release.</p>`,
+        <p>The fiber's own chromatic dispersion is a <strong>single signed β₂</strong>,
+        entered in ps²/km at your laser's wavelength and applied as a lumped GDD of
+        β₂ × length: 1&nbsp;ps²/km is 1&nbsp;fs²/mm, so 36&nbsp;ps²/km over 1&nbsp;m adds
+        36&nbsp;000&nbsp;fs². It adds to whatever dispersion the pulse already carries, and a
+        compressor of the opposite sign takes it back out. <em>Physical length</em> sets the
+        length used for delay, loss and dispersion together, so a coil of many metres can be
+        drawn as a short cable; left at 0 the drawn length is used, as in sketches from
+        before these controls existed, and β₂ at 0 adds no dispersion. A broad band gains
+        the endpoint delay spread that one β₂ implies, the same approximation the pulse
+        compressor uses. Duration readouts downstream follow the pulse's authored phase, and
+        read unavailable where that phase is unknown.</p>
+        <p>One β₂ is all there is: no third- or higher-order dispersion, no wavelength
+        dependence of β₂ across a broad band, no modal or polarisation-mode dispersion, and
+        no nonlinear propagation — self-phase modulation, soliton dynamics and wavelength
+        conversion in the fiber itself are not simulated.</p>`,
     },
     related: ['barefiber', 'objective', 'sclaser', 'detector'],
     resources: [
@@ -1388,6 +1490,7 @@ export const wikiEntries = [
   },
   {
     type: 'barefiber',
+    summary: "Guides light along a drawn path with exposed, flat-cleaved ends, using the same acceptance, loss, delay, and output controls as connectorized fiber.",
     title: 'Bare fiber',
     category: 'Fibers',
     realWorld: {
@@ -1498,14 +1601,21 @@ export const wikiEntries = [
         than a straight one, and the loss figure is applied uniformly rather than varying
         with wavelength. Nine rays are launched from the output end, which sets how finely
         the emerging cone is sampled.</p>
-        <p>Most significantly, <strong>the fiber's own chromatic dispersion is not
-        modelled</strong>. Dispersion accumulated elsewhere in the setup is carried through
-        correctly, but the fiber itself neither stretches nor compresses a pulse, so a
-        femtosecond pulse emerges from a long fiber exactly as long as it went in. Real
-        fiber is one of the most dispersive elements in any ultrafast setup. Fiber
-        <strong>dispersion</strong> — and <strong>wavelength conversion</strong>, covering
-        the nonlinear behaviour that makes fiber a source as well as a conduit — are both
-        candidates for a future release.</p>`,
+        <p>The fiber's own chromatic dispersion is a <strong>single signed β₂</strong>,
+        entered in ps²/km at your laser's wavelength and applied as a lumped GDD of
+        β₂ × length: 1&nbsp;ps²/km is 1&nbsp;fs²/mm, so 36&nbsp;ps²/km over 1&nbsp;m adds
+        36&nbsp;000&nbsp;fs². It adds to whatever dispersion the pulse already carries, and a
+        compressor of the opposite sign takes it back out. <em>Physical length</em> sets the
+        length used for delay, loss and dispersion together, so a coil of many metres can be
+        drawn as a short cable; left at 0 the drawn length is used, as in sketches from
+        before these controls existed, and β₂ at 0 adds no dispersion. A broad band gains
+        the endpoint delay spread that one β₂ implies, the same approximation the pulse
+        compressor uses. Duration readouts downstream follow the pulse's authored phase, and
+        read unavailable where that phase is unknown.</p>
+        <p>One β₂ is all there is: no third- or higher-order dispersion, no wavelength
+        dependence of β₂ across a broad band, no modal or polarisation-mode dispersion, and
+        no nonlinear propagation — self-phase modulation, soliton dynamics and wavelength
+        conversion in the fiber itself are not simulated.</p>`,
     },
     related: ['fiber', 'objective', 'sclaser', 'detector'],
     resources: [
@@ -1516,6 +1626,7 @@ export const wikiEntries = [
   },
   {
     type: 'prism',
+    summary: "Refracts light at its triangular glass boundaries, separating wavelengths through material dispersion and adding pulse dispersion according to the traced path.",
     title: 'Prism',
     category: 'Dispersive elements',
     realWorld: {
@@ -1558,6 +1669,7 @@ export const wikiEntries = [
 
   {
     type: 'grating',
+    summary: "Separates light into selected diffraction orders using the grating equation, with adjustable groove density, order efficiency, and a choice of spectral illumination.",
     title: 'Diffraction grating',
     category: 'Dispersive elements',
     realWorld: {
@@ -1599,6 +1711,7 @@ export const wikiEntries = [
 
   {
     type: 'freeglass',
+    summary: "Refracts light through an editable outline of straight edges and circular arcs, with a constant refractive index or wavelength-dependent catalogue glass.",
     title: 'Freeform glass',
     category: 'Dispersive elements',
     realWorld: {
@@ -1648,6 +1761,7 @@ export const wikiEntries = [
 
   {
     type: 'diffuser',
+    summary: "Spreads incident light into an adjustable angular fan, providing a qualitative model for comparing illumination coverage and the light collected downstream.",
     title: 'Diffuser',
     category: 'Dispersive elements',
     realWorld: {
@@ -1700,6 +1814,7 @@ export const wikiEntries = [
 
   {
     type: 'glassrod',
+    summary: "Refracts light through a glass rod with adjustable dimensions and material, including total internal reflection and pulse dispersion along the traced path.",
     title: 'Glass rod',
     category: 'Dispersive elements',
     realWorld: {
@@ -1758,6 +1873,7 @@ export const wikiEntries = [
 
   {
     type: 'bs',
+    summary: "Divides incident light into transmitted and reflected paths with an adjustable splitting ratio, for building beam pickoffs, interferometers, and parallel optical branches.",
     title: 'Beamsplitter',
     category: 'Filters & Splitters',
     realWorld: {
@@ -1791,6 +1907,7 @@ export const wikiEntries = [
 
   {
     type: 'polarizer',
+    summary: "Selects a linear polarization direction and attenuates light according to its input state, for exploring Malus’s law and polarization-dependent optical transmission.",
     title: 'Polarizer',
     category: 'Polarization',
     realWorld: {
@@ -1828,6 +1945,7 @@ export const wikiEntries = [
 
   {
     type: 'hwp',
+    summary: "Applies half-wave retardance around an adjustable fast axis, for rotating linear polarization and controlling how light divides at a polarizing beamsplitter.",
     title: 'Half-wave plate',
     category: 'Polarization',
     realWorld: {
@@ -1909,6 +2027,7 @@ export const wikiEntries = [
   },
   {
     type: 'qwp',
+    summary: "Applies quarter-wave retardance around an adjustable fast axis, for converting input polarization between linear, elliptical, and circular states in an optical setup.",
     title: 'Quarter-wave plate',
     category: 'Polarization',
     realWorld: {
@@ -1980,6 +2099,7 @@ export const wikiEntries = [
   },
   {
     type: 'pbs',
+    summary: "Separates orthogonal polarizations of light into transmitted and reflected beams.",
     title: 'Polarizing beamsplitter',
     category: 'Polarization',
     realWorld: {
@@ -2057,6 +2177,7 @@ export const wikiEntries = [
   },
   {
     type: 'isolator',
+    summary: "Passes light along its forward direction and blocks reverse propagation, providing an idealized way to isolate a source from returning optical paths.",
     title: 'Optical isolator',
     category: 'Polarization',
     realWorld: {
@@ -2127,6 +2248,7 @@ export const wikiEntries = [
   },
   {
     type: 'aom',
+    summary: "Deflects light into a first diffraction order with adjustable efficiency, optional zero order, and square, sine, or sawtooth modulation of the drive.",
     title: 'Acousto-optic modulator (AOM)',
     category: 'Modulators',
     realWorld: {
@@ -2143,19 +2265,66 @@ export const wikiEntries = [
     },
     inOpticalSetup: {
       html: `
-        <p>The frequency shift is modeled exactly: the diffracted ray's optical frequency
-        is genuinely shifted by the configured RF frequency, then converted back to a
-        wavelength, which is what makes an AOM in a pulse-timing setup actually change
-        color. Deflection and diffraction efficiency, though, are direct configurable
-        parameters rather than quantities derived from crystal or drive properties.
-        Gating support (square or graded sinusoidal) lets the modeled RF drive turn on
-        and off in time, which the pulse-timing overlay reads as a temporal gate on the
-        beam.</p>`,
+        <p>Deflection and modulation efficiency are direct configurable parameters
+        rather than quantities derived from crystal or drive properties. The optical
+        frequency shift is <strong>not</strong> applied, and there is no drive-frequency
+        control: the shift is real &mdash; it is the whole basis of heterodyne detection
+        &mdash; but at 7.6&times;10<sup>&minus;5</sup>&nbsp;nm for 80&nbsp;MHz at
+        532&nbsp;nm it is a thousand times finer than any wavelength difference this
+        workbench resolves, since every readout here rounds to the nearest nanometre.
+        Carrying it only ever moved a number nothing could report. The
+        <a href="../aod/">AOD</a> had already declined it for the same reason.
+        Gating support lets the modeled RF drive vary in time, which the pulse-timing
+        overlay reads as a temporal gate on the beam. Three waveforms are offered, named
+        for the drive a function generator would supply: <strong>square</strong> switches
+        the diffracted order fully on and off and is the only one with a
+        <em>duty cycle</em>; <strong>sine</strong> and <strong>sawtooth</strong> sweep the
+        drive continuously and are described by a <em>modulation depth</em> instead,
+        swinging between 1&minus;depth and full transmission. Both continuous shapes
+        therefore average 1&nbsp;&minus;&nbsp;depth/2 over a period, which is the power a
+        detector with no temporal resolution reads.</p>
+        <p>The ramp carries the symmetry control a function generator puts on its own
+        ramp output. <em>Rise fraction</em> is how much of the period is spent climbing:
+        1 is the rising sawtooth, 0 the falling one, 0.5 a triangle, and anything
+        between an asymmetric triangle peaking at exactly that point in the period.
+        Sweeping it changes the shape without changing the average, so it never doubles
+        as a brightness control.</p>
+        <p>A square gate switches the diffracted order fully on and off, so it can be
+        drawn in chunks rather than as a uniformly dimmed line &mdash; the same schematic
+        footprint the <a href="../chopper/">chopper</a> already uses for gated CW light.
+        <em>Draw gated beam chopped</em> controls it, and it is a drawing choice alone:
+        the traced power stays duty-averaged and every detector reading is identical
+        either way. The continuous waveforms are never chunked, because they have no
+        on/off edges to draw.</p>
+        <p>With <em>Keep 0th order</em> on, both orders are chunked <strong>in
+        opposition</strong>: light returns to the undiffracted beam exactly while the RF
+        is off, so one is lit wherever the other is dark. Both beams still carry their
+        duty-averaged power, and the two orders always sum to the incident power.</p>
+        <p>A detector's time trace shows the levels rather than just the shape. Its
+        vertical axis is absolute for a single beam — full height is one whole source
+        beam, and light lost upstream draws short rather than being rescaled back — so
+        <em>modulation efficiency</em> is visible as the contrast it really sets: at
+        &eta;&nbsp;=&nbsp;0.5 the diffracted order peaks at half height while the
+        undiffracted one only falls to half, in opposition, and the two sum to the beam at
+        every instant. At &eta;&nbsp;=&nbsp;1 both swing the whole way. Light lost
+        anywhere upstream shortens the trace in the same way, instead of being normalized
+        back to full scale.</p>`,
       formulas: [],
-      limitations: `<p>Deflection angle and diffraction efficiency are set directly by
+      limitations: `<p>Deflection angle and modulation efficiency are set directly by
         you, not derived from the Bragg condition, RF power, or interaction length — this
-        is a schematic acousto-optic model, not a Bragg-cell simulator. Only the frequency
-        shift is first-principles physics.</p>`,
+        is a schematic acousto-optic model, not a Bragg-cell simulator.
+        <em>Modulation efficiency</em> is the crystal's
+        diffraction efficiency under another name: it is the fraction of the beam that can
+        be switched, which is exactly what limits the contrast of both orders. The chunk spacing is schematic too: a real
+        megahertz gate would put its chunks micrometres apart, so a fixed on-screen
+        period is drawn instead, exactly as pulse markers are spaced for legibility
+        rather than to scale, and the two orders share that period rather than each
+        following its own RF timing. The chunks are also idealized in depth: both
+        orders are drawn fully dark between chunks, while a real diffracted order
+        only reaches the configured efficiency and a real zeroth order keeps
+        1&minus;efficiency of the beam rather than extinguishing. Drawing that
+        residual as its own branch would have let a display setting change a detector
+        reading, which the chunks must never do.</p>`,
     },
     related: ['aod', 'aotf', 'eom', 'chopper'],
     resources: [
@@ -2165,6 +2334,7 @@ export const wikiEntries = [
 
   {
     type: 'eom',
+    summary: "Changes polarization through voltage-controlled retardance, held fixed or switched periodically, so a downstream analyzer can convert the change into intensity modulation.",
     title: 'Electro-optic modulator (EOM)',
     category: 'Modulators',
     realWorld: {
@@ -2285,6 +2455,7 @@ export const wikiEntries = [
 
   {
     type: 'phasemodulator',
+    summary: "Changes optical path without changing polarization, making a driven phase shift visible as intensity modulation when placed in a supported interferometer.",
     title: 'Phase modulator',
     category: 'Modulators',
     realWorld: {
@@ -2398,6 +2569,7 @@ export const wikiEntries = [
 
   {
     type: 'aod',
+    summary: "Steers diffracted light through a fixed or swept angle with wavelength-dependent deflection, for exploring angular scanning and optional zero-order beam routing.",
     title: 'Acousto-optic deflector (AOD)',
     category: 'Modulators',
     realWorld: {
@@ -2515,8 +2687,8 @@ export const wikiEntries = [
         between drive power and efficiency.</p>
         <p>The optical frequency shift is not applied. It is real, but at 7.6×10⁻⁵ nm for
         80 MHz at 532 nm it is more than a thousand times finer than the finest wavelength
-        difference anything in this workbench resolves; the <a href="../aom/">AOM</a>,
-        which exists for that shift, still carries it.</p>
+        difference anything in this workbench resolves. The <a href="../aom/">AOM</a> does
+        not carry it either, for the same reason.</p>
         <p>Access time is reported but not enforced: the beam jumps instantly between
         angles, with no settling and no transient while the acoustic wave refills the
         aperture. The number of resolvable spots — arguably the figure that decides a real
@@ -2538,6 +2710,7 @@ export const wikiEntries = [
 
   {
     type: 'beamdump',
+    summary: "Absorbs any light that reaches it, terminating an unwanted beam.",
     title: 'Beam dump',
     category: 'Beam Block',
     realWorld: {
@@ -2643,6 +2816,7 @@ export const wikiEntries = [
   },
   {
     type: 'slit',
+    summary: "Passes light through an adjustable gap and blocks everything outside it.",
     title: 'Slit',
     category: 'Beam Block',
     realWorld: {
@@ -2715,6 +2889,7 @@ export const wikiEntries = [
   },
   {
     type: 'blocker',
+    summary: "Stops rays inside an adjustable rectangular region while remaining hidden in exported figures, for controlling beam endpoints without adding visible hardware.",
     title: 'Invisible blocker',
     category: 'Beam Block',
     realWorld: {
@@ -2765,6 +2940,7 @@ export const wikiEntries = [
   },
   {
     type: 'slm',
+    summary: "Reflects light through configurable lens-array, grating, steering, and speckle functions, offering a qualitative model of spatial wavefront shaping and beam routing.",
     title: 'Spatial light modulator',
     category: 'Wavefront Shaping',
     realWorld: {
@@ -2898,6 +3074,7 @@ export const wikiEntries = [
   },
   {
     type: 'metasurface',
+    summary: "Transmits light through a patterned layer with lens-array, grating, steering, or speckle functions, representing a fixed optical pattern with optional zero-order light.",
     title: 'Metasurface',
     category: 'Wavefront Shaping',
     realWorld: {
@@ -2986,6 +3163,7 @@ export const wikiEntries = [
   },
   {
     type: 'dmd',
+    summary: "Routes light through a configurable binary micromirror pattern into ON and optional OFF orders, for exploring spatial switching and reflected beam selection.",
     title: 'Digital micromirror device',
     category: 'Wavefront Shaping',
     realWorld: {
@@ -3084,6 +3262,7 @@ export const wikiEntries = [
   },
   {
     type: 'dm',
+    summary: "Reflects light with adjustable tip, tilt, and paraxial defocus, providing a simple model for steering a beam and changing its wavefront curvature.",
     title: 'Deformable mirror',
     category: 'Wavefront Shaping',
     realWorld: {
@@ -3185,6 +3364,7 @@ export const wikiEntries = [
   },
   {
     type: 'aotf',
+    summary: "Selects spectral lines from incoming light, either simultaneously or sequentially, and routes the remaining spectrum toward a separately configurable deflected output.",
     title: 'Acousto-optic tunable filter',
     category: 'Modulators',
     realWorld: {
@@ -3307,6 +3487,7 @@ export const wikiEntries = [
   },
   {
     type: 'detector',
+    summary: "Measures the relative intensity of light reaching its active surface.",
     title: 'Photodetector',
     category: 'Detectors',
     realWorld: {
@@ -3442,6 +3623,7 @@ export const wikiEntries = [
 
   {
     type: 'pmt',
+    summary: "Amplifies weak incident light with adjustable gain, dark floor, and saturation, for exploring qualitative signal detection in fluorescence and other low-light setups.",
     title: 'Photomultiplier (PMT)',
     category: 'Detectors',
     realWorld: {
@@ -3572,6 +3754,7 @@ export const wikiEntries = [
 
   {
     type: 'powermeter',
+    summary: "Reports optical power from the configured source watts and traced losses, for comparing how filters, splitters, and apertures affect power at the sensor.",
     title: 'Power meter',
     category: 'Detectors',
     realWorld: {
@@ -3667,6 +3850,7 @@ export const wikiEntries = [
 
   {
     type: 'wavefrontdetector',
+    summary: "Estimates beam convergence from ray angle versus position, reporting whether light is collimated, converging, or diverging and the corresponding full cone angle.",
     title: 'Wavefront detector',
     category: 'Detectors',
     realWorld: {
@@ -3820,6 +4004,7 @@ export const wikiEntries = [
 
   {
     type: 'camera',
+    summary: "Records a one-dimensional intensity profile across its pixels, including interference from coherent beams.",
     title: 'Camera',
     category: 'Detectors',
     realWorld: {
@@ -4016,6 +4201,7 @@ export const wikiEntries = [
   },
   {
     type: 'phaseplate',
+    summary: "Adds optical path across part of a beam without deflecting it, creating a spatial phase pattern that a supported interferometer can reveal.",
     title: 'Phase object',
     category: 'Specimens',
     realWorld: {
@@ -4157,6 +4343,7 @@ export const wikiEntries = [
   },
   {
     type: 'spectrometer',
+    summary: "Reports the wavelength range, centre wavelength, and bandwidth of arriving light, with a qualitative spectrum for comparing sources and spectral filtering.",
     title: 'Spectrometer',
     category: 'Detectors',
     realWorld: {
@@ -4288,6 +4475,7 @@ export const wikiEntries = [
 
   {
     type: 'polarimeter',
+    summary: "Reports the polarization of arriving light using normalized Stokes parameters and a visual state display, for comparing linear, elliptical, circular, and unpolarized illumination.",
     title: 'Polarimeter',
     category: 'Detectors',
     realWorld: {
@@ -4430,6 +4618,7 @@ export const wikiEntries = [
   },
   {
     type: 'autocorrelator',
+    summary: "Calculates an intensity autocorrelation and infers pulse duration using a selected pulse-shape assumption, for examining temporal broadening and the limits of duration estimates.",
     title: 'Autocorrelator',
     category: 'Detectors',
     realWorld: {
@@ -4648,7 +4837,7 @@ export const wikiEntries = [
         reading changes — a Gaussian assumption on a sech² source reads about 9% long, and
         the inspector says so explicitly, naming the true duration beside the inferred one.
         That disagreement is the lesson the component exists to teach.</p>
-        <p>For a transform-limited Gaussian source, the reading is taken from the pulse that
+        <p>The reading is taken from the pulse that
         <em>arrives</em> rather than the one that was emitted. Put a
         <a href="../glassrod/">glass rod</a> in the path and the autocorrelator measures the
         stretched duration; add a <a href="../pulsecompressor/">pulse compressor</a> with the
@@ -4656,12 +4845,15 @@ export const wikiEntries = [
         <em>Ultrashort pulse chirping</em> example is built around exactly that comparison,
         with three autocorrelators reading the same pulse under three different dispersion
         conditions.</p>
-        <p>That qualification is not decoration. The broadening is computed from a closed-form
-        Gaussian result, so it is only derived when the source is both transform-limited and
-        Gaussian. Switch the source to sech&sup2;, or clear its transform-limited box, and no
-        stretched duration exists to report: the instrument falls back to the duration
-        configured on the source, and the inspector says so in as many words rather than
-        letting a dispersion measurement be read out of a number that never moved.</p>
+        <p>The duration-model row states where that arriving width came from: closed-form
+        Gaussian GDD, numerically tabulated sech² GDD, a bandwidth-derived positive or negative
+        input chirp, a flat-band endpoint group-delay spread, or the explicit 0&nbsp;nm
+        bandwidth exception. Where the model declines — unknown spectral phase, a reshaped
+        spectrum, or paths of different dispersion — the instrument shows <em>Duration
+        unavailable</em> and names the reason, with the source's configured duration listed as
+        the setting it is, not as a measurement. The autocorrelation still cannot determine chirp itself; it is
+        displaying the scene's propagation model and then applying the instrument's chosen
+        deconvolution factor.</p>
         <h3>Cross-correlation mode</h3>
         <p><strong>Measurement mode</strong> switches the same box between correlating one
         source against itself and correlating <em>two</em> sources against each other. In
@@ -4782,6 +4974,7 @@ export const wikiEntries = [
 
   {
     type: 'dichroic',
+    summary: "Splits light by wavelength around an adjustable cutoff, transmitting one spectral region and reflecting another for excitation routing and emission collection.",
     title: 'Dichroic mirror',
     category: 'Filters & Splitters',
     realWorld: {
@@ -4798,7 +4991,12 @@ export const wikiEntries = [
         <p>OpticalSetup models the idealized target behavior a dichroic coating is
         designed to approximate: a hard-edged passband. Longpass, shortpass, and bandpass
         variants each define a wavelength range that transmits completely, reflecting
-        everything else. For a broadband beam, the transmitted and reflected branches
+        everything else. The band reflector is the reverse of the bandpass: it reflects one
+        band and transmits both sides of it, like the high-reflection coating on a laser or
+        optical parametric oscillator mirror that returns the resonant wave while passing the
+        pump and other wavelengths. Its in-band reflectivity can be lowered below 100 % to make
+        an output coupler, which transmits the remainder of the band along with everything
+        outside it. For a broadband beam, the transmitted and reflected branches
         each carry the actual spectral overlap between the beam's band and the passband —
         so a supercontinuum beam through a longpass dichroic correctly comes out
         color-shifted on both branches, not just dimmed.</p>`,
@@ -4818,6 +5016,7 @@ export const wikiEntries = [
 
   {
     type: 'filter',
+    summary: "Transmits a selected wavelength band or attenuates light as a neutral-density filter, for isolating spectral signals and controlling power along a beam path.",
     title: 'Filter',
     category: 'Filters & Splitters',
     realWorld: {
@@ -4874,6 +5073,7 @@ export const wikiEntries = [
 
   {
     type: 'etalon',
+    summary: "Uses repeated reflections between closely spaced coatings to produce periodic transmission resonances, with angle tuning and configurable spectral resolution and free spectral range.",
     title: 'Etalon (Fabry–Pérot)',
     category: 'Filters & Splitters',
     realWorld: {
@@ -4937,6 +5137,7 @@ export const wikiEntries = [
 
   {
     type: 'vipa',
+    summary: "Produces spatially offset leakage beams through repeated reflections inside a tilted plate, providing a geometric model of the walk-off used in VIPA dispersers.",
     title: 'VIPA (Virtually Imaged Phased Array)',
     category: 'Filters & Splitters',
     realWorld: {
@@ -4999,6 +5200,7 @@ export const wikiEntries = [
 
   {
     type: 'cmirrorx',
+    summary: "Diverges light from a real convex spherical surface, including its spherical aberration.",
     title: 'Convex mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5037,6 +5239,7 @@ export const wikiEntries = [
 
   {
     type: 'cmirror',
+    summary: "Focuses light from a real concave spherical surface, including its spherical aberration.",
     title: 'Concave mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5090,6 +5293,7 @@ export const wikiEntries = [
 
   {
     type: 'oap',
+    summary: "Reflects light from an exact parabola, collimating a source at its focus without spherical aberration.",
     title: 'Parabolic mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5136,6 +5340,7 @@ export const wikiEntries = [
 
   {
     type: 'galvo',
+    summary: "Steers reflected light with a fixed or animated mechanical mirror angle, for exploring scan geometry with a slowed preview at high drive frequencies.",
     title: 'Galvo mirror',
     category: 'Mirrors',
     realWorld: {
@@ -5180,7 +5385,182 @@ export const wikiEntries = [
   },
 
   {
+    type: 'conicmirror',
+    title: 'Conic mirror',
+    category: 'Mirrors',
+    summary: 'Reflects from an exact conic surface — sphere, parabola, ellipse or hyperbola — with an optional real central opening.',
+    realWorld: {
+      html: `
+        <p>A spherical mirror is easy to make and wrong in a specific way: rays striking
+        it far from the axis cross ahead of the ones near the axis, so a distant star
+        never quite comes to a point. That is spherical aberration, and it is not a
+        manufacturing defect — it is what a sphere does. The conic sections fix it, each
+        one exactly, for one particular pair of conjugate points.</p>
+        <p>The surface is described by a vertex radius and a <strong>conic constant</strong>
+        k, which selects the section: k = 0 is a sphere, k = −1 a parabola, −1 &lt; k &lt; 0
+        a prolate ellipse, k &lt; −1 a hyperbola, and k &gt; 0 an oblate ellipse.</p>`,
+      formulas: [
+        { tex: 'z(y) = \\frac{y^{2}/R}{1 + \\sqrt{1 - (1+k)\\,y^{2}/R^{2}}}', caption: 'The conic sag: how far the surface has departed from its vertex plane at height y. One radius and one conic constant describe every shape in the family.' },
+      ],
+      html2: `
+        <p>Each conic images one pair of points perfectly. A <strong>parabola</strong>
+        takes a source at infinity to its focus, which is why it is the shape of a
+        telescope primary and of the <a href="../oap/">off-axis parabolic mirror</a>. An
+        <strong>ellipse</strong> images one of its two foci onto the other, both at finite
+        distance. A <strong>hyperbola</strong> does the same for one real and one virtual
+        focus.</p>
+        <p>Combining two of them is how reflecting telescopes and objectives are built: a
+        Cassegrain pairs a parabolic primary with a hyperbolic secondary, a Gregorian with
+        an elliptical one, and a Ritchey–Chrétien uses two hyperbolas to clear coma as
+        well. The same two-mirror idea, turned into a microscope objective, is the
+        standard tool of infrared microscopy and FTIR: mirrors have no dispersion at all,
+        so the focus does not move with wavelength, and no glass is asked to transmit
+        light it would simply absorb.</p>
+        <p>What every on-axis two-mirror system pays is the <strong>central
+        obstruction</strong>. The secondary sits in the beam, so the aperture is an
+        annulus: some light is lost outright, and in a real instrument the rest is
+        redistributed, with a diffraction pattern whose rings are stronger than an
+        unobstructed aperture's.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The mirror is a real conic surface, intersected analytically. Each ray's hit
+        point and surface normal are solved on the conic itself rather than on a paraxial
+        stand-in, so aberration is a <em>result</em> here: give a mirror k = 0 and the
+        marginal rays really do cross ahead of the paraxial ones, by an amount you can
+        measure with a detector.</p>
+        <p>The <strong>signed vertex radius</strong> sets curvature and which way the
+        surface bends — a radius of zero is a plane — and the <strong>coated side</strong>
+        chooses which face reflects; the other is opaque, and reflectivity below 100% is
+        absorbed rather than transmitted, as a solid mirror substrate would.</p>
+        <p>The <strong>central opening</strong> is a real hole, not a drawing. Rays inside
+        it pass through the mirror entirely, and — because the search does not stop at the
+        opening — a ray that enters through the hole at an angle can still strike the
+        annulus further along, which is exactly the path the light takes in a Cassegrain.
+        Because a requested radius can be too short for the requested aperture to exist,
+        the <em>Geometry used</em> readout always reports the radius and opening actually
+        realized, so a silently adjusted prescription cannot pass unnoticed.</p>`,
+      formulas: [],
+      limitations: `<p>This is a two-dimensional meridional section. There is no
+        sagittal plane, so nothing here reproduces astigmatism or field curvature as a
+        real conic would show them off-axis, and a rotational surface's behaviour is only
+        being sampled along one cut.</p>
+        <p>Nothing is diffractive: there is no Airy pattern, none of the ring
+        redistribution a central obstruction causes, and no spider vanes, so the
+        geometric point focus a well-matched conic pair produces is sharper than any real
+        instrument's. Reflectivity is a single flat percentage with no angle,
+        polarization or wavelength dependence, so a coating's spectrum and an infrared
+        detector's responsivity are both outside the model. The conic constant is bounded
+        to ±20 and the radius to ±5000&nbsp;mm.</p>`,
+    },
+    related: ['oap', 'cmirror', 'mirror', 'objective'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Parabolic Mirrors', url: 'https://www.rp-photonics.com/parabolic_mirrors.html' },
+      { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
+    ],
+  },
+
+  {
+    type: 'polygonscanner',
+    title: 'Polygon scanner',
+    category: 'Mirrors',
+    summary: 'Traces reflection from every facet of a rotating regular polygon.',
+    realWorld: {
+      html: `
+        <p>A <strong>rotating polygon scanner</strong> is a prism of flat mirror facets
+        cut around a wheel, spun continuously by a motor. Each facet sweeps the beam
+        through one line; as it passes out of the beam the next facet picks it up at the
+        start of the next line. The idea is old enough to be everywhere without being
+        noticed — it is the mechanism inside laser printers, supermarket barcode
+        scanners, many LiDAR heads, and the line-scanning laser processing systems used
+        for high-throughput marking and ablation.</p>
+        <p>Its advantage over a <a href="../galvo/">galvo mirror</a> is that the motion
+        never reverses. A galvo has to decelerate, stop and accelerate back at the end of
+        every line, and the settling that follows is what limits how fast it can scan. A
+        polygon turns one way at constant speed, so there is no turnaround to wait for
+        and the line rate is set purely by how fast the motor spins and how many facets
+        it carries:</p>`,
+      formulas: [
+        { tex: 'f_{\\text{line}} = \\frac{N \\cdot \\text{RPM}}{60}', caption: 'Lines per second, for N facets. A 12-facet wheel at 30,000 RPM delivers 6,000 lines per second — a rate no galvo of comparable aperture can approach.' },
+        { tex: '\\Delta\\theta_{\\text{optical}} = \\frac{4\\pi}{N}', caption: 'The optical sweep one facet delivers. Reflection doubles a mechanical angle, and the wheel turns through a full facet pitch 2π/N while one facet crosses the beam, so fewer facets buy a wider scan and a lower line rate.' },
+      ],
+      html2: `
+        <p>What you pay for that speed is <strong>pupil walk</strong>. A galvo pivots
+        about its own face, so the beam leaves from roughly the same place and only the
+        angle changes. A polygon facet is offset from the rotation axis, so as the wheel
+        turns the reflection point slides bodily along the facet and the beam translates
+        as well as tilting. Scan lenses for polygon systems are designed around that
+        moving pupil, and facets are made generously larger than the beam so it has room
+        to walk.</p>
+        <p>The other cost is the gap between facets. For part of every rotation the beam
+        straddles the edge between two facets and is split in two, each half leaving at a
+        completely different angle. Nothing useful can be done with that light, so the
+        source is gated off across the transition — the scanner's <em>duty cycle</em> is
+        the fraction of each facet period that survives. A wider beam eats more of the
+        facet and leaves less duty, which is the trade behind the large wheels in
+        high-power line-scanning heads.</p>
+        <p>Because every facet is cut and mounted separately, real wheels also carry
+        facet-to-facet angular errors. A facet tilted a fraction of a milliradian out of
+        plane puts its line slightly above or below the others, and since the error
+        repeats once per revolution it shows up as periodic banding in the scanned
+        image — the reason precision systems either specify pyramidal error tightly or
+        correct it actively.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>The component is a regular polygon centred on its rotation axis, and the
+        vertices that draw it are the same vertices that get traced: every facet you can
+        see is a real mirror surface, so there is no separate abstract scan angle that
+        could disagree with the picture. Each facet reflects by the ordinary vector law
+        of reflection used by the plain <a href="../mirror/">mirror</a>, which means the
+        2× angle doubling and the pupil walk are not written into the model — they simply
+        come out of turning the geometry.</p>
+        <p><strong>Rotation</strong> runs the wheel continuously at a set RPM, or holds a
+        <em>static phase</em> so you can step through a facet by hand. The
+        <em>facet rate</em> readout gives the physical lines per second at all times,
+        even when playback is slowing the visible motion down for inspection.</p>
+        <p>The <strong>usable scan window</strong> is an ideal synchronized blanker: a
+        centred fraction of each facet period during which the facets reflect, with the
+        hub drawn green. Outside it the facets absorb, the hub turns amber, and no
+        outgoing ray remains — the modelled equivalent of gating the source across a
+        facet transition.</p>
+        <p>The wheel is opaque, so a facet reflectivity below 100% loses the remainder to
+        the coating rather than transmitting it. That is deliberate: a solid metal wheel
+        has no way to pass light, and letting it through would produce spurious
+        reflections off the inside faces of the far facets.</p>`,
+      formulas: [
+        { tex: 'w_{\\text{facet}} = D \\sin\\!\\left(\\frac{\\pi}{N}\\right)', caption: 'The facet width readout — the chord of one facet. This is the number to compare a beam width against: over one facet period the facet travels its whole chord through the beam, so a beam occupying a fraction f of it is on a single facet for only about 1 − f of the period.' },
+      ],
+      limitations: `<p>The scan window is <strong>not derived from your beam</strong>.
+        It is a fraction of the facet period centred on the facet, and the component has
+        no knowledge of what is illuminating it, so a window left wider than the geometry
+        supports will show the beam splitting across two facets while the hub still reads
+        open. That split is real behaviour — it is what the blanking exists to hide — but
+        choosing the window to suit the beam is left to you. Oblique incidence tightens
+        it further and asymmetrically: the footprint on the facet is the beam width
+        divided by the cosine of the incidence angle, and that angle grows on one side of
+        the sweep and shrinks on the other, so the clean window is both narrower than the
+        facet ratio suggests and not centred on the facet.</p>
+        <p>Blanking is an ideal switch synchronized to the facet, not a model of how any
+        particular controller drives a source. Every facet is perfect and identical:
+        there is no pyramidal or facet-to-facet angular error, so none of the periodic
+        line banding that characterizes real wheels appears, and no bearing wobble,
+        windage, or timing jitter. There is no f-theta or telecentric scan lens — put an
+        ordinary lens after the wheel and the focus moves as f·tan θ, with the pincushion
+        that implies. Nothing here predicts a diffraction-limited spot size, and the
+        second scan axis that turns lines into an area is out of the plane and not
+        modelled.</p>`,
+    },
+    related: ['galvo', 'mirror', 'aod'],
+    resources: [
+      { label: 'RP Photonics Encyclopedia — Laser Scanners', url: 'https://www.rp-photonics.com/laser_scanners.html' },
+      { label: 'RP Photonics Encyclopedia — Mirrors', url: 'https://www.rp-photonics.com/mirrors.html' },
+    ],
+  },
+
+  {
     type: 'retroreflector',
+    summary: "Returns light antiparallel through a right-angle mirror pair, with optional translation that lengthens the round-trip optical path for mechanical delay demonstrations.",
     title: 'Retroreflector',
     category: 'Mirrors',
     realWorld: {
@@ -5244,5 +5624,279 @@ export const wikiEntries = [
     resources: [
       { label: 'RP Photonics Encyclopedia — Retroreflectors', url: 'https://www.rp-photonics.com/retroreflectors.html' },
     ],
+  },
+  {
+    type: 'eye', title: 'Human eye', category: 'Detectors',
+    summary: "Focuses light through an adjustable pupil onto a modeled retina, for exploring how focal length and pupil size change the detected spot.",
+    realWorld: { html: `<p>The eye forms an image on the retina using the refractive power of the cornea and crystalline lens. The iris controls the pupil opening, while accommodation changes the lens shape to bring different object distances into focus.</p>` },
+    inOpticalSetup: {
+      html: `<p>The pupil clips incoming rays, an equivalent thin lens bends the accepted light, and a retinal detector records the resulting signal. Adjust <em>Eye diameter</em>, <em>Pupil diameter</em>, and <em>Lens focal length</em> to compare the illuminated spot. A linked detector screen makes the retinal reading visible beside the eye.</p><p>In the example, a parallel beam enters the pupil. Change the focal length to move the best focus relative to the retinal plane, or narrow the pupil to admit less of the beam.</p>`,
+      limitations: `<p>This is a geometric teaching model, not an anatomical eye prescription. It does not predict visual acuity, diffraction, accommodation dynamics, retinal physiology, or laser exposure limits.</p>`,
+    }, related: ['lens', 'camera', 'display'],
+  },
+  {
+    type: 'generaldetector', title: 'General detector', category: 'Detectors',
+    summary: "Collects light at one sensor face and reports multiple beam properties, combining power, spectrum, polarization, wavefront, and pulse information in one instrument.",
+    realWorld: { html: `<p>A laboratory normally measures optical power, spectrum, polarization, beam shape, and pulse timing with different instruments. Each instrument has its own acceptance, resolution, and calibration; no single generic detector replaces all of them.</p>` },
+    inOpticalSetup: {
+      html: `<p>The general detector combines the workbench's supported readings at one active face. Point the face toward the incoming beam and attach a detector screen to inspect the available views. The example uses a pulsed source so both spectral and temporal properties are present.</p><p>Reduce the active height or move the detector off-axis to see how clipping changes the collected signal. Power in watts depends on the source power specified in the scene.</p>`,
+      limitations: `<p>This is a convenient composite diagnostic, not a model of one physical instrument. Its wavefront and spectral readings inherit the ray tracer's approximations; it does not add a calibrated noise floor or independent laboratory measurements.</p>`,
+    }, related: ['detector', 'powermeter', 'spectrometer', 'polarimeter', 'display'],
+  },
+  {
+    type: 'display', title: 'Detector screen', category: 'Detectors',
+    summary: "Shows the live readings of a linked detector on the canvas, with sensor-specific views and a data cable that never changes optical propagation.",
+    realWorld: { html: `<p>A detector's readout electronics turn its electrical output into numbers or plots. A display shows the information measured by the connected instrument; a cable to the display is a signal connection, not another optical path.</p>` },
+    inOpticalSetup: {
+      html: `<p>Select <em>Sensor input</em> to link the screen to a detector. Available views follow that sensor's capabilities, and the display adapts its information density to its drawn size. The cable carries data only: moving the screen or routing its cable across a beam cannot attenuate or deflect the light.</p><p>The example links a screen to a power meter behind a neutral-density filter. Change the filter transmission to change the reading, then move the screen to see that its position has no optical effect.</p>`,
+      limitations: `<p>The screen does not measure light itself or add properties absent from the linked sensor. It models no electronics noise, cable delay, or acquisition hardware.</p><p>The pulse entry shows the duration that arrives: dispersed where the duration model answers, <em>Unavailable</em> where it declines, and the source's configured duration only where no model applies, such as a mixture of trains. Before this, it always repeated the configured duration, so a screen on a setup with glass in the beam now reads a different, dispersed number.</p>`,
+    }, related: ['generaldetector', 'powermeter', 'camera', 'probe'],
+  },
+  {
+    type: 'delayline', title: 'Mechanical delay line', category: 'Pulse Timing',
+    summary: "Adds an adjustable optical path to delay pulses, keeping the outgoing beam on its axis.",
+    realWorld: {
+      html: `<p>A mechanical optical delay line changes the distance traveled by light using a translation stage and folding mirrors or a retroreflector. Time-resolved experiments use this change to vary the arrival of one pulse relative to another. The path multiplier depends on the number of passes through the moving section${cite(1)}.</p>`,
+      formulas: [{ tex: String.raw`\Delta t = \frac{\Delta L}{c}`, caption: 'For an extra optical path ΔL in vacuum. A simple double-pass stage moving by x adds ΔL = 2x.' }],
+    },
+    inOpticalSetup: {
+      html: `<p><em>Extra optical path</em> specifies the added path directly, in millimetres. Do not multiply it by two again. Static mode holds one value; periodic sweep moves between the configured path limits. The outgoing beam keeps its axis while downstream pulse timing includes the added path.</p><p>The example adds 100 mm, corresponding to about 334 ps in vacuum. Compare the beam probes before and after the element, then change the path to see the timing offset change.</p>`,
+      limitations: `<p>The folded path is represented by a compact element, not individually traced moving mirrors. It does not calculate carriage vibration, alignment drift, or stage acceleration. It delays pulses; it does not compensate their dispersion.</p>`,
+    }, citations: [{ label: 'Newport — Selecting delay lines for optical time-resolved measurements', url: 'https://api.p1.mks.com/medias/sys_master/images/images/hda/h0d/8797261398046/Selecting-delay-lines-for-optical-measurements.pdf' }],
+    related: ['retroreflector', 'pulsecompressor', 'pulsedlaser', 'autocorrelator'],
+  },
+  {
+    type: 'chopper', title: 'Chopper', category: 'Modulators',
+    summary: "Periodically interrupts light with an adjustable frequency and duty cycle, showing gated pulse trains and a schematic chopped pattern for continuous beams.",
+    realWorld: { html: `<p>An optical chopper uses a rotating slotted wheel to interrupt a beam. Chopping frequency describes how often the beam is interrupted, while duty cycle describes the fraction of each cycle that remains open. Commercial systems offer different wheel patterns and frequency ranges${cite(1)}.</p>` },
+    inOpticalSetup: {
+      html: `<p>Enable <em>Modulate on/off</em>, set <em>Chop frequency</em> in hertz, and adjust the on fraction and gate offset. Pulsed illumination is gated in time. CW light is drawn in visible chunks, while its detector reading uses duty-averaged power.</p><p>The example sends CW light through a 50% gate to a detector. Lower the on fraction to shorten the drawn illuminated sections and reduce the average reading. Disable modulation to restore uninterrupted transmission.</p>`,
+      limitations: `<p>The chunk spacing is schematic, not the physical distance traveled between openings. Blade-edge transit, motor jitter, and diffraction are omitted; the drawn wheel is not a specification for a particular commercial chopper.</p>`,
+    }, citations: [{ label: 'Thorlabs — Optical Chopper System and Chopper Wheels', url: 'https://www.thorlabs.com/optical-chopper-system-and-chopper-wheels' }], related: ['aom', 'pulsedlaser', 'detector', 'probe'],
+  },
+  {
+    type: 'crystal', title: 'Crystal', category: 'Nonlinear Optics',
+    summary: "Converts a chosen fraction of incident light into harmonic, parametric, mixed, supercontinuum, or custom output, with an option to retain the residual pump.",
+    realWorld: {
+      html: `
+        <p>A <strong>nonlinear optical crystal</strong> responds to intense light with a polarization that is no longer simply proportional to the optical field. In the perturbative regime the nonlinear contributions are usually small compared with the linear polarization, and the induced polarization can be expanded in powers of the field: the linear susceptibility χ⁽¹⁾ gives the linear refractive response, the second-order susceptibility χ⁽²⁾ mixes pairs of fields, and the third-order χ⁽³⁾ mixes three${cite(1)}. Written this way the expansion is a scalar shorthand: the susceptibilities are tensors and depend on the frequencies of the interacting fields${cite(1)}. Symmetry determines which terms are allowed, and intense laser fields make many nonlinear effects readily observable${cite(1)}. The laser enabled landmark optical frequency-conversion experiments, including the 1961 demonstration by Franken and colleagues, who focused a pulsed ruby laser into crystalline quartz and detected its second harmonic${cite(2)}.</p>`,
+      formulas: [
+        { tex: 'P = \\varepsilon_0\\left(\\chi^{(1)}E + \\chi^{(2)}E^{2} + \\chi^{(3)}E^{3} + \\dots\\right)', caption: 'Scalar shorthand for the induced polarization expanded in powers of the optical field E; the full response is tensorial and frequency dependent.' },
+      ],
+      html2: `
+        <h3>Nonlinear processes</h3>
+        <p>For the bulk electric-dipole response, χ⁽²⁾ vanishes in any inversion-symmetric medium — an unbiased isotropic gas, liquid or glass, or a centrosymmetric crystal — so second-order processes need a material without inversion symmetry. The rule concerns the bulk: surfaces and interfaces break the symmetry, which is why SHG also serves as a diagnostic of surface properties${cite(3)}. χ⁽³⁾ is symmetry-allowed in centrosymmetric media as well${cite(1)}. The main processes are:</p>
+        <ul>
+          <li><strong>Second-harmonic generation</strong> (SHG): two photons at ω combine into one at 2ω${cite(1, 3)}.</li>
+          <li><strong>Sum- and difference-frequency generation</strong> (SFG, DFG): two input frequencies ω<sub>1</sub> and ω<sub>2</sub> produce ω<sub>1</sub> + ω<sub>2</sub> or |ω<sub>1</sub> − ω<sub>2</sub>|${cite(1)}.</li>
+          <li><strong>Parametric amplification and oscillation</strong>: one pump photon splits into a signal and an idler photon. In a single pass it can amplify a weaker input wave, as an optical parametric amplifier (OPA); in a resonator that feeds the signal or idler back it can sustain oscillation above threshold, as an optical parametric oscillator (OPO), described below${cite(1)}.</li>
+          <li><strong>Third-harmonic generation</strong> (THG): light at ω produces 3ω, either directly through χ⁽³⁾ or sequentially through two second-order steps, SHG to 2ω followed by sum-frequency mixing of 2ω with the remaining ω${cite(1, 3)}. The sequential route can be implemented with separate SHG and SFG stages, and in well-designed systems it can be far more efficient than the direct one${cite(3)}.</li>
+        </ul>
+        <p>The strength of a χ⁽²⁾ interaction is expressed by an effective coefficient d<sub>eff</sub>, a combination of χ⁽²⁾ tensor components set by the crystal, the propagation direction and the polarizations; it is not a single material constant${cite(1)}.</p>
+        <h3>Phase mismatch</h3>
+        <p>Energy conservation is not enough. In collinear SHG the harmonic is driven by a polarization wave that travels with the fundamental, at wavevector 2k<sub>ω</sub>, but it propagates freely with its own wavevector k<sub>2ω</sub>, and dispersion generally makes the two differ. Harmonic light generated at different depths in the crystal then adds with different phases. Over one <strong>coherence length</strong> the driven and free waves slip by π; beyond it, newly generated contributions interfere destructively with the existing harmonic, and, without pump depletion, the harmonic intensity oscillates with crystal length instead of growing${cite(4)}. For an undepleted plane-wave fundamental, negligible absorption and no harmonic at the input, the magnitude of the harmonic field after a crystal of length L is proportional to L·|d<sub>eff</sub>|·|sinc(ΔkL/2)| for a fixed fundamental field, with sinc(x) = sin(x)/x and sinc(0) = 1, so the harmonic intensity is quadratic in the fundamental intensity and falls away once |Δk|L is no longer small${cite(4)}.</p>`,
+      formulas2: [
+        { tex: '\\Delta k = k_{2\\omega} - 2k_{\\omega}, \\qquad \\ell_c = \\frac{\\pi}{|\\Delta k|} = \\frac{\\lambda}{4\\,|n_{2\\omega} - n_{\\omega}|}', caption: 'Phase mismatch and coherence length for SHG, with λ the fundamental vacuum wavelength and the refractive indices those of the chosen propagation direction and polarizations. At perfect phase matching ℓ_c is unbounded.' },
+        { tex: 'I_{2\\omega} \\propto d_{\\text{eff}}^{2}\\,L^{2}\\,I_{\\omega}^{2}\\,\\operatorname{sinc}^{2}\\!\\left(\\frac{\\Delta k\\,L}{2}\\right)', caption: 'Undepleted plane-wave SHG, with sinc(x) = sin(x)/x and sinc(0) = 1: quadratic in the fundamental intensity and peaked at Δk = 0.' },
+      ],
+      html3: `
+        <h3>Phase matching</h3>
+        <p><strong>Phase matching</strong> makes Δk vanish. In <strong>birefringent phase matching</strong> the interacting waves travel with different polarizations, so that birefringence offsets the dispersion between fundamental and harmonic — in a uniaxial crystal, through the difference between ordinary and extraordinary refractive indices${cite(4)}. Giordmaine, and Maker and colleagues, reported it in 1962${cite(5, 6)}. It is often tuned by the angle between the beam and the crystal's optic axis${cite(7)}. For general propagation directions in a birefringent medium, an extraordinary wave's energy flow is not parallel to its wavevector, so the beams drift apart. This <strong>spatial walk-off</strong> can reduce beam overlap and limit the useful interaction length; suitable principal-axis geometries avoid it${cite(4, 7)}.</p>
+        <p>In the sinc² law above the tolerable phase mismatch scales as 1/L: a longer crystal gives more phase-matched, undepleted conversion but tolerates a smaller Δk. Acceptance in wavelength, angle or temperature inherits that 1/L scaling where Δk varies linearly with the tuning parameter near the operating point${cite(8)}. If the first derivative vanishes but the second does not, the leading mismatch is quadratic in the detuning and the acceptance scales as L<sup>−1/2</sup> instead.</p>
+        <p>Temperature changes the refractive indices and hence the phase mismatch. Where a suitable principal-axis configuration exists — in a uniaxial crystal, propagation at 90° to the optic axis — temperature can tune phase matching with reduced first-order angular sensitivity and no birefringent spatial walk-off. This is <strong>noncritical phase matching</strong>; temperature tuning alone does not imply it${cite(7)}.</p>
+        <p><strong>Quasi-phase matching</strong> takes a different route. Instead of matching phase velocities, the sign of the nonlinear coefficient is periodically reversed, compensating the phase slip before new contributions start to cancel the harmonic; for the simplest first-order grating with a 50 % duty cycle, the reversal comes every coherence length. It was proposed by Armstrong, Bloembergen and colleagues in 1962 and became widely practical once patterned poling of ferroelectrics such as lithium niobate developed from the late 1980s. Because it does not require birefringent phase matching, all waves can share one polarization and access a large tensor component allowed by the material and geometry, propagation along a crystal axis can avoid birefringent spatial walk-off, and non-birefringent materials such as GaAs can be used. The price for a first-order grating is an effective coefficient of at most 2/π of d<sub>eff</sub>${cite(4, 9)}.</p>`,
+      formulas3: [
+        { tex: '\\Delta k_{\\text{QPM}} = \\Delta k - s\\,\\frac{2\\pi}{\\Lambda}, \\quad s = \\pm 1, \\qquad |d_1| = \\frac{2}{\\pi}\\,|d_{\\text{eff}}|\\,\\sin(\\pi D)', caption: 'First-order quasi-phase matching with a grating of period Λ and duty cycle D (0 ≤ D ≤ 1), with s chosen to match the sign of Δk: matched when Δk_QPM = 0, so that Λ = 2π/|Δk| = 2ℓ_c, with the effective coefficient |d_1| largest at D = ½.' },
+      ],
+      html4: `
+        <h3>Temporal walk-off and practical design</h3>
+        <p>Spatial walk-off separates beams in space. Ultrashort pulses can also separate in time, because their group velocities differ: over a length L the relative delay between pulses a and b is L·|1/v<sub>g,a</sub> − 1/v<sub>g,b</sub>|. Once this <strong>temporal walk-off</strong> is comparable to the pulse duration, the loss of temporal overlap limits the useful interaction length${cite(4, 8)}.</p>
+        <p>Walk-off can also be put to use. In a long crystal where the fundamental and the second harmonic travel at very different group velocities, the phase-matching bandwidth for the harmonic becomes very narrow while a broad fundamental spectrum can still sum into it, so a broadband femtosecond fundamental is doubled into a <strong>narrowband picosecond second harmonic</strong>: spectral compression rather than the broadening a thin crystal gives. Marangoni and co-workers used a 25 mm periodically poled stoichiometric lithium tantalate crystal to turn tunable femtosecond pulses into 200 nJ second-harmonic pulses narrower than 8.5 cm⁻¹, tunable from 720 to 890 nm, at 20 % conversion efficiency${cite(10)}. The same spectral-compression approach can produce narrowband green light to pump a picosecond optical parametric oscillator: Genchi and co-workers doubled a 1030 nm femtosecond laser in LBO to 515 nm with spectral compression, at about 40 % conversion, and used the picosecond green to pump a picosecond OPO for broadband stimulated Raman scattering microspectroscopy${cite(11)}.</p>
+        <p>A real conversion stage is therefore designed around more than one phase-matching condition: the wavelengths involved and the crystal's transparency and absorption there, the allowed polarizations with the crystal cut or poling period, the operating temperature, the crystal length and focusing, the pulse duration, and coating and optical-damage limits. d<sub>eff</sub>, the acceptance bandwidths and the walk-off must be evaluated for the selected material, wavelengths and geometry.</p>
+        <h3>Supercontinuum</h3>
+        <p><strong>Supercontinuum generation</strong> turns intense pulses into a broad continuum, often spanning hundreds of nanometres, rather than a new discrete line${cite(12)}. Early demonstrations came in 1970, when Alfano and Shapiro broadened picosecond pulses in glasses and crystals${cite(13, 14)}. In glass and optical fibers the broadening arises mainly from third-order effects: depending on pump duration and dispersion it can involve self-phase modulation, modulation instability, soliton dynamics, dispersive waves, four-wave mixing and Raman scattering, and in photonic crystal fibers it can exceed an octave${cite(12)}.</p>
+        <p>A bulk crystal or glass does the same with a focused femtosecond beam: above the critical power for self-focusing the beam collapses into a filament, and self-phase modulation in it broadens the spectrum${cite(15)}. Where the spectrum ends depends on the medium, the pump wavelength and the conditions. Multiphoton absorption and plasma clamp the filament's intensity, and the higher the order of that absorption, set by the bandgap over the photon energy, the higher the clamped intensity and the broader the spectrum, so wide-bandgap media reach furthest into the blue; the blue cut-off is also constrained by the material's dispersion. Once the beam breaks up into several filaments, more energy adds no further broadening; chirping the input or moving its focus tunes the blue cut-off, while a low numerical aperture and a longer medium extend the red side, which also grows with the pump wavelength${cite(15)}. Pumped near 800 nm, sapphire typically spans about 410–1100 nm, YAG about 420–1600 nm, fused silica about 390–1000 nm and CaF₂ about 300–2000 nm; with 1.1–1.6 µm pumping YAG's blue cut-off holds near 530 nm while its infrared side keeps extending${cite(15)}. The near-infrared half is useful in its own right: a 10 mm YAG plate pumped at 1035 nm has provided a 1050–1300 nm Stokes band for multiplex CARS microscopy${cite(16)}.</p>`,
+      html5: `
+        <h3>Optical parametric oscillators</h3>
+        <p>In an <strong>optical parametric oscillator (OPO)</strong> the process runs the other way: inside a χ⁽²⁾ crystal each converted pump photon splits into two lower-energy photons, the <em>signal</em> and the <em>idler</em>. Naming varies: the signal often denotes the higher-frequency output${cite(17)}, or the desired one${cite(1)}; this page instead calls the resonant wave the signal. Placing the crystal in a cavity that feeds one of them back lets the parametric gain overcome the cavity losses above threshold, making a tunable coherent source for spectral ranges that direct laser emission covers poorly or not at all${cite(17, 18)}.</p>`,
+      formulas5: [
+        { tex: '\\frac{1}{\\lambda_p} = \\frac{1}{\\lambda_s} + \\frac{1}{\\lambda_i}', caption: 'Energy conservation: one converted pump photon becomes one signal and one idler photon.' },
+        { tex: '\\frac{P_s}{P_i} = \\frac{\\nu_s}{\\nu_i} = \\frac{\\lambda_i}{\\lambda_s}', caption: 'Manley–Rowe: signal and idler are generated with equal photon fluxes, so the generated powers divide in proportion to photon energy.' },
+      ],
+      html6: `
+        <p>Because the photon fluxes are equal, the longer-wavelength output is always generated with the smaller share of the power; what finally leaves a resonator also depends on its output coupling and losses. Pumped at 532 nm with an 800 nm signal, the idler lies at 1588 nm and receives about a third of the converted power. The penalty grows with the wavelength ratio: for a single conversion step that extracts only the 5 µm output, a 1 µm pump supplies at most 20 % of its converted power to that wave${cite(19)}.</p>
+        <p><strong>Threshold.</strong> Like a laser, an OPO oscillates only once the round-trip parametric gain overcomes the cavity losses; at threshold the two balance${cite(18, 19)}. Unlike a laser, it relies on no stored population inversion: parametric gain requires the pump to be present. For a singly resonant OPO, where only the signal is fed back, the ideal plane-wave model predicts complete pump depletion at (π/2)² ≈ 2.5 times threshold${cite(20)}; this is a theoretical limit, not a general operating point. Driven harder, signal and idler start converting back into pump light, so increasing pump power need not keep increasing the conversion efficiency${cite(19)}.</p>`,
+      html7: `
+        <p><strong>Linewidth.</strong> Energy conservation also holds for instantaneous frequency fluctuations, δν<sub>p</sub> = δν<sub>s</sub> + δν<sub>i</sub>, so pump fluctuations must appear on the signal, the idler or both. The cavity constrains the resonant wave, and the non-resonant wave takes up what the pump and resonant wave leave. Pump frequency fluctuations that the resonant wave does not follow appear on the non-resonant one, so imposing them on the resonant wave with active feedback is a way to remove them from the other${cite(20)}. This page and OpticalSetup call the resonant wave the signal; real OPOs resonate either. If pump and resonant wave fluctuate independently and both spectra are Gaussian, the non-resonant wave's frequency width is the quadrature sum of theirs; correlated fluctuations change that, which is why an idler can be narrower than its pump.</p>
+        <p><strong>Common operating regimes:</strong></p>
+        <ul>
+          <li><strong>Synchronously pumped fs and ps OPOs.</strong> In the usual arrangement with one pulse per round trip, the cavity round trip is matched to the repetition period of a mode-locked pump, so each signal pulse is amplified by the next pump pulse, and the output pulse trains stay locked to the pump's. One MgO:PPLN oscillator pumped by 80–100 fs pulses near 1 µm at 80 MHz produced 400–600 fs signal pulses and an idler tunable from 3132 to 4273 nm${cite(21)}. Frequency-doubled mode-locked lasers can pump picosecond OPO sources for coherent Raman imaging; near-transform-limited pulses of a few picoseconds can provide bandwidths comparable to many molecular Raman bands, balancing spectral selectivity against peak intensity${cite(22)}.</li>
+          <li><strong>Nanosecond OPOs</strong> pumped by Q-switched lasers are often used for high-energy pulses. Without spectral narrowing their linewidth is typically set mainly by the crystal's phase-matching bandwidth and the cavity, and is much broader than a single-frequency laser's${cite(19)}. The oscillation needs time to build up from noise during each pump pulse, which raises the threshold${cite(19)} and often makes the output pulses somewhat shorter than the pump's${cite(18)}.</li>
+          <li><strong>Continuous-wave singly resonant OPOs</strong> pass the pump frequency fluctuations that the resonant wave does not follow on to the non-resonant wave${cite(20)}.</li>
+        </ul>`,
+    },
+    inOpticalSetup: {
+      html: `<p>Choose a conversion mode before expecting any output: with the default <em>None</em> the crystal does not interact with light at all. Every converting mode is a wavelength-and-power proxy that converts a fixed, authored fraction of the eligible incident light, whatever its intensity, and <em>Transmit residual pump</em> can keep the unconverted remainder on the same path; no residual branch is drawn at efficiencies of 99.9 % or more, and in non-OPO modes it is also omitted when the output centre wavelength equals the input centre wavelength.</p>
+        <p><strong>The χ⁽²⁾ mode</strong> halves the wavelength of any incident light, and <strong>THG</strong> divides it by three: there is no phase-matching condition, so every input wavelength converts. THG maps a wavelength directly to a third of it; it does not simulate a cascaded SHG and SFG apparatus. The spectrum is scaled with the wavelength and the pulse keeps its train and duration, which makes the harmonic's frequency width n times the input's. Spectral compression in a long crystal with large group-velocity mismatch, described above, is not modelled: to draw a narrowband harmonic, use a narrowband fundamental or a Custom output line. This is not a calculated nonlinear pulse transformation: an undepleted, instantaneous n-th-order process acting on a transform-limited Gaussian pulse, without walk-off or phase-matching filtering, would give √n times the input frequency width, with a √n shorter pulse. The example doubles a 1064 nm pulsed laser to 532 nm and separates the harmonic from the remaining pump with a dichroic, with a beam probe on each branch.</p>
+        <p><strong>Supercontinuum</strong> replaces the converted light with a flat band. By default its edges come from the pump that arrives and the chosen medium — YAG, sapphire, fused silica or CaF₂ — using spectra reported in a review of bulk supercontinuum generation at a few pump wavelengths per medium${cite(15)}. At a pump the table includes, the band is the reference one — a single experiment, or a typical span or pump range the review summarises; between two, each edge is interpolated linearly, which is an illustration rather than a prediction, so a 1035 nm pump in YAG gives about 506–1776 nm. A pump outside the reference data this estimate includes, and continuous-wave input, draw no continuum; the literature reports other pumps too, and a manual range draws any band. The <em>Continuum</em> readout gives the band, says which kind of reference or interpolation it comes from, and notes when its red edge rests on a measurement limited by the detector. <em>Set manually</em> draws an authored band from any pump instead; scenes saved before the estimate existed open with their old 430–870 nm band as a manual range. <strong>Custom output</strong> is an authored output rather than a named physical process: it emits a single line at the entered wavelength, whatever the pump's bandwidth.</p>
+        <p><strong>The same mode also mixes two beams</strong>, because one χ⁽²⁾ does both: a crystal that doubles a beam sums two of them as well. Each beam's second harmonic is drawn whatever else is present, and when a second wavelength reaches the crystal the pair also produces its sum frequency, 1/λ₃ = 1/λ₁ + 1/λ₂. Doubling takes its authored fraction of each beam first, and the mixing then takes its own fraction of what is left of <em>both</em> beams, which is what puts the mixed line in the same range as the two harmonics beside it: 30 % doubling with a 30 % mixing share turns two equal beams into harmonics at 0.30 each and a sum frequency at 0.42. No single-pass conversion fraction can be set above 60 % here. That is a cap this workbench imposes to keep authored fractions conservative, not a physical limit: published single-pass second-harmonic conversion reaches higher. OPO mode's pump depletion is a multi-pass result and has its own control and ceiling. The crystal pairs the incident light with every other wavelength present at least 1 nm away, each pair emitted once by its shorter beam, so three colours give three mixed lines. <em>Also generate difference frequency</em> adds 1/λ₁ − 1/λ₂ with λ₁ the shorter input, which is longer than that input but not necessarily longer than the other one — 400 nm with 1000 nm gives 667 nm, between the two; it is off by default, since that line usually falls outside the range a two-colour bench looks at. The <em>Two-beam mixing</em> readout names the pair, the output, and how far apart the two pulses arrive.</p>
+        <p><strong>Only the mixing needs the two pulses together.</strong> Doubling needs one beam and happens whatever the timing, which is exactly what makes the mixed line a measurement: with two colours in one crystal the two second harmonics sit there unchanged, and the sum frequency appears between them only as the delay is brought to zero. That is how time zero is found on a bench. Each beam's arrival is its own optical path plus its emission offset, so moving a source, adding glass, or scanning a delay stage shifts it. For two Gaussian intensity envelopes of FWHM τ₁ and τ₂ arriving Δt apart, the signal is scaled by the overlap integral exp(−4 ln2 Δt²/(τ₁² + τ₂²)) and disappears below 2 % of its peak: scanning a delay through zero traces that curve, which is how time zero is found on a real bench. The mixed pulse is the product of the two envelopes, so its duration is (τ₁⁻² + τ₂⁻²)^(−1/2) — following the shorter input — and it peaks at the weighted mean of the two arrivals rather than at either one. A gate on either beam gates the signal, because both have to be there.</p>
+        <p>Only trains at the <strong>same repetition rate</strong> are modelled, together with a continuous beam, which is always present and needs no timing. Different rates are not drawn at all: they are not a physical impossibility — 80 MHz and 60 MHz coincide at 20 MHz, and slightly detuned trains sweep through the delay, which is what asynchronous optical sampling uses — but this model keeps no pulse-by-pulse bookkeeping for them, so it reports the timing as not modelled instead of inventing a result. Whenever a pair is present and no signal is drawn, the workbench says which of the two reasons applies.</p>
+        <p><strong>OPO mode</strong> models a singly resonant oscillator phenomenologically. Set the pump wavelength the crystal is phase-matched for, its acceptance window, and the resonant signal wavelength; the idler is shown as a readout. Pump light converts when its centre lies inside the acceptance window, whatever its bandwidth. The signal stays where the cavity holds it and the idler follows the arriving pump by energy conservation. Signal and idler light generated by this OPO, and its descendants, is not converted again by the same OPO; a returning residual pump may convert again, and another crystal can convert the generated light. Its figure is <em>Pump depletion</em>, the fraction of the pump the oscillator removes, divided between signal and idler by the lossless Manley–Rowe split. It is a separate control from the single-pass modes' conversion efficiency because it is a different measurement: depletion builds up as the resonant signal is amplified over many round trips, and singly resonant OPOs are reported at 78 % depletion${cite(21)}. It goes up to 95 %; scenes saved when the OPO shared the conversion efficiency carry that value over.</p>
+        <p><strong>Linewidths</strong> are handled as FWHM in wavenumber. <em>Signal as wide as the pump</em> is a heuristic for synchronously pumped fs and ps OPOs; <em>Signal width set</em> suits ns and CW OPOs, where the cavity sets it; in both, the idler is derived as the uncorrelated Gaussian sum. <em>Signal and idler widths set</em> takes both from a measured or specified system. A zero width is a single line and a narrow width a Gaussian in wavelength; an output wider than 1 % of its frequency is represented by a finite sampled wavelength distribution drawn from its Gaussian in wavenumber, which leans toward long wavelengths. Dichroics, filters and spectrometers downstream act on these new spectra rather than on the pump's. At exactly twice the pump wavelength, signal and idler with equal widths form one degenerate beam; with different widths they stay two coincident beams, each with its own spectrum.</p>
+        <p><strong>Pulses.</strong> Signal and idler are pulse trains of their own, synchronised to the pump: they keep its repetition rate, arrival timing and modulation gates, so with a pulsed pump and <em>Transmit residual pump</em> on, a detector reached by all three outputs sees a non-degenerate pump, signal and idler as three separate trains. There are three choices. By default they are <em>Transform-limited</em>: each duration follows from its own bandwidth. The two <em>Duration set</em> choices make each output last the pump's duration times <em>Output duration (× pump duration)</em> — 1 matches the pump, 2 is twice as long — and a duration shorter than the output's transform limit is raised to the limit. With <em>spectral phase unknown</em> nothing is claimed about the phase, so the model cannot predict compression and a compressor does not shorten the drawn pulse. <em>Positively chirped (assumed Gaussian)</em> is an explicit assumption that the output is a coherent Gaussian whose only spectral phase is a positive quadratic one: it is drawn as the transform-limited pulse carrying the group delay dispersion that stretches it to the set duration, so a compressor downstream can remove it. Duration and bandwidth alone do not establish that — excess bandwidth can be incoherent, as in a nanosecond OPO — which is why it is a choice rather than a default. An output with zero linewidth is a drawing convention for an idealised monochromatic pulse train, like a pulsed source set to 0 nm: it has no finite transform-limited duration, so it keeps its set one with its spectral phase unknown. Group delay dispersion is counted from the crystal exit. The inspector's <em>Outputs</em> readout lists each output's bandwidth, in nm and cm⁻¹, and its duration, marked transform limited, chirped or spectral phase unknown.</p>`,
+      limitations: `<p>Mixing gates on arrival time only. No phase matching, polarization condition, focusing or spatial overlap is checked, so any two wavelengths mix if they coincide in time — a real crystal at one angle would not produce two second harmonics and their sum frequency with comparable efficiency, and each process would need its own polarizations. Doubling reserves its authored fraction of each beam first, and the mixing draws an authored share of what is left of both beams of a pair, each debited for what it gave; every pair a beam takes part in shares that one budget. The proportions are a drawing convention chosen to put the three lines in the same range — equal fractional contributions from both beams, not the photon-energy-weighted depletion a real stage would show — and not a power-dependent conversion prediction, and the two harmonics staying put while a mixed line rises is a weak-conversion convention. Every unordered pair of colours is formed, each emitted once by its shorter wavelength, so three colours give three mixed lines. Light this crystal generated is not mixed again by it. The mixed output's width is the two inputs' widths added in quadrature in wavenumber, which is the uncorrelated-Gaussian estimate rather than a calculated conversion spectrum, and the overlap factor is an ideal-Gaussian timing proxy rather than a cross-correlation of the real pulse shapes.</p><p>No mode calculates phase matching, d<sub>eff</sub>, crystal length, acceptance bandwidths, spatial or temporal walk-off, or the dependence of conversion on intensity: SHG and THG convert every wavelength at the authored fraction, and no crystal material is selected. Supercontinuum is a flat band, not a model of filamentation, self-phase modulation or soliton dynamics. Its estimated edges come from reported experiments and review summaries with different focusing, energies, durations and crystal lengths, none of which the estimate reads, and bands between reported pumps are linear interpolations. Red edges reported at 2 µm and beyond were limited by the detector, so the band understates the red side there. Whether the pump exceeds the critical power, the damage threshold, disconnected bands such as CaF₂ shows at longer pumps, and the spectral shape inside the band are not modelled; the converted fraction is authored like the other modes. Harmonic spectra are scaled rather than calculated from the field, as described above.</p><p>OPO mode is a phenomenological model rather than a cavity simulation. Phase matching is not calculated from material data: the signal wavelength and acceptance window are authored, and crystal choice or temperature do not affect them. No threshold, resonant gain or self-consistent pump-depletion dynamics are calculated: the authored depletion removes the same fraction at any pump power, and that fraction is removed from a retained pump. Ray round trips and authored output-coupler losses are traced; resonant gain, synchronisation-dependent conversion, build-up time, group-velocity walk-off and spatial mode overlap are not calculated. Output durations are authored or set from the Gaussian transform limit; no general spectral-phase evolution is calculated. Pump spectra are reduced to a Gaussian of the same FWHM, taken from the spectrum where available and otherwise from the bandwidth, so structured spectral shapes are not carried into the outputs; and the idler width assumes uncorrelated Gaussian fluctuations unless both widths are set. A detector retains separate trains; its aggregate pulse summary suppresses duration and repetition-rate fields when train settings differ, and otherwise uses the shared settings with aggregate dispersion information. Use separate detectors for output-specific pulse readings.</p>`,
+    },
+    citations: [
+      { label: 'R. W. Boyd, “The Nonlinear Optical Susceptibility,” chapter 1 of Nonlinear Optics, 3rd edition, Academic Press (2008)', url: 'https://doi.org/10.1016/B978-0-12-369470-6.00001-0' },
+      { label: 'P. A. Franken, A. E. Hill, C. W. Peters, G. Weinreich, “Generation of Optical Harmonics,” Physical Review Letters 7, 118–119 (1961)', url: 'https://doi.org/10.1103/PhysRevLett.7.118' },
+      { label: 'R. W. Boyd, “Second- and Higher-Order Harmonic Generation,” chapter 6 of B. R. Masters, P. T. C. So (eds.), Handbook of Biomedical Nonlinear Optical Microscopy, Oxford University Press (2008), pp. 153–163', url: 'https://www.hajim.rochester.edu/optics/sites/boyd/assets/pdf/publications/Boyd-Master2-SO%20pp.153-163.pdf' },
+      { label: 'D. S. Hum, M. M. Fejer, “Quasi-phasematching,” C. R. Physique 8, 180–198 (2007)', url: 'https://doi.org/10.1016/j.crhy.2006.10.022' },
+      { label: 'J. A. Giordmaine, “Mixing of Light Beams in Crystals,” Physical Review Letters 8, 19–20 (1962)', url: 'https://doi.org/10.1103/PhysRevLett.8.19' },
+      { label: 'P. D. Maker, R. W. Terhune, M. Nisenoff, C. M. Savage, “Effects of Dispersion and Focusing on the Production of Optical Harmonics,” Physical Review Letters 8, 21–22 (1962)', url: 'https://doi.org/10.1103/PhysRevLett.8.21' },
+      { label: 'RP Photonics Encyclopedia — Noncritical Phase Matching', url: 'https://www.rp-photonics.com/noncritical_phase_matching.html' },
+      { label: 'RP Photonics Encyclopedia — Phase-matching Bandwidth', url: 'https://www.rp-photonics.com/phase_matching_bandwidth.html' },
+      { label: 'J. A. Armstrong, N. Bloembergen, J. Ducuing, P. S. Pershan, “Interactions between Light Waves in a Nonlinear Dielectric,” Physical Review 127, 1918–1939 (1962)', url: 'https://doi.org/10.1103/PhysRev.127.1918' },
+      { label: 'M. Marangoni, D. Brida, M. Quintavalle, G. Cirmi, F. M. Pigozzo, C. Manzoni, F. Baronio, A. D. Capobianco, G. Cerullo, “Narrow-bandwidth picosecond pulses by spectral compression of femtosecond pulses in a second-order nonlinear crystal,” Optics Express 15, 8884–8891 (2007)', url: 'https://doi.org/10.1364/OE.15.008884' },
+      { label: 'L. Genchi, S. P. Laptenok, D. Gonzalez-Hernandez, J. Menzies, M. Aranda, C. Liberale, “Broadband background-free stimulated Raman scattering microspectroscopy with a novel frequency modulation scheme,” APL Photonics 9, 126112 (2024)', url: 'https://pubs.aip.org/aip/app/article/9/12/126112/3325119/Broadband-background-free-stimulated-Raman' },
+      { label: 'J. M. Dudley, G. Genty, S. Coen, “Supercontinuum generation in photonic crystal fiber,” Reviews of Modern Physics 78, 1135–1184 (2006)', url: 'https://doi.org/10.1103/RevModPhys.78.1135' },
+      { label: 'R. R. Alfano, S. L. Shapiro, “Emission in the Region 4000 to 7000 Å Via Four-Photon Coupling in Glass,” Physical Review Letters 24, 584–587 (1970)', url: 'https://doi.org/10.1103/PhysRevLett.24.584' },
+      { label: 'R. R. Alfano, S. L. Shapiro, “Observation of Self-Phase Modulation and Small-Scale Filaments in Crystals and Glasses,” Physical Review Letters 24, 592–594 (1970)', url: 'https://doi.org/10.1103/PhysRevLett.24.592' },
+      { label: 'A. Dubietis, G. Tamošauskas, R. Šuminas, V. Jukna, A. Couairon, “Ultrafast supercontinuum generation in bulk condensed media,” Lithuanian Journal of Physics 57, 113–157 (2017); preprint arXiv:1706.04356', url: 'https://www.lmaleidykla.lt/ojs/index.php/physics/article/view/3541' },
+      { label: 'F. Vernuccio, A. Bresci, B. Talone, A. de la Cadena, C. Ceconello, S. Mantero, C. Sobacchi, R. Vanna, G. Cerullo, D. Polli, “Fingerprint multiplex CARS at high speed based on supercontinuum generation in bulk media and deep learning spectral denoising,” Optics Express 30, 30135–30148 (2022)', url: 'https://doi.org/10.1364/OE.463032' },
+      { label: 'J.-M. Melkonian, J.-B. Dherbecourt, M. Raybaut, A. Godard, “Optical Parametric Oscillators,” Photoniques no. 110, 53–57 (2021)', url: 'https://doi.org/10.1051/photon/202111053' },
+      { label: 'RP Photonics Encyclopedia — Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
+      { label: 'A. Berrou, J.-M. Melkonian, M. Raybaut, A. Godard, E. Rosencher, M. Lefebvre, “Specific architectures for optical parametric oscillators,” C. R. Physique 8, 1162–1173 (2007)', url: 'https://doi.org/10.1016/j.crhy.2007.09.012' },
+      { label: 'A. Ly, B. Szymanski, F. Bretenaker, “Frequency stabilization of the non-resonant wave of a continuous-wave singly resonant optical parametric oscillator,” Applied Physics B 120, 201–205 (2015)', url: 'https://doi.org/10.1007/s00340-015-6122-0' },
+      { label: 'C. F. O’Donnell, S. Chaitanya Kumar, M. Ebrahim-Zadeh, “Enhancement of efficiency in femtosecond optical parametric oscillators using group-velocity-matching in long nonlinear crystals,” APL Photonics 4, 050801 (2019)', url: 'https://doi.org/10.1063/1.5094550' },
+      { label: 'K. Kieu, B. G. Saar, G. R. Holtom, X. S. Xie, F. W. Wise, “High-power picosecond fiber source for coherent Raman microscopy,” Optics Letters 34, 2051–2053 (2009)', url: 'https://doi.org/10.1364/OL.34.002051' },
+    ],
+    extraDemos: [{
+      demo: 'crystal-thg',
+      heading: 'Third harmonic',
+      caption: '1030&nbsp;nm in, 343&nbsp;nm out, separated from the residual fundamental by a dichroic. '
+        + 'This is the app’s authored conversion proxy — one crystal emitting λ/3 at a set fraction — not a simulated cascade of a doubling and a sum-frequency crystal.',
+    }, {
+      demo: 'crystal-supercontinuum',
+      heading: 'Supercontinuum in bulk YAG',
+      caption: 'A 1035&nbsp;nm, 270&nbsp;fs pump in YAG. The band on the spectrometer is estimated from the arriving pump and the medium: '
+        + 'interpolated between reference spectra, an illustration rather than a prediction. Change the pump wavelength or the medium and the band follows; '
+        + 'outside the reference data the crystal draws no continuum and asks for a manual range.',
+    }],
+    related: ['sample', 'dichroic', 'filter', 'pulsedlaser', 'sclaser', 'spectrometer'],
+  },
+  {
+    type: 'opo', title: 'OPO', category: 'Nonlinear Optics',
+    summary: "An optical parametric oscillator packaged like a laser: a pump beam goes in at the back, a tunable signal and an optional idler come out of the front.",
+    realWorld: {
+      html: `
+        <p>An <strong>optical parametric oscillator</strong> turns a pump beam into two longer wavelengths, the signal and the idler, whose photon energies add up to the pump's: 1/λ<sub>p</sub> = 1/λ<sub>s</sub> + 1/λ<sub>i</sub>. A second-order nonlinear crystal inside a resonator provides parametric gain, and once that gain overcomes the cavity losses the resonant wave builds up from noise${cite(1, 2)}. Tuning the phase matching — the crystal angle, its temperature or the poling period — tunes the signal, and the idler follows by energy conservation${cite(2)}.</p>
+        <p>On a bench an OPO usually arrives as a closed instrument. Synchronously pumped femtosecond and picosecond OPOs are pumped by a mode-locked laser, often frequency-doubled, with the cavity round trip matched to the pump's repetition period, so the outputs stay locked to the pump's pulse train${cite(3)}. Their pump depletion builds up as the resonant signal is amplified over many round trips and can exceed 75 %${cite(3)}. A picosecond OPO pumped by the second harmonic of a femtosecond laser, spectrally compressed to a narrow green line, is one way to obtain two synchronised narrowband colours for stimulated Raman microscopy${cite(4)}.</p>`,
+    },
+    inOpticalSetup: {
+      html: `
+        <p>Point a pump beam into the <strong>rear aperture</strong>. There is no pump wavelength to set: whatever arrives within 20° of the body axis is the pump, and the only condition on it is that the signal must be longer. Light arriving at a steeper angle stays inside the box, and the <em>Oscillation</em> readout says why nothing came out — no pump yet, a misaligned pump, a signal not longer than the pump, an empty tuning list or zero depletion. When it works, the readout names the pump it received and the signal and idler it made. The unconverted pump is always discarded inside.</p>
+        <p>The <strong>signal</strong> leaves the port marked S on the body axis, and the <strong>idler</strong> the port marked I, a fixed distance below it and parallel to it; both rotate with the body. <em>Output idler</em> switches that port off, which removes the idler's power from the bench rather than handing it to the signal. If the signal is set equal to the idler wavelength — degeneracy — the two leave together through the signal port. Each output's <em>beam diameter</em> is its full, unclipped envelope, whatever the pump's width, and a diameter of 0 draws it as a single line. A sized pump beam's samples keep their order across that envelope, so a pump clipped by the aperture loses the part that did not get in and its output covers only part of the diameter; a single-line pump is spread across the diameter in nine samples of equal power. The diameter is an authored drawing envelope, not a calculated cavity mode or a 1/e² Gaussian width. The ports and the body grow with the diameters so the two beams never overlap. The outputs take no path inside the box: their timing is referenced to the pump's arrival at the aperture, not to a cavity length.</p>
+        <p>The conversion is the crystal's <a href="../crystal/">OPO mode</a>, shared rather than copied: <em>Pump depletion</em> up to 95 %, the Manley–Rowe split between signal and idler, the three output-linewidth choices, and the three <em>Output pulses</em> choices — transform-limited, duration set with spectral phase unknown, or duration set and positively chirped as an assumed Gaussian. Light the OPO generated is never converted by it again.</p>
+        <p><strong>Signal tuning</strong> is <em>Fixed</em>, <em>Sweep</em> — from the first wavelength at the start of the animation to the second at half the period and back — or <em>Steps</em>, which holds each listed wavelength for the set time and then jumps to the next, in the order written, repeats included. Entries that are not wavelengths between 100 and 11000 nm are skipped and counted in the <em>Tuning</em> readout, and a list with none left produces no output; a valid wavelength that leaves no idler keeps its place in the sequence and reads as an invalid signal while it plays. The <em>Oscillation</em> readout gives the current step and the signal and idler actually generated, following the animation. Tuning runs on the motion clock, independently of pulse playback: <em>Pause pulse animation</em> stops the pulses, not the tuning, as with the other moving elements. A static SVG or PNG export shows the start of the tuning program, while animation frames show their own moment. The saved signal wavelength is never changed by tuning. A spectrometer reads the instantaneous line; it does not accumulate a sweep.</p>`,
+      limitations: `<p>This is the same phenomenological model as the crystal's OPO mode, not a cavity simulation. There is no threshold, gain, build-up, saturation or back-conversion, and no dependence on pump power, cavity length or synchronisation: an accepted pump converts its authored depletion whatever its intensity, and a pump that could not reach threshold on a real bench still converts here. Phase matching is not calculated: the signal wavelength is set directly rather than by a crystal angle, temperature or poling period, and a sweep or a list of steps is an authored tuning program, not a prediction of how fast a real OPO can tune or whether it keeps oscillating across the range.</p><p>The ports, their spacing and the rear aperture are a packaging convention for this workbench, not the layout of any particular instrument, the output beam diameters are authored rather than calculated from a cavity mode, and the fixed 20° angular acceptance is a geometric rule rather than a calculation of mode matching or coupling efficiency. Any pump wavelength converts: phase matching, and whether a real OPO could be pumped at that wavelength at all, are not checked. No path inside the box is added to the outputs. Pulse durations, spectral widths and the chirp assumption follow the crystal's OPO mode and share its limitations.</p>`,
+    },
+    citations: [
+      { label: 'J.-M. Melkonian, J.-B. Dherbecourt, M. Raybaut, A. Godard, “Optical Parametric Oscillators,” Photoniques no. 110, 53–57 (2021)', url: 'https://doi.org/10.1051/photon/202111053' },
+      { label: 'RP Photonics Encyclopedia — Optical Parametric Oscillators', url: 'https://www.rp-photonics.com/optical_parametric_oscillators.html' },
+      { label: 'C. F. O’Donnell, S. Chaitanya Kumar, M. Ebrahim-Zadeh, “Enhancement of efficiency in femtosecond optical parametric oscillators using group-velocity-matching in long nonlinear crystals,” APL Photonics 4, 050801 (2019)', url: 'https://doi.org/10.1063/1.5094550' },
+      { label: 'L. Genchi, S. P. Laptenok, D. Gonzalez-Hernandez, J. Menzies, M. Aranda, C. Liberale, “Broadband background-free stimulated Raman scattering microspectroscopy with a novel frequency modulation scheme,” APL Photonics 9, 126112 (2024)', url: 'https://pubs.aip.org/aip/app/article/9/12/126112/3325119/Broadband-background-free-stimulated-Raman' },
+    ],
+    related: ['crystal', 'pulsedlaser', 'dichroic', 'spectrometer', 'probe'],
+  },
+  {
+    type: 'sample', title: 'Sample', category: 'Specimens',
+    summary: "Represents an illuminated specimen with configurable transmission and stacked signal channels, including two-beam signals that appear only while both pulses reach the spot together.",
+    realWorld: { html: `<p>A specimen can transmit or absorb excitation light and generate an optical signal. Fluorescence and coherent nonlinear signals arise through different processes; nonlinear microscopy includes two-photon fluorescence, second-harmonic generation, and coherent anti-Stokes Raman scattering${cite(1)}.</p>` },
+    inOpticalSetup: {
+      html: `<p>Orient the sample across the beam: at zero rotation its long axis is horizontal, so a horizontal incoming beam needs a 90° sample rotation. Choose the specimen mode, excitation transmission, and desired channels. The model supports stacked fluorescence, Raman, phase contrast, two- and three-photon fluorescence, second-order (χ⁽²⁾), THG, CARS and stimulated Raman signals.</p><p>The <strong>χ⁽²⁾ channel</strong> covers both second-order processes at once, as one susceptibility does: each beam's second harmonic, and the sum frequency of any two different colours on the spot. There is no separate sum-frequency channel; a scene saved with one is read as this channel, and a scene that carried both keeps its second-harmonic channel — the surviving one covers both processes, so the retired entry's own settings go with it rather than the specimen emitting each signal twice.</p><p><strong>Two-beam signals need the pulses together.</strong> Sum frequency, CARS and stimulated Raman only happen while both pulses are at the spot, so the model gates them on the Gaussian overlap of the two arrivals and drops them below 2 % of the peak — the second harmonic of each beam, which needs one beam only, is unaffected. Arrival is each beam's own optical path plus its emission offset, judged beam to beam, so a millimetre of unmatched arm is 3.3 ps and enough to switch a picosecond CARS signal off; the workbench says so rather than leaving an empty detector to interpret. Only trains at the same repetition rate are mixed, and <em>Needs pulse overlap</em> switches the requirement off per channel for a schematic that is about the signal rather than the timing.</p><p>That gate is one qualitative envelope for every two-beam channel, not a process-specific delay response. A real CARS signal in the instantaneous non-resonant limit weights the pump twice, going as I<sub>p</sub>²I<sub>s</sub> rather than as the product of two intensities, and a resonant vibration adds dynamics of its own; none of that is modelled here. Each beam's own path is grouped across the sampling rays that draw it, so the spread of arrival times across a focused cone is not treated as a timing spread — two beams on different paths, however, stay separate, and a colour arriving on two arms pairs with whichever arm meets the pulse.</p><p>The example produces a fluorescent signal under 488 nm illumination. Adjust its emission and transmission, then use a filter and detector to distinguish emitted light from the excitation. Parametric channels use a forward lobe with an optional weaker backward contribution.</p>`,
+      limitations: `<p>Signals are bounded qualitative proxies, not measured cross-sections or calibrated conversion efficiencies. Each channel is bounded by its own authored efficiency, not by a shared energy budget: signals never deplete the excitation, so stacking channels — or adding a second colour, which adds a mixed pair — adds drawn signal power rather than dividing it. The sum frequency of a pair scales with the shorter beam's intensity alone, not with the product of the two. Stimulated Raman transfer is a normalised display of the modulation, not a Raman gain or loss law: whatever contrast the modulated beam has is stretched to the channel's full authored excursion — a loss on the shorter-wavelength pump, a gain on the longer-wavelength Stokes — timed to the photons of that beam that actually reach the spot, and a steady beam transfers nothing. It covers one unmodulated beam receiving the modulation of one other beam through one modulator; with both beams modulated, more than one modulated partner, or a modulated beam behind several modulators, no transfer is drawn and the specimen's timing readout says why. Sum frequency is gated on arrival time alone — no phase matching, polarization condition or focusing overlap is checked — and the pulses' own path spread across a focused cone is not treated as a timing spread. The model does not reconstruct a three-dimensional specimen or predict photochemistry, bleaching, or a diffraction-limited point-spread function.</p>`,
+    }, citations: [{ label: 'Boston University Biomicroscopy Lab — Nonlinear microscopy', url: 'https://sites.bu.edu/biomicroscopy/research/nonlinear/' }], related: ['stage', 'crystal', 'objective', 'filter', 'pmt'],
+  },
+  {
+    type: 'stage', title: 'Sample on piezo stage', category: 'Specimens',
+    summary: "Moves a mounted sample through static, lateral, depth or raster scans, and can record writing in resin.",
+    realWorld: { html: `<p>A sample stage translates the specimen relative to the illumination and collection optics. Lateral motion samples different positions across a specimen; axial motion changes its position along the optical axis. A physical stage has finite travel, response time, and positioning accuracy.</p>` },
+    inOpticalSetup: {
+      html: `<p>The stage combines a mounting aperture with the sample's optical modes, including the χ⁽²⁾ channel that gives each beam's second harmonic and the sum frequency of a pair, and the two-beam signals — sum frequency, CARS and stimulated Raman — that only appear while both pulses reach the specimen together. Select a static position, long-axis scan, beam-axis depth scan, or synchronized raster, then set the travel and frequency. At 90° rotation, a horizontal beam crosses the sample and a long-axis scan moves it vertically on the canvas.</p><p>Scanning moves the specimen, not the arms, so it does not change the arrival difference between two beams: that is set by their optical paths, and a delay line or a matched arm is what fixes it.</p><p>The example moves an illuminated sample laterally. For a writing demonstration, choose photocurable resin, enable voxel preview, and use a pulsed source. Marks record traced pulse arrivals in the moving sample.</p>`,
+      limitations: `<p>The workbench shows a two-dimensional projection. Resin marks are a visual arrival history, not a prediction of dose, polymerization threshold, cure kinetics, voxel size, or three-dimensional fabrication. Piezo hysteresis and mechanical settling are not simulated.</p>`,
+    }, related: ['sample', 'objective', 'pulsedlaser', 'galvo'],
+  },
+  {
+    type: 'objarrow', title: 'Object', category: 'Sources',
+    summary: "Places an arrow, letter, or tree as an imaging object, with an optional ray fan and computed paraxial image for lens demonstrations.",
+    realWorld: { html: `<p>Ray diagrams represent an extended object with a recognizable shape so that image position, orientation, and magnification can be compared. A converging lens can form a real inverted image or a virtual upright image depending on object distance.</p>` },
+    inOpticalSetup: {
+      html: `<p>Choose an arrow, letter F, or tree, set its height, and enable the image marker. The optional ray fan originates at the object's on-axis anchor; it is not a full collection of rays from every point of the shape. The paraxial image marker is calculated separately.</p><p>The example places an object 200 mm before a 100 mm lens. Its paraxial image appears 200 mm beyond the lens with equal size and inverted orientation. Move the lens to explore magnification and virtual images.</p>`,
+      limitations: `<p>The image marker does not account for downstream clipping or represent a rendered camera image. The model does not calculate diffraction, image texture, or radiometric brightness across the object.</p>`,
+    }, related: ['lens', 'lensc', 'telescope', 'camera'],
+  },
+  {
+    type: 'probe', title: 'Beam probe', category: 'Annotations',
+    summary: "Reads the nearby traced beam without intercepting it, showing a selected spectrum, wavelength, power, polarization, pulse duration, or intensity-over-time view.",
+    realWorld: { html: `<p>Laboratory beam diagnostics normally require a sensor or pickoff that interacts with the light. A non-intercepting label in a ray diagram instead communicates a property already known from the model; it is not a physical measuring instrument.</p>` },
+    inOpticalSetup: {
+      html: `<p>Place the crosshair near a traced beam and select the property to show. Spectrum and time views provide range controls; pulse duration requires suitable pulsed light. The probe reads the nearest traced beam rather than integrating all light over a detector face.</p><p>The example puts a spectrum probe between a broadband source and a detector. Move it away from the beam, then back, to see its dependence on the selected location. It never absorbs light or creates a new optical branch.</p>`,
+      limitations: `<p>This is a diagnostic annotation with direct access to traced properties. It does not represent a laboratory probe's aperture, calibration, noise, or disturbance of the beam.</p>`,
+    }, related: ['display', 'spectrometer', 'polarimeter', 'detector'],
+  },
+  {
+    type: 'figureframe', title: 'Figure frame', category: 'Annotations',
+    summary: "Sets the exact export crop on the canvas; its border and handles never appear in the exported figure.",
+    realWorld: { html: `<p>A figure's crop determines which parts of a setup appear in a publication or presentation. It is a composition choice, separate from any optical aperture or physical enclosure shown in the drawing.</p>` },
+    inOpticalSetup: {
+      html: `<p>Place a frame around the desired composition and resize its edges or corners. The frame controls the export bounds, while its own border and editing handles remain canvas-only. Leave room inside the crop for component names, probe readouts, and any beam endpoints you want to show.</p><p>The example frames a small lens bench. Resize the frame and export the scene to compare the crop. Light continues to propagate beyond the frame on the workbench.</p>`,
+      limitations: `<p>The frame never clips traced rays or acts as an optical stop. Content outside its bounds can be omitted from the exported picture while still contributing to the simulation.</p>`,
+    }, related: ['highlight', 'textlabel', 'blocker'],
+  },
+  {
+    type: 'highlight', title: 'Highlight', category: 'Annotations',
+    summary: "Adds a coloured background region behind part of the setup, without affecting any rays.",
+    realWorld: { html: `<p>Shaded regions in optical diagrams can identify a subsystem, distinguish experimental stages, or mark an area of interest. Such visual grouping has no physical optical meaning unless the caption explicitly assigns one.</p>` },
+    inOpticalSetup: {
+      html: `<p>Resize and position the highlight behind the components you want to group, then choose its appearance. It remains behind both rays and elements, so the beam path and hardware stay visible. Use a text label to explain what the shaded region means.</p><p>The example marks the lens area on a simple bench. Move or resize the highlight across the incoming and outgoing beam to confirm that only the composition changes.</p>`,
+      limitations: `<p>A highlight is diagram-only. Its color and shape do not represent refractive index, absorption, an aperture, or a boundary between optical media.</p>`,
+    }, related: ['textlabel', 'figureframe', 'box'],
+  },
+  {
+    type: 'box', title: 'Custom box', category: 'Custom',
+    summary: "Draws a labelled enclosure that either blocks beams or lets them pass through.",
+    realWorld: { html: `<p>An enclosure in an optical diagram can stand for a housing or a device whose internal optical train is not shown. The drawing alone does not specify whether the real device transmits, absorbs, focuses, or converts light.</p>` },
+    inOpticalSetup: {
+      html: `<p>Set the label, width, height, and fill, then choose the beam behavior. <em>Blocks beam</em>, the default, absorbs rays at the rectangular boundary. <em>Beam passes through</em> adds no optical interaction.</p><p>The example places a blocking box in a laser path. Switch it to pass-through and the detector receives light again. If the box is meant to focus, split, or convert light, use the corresponding native optical elements to represent that behavior.</p>`,
+      limitations: `<p>The enclosure does not simulate hidden internal components. Pass-through mode adds no optical delay or material properties; blocking mode does not model thermal loading or scattered light.</p>`,
+    }, related: ['beamdump', 'blocker', 'textlabel', 'highlight'],
+  },
+  {
+    type: 'textlabel', title: 'Text label', category: 'Annotations',
+    summary: "Adds formatted Markdown notes to the canvas, with headings, lists and clickable links.",
+    realWorld: { html: `<p>Labels explain component roles, operating conditions, and the assumptions behind a diagram. Keeping interpretation beside the relevant hardware helps readers distinguish measured parameters from illustrative choices.</p>` },
+    inOpticalSetup: {
+      html: `<p>Place a text label and double-click it, press Enter when selected, or use <em>Edit text</em> to edit on the canvas. Markdown supports headings, lists, emphasis, and code; web and DOI addresses become clickable links. The font-size and color controls set its base appearance.</p><p>The example demonstrates several formatting styles. Keep a short explanation beside the setup and use a link for longer background material. Text grows from its left anchor, while resizing changes the base font size.</p>`,
+      limitations: `<p>Text is diagram-only and never changes traced rays or scene parameters. Writing a wavelength, efficiency, or model claim in a label does not configure the corresponding optical element.</p>`,
+    }, related: ['highlight', 'figureframe', 'probe'],
+  },
+  {
+    type: 'gascell', title: 'Gas cell', category: 'Lab elements',
+    summary: "Draws a gas-cell housing for laboratory context, without any optical effect on the beam.",
+    realWorld: { html: `<p>A gas cell contains a gas along an optical path. Its physical behavior depends on the gas, pressure, path length, and windows. A housing may also provide connections for gas flow or for a fiber passing through the cell.</p>` },
+    inOpticalSetup: {
+      html: `<p>The gas cell is deliberately diagram-only. Set its dimensions, optional windows, extension side, gas-port appearance, and transparency to show the hardware context. The transparency control changes the drawing, not optical transmission.</p><p>The example sends a beam through the housing. Toggle its windows or change its appearance and the traced path stays the same. A fiber drawn through a gas cell remains an independent fiber path; the housing does not bind to it or change its propagation settings.</p>`,
+      limitations: `<p>No pressure, gas absorption, nonlinear response, window refraction, or flow is calculated. The housing must not be interpreted as a gas-filled-fiber or spectroscopy solver.</p>`,
+    }, related: ['window', 'barefiber', 'freeglass', 'textlabel'],
+  },
+  {
+    type: 'window', title: 'Optical window', category: 'Lab elements',
+    summary: "Draws an optical window as laboratory hardware, without any optical effect on the beam.",
+    realWorld: { html: `<p>An optical window separates environments while admitting light. A real window can introduce refraction, reflection, absorption, and dispersion depending on its material, thickness, coatings, and incidence angle.</p>` },
+    inOpticalSetup: {
+      html: `<p>This window is a diagram-only symbol. Adjust its size, orientation, and transparency to place it in the drawing. It never bends, blocks, or absorbs a ray, and it adds no optical path or pulse dispersion.</p><p>The example shows uninterrupted light through the symbol. Rotate it to confirm that the beam stays unchanged. To study the optical effects of a glass plate, use a rectangular freeform-glass boundary with a suitable material instead.</p>`,
+      limitations: `<p>The visible symbol is not a traced glass plate. Its transparency is a drawing setting, not a transmission coefficient; it does not model Fresnel losses, coatings, or a change of medium.</p>`,
+    }, related: ['gascell', 'freeglass', 'glassrod'],
   },
 ];

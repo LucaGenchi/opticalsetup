@@ -107,8 +107,10 @@
         <li><strong>Stimulated Raman loss.</strong> An electro-optic modulator and polarizer
         impose a 20&nbsp;MHz intensity modulation on the <em>Stokes</em> beam. Where the
         vibration is driven, energy transfers from pump to Stokes, so the <em>pump</em>
-        comes out slightly depleted and carries that 20&nbsp;MHz modulation as a
-        copy. The SRS channel therefore sits at 780&nbsp;nm — the pump — and a beamsplitter
+        comes out slightly depleted and carries that 20&nbsp;MHz modulation in antiphase:
+        it dips while the Stokes is on and recovers while it is off. That dip is the loss
+        that names the scheme; with the modulation on the pump instead, the Stokes would
+        rise in step with it — stimulated Raman gain. The SRS channel therefore sits at 780&nbsp;nm — the pump — and a beamsplitter
         picks off part of the modulated 1030&nbsp;nm Stokes onto a second detector as the
         reference. Moving the modulation onto one beam and detecting it on the other is what
         lifts a signal of one part in ten thousand out of the laser noise.</li>
@@ -123,6 +125,12 @@
         structures, which is exactly what makes the epi channel informative rather than
         redundant.</li>
       </ul>
+      <p><strong>The delay line earns its place.</strong> Both coherent signals need the
+      two pulses inside the focus together, so the stage is not decoration: slide it and the
+      CARS line goes out while the SRS trace flattens to its unmodulated level, with the
+      workbench saying how far apart the pulses now arrive. Scanning it back through zero is
+      how the two arms are matched on a bench in the first place. Moving other components
+      matters only where it changes that path difference.</p>
       <p>Comparing the two mechanisms in one setup is the real lesson. SRS is a change in a
       beam you already have, so it scales linearly with concentration and carries no
       non-resonant background; CARS is a new colour you can filter for cleanly, but sits on
@@ -132,9 +140,17 @@
       a lineshape from a susceptibility, and the non-resonant background that complicates
       real CARS is absent. Retuning the pump changes the anti-Stokes wavelength through the
       energy relation, but no vibrational resonance is modelled, so the signal does not
-      rise and fall as you tune across a line. Temporal overlap is likewise not enforced:
-      the delay line is drawn and is physically meaningful, but mistiming the two pulses
-      will not extinguish the signal the way it would on a bench. The 20&nbsp;MHz
+      rise and fall as you tune across a line. Temporal overlap, by contrast, <em>is</em>
+      enforced, and the delay line is the knob for it: the two arms are matched to under a
+      micron of path here, and sliding the retroreflector 1&nbsp;mm along its axis puts the
+      pulses 6.7&nbsp;ps apart — twice the distance, since the beam crosses the stage and
+      comes back. The anti-Stokes line then disappears, and the SRS channel loses its
+      transferred modulation and returns to its unmodulated level, which is what a bench
+      sees. The gate is one qualitative envelope, though, not a process-specific delay
+      response: neither the I<sub>p</sub>²I<sub>s</sub> weighting of a real non-resonant CARS
+      signal nor any resonant dynamics are modelled, the spread of arrival times across a
+      focused cone is not treated as a timing spread, and only trains at the same repetition
+      rate are judged at all. The 20&nbsp;MHz
       modulation is applied to the beam and detected, but no lock-in demodulation happens,
       and the shot-noise-limited sensitivity that makes SRS work in practice is outside
       what a ray tracer can express.</p></div>
@@ -143,7 +159,7 @@
       
       <h2 class="section-head real"><span class="sw"></span>Related components</h2>
       <div class="related-list">
-        <a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/eom/"><svg viewBox="-30 -30 60 60" aria-hidden="true"><rect x="-22" y="-12" width="44" height="24" rx="3" fill="#b8c9a3" stroke="#66794a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#2f3a20">EOM</text></svg>EOM</a><a href="../../wiki/retroreflector/"><svg viewBox="-23.7 -23.7 47.4 47.4" aria-hidden="true"><path d="M -12.7,12.7 L 0,0 L -12.7,-12.7" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"/></svg>Retroreflector</a><a href="../../wiki/objective/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-5.5 L 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5 L 16,5.5 Z" fill="#8d98a5" stroke="none"/><path d="M 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/><line x1="7" y1="-12.5" x2="7" y2="12.5" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-12.5" width="2.4" height="8.50" fill="#2f3e4d"/><rect x="-21" y="4.00" width="2.4" height="8.50" fill="#2f3e4d"/></svg>Objective</a><a href="../../wiki/pmt/"><svg viewBox="-33 -33 66 66" aria-hidden="true"><rect x="-25" y="-13" width="50" height="26" rx="13" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><rect x="-27" y="-9" width="4" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><text x="2" y="0"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text><circle cx="16" cy="-7" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photomultiplier (PMT)</a>
+        <a href="../../wiki/pulsedlaser/"><svg viewBox="-58 -58 116 116" aria-hidden="true"><rect x="-46" y="-17" width="92" height="34" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/><text x="0" y="-3"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text><g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g><rect x="46" y="-4.5" width="5" height="9" fill="#666" stroke="#444" stroke-width="1"/></svg>Pulsed Laser</a><a href="../../wiki/eom/"><svg viewBox="-30 -30 60 60" aria-hidden="true"><rect x="-22" y="-12" width="44" height="24" rx="3" fill="#b8c9a3" stroke="#66794a" stroke-width="1.5"/><text x="0" y="0"  text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="600" fill="#2f3a20">EOM</text></svg>EOM</a><a href="../../wiki/retroreflector/"><svg viewBox="-23.7 -23.7 47.4 47.4" aria-hidden="true"><path d="M -12.7,12.7 L 0,0 L -12.7,-12.7" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"/></svg>Retroreflector</a><a href="../../wiki/objective/"><svg viewBox="-26.5 -26.5 53 53" aria-hidden="true"><path d="M 16,-5.5 L 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5 L 16,5.5 Z" fill="#8d98a5" stroke="none"/><path d="M 7,-12.5 L -21,-12.5 L -21,12.5 L 7,12.5" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/><line x1="7" y1="-12.5" x2="7" y2="12.5" stroke="#4d565f" stroke-width="1"/><rect x="-21" y="-12.5" width="2.4" height="8.50" fill="#2f3e4d"/><rect x="-21" y="4.00" width="2.4" height="8.50" fill="#2f3e4d"/></svg>Objective</a><a href="../../wiki/sample/"><svg viewBox="-34 -34 68 68" aria-hidden="true"><rect x="-25" y="-3.00" width="50" height="6" fill="#c9e4f5" stroke="none"/></svg>Sample</a><a href="../../wiki/pmt/"><svg viewBox="-33 -33 66 66" aria-hidden="true"><rect x="-25" y="-13" width="50" height="26" rx="13" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/><rect x="-27" y="-9" width="4" height="18" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/><text x="2" y="0"  text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text><circle cx="16" cy="-7" r="3.1" fill="#88919b" opacity="0.45" stroke="#fff" stroke-width="0.8"/></svg>Photomultiplier (PMT)</a>
       </div>
 
       

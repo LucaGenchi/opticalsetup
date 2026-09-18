@@ -5,6 +5,7 @@ import { traceScene, detectorReading } from '../sketch/js/raytrace.js';
 import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
 import { parseSketch } from '../sketch/js/state.js';
 import { fiberPropagation, normalizeFiberDispersion } from '../sketch/js/fiber.js';
+import { DISPERSION_UNAVAILABLE, gddGroupDelayDifferenceFs, sech2PulseDurationAfterGDD } from '../sketch/js/glass.js';
 
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-7, `${actual} ≠ ${expected}`);
 const fiber = (overrides = {}) => ({
@@ -56,7 +57,7 @@ test('physical length scales dispersion, delay and loss together without moving 
   assert.deepEqual(output(long).pts[0], output(short).pts[0]);
 });
 
-test('zero and missing settings preserve legacy fiber behavior; unsupported pulse shapes stay explicit', () => {
+test('zero and missing settings preserve legacy fiber behavior; the duration follows the authored phase', () => {
   const legacy = fiber();
   delete legacy.lengthM;
   delete legacy.beta2Ps2PerKm;
@@ -64,8 +65,17 @@ test('zero and missing settings preserve legacy fiber behavior; unsupported puls
   close(run(legacy).reading.pulse.stretchedPulseWidthFs, 100);
   close(run(fiber({ beta2Ps2PerKm: 0 })).reading.pulse.stretchedPulseWidthFs, 100);
   close(run(fiber({ lengthM: 0 })).reading.pulse.gddFs2, 3600);
-  assert.equal(run(fiber(), [], false, { transformLimited: false }).reading.pulse.stretchedPulseWidthFs, null);
-  assert.equal(run(fiber(), [], false, { pulseShape: 'sech2' }).reading.pulse.stretchedPulseWidthFs, null);
+  // Explicit phase knowledge decides, not the pulse shape: an unknown phase
+  // is unavailable after the fiber's GDD, a named sign or a transform-limited
+  // sech² pulse is derived.
+  const unknown = run(fiber(), [], false, { transformLimited: false, bandwidth: 10, inputChirp: 'unknown' }).reading.pulse;
+  assert.equal(unknown.stretchedPulseWidthFs, null);
+  assert.equal(unknown.dispersionModel, DISPERSION_UNAVAILABLE.unknownPhase);
+  const signed = run(fiber(), [], false, { transformLimited: false, bandwidth: 10, inputChirp: 'positive' }).reading.pulse;
+  assert.ok(signed.stretchedPulseWidthFs > 100);
+  assert.match(signed.dispersionModel, /positive input chirp/);
+  close(run(fiber(), [], false, { pulseShape: 'sech2' }).reading.pulse.stretchedPulseWidthFs,
+    sech2PulseDurationAfterGDD(100, 36000));
   assert.equal(run(fiber(), [], false, { temporalMode: 'cw' }).reading.pulse, null);
 });
 
@@ -83,4 +93,15 @@ test('dispersion survives save/load and rejects non-finite or excessive inputs',
   assert.equal(bounded.beta2Ps2PerKm, 10000);
   const { scene } = run(bounded);
   assert.ok(scene.pulseTracks.every(track => track.opls.every(Number.isFinite)));
+});
+
+test('a broad band through the fiber gains the endpoint spread its lumped GDD implies', () => {
+  const source = createElement('sclaser', 0, 0);
+  Object.assign(source.params, { temporalMode: 'pulsed', scMin: 500, scMax: 700, pulseWidthFs: 300 });
+  const detector = createElement('detector', 300, 0);
+  traceScene([source, detector], [fiber()]);
+  const pulse = detectorReading(detector.id).pulse;
+  const spread = gddGroupDelayDifferenceFs(36000, 500, 700);
+  close(pulse.groupDelayDifferenceFs, spread);
+  close(pulse.stretchedPulseWidthFs, Math.hypot(300, spread));
 });

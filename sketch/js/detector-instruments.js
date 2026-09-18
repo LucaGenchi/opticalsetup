@@ -230,6 +230,20 @@ function header(name, mode, pulse) {
     `<text x="-36" y="-16.5" font-size="${modeSize.toFixed(2)}" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(modeText)}</text>`;
 }
 
+// Light an upstream model could only approximate -- a hollow-core fiber
+// beyond its Kerr solver, say -- is flagged across the bottom of every screen
+// that reads it, whatever view is showing: the spectrum and power on screen
+// describe the approximation, not the computed output.
+function caveatStrip(reading) {
+  const notes = Array.isArray(reading?.approximations) ? reading.approximations : [];
+  if (!notes.length) return '';
+  const text = notes.some(n => /^Linear-only/.test(n)) ? 'LINEAR-ONLY APPROX · NONLINEAR N/A'
+    : notes.some(n => /^Argon dispersion unavailable/.test(n)) ? 'ARGON DISPERSION N/A · GEOMETRIC ONLY'
+      : 'APPROXIMATION · SEE INSPECTOR';
+  return `<g data-caveat="${esc(notes.join(' | '))}"><rect x="-42.2" y="11.6" width="84.4" height="5.6" fill="#3b2a05"/>`
+    + `<text x="0" y="15.6" text-anchor="middle" font-size="3.3" font-weight="760" fill="#fbbf24">${esc(text)}</text></g>`;
+}
+
 function metrics(entries, columns = 2) {
   const labelSize = columns >= 3 ? 3.05 : 3.8, valueSize = columns >= 3 ? 4 : 5.1;
   const cellWidth = 78 / columns;
@@ -399,9 +413,18 @@ function scopePlot(reading, window = null) {
   const baseline = 6, height = 17;
   const from = trace.startNs || 0;
   const xAt = ns => -35 + 70 * (trace.spanNs > 0 ? (ns - from) / trace.spanNs : 0);
-  // Scaled to the trace's own peak, never below 1, so a stimulated-Raman
-  // GAIN (which lifts the receiving beam above its unmodulated level) reads
-  // as taller pulses instead of being clipped flat against the ceiling.
+  // Full height is one whole source beam, so what a beam carries can be read
+  // off the screen: half a beam draws half height. The floor at 1 is what
+  // makes that absolute rather than relative to whatever happens to be the
+  // tallest thing in the window.
+  //
+  // Above 1 the axis still stretches to fit, which costs the absolute reading
+  // in two cases: a stimulated-Raman GAIN, which genuinely lifts the receiving
+  // beam past its unmodulated level, and several beams summing on one
+  // detector. Clipping instead would keep the scale honest but flatten any
+  // modulation riding above full scale -- two beams with one of them gated
+  // would draw as a solid bar -- and losing a real modulation is the worse
+  // trade for a figure.
   const peak = Math.max(1, ...trace.pulses.map(p => p.amplitude || 0), ...trace.envelope.map(e => e.value || 0));
   const yAt = value => baseline - Math.max(0, Math.min(1, value / peak)) * height;
 
@@ -431,27 +454,58 @@ function scopePlot(reading, window = null) {
   let spikes = '';
   if (live.length) {
     const steps = 220;
+    const sampleNs = trace.spanNs / steps;
+    // A photodiode impulse is routinely narrower than one sample of this
+    // 70-unit-wide plot. Sampling it on the uniform grid alone lands each
+    // sample at a different point on each spike, and the drawn heights beat
+    // against the pulse spacing into a slow ripple that is not in the signal:
+    // a 1 ns response on an 80 MHz train over 400 ns drew peaks running
+    // 1.00, 0.87, 0.56, 0.28, 0.10, 0.28 ... which reads as a second, faster
+    // modulation riding on the real gate. So the grid is not left to find the
+    // peaks by luck -- every pulse contributes its own centre and shoulders.
+    // Pulses too close together to draw apart are not given their own sample
+    // points, and a response narrower than the grid would then be sampled at a
+    // different point on each spike -- aliasing an 800 MHz train read by a
+    // 0.01 ns detector into nine tall spikes rather than the ~160 it passes.
+    // Widening the drawn response to the grid it will be drawn on makes those
+    // impulses overlap into the solid band a train that dense really is.
+    const times = [];
+    for (let i = 0; i <= steps; i++) times.push(from + trace.spanNs * i / steps);
+    // Only worth doing while the spikes are actually separate on screen. Once
+    // they are closer together than a couple of samples they merge into the
+    // solid band an unresolvable train should look like, and adding points
+    // per pulse would only inflate the path.
+    const spacingNs = live.length > 1
+      ? (live[live.length - 1].tNs - live[0].tNs) / (live.length - 1) : Infinity;
+    const resolvable = spacingNs > 2 * sampleNs;
+    if (resolvable) {
+      for (const p of live) {
+        times.push(p.tNs, p.tNs - 0.7 * responseNs, p.tNs + 0.7 * responseNs);
+      }
+    }
+    const drawResponseNs = resolvable ? responseNs : Math.max(responseNs, 1.5 * sampleNs);
     const at = t => live.reduce((sum, p) => {
-      const d = (t - p.tNs) / responseNs;
+      const d = (t - p.tNs) / drawResponseNs;
       // Beyond a few response widths the contribution is numerically nothing;
       // skipping it keeps a 240-pulse train from being O(n^2) for no gain.
       return Math.abs(d) > 4 ? sum : sum + p.amplitude * Math.exp(-4 * Math.LN2 * d * d);
     }, 0);
+    times.sort((a, b) => a - b);
     const pts = [];
-    for (let i = 0; i <= steps; i++) {
-      const t = from + trace.spanNs * i / steps;
+    for (const t of times) {
+      if (t < from - 1e-9 || t > from + trace.spanNs + 1e-9) continue;
+      if (pts.length && Math.abs(t - pts[pts.length - 1].t) < 1e-9) continue;
       pts.push({ t, v: at(t) });
     }
-    // Scaled so that ONE resolved pulse reaches full height -- not so that the
-    // curve's own maximum does. A detector too slow to follow the train sums
-    // many overlapping responses into something well past full scale, which
-    // clips into the flat level such a detector really outputs; normalizing to
-    // the summed peak instead would have stretched that residual ripple back
-    // across the screen and made an unresolvable train look resolved.
-    const single = Math.max(...live.map(p => p.amplitude), 1e-9);
-    const scale = 1 / single;
-    const path = pts.map(pt => `${xAt(pt.t).toFixed(2)},${yAt(pt.v * scale * (peak || 1)).toFixed(2)}`).join(' ');
-    spikes = `<polyline data-scope-trace="${steps + 1}" points="${path}" fill="none" ` +
+    // The axis is absolute: full height is one whole source beam, so a branch
+    // that only carries half the light only reaches half height. It is NOT
+    // normalized to the curve's own peak, which is what used to hide the
+    // diffraction efficiency -- an AOM at 20% drew exactly like one at 100%.
+    // A detector too slow to follow the train still sums many overlapping
+    // responses past full scale and clips into the flat level such a detector
+    // really outputs, because `peak` only ever rises above 1 for genuine gain.
+    const path = pts.map(pt => `${xAt(pt.t).toFixed(2)},${yAt(pt.v).toFixed(2)}`).join(' ');
+    spikes = `<polyline data-scope-trace="${pts.length}" points="${path}" fill="none" ` +
       `stroke="${reading.color || '#8fd3ff'}" stroke-width="1.3" stroke-linejoin="round"/>`;
   }
 
@@ -724,7 +778,15 @@ function formatPower(watts, signal) {
 }
 
 function pulseRate(pulse) { return !pulse ? 'CW' : pulse.mixed ? 'MIXED' : `${compactNumber(pulse.repRateMHz)} MHz`; }
-function pulseDuration(pulse) { return !pulse ? '—' : pulse.mixed ? 'MIXED' : pulse.fieldIssue ? 'UNAVAILABLE' : `${compactNumber(pulse.stretchedPulseWidthFs ?? pulse.pulseWidthFs)} fs`; }
+// The duration that arrives: dispersed where the model answers, UNAVAILABLE
+// where it declines, and the configured width only when no model ran.
+function pulseDuration(pulse) {
+  if (!pulse) return '—';
+  if (pulse.mixed) return 'MIXED';
+  if (Number.isFinite(pulse.stretchedPulseWidthFs)) return `${compactNumber(pulse.stretchedPulseWidthFs)} fs`;
+  if (pulse.dispersionModel) return 'UNAVAILABLE';
+  return `${compactNumber(pulse.pulseWidthFs)} fs`;
+}
 
 // The cross-correlation screen, built to behave like the scope you actually
 // watch while hunting time zero. The axis here is LABORATORY ARRIVAL TIME, not
@@ -826,9 +888,15 @@ function autocorrelationPlot(sensor, reading) {
   if (!reading.pulse || reading.pulse.mixed) return null;
   const assumed = sensor.params?.assumedShape || 'gauss';
   const actual = reading.pulse.pulseShape || 'gauss';
+  if (reading.pulse.pulseShape === 'sampled' && !reading.pulse.fieldIssue) {
+    return { note: 'SAMPLED ENVELOPE|AUTOCORRELATION NOT MODELED' };
+  }
+  if (!Number.isFinite(reading.pulse.stretchedPulseWidthFs) && reading.pulse.dispersionModel) {
+    return { note: 'DURATION UNAVAILABLE|' + String(reading.pulse.dispersionModel).split(' — ')[0].toUpperCase() };
+  }
   const arriving = Number.isFinite(reading.pulse.stretchedPulseWidthFs)
     ? reading.pulse.stretchedPulseWidthFs : reading.pulse.pulseWidthFs;
-  const ac = actual === 'sampled' || reading.pulse?.fieldIssue ? null : autocorrelationReading(arriving, assumed, actual);
+  const ac = autocorrelationReading(arriving, assumed, actual);
   if (!ac) return null;
   const fsLabel = v => (v < 1000 ? `${Math.round(v)} FS` : `${(v / 1000).toFixed(2)} PS`);
 
@@ -999,7 +1067,7 @@ registry.display.svg = function detectorAwareDisplaySVG(display, elements = []) 
   if (!reading) return base;
   const scale = displayRenderScale(display.params.displayScale);
   const view = resolvedDisplayView(display, sensor);
-  const content = panel(sensor, reading, elements, view);
+  const content = panel(sensor, reading, elements, view) + caveatStrip(reading);
   return base + `<g transform="scale(${scale})" data-detector-readout="${esc(sensor.type)}" data-display-density="${displayDensity(scale)}" pointer-events="none"><rect x="-42.2" y="-28.2" width="84.4" height="45.4" rx="2.5" fill="#061822"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${content}</g></g>`;
 };
 
