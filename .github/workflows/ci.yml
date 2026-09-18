@@ -22,6 +22,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, so the whitespace check below can diff against the
+          # base branch (pull requests) or the previous commit (pushes).
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -35,7 +39,12 @@ jobs:
           done
 
       - name: Whitespace and patch sanity
-        run: git diff --check origin/${{ github.base_ref || 'main' }}...HEAD || git diff --check HEAD~1 HEAD
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            git diff --check "origin/${{ github.base_ref }}...HEAD"
+          else
+            git diff --check HEAD~1 HEAD
+          fi
 
       - name: Regression suite
         run: npm test
