@@ -236,6 +236,20 @@ function header(name, mode, pulse) {
     `<text x="-36" y="-16.5" font-size="${modeSize.toFixed(2)}" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(modeText)}</text>`;
 }
 
+// Light an upstream model could only approximate -- a hollow-core fiber
+// beyond its Kerr solver, say -- is flagged across the bottom of every screen
+// that reads it, whatever view is showing: the spectrum and power on screen
+// describe the approximation, not the computed output.
+function caveatStrip(reading) {
+  const notes = Array.isArray(reading?.approximations) ? reading.approximations : [];
+  if (!notes.length) return '';
+  const text = notes.some(n => /^Linear-only/.test(n)) ? 'LINEAR-ONLY APPROX · NONLINEAR N/A'
+    : notes.some(n => /^Argon dispersion unavailable/.test(n)) ? 'ARGON DISPERSION N/A · GEOMETRIC ONLY'
+      : 'APPROXIMATION · SEE INSPECTOR';
+  return `<g data-caveat="${esc(notes.join(' | '))}"><rect x="-42.2" y="11.6" width="84.4" height="5.6" fill="#3b2a05"/>`
+    + `<text x="0" y="15.6" text-anchor="middle" font-size="3.3" font-weight="760" fill="#fbbf24">${esc(text)}</text></g>`;
+}
+
 function metrics(entries, columns = 2) {
   const labelSize = columns >= 3 ? 3.05 : 3.8, valueSize = columns >= 3 ? 4 : 5.1;
   const cellWidth = 78 / columns;
@@ -880,6 +894,9 @@ function autocorrelationPlot(sensor, reading) {
   if (!reading.pulse || reading.pulse.mixed) return null;
   const assumed = sensor.params?.assumedShape || 'gauss';
   const actual = reading.pulse.pulseShape || 'gauss';
+  if (reading.pulse.pulseShape === 'sampled' && !reading.pulse.fieldIssue) {
+    return { note: 'SAMPLED ENVELOPE|AUTOCORRELATION NOT MODELED' };
+  }
   if (!Number.isFinite(reading.pulse.stretchedPulseWidthFs) && reading.pulse.dispersionModel) {
     return { note: 'DURATION UNAVAILABLE|' + String(reading.pulse.dispersionModel).split(' — ')[0].toUpperCase() };
   }
@@ -1057,7 +1074,7 @@ registry.display.svg = function detectorAwareDisplaySVG(display, elements = []) 
   if (!reading) return base;
   const scale = displayRenderScale(display.params.displayScale);
   const view = resolvedDisplayView(display, sensor);
-  const content = panel(sensor, reading, elements, view);
+  const content = panel(sensor, reading, elements, view) + caveatStrip(reading);
   return base + `<g transform="scale(${scale})" data-detector-readout="${esc(sensor.type)}" data-display-density="${displayDensity(scale)}" pointer-events="none"><rect x="-42.2" y="-28.2" width="84.4" height="45.4" rx="2.5" fill="#061822"/><g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${content}</g></g>`;
 };
 

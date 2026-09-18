@@ -1505,7 +1505,25 @@ export const wikiEntries = [
         <p>One β₂ is all there is: no third- or higher-order dispersion, no wavelength
         dependence of β₂ across a broad band, no modal or polarisation-mode dispersion, and
         no nonlinear propagation — self-phase modulation, soliton dynamics and wavelength
-        conversion in the fiber itself are not simulated.</p>`,
+        conversion in the fiber itself are not simulated, except in the opt-in hollow-core
+        model below.</p>
+        <p><em>Fiber model → Hollow core · argon</em> turns the fiber into a gas-filled
+        capillary: its β₂ and group index come from the argon pressure and the core diameter,
+        and a bounded split-step calculation adds Kerr self-phase modulation for one intact,
+        transform-limited Gaussian pulse train, so the spectrum broadens and a compressor
+        downstream can shorten the pulse. The cable's panel says which of four states it is
+        in: a computed envelope; Kerr off, which is linear propagation within the β₂ model; a linear-only
+        approximation, when the pulse is outside the solver's bounds or not one it can take —
+        the light then continues with argon's linear dispersion and every readout downstream,
+        spectrum and power included, is labelled as such; or no argon data, outside
+        468–2059&nbsp;nm, where the light continues geometrically and no argon dispersion is
+        claimed. With no coupled pulse energy the capillary stays dark. Its loss is computed
+        by default as the ideal smooth fused-silica capillary's (Marcatili–Schmeltzer, 0.615&nbsp;dB/m
+        for 250&nbsp;µm at 800&nbsp;nm, scaling as λ²/a³), with an optional extra distributed loss,
+        or typed as a manual total. The model has no
+        ionization, higher modes, wall resonances, Raman response or self-steepening; its
+        effective area is the Gaussian π(0.64a)², which makes γ about 16&nbsp;% larger than
+        the exact capillary mode would.</p>`,
     },
     related: ['barefiber', 'objective', 'sclaser', 'detector'],
     resources: [
@@ -1641,7 +1659,25 @@ export const wikiEntries = [
         <p>One β₂ is all there is: no third- or higher-order dispersion, no wavelength
         dependence of β₂ across a broad band, no modal or polarisation-mode dispersion, and
         no nonlinear propagation — self-phase modulation, soliton dynamics and wavelength
-        conversion in the fiber itself are not simulated.</p>`,
+        conversion in the fiber itself are not simulated, except in the opt-in hollow-core
+        model below.</p>
+        <p><em>Fiber model → Hollow core · argon</em> turns the fiber into a gas-filled
+        capillary: its β₂ and group index come from the argon pressure and the core diameter,
+        and a bounded split-step calculation adds Kerr self-phase modulation for one intact,
+        transform-limited Gaussian pulse train, so the spectrum broadens and a compressor
+        downstream can shorten the pulse. The cable's panel says which of four states it is
+        in: a computed envelope; Kerr off, which is linear propagation within the β₂ model; a linear-only
+        approximation, when the pulse is outside the solver's bounds or not one it can take —
+        the light then continues with argon's linear dispersion and every readout downstream,
+        spectrum and power included, is labelled as such; or no argon data, outside
+        468–2059&nbsp;nm, where the light continues geometrically and no argon dispersion is
+        claimed. With no coupled pulse energy the capillary stays dark. Its loss is computed
+        by default as the ideal smooth fused-silica capillary's (Marcatili–Schmeltzer, 0.615&nbsp;dB/m
+        for 250&nbsp;µm at 800&nbsp;nm, scaling as λ²/a³), with an optional extra distributed loss,
+        or typed as a manual total. The model has no
+        ionization, higher modes, wall resonances, Raman response or self-steepening; its
+        effective area is the Gaussian π(0.64a)², which makes γ about 16&nbsp;% larger than
+        the exact capillary mode would.</p>`,
     },
     related: ['fiber', 'objective', 'sclaser', 'detector'],
     resources: [

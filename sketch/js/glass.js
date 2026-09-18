@@ -562,6 +562,7 @@ export function crossCorrelationPair(reading) {
   if (trains.length > 2) return { reason: `${trains.length} TRAINS — NEEDS EXACTLY 2` };
   // A declined duration cannot be correlated: substituting the configured
   // width would draw a trace the arriving pulses do not make.
+  if (trains.some(train => train.pulseShape === 'sampled' || train.fieldIssue)) return { reason: 'SAMPLED-ENVELOPE CORRELATION NOT MODELED' };
   if (trains.some(train => !Number.isFinite(train.stretchedPulseWidthFs) && train.dispersionModel)) {
     return { reason: 'DURATION UNAVAILABLE' };
   }

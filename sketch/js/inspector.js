@@ -9,9 +9,12 @@ import {
   EMISSION_ORDER, RAMAN_MATERIALS, MODIFIER_KINDS, TWO_BEAM_KINDS,
   FLUOROPHORES, fluorophoreSpec, normalizeSupercontinuumParams,
 } from './elements.js';
-import { detectorReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
+import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
-import { FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion } from './fiber.js';
+import {
+  FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion, HOLLOW_CORE_FIELDS, normalizeHollowCore,
+  CAPILLARY_LOSS_MODELS, EXTRA_LOSS_FIELD,
+} from './fiber.js';
 import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
   bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN,
@@ -291,6 +294,8 @@ function autocorrelatorRows(rd, source) {
       <dt>Autocorrelation</dt><dd>Continuous wave — no pulse to measure</dd>`;
   if (rd.pulse.mixed) return `
       <dt>Autocorrelation</dt><dd>Mixed pulse trains — one trace cannot separate them</dd>`;
+  if (rd.pulse.pulseShape === 'sampled' && !rd.pulse.fieldIssue) return `
+      <dt>Autocorrelation</dt><dd>Sampled-envelope autocorrelation is not modeled; the computed pulse intensity is plotted below.</dd>`;
   const assumed = source?.params?.assumedShape || 'gauss';
   const actual = rd.pulse.pulseShape || 'gauss';
   const derived = Number.isFinite(rd.pulse.stretchedPulseWidthFs)
@@ -310,6 +315,55 @@ function autocorrelatorRows(rd, source) {
       <dt>Autocorrelation FWHM</dt><dd>${fs(reading.traceFwhmFs)}</dd>
       <dt>Inferred duration</dt><dd>${fs(reading.inferredPulseWidthFs)} · assuming ${shapeName(assumed)} (÷${reading.assumedFactor.toFixed(3)})</dd>
       ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}`;
+}
+
+export function pulseEnvelopeHTML(envelope) {
+  if (!envelope) return '';
+  const { timeFs, intensity } = envelope;
+  const active = intensity.map((v, i) => v > 0.002 ? i : -1).filter(i => i >= 0);
+  if (!active.length) return '';
+  const lo = Math.max(0, active[0] - 5), hi = Math.min(intensity.length - 1, active.at(-1) + 5);
+  const points = [];
+  for (let i = lo; i <= hi; i++) points.push(`${(12 + 236 * (i - lo) / (hi - lo)).toFixed(2)},${(88 - 72 * intensity[i]).toFixed(2)}`);
+  return `<svg viewBox="0 0 260 114" role="img" aria-label="Computed pulse intensity versus time" style="width:100%;color:inherit">
+    <path d="M12 16V88H248" fill="none" stroke="currentColor" opacity="0.3"/>
+    <polyline points="${points.join(' ')}" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <text x="12" y="108" fill="currentColor" font-size="12">${timeFs[lo].toFixed(0)} fs</text>
+    <text x="248" y="108" fill="currentColor" font-size="12" text-anchor="end">${timeFs[hi].toFixed(0)} fs</text></svg>`;
+}
+
+// What the capillary did on the last trace. Each state is named so a user can
+// tell a computed field from linear propagation within the β₂ model (Kerr off), from a
+// labelled linear-only continuation (the solver refused), from no argon data
+// at this wavelength at all.
+export function fiberMeasurementHTML(beam) {
+  const rd = fiberReading(beam.id);
+  const card = (title, body) => `<div class="measurement-card" data-measurements><strong>${title}</strong>${body}</div>`;
+  if (!rd) return card('Argon capillary', '<p>Couple a pulsed laser into this fiber to calculate its output.</p>');
+  const beta = (rd.coefficients ? `<dt>β₂</dt><dd>${rd.coefficients.beta2Fs2PerM.toFixed(2)} fs²/m</dd>` : '')
+    + (rd.loss ? `<dt>Loss</dt><dd>${rd.loss.model === 'manual' ? `${Number(rd.loss.totalDbPerM).toFixed(3)} dB/m (manual)`
+      : `${Number(rd.loss.totalDbPerM).toFixed(3)} dB/m (ideal capillary ${Number(rd.loss.idealDbPerM).toFixed(3)})`}</dd>` : '');
+  const energy = Number.isFinite(rd.energyJ) ? `<dt>Coupled energy</dt><dd>${(rd.energyJ * 1e6).toFixed(2)} µJ</dd>` : '';
+  switch (rd.state) {
+    case 'field':
+    case 'kerrOff':
+      return card(rd.state === 'kerrOff' ? 'Argon capillary · Kerr off: linear propagation within the β₂ model' : 'Argon capillary · computed envelope',
+        `<dl class="measurement-grid">${energy}${beta}
+        <dt>Nonlinear phase</dt><dd>${rd.bIntegral.toFixed(2)} rad</dd>
+        <dt>Output FWHM</dt><dd>${rd.metrics.fwhmFs.toFixed(1)} fs</dd>
+        <dt>Spectrum RMS</dt><dd>${rd.spectralRmsTHz.toFixed(2)} THz</dd></dl>${pulseEnvelopeHTML(rd.metrics)}`);
+    case 'linearOnly':
+      return card('Argon capillary · linear-only approximation',
+        `<p>${esc(rd.reason)}</p><p>The light continues with argon's linear dispersion only. Its spectrum, power and timing downstream are labelled “Linear-only approximation; nonlinear output unavailable”, and no duration is predicted.</p><dl class="measurement-grid">${energy}${beta}</dl>`);
+    case 'outOfRange':
+      return card('Argon capillary · no argon data at this wavelength', `<p>${esc(rd.reason)}</p>`);
+    case 'noEnergy':
+      return card('Argon capillary · dark', '<p>No coupled pulse energy, so no light leaves the fiber.</p>');
+    case 'cw':
+      return card('Argon capillary · continuous light', `<p>${esc(rd.reason)}</p><dl class="measurement-grid">${beta}</dl>`);
+    default:
+      return card('Argon capillary', `<p>${esc(rd.reason || '')}</p>`);
+  }
 }
 
 function measurementHTML(el) {
@@ -359,7 +413,7 @@ function measurementHTML(el) {
       const factor = rd.pulse.stretchedPulseWidthFs / rd.pulse.pulseWidthFs;
       stretchText = factor < 0.99
         ? `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}× · compressed)`
-        : factor <= 1.01
+        : !rd.pulse.envelope && factor <= 1.01
         ? 'Negligible at this pulse duration'
         : `${rd.pulse.stretchedPulseWidthFs.toFixed(rd.pulse.stretchedPulseWidthFs < 100 ? 1 : 0)} fs (${factor.toFixed(2)}×)`;
     }
@@ -368,11 +422,11 @@ function measurementHTML(el) {
       <dt>Pulse train</dt><dd>${pulseTrain}</dd>
       ${rd.pulse.mixed ? '' : `<dt>Emission offset</dt><dd>${rd.pulse.phaseNs.toLocaleString()} ns</dd>`}
       <dt>Accumulated GDD</dt><dd>${gddText}</dd>
-      ${stretchText ? `<dt>Dispersed duration</dt><dd>${stretchText}</dd>` : ''}
+      ${stretchText ? `<dt>${rd.pulse.envelope ? 'Computed FWHM' : 'Dispersed duration'}</dt><dd>${stretchText}</dd>` : ''}
       ${!rd.pulse.mixed && rd.pulse.dispersionModel ? `<dt>Duration model</dt><dd>${esc(rd.pulse.dispersionModel)}</dd>` : ''}
       <dt>Earliest path delay</dt><dd>${rd.pulse.earliestPathDelayNs.toFixed(3)} ns</dd>
       <dt>Path spread</dt><dd>${rd.pulse.arrivalSpreadPs < 0.001 ? '&lt;0.001' : rd.pulse.arrivalSpreadPs.toFixed(3)} ps</dd>` : '';
-  const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color);
+  const pulseTimeline = pulseTimelineHTML(rd.pulse, rd.color) + pulseEnvelopeHTML(rd.pulse?.envelope);
   const isCamera = readoutKind === 'camera';
   const cameraState = isCamera ? cameraReadingState(rd) : null;
   const cancelled = cameraState?.kind === 'cancellation';
@@ -426,6 +480,7 @@ function measurementHTML(el) {
   return `<div class="measurement-card" data-measurements>
     <div class="measurement-status"><span class="signal-light" style="background:${statusColor}"></span>${statusText}</div>
     <dl class="measurement-grid">
+      ${rd.approximations?.length ? `<dt>Caveat</dt><dd style="color:#f59e0b">${rd.approximations.map(esc).join('<br>')}</dd>` : ''}
       <dt>${isCamera ? 'Relative intensity' : 'Relative ray weight'}</dt><dd>${signal}</dd>
       ${isCamera ? cameraOpticalRows : `
       <dt>Spectrum</dt><dd>${spectral}</dd>
@@ -459,7 +514,19 @@ function screenLinkHTML(el) {
 }
 
 export function refreshMeasurements() {
-  if (!panel || state.selection?.kind !== 'element') return;
+  if (!panel) return;
+  if (state.selection?.kind !== 'element') {
+    const beam = findSelected();
+    if (beam?.kind === 'fiber' && beam.fiberModel === 'argon') {
+      const current = panel.querySelector('[data-measurements]');
+      if (current) {
+        const holder = document.createElement('div');
+        holder.innerHTML = fiberMeasurementHTML(beam);
+        current.replaceWith(holder.firstElementChild);
+      }
+    }
+    return;
+  }
   const sel = findSelected();
   // An element whose inspector readouts follow the animation clock -- a
   // tuning OPO -- refreshes those fields in place, without a rebuild.
@@ -966,16 +1033,34 @@ export function renderInspector() {
       h += inspectorSection('path-appearance', 'Appearance', appearanceFields);
     } else {
       h += inspectorSection('path-appearance', 'Appearance', appearanceFields);
+      const argon = b.fiberModel === 'argon';
+      if (argon && b.propagate) h += fiberMeasurementHTML(b);
       let propagationFields = field('Beam propagates', `<input type="checkbox" data-k="propagate" ${b.propagate ? 'checked' : ''}>`);
       if (b.propagate) {
+        propagationFields += field('Fiber model', `<select data-k="fiberModel"><option value="linear" ${!argon ? 'selected' : ''}>Linear dispersion</option><option value="argon" ${argon ? 'selected' : ''}>Hollow core · argon</option></select>`);
         propagationFields += numberField('Input NA', 'data-k="inputNA"', b.inputNA ?? 0.22, { min: 0.01, max: 0.95, step: 0.01 });
-        propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
-        propagationFields += field('Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
+        if (!argon) propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
+        const hollowSettings = argon ? normalizeHollowCore(b) : null;
+        if (argon) {
+          propagationFields += field('Loss model', `<select data-k="lossModel">${CAPILLARY_LOSS_MODELS.map(([v, l]) => `<option value="${v}" ${hollowSettings.lossModel === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`);
+        }
+        if (!argon || hollowSettings.lossModel === 'manual') {
+          propagationFields += field(argon ? 'Total loss (dB/m)' : 'Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
+        } else {
+          propagationFields += field(EXTRA_LOSS_FIELD.label, `<input type="number" data-k="${EXTRA_LOSS_FIELD.key}" min="${EXTRA_LOSS_FIELD.min}" max="${EXTRA_LOSS_FIELD.max}" step="${EXTRA_LOSS_FIELD.step}" value="${hollowSettings[EXTRA_LOSS_FIELD.key]}">`);
+        }
         const dispersion = normalizeFiberDispersion(b);
         for (const spec of FIBER_PROPAGATION_FIELDS) {
+          // A capillary's β₂ comes from its gas and core, not from a typed value.
+          if (argon && spec.key === 'beta2Ps2PerKm') continue;
           propagationFields += field(spec.label, `<input type="number" data-k="${spec.key}" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${dispersion[spec.key]}">`);
         }
-        propagationFields += `<div class="hint">Physical length sets delay, loss and dispersion without changing the drawing. GDD = 1000 × β₂ × length in metres (fs²). Enter β₂ at your reference wavelength; it is applied as a constant across the band, and 0 adds no dispersion. Downstream durations follow the total GDD where the pulse's phase is known. No higher-order, modal or nonlinear propagation.</div>`;
+        if (argon) {
+          const hollow = normalizeHollowCore(b);
+          for (const spec of HOLLOW_CORE_FIELDS) propagationFields += field(spec.label, `<input type="number" data-k="${spec.key}" min="${spec.min}" max="${spec.max}" step="${spec.step}" value="${hollow[spec.key]}">`);
+          propagationFields += field('Kerr nonlinearity', `<input type="checkbox" data-k="kerrEnabled" ${hollow.kerrEnabled ? 'checked' : ''}>`);
+          propagationFields += `<div class="hint">Single-mode argon capillary at 20 °C. Pressure and core size set dispersion and nonlinearity; pulse energy comes from the laser's average power and repetition rate. β₂ + Kerr + loss only; no ionization, higher modes, resonances or self-steepening. Outside the solver's bounds the light continues with linear dispersion only and every readout downstream says so.</div>`;
+        } else propagationFields += `<div class="hint">Physical length sets delay, loss and dispersion without changing the drawing. GDD = 1000 × β₂ × length in metres (fs²). Enter β₂ at your reference wavelength; it is applied as a constant across the band, and 0 adds no dispersion. Downstream durations follow the total GDD where the pulse's phase is known. No higher-order, modal or nonlinear propagation.</div>`;
         // one output spec per fiber end; migrate legacy single-spec fibers
         for (const end of [0, 1]) {
           if (!b['out' + end]) b['out' + end] = { mode: b.outMode || 'diverge', na: b.na ?? 0.12, focal: b.focal ?? 20, dia: b.outDia ?? 6 };
@@ -1414,7 +1499,7 @@ export function applyInput(inp, rebuild = false) {
     renderInspector();
     return;
   }
-  if (rebuild && (key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
+  if (rebuild && (key === 'fiberModel' || key === 'lossModel' || key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // The objective's coupling status is derived from its placed pose. Keep the
   // hint in step with committed coordinate/rotation edits just as the canvas
   // layer already is; otherwise the panel can describe the previous target.

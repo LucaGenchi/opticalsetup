@@ -164,6 +164,17 @@ by a filter, or paths of different dispersion meet at one detector, the disperse
 is reported as unavailable rather than derived. The pulse
 compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
 
+Fibers also offer an opt-in **Hollow core · argon** model: a bounded scalar
+Fourier-envelope calculation with capillary/gas β₂, Kerr self-phase modulation
+and loss. Pressure, core diameter and captured laser pulse energy change the
+calculated spectrum and temporal field; a downstream GDD compressor can then
+shorten the pulse. Open **Ultrashort Pulses → Hollow-core pulse compressor**
+for the 100 fs → approximately 47 fs example; its loss is computed from the core by default (ideal smooth silica capillary, Marcatili–Schmeltzer). Outside the solver's bounds the
+light continues with argon's linear dispersion only and every downstream
+readout is labelled a linear-only approximation; outside the argon data
+(468–2059 nm) it continues geometrically with its own caveat. See
+[the physics, limits and validation note](docs/physics/hollow-core.md).
+
 Its bounded coherent model applies only to sized monochromatic CW sources and
 explicitly supported ideal surfaces. It carries optical path plus the unitary phase of
 ideal non-polarizing beamsplitters and fully reflective flat mirrors, groups compatible

@@ -14,7 +14,18 @@ import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToCo
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
-import { fiberPropagation } from './fiber.js';
+import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
+import { propagateEnvelope, fieldMetrics } from './pulse-field.js';
+
+// What each argon capillary did on the last trace, for its inspector panel.
+const hollowReadings = new Map();
+const hollowCache = new Map();
+export const fiberReading = id => hollowReadings.get(id) || null;
+// The caveat carried by light whose spectrum the hollow-core solver could not
+// compute. It rides on every ray downstream -- through compressors, filters
+// and further fibers alike -- and every readout of that light shows it.
+export const LINEAR_ONLY = 'Linear-only approximation; nonlinear output unavailable';
+export const ARGON_OUT_OF_RANGE = 'Argon dispersion unavailable outside 468–2059 nm; geometric continuation only';
 
 // Fixed, readable chunk period for a chopped CW beam (mm). The wheel's real
 // period is Hz-to-kHz scale, so c·period would be light-seconds long — this
@@ -38,6 +49,7 @@ import {
 import {
   gaussianSpectrum, flatSpectrum, lineSpectrum, scaleSpectrum, spectrumSamples, spectrumStats, spectrumSupport, spectrumWeight,
   applyTransmission as applySpectralTransmission, fringeVisibility, resolveSourceSpectrum, supercontinuumTransformLimitFs,
+  transformLimitedBandwidthNm,
 } from './spectrum.js';
 import { cameraProfileFromHits } from './camera-profile.js';
 import { MAX_CONVERSION, MAX_OPO_DEPLETION, opoPulse, supercontinuumRange, opoWaves, pumpWidthNm, mixOverlap, mixPulse, mixWavelength, mixWidthNm } from './parametric.js';
@@ -738,6 +750,7 @@ function detectorSample(ray, surface, u, oplMm, pathKey, sensorMiss = false) {
     wl: ray.wl,
     bw: ray.bw || 0,
     spec: ray.spec || null,
+    approximation: ray.approximation || null,
     spectralContinuum: ray.spectralContinuum === true,
     spectralWidthNm: Number.isFinite(ray.spectralWidthNm) ? ray.spectralWidthNm : null,
     spectralLo: Number.isFinite(ray.spectralLo) ? ray.spectralLo : null,
@@ -995,11 +1008,28 @@ export function detectorReading(elementId) {
         ? sourceHits.reduce((sum, h) => sum + h.wl * Math.max(0, h.power || 0), 0) / arrivingWeight
         : sourceHits[0]?.wl;
       const groupDelayDifferenceFs = weighted('groupDelayDifferenceFs');
+      // A sampled envelope answers for itself, at this detector's GDD. When
+      // it cannot -- several temporal paths, or a field that no longer fits
+      // its window -- the train is unavailable: the analytic model is never
+      // asked to stand in for a field that failed.
+      const fieldIssue = p.field ? (p.fieldIssue
+        || (sourceHits.some(h => h.pulse.field !== p.field || Math.abs(h.gddFs2 - gddFs2) > 1e-6)
+          ? 'Multiple temporal paths reach this sensor; their combined envelope is not modeled.' : null)) : null;
+      const rawEnvelope = p.field && !fieldIssue ? fieldMetrics(p.field, gddFs2) : null;
+      const envelopeScale = p.fieldReferencePower > 0
+        ? sourceHits.reduce((sum, h) => sum + Math.max(0, h.power || 0), 0) / p.fieldReferencePower : 1;
+      const envelope = rawEnvelope ? {
+        ...rawEnvelope, energyJ: rawEnvelope.energyJ * envelopeScale, peakPowerW: rawEnvelope.peakPowerW * envelopeScale,
+      } : null;
       // Every centre-wavelength arrival is a path this train took; the model
       // answers only when those paths agree on one duration.
-      let duration = pulseDurationAcrossPaths(p, centerHits.map(h => ({
-        gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
-      })));
+      let duration = p.field
+        ? (envelope
+          ? { durationFs: envelope.fwhmFs, available: true, model: 'Sampled envelope · argon capillary' }
+          : { durationFs: null, available: false, model: fieldIssue || 'Pulse exceeds the numerical time window.' })
+        : pulseDurationAcrossPaths(p, centerHits.map(h => ({
+          gddFs2: h.gddFs2, groupDelayDifferenceFs: h.groupDelayDifferenceFs || 0, weight: h.power,
+        })));
       // A prism or grating fans the pulse into wavelength samples, and an
       // aperture can then catch only some of them. The duration model assumes
       // the whole band arrives, so where the arriving cells leave part of it
@@ -1023,6 +1053,8 @@ export function detectorReading(elementId) {
         transformLimitFs: duration?.transformLimitFs ?? null,
         inputGddFs2: duration?.inputGddFs2 ?? null,
         totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
+        envelope,
+        fieldIssue: p.field && !envelope ? duration.model : (p.fieldIssue || null),
         // A cross-correlation is between two specific trains, so it needs each
         // one's own shape and colour rather than the aggregate's -- the whole
         // point is that the two arms differ.
@@ -1094,12 +1126,19 @@ export function detectorReading(elementId) {
       transformLimitFs: duration?.transformLimitFs ?? null,
       inputGddFs2: duration?.inputGddFs2 ?? null,
       totalGddFs2: duration?.totalGddFs2 ?? gddFs2,
+      envelope: !mixed && trains.length === 1 ? trains[0].envelope : null,
+      fieldIssue: trains.find(t => t.fieldIssue)?.fieldIssue || null,
       earliestPathDelayNs: delays.length ? Math.min(...delays) : 0,
       arrivalSpreadPs: delays.length ? (Math.max(...delays) - Math.min(...delays)) * 1000 : 0,
     };
   }
+  // Caveats riding on the arriving light -- a hollow-core fiber that could
+  // only continue it linearly, say. Spectrum, power and every other readout
+  // of this detector describe light the model did not fully compute.
+  const approximations = [...new Set(activeHits.map(h => h.approximation).filter(Boolean))];
   return {
     signal,
+    approximations,
     samples: readoutKind === 'camera' ? cameraHits.filter(hit => !hit.sensorMiss).length : activeHits.length,
     wavelength,
     bandMin,
@@ -1153,9 +1192,10 @@ export function probeAt(x, y, tol = 16) {
     // configured watts, and what its train looks like here -- including any
     // gates picked up on the way, which is what the time plot draws.
     sourceId: best.sourceId || null,
+    approximation: best.approximation || null,
     pulse: best.pulse ? {
       repRateMHz: best.pulse.repRateMHz,
-      pulseWidthFs: best.pulse.pulseWidthFs,
+      pulseWidthFs: best.pulse.field || best.pulse.fieldIssue ? null : best.pulse.pulseWidthFs,
       phaseNs: best.pulse.phaseNs,
       pulseShape: best.pulse.pulseShape || 'gauss',
       gates: (best.pulse.gates || []).map(g => ({ ...g })),
@@ -1802,6 +1842,108 @@ function buildSurfaces(elements, beams) {
 // rays emitted from the far end of a fiber that received light.
 // Each end has its own output spec (out0 / out1), so behavior can differ
 // between the two connectors and coupling works in both directions.
+// The argon capillary, for one coupled batch of light. Four outcomes:
+//  - no coupled pulse energy: the fiber stays dark (`dark`);
+//  - outside the Peck–Fisher data (468–2059 nm): no argon dispersion is
+//    claimed; the light continues geometrically with a caveat, never with the
+//    ordinary fiber's group index and β₂ passed off as argon's;
+//  - the Kerr solver accepts the pulse: a sampled field and its spectrum
+//    replace the incoming ones (with Kerr off this is linear propagation within the β₂ model
+//    of the same field);
+//  - the solver refuses, or the pulse is not one it can take: the light
+//    continues with argon's linear β₂ only, its old field cleared, and every
+//    downstream readout carries LINEAR_ONLY -- including the spectrum, which
+//    self-phase modulation would have changed and this continuation does not.
+function hollowCoreEmission(c, b, lengthMm, lossDbPerM) {
+  const coefficients = hollowCoreCoefficients(b, c.wl);
+  const kerr = b.kerrEnabled !== false;
+  if (!coefficients) {
+    hollowReadings.set(b.id, { ok: false, state: 'outOfRange', reason: ARGON_OUT_OF_RANGE, kerr });
+    return {
+      output: { ng: 1, gddFs2: 0, ...(c.pulse ? { pulse: { ...c.pulse, field: null, fieldIssue: ARGON_OUT_OF_RANGE } } : {}) },
+      approximation: ARGON_OUT_OF_RANGE,
+    };
+  }
+  const linear = { ng: coefficients.groupIndex, gddFs2: coefficients.beta2Fs2PerM * lengthMm / 1000 };
+  const pulse = c.pulse;
+  if (!pulse) {
+    // Continuous light carries no pulse energy for a Kerr phase to build on:
+    // at CW powers the nonlinear phase is negligible, so linear is the answer.
+    hollowReadings.set(b.id, { ok: false, state: 'cw', reason: 'Continuous light: argon dispersion only; no pulse for the Kerr model.', coefficients, kerr });
+    return { output: linear };
+  }
+  const energyJ = pulse.avgPowerW * c.power / (pulse.repRateMHz * 1e6);
+  if (Number.isFinite(energyJ) && energyJ <= 0) {
+    hollowReadings.set(b.id, { ok: false, state: 'noEnergy', reason: 'No coupled pulse energy.', energyJ, coefficients, kerr });
+    return { dark: true };
+  }
+  // A refusal keeps whatever was already unknown upstream: an earlier
+  // fiber's reason and caveat are not replaced by this one's.
+  const refuse = reason => {
+    hollowReadings.set(b.id, { ok: false, state: 'linearOnly', reason, energyJ, coefficients, kerr });
+    return {
+      output: { ...linear, pulse: { ...pulse, field: null, fieldIssue: pulse.fieldIssue || LINEAR_ONLY } },
+      approximation: c.approximation || LINEAR_ONLY,
+    };
+  };
+  // Light whose temporal state is already unknown -- a refused or
+  // out-of-range capillary upstream, a generated continuum -- cannot become
+  // an intact Gaussian again just because this solver could run on its
+  // source's settings. That holds with Kerr off as well as on.
+  if (pulse.fieldIssue || c.approximation || pulse.durationUnknown) {
+    return refuse('The light arriving is already unavailable as a computed pulse upstream, so no field is built from it.');
+  }
+  // The solver starts from a transform-limited Gaussian of the spectrum's
+  // width. A chirped laser's pulse record carries that limit and its signed
+  // GDD; the GDD becomes part of the initial phase, once.
+  const sourceGdd = pulse.transformLimited !== true && Number.isFinite(pulse.inputGddFs2) ? pulse.inputGddFs2 : 0;
+  const referenceWidth = pulse.transformLimited === true ? pulse.pulseWidthFs
+    : Number(pulse.transformLimitFs) > 0 && Number.isFinite(pulse.inputGddFs2) ? Number(pulse.transformLimitFs) : NaN;
+  const expectedBandwidth = transformLimitedBandwidthNm(referenceWidth, c.wl);
+  const intactSpectrum = Number.isFinite(referenceWidth) && c.spec?.kind === 'gauss' && Math.abs(c.spec.center - c.wl) < 1e-6
+    && Math.abs(c.spec.fwhm - expectedBandwidth) <= 1e-6 * Math.max(1, expectedBandwidth);
+  if (!Number.isFinite(energyJ)) return refuse('The pulse energy of this light is not known, so the Kerr phase cannot be computed.');
+  if (!intactSpectrum || pulse.pulseShape !== 'gauss' || pulse.field
+    || pulse.spectrumReshaped || c.incompatibleEnvelope) {
+    return refuse('The Kerr model needs one unsplit Gaussian pulse train with its spectrum intact and its phase known — transform-limited or a laser\'s authored chirp (500–1800 nm).');
+  }
+  const input = {
+    pulseWidthFs: referenceWidth, energyJ, wavelengthNm: c.wl, lengthM: lengthMm / 1000,
+    ...coefficients, lossDbPerM, inputGddFs2: sourceGdd + (c.gdd || 0),
+  };
+  const key = JSON.stringify({ ...input, sourceGdd });
+  let result = hollowCache.get(key);
+  if (!result) {
+    result = propagateEnvelope(input);
+    // The ray carries only the path's GDD, never the source's, so the field
+    // is referred to the same frame: downstream elements then add to it and
+    // the detector's GDD selects the right phase.
+    if (result.ok && sourceGdd) {
+      result = { ...result, field: { ...result.field, referenceGddFs2: result.field.referenceGddFs2 - sourceGdd } };
+    }
+    if (result.ok && result.maxPeakPowerW / coefficients.effectiveAreaM2 > 5e17) {
+      result = { ok: false, reason: 'Peak intensity exceeds the Kerr-only model bound (5 × 10¹³ W/cm²); ionization is not modeled.' };
+    }
+    if (hollowCache.size >= 24) hollowCache.clear();
+    hollowCache.set(key, result);
+  }
+  if (!result.ok) return refuse(result.reason);
+  hollowReadings.set(b.id, { ...result, state: kerr ? 'field' : 'kerrOff', coefficients, energyJ, kerr });
+  return {
+    output: {
+      ...linear,
+      // The field already contains the capillary's GDD; the ray's own GDD
+      // still accumulates it so downstream elements add to the right total.
+      pulse: {
+        ...pulse, field: result.field, fieldIssue: null,
+        fieldReferencePower: c.power * 10 ** (-(lossDbPerM * lengthMm / 1000) / 10),
+        transformLimited: false, pulseShape: 'sampled',
+      },
+      spec: result.spectrum, bw: spectrumStats(result.spectrum).fwhm,
+    },
+  };
+}
+
 function fiberEmissionRays(c) {
   const b = c.beam, pts = b.pts;
   const outEnd = c.end === 0 ? 1 : 0;
@@ -1817,20 +1959,41 @@ function fiberEmissionRays(c) {
   const o = add(e, mul(dir, 0.1));
   const cfg = b['out' + outEnd] || { mode: b.outMode || 'diverge', na: b.na, focal: b.focal, dia: b.outDia };
   const K = 9, rays = [];
-  const ng = Math.min(2.2, Math.max(1, b.groupIndex || 1.468));
-  const lossDbPerM = Math.min(100, Math.max(0, b.lossDbPerM ?? 0.2));
+  let ng = Math.min(2.2, Math.max(1, b.groupIndex || 1.468));
+  let lossDbPerM = Math.min(100, Math.max(0, b.lossDbPerM ?? 0.2));
+  // A capillary's loss follows its core and the wavelength unless set by hand.
+  let capillaryLoss = null;
+  if (b.fiberModel === 'argon') {
+    capillaryLoss = capillaryLossDbPerM(b, c.wl, lossDbPerM);
+    // A computed loss is the model's, whatever its size: a narrow, short
+    // capillary can exceed the manual field's 100 dB/m, and capping it would
+    // deliver energy the model says is lost. Only a typed value is bounded,
+    // by its input field.
+    if (capillaryLoss.model === 'manual') lossDbPerM = Math.min(100, Math.max(0, capillaryLoss.totalDbPerM));
+    else if (Number.isFinite(capillaryLoss.totalDbPerM) && capillaryLoss.totalDbPerM >= 0) lossDbPerM = capillaryLoss.totalDbPerM;
+  }
   // A set physical length stands for cable coiled out of the drawing: it
   // sets delay, loss and dispersion together, and the drawing stays put.
-  const { lengthMm, gddFs2 } = fiberPropagation(b, polylineLength(pts));
+  let { lengthMm, gddFs2 } = fiberPropagation(b, polylineLength(pts));
+  let pulse = c.pulse, spec = c.spec || null, bw = c.bw || 0;
+  let approximation = c.approximation || null;
+  if (b.fiberModel === 'argon') {
+    const hollow = hollowCoreEmission(c, b, lengthMm, lossDbPerM);
+    const reading = hollowReadings.get(b.id);
+    if (reading) hollowReadings.set(b.id, { ...reading, loss: { ...capillaryLoss, totalDbPerM: lossDbPerM } });
+    if (hollow.dark) return [];
+    ({ ng, gddFs2, pulse, spec, bw } = { ng, gddFs2, pulse, spec, bw, ...hollow.output });
+    approximation = hollow.approximation || approximation;
+  }
   // β₂ is one value for the whole band, like the compressor's lumped GDD, so
   // a broad band's endpoint spread follows from it the same way.
   const fiberDelayDifference = gddFs2
     ? gddGroupDelayDifferenceFs(gddFs2, c.pulse?.spectrumLoNm, c.pulse?.spectrumHiNm) : 0;
   const transmission = 10 ** (-(lossDbPerM * lengthMm / 1000) / 10);
   const common = {
-    wl: c.wl, bw: c.bw || 0, spec: c.spec || null, speckle: false, intensity: Math.min(1, c.intensity * transmission),
+    wl: c.wl, bw, spec, speckle: false, intensity: Math.min(1, c.intensity * transmission),
     power: Number.isFinite(c.power) ? c.power * transmission / K : undefined,
-    pol: c.pol, stokes: cloneStokes(c.stokes), pulse: c.pulse, sourceId: c.sourceId || null,
+    pol: c.pol, stokes: cloneStokes(c.stokes), pulse, approximation, sourceId: c.sourceId || null,
     originId: c.originId || null,
     oplStart: (c.opl || 0) + lengthMm * ng + 2,
     // Dispersion accumulated before coupling survives the relaunch, and the
@@ -4443,6 +4606,7 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
             intensity: r.intensity, power: r.power, pol: r.pol, stokes: cloneStokes(r.stokes),
             pulse: r.pulse, opl: r.opl, gdd: r.gdd,
             groupDelayDifferenceFs: r.groupDelayDifferenceFs,
+            approximation: r.approximation || null,
             sourceId: r.sourceId || null,
             originId: r.originId || null,
             coherenceLengthMm: r.coherenceLengthMm || 0,
@@ -4483,6 +4647,16 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
       if (reshaped && r.pulse) {
         for (const child of children) {
           if (!('pulse' in child)) child.pulse = { ...r.pulse, spectrumReshaped: true };
+        }
+      }
+      // A sampled field describes one spectrum. Once an element changes the
+      // spectrum or wavelength a ray carries, the field no longer applies.
+      if (r.pulse?.field) {
+        for (const child of children) {
+          if (('spec' in child && child.spec !== r.spec) || ('wl' in child && child.wl !== r.wl)) {
+            child.pulse = { ...(child.pulse || r.pulse), field: null,
+              fieldIssue: 'Spectrum changed after envelope propagation; temporal field is unavailable.' };
+          }
         }
       }
       const c0 = children[0];
@@ -4632,6 +4806,9 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           groupDelayDifferenceTrace: ('pulse' in c ? Boolean(c.pulse) : r.groupDelayDifferenceTrace)
             ? [{ opl: r.opl, value: childDelayDifference, linear: false }] : null,
           pulse: 'pulse' in c ? c.pulse : r.pulse,
+          // A caveat is never cleared downstream: no later element computes
+          // what the linear-only continuation left out.
+          approximation: r.approximation || c.approximation || null,
           parametricPath: 'parametricPath' in c ? c.parametricPath : r.parametricPath,
           intensity: childIntensity,
           power: c.power !== undefined ? c.power : Number.isFinite(r.power)
@@ -4916,6 +5093,7 @@ export function traceScene(elements, beams = []) {
   lastSignalHits = [];
   const couplings = [];
   lastPaths = [];
+  hollowReadings.clear();
   detectorHits = new Map();
   detectorMisses = new Map();
   incompleteCoherenceIds = new Map();
@@ -4960,6 +5138,7 @@ export function traceScene(elements, beams = []) {
     const timing = el.type === 'pulsedlaser' ? authoredPulseTiming(p) : null;
     const pulse = p.temporalMode === 'pulsed' ? {
       sourceId: el.id,
+      avgPowerW: Number.isFinite(p.avgPowerW) ? Math.max(0, p.avgPowerW) : 0,
       repRateMHz: Math.min(1000000, Math.max(0.001, p.repRateMHz || 80)),
       // A laser's record carries exactly the duration its readout shows; the
       // accessor already bounds a transform-limited duration to its field.
@@ -5103,7 +5282,27 @@ export function traceScene(elements, beams = []) {
   const emitted = new Set();
   for (let pass = 0; pass < 3 && couplings.length; pass++) {
     const batch = couplings.splice(0, couplings.length);
+    // An argon capillary sees one pulse, not K ray samples: gather what
+    // arrives at the same end from the same source before deriving its pulse
+    // energy, so the ray count changes neither the nonlinear strength nor the
+    // transmitted power. Ordinary fibers keep their per-coupling path.
+    const argon = new Map(), ordinary = [];
     for (const c of batch) {
+      if (c.beam.fiberModel !== 'argon') { ordinary.push(c); continue; }
+      const key = c.beam.id + ':' + c.end + ':' + (c.sourceId || 'cw');
+      const prev = argon.get(key);
+      if (!prev) { argon.set(key, { ...c }); continue; }
+      prev.incompatibleEnvelope ||= c.wl !== prev.wl || c.spec !== prev.spec
+        || Math.abs((c.gdd || 0) - (prev.gdd || 0)) > 1e-6 || Math.abs((c.opl || 0) - (prev.opl || 0)) > 1e-4;
+      prev.power = (Number.isFinite(prev.power) ? prev.power : 0) + (Number.isFinite(c.power) ? c.power : 0);
+    }
+    // Two sources into one capillary end form no single envelope.
+    const argonGroups = [...argon.values()];
+    for (const c of argonGroups) {
+      c.incompatibleEnvelope ||= argonGroups.some(other => other !== c && other.beam.id === c.beam.id
+        && other.end === c.end && other.sourceId !== c.sourceId);
+    }
+    for (const c of [...ordinary, ...argonGroups]) {
       const key = c.beam.id + ':' + c.end + ':' + Math.round(c.wl || 0) + ':' + (c.pulse?.sourceId || 'cw') + ':' + Math.round(c.opl || 0);
       if (emitted.has(key)) continue;
       emitted.add(key);

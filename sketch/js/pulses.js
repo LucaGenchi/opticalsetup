@@ -2,6 +2,7 @@
 // Optical path lengths are expressed in millimetres and time in nanoseconds.
 
 import { pulseDurationAfterDispersion } from './glass.js';
+import { fieldMetrics } from './pulse-field.js';
 
 export const C_MM_PER_NS = 299.792458;
 
@@ -296,9 +297,13 @@ function pulseEnvelopeAtSample(track, sample, target) {
   const groupDelayDifferenceFs = traceValueAt(
     track.groupDelayDifferenceTrace, target, 'value',
   );
-  const derived = pulseDurationAfterDispersion(
-    track.pulse, gddFs2, groupDelayDifferenceFs,
-  );
+  // A sampled field answers for itself; one that failed leaves the glyph at
+  // its configured length rather than handing the pulse to the analytic
+  // model, which declines sampled pulses anyway.
+  const sampled = track.pulse.field ? fieldMetrics(track.pulse.field, gddFs2)?.fwhmFs : null;
+  const derived = track.pulse.field
+    ? { durationFs: Number.isFinite(sampled) ? sampled : null, model: 'Sampled envelope · argon capillary' }
+    : pulseDurationAfterDispersion(track.pulse, gddFs2, groupDelayDifferenceFs);
   const pulseWidthFs = Number.isFinite(derived?.durationFs)
     ? derived.durationFs : inputPulseWidthFs;
   const stretchFactor = pulseWidthFs / inputPulseWidthFs;
@@ -318,7 +323,7 @@ function pulseEnvelopeAtSample(track, sample, target) {
     // stays clearly visible while the extremes stop swamping the bench.
     // The real duration and factor remain un-clamped on the marker for
     // readback and detector reporting.
-    visualStretch: Math.min(3, Math.max(0.4, Math.sqrt(stretchFactor))),
+    visualStretch: Math.min(3, Math.max(track.pulse.field ? 0.12 : 0.4, Math.sqrt(stretchFactor))),
   };
 }
 
