@@ -838,6 +838,16 @@ function filteredTrainDuration(pulse, hits) {
       return { durationFs: null, available: false, model: PATHS_DISAGREE, totalGddFs2: null };
     }
   }
+  // One quadratic phase stands for the whole band. Where the glass's GDD
+  // differs across the band's own pieces by enough to move the phase at its
+  // edge by more than half a radian, that is no longer a description of the
+  // pulse -- the neglected part is higher-order dispersion -- and it declines.
+  const lo = Math.min(...pieces.map(p => p.lo)), hi = Math.max(...pieces.map(p => p.hi));
+  const halfBand = Math.PI * cNmFs * (1 / lo - 1 / hi);
+  const deviation = Math.max(...hits.map(h => Math.abs((h.gddFs2 || 0) - gdd)));
+  if (deviation * halfBand * halfBand / 2 > 0.5) {
+    return { durationFs: null, available: false, model: DISPERSION_UNAVAILABLE.broadGdd, totalGddFs2: null };
+  }
   return filteredPulseDuration(pulse, pieces, gdd);
 }
 
@@ -1024,7 +1034,7 @@ export function detectorReading(elementId) {
       // A filtered record is not invalid: its duration is worked out from the
       // spectrum that arrives. One that is unavailable for another reason
       // still decides for the train.
-      const invalidRecord = records.find(r => r.fieldIssue || r.durationUnknown);
+      const invalidRecord = records.find(r => r.fieldIssue || r.durationUnknown || r.etalonComb);
       const filteredRecord = invalidRecord ? null : records.find(r => r.spectrumReshaped);
       const provenance = r => [r.transformLimited === true, r.spectralPhase || '', r.inputChirp || '',
         r.pulseWidthFs, r.bandwidthNm, r.pulseShape || 'gauss'].join('|');
@@ -4856,7 +4866,12 @@ function traceRays(rays0, surfaces, couplings, writeHits, signalHits, coherent =
           // The piece that survived goes with the record, so the duration can
           // be worked out from it downstream.
           const piece = pulseSpectrumPiece({ ...r, ...child }, r.pulse);
-          child.pulse = { ...r.pulse, spectrumReshaped: true, filteredPieces: piece ? [piece] : null };
+          child.pulse = {
+            ...r.pulse, spectrumReshaped: true, filteredPieces: piece ? [piece] : null,
+            // An etalon's output keeps its power but not its comb (and not the
+            // etalon's own transfer phase), so it is not timed from it.
+            ...(hit.surface.kind === 'etalon' ? { etalonComb: true } : {}),
+          };
         }
       }
       // A sampled field describes one spectrum. Once an element changes the

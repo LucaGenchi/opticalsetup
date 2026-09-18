@@ -9,9 +9,11 @@ import assert from 'node:assert/strict';
 import { createElement } from '../sketch/js/elements.js';
 import { detectorReading, traceScene } from '../sketch/js/raytrace.js';
 import { quadraticPhasePulse } from '../sketch/js/pulse-field.js';
-import { gaussianPulseDurationAfterGDD } from '../sketch/js/glass.js';
+import { gaussianPulseDurationAfterGDD, DISPERSION_UNAVAILABLE, filteredPulseDuration, pulseDurationAfterDispersion } from '../sketch/js/glass.js';
+import { flatSpectrum } from '../sketch/js/spectrum.js';
 import { transformLimitedDurationFs } from '../sketch/js/spectrum.js';
 import '../sketch/js/detector-instruments.js';
+import '../sketch/js/etalon.js';
 
 const close = (actual, expected, tolerance, label = '') =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${label} ${actual} is not within ${tolerance} of ${expected}`);
@@ -60,7 +62,7 @@ test('a filter before or after the same glass leaves the same pulse', () => {
   const tl = () => laser({ transformLimited: true, pulseWidthFs: 20 });
   const before = read([tl(), bandpass(150, 800, 10), rod(400)]).pulse;
   const after = read([tl(), rod(250), bandpass(500, 800, 10)]).pulse;
-  for (const pulse of [before, after]) assert.match(pulse.dispersionModel, /^Filtered spectrum · numerical transform/);
+  for (const pulse of [before, after]) assert.match(pulse.dispersionModel, /^Filtered spectrum · effective quadratic phase/);
   close(before.stretchedPulseWidthFs, after.stretchedPulseWidthFs, 0.03 * after.stretchedPulseWidthFs, 'before vs after');
   // 10 nm of a 47 nm pulse is nearly flat: a sinc limit near 0.886 / Δν.
   close(after.transformLimitFs, 0.886 / (cNmFs * 10 / 800 ** 2), 10);
@@ -84,7 +86,7 @@ test('a 1 nm slice of a continuum is timed, and survives optics after the filter
   ];
   for (const reading of cases) {
     assert.ok(reading?.pulse, 'the slice reaches the detector');
-    assert.match(reading.pulse.dispersionModel, /^Filtered continuum · linear-chirp estimate/);
+    assert.match(reading.pulse.dispersionModel, /^Filtered continuum · assumed-sweep estimate/);
     // Its sinc limit, 1.25 ps; the source's 500 fs sweep adds under 1 fs.
     close(reading.pulse.stretchedPulseWidthFs, 1249, 15);
   }
@@ -93,13 +95,15 @@ test('a 1 nm slice of a continuum is timed, and survives optics after the filter
   assert.ok(throughGlass > 0.85 * direct && throughGlass < direct, `${throughGlass} vs ${direct}`);
 });
 
-test('a broad filtered continuum after glass is stretched by the glass across what passes', () => {
+test('a broad filtered band behind glass declines instead of one quadratic phase standing for it', () => {
+  // 800-900 nm after 100 mm of N-BK7: the glass's GDD across the band moves
+  // the edge phase by radians, which one effective GDD would drop.
   const longpass = read([continuum(), rod(250), at('filter', 500, { ftype: 'longpass', cutoff: 800 })]).pulse;
-  const unfiltered = read([continuum(), rod(250)]).pulse;
-  // 800-900 nm through 100 mm of N-BK7: roughly a picosecond of spread, far
-  // less than the whole continuum's 20 ps.
-  assert.ok(longpass.stretchedPulseWidthFs > 500 && longpass.stretchedPulseWidthFs < 1500, `${longpass.stretchedPulseWidthFs}`);
-  assert.ok(unfiltered.stretchedPulseWidthFs > 10 * longpass.stretchedPulseWidthFs);
+  assert.equal(longpass.stretchedPulseWidthFs, null);
+  assert.equal(longpass.dispersionModel, DISPERSION_UNAVAILABLE.broadGdd);
+  // With no glass there is one GDD, zero, and it is timed.
+  const bare = read([continuum(), at('filter', 150, { ftype: 'longpass', cutoff: 800 })]).pulse;
+  assert.match(bare.dispersionModel, /^Filtered continuum/);
 });
 
 test('a grating order and a filter give the same pulse in either order', () => {
@@ -131,4 +135,52 @@ test('a grating order and a filter give the same pulse in either order', () => {
     close(first.pulse.stretchedPulseWidthFs, after.pulse.stretchedPulseWidthFs, 0.02 * after.pulse.stretchedPulseWidthFs, `${label}: duration either way`);
     close(after.pulse.stretchedPulseWidthFs, 190, 5, `${label}: the 10 nm limit`);
   }
+});
+
+// --- Review round: the reviewer's three reproductions ----------------------
+
+test('the answer does not depend on how the same arriving light is partitioned', () => {
+  const tl = { transformLimited: true };
+  const shared = flatSpectrum(700, 900);
+  const partitioned = filteredPulseDuration(tl, [
+    { spec: shared, lo: 700, hi: 800, power: 1 }, { spec: shared, lo: 800, hi: 900, power: 0.1 }], 0).durationFs;
+  const own = filteredPulseDuration(tl, [
+    { spec: flatSpectrum(700, 800), lo: 700, hi: 800, power: 1 }, { spec: flatSpectrum(800, 900), lo: 800, hi: 900, power: 0.1 }], 0).durationFs;
+  close(partitioned, own, 1e-9, 'shared vs own parent');
+  const equal = filteredPulseDuration(tl, [
+    { spec: shared, lo: 700, hi: 800, power: 1 }, { spec: shared, lo: 800, hi: 900, power: 1 }], 0).durationFs;
+  assert.ok(partitioned > equal * 1.1, `the attenuated half narrows the spectrum: ${partitioned} vs ${equal}`);
+});
+
+test('a narrow feature on wide bounds is timed as the narrow feature it is', () => {
+  const line = nm => Math.exp(-4 * Math.LN2 * ((nm - 800) / 1) ** 2);
+  const tau0 = transformLimitedDurationFs(1, 800, 'gauss');
+  const result = quadraticPhasePulse(line, 400, 900, 10000);
+  close(result.durationFs, gaussianPulseDurationAfterGDD(tau0, 10000), 0.005 * result.durationFs, '1 nm line in 400-900 nm');
+  close(result.transformLimitFs, tau0, 0.005 * tau0);
+  // Two separated 1 nm lines: the outermost half-height crossings follow the
+  // envelope they share, within a beat period, not the 500 nm span.
+  const two = quadraticPhasePulse(nm => line(nm) + Math.exp(-4 * Math.LN2 * ((nm - 500) / (500 / 800) ** 2) ** 2), 400, 900, 0);
+  assert.ok(two && two.transformLimitFs > 0.8 * tau0 && two.transformLimitFs < 1.2 * tau0, `${two?.transformLimitFs}`);
+});
+
+test('a packet near cancellation keeps the residual GDD the detector sees', async () => {
+  const pulse = {
+    pulseWidthFs: 100, transformLimited: false, inputGddFs2: 1e6, transformLimitFs: 10, spectrumReshaped: true,
+    filteredPieces: [{ spec: flatSpectrum(750, 850), lo: 750, hi: 850, power: 1 }],
+  };
+  const { pulseEnvelopeAtOpticalPath } = await import('../sketch/js/pulses.js');
+  const track = { pulse, pts: [{ x: 0, y: 0 }, { x: 10, y: 0 }], opls: [0, 10], gddTrace: [{ opl: 0, gdd: -999900, linear: false }], groupDelayDifferenceTrace: null };
+  const packet = pulseEnvelopeAtOpticalPath(track, 5);
+  const detector = pulseDurationAfterDispersion(pulse, -999900).durationFs;
+  close(packet.pulseWidthFs, detector, 0.005 * detector, 'packet vs detector');
+});
+
+test('an etalon keeps a pulse\'s power but does not time it from a comb it does not carry', () => {
+  const tl = () => laser({ transformLimited: true, pulseWidthFs: 20 });
+  const etalon = at('etalon', 200, { centerWavelength: 800, fsr: 20, bandwidth: 2, peakTransmission: 98 });
+  const reading = read([tl(), etalon]);
+  assert.ok(reading.signal > 0);
+  assert.equal(reading.pulse.stretchedPulseWidthFs, null);
+  assert.equal(reading.pulse.dispersionModel, DISPERSION_UNAVAILABLE.etalon);
 });

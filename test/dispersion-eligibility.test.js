@@ -132,24 +132,29 @@ test('a filtered continuum is timed from the band that survives, wherever the fi
   assert.ok(full.stretchedPulseWidthFs > 20000);
   // A filter changes amplitude, not phase: the same filter before or after
   // the same glass leaves the same pulse.
-  const before = read([continuum(), bandpass(200, 650, 300), rod(350)]);
-  const after = read([continuum(), rod(250), bandpass(450, 650, 300)]);
+  const before = read([continuum(), bandpass(200, 650, 10), rod(350)]);
+  const after = read([continuum(), rod(250), bandpass(450, 650, 10)]);
   for (const sliced of [before, after]) {
-    assert.match(sliced.dispersionModel, /^Filtered continuum · linear-chirp estimate/);
+    assert.match(sliced.dispersionModel, /^Filtered continuum · assumed-sweep estimate/);
     assert.ok(sliced.stretchedPulseWidthFs > 0 && sliced.stretchedPulseWidthFs < full.stretchedPulseWidthFs,
       'narrower than the full band, which the glass stretches across 500 nm');
   }
   close(before.stretchedPulseWidthFs, after.stretchedPulseWidthFs, 0.05 * after.stretchedPulseWidthFs, 'before vs after');
+  // 300 nm behind the glass spans GDDs one quadratic phase cannot describe.
+  const broad = read([continuum(), rod(250), bandpass(450, 650, 300)]);
+  assert.equal(broad.stretchedPulseWidthFs, null);
+  assert.equal(broad.dispersionModel, DISPERSION_UNAVAILABLE.broadGdd);
 });
 
 test('a compressor takes back the glass on a filtered continuum, not the source\'s own sweep', () => {
-  const after = read([continuum(), rod(250), bandpass(450, 650, 300)]);
-  const compressed = read([continuum(), rod(250), bandpass(450, 650, 300), compressor(550, -after.totalGddFs2)]);
+  const after = read([continuum(), rod(250), bandpass(450, 650, 10)]);
+  const compressed = read([continuum(), rod(250), bandpass(450, 650, 10), compressor(550, -after.totalGddFs2)]);
   assert.ok(compressed.stretchedPulseWidthFs < after.stretchedPulseWidthFs, 'the glass comes back out');
-  // 500-800 nm is 0.46 of the 400-900 nm continuum's frequency span: that
-  // share of its 500 fs sweep has no sign to undo.
-  const share = (1 / 500 - 1 / 800) / (1 / 400 - 1 / 900);
-  assert.ok(compressed.stretchedPulseWidthFs >= 500 * share, 'the source part stays');
+  // 645-655 nm is a share of the 400-900 nm continuum's frequency span; that
+  // share of its assumed 500 fs sweep has no sign to undo, and adds in
+  // quadrature to the slice's own limit.
+  const share = (1 / 645 - 1 / 655) / (1 / 400 - 1 / 900);
+  close(compressed.stretchedPulseWidthFs, Math.hypot(500 * share, compressed.transformLimitFs), 0.5, 'the source part stays');
   close(compressed.totalGddFs2, 0, 1e-6);
 });
 
@@ -165,7 +170,7 @@ test('attenuation that leaves the spectrum intact keeps the duration', () => {
   // A narrow one cuts into it: the pulse is timed from the 5 nm that pass,
   // which alone allow no less than about 190 fs.
   const narrow = read([laser({ pulseWidthFs: 100, transformLimited: true }), bandpass(150, 800, 5), rod(300)]);
-  assert.match(narrow.dispersionModel, /^Filtered spectrum · numerical transform/);
+  assert.match(narrow.dispersionModel, /^Filtered spectrum · effective quadratic phase/);
   assert.ok(narrow.transformLimitFs > 180 && narrow.stretchedPulseWidthFs >= narrow.transformLimitFs);
 });
 
@@ -240,8 +245,10 @@ test('a passband or notch between sample points is still detected, before or aft
     }
   }
   // A notch removes a 1 nm slice from the transmitted continuum.
+  // Behind the glass the notched 500 nm band is too broad for one quadratic
+  // phase, and says so rather than reading as the unfiltered band.
   const notched = read([continuum(), rod(250), notch(450, 651.37, 1)]);
-  assert.match(notched.dispersionModel, /^Filtered continuum/);
+  assert.equal(notched.dispersionModel, DISPERSION_UNAVAILABLE.broadGdd);
   // A notch well outside a narrow pulse's band leaves it alone.
   const plain = read([laser({ pulseWidthFs: 100, transformLimited: true }), rod(300)]);
   const farNotch = read([laser({ pulseWidthFs: 100, transformLimited: true }), notch(150, 651.37, 1), rod(300)]);

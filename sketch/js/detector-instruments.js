@@ -921,6 +921,7 @@ function autocorrelationPlot(sensor, reading) {
     ac = autocorrelationReading(arriving, assumed, actual);
     if (!ac) return null;
   }
+  const filtered = /^Filtered /.test(reading.pulse.dispersionModel || '');
   const fsLabel = v => (v < 1000 ? `${Math.round(v)} FS` : `${(v / 1000).toFixed(2)} PS`);
 
   const baseline = 8, height = 19;
@@ -970,6 +971,9 @@ function autocorrelationPlot(sensor, reading) {
     `<text x="-35" y="-8.2" font-size="6.2" font-weight="780" fill="#ecf7fa">${esc(fs(ac.inferredPulseWidthFs))}</text>` +
     `<text x="-35" y="-3.4" font-size="3.2" fill="${ac.shapeMismatch ? '#fca5a5' : '#7892a1'}">` +
     `${sampled ? `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)} · SIM ${esc(fs(ac.truePulseWidthFs))}`
+      // A filtered pulse's width is computed from its spectrum, but its shape
+      // is not carried: the curve is the assumed shape at that width.
+      : filtered ? 'FILTERED · WIDTH COMPUTED, SHAPE ASSUMED'
       : ac.shapeMismatch ? `ASSUMES ${assumed === 'sech2' ? 'SECH²' : 'GAUSS'}, SOURCE ${actual === 'sech2' ? 'SECH²' : 'GAUSS'}` : `AC ${esc(fs(ac.traceFwhmFs))} ÷ ${ac.assumedFactor.toFixed(3)}`}</text>`;
 }
 

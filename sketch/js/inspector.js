@@ -330,6 +330,7 @@ function autocorrelatorRows(rd, source) {
   return `
       <dt>Autocorrelation FWHM</dt><dd>${fs(reading.traceFwhmFs)}</dd>
       <dt>Inferred duration</dt><dd>${fs(reading.inferredPulseWidthFs)} · assuming ${shapeName(assumed)} (÷${reading.assumedFactor.toFixed(3)})</dd>
+      ${/^Filtered /.test(rd.pulse.dispersionModel || '') ? `<dt>Filtered pulse</dt><dd>The width is computed from the filtered spectrum; its shape is not carried, so this trace is the assumed ${shapeName(assumed)} at that width</dd>` : ''}
       ${reading.shapeMismatch ? `<dt>Shape mismatch</dt><dd>Source is ${shapeName(actual)}, so this reads ${Math.abs((error - 1) * 100).toFixed(0)}% ${error > 1 ? 'long' : 'short'} — ${fs(reading.truePulseWidthFs)} actual</dd>` : ''}`;
 }
 

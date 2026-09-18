@@ -161,8 +161,9 @@ laboratory-specific calibration. Input chirp is a signed quadratic-phase estimat
 from duration and bandwidth when its sign is authored; broad flat-top supercontinua instead
 use endpoint group-delay spread. A pulse a filter has reshaped is timed from the spectrum
 that survives, transformed numerically with the source's quadratic phase plus the path's
-GDD; a filtered supercontinuum is an estimate that takes its duration as a linear sweep
-across its band. Where the phase is unknown, or paths of different dispersion meet at one
+GDD, while one effective quadratic phase describes the band (a broad band behind thick
+glass, or an etalon's comb, reads unavailable); a filtered supercontinuum is an
+assumed-sweep estimate that takes its duration as a linear sweep across its band. Where the phase is unknown, or paths of different dispersion meet at one
 detector, the dispersed duration is reported as unavailable rather than derived. The pulse
 compressor is a signed lumped-GDD proxy, not a traced grating/prism/chirped-mirror layout.
 

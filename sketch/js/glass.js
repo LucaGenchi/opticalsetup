@@ -335,6 +335,9 @@ export const DISPERSION_UNAVAILABLE = {
   partialFan: 'Only part of the fanned-out spectrum reaches this detector — dispersed duration unavailable',
   generated: 'Continuum generated on the bench — its duration is not modelled',
   recordsDiffer: 'Parts of this beam carry different pulse histories — duration unavailable',
+  unresolved: 'Filtered spectrum could not be transformed at this dispersion — duration unavailable',
+  broadGdd: 'Dispersion varies too much across the filtered band for one quadratic phase — duration unavailable',
+  etalon: 'An etalon\'s fringe comb is not carried for timing — duration unavailable',
 };
 
 function declinedDuration(model, extra = {}) {
@@ -379,6 +382,7 @@ export function pulseDurationAfterDispersion(pulse, pathGddFs2 = 0, groupDelayDi
   if (pulse?.durationUnknown) return declinedDuration(DISPERSION_UNAVAILABLE.generated, { totalGddFs2: gdd });
   // A filtered pulse is answered from the spectrum that survived the filter,
   // when the record carries it.
+  if (pulse?.etalonComb) return declinedDuration(DISPERSION_UNAVAILABLE.etalon, { totalGddFs2: gdd });
   if (pulse?.spectrumReshaped) {
     return Array.isArray(pulse.filteredPieces) && pulse.filteredPieces.length
       ? filteredPulseDuration(pulse, pulse.filteredPieces, gdd)
@@ -568,57 +572,40 @@ function computeFilteredPulseDuration(pulse, pieces, pathGddFs2) {
   if (!list.length || !Number.isFinite(gdd)) return declinedDuration(DISPERSION_UNAVAILABLE.reshaped, { totalGddFs2: gdd });
   const source = sourceSpectralPhase(pulse);
   if (source.declined) return declinedDuration(source.declined, { totalGddFs2: gdd });
-  // Slices cut from one spectrum are merged back into it: how the power was
-  // shared between them is the fan's quadrature, not the light's spectrum,
-  // so it is the parent's shape across their union that arrives.
-  const area = (spec, lo, hi) => {
-    let sum = 0;
-    for (let i = 0; i < 512; i++) sum += spectrumWeight(spec, lo + (hi - lo) * (i + 0.5) / 512);
-    return sum * (hi - lo) / 512;
-  };
-  const groups = new Map();
-  for (const p of list) {
-    const key = JSON.stringify(p.spec);
-    const group = groups.get(key) || { spec: p.spec, power: 0, intervals: [] };
-    group.power += p.power;
-    group.intervals.push([p.lo, p.hi]);
-    groups.set(key, group);
-  }
-  const scaled = [...groups.values()].map(group => {
-    const merged = [];
-    for (const [lo, hi] of group.intervals.sort((a, b) => a[0] - b[0])) {
-      const last = merged.at(-1);
-      if (last && lo <= last[1] + 1e-9 * (hi - lo)) last[1] = Math.max(last[1], hi);
-      else merged.push([lo, hi]);
-    }
-    const total = merged.reduce((sum, [lo, hi]) => sum + area(group.spec, lo, hi), 0);
-    return total > 0 ? { spec: group.spec, intervals: merged, scale: group.power / total,
-      lo: merged[0][0], hi: merged.at(-1)[1] } : null;
+  // Each piece keeps the power that arrived in it, spread over its own
+  // interval with its spectrum's shape: a slice attenuated more than its
+  // neighbour -- by an aperture, a path, a coating -- stays attenuated, and
+  // the answer does not depend on how the same light is partitioned.
+  const scaled = list.map(p => {
+    let area = 0;
+    for (let i = 0; i < 512; i++) area += spectrumWeight(p.spec, p.lo + (p.hi - p.lo) * (i + 0.5) / 512);
+    area *= (p.hi - p.lo) / 512;
+    return area > 0 ? { ...p, scale: p.power / area } : null;
   }).filter(Boolean);
   if (!scaled.length) return declinedDuration(DISPERSION_UNAVAILABLE.reshaped, { totalGddFs2: gdd });
-  const density = nm => scaled.reduce((sum, p) => (p.intervals.some(([lo, hi]) => nm >= lo && nm <= hi)
+  const density = nm => scaled.reduce((sum, p) => (nm >= p.lo && nm <= p.hi
     ? sum + p.scale * spectrumWeight(p.spec, nm) : sum), 0);
   const lo = Math.min(...scaled.map(p => p.lo)), hi = Math.max(...scaled.map(p => p.hi));
   if (source.continuum) {
     const dispersed = quadraticPhasePulse(density, lo, hi, gdd);
     const bandLo = Number(pulse?.spectrumLoNm), bandHi = Number(pulse?.spectrumHiNm), input = Number(pulse?.pulseWidthFs);
-    if (!dispersed || !(bandHi > bandLo) || !(input > 0)) return declinedDuration(DISPERSION_UNAVAILABLE.reshaped, { totalGddFs2: gdd });
+    if (!dispersed || !(bandHi > bandLo) || !(input > 0)) return declinedDuration(DISPERSION_UNAVAILABLE.unresolved, { totalGddFs2: gdd });
     const share = Math.min(1, (1 / lo - 1 / hi) / (1 / bandLo - 1 / bandHi));
     return {
       durationFs: Math.hypot(input * share, dispersed.durationFs), available: true,
       transformLimitFs: dispersed.transformLimitFs, inputGddFs2: null, totalGddFs2: gdd,
-      model: 'Filtered continuum · linear-chirp estimate',
+      model: 'Filtered continuum · assumed-sweep estimate, source part uncompensated',
     };
   }
   const totalGdd = source.gddFs2 + gdd;
   const result = quadraticPhasePulse(density, lo, hi, totalGdd);
-  if (!result) return declinedDuration(DISPERSION_UNAVAILABLE.reshaped, { totalGddFs2: totalGdd });
+  if (!result) return declinedDuration(DISPERSION_UNAVAILABLE.unresolved, { totalGddFs2: totalGdd });
   const state = source.gddFs2 === 0 ? 'no source chirp'
     : `${source.gddFs2 < 0 ? 'negative' : 'positive'} source chirp ${Math.abs(source.gddFs2).toLocaleString('en-US', { maximumFractionDigits: 0 })} fs²`;
   return {
     durationFs: result.durationFs, available: true, transformLimitFs: result.transformLimitFs,
     inputGddFs2: source.gddFs2, totalGddFs2: totalGdd,
-    model: `Filtered spectrum · numerical transform · ${state}`,
+    model: `Filtered spectrum · effective quadratic phase · ${state}`,
   };
 }
 

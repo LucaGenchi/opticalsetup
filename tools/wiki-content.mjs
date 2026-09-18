@@ -277,11 +277,18 @@ export const wikiEntries = [
         spectrum's amplitude and not its phase, so the pulse at a detector is the numerical
         transform of the surviving spectrum with the source's chirp plus every GDD on the
         path, wherever the filter stands; a slice cut from a band that glass has fanned out
-        carries the glass's GDD at its own wavelength. A hard-edged passband gives a
-        sinc-like pulse with side lobes, and the reading is its full width at half maximum.
-        A filtered supercontinuum, which has a duration but no phase, is an estimate: its
-        duration is taken as a linear sweep across its band, so a slice keeps the share its
-        width spans, added in quadrature to the slice's own dispersed duration. The model
+        carries the glass's GDD at its own wavelength. One effective quadratic phase stands
+        for the band, so where the glass's GDD varies across the surviving band enough to move
+        its edge phase by more than half a radian — a broad band behind thick glass — the
+        duration is unavailable rather than approximated. A hard-edged passband gives a
+        sinc-like pulse with side lobes, and the reading is its full width at half maximum;
+        an autocorrelator draws the shape it assumes at that width. An etalon's output keeps
+        its power but not its fringe comb or its transfer phase, so it is not timed. A
+        filtered supercontinuum, which has a duration but no phase, is an assumed-sweep
+        estimate: its duration is taken as a sweep linear in frequency across its band, a
+        slice keeps the share its width spans, and that share adds in quadrature to the
+        slice's own dispersed duration as a source part no compressor removes — a stated
+        convention, not a reconstruction of the continuum's phase. The model also
         declines, and says why on the detector's <em>Duration model</em> row, when parts of
         one beam reach a detector by paths whose dispersion differs — separate paths do not compensate each
         other the way glass and a compressor in sequence do, so equal and opposite GDD on two
