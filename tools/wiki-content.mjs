@@ -5118,7 +5118,11 @@ export const wikiEntries = [
         attenuates every wavelength by the same configured transmission fraction. For a
         broadband or supercontinuum beam, the transmitted spectrum is the exact overlap
         between the beam's band and the passband, so a wide beam through a narrow
-        bandpass filter correctly comes out both dimmer and spectrally narrowed.</p>`,
+        bandpass filter correctly comes out both dimmer and spectrally narrowed. This
+        also holds after dispersive glass or a prism has split the beam into wavelength
+        samples: each sample carries its own slice of the spectrum, and the filter cuts
+        inside that slice, so a 1&nbsp;nm bandpass passes 1&nbsp;nm of light rather than a
+        whole sample.</p>`,
       formulas: [
         { tex: 'T(\\lambda) = \\begin{cases} 1 & \\lambda \\in \\text{passband} \\\\ 0 & \\text{otherwise} \\end{cases}, \\qquad I_{\\text{nd}} = \\text{trans} \\cdot I_0', caption: 'The idealized step-function passband used for bandpass/longpass/shortpass, and the flat scalar attenuation used for neutral density.' },
       ],
