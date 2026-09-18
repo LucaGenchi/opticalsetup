@@ -17,8 +17,7 @@ import {
   bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN,
 } from './glass.js';
 import { pmtVerdict } from './detector-measurements.js';
-import { MAX_PULSE_FS, MIN_PULSE_FS } from './glass.js';
-import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
+import { transformLimitedBandwidthNm } from './spectrum.js';
 import { buildTwoPhotonHandoffUrl, twoPhotonHandoffCandidates } from './two-photon-handoff.js';
 import {
   OBJECTIVE_MEDIA, normalizeObjectiveParams, objectiveMediumKey, objectiveWorkingDistance,
@@ -1398,24 +1397,19 @@ export function applyInput(inp, rebuild = false) {
   // Switching TL off reveals it — seed it from the width the pulse actually
   // had a moment ago, so the spectrum stays continuous across the toggle
   // instead of jumping to an unrelated stored default.
-  // Both directions keep the spectrum continuous. Chirped → transform-limited
-  // keeps the bandwidth and drops the chirp, so the duration becomes that
-  // bandwidth's limit; transform-limited → chirped starts with no chirp.
+  // Each mode keeps its own values. Going chirped starts from the
+  // transform-limited pulse's own spectrum with no GDD, so the emitted pulse
+  // is unchanged -- and every authorable duration's bandwidth fits the
+  // bandwidth field. Going back to transform-limited restores the duration
+  // last set in that mode rather than deriving one from the chirped
+  // bandwidth, which could imply a duration outside the 1 fs – 1 ms the
+  // transform-limited field accepts.
   if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === false) {
     // Every authorable duration's bandwidth lies inside the field's fixed
     // bounds, so the value a save writes is the value a reload keeps.
     sel.params.bandwidth = roundSig(transformLimitedBandwidthNm(
       sel.params.pulseWidthFs, sel.params.wavelength, sel.params.pulseShape || 'gauss'));
     sel.params.chirpGddFs2 = 0;
-    changed();
-    renderInspector();
-    return;
-  }
-  if (rebuild && sel.type === 'pulsedlaser' && pkey === 'transformLimited' && val === true) {
-    // From the chirped bandwidth the pulse had a moment ago -- the mode has
-    // already been switched, so the accessor would read the old duration.
-    const limit = transformLimitedDurationFs(sel.params.bandwidth, sel.params.wavelength, sel.params.pulseShape || 'gauss');
-    if (Number.isFinite(limit) && limit > 0) sel.params.pulseWidthFs = Math.min(MAX_PULSE_FS, Math.max(MIN_PULSE_FS, roundSig(limit)));
     changed();
     renderInspector();
     return;
