@@ -1112,4 +1112,71 @@ export const exampleEntries = [
     resources: [],
     related: ['crystal', 'pulsedlaser', 'lens', 'dichroic', 'filter', 'spectrometer'],
   },
+  {
+    match: 'Hollow core pulse compressor',
+    title: 'Hollow-core pulse compressor',
+    tagline: 'A gas-filled capillary broadens the spectrum of an intense pulse; a negative-GDD compressor then makes it shorter — and an autocorrelator shows how far its reading can be trusted.',
+    html: `
+      <p>A pulse cannot be shorter than its spectrum allows, so compressing an intense
+      femtosecond pulse starts by giving it more bandwidth. Focused into a hollow glass
+      capillary filled with a noble gas, the pulse travels as a guided mode over a metre or so
+      at high intensity, and self-phase modulation adds new frequencies on both sides of the
+      carrier — red on the rising edge, blue on the falling one. The capillary guides the light
+      without the damage a solid fiber would suffer at millijoule energies, and the gas pressure
+      tunes both the nonlinearity and the dispersion. The broadened, positively chirped pulse
+      is then compressed by negative group-delay dispersion — chirped mirrors or a prism pair —
+      into a pulse several times shorter than the input${cite(1)}.</p>
+      <p>The guided mode loses light to the wall. For a smooth dielectric capillary the loss of
+      the fundamental mode falls with the cube of the core radius and rises approximately with
+      the square of the wavelength — the wall's dispersion adds a smaller factor — which is why
+      compressors use wide cores${cite(2)}. The argon's
+      refractive index and Kerr coefficient come from measurements${cite(3, 4)}.</p>
+      <p>Measuring the result is its own problem. An intensity autocorrelator records the
+      correlation of the pulse with itself, which is wider than the pulse by a factor set by
+      the pulse's shape — √2 for a Gaussian, 1.543 for sech². The instrument cannot know that
+      shape, so its reading is only as good as the shape the user assumes.</p>`,
+    inOpticalSetupTitle: 'What this setup demonstrates',
+    inOpticalSetupHtml: `
+      <p>A 800 nm, 100 fs, 30 µJ laser at 1 kHz is coupled into a 1 m capillary with a
+      250 µm core and 2 bar of argon. The capillary propagates the complex pulse envelope
+      numerically — its dispersion, its Kerr self-phase modulation and its loss, 0.615 dB/m
+      computed for a smooth silica wall at this core and wavelength. Select the gold cable to see
+      the coupled energy, the nonlinear phase (about 2 rad) and the computed output.</p>
+      <p>A 10&nbsp;% tap sends part of the output to one <strong>autocorrelator</strong> before
+      compression; the rest goes through a −650&nbsp;fs² compressor to a second. Each screen
+      draws the numerical intensity autocorrelation of the computed pulse and reports the
+      duration the way a real instrument does: the trace's width divided by the Gaussian
+      factor. Beside it, <em>SIM</em> is the simulated pulse's intensity FWHM — model knowledge
+      a real autocorrelator does not have, shown here for comparison. Before compression the
+      pulse is still close to Gaussian, and the reading is right to about 1&nbsp;%:
+      <strong>101 fs</strong> for a 102 fs pulse. After compression the pulse carries the wings
+      self-phase modulation leaves behind, its own autocorrelation ratio is 1.64 rather than
+      1.41, and the Gaussian assumption reads <strong>54 fs</strong> for a pulse that is really
+      <strong>47 fs</strong> — 16&nbsp;% long. Switch an autocorrelator's assumed shape to sech²
+      and it reads 50 fs, closer but still not exact.</p>
+      <p>Try the controls on the cable and the laser: pressure 0 for no gas, Kerr off for purely
+      linear propagation, a smaller core for more nonlinearity and far more loss, or 1&nbsp;W of
+      average power — beyond the solver's bounds, where the light continues with argon's linear
+      dispersion only and every readout downstream says so. Tune the compressor: for these
+      settings, about −650&nbsp;fs² gives the shortest computed pulse.</p>`,
+    limitations: `<p>The capillary is a single-mode model with second-order dispersion, the
+      Kerr effect and loss. It has no ionization, higher-order dispersion, higher modes, wall
+      resonances, Raman response or self-steepening, and its effective area is the Gaussian
+      approximation of the capillary mode, which makes the nonlinearity about 16&nbsp;% stronger
+      than the exact mode would. The loss is the ideal straight-capillary value at the carrier
+      wavelength, applied to the whole broadened spectrum. The compressor is a lumped GDD, not a
+      traced pair of chirped mirrors or prisms. The layout is illustrative, not the
+      reconstruction of a particular experiment.</p>
+      <p>The autocorrelators compute the intensity autocorrelation of the pulse envelope; they
+      do not model the second-harmonic crystal, its phase-matching bandwidth or the detector.
+      Cross-correlation of two computed envelopes is not modelled.</p>`,
+    citations: [
+      { label: 'M. Nisoli, S. De Silvestri, O. Svelto, “Generation of high energy 10 fs pulses by a new pulse compression technique,” Applied Physics Letters 68, 2793–2795 (1996)', url: 'https://doi.org/10.1063/1.116609' },
+      { label: 'E. A. J. Marcatili, R. A. Schmeltzer, “Hollow metallic and dielectric waveguides for long distance optical transmission and lasers,” Bell System Technical Journal 43, 1783–1809 (1964)', url: 'https://doi.org/10.1002/j.1538-7305.1964.tb04108.x' },
+      { label: 'E. R. Peck, D. J. Fisher, “Dispersion of argon,” Journal of the Optical Society of America 54, 1362–1364 (1964)', url: 'https://doi.org/10.1364/JOSA.54.001362' },
+      { label: 'S. Zahedpour, J. K. Wahlstrand, H. M. Milchberg, “Measurement of the nonlinear refractive index of air constituents at mid-infrared wavelengths” (2015), Table 1', url: 'https://arxiv.org/abs/1509.02232' },
+    ],
+    resources: [],
+    related: ['fiber', 'pulsecompressor', 'autocorrelator', 'pulsedlaser', 'display'],
+  },
 ];

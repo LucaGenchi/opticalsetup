@@ -5,7 +5,7 @@ import { fft, propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.j
 import { capillaryLossDbPerM, hollowCoreCoefficients, marcatiliLossDbPerM, normalizeHollowCore } from '../sketch/js/fiber.js';
 import { registry, createElement } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
-import { traceScene, detectorReading, fiberReading, LINEAR_ONLY, ARGON_OUT_OF_RANGE } from '../sketch/js/raytrace.js';
+import { traceAll, traceScene, detectorReading, fiberReading, LINEAR_ONLY, ARGON_OUT_OF_RANGE } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import { initInspector, renderInspector, applyInput } from '../sketch/js/inspector.js';
 import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
@@ -391,4 +391,53 @@ test('a computed loss above 100 dB/m is applied in full, to the field and to the
   close(result.after.signal / trace(lossless).after.signal, required, 1e-6);
   // A typed manual loss stays bounded by its field.
   assert.equal(normalizeHollowCore({ lossModel: 'manual' }).lossModel, 'manual');
+});
+
+test('a computed envelope is autocorrelated numerically, and the instrument reading shows its error', async () => {
+  const { envelopeAutocorrelation } = await import('../sketch/js/pulse-field.js');
+  const { sampledAutocorrelationReading } = await import('../sketch/js/glass.js');
+  // Against the known ratios: √2 for a Gaussian intensity, 1.543 for sech².
+  const n = 1024, timeFs = Array.from({ length: n }, (_, i) => (i - n / 2) * 0.5), T = 60;
+  const gauss = envelopeAutocorrelation({ timeFs, intensity: timeFs.map(t => Math.exp(-4 * Math.LN2 * (t / T) ** 2)) });
+  close(gauss.fwhmFs / T, Math.SQRT2, 2e-4);
+  const T0 = T / (2 * Math.acosh(Math.SQRT2));
+  const sech = envelopeAutocorrelation({ timeFs, intensity: timeFs.map(t => 1 / Math.cosh(t / T0) ** 2) });
+  close(sech.fwhmFs / T, 1.543, 1e-3);
+  // The example's two autocorrelators.
+  const r = trace(example());
+  const read = pulse => sampledAutocorrelationReading(envelopeAutocorrelation(pulse.envelope), pulse.envelope.fwhmFs, 'gauss');
+  const before = read(r.before.pulse), after = read(r.after.pulse);
+  // Before compression the pulse is nearly Gaussian and the reading is close.
+  assert.ok(Math.abs(before.errorRatio - 1) < 0.02, `${before.errorRatio}`);
+  // After compression the SPM wings make the Gaussian assumption read long.
+  assert.ok(after.errorRatio > 1.1, `${after.errorRatio}`);
+  assert.ok(after.trueFactor > 1.55, `${after.trueFactor}`);
+});
+
+test('the example\'s screens draw both autocorrelations; cross-correlation of computed envelopes stays unavailable', () => {
+  const scene = example();
+  assert.ok(['hcf-before', 'hcf-output'].every(id => scene.elements.find(e => e.id === id).type === 'autocorrelator'));
+  traceAll(scene.elements, scene.beams);
+  for (const id of ['hcf-before-screen', 'hcf-after-screen']) {
+    const svg = registry.display.svg(scene.elements.find(e => e.id === id), scene.elements);
+    assert.match(svg, /data-autocorrelation="\d+"/, id);
+    assert.match(svg, /SIM \d/, `${id} shows the simulated FWHM beside the reading`);
+  }
+  const trains = [detectorReading('hcf-before').pulse.trains[0], detectorReading('hcf-output').pulse.trains[0]];
+  assert.match(crossCorrelationPair({ pulse: { trains } }).reason, /NOT MODELED/);
+});
+
+test('the numerical autocorrelation equals direct summation even for light at the window edges', async () => {
+  const { envelopeAutocorrelation } = await import('../sketch/js/pulse-field.js');
+  // A non-power-of-two, asymmetric array with both endpoints loaded: any
+  // circular wrap-around would add the far end onto the near lags.
+  const n = 37, timeFs = Array.from({ length: n }, (_, i) => i * 2);
+  const intensity = Array.from({ length: n }, (_, i) => (i === 0 || i === n - 1 ? 1 : 0.3 + 0.5 * Math.sin(i) ** 2));
+  const ac = envelopeAutocorrelation({ timeFs, intensity });
+  const direct = k => { let s = 0; for (let i = 0; i + Math.abs(k) < n; i++) s += intensity[i] * intensity[i + Math.abs(k)]; return s; };
+  const peak = direct(0);
+  for (let k = -(n - 1); k <= n - 1; k++) close(ac.trace[k + n - 1], direct(k) / peak, 1e-12);
+  // A constant window is a triangle, 1 − |k|/n: 1/n at ±(n−1) samples, zero at ±n.
+  const flat = envelopeAutocorrelation({ timeFs, intensity: Array(n).fill(1) });
+  for (let k = -(n - 1); k <= n - 1; k++) close(flat.trace[k + n - 1], 1 - Math.abs(k) / n, 1e-12);
 });
