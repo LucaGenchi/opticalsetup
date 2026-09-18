@@ -1508,7 +1508,10 @@ export const wikiEntries = [
         the light then continues with argon's linear dispersion and every readout downstream,
         spectrum and power included, is labelled as such; or no argon data, outside
         468–2059&nbsp;nm, where the light continues geometrically and no argon dispersion is
-        claimed. With no coupled pulse energy the capillary stays dark. The model has no
+        claimed. With no coupled pulse energy the capillary stays dark. Its loss is computed
+        by default as the ideal smooth fused-silica capillary's (Marcatili–Schmeltzer, 0.615&nbsp;dB/m
+        for 250&nbsp;µm at 800&nbsp;nm, scaling as λ²/a³), with an optional extra distributed loss,
+        or typed as a manual total. The model has no
         ionization, higher modes, wall resonances, Raman response or self-steepening; its
         effective area is the Gaussian π(0.64a)², which makes γ about 16&nbsp;% larger than
         the exact capillary mode would.</p>`,
@@ -1659,7 +1662,10 @@ export const wikiEntries = [
         the light then continues with argon's linear dispersion and every readout downstream,
         spectrum and power included, is labelled as such; or no argon data, outside
         468–2059&nbsp;nm, where the light continues geometrically and no argon dispersion is
-        claimed. With no coupled pulse energy the capillary stays dark. The model has no
+        claimed. With no coupled pulse energy the capillary stays dark. Its loss is computed
+        by default as the ideal smooth fused-silica capillary's (Marcatili–Schmeltzer, 0.615&nbsp;dB/m
+        for 250&nbsp;µm at 800&nbsp;nm, scaling as λ²/a³), with an optional extra distributed loss,
+        or typed as a manual total. The model has no
         ionization, higher modes, wall resonances, Raman response or self-steepening; its
         effective area is the Gaussian π(0.64a)², which makes γ about 16&nbsp;% larger than
         the exact capillary mode would.</p>`,

@@ -169,7 +169,7 @@ Fourier-envelope calculation with capillary/gas β₂, Kerr self-phase modulatio
 and loss. Pressure, core diameter and captured laser pulse energy change the
 calculated spectrum and temporal field; a downstream GDD compressor can then
 shorten the pulse. Open **Ultrashort Pulses → Hollow-core pulse compressor**
-for the 100 fs → approximately 45 fs example. Outside the solver's bounds the
+for the 100 fs → approximately 47 fs example; its loss is computed from the core by default (ideal smooth silica capillary, Marcatili–Schmeltzer). Outside the solver's bounds the
 light continues with argon's linear dispersion only and every downstream
 readout is labelled a linear-only approximation; outside the argon data
 (468–2059 nm) it continues geometrically with its own caveat. See

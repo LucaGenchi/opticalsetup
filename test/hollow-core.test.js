@@ -2,14 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fft, propagateEnvelope, fieldMetrics } from '../sketch/js/pulse-field.js';
-import { hollowCoreCoefficients, normalizeHollowCore } from '../sketch/js/fiber.js';
+import { capillaryLossDbPerM, hollowCoreCoefficients, marcatiliLossDbPerM, normalizeHollowCore } from '../sketch/js/fiber.js';
 import { registry, createElement } from '../sketch/js/elements.js';
 import '../sketch/js/detector-instruments.js';
 import { traceScene, detectorReading, fiberReading, LINEAR_ONLY, ARGON_OUT_OF_RANGE } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 import { initInspector, renderInspector, applyInput } from '../sketch/js/inspector.js';
 import { pulseEnvelopeAtOpticalPath } from '../sketch/js/pulses.js';
-import { crossCorrelationPair } from '../sketch/js/glass.js';
+import { crossCorrelationPair, gaussianPulseDurationAfterGDD } from '../sketch/js/glass.js';
+import { transformLimitedBandwidthNm } from '../sketch/js/spectrum.js';
 import { buildSVG } from '../sketch/js/export.js';
 const close = (a, b, rel = 1e-6) => assert.ok(Math.abs(a - b) <= rel * Math.max(1e-20, Math.abs(b)), `${a} ≠ ${b}`);
 const base = { pulseWidthFs: 100, energyJ: 30e-6, wavelengthNm: 800, lengthM: 1, beta2Fs2PerM: 0, gammaPerWM: 0 };
@@ -62,7 +63,8 @@ test('vacuum retains anomalous waveguide dispersion; gas pressure and radius cha
 });
 
 test('splitting step size and refining the temporal grid converge', () => {
-  const settings = { ...base, ...hollowCoreCoefficients({}, 800), lossDbPerM: 0.1 };
+  // At the example's computed loss, the smooth-capillary value for 250 µm.
+  const settings = { ...base, ...hollowCoreCoefficients({}, 800), lossDbPerM: marcatiliLossDbPerM(250, 800) };
   const low = propagateEnvelope({ ...settings, samples: 1024, steps: 64 });
   const high = propagateEnvelope({ ...settings, samples: 2048, steps: 128 });
   assert.ok(low.ok && high.ok);
@@ -130,8 +132,15 @@ test('invalid inputs, extreme conditions and altered input spectra produce expli
   for (const bad of [{ energyJ: NaN }, { energyJ: 0 }, { pulseWidthFs: 1 }, { wavelengthNm: Infinity }, { gammaPerWM: 100 }, { lengthM: 100 }]) {
     assert.equal(propagateEnvelope({ ...base, ...bad }).ok, false);
   }
+  // A 50 µm core at 800 nm loses about 77 dB/m (loss scales as 1/a³), so
+  // almost nothing survives 1 m: the capillary is nearly opaque, not refused.
+  const narrow = example();
+  narrow.beams[0].coreDiameterUm = 50;
+  const opaque = trace(narrow);
+  assert.ok(opaque.fiber.loss.idealDbPerM > 70, `${opaque.fiber.loss.idealDbPerM} dB/m`);
+  // The refusal: 1 W at 1 kHz is 1 mJ, far beyond the Kerr solver's bounds.
   const scene = example();
-  scene.beams[0].gasPressureBar = 10; scene.beams[0].coreDiameterUm = 50;
+  scene.elements.find(e => e.id === 'hcf-laser').params.avgPowerW = 1;
   const extreme = trace(scene);
   assert.equal(extreme.fiber.ok, false);
   assert.ok(extreme.fiber.reason);
@@ -311,4 +320,54 @@ test('a second capillary does not rebuild a field from light already unavailable
   assert.deepEqual(direct.states, ['kerrOff']);
   close(direct.reading.pulse.stretchedPulseWidthFs, 100.01481656697831, 1e-9);
   assert.deepEqual(direct.reading.approximations, []);
+});
+
+test('the capillary loss follows Marcatili and Schmeltzer, and follows the core', () => {
+  // The paper's own worked value, reproduced with alpha as a field
+  // coefficient: nu = 1.50, lambda = 1 um, a = 1 mm gives 1.85 dB/km.
+  const u = 2.4048255577, nu = 1.5, lambda = 1e-6, a = 1e-3;
+  const alpha = (u / (2 * Math.PI)) ** 2 * lambda ** 2 / a ** 3 * (nu * nu + 1) / (2 * Math.sqrt(nu * nu - 1));
+  close(20 / Math.LN10 * alpha * 1000, 1.85, 0.002);
+  // At 800 nm with a fused-silica wall.
+  close(marcatiliLossDbPerM(150, 800), 2.8485, 1e-3);
+  close(marcatiliLossDbPerM(250, 800), 0.61528, 1e-3);
+  close(marcatiliLossDbPerM(500, 800), 0.076910, 1e-3);
+  // Inverse cube of the radius, square of the wavelength (wall index aside).
+  close(marcatiliLossDbPerM(125, 800) / marcatiliLossDbPerM(250, 800), 8, 1e-9);
+  // Computed by default; an extra distributed loss adds; manual takes over.
+  const computed = capillaryLossDbPerM({ fiberModel: 'argon', coreDiameterUm: 250 }, 800, 5);
+  assert.equal(computed.model, 'marcatili');
+  close(computed.totalDbPerM, marcatiliLossDbPerM(250, 800), 1e-12);
+  close(capillaryLossDbPerM({ fiberModel: 'argon', coreDiameterUm: 250, extraLossDbPerM: 0.3 }, 800, 5).totalDbPerM,
+    marcatiliLossDbPerM(250, 800) + 0.3, 1e-12);
+  assert.equal(capillaryLossDbPerM({ fiberModel: 'argon', lossModel: 'manual' }, 800, 0.1).totalDbPerM, 0.1);
+  // The example's readout and delivered energy follow a core change.
+  const scene = example();
+  const wide = trace(scene).fiber;
+  scene.beams[0].coreDiameterUm = 300;
+  const wider = trace(scene).fiber;
+  assert.ok(wider.loss.idealDbPerM < wide.loss.idealDbPerM);
+  close(wide.loss.totalDbPerM, 0.61528, 1e-3);
+  const after = trace(example()).after.pulse.envelope.energyJ;
+  close(after / 30e-6, 0.9 * 10 ** (-0.61521 / 10), 2e-3);
+});
+
+test('a chirped laser starts the solver at its transform limit, its GDD counted once', () => {
+  // Kerr off makes the capillary linear, so the output must be the analytic
+  // Gaussian at the source's GDD plus the path's -- not the chirped width
+  // treated as a transform limit, and not the source GDD added twice.
+  const scene = example();
+  scene.beams[0].kerrEnabled = false;
+  const laser = scene.elements.find(e => e.id === 'hcf-laser');
+  const tau0 = 100;
+  Object.assign(laser.params, {
+    transformLimited: false, bandwidth: transformLimitedBandwidthNm(tau0, 800, 'gauss'),
+    inputChirp: 'positive', chirpGddFs2: 300,
+  });
+  const result = trace(scene);
+  assert.equal(result.fiber.state, 'kerrOff');
+  for (const reading of [result.before, result.after]) {
+    const pathGdd = reading.pulse.gddFs2;
+    close(reading.pulse.stretchedPulseWidthFs, gaussianPulseDurationAfterGDD(tau0, 300 + pathGdd), 2e-3);
+  }
 });

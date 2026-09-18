@@ -14,7 +14,7 @@ import { toLocal, toWorld, rotPt, dot, sub, add, mul, norm, perp, wavelengthToCo
 import { C_MM_PER_NS, pulseGateTransmission, pulseOverlap } from './pulses.js';
 import { normalizeAotfChannels, aotfChannelTransmission, normalizeAotfPassband } from './aotf.js';
 import { aodDeflectionDeg } from './acousto-optic.js';
-import { fiberPropagation, hollowCoreCoefficients } from './fiber.js';
+import { capillaryLossDbPerM, fiberPropagation, hollowCoreCoefficients } from './fiber.js';
 import { propagateEnvelope, fieldMetrics } from './pulse-field.js';
 
 // What each argon capillary did on the last trace, for its inspector panel.
@@ -1893,22 +1893,34 @@ function hollowCoreEmission(c, b, lengthMm, lossDbPerM) {
   if (pulse.fieldIssue || c.approximation || pulse.durationUnknown) {
     return refuse('The light arriving is already unavailable as a computed pulse upstream, so no field is built from it.');
   }
-  const expectedBandwidth = transformLimitedBandwidthNm(pulse.pulseWidthFs, c.wl);
-  const intactSpectrum = c.spec?.kind === 'gauss' && Math.abs(c.spec.center - c.wl) < 1e-6
+  // The solver starts from a transform-limited Gaussian of the spectrum's
+  // width. A chirped laser's pulse record carries that limit and its signed
+  // GDD; the GDD becomes part of the initial phase, once.
+  const sourceGdd = pulse.transformLimited !== true && Number.isFinite(pulse.inputGddFs2) ? pulse.inputGddFs2 : 0;
+  const referenceWidth = pulse.transformLimited === true ? pulse.pulseWidthFs
+    : Number(pulse.transformLimitFs) > 0 && Number.isFinite(pulse.inputGddFs2) ? Number(pulse.transformLimitFs) : NaN;
+  const expectedBandwidth = transformLimitedBandwidthNm(referenceWidth, c.wl);
+  const intactSpectrum = Number.isFinite(referenceWidth) && c.spec?.kind === 'gauss' && Math.abs(c.spec.center - c.wl) < 1e-6
     && Math.abs(c.spec.fwhm - expectedBandwidth) <= 1e-6 * Math.max(1, expectedBandwidth);
   if (!Number.isFinite(energyJ)) return refuse('The pulse energy of this light is not known, so the Kerr phase cannot be computed.');
-  if (!intactSpectrum || !pulse.transformLimited || pulse.pulseShape !== 'gauss' || pulse.field
+  if (!intactSpectrum || pulse.pulseShape !== 'gauss' || pulse.field
     || pulse.spectrumReshaped || c.incompatibleEnvelope) {
-    return refuse('The Kerr model needs one unsplit, transform-limited Gaussian pulse train (500–1800 nm).');
+    return refuse('The Kerr model needs one unsplit Gaussian pulse train with its spectrum intact and its phase known — transform-limited or a laser\'s authored chirp (500–1800 nm).');
   }
   const input = {
-    pulseWidthFs: pulse.pulseWidthFs, energyJ, wavelengthNm: c.wl, lengthM: lengthMm / 1000,
-    ...coefficients, lossDbPerM, inputGddFs2: c.gdd || 0,
+    pulseWidthFs: referenceWidth, energyJ, wavelengthNm: c.wl, lengthM: lengthMm / 1000,
+    ...coefficients, lossDbPerM, inputGddFs2: sourceGdd + (c.gdd || 0),
   };
-  const key = JSON.stringify(input);
+  const key = JSON.stringify({ ...input, sourceGdd });
   let result = hollowCache.get(key);
   if (!result) {
     result = propagateEnvelope(input);
+    // The ray carries only the path's GDD, never the source's, so the field
+    // is referred to the same frame: downstream elements then add to it and
+    // the detector's GDD selects the right phase.
+    if (result.ok && sourceGdd) {
+      result = { ...result, field: { ...result.field, referenceGddFs2: result.field.referenceGddFs2 - sourceGdd } };
+    }
     if (result.ok && result.maxPeakPowerW / coefficients.effectiveAreaM2 > 5e17) {
       result = { ok: false, reason: 'Peak intensity exceeds the Kerr-only model bound (5 × 10¹³ W/cm²); ionization is not modeled.' };
     }
@@ -1948,7 +1960,13 @@ function fiberEmissionRays(c) {
   const cfg = b['out' + outEnd] || { mode: b.outMode || 'diverge', na: b.na, focal: b.focal, dia: b.outDia };
   const K = 9, rays = [];
   let ng = Math.min(2.2, Math.max(1, b.groupIndex || 1.468));
-  const lossDbPerM = Math.min(100, Math.max(0, b.lossDbPerM ?? 0.2));
+  let lossDbPerM = Math.min(100, Math.max(0, b.lossDbPerM ?? 0.2));
+  // A capillary's loss follows its core and the wavelength unless set by hand.
+  let capillaryLoss = null;
+  if (b.fiberModel === 'argon') {
+    capillaryLoss = capillaryLossDbPerM(b, c.wl, lossDbPerM);
+    lossDbPerM = Math.min(100, Math.max(0, capillaryLoss.totalDbPerM));
+  }
   // A set physical length stands for cable coiled out of the drawing: it
   // sets delay, loss and dispersion together, and the drawing stays put.
   let { lengthMm, gddFs2 } = fiberPropagation(b, polylineLength(pts));
@@ -1956,6 +1974,8 @@ function fiberEmissionRays(c) {
   let approximation = c.approximation || null;
   if (b.fiberModel === 'argon') {
     const hollow = hollowCoreEmission(c, b, lengthMm, lossDbPerM);
+    const reading = hollowReadings.get(b.id);
+    if (reading) hollowReadings.set(b.id, { ...reading, loss: { ...capillaryLoss, totalDbPerM: lossDbPerM } });
     if (hollow.dark) return [];
     ({ ng, gddFs2, pulse, spec, bw } = { ng, gddFs2, pulse, spec, bw, ...hollow.output });
     approximation = hollow.approximation || approximation;

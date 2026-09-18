@@ -1,3 +1,4 @@
+import { glassIndex } from './glass.js';
 // Shared fiber propagation settings. Length 0 retains the drawn-path length
 // used by older sketches; a positive value represents cable stored in a coil.
 export const FIBER_PROPAGATION_FIELDS = [
@@ -24,14 +25,53 @@ export const HOLLOW_CORE_FIELDS = [
   { key: 'coreDiameterUm', label: 'Core diameter (µm)', default: 250, min: 50, max: 1000, step: 10 },
   { key: 'gasPressureBar', label: 'Argon pressure (bar)', default: 2, min: 0, max: 10, step: 0.1 },
 ];
+// A capillary's loss is computed by default: the ideal straight, smooth
+// dielectric-capillary EH11 loss from Marcatili and Schmeltzer, plus an
+// optional extra distributed loss for bends and wall imperfections. "Manual"
+// takes the fiber's own loss field as the whole distributed loss instead.
+// Coupling at the entrance is a length-independent efficiency, not dB/m,
+// and is not part of either.
+export const CAPILLARY_LOSS_MODELS = [['marcatili', 'Computed · smooth silica capillary'], ['manual', 'Manual total (dB/m)']];
+export const EXTRA_LOSS_FIELD = { key: 'extraLossDbPerM', label: 'Extra distributed loss (dB/m)', default: 0, min: 0, max: 100, step: 0.05 };
 export function normalizeHollowCore(fiber = {}) {
   return {
     fiberModel: fiber.fiberModel === 'argon' ? 'argon' : 'linear',
     kerrEnabled: fiber.kerrEnabled !== false,
+    lossModel: fiber.lossModel === 'manual' ? 'manual' : 'marcatili',
+    [EXTRA_LOSS_FIELD.key]: Number.isFinite(fiber[EXTRA_LOSS_FIELD.key])
+      ? Math.min(EXTRA_LOSS_FIELD.max, Math.max(EXTRA_LOSS_FIELD.min, fiber[EXTRA_LOSS_FIELD.key])) : EXTRA_LOSS_FIELD.default,
     ...Object.fromEntries(HOLLOW_CORE_FIELDS.map(field => [field.key,
       Number.isFinite(fiber[field.key]) ? Math.min(field.max, Math.max(field.min, fiber[field.key])) : field.default,
     ])),
   };
+}
+
+// Marcatili & Schmeltzer (1964) EH11 attenuation of a straight, smooth hollow
+// dielectric capillary: alpha = (u/2pi)^2 lambda^2/a^3 (nu^2+1)/(2 sqrt(nu^2-1)).
+// alpha is a field coefficient, so the power loss is 20/ln10 · alpha dB per
+// metre -- the convention that reproduces the paper's own worked value, 1.85
+// dB/km for nu = 1.50, lambda = 1 um, a = 1 mm. The wall index comes from the
+// fused-silica Sellmeier curve at the wavelength. This is the ideal model's
+// prediction, not a bound for every hollow fiber: anti-resonant and other
+// structured walls are outside it.
+export function marcatiliLossDbPerM(coreDiameterUm, wavelengthNm) {
+  const a = Number(coreDiameterUm) * 0.5e-6, lambda = Number(wavelengthNm) * 1e-9;
+  const nu = glassIndex('silica', Number(wavelengthNm));
+  if (!(a > 0) || !(lambda > 0) || !(nu > 1)) return null;
+  const u = 2.4048255577;
+  const alpha = (u / (2 * Math.PI)) ** 2 * lambda ** 2 / a ** 3 * (nu * nu + 1) / (2 * Math.sqrt(nu * nu - 1));
+  const dB = 20 / Math.LN10 * alpha;
+  return Number.isFinite(dB) ? dB : null;
+}
+
+// The distributed loss a capillary applies at one wavelength. The solver uses
+// this single value, taken at the carrier, for its whole broadened field:
+// wavelength-dependent attenuation across the spectrum is not modelled.
+export function capillaryLossDbPerM(fiber, wavelengthNm, manualDbPerM) {
+  const p = normalizeHollowCore(fiber);
+  if (p.lossModel === 'manual') return { model: 'manual', idealDbPerM: null, totalDbPerM: manualDbPerM };
+  const ideal = marcatiliLossDbPerM(p.coreDiameterUm, wavelengthNm);
+  return { model: 'marcatili', idealDbPerM: ideal, totalDbPerM: (Number.isFinite(ideal) ? ideal : 0) + p[EXTRA_LOSS_FIELD.key] };
 }
 
 // Peck–Fisher argon refractivity, 0.4679–2.0587 µm; density scaled to

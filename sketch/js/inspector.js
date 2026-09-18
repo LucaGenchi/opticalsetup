@@ -11,7 +11,10 @@ import {
 } from './elements.js';
 import { detectorReading, fiberReading, specimenIncidentWls, specimenIncidentBeams, signalHitsFromLastTrace } from './raytrace.js';
 import { pulseTransmissionAt } from './pulses.js';
-import { FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion, HOLLOW_CORE_FIELDS, normalizeHollowCore } from './fiber.js';
+import {
+  FIBER_PROPAGATION_FIELDS, normalizeFiberDispersion, HOLLOW_CORE_FIELDS, normalizeHollowCore,
+  CAPILLARY_LOSS_MODELS, EXTRA_LOSS_FIELD,
+} from './fiber.js';
 import {
   autocorrelationReading, crossCorrelationReading, crossCorrelationPair, crossScopeHalfSpanFs,
   bestScopeSpanPs, DEFAULT_SCOPE_SPAN_PS, AUTO_SCOPE_SPAN,
@@ -337,7 +340,9 @@ export function fiberMeasurementHTML(beam) {
   const rd = fiberReading(beam.id);
   const card = (title, body) => `<div class="measurement-card" data-measurements><strong>${title}</strong>${body}</div>`;
   if (!rd) return card('Argon capillary', '<p>Couple a pulsed laser into this fiber to calculate its output.</p>');
-  const beta = rd.coefficients ? `<dt>β₂</dt><dd>${rd.coefficients.beta2Fs2PerM.toFixed(2)} fs²/m</dd>` : '';
+  const beta = (rd.coefficients ? `<dt>β₂</dt><dd>${rd.coefficients.beta2Fs2PerM.toFixed(2)} fs²/m</dd>` : '')
+    + (rd.loss ? `<dt>Loss</dt><dd>${rd.loss.model === 'manual' ? `${Number(rd.loss.totalDbPerM).toFixed(3)} dB/m (manual)`
+      : `${Number(rd.loss.totalDbPerM).toFixed(3)} dB/m (ideal capillary ${Number(rd.loss.idealDbPerM).toFixed(3)})`}</dd>` : '');
   const energy = Number.isFinite(rd.energyJ) ? `<dt>Coupled energy</dt><dd>${(rd.energyJ * 1e6).toFixed(2)} µJ</dd>` : '';
   switch (rd.state) {
     case 'field':
@@ -1035,7 +1040,15 @@ export function renderInspector() {
         propagationFields += field('Fiber model', `<select data-k="fiberModel"><option value="linear" ${!argon ? 'selected' : ''}>Linear dispersion</option><option value="argon" ${argon ? 'selected' : ''}>Hollow core · argon</option></select>`);
         propagationFields += numberField('Input NA', 'data-k="inputNA"', b.inputNA ?? 0.22, { min: 0.01, max: 0.95, step: 0.01 });
         if (!argon) propagationFields += field('Group index', `<input type="number" data-k="groupIndex" min="1" max="2.2" step="0.001" value="${b.groupIndex ?? 1.468}">`);
-        propagationFields += field('Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
+        const hollowSettings = argon ? normalizeHollowCore(b) : null;
+        if (argon) {
+          propagationFields += field('Loss model', `<select data-k="lossModel">${CAPILLARY_LOSS_MODELS.map(([v, l]) => `<option value="${v}" ${hollowSettings.lossModel === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`);
+        }
+        if (!argon || hollowSettings.lossModel === 'manual') {
+          propagationFields += field(argon ? 'Total loss (dB/m)' : 'Loss (dB/m)', `<input type="number" data-k="lossDbPerM" min="0" max="100" step="0.1" value="${b.lossDbPerM ?? 0.2}">`);
+        } else {
+          propagationFields += field(EXTRA_LOSS_FIELD.label, `<input type="number" data-k="${EXTRA_LOSS_FIELD.key}" min="${EXTRA_LOSS_FIELD.min}" max="${EXTRA_LOSS_FIELD.max}" step="${EXTRA_LOSS_FIELD.step}" value="${hollowSettings[EXTRA_LOSS_FIELD.key]}">`);
+        }
         const dispersion = normalizeFiberDispersion(b);
         for (const spec of FIBER_PROPAGATION_FIELDS) {
           // A capillary's β₂ comes from its gas and core, not from a typed value.
@@ -1487,7 +1500,7 @@ export function applyInput(inp, rebuild = false) {
     renderInspector();
     return;
   }
-  if (rebuild && (key === 'fiberModel' || key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
+  if (rebuild && (key === 'fiberModel' || key === 'lossModel' || key === 'propagate' || key === 'outMode' || key === 'showLabel')) { renderInspector(); return; }
   // The objective's coupling status is derived from its placed pose. Keep the
   // hint in step with committed coordinate/rotation edits just as the canvas
   // layer already is; otherwise the panel can describe the previous target.

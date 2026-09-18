@@ -14,7 +14,8 @@ not a reconstruction of a specific experiment.
 
 The laser emits 100 fs pulses, 30 µJ each, at 1 kHz (30 mW average power).
 The capillary is 1 m long, with a 250 µm core, 2 bar argon at a fixed 20 °C,
-and a chosen 0.1 dB/m power loss. The effective area uses the Gaussian
+and the computed ideal loss of a smooth fused-silica capillary, 0.615 dB/m at 800 nm
+(see *Loss* below). The effective area uses the Gaussian
 convention `Aeff = π (0.64 a)²`, where `a` is the core radius. Geometrical ray
 capture is assumed to couple perfectly into this mode; this is not a
 mode-overlap calculation.
@@ -32,14 +33,14 @@ phase, and therefore the example's broadening, directly.
 
 | Control | Expected result |
 | --- | --- |
-| Default: compressor −650 fs² | About 102.3 fs at the capillary exit and 45.3 fs after compensation. Spectrum broadens in the capillary and is unchanged by the compressor. |
+| Default: compressor −650 fs² | About 102.2 fs at the capillary exit and 46.8 fs after compensation (−650 fs² is the optimum: −600 gives 47.0 fs, −700 gives 46.9 fs). Spectrum broadens in the capillary and is unchanged by the compressor. |
 | Compressor GDD = 0 | Both detectors report the same pulse duration. |
 | Kerr nonlinearity off | Nonlinear phase becomes zero. The spectrum stays at the input bandwidth while linear dispersion still acts. Retune the compressor; the original setting overcompensates this control. |
 | Pressure = 0 | Gas dispersion and Kerr response vanish. Negative waveguide dispersion remains; hollow core is not β₂ = 0. |
 | Double laser average power at fixed repetition rate | Pulse energy doubles, increasing nonlinear phase and spectral broadening; the previous compressor setting need not remain optimal. |
 | Increase core diameter | Both waveguide dispersion magnitude and Kerr coefficient decrease approximately as inverse radius squared. |
 | Laser power = 0 | No coupled pulse energy: no light exits the capillary. |
-| 10 bar and a 50 µm core, or 1 W average power | Outside the solver's bounds. The light continues with argon's linear β₂ only; every downstream readout, spectrum and power included, shows “Linear-only approximation; nonlinear output unavailable”, and no duration is predicted. Returning to a supported setting restores the computed result. |
+| 1 W average power | Outside the solver's bounds. The light continues with argon's linear β₂ only; every downstream readout, spectrum and power included, shows “Linear-only approximation; nonlinear output unavailable”, and no duration is predicted. Returning to a supported setting restores the computed result. |
 | Laser at 450 nm | Outside the argon data (468–2059 nm). The light continues geometrically with “Argon dispersion unavailable … geometric continuation only”; no argon β₂ or group index is claimed. |
 
 Select the cable to inspect captured energy, calculated β₂, accumulated
@@ -59,8 +60,15 @@ power loss. It propagates a complex field, not just a bandwidth or chirp scalar:
 - Linear frequency-domain step: `Ã ← Ã exp(i β₂ Ω² Δz / 2)`.
 - Nonlinear time-domain step: `A ← A exp(i γ |A|² Δz)`.
 - Power attenuation: `P(z) = P(0) exp(−α z)`, with `α = ln(10) lossDbPerM / 10`.
-- `γ = (2π/λ) n₂ / Aeff`. Argon n₂ is approximated as `1.01e−23 m²/W`
-  at one atmosphere, proportional to pressure.
+- `γ = (2π/λ) n₂ / Aeff`. Argon n₂ is `1.01e−23 m²/W` at one atmosphere,
+  proportional to pressure: Zahedpour, Wahlstrand and Milchberg, Table 1,
+  (10.1 ± 1.0)×10⁻²⁰ cm²/W at 800 nm, "scaled to atmospheric pressure",
+  essentially dispersionless across 800–1650 nm. That ±10 % is an experimental
+  uncertainty, stated separately from — and not combined with — the deliberate
+  effective-area convention below. The paper's text does not give the
+  reference temperature; applying the value at 20 °C is an assumption, and
+  n₂ is scaled by pressure only, not by the 273/293 K factor the refractivity
+  needs for its own 0 °C reference.
 
 The FFT forward convention is `exp(−i Ωt)` and the carrier convention is
 `E = A exp(−i ω₀t)`. Thus physical frequency is `ω₀ − Ω`. Spectrum export
@@ -75,9 +83,31 @@ smooth fundamental-mode capillary approximation adds
 `β₂,wg = −u₁₁² λ³ / (8π³ c² a²)`, with `u₁₁ = 2.4048255577`.
 At 800 nm, 250 µm diameter and 2 bar the components are approximately
 +36.87 fs²/m from argon and −8.50 fs²/m from guidance, totaling +28.37 fs²/m.
-Loss is user-specified rather than derived from the walls or bends.
+**Loss.** By default the capillary's distributed loss is the ideal
+straight, smooth dielectric-capillary EH₁₁ loss of Marcatili and Schmeltzer
+(1964), α = (u₁₁/2π)² λ²/a³ (ν²+1)/(2√(ν²−1)), with ν the fused-silica index at
+the wavelength. α is a field coefficient: the power loss is 20/ln 10 · α dB/m,
+the convention that reproduces the paper's own worked value of 1.85 dB/km for
+ν = 1.50, λ = 1 µm, a = 1 mm. At 800 nm this gives 2.85, 0.615 and 0.077 dB/m for
+150, 250 and 500 µm cores — the λ²/a³ scaling means a narrow core is far lossier,
+and at 50 µm (about 77 dB/m) the capillary is practically opaque. An optional
+*extra distributed loss* adds bends and wall imperfections; *Manual total*
+replaces the model with a typed value. Coupling at the entrance is a
+length-independent efficiency, not dB/m, and is not included. This is the
+ideal model's prediction for a smooth dielectric wall, not a bound for every
+hollow fiber: anti-resonant and other structured walls are outside it. The
+solver applies the one value computed at the carrier to its whole broadened
+field; wavelength-dependent attenuation across the spectrum is not modelled.
+The example previously used a typed 0.1 dB/m, about six times below this
+prediction; the computed loss moves its compressed pulse from 45.3 to 46.8 fs.
 
-Only one intact Gaussian transform-limited source train, optionally with
+**Chirped sources.** A pulsed laser authored as bandwidth + signed GDD
+starts the solver at its transform limit with that GDD as the initial phase,
+counted once: the field is then referred to the ray's path-GDD frame, since the
+ray never carries the source's own GDD. Kerr off reproduces the analytic chirped
+Gaussian exactly (tested).
+
+Only one intact Gaussian source train with a known phase, optionally with
 upstream GDD and wavelength-independent attenuation, can initialize this
 model. Captured ray powers are summed before deriving energy; changing between
 a line and a sized beam cannot change nonlinear strength when capture is equal.
@@ -145,18 +175,20 @@ packet duration after compression, save/reload, controls, inspector commits,
 invalid spectral states and a 36-case pressure/core/energy sweep. Ordinary
 fiber regression tests remain in `test/fiber-dispersion.test.js`.
 
-**Browser QA** (local server, 1440×900 and 1024×768): the example loads and
-reads 102 fs before and 45.3 fs after the compressor. Selecting the cable shows
-the computed envelope (30.00 µJ, β₂ 28.37 fs²/m, 2.16 rad, 102.3 fs), with the
-argon controls replacing group index and typed β₂. Setting 10 bar and a 50 µm
-core switches the panel to *linear-only approximation*; the beam still reaches
-both detectors; both screens show *UNAVAILABLE* and the linear-only strip, in
-the Spectrum view too; and the detector inspector shows the *Caveat* row.
-Returning to 2 bar / 250 µm restores 102 / 45.3 fs exactly. Kerr off reads
-“linear propagation within the β₂ model”, 100 / 101 fs. 10 bar at 250 µm stays valid and
-compresses to 21.3 fs. A reload restores the refused state with its labels.
-At 1024 px there is no horizontal overflow and the inspector fits. The console
-shows no errors throughout.
+**Browser QA** (local server, desktop and 1024×768): the example loads and
+reads 102 fs before and 46.8 fs after the compressor. The cable panel reads
+30.00 µJ, β₂ 28.37 fs²/m, loss 0.615 dB/m (ideal capillary 0.615), 2.04 rad and
+102.2 fs, with *Loss model*, *extra distributed loss*, core, pressure and Kerr
+controls replacing group index and typed β₂. *Manual total* shows its own loss
+field (45.6 fs at its 0.2 dB/m default); an extra 0.3 dB/m reads 0.915 dB/m in
+total; back to computed restores 46.8 fs. At 1 W the panel switches to
+*linear-only approximation*, the beam still reaches both detectors, and both
+screens show *UNAVAILABLE* with the linear-only strip; back at 0.03 W the
+computed field returns. Kerr off reads "linear propagation within the β₂
+model", 100 / 101 fs. A chirped laser (100 fs limit, +300 fs², emitting
+100.3 fs) now enters the solver and reads 103 / 46.4 fs. At 1024 px there is no
+horizontal overflow for the cable or the laser panel. The console shows no
+errors throughout.
 
 ## Sources
 

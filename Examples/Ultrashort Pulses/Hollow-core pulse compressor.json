@@ -238,7 +238,8 @@
       "coreDiameterUm": 250,
       "gasPressureBar": 2,
       "kerrEnabled": true,
-      "lossDbPerM": 0.1,
+      "lossModel": "marcatili",
+      "extraLossDbPerM": 0,
       "out0": {
         "mode": "diverge",
         "na": 0.01
