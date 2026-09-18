@@ -94,11 +94,13 @@ test('a spectrum carried across the mode toggle survives a save and reload, at b
   close(authoredPulseTiming(edge.params).durationFs, authoredPulseTiming(reopen(edge).params).durationFs, 1e-12, 'clamped alike');
 });
 
-test('each mode keeps its own values across the toggle, however far the chirped bandwidth goes', async () => {
-  // Going back to transform-limited restores the duration last set in that
-  // mode instead of deriving one from the chirped bandwidth -- which can imply
-  // a limit outside 1 fs – 1 ms (900 nm at 400 nm implies 0.26 fs) that the
-  // field would have to clamp. Off and on without edits returns the same pulse.
+test('to transform-limited restores its last duration; to chirped reinitializes from it', async () => {
+  // Switching to transform-limited restores the last transform-limited
+  // duration instead of deriving one from the chirped bandwidth -- which can
+  // imply a limit outside 1 fs – 1 ms (900 nm at 400 nm implies 0.26 fs) that
+  // the field would have to clamp. Switching to chirped initializes the
+  // bandwidth from the current transform-limited pulse and resets the GDD, so
+  // previous chirped settings are replaced.
   const { state, parseSketch } = await import('../sketch/js/state.js');
   const { initInspector, renderInspector, applyInput } = await import('../sketch/js/inspector.js');
   initInspector({ innerHTML: '', querySelector: () => null, querySelectorAll: () => [] });
@@ -118,11 +120,15 @@ test('each mode keeps its own values across the toggle, however far the chirped 
   Object.assign(laser.params, { wavelength: 400, bandwidth: 900, chirpGddFs2: 0 });
   close(authoredPulseTiming(laser.params).durationFs, 0.2615, 1e-3, 'the chirped pulse keeps its implied 0.26 fs');
   toggle(laser, true);
-  assert.equal(laser.params.pulseWidthFs, 150, 'transform-limited returns to its own duration, unclamped');
-  assert.equal(laser.params.bandwidth, 900, 'the chirped bandwidth is kept for the next time');
-  const back = reopen(laser);
-  assert.equal(back.params.pulseWidthFs, 150);
-  assert.equal(back.params.bandwidth, 900);
+  assert.equal(laser.params.pulseWidthFs, 150, 'transform-limited restores its last duration, unclamped');
+  assert.equal(reopen(laser).params.pulseWidthFs, 150, 'and a reload keeps it');
+  // The next switch to chirped replaces the old chirped settings: the
+  // bandwidth is the 150 fs pulse's at 400 nm, the GDD zero, the pulse unchanged.
+  laser.params.chirpGddFs2 = 5000;
+  toggle(laser, false);
+  close(laser.params.bandwidth, transformLimitedBandwidthNm(150, 400, 'gauss'), 0.001, 'bandwidth reinitialized');
+  assert.equal(laser.params.chirpGddFs2, 0, 'GDD reset');
+  close(authoredPulseTiming(laser.params).durationFs, 150, 0.05, 'the emitted pulse is unchanged');
 });
 
 test('after a wavelength or shape edit, the spectrum, the timing and a reload agree', async () => {
