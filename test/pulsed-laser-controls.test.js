@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 
 import { createElement, registry, pulseEnergyJ, formatEnergy, peakPowerW } from '../sketch/js/elements.js';
 import { authoredPulseTiming, gaussianPulseDurationAfterGDD, MAX_SOURCE_GDD_FS2 } from '../sketch/js/glass.js';
-import { transformLimitedDurationFs } from '../sketch/js/spectrum.js';
+import { transformLimitedBandwidthNm, transformLimitedDurationFs } from '../sketch/js/spectrum.js';
 
 const spec = key => registry.pulsedlaser.params.find(p => p.key === key);
 const close = (actual, expected, tolerance, label = '') =>
@@ -92,4 +92,44 @@ test('a spectrum carried across the mode toggle survives a save and reload, at b
   const edge = createElement('pulsedlaser', 0, 0);
   Object.assign(edge.params, { wavelength: 800, transformLimited: false, bandwidth: 5000 });
   close(authoredPulseTiming(edge.params).durationFs, authoredPulseTiming(reopen(edge).params).durationFs, 1e-12, 'clamped alike');
+});
+
+test('chirped → transform-limited lands on the chirped bandwidth\'s limit, not a stale duration', async () => {
+  // The reviewer's reproduction: default 150 fs, then 5 nm, +135000 fs², then
+  // transform-limited. It must emit the 5 nm limit, about 188.3 fs.
+  const { state } = await import('../sketch/js/state.js');
+  const { initInspector, renderInspector, applyInput } = await import('../sketch/js/inspector.js');
+  initInspector({ innerHTML: '', querySelector: () => null, querySelectorAll: () => [] });
+  const laser = createElement('pulsedlaser', 0, 0);
+  Object.assign(laser.params, { wavelength: 800, transformLimited: false, bandwidth: 5, inputChirp: 'positive', chirpGddFs2: 135000 });
+  assert.equal(laser.params.pulseWidthFs, 150, 'a stale stored duration is present');
+  Object.assign(state, { elements: [laser], beams: [], selection: { kind: 'element', id: laser.id }, embedMode: false });
+  renderInspector();
+  applyInput({ dataset: { p: 'transformLimited' }, type: 'checkbox', checked: true }, true);
+  close(laser.params.pulseWidthFs, 188.3, 0.05, 'the 5 nm transform limit');
+  close(transformLimitedBandwidthNm(laser.params.pulseWidthFs, 800, 'gauss'), 5, 0.002, 'the spectrum is kept');
+});
+
+test('after a wavelength or shape edit, the spectrum, the timing and a reload agree', async () => {
+  // The reviewer's reproduction: 800 nm, chirped, 900 nm bandwidth, then
+  // 400 nm. The emitted spectrum and the timing must use one bandwidth, and a
+  // reload must not change it.
+  const { state, parseSketch } = await import('../sketch/js/state.js');
+  const { initInspector, renderInspector, applyInput } = await import('../sketch/js/inspector.js');
+  const { resolveSourceSpectrum } = await import('../sketch/js/spectrum.js');
+  initInspector({ innerHTML: '', querySelector: () => null, querySelectorAll: () => [] });
+  const laser = createElement('pulsedlaser', 0, 0);
+  Object.assign(laser.params, { wavelength: 800, transformLimited: false, bandwidth: 900, inputChirp: 'positive', chirpGddFs2: 0 });
+  Object.assign(state, { elements: [laser], beams: [], selection: { kind: 'element', id: laser.id }, embedMode: false });
+  renderInspector();
+  for (const [key, value] of [['wavelength', 400], ['pulseShape', 'sech2']]) {
+    const input = key === 'pulseShape' ? { dataset: { p: key }, type: 'select-one', value } : { dataset: { p: key }, type: 'number', value: String(value), min: '100', max: '12000' };
+    applyInput(input, true);
+    const emitted = resolveSourceSpectrum('pulsedlaser', laser.params).bw;
+    const timing = authoredPulseTiming(laser.params);
+    close(timing.transformLimitFs, transformLimitedDurationFs(emitted, laser.params.wavelength, laser.params.pulseShape), 1e-9, `${key}: timing uses the emitted bandwidth`);
+    const reopened = parseSketch(JSON.stringify({ app: 'optics2d', version: 1, elements: [laser], beams: [] }), registry).elements[0];
+    assert.equal(resolveSourceSpectrum('pulsedlaser', reopened.params).bw, emitted, `${key}: reload keeps the spectrum`);
+    close(authoredPulseTiming(reopened.params).durationFs, timing.durationFs, 1e-12, `${key}: reload keeps the timing`);
+  }
 });

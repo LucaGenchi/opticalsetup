@@ -27,7 +27,7 @@ import {
 } from './polygon.js';
 import { polarizationDescription, stokesAngleDeg } from './polarization.js';
 import {
-  authoredBandwidthBoundsNm, authoredPulseTiming, glassIndex, isDispersiveGlass, GLASS_OPTIONS, MAX_SOURCE_GDD_FS2,
+  authoredPulseTiming, glassIndex, isDispersiveGlass, GLASS_OPTIONS, MAX_BANDWIDTH_NM, MAX_SOURCE_GDD_FS2, MIN_BANDWIDTH_NM,
 } from './glass.js';
 import {
   MIN_CEMENT_GAP, MAX_SURFACE_ROWS, PRESET_OPTIONS, normalizeSurfaceTable, surfaceRowsOf, surfaceTableAxialColour,
@@ -2272,7 +2272,7 @@ export const registry = {
       },
       {
         key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number',
-        min: p => authoredBandwidthBoundsNm(p)[0], max: p => authoredBandwidthBoundsNm(p)[1], step: 0.5, def: 5,
+        min: MIN_BANDWIDTH_NM, max: MAX_BANDWIDTH_NM, step: 0.5, def: 5,
         show: p => p.transformLimited === false,
       },
       {

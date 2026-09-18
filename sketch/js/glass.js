@@ -1,6 +1,6 @@
 // Optical glass catalogue.
 
-import { transformLimitedBandwidthNm, transformLimitedDurationFs } from './spectrum.js';
+import { transformLimitedDurationFs } from './spectrum.js';
 //
 // Each entry carries the published three-term Sellmeier coefficients
 //
@@ -284,27 +284,21 @@ export function chirpGddForDuration(transformLimitFs, durationFs, shape = 'gauss
 // The signed GDD is the canonical value; sign and magnitude are two controls
 // over it and cannot disagree.
 export const MAX_SOURCE_GDD_FS2 = 1e7;
-// The durations a transform-limited pulse can be authored with, and so the
-// bandwidths a chirped one can: at the current wavelength and shape, the
-// transform limits of the longest and shortest such pulse. The bandwidth
-// field, its normalisation on load, the mode toggle and the accessor below
-// all use these same bounds, so a spectrum carried across the toggle is still
-// the spectrum after a save and reload.
+// The authorable range of a transform-limited duration, and fixed bounds for
+// a chirped pulse's bandwidth wide enough to hold the transform-limited
+// bandwidth of every such pulse at every allowed wavelength (1e-8 nm for a
+// 1 ms sech² pulse at 100 nm, 2e5 nm for a 1 fs pulse at 12 µm). Fixed, so no
+// edit of wavelength or shape can move a stored bandwidth out of bounds: the
+// spectrum, the timing and a reload all read the one stored value.
 export const MIN_PULSE_FS = 1, MAX_PULSE_FS = 1e9;
-export function authoredBandwidthBoundsNm(params = {}) {
-  const shape = params.pulseShape === 'sech2' ? 'sech2' : 'gauss';
-  const wl = Number(params.wavelength);
-  const lo = transformLimitedBandwidthNm(MAX_PULSE_FS, wl, shape), hi = transformLimitedBandwidthNm(MIN_PULSE_FS, wl, shape);
-  return Number.isFinite(lo) && Number.isFinite(hi) && hi > lo ? [lo, hi] : [1e-9, 1e6];
-}
+export const MIN_BANDWIDTH_NM = 1e-9, MAX_BANDWIDTH_NM = 1e6;
 export function authoredPulseTiming(params = {}) {
   const shape = params.pulseShape === 'sech2' ? 'sech2' : 'gauss';
   if (params.transformLimited !== false) {
     const tau = Math.min(MAX_PULSE_FS, Math.max(MIN_PULSE_FS, Number(params.pulseWidthFs) || 100));
     return { transformLimited: true, transformLimitFs: tau, inputGddFs2: 0, durationFs: tau, shape };
   }
-  const [bwLo, bwHi] = authoredBandwidthBoundsNm(params);
-  const bandwidth = Math.min(bwHi, Math.max(bwLo, Number(params.bandwidth) || 0));
+  const bandwidth = Math.max(0, Number(params.bandwidth) || 0);
   const tau0 = transformLimitedDurationFs(bandwidth, Number(params.wavelength), shape);
   const magnitude = Math.min(MAX_SOURCE_GDD_FS2, Math.max(0, Number(params.chirpGddFs2) || 0));
   const gdd = magnitude * (params.inputChirp === 'negative' ? -1 : 1);
