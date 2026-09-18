@@ -437,7 +437,7 @@ test('the numerical autocorrelation equals direct summation even for light at th
   const direct = k => { let s = 0; for (let i = 0; i + Math.abs(k) < n; i++) s += intensity[i] * intensity[i + Math.abs(k)]; return s; };
   const peak = direct(0);
   for (let k = -(n - 1); k <= n - 1; k++) close(ac.trace[k + n - 1], direct(k) / peak, 1e-12);
-  // A constant window is a triangle reaching zero at ±(n−1) samples.
+  // A constant window is a triangle, 1 − |k|/n: 1/n at ±(n−1) samples, zero at ±n.
   const flat = envelopeAutocorrelation({ timeFs, intensity: Array(n).fill(1) });
   for (let k = -(n - 1); k <= n - 1; k++) close(flat.trace[k + n - 1], 1 - Math.abs(k) / n, 1e-12);
 });
