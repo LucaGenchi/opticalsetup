@@ -272,11 +272,25 @@ export const wikiEntries = [
         up to zero (“Configured duration · zero net modeled dispersion”), and is shown as
         unavailable anywhere else. Unknown does not mean uncompressible; it means the phase
         that would decide it is not known.</p>
-        <p>The duration model also declines, and says why on the detector's <em>Duration
-        model</em> row, when a filter, dichroic, etalon or AOTF has reshaped the pulse's
-        spectrum — filtering changes a duration by itself, and dispersion accumulated before
-        the filter describes wavelengths it removed — and when parts of one beam reach a
-        detector by paths whose dispersion differs — separate paths do not compensate each
+        <p>When a filter, dichroic, etalon or AOTF reshapes the pulse's spectrum, the
+        duration is worked out from the spectrum that survives. An ideal filter changes the
+        spectrum's amplitude and not its phase, so the pulse at a detector is the numerical
+        transform of the surviving spectrum with the source's chirp plus every GDD on the
+        path, wherever the filter stands; a slice cut from a band that glass has fanned out
+        carries the glass's GDD at its own wavelength. One effective quadratic phase stands
+        for the band, so where the glass's GDD varies across the surviving band enough to move
+        its edge phase by more than half a radian — a broad band behind thick glass — the
+        duration is unavailable rather than approximated. A hard-edged passband gives a
+        sinc-like pulse with side lobes, and the reading is its full width at half maximum;
+        an autocorrelator draws the shape it assumes at that width. An etalon's output keeps
+        its power but not its fringe comb or its transfer phase, so it is not timed. A
+        filtered supercontinuum, which has a duration but no phase, is an assumed-sweep
+        estimate: its duration is taken as a sweep linear in frequency across its band, a
+        slice keeps the share its width spans, and that share adds in quadrature to the
+        slice's own dispersed duration as a source part no compressor removes — a stated
+        convention, not a reconstruction of the continuum's phase. The model also
+        declines, and says why on the detector's <em>Duration model</em> row, when parts of
+        one beam reach a detector by paths whose dispersion differs — separate paths do not compensate each
         other the way glass and a compressor in sequence do, so equal and opposite GDD on two
         arms is not one transform-limited pulse. Small differences, within 0.1&nbsp;rad of
         quadratic phase across the bandwidth and 2&nbsp;% in duration, are treated as one path;
@@ -304,7 +318,8 @@ export const wikiEntries = [
         arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
         distortion, or material absorption. Source GDD is bounded to ±10⁷&nbsp;fs², a range
         for input, not a physical validity threshold; a quadratic phase alone does not make a
-        stretched pulse an accurate model of a real stretcher's output. Spectral reshaping is detected from a filter's or dichroic's
+        stretched pulse an accurate model of a real stretcher's output. A filtered pulse keeps
+        only quadratic phase, evaluated at the wavelengths that pass. Spectral reshaping is detected from a filter's or dichroic's
         passband edges falling inside the pulse's emitted band, and, for smooth transmissions
         such as an etalon or AOTF, from the band sampled and cross-checked against the integrated
         transmission. Wavelength-dependent clipping inside one fanned-out sample is not
@@ -366,8 +381,8 @@ export const wikiEntries = [
         chirped-mirror geometry; it does not model carrier phase, third-order dispersion,
         spatial chirp, pulse-front tilt, nonlinear phase, or arbitrary spectral phase. Input
         chirp is limited to the positive/negative quadratic-phase estimate implied by the
-        authored duration and bandwidth; a pulse whose phase is unknown, whose spectrum was
-        reshaped, or whose paths disagree reads unavailable at a detector, and its packet keeps
+        authored duration and bandwidth; a pulse whose phase is unknown or whose paths
+        disagree reads unavailable at a detector, and its packet keeps
         its configured length on the canvas as a glyph, not a prediction. On-screen packet length is a qualitative glyph;
         detector numbers retain the unclamped second-order result.</p>`,
     },
@@ -4897,6 +4912,13 @@ export const wikiEntries = [
         only. A fixed span keeps two traces of different duration looking as different as they
         are, which is why cross-correlation stays fixed. A trace too wide for the chosen window
         is reported rather than clipped, and an unavailable duration draws no trace.</p>
+        <p>A pulse whose envelope was computed rather than assumed — the output of the
+        hollow-core capillary — is autocorrelated numerically: the screen draws its own
+        intensity autocorrelation, not a Gaussian or sech² curve, and the duration is still that
+        trace's FWHM divided by the assumed shape's factor. Because the true envelope is known
+        there, the reading shows it beside the inferred one (<em>FIELD</em>), so the error of the
+        assumption is visible — about 16&nbsp;% for the compressed pulse of the hollow-core
+        example.</p>
         <p>The one control that matters is <strong>Assumed pulse shape</strong>: Gaussian
         (÷1.414) or sech² (÷1.543). This is deliberately a user choice and not something the
         instrument works out for itself, because in a laboratory it is not something the
@@ -4914,9 +4936,9 @@ export const wikiEntries = [
         conditions.</p>
         <p>The duration-model row states where that arriving width came from: closed-form
         Gaussian GDD, numerically tabulated sech² GDD, a bandwidth-derived positive or negative
-        input chirp, a flat-band endpoint group-delay spread, or the explicit 0&nbsp;nm
-        bandwidth exception. Where the model declines — unknown spectral phase, a reshaped
-        spectrum, or paths of different dispersion — the instrument shows <em>Duration
+        input chirp, a flat-band endpoint group-delay spread, the numerical transform of a
+        filtered spectrum, or the explicit 0&nbsp;nm bandwidth exception. Where the model
+        declines — unknown spectral phase, or paths of different dispersion — the instrument shows <em>Duration
         unavailable</em> and names the reason, with the source's configured duration listed as
         the setting it is, not as a measurement. The autocorrelation still cannot determine chirp itself; it is
         displaying the scene's propagation model and then applying the instrument's chosen
@@ -5118,7 +5140,14 @@ export const wikiEntries = [
         attenuates every wavelength by the same configured transmission fraction. For a
         broadband or supercontinuum beam, the transmitted spectrum is the exact overlap
         between the beam's band and the passband, so a wide beam through a narrow
-        bandpass filter correctly comes out both dimmer and spectrally narrowed.</p>`,
+        bandpass filter correctly comes out both dimmer and spectrally narrowed. This
+        also holds after dispersive glass or a prism has split the beam into wavelength
+        samples: each sample carries its own slice of the spectrum, and the filter cuts
+        inside that slice, so a 1&nbsp;nm bandpass passes 1&nbsp;nm of light rather than a
+        whole sample. A pulse's duration after the filter is worked out from what passes —
+        the transform of the surviving spectrum with the chirp it carries (see the <a
+        href="../pulsedlaser/">pulsed laser</a>) — and the passed band is kept however thin
+        it is, so it still reaches the optics after the filter.</p>`,
       formulas: [
         { tex: 'T(\\lambda) = \\begin{cases} 1 & \\lambda \\in \\text{passband} \\\\ 0 & \\text{otherwise} \\end{cases}, \\qquad I_{\\text{nd}} = \\text{trans} \\cdot I_0', caption: 'The idealized step-function passband used for bandpass/longpass/shortpass, and the flat scalar attenuation used for neutral density.' },
       ],
