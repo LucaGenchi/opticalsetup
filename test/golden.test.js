@@ -15,7 +15,14 @@ import { GOLDEN_DIR, goldenFor, sceneFiles, sceneFromFile } from '../tools/updat
 const REL_TOL = 1e-6;
 
 function differences(expected, actual, path = '', out = []) {
-  if (typeof expected === 'number' && typeof actual === 'number') {
+  if (typeof expected === 'number' || typeof actual === 'number') {
+    // A NaN is equal to nothing and an infinity makes the relative scale
+    // infinite, so neither can be allowed into the tolerance comparison:
+    // both would pass as "no difference".
+    if (!Number.isFinite(expected) || !Number.isFinite(actual)) {
+      if (!Object.is(expected, actual)) out.push(`${path}: ${JSON.stringify(expected)} → ${JSON.stringify(actual)}`);
+      return out;
+    }
     const scale = Math.max(Math.abs(expected), Math.abs(actual), 1e-12);
     if (Math.abs(expected - actual) > REL_TOL * scale) out.push(`${path}: ${expected} → ${actual}`);
     return out;
@@ -37,6 +44,19 @@ function differences(expected, actual, path = '', out = []) {
   if (expected !== actual) out.push(`${path}: ${JSON.stringify(expected)} → ${JSON.stringify(actual)}`);
   return out;
 }
+
+// The snapshot records a non-finite number as a "non-finite:NaN" marker
+// rather than as a number, so one appearing (or disappearing) is a visible
+// difference rather than a silent pass.
+test('golden: the live tracer produces no non-finite numbers', async () => {
+  const { nonFiniteSeen } = await import('../tools/update-golden.mjs');
+  const offenders = [];
+  for (const { path, slug } of await sceneFiles()) {
+    goldenFor(sceneFromFile(await readFile(path, 'utf8')));
+    for (const where of nonFiniteSeen()) offenders.push(`${slug}: ${where}`);
+  }
+  assert.deepEqual(offenders.slice(0, 10), []);
+});
 
 const scenes = await sceneFiles();
 assert.ok(scenes.length >= 20, 'expected the bundled examples and community scenes');
