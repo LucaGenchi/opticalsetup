@@ -29,11 +29,28 @@
    706.1085,
    18.1161
   ],
-  "digest": "2e566469"
+  "digest": "e244acc5"
  },
- "pulseTracks": 0,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "slit:egg4i78n": "0271cd66",
+  "pointsource:e0strxb7": "3135ab60",
+  "cmirror:e38vzqjs": "bdbbf6a7",
+  "grating:e0q4ghnt": "b08ca790",
+  "camera:e7gjktsb": "13963381",
+  "display:e1pgoag2": "ee8b6d9a",
+  "lens:emuc7kml": "bf3a0f52",
+  "cmirror:e63tnrke": "ee592d51",
+  "textlabel:eo14wz8t": "cfb3238b"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {
   "camera:e7gjktsb": {
    "detector": {
@@ -60,7 +77,8 @@
       0,
       0.00323903774,
       0
-     ]
+     ],
+     "digest": "e094e7d6"
     },
     "depositedSignal": 0.0472315299,
     "detectorType": "Camera sensor",
@@ -88,7 +106,8 @@
       0,
       0.00323903774,
       0
-     ]
+     ],
+     "digest": "e094e7d6"
     },
     "profileColors": [
      null,

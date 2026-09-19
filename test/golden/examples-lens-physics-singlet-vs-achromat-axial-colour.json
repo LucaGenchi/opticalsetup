@@ -30,11 +30,50 @@
    358,
    530
   ],
-  "digest": "cafd0083"
+  "digest": "1111be8d"
  },
- "pulseTracks": 0,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "textlabel:t1": "d86971f9",
+  "textlabel:t2": "d76e664f",
+  "textlabel:s1": "db9645d6",
+  "textlabel:s2": "113a5df7",
+  "sclaser:singlet-source": "eabc1f37",
+  "lensgroup:singlet-lens": "cd58e3d0",
+  "box:singlet-screen": "3c0e7ee6",
+  "textlabel:s3": "6f53008a",
+  "textlabel:a1": "763d88fc",
+  "textlabel:a2": "80ade8a7",
+  "sclaser:achromat-source": "eabc1f37",
+  "lensgroup:achromat-lens": "8535bdbf",
+  "box:achromat-screen": "3c0e7ee6",
+  "textlabel:a3": "437c548d",
+  "textlabel:f0": "6c5e3f18",
+  "textlabel:f1": "de24b829",
+  "textlabel:f2": "ce3b43d7",
+  "textlabel:f3": "b741592e",
+  "textlabel:f4": "ece5f8b8",
+  "textlabel:f5": "af08c856",
+  "textlabel:f6": "4f5ad6a3",
+  "textlabel:f7": "ffa1ede4",
+  "textlabel:f8": "e370e19a",
+  "textlabel:f9": "3d63458a",
+  "textlabel:fa": "f4c43d73",
+  "textlabel:fb": "b48f4787",
+  "textlabel:fc": "e7176d31",
+  "textlabel:fd": "35ae682d",
+  "textlabel:fe": "65ec614d",
+  "textlabel:ff": "871b7781",
+  "textlabel:fg": "86f8a64b"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {},
  "fibers": {}
 }

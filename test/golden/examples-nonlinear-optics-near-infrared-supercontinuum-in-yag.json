@@ -23,11 +23,159 @@
    1083,
    483
   ],
-  "digest": "f282c64c"
+  "digest": "96b32e30"
  },
- "pulseTracks": 7,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "figureframe:frame": "36bdea3c",
+  "textlabel:title": "3fb8d69e",
+  "pulsedlaser:laser": "bc05eac0",
+  "lens:focus": "21f36c16",
+  "crystal:crystal": "97fec280",
+  "lens:collimator": "21f36c16",
+  "dichroic:separator": "bdb68914",
+  "spectrometer:visible-spectrometer": "88f260e6",
+  "filter:window": "22c67037",
+  "spectrometer:nir-spectrometer": "bba6bdb6",
+  "display:screen": "156dab41",
+  "textlabel:band-note": "31b004f7",
+  "textlabel:limits": "043b10b2"
+ },
+ "pulseTracks": [
+  {
+   "intensity": 1,
+   "color": "#8b1a1a",
+   "points": 3,
+   "opl": [
+    0,
+    318
+   ],
+   "pulse": {
+    "sourceId": "laser",
+    "repRateMHz": 2,
+    "pulseWidthFs": 270,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "c934037e"
+  },
+  {
+   "intensity": 0.5,
+   "color": "#8b1a1a",
+   "points": 3,
+   "opl": [
+    318,
+    618
+   ],
+   "pulse": {
+    "sourceId": "laser",
+    "repRateMHz": 2,
+    "pulseWidthFs": 270,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "46642b46"
+  },
+  {
+   "intensity": 0.499990854,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    618,
+    781
+   ],
+   "pulse": {
+    "sourceId": "laser",
+    "repRateMHz": 2,
+    "pulseWidthFs": 270,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "13a6d3dd"
+  },
+  {
+   "intensity": 0.5,
+   "color": "#cbd8ea",
+   "points": 3,
+   "opl": [
+    318,
+    618
+   ],
+   "pulse": {
+    "sourceId": "laser›crystal:sc",
+    "repRateMHz": 2,
+    "pulseWidthFs": 270,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "4333574e"
+  },
+  {
+   "intensity": 0.214093563,
+   "color": "#cbd8ea",
+   "points": 2,
+   "opl": [
+    618,
+    781
+   ],
+   "pulse": {
+    "sourceId": "laser›crystal:sc",
+    "repRateMHz": 2,
+    "pulseWidthFs": 270,
+    "phaseNs": 0,
+    "spectrumReshaped": true,
+    "gates": 0
+   },
+   "digest": "d98afd15"
+  },
+  {
+   "intensity": 0.285906437,
+   "color": "#cbd8ea",
+   "points": 2,
+   "opl": [
+    618,
+    768
+   ],
+   "pulse": {
+    "sourceId": "laser›crystal:sc",
+    "repRateMHz": 2,
+    "pulseWidthFs": 270,
+    "phaseNs": 0,
+    "spectrumReshaped": true,
+    "gates": 0
+   },
+   "digest": "3aef6d5f"
+  },
+  {
+   "intensity": 0.0984187389,
+   "color": "#cbd8ea",
+   "points": 2,
+   "opl": [
+    768,
+    921
+   ],
+   "pulse": {
+    "sourceId": "laser›crystal:sc",
+    "repRateMHz": 2,
+    "pulseWidthFs": 270,
+    "phaseNs": 0,
+    "spectrumReshaped": true,
+    "gates": 0
+   },
+   "digest": "217933af"
+  }
+ ],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {
   "crystal:crystal": {
    "supercontinuum": {

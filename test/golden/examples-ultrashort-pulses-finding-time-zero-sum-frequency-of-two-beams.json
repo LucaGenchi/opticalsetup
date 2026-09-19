@@ -23,11 +23,290 @@
    1393,
    540
   ],
-  "digest": "3c566f9b"
+  "digest": "7ee6bf89"
  },
- "pulseTracks": 14,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "figureframe:frame": "45df7f27",
+  "textlabel:title": "bd017243",
+  "pulsedlaser:ir-laser": "bc05eac0",
+  "pulsedlaser:red-laser": "bc05eac0",
+  "probe:ir-wavelength": "1a48a40d",
+  "delayline:delay": "b0fcd690",
+  "probe:red-wavelength": "419422b5",
+  "mirror:fold": "5b1838e9",
+  "dichroic:combiner": "e006f297",
+  "lens:focus": "21f36c16",
+  "crystal:crystal": "7d703d80",
+  "dichroic:reject": "c650790a",
+  "beamdump:fundamental-dump": "8eaab845",
+  "spectrometer:spectrometer": "85320a87",
+  "display:screen": "ae6f04cf",
+  "textlabel:stage-note": "1e39dfcf",
+  "textlabel:delay-note": "7a7b3814",
+  "textlabel:legend": "c1a7eb67"
+ },
+ "pulseTracks": [
+  {
+   "intensity": 1,
+   "color": "#8b1a1a",
+   "points": 3,
+   "opl": [
+    0,
+    948
+   ],
+   "pulse": {
+    "sourceId": "ir-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "9d6fc615"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#8b1a1a",
+   "points": 3,
+   "opl": [
+    948,
+    1198
+   ],
+   "pulse": {
+    "sourceId": "ir-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "b0119a2e"
+  },
+  {
+   "intensity": 0.489991037,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    1198,
+    1278
+   ],
+   "pulse": {
+    "sourceId": "ir-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "5be13480"
+  },
+  {
+   "intensity": 0.489991037,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    1278,
+    1418
+   ],
+   "pulse": {
+    "sourceId": "ir-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "2d436db1"
+  },
+  {
+   "intensity": 0.299994513,
+   "color": "#24ff00",
+   "points": 2,
+   "opl": [
+    1198,
+    1278
+   ],
+   "pulse": {
+    "sourceId": "ir-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "5be13480"
+  },
+  {
+   "intensity": 0.299994513,
+   "color": "#24ff00",
+   "points": 2,
+   "opl": [
+    1278,
+    1441
+   ],
+   "pulse": {
+    "sourceId": "ir-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "a2c5bfb6"
+  },
+  {
+   "intensity": 1,
+   "color": "#8b1a1a",
+   "points": 4,
+   "opl": [
+    0,
+    948
+   ],
+   "pulse": {
+    "sourceId": "red-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "9d619f75"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#8b1a1a",
+   "points": 3,
+   "opl": [
+    948,
+    1198
+   ],
+   "pulse": {
+    "sourceId": "red-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "bace5f36"
+  },
+  {
+   "intensity": 0.489991037,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    1198,
+    1278
+   ],
+   "pulse": {
+    "sourceId": "red-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "3be894a0"
+  },
+  {
+   "intensity": 0.489991037,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    1278,
+    1418
+   ],
+   "pulse": {
+    "sourceId": "red-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "42c2534f"
+  },
+  {
+   "intensity": 0.419992318,
+   "color": "#0038ff",
+   "points": 2,
+   "opl": [
+    1198,
+    1278
+   ],
+   "pulse": {
+    "sourceId": "red-laser›crystal:sfg",
+    "repRateMHz": 80,
+    "pulseWidthFs": 141.421356,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "bca64a33"
+  },
+  {
+   "intensity": 0.419984636,
+   "color": "#0038ff",
+   "points": 2,
+   "opl": [
+    1278,
+    1441
+   ],
+   "pulse": {
+    "sourceId": "red-laser›crystal:sfg",
+    "repRateMHz": 80,
+    "pulseWidthFs": 141.421356,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "29202b63"
+  },
+  {
+   "intensity": 0.299994513,
+   "color": "#8000a1",
+   "points": 2,
+   "opl": [
+    1198,
+    1278
+   ],
+   "pulse": {
+    "sourceId": "red-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "3be894a0"
+  },
+  {
+   "intensity": 0.299994513,
+   "color": "#8000a1",
+   "points": 2,
+   "opl": [
+    1278,
+    1441
+   ],
+   "pulse": {
+    "sourceId": "red-laser",
+    "repRateMHz": 80,
+    "pulseWidthFs": 200,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "cb432516"
+  }
+ ],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {
   "crystal:crystal": {
    "mix": {
@@ -84,7 +363,8 @@
         1,
         0.324652467,
         0.0111089965
-       ]
+       ],
+       "digest": "853927e8"
       }
      },
      "wl": 1032
@@ -129,7 +409,8 @@
         1,
         0.324652467,
         0.0111089965
-       ]
+       ],
+       "digest": "853927e8"
       }
      },
      "wl": 790

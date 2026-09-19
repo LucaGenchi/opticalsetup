@@ -21,11 +21,29 @@
    512.5,
    217
   ],
-  "digest": "52a21f75"
+  "digest": "ce0d405b"
  },
- "pulseTracks": 0,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "figureframe:frame": "3ffbc179",
+  "textlabel:title": "6e444fb4",
+  "textlabel:subtitle": "ea9701a6",
+  "cwlaser:source": "d2a13738",
+  "conicmirror:primary": "9a9bb28c",
+  "conicmirror:secondary": "bfceddc1",
+  "camera:focal-plane": "e8221a6a",
+  "textlabel:notes": "e4f9fd86",
+  "textlabel:controls": "bf50f0dd",
+  "textlabel:limits": "793b820a"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {
   "camera:focal-plane": {
    "detector": {

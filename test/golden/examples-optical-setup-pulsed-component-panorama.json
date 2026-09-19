@@ -35,11 +35,878 @@
    1453,
    715
   ],
-  "digest": "c26ed2d5"
+  "digest": "5e15b713"
  },
- "pulseTracks": 42,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "textlabel:ewoazjn9": "df9c77e5",
+  "textlabel:ecccyj1s": "398aae15",
+  "lens:eao3bq32": "36638695",
+  "mirror:ey73z3tj": "cdf44a68",
+  "filter:e2mgdlmb": "7c86a177",
+  "mirror:e7wjnhyl": "cdf44a68",
+  "qwp:ertmbhec": "0f340146",
+  "mirror:e39vqakw": "cdf44a68",
+  "camera:e0wi7oiv": "ef5c10d6",
+  "pulsedlaser:e8oqdkcn": "04a3784e",
+  "aotf:exrse40x": "899cd3c4",
+  "mirror:ekf5wa5w": "cdf44a68",
+  "delayline:ey015prm": "b0fcd690",
+  "mirror:eodkzy60": "cdf44a68",
+  "filter:ev0h1a3q": "e1d32501",
+  "mirror:e9mxg5ok": "cdf44a68",
+  "pmt:ew6ef5xb": "8fc7bc5a",
+  "pulsedlaser:e74oo4a3": "71381c6a",
+  "hwp:eehw0lkg": "eea356b0",
+  "bs:ee7dzqz6": "d11d211e",
+  "detector:e3b3ii6r": "8c584537",
+  "objective:eh8e7usb": "5ddfa4dc",
+  "detector:elb8gvvb": "8c584537",
+  "pulsedlaser:eyvpvc3g": "ca6cf262",
+  "crystal:ev4eviuo": "4d2cda34",
+  "detector:eu1pa2pe": "71717c37",
+  "pulsedlaser:ebq4k4ko": "a8c4517a",
+  "polarizer:efgbh659": "e64a3b61",
+  "mirror:eajl6y2r": "cdf44a68",
+  "slm:ek376ur2": "b38ae4a7",
+  "mirror:eocqettt": "cdf44a68",
+  "grating:e1ki50wp": "0af519ca",
+  "camera:e3rtyaoy": "6d4ef69a",
+  "pulsedlaser:eclki92t": "75ceba58",
+  "objective:ekm8nbfi": "8ac2adaa",
+  "mirror:e01x8kiz": "2117715e",
+  "dichroic:e7bm1252": "d280d1b6",
+  "detector:ewf2k3t1": "35af9aaf",
+  "pulsedlaser:egpw94xf": "bc05eac0",
+  "eom:e7pd5yoq": "b90ed0e2",
+  "detector:ew25e6jb": "38a39f28",
+  "pulsedlaser:eexgiyv6": "c3bc3dde",
+  "chopper:e3a4akyg": "ce1bdd10",
+  "mirror:ek8lczto": "cdf44a68",
+  "sample:eueet6kq": "0f8acf75",
+  "camera:exhdg2nr": "d952f79f",
+  "pulsedlaser:eo3lrq43": "5b17ad12",
+  "filter:ex3ypnwh": "e1d32501",
+  "mirror:ez2gt4mp": "cdf44a68",
+  "lens:ew3eg82j": "9c205305",
+  "mirror:ez2cn5hz": "cdf44a68",
+  "chopper:er08ibgq": "ad984dfc",
+  "mirror:ehyo5pnw": "cdf44a68",
+  "delayline:em5g12pc": "f0b3aea9",
+  "mirror:e98wljn1": "cdf44a68",
+  "detector:e40dkl9d": "1a41104f",
+  "pulsedlaser:ec72qti6": "6de3cc74",
+  "isolator:e92zwl87": "20adf610",
+  "mirror:ebhbkmb0": "cdf44a68",
+  "aotf:emxs3t0z": "899cd3c4",
+  "bs:etm2eq45": "d11d211e",
+  "pmt:ejwv9nwn": "51178239",
+  "mirror:e72tokia": "cdf44a68",
+  "lens:eketz5uj": "9c205305",
+  "camera:eg1kwtvn": "11fac300",
+  "pulsedlaser:eh39ev6e": "4f477940",
+  "qwp:e6azjmhf": "0e2218c0",
+  "pbs:e0yeb581": "4bd4524f",
+  "detector:eq4ofj5o": "13959774",
+  "objective:eac5v6z6": "5ddfa4dc",
+  "pmt:eusn5kgv": "5cce9f49",
+  "pulsedlaser:e6kx4gli": "04a3784e",
+  "dm:ewoy8lrz": "ec39ebd5",
+  "objective:e3g2newx": "5ddfa4dc",
+  "detector:e78mfqx7": "19e3899a",
+  "pulsedlaser:elvxz3ie": "75ceba58",
+  "crystal:ebwaqgap": "4d2cda34",
+  "mirror:ec5vusdu": "cdf44a68",
+  "dichroic:eazqi4a1": "d280d1b6",
+  "mirror:eu6tweuz": "cdf44a68",
+  "lens:e1idv7ky": "9c205305",
+  "mirror:ekewjw2d": "cdf44a68",
+  "camera:eiie2wgo": "504a36e1",
+  "textlabel:e0t9f6ve": "00187ba9",
+  "sclaser:e8lx0ym0": "7e053eca",
+  "mirror:ef8ajbk9": "2117715e",
+  "bs:e6mwfi8u": "80452e68",
+  "lens:exstj78a": "21f36c16",
+  "dichroic:el2d7zgx": "bdb68914",
+  "polarizer:eme27mzt": "4cf8e4bb",
+  "grating:euq0yh1j": "a255d4b4",
+  "slm:es1g8n7y": "965e4386",
+  "aom:ec7r525p": "1636df6a",
+  "delayline:e6u1ckdc": "b0fcd690",
+  "crystal:epiyr8rd": "f8ad2288",
+  "objective:el3cw6se": "5ddfa4dc",
+  "stage:ewfimy64": "7c4d3839",
+  "detector:eaa3h0xy": "3715548a",
+  "beamdump:env1fore": "8eaab845",
+  "textlabel:eaxv0njv": "6cf1589c",
+  "textlabel:ehhpks8m": "cc14532e",
+  "cwlaser:e2txj97h": "879aa642"
+ },
+ "pulseTracks": [
+  {
+   "intensity": 1,
+   "color": "#ff0000",
+   "points": 2,
+   "opl": [
+    0,
+    35
+   ],
+   "pulse": {
+    "sourceId": "e8oqdkcn",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 1.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "8424e71e"
+  },
+  {
+   "intensity": 0.738433667,
+   "color": "#ff0000",
+   "points": 6,
+   "opl": [
+    35,
+    345
+   ],
+   "pulse": {
+    "sourceId": "e8oqdkcn",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 1.6,
+    "spectrumReshaped": true,
+    "gates": 0
+   },
+   "digest": "c02c5085"
+  },
+  {
+   "intensity": 0.738433667,
+   "color": "#ff0000",
+   "points": 3,
+   "opl": [
+    345,
+    481.714721
+   ],
+   "pulse": {
+    "sourceId": "e8oqdkcn",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 1.6,
+    "spectrumReshaped": true,
+    "gates": 0
+   },
+   "digest": "155e7138"
+  },
+  {
+   "intensity": 1,
+   "color": "#ff0000",
+   "points": 2,
+   "opl": [
+    0,
+    9.61837793
+   ],
+   "pulse": {
+    "sourceId": "e74oo4a3",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 3.2,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "0f560aeb"
+  },
+  {
+   "intensity": 1,
+   "color": "#ff0000",
+   "points": 2,
+   "opl": [
+    9.61837793,
+    36.5255151
+   ],
+   "pulse": {
+    "sourceId": "e74oo4a3",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 3.2,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "832999de"
+  },
+  {
+   "intensity": 0.5,
+   "color": "#ff0000",
+   "points": 3,
+   "opl": [
+    36.5255151,
+    157.618452
+   ],
+   "pulse": {
+    "sourceId": "e74oo4a3",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 3.2,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "c22dfb73"
+  },
+  {
+   "intensity": 0.5,
+   "color": "#ff0000",
+   "points": 2,
+   "opl": [
+    36.5255151,
+    71.0808806
+   ],
+   "pulse": {
+    "sourceId": "e74oo4a3",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 3.2,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "a33c9f86"
+  },
+  {
+   "intensity": 1,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    0,
+    72.6256583
+   ],
+   "pulse": {
+    "sourceId": "eyvpvc3g",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 4.8,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "55a4102a"
+  },
+  {
+   "intensity": 0.65,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    72.6256583,
+    121
+   ],
+   "pulse": {
+    "sourceId": "eyvpvc3g",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 4.8,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "d7cee186"
+  },
+  {
+   "intensity": 0.35,
+   "color": "#65ff00",
+   "points": 2,
+   "opl": [
+    72.6256583,
+    121
+   ],
+   "pulse": {
+    "sourceId": "eyvpvc3g",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 4.8,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "d7cee186"
+  },
+  {
+   "intensity": 1,
+   "color": "#00f7ff",
+   "points": 2,
+   "opl": [
+    0,
+    40.9555888
+   ],
+   "pulse": {
+    "sourceId": "ebq4k4ko",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 6.4,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "51d43404"
+  },
+  {
+   "intensity": 0.75,
+   "color": "#00f7ff",
+   "points": 5,
+   "opl": [
+    40.9555888,
+    270.955589
+   ],
+   "pulse": {
+    "sourceId": "ebq4k4ko",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 6.4,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "700c8a0c"
+  },
+  {
+   "intensity": 0.75,
+   "color": "#00f7ff",
+   "points": 2,
+   "opl": [
+    270.955589,
+    293.955589
+   ],
+   "pulse": {
+    "sourceId": "ebq4k4ko",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 6.4,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "796518fb"
+  },
+  {
+   "intensity": 1,
+   "color": "#610000",
+   "points": 4,
+   "opl": [
+    0,
+    223.082976
+   ],
+   "pulse": {
+    "sourceId": "eclki92t",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 8,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "0047d4f1"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    223.082976,
+    234.758095
+   ],
+   "pulse": {
+    "sourceId": "eclki92t",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 8,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "83b9133d"
+  },
+  {
+   "intensity": 1,
+   "color": "#65ff00",
+   "points": 2,
+   "opl": [
+    0,
+    35
+   ],
+   "pulse": {
+    "sourceId": "egpw94xf",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 9.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "5d549279"
+  },
+  {
+   "intensity": 1,
+   "color": "#65ff00",
+   "points": 2,
+   "opl": [
+    35,
+    70
+   ],
+   "pulse": {
+    "sourceId": "egpw94xf",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 9.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "8bc013d6"
+  },
+  {
+   "intensity": 1,
+   "color": "#ff3900",
+   "points": 2,
+   "opl": [
+    0,
+    70
+   ],
+   "pulse": {
+    "sourceId": "eexgiyv6",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 11.2,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "36f01ff3"
+  },
+  {
+   "intensity": 1,
+   "color": "#ff3900",
+   "points": 3,
+   "opl": [
+    70,
+    208
+   ],
+   "pulse": {
+    "sourceId": "eexgiyv6",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 11.2,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "bbb061fa"
+  },
+  {
+   "intensity": 1,
+   "color": "#00a9ff",
+   "points": 2,
+   "opl": [
+    0,
+    45.1049351
+   ],
+   "pulse": {
+    "sourceId": "eo3lrq43",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 12.8,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "7aa48645"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#00a9ff",
+   "points": 5,
+   "opl": [
+    45.1049351,
+    205.104935
+   ],
+   "pulse": {
+    "sourceId": "eo3lrq43",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 12.8,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "ada00573"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#00a9ff",
+   "points": 6,
+   "opl": [
+    205.104935,
+    511.104935
+   ],
+   "pulse": {
+    "sourceId": "eo3lrq43",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 12.8,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "3c5d3809"
+  },
+  {
+   "intensity": 1,
+   "color": "#65ff00",
+   "points": 4,
+   "opl": [
+    0,
+    125
+   ],
+   "pulse": {
+    "sourceId": "ec72qti6",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 14.4,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "4e80876f"
+  },
+  {
+   "intensity": 0.737892918,
+   "color": "#65ff00",
+   "points": 2,
+   "opl": [
+    125,
+    160
+   ],
+   "pulse": {
+    "sourceId": "ec72qti6",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 14.4,
+    "spectrumReshaped": true,
+    "gates": 0
+   },
+   "digest": "6f4fab18"
+  },
+  {
+   "intensity": 0.368946459,
+   "color": "#65ff00",
+   "points": 2,
+   "opl": [
+    160,
+    224
+   ],
+   "pulse": {
+    "sourceId": "ec72qti6",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 14.4,
+    "spectrumReshaped": true,
+    "gates": 0
+   },
+   "digest": "7a336c6b"
+  },
+  {
+   "intensity": 0.368946459,
+   "color": "#65ff00",
+   "points": 4,
+   "opl": [
+    160,
+    298
+   ],
+   "pulse": {
+    "sourceId": "ec72qti6",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 14.4,
+    "spectrumReshaped": true,
+    "gates": 0
+   },
+   "digest": "81bcd05b"
+  },
+  {
+   "intensity": 1,
+   "color": "#c6ff00",
+   "points": 2,
+   "opl": [
+    0,
+    18
+   ],
+   "pulse": {
+    "sourceId": "eh39ev6e",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 16,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "e2767b56"
+  },
+  {
+   "intensity": 1,
+   "color": "#c6ff00",
+   "points": 2,
+   "opl": [
+    18,
+    45
+   ],
+   "pulse": {
+    "sourceId": "eh39ev6e",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 16,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "e2930b78"
+  },
+  {
+   "intensity": 0.5,
+   "color": "#c6ff00",
+   "points": 3,
+   "opl": [
+    45,
+    159
+   ],
+   "pulse": {
+    "sourceId": "eh39ev6e",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 16,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "8787283c"
+  },
+  {
+   "intensity": 0.5,
+   "color": "#c6ff00",
+   "points": 2,
+   "opl": [
+    45,
+    71
+   ],
+   "pulse": {
+    "sourceId": "eh39ev6e",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 16,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "bf6b7af2"
+  },
+  {
+   "intensity": 1,
+   "color": "#1fff00",
+   "points": 2,
+   "opl": [
+    0,
+    138.738334
+   ],
+   "pulse": {
+    "sourceId": "e6kx4gli",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 17.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "22451346"
+  },
+  {
+   "intensity": 1,
+   "color": "#0046ff",
+   "points": 2,
+   "opl": [
+    0,
+    35
+   ],
+   "pulse": {
+    "sourceId": "elvxz3ie",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 19.2,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "05be27f6"
+  },
+  {
+   "intensity": 0.6,
+   "color": "#0046ff",
+   "points": 3,
+   "opl": [
+    35,
+    185
+   ],
+   "pulse": {
+    "sourceId": "elvxz3ie",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 19.2,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "20be39e6"
+  },
+  {
+   "intensity": 0.599989025,
+   "color": "#0046ff",
+   "points": 5,
+   "opl": [
+    185,
+    332.110265
+   ],
+   "pulse": {
+    "sourceId": "elvxz3ie",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 19.2,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "e0c5dadb"
+  },
+  {
+   "intensity": 0.16,
+   "color": "#81ff00",
+   "points": 6,
+   "opl": [
+    35,
+    376
+   ],
+   "pulse": {
+    "sourceId": "elvxz3ie",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 19.2,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "3c3b5762"
+  },
+  {
+   "intensity": 1,
+   "color": "#cbd8ea",
+   "points": 2,
+   "opl": [
+    0,
+    18
+   ],
+   "pulse": {
+    "sourceId": "e8lx0ym0",
+    "repRateMHz": 80,
+    "pulseWidthFs": 100,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "fd0a089d"
+  },
+  {
+   "intensity": 0.993264894,
+   "color": "#1fff00",
+   "points": 3,
+   "opl": [
+    360.494346,
+    497.634227
+   ],
+   "pulse": {
+    "sourceId": "e6kx4gli",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 17.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "fa265e8c"
+  },
+  {
+   "intensity": 0.993264894,
+   "color": "#1fff00",
+   "points": 3,
+   "opl": [
+    359.772124,
+    496.912005
+   ],
+   "pulse": {
+    "sourceId": "e6kx4gli",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 17.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "5cb6c53d"
+  },
+  {
+   "intensity": 0.993264894,
+   "color": "#1fff00",
+   "points": 3,
+   "opl": [
+    358.688791,
+    495.828672
+   ],
+   "pulse": {
+    "sourceId": "e6kx4gli",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 17.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "c8720c8e"
+  },
+  {
+   "intensity": 0.993264894,
+   "color": "#1fff00",
+   "points": 3,
+   "opl": [
+    357.605458,
+    494.745338
+   ],
+   "pulse": {
+    "sourceId": "e6kx4gli",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 17.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "9241b1f2"
+  },
+  {
+   "intensity": 0.993264894,
+   "color": "#1fff00",
+   "points": 3,
+   "opl": [
+    356.883235,
+    494.023116
+   ],
+   "pulse": {
+    "sourceId": "e6kx4gli",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 17.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "c196896f"
+  },
+  {
+   "intensity": 0.993264894,
+   "color": "#1fff00",
+   "points": 3,
+   "opl": [
+    355.799902,
+    492.939783
+   ],
+   "pulse": {
+    "sourceId": "e6kx4gli",
+    "repRateMHz": 20,
+    "pulseWidthFs": 120,
+    "phaseNs": 17.6,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "87d2421d"
+  }
+ ],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {
   "camera:e0wi7oiv": {
    "detector": {
@@ -65,7 +932,8 @@
       0,
       0.00820025491,
       0.00820025491
-     ]
+     ],
+     "digest": "d36acba4"
     },
     "depositedSignal": 0.234375,
     "detectorType": "Camera sensor",
@@ -98,7 +966,8 @@
       0,
       0.00820025491,
       0.00820025491
-     ]
+     ],
+     "digest": "d36acba4"
     },
     "profileColors": [
      null,
@@ -218,7 +1087,7 @@
        "weight": 0.738433667
       }
      ],
-     "dispersionModel": "Spectrum reshaped after emission — dispersed duration unavailable",
+     "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
      "earliestPathDelayNs": 1.60682735,
      "envelope": null,
      "fieldIssue": null,
@@ -228,36 +1097,36 @@
       0
      ],
      "groupDelayDifferenceFs": 0,
-     "inputGddFs2": null,
+     "inputGddFs2": 0,
      "mixed": false,
      "phaseNs": 1.6,
      "pulseShape": "gauss",
      "pulseWidthFs": 120,
      "repRateMHz": 20,
      "sources": 1,
-     "stretchedPulseWidthFs": null,
+     "stretchedPulseWidthFs": 138.745555,
      "totalGddFs2": 0,
      "trains": [
       {
        "centerWavelengthNm": 650,
-       "dispersionModel": "Spectrum reshaped after emission — dispersed duration unavailable",
+       "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
        "envelope": null,
        "fieldIssue": null,
        "gates": [],
        "gddFs2": 0,
        "groupDelayDifferenceFs": 0,
-       "inputGddFs2": null,
+       "inputGddFs2": 0,
        "pathDelayNs": 1.60682735,
        "phaseNs": 1.6,
        "pulseShape": "gauss",
        "pulseWidthFs": 120,
        "repRateMHz": 20,
-       "stretchedPulseWidthFs": null,
+       "stretchedPulseWidthFs": 138.745555,
        "totalGddFs2": 0,
-       "transformLimitFs": null
+       "transformLimitFs": 138.745555
       }
      ],
-     "transformLimitFs": null,
+     "transformLimitFs": 138.745555,
      "transformLimited": true
     },
     "readoutKind": "pmt",
@@ -2803,7 +3672,8 @@
       0,
       0.0413602941,
       0
-     ]
+     ],
+     "digest": "1b1fe700"
     },
     "depositedSignal": 0.75,
     "detectorType": "Camera sensor",
@@ -2835,7 +3705,8 @@
       0,
       0.0413602941,
       0
-     ]
+     ],
+     "digest": "1b1fe700"
     },
     "profileColors": [
      null,
@@ -4954,7 +5825,8 @@
       0,
       0.0281182651,
       0.0281182651
-     ]
+     ],
+     "digest": "621ddd71"
     },
     "depositedSignal": 0.65234375,
     "detectorType": "Camera sensor",
@@ -4985,7 +5857,8 @@
       0,
       0.0281182651,
       0.0281182651
-     ]
+     ],
+     "digest": "621ddd71"
     },
     "profileColors": [
      null,
@@ -6333,7 +7206,7 @@
        "weight": 0.368946459
       }
      ],
-     "dispersionModel": "Spectrum reshaped after emission — dispersed duration unavailable",
+     "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
      "earliestPathDelayNs": 0.747183573,
      "envelope": null,
      "fieldIssue": null,
@@ -6343,36 +7216,36 @@
       0
      ],
      "groupDelayDifferenceFs": 0,
-     "inputGddFs2": null,
+     "inputGddFs2": 0,
      "mixed": false,
      "phaseNs": 14.4,
      "pulseShape": "gauss",
      "pulseWidthFs": 120,
      "repRateMHz": 20,
      "sources": 1,
-     "stretchedPulseWidthFs": null,
+     "stretchedPulseWidthFs": 138.822382,
      "totalGddFs2": 0,
      "trains": [
       {
        "centerWavelengthNm": 532,
-       "dispersionModel": "Spectrum reshaped after emission — dispersed duration unavailable",
+       "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
        "envelope": null,
        "fieldIssue": null,
        "gates": [],
        "gddFs2": 0,
        "groupDelayDifferenceFs": 0,
-       "inputGddFs2": null,
+       "inputGddFs2": 0,
        "pathDelayNs": 0.747183573,
        "phaseNs": 14.4,
        "pulseShape": "gauss",
        "pulseWidthFs": 120,
        "repRateMHz": 20,
-       "stretchedPulseWidthFs": null,
+       "stretchedPulseWidthFs": 138.822382,
        "totalGddFs2": 0,
-       "transformLimitFs": null
+       "transformLimitFs": 138.822382
       }
      ],
-     "transformLimitFs": null,
+     "transformLimitFs": 138.822382,
      "transformLimited": true
     },
     "readoutKind": "pmt",
@@ -6848,7 +7721,8 @@
       0,
       0,
       0
-     ]
+     ],
+     "digest": "1e90399d"
     },
     "depositedSignal": 0.368946459,
     "detectorType": "Camera sensor",
@@ -6879,7 +7753,8 @@
       0,
       0,
       0
-     ]
+     ],
+     "digest": "1e90399d"
     },
     "profileColors": [
      null,
@@ -6941,7 +7816,7 @@
        "weight": 0.368946459
       }
      ],
-     "dispersionModel": "Spectrum reshaped after emission — dispersed duration unavailable",
+     "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
      "earliestPathDelayNs": 0.994021004,
      "envelope": null,
      "fieldIssue": null,
@@ -6951,36 +7826,36 @@
       345.154588
      ],
      "groupDelayDifferenceFs": -20.3104411,
-     "inputGddFs2": null,
+     "inputGddFs2": 0,
      "mixed": false,
      "phaseNs": 14.4,
      "pulseShape": "gauss",
      "pulseWidthFs": 120,
      "repRateMHz": 20,
      "sources": 1,
-     "stretchedPulseWidthFs": null,
+     "stretchedPulseWidthFs": 138.905839,
      "totalGddFs2": 345.154588,
      "trains": [
       {
        "centerWavelengthNm": 532,
-       "dispersionModel": "Spectrum reshaped after emission — dispersed duration unavailable",
+       "dispersionModel": "Filtered spectrum · effective quadratic phase · no source chirp",
        "envelope": null,
        "fieldIssue": null,
        "gates": [],
        "gddFs2": 345.154588,
        "groupDelayDifferenceFs": -20.3104411,
-       "inputGddFs2": null,
+       "inputGddFs2": 0,
        "pathDelayNs": 0.994021004,
        "phaseNs": 14.4,
        "pulseShape": "gauss",
        "pulseWidthFs": 120,
        "repRateMHz": 20,
-       "stretchedPulseWidthFs": null,
+       "stretchedPulseWidthFs": 138.905839,
        "totalGddFs2": 345.154588,
-       "transformLimitFs": null
+       "transformLimitFs": 138.822382
       }
      ],
-     "transformLimitFs": null,
+     "transformLimitFs": 138.822382,
      "transformLimited": true
     },
     "readoutKind": "camera",
@@ -9062,7 +9937,8 @@
       0,
       0,
       0
-     ]
+     ],
+     "digest": "1a759d1b"
     },
     "depositedSignal": 0.599989025,
     "detectorType": "Camera sensor",
@@ -9093,7 +9969,8 @@
       0,
       0,
       0
-     ]
+     ],
+     "digest": "1a759d1b"
     },
     "profileColors": [
      null,

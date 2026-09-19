@@ -12,20 +12,114 @@
   },
   "points": 244,
   "sum": [
-   88563.9528,
-   60604.2472
+   88581.9528,
+   60586.2472
   ],
   "bbox": [
    152,
    159,
    669.9,
-   378
+   377
   ],
-  "digest": "566152ad"
+  "digest": "88c7bd67"
  },
- "pulseTracks": 4,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "figureframe:frame": "d73bdb35",
+  "textlabel:title": "7f54fc2a",
+  "textlabel:subtitle": "8799ca85",
+  "pulsedlaser:hcf-laser": "f2e2f4bb",
+  "textlabel:fiber-label": "ff1d7602",
+  "bs:hcf-tap": "948cfc36",
+  "pulsecompressor:hcf-compressor": "54ec42b1",
+  "autocorrelator:hcf-output": "479c3d08",
+  "autocorrelator:hcf-before": "35936068",
+  "display:hcf-before-screen": "b274cee5",
+  "display:hcf-after-screen": "8e94bf17",
+  "textlabel:instructions": "ca77e104",
+  "textlabel:scope": "eb88da6d"
+ },
+ "pulseTracks": [
+  {
+   "intensity": 1,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    0,
+    68
+   ],
+   "pulse": {
+    "sourceId": "hcf-laser",
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 100,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "afe19e27"
+  },
+  {
+   "intensity": 0.867919125,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    1070.5261,
+    1180.4261
+   ],
+   "pulse": {
+    "sourceId": "hcf-laser",
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 100,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "0876ea09"
+  },
+  {
+   "intensity": 0.0867919125,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    1180.4261,
+    1257.4261
+   ],
+   "pulse": {
+    "sourceId": "hcf-laser",
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 100,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "99fca7e0"
+  },
+  {
+   "intensity": 0.781127213,
+   "color": "#8b1a1a",
+   "points": 3,
+   "opl": [
+    1180.4261,
+    1542.4261
+   ],
+   "pulse": {
+    "sourceId": "hcf-laser",
+    "repRateMHz": 0.001,
+    "pulseWidthFs": 100,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "89eab3b6"
+  }
+ ],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {
   "pulsecompressor:hcf-compressor": {
    "compressor": {
@@ -33,7 +127,7 @@
     "outgoing": -621.62944
    }
   },
-  "generaldetector:hcf-output": {
+  "autocorrelator:hcf-output": {
    "detector": {
     "approximations": [],
     "bandMax": 806.431558,
@@ -44,13 +138,13 @@
     "convergence": {
      "diverging": true,
      "fullAngleDeg": 1.14594472,
-     "slopePerMm": 0.00211455998
+     "slopePerMm": 0.00211904093
     },
     "dark": false,
     "darkOutput": null,
     "depositedProfile": null,
     "depositedSignal": 0.781127213,
-    "detectorType": "General detector",
+    "detectorType": "Autocorrelator",
     "gain": null,
     "interference": null,
     "normalizedStokes": {
@@ -65,7 +159,7 @@
     "profileMode": null,
     "profileScale": "absolute",
     "pulse": {
-     "arrivalSpreadPs": 0.0788771461,
+     "arrivalSpreadPs": 0.0787103516,
      "branches": [
       {
        "gates": [],
@@ -73,7 +167,7 @@
       }
      ],
      "dispersionModel": "Sampled envelope · argon capillary",
-     "earliestPathDelayNs": 5.1483153,
+     "earliestPathDelayNs": 5.14497966,
      "envelope": {
       "energyJ": 0.0000234338164,
       "fwhmFs": 46.8328801,
@@ -147,7 +241,8 @@
         3.31299917e-26,
         8.5776189e-26,
         6.30425368e-25
-       ]
+       ],
+       "digest": "e1546782"
       },
       "peakPowerW": 399791639,
       "rmsFs": 33.4726676,
@@ -221,7 +316,8 @@
         1087.53364,
         1125.0348,
         1162.53596
-       ]
+       ],
+       "digest": "ab641907"
       }
      },
      "fieldIssue": null,
@@ -317,7 +413,8 @@
           3.31299917e-26,
           8.5776189e-26,
           6.30425368e-25
-         ]
+         ],
+         "digest": "e1546782"
         },
         "peakPowerW": 399791639,
         "rmsFs": 33.4726676,
@@ -391,7 +488,8 @@
           1087.53364,
           1125.0348,
           1162.53596
-         ]
+         ],
+         "digest": "ab641907"
         }
        },
        "fieldIssue": null,
@@ -399,7 +497,7 @@
        "gddFs2": -621.62944,
        "groupDelayDifferenceFs": 43.8976414,
        "inputGddFs2": null,
-       "pathDelayNs": 5.1483153,
+       "pathDelayNs": 5.14497966,
        "phaseNs": 0,
        "pulseShape": "sampled",
        "pulseWidthFs": 100,
@@ -412,7 +510,7 @@
      "transformLimitFs": null,
      "transformLimited": false
     },
-    "readoutKind": "general",
+    "readoutKind": "autocorrelator",
     "samples": 9,
     "saturated": false,
     "signal": 0.781127213,
@@ -884,11 +982,11 @@
       "widthNm": 2.12388765
      }
     ],
-    "spotSpan": 9.45847294,
+    "spotSpan": 9.43847194,
     "wavelength": 800
    }
   },
-  "generaldetector:hcf-before": {
+  "autocorrelator:hcf-before": {
    "detector": {
     "approximations": [],
     "bandMax": 806.431558,
@@ -899,13 +997,13 @@
     "convergence": {
      "diverging": true,
      "fullAngleDeg": 1.14594472,
-     "slopePerMm": 0.00532184894
+     "slopePerMm": 0.00535032325
     },
     "dark": false,
     "darkOutput": null,
     "depositedProfile": null,
     "depositedSignal": 0.0867919125,
-    "detectorType": "General detector",
+    "detectorType": "Autocorrelator",
     "gain": null,
     "interference": null,
     "normalizedStokes": {
@@ -920,7 +1018,7 @@
     "profileMode": null,
     "profileScale": "absolute",
     "pulse": {
-     "arrivalSpreadPs": 0.0313406973,
+     "arrivalSpreadPs": 0.0311739028,
      "branches": [
       {
        "gates": [],
@@ -928,7 +1026,7 @@
       }
      ],
      "dispersionModel": "Sampled envelope · argon capillary",
-     "earliestPathDelayNs": 4.19765763,
+     "earliestPathDelayNs": 4.19432199,
      "envelope": {
       "energyJ": 0.00000260375738,
       "fwhmFs": 102.221003,
@@ -1002,7 +1100,8 @@
         6.07646507e-26,
         3.82841027e-25,
         1.05797026e-24
-       ]
+       ],
+       "digest": "440bf314"
       },
       "peakPowerW": 24068621.9,
       "rmsFs": 42.7144407,
@@ -1076,7 +1175,8 @@
         1087.53364,
         1125.0348,
         1162.53596
-       ]
+       ],
+       "digest": "ab641907"
       }
      },
      "fieldIssue": null,
@@ -1172,7 +1272,8 @@
           6.07646507e-26,
           3.82841027e-25,
           1.05797026e-24
-         ]
+         ],
+         "digest": "440bf314"
         },
         "peakPowerW": 24068621.9,
         "rmsFs": 42.7144407,
@@ -1246,7 +1347,8 @@
           1087.53364,
           1125.0348,
           1162.53596
-         ]
+         ],
+         "digest": "ab641907"
         }
        },
        "fieldIssue": null,
@@ -1254,7 +1356,7 @@
        "gddFs2": 28.3705602,
        "groupDelayDifferenceFs": -2.00344546,
        "inputGddFs2": null,
-       "pathDelayNs": 4.19765763,
+       "pathDelayNs": 4.19432199,
        "phaseNs": 0,
        "pulseShape": "sampled",
        "pulseWidthFs": 100,
@@ -1267,7 +1369,7 @@
      "transformLimitFs": null,
      "transformLimited": false
     },
-    "readoutKind": "general",
+    "readoutKind": "autocorrelator",
     "samples": 9,
     "saturated": false,
     "signal": 0.0867919125,
@@ -1739,7 +1841,7 @@
       "widthNm": 2.12388765
      }
     ],
-    "spotSpan": 3.75818791,
+    "spotSpan": 3.73818691,
     "wavelength": 800
    }
   }
@@ -1828,7 +1930,8 @@
       -2547.49013,
       -46454.6279,
       126657.223
-     ]
+     ],
+     "digest": "07801e3f"
     },
     "re": {
      "length": 1024,
@@ -1900,7 +2003,8 @@
       4672.76073,
       -21081.0566,
       -305363.978
-     ]
+     ],
+     "digest": "9fc8d211"
     },
     "referenceGddFs2": 28.3705602,
     "wavelengthNm": 800
@@ -1985,7 +2089,8 @@
       6.07667597e-26,
       3.82791633e-25,
       1.0579928e-24
-     ]
+     ],
+     "digest": "0b5cbeb5"
     },
     "peakPowerW": 240686219,
     "rmsFs": 42.7144407,
@@ -2059,7 +2164,8 @@
       1087.53364,
       1125.0348,
       1162.53596
-     ]
+     ],
+     "digest": "ab641907"
     }
    },
    "ok": true,
@@ -2091,7 +2197,8 @@
       0.0000821017818,
       0.0000108120875,
       0.00000132594077
-     ]
+     ],
+     "digest": "65b0a987"
     }
    },
    "state": "field",

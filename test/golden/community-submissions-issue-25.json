@@ -22,11 +22,71 @@
    796,
    378
   ],
-  "digest": "7b176557"
+  "digest": "4a9a8d61"
  },
- "pulseTracks": 2,
- "writeHits": 0,
- "signalHits": 2,
+ "drawnElements": {
+  "figureframe:lp4-frame": "d687d824",
+  "textlabel:lp4-title": "85b90d91",
+  "textlabel:lp4-subtitle": "dba0f293",
+  "cwlaser:blue-450": "613d38dc",
+  "pulsedlaser:ir-1064": "84446fb5",
+  "dichroic:shared-path-combiner": "7cd287cc",
+  "galvo:galvo-x": "d27ed593",
+  "galvo:galvo-y": "d27ed593",
+  "lens:field-lens": "4d4559d0",
+  "stage:work-plane": "6cf552a3",
+  "textlabel:work-area-note": "46c01419",
+  "textlabel:blue-spot-note": "f3042a9e",
+  "textlabel:ir-spot-note": "965419ee",
+  "textlabel:simultaneous-note": "501223a9",
+  "textlabel:model-note": "f0399fb1"
+ },
+ "pulseTracks": [
+  {
+   "intensity": 1,
+   "color": "#8b1a1a",
+   "points": 2,
+   "opl": [
+    0,
+    158
+   ],
+   "pulse": {
+    "sourceId": "ir-1064",
+    "repRateMHz": 1,
+    "pulseWidthFs": 5000000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "47858bb3"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#8b1a1a",
+   "points": 5,
+   "opl": [
+    158,
+    734
+   ],
+   "pulse": {
+    "sourceId": "ir-1064",
+    "repRateMHz": 1,
+    "pulseWidthFs": 5000000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "7db5805f"
+  }
+ ],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 2,
+  "digest": "39a38c6d"
+ },
  "readouts": {},
  "fibers": {}
 }

@@ -20,11 +20,26 @@
    600,
    481
   ],
-  "digest": "49715a9b"
+  "digest": "ad1b9f7b"
  },
- "pulseTracks": 0,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "textlabel:e0mtnij9": "56bad28d",
+  "cwlaser:eun826tk": "6af07fd0",
+  "bs:e4l3yjlh": "948cfc36",
+  "mirror:e5m9hfer": "81e74feb",
+  "mirror:e2kapbw1": "81e74feb",
+  "detector:exqbe65y": "e0219b12",
+  "textlabel:exhj86fs": "7f02f6d8"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {
   "detector:exqbe65y": {
    "detector": {

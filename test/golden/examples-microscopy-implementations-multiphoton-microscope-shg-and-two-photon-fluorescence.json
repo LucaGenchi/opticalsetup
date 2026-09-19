@@ -23,11 +23,174 @@
    999.5069,
    257.2333
   ],
-  "digest": "821d2632"
+  "digest": "8294dbae"
  },
- "pulseTracks": 7,
- "writeHits": 0,
- "signalHits": 1,
+ "drawnElements": {
+  "pulsedlaser:evgazbrh": "4c624357",
+  "mirror:ebgasu4j": "81e74feb",
+  "mirror:egs4tfvh": "81e74feb",
+  "polarizer:eg3ksg58": "4cf8e4bb",
+  "hwp:eaceg0bp": "1dcc48f5",
+  "textlabel:epokmnw0": "0d8403da",
+  "textlabel:ebq2ycw9": "ca81edeb",
+  "galvo:e7o5vg6j": "982b7de3",
+  "galvo:e9dns7tt": "982b7de3",
+  "textlabel:eos4tcal": "bac0e983",
+  "lens:exiqeiuj": "21f36c16",
+  "lens:ep16mkew": "21f36c16",
+  "dichroic:e227dxsg": "bdb68914",
+  "objective:etsvxovm": "3a507a28",
+  "objective:e4w5g7rr": "3a507a28",
+  "dichroic:eg2w5zcc": "bdb68914",
+  "mirror:eya41ont": "81e74feb",
+  "pmt:eztjovh9": "9d342730",
+  "textlabel:ehsrwb6d": "50687280",
+  "lens:ejjlllt9": "21f36c16",
+  "camera:euke3wwt": "d19ca07b",
+  "pmt:ezb106j0": "4097293c",
+  "textlabel:eenzabj5": "bcc7ce2f",
+  "textlabel:er20ltdw": "2c0ac3dc",
+  "textlabel:eopybvvu": "3cecab0f",
+  "textlabel:epj6lki8": "3429983d",
+  "stage:e17so0o1": "730cb6dc",
+  "filter:enpv2557": "22c67037"
+ },
+ "pulseTracks": [
+  {
+   "intensity": 1,
+   "color": "#ff6400",
+   "points": 4,
+   "opl": [
+    0,
+    225
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "858df2cf"
+  },
+  {
+   "intensity": 1,
+   "color": "#ff6400",
+   "points": 2,
+   "opl": [
+    225,
+    325
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "1e2a44d1"
+  },
+  {
+   "intensity": 1,
+   "color": "#ff6400",
+   "points": 6,
+   "opl": [
+    325,
+    675
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "6b36498b"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#ff6400",
+   "points": 3,
+   "opl": [
+    675,
+    748
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "c229b59d"
+  },
+  {
+   "intensity": 0.0999981709,
+   "color": "#007bff",
+   "points": 5,
+   "opl": [
+    748,
+    899
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "419dfba1"
+  },
+  {
+   "intensity": 0.799985367,
+   "color": "#ff6400",
+   "points": 3,
+   "opl": [
+    748,
+    825
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "6dd9e4e8"
+  },
+  {
+   "intensity": 0.799985367,
+   "color": "#ff6400",
+   "points": 3,
+   "opl": [
+    825,
+    975
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 150,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "1c957591"
+  }
+ ],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 1,
+  "digest": "1316c902"
+ },
  "readouts": {
   "objective:etsvxovm": {
    "objectivePupil": {
@@ -1758,7 +1921,8 @@
         1,
         0.324652467,
         0.0111089965
-       ]
+       ],
+       "digest": "853927e8"
       }
      },
      "wl": 920

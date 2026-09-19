@@ -21,11 +21,41 @@
    1081,
    505.1156
   ],
-  "digest": "adcaf355"
+  "digest": "df772517"
  },
- "pulseTracks": 0,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "figureframe:e-frame": "77a7fb21",
+  "textlabel:e-title": "b3f78123",
+  "textlabel:e-citation": "c871e952",
+  "textlabel:e-sample-arm-label": "4ec4e009",
+  "textlabel:e-reference-arm-label": "9ed694dc",
+  "textlabel:e-limit-note": "d5871bad",
+  "cwlaser:e-laser": "6af07fd0",
+  "lens:e-l1": "21f36c16",
+  "mirror:e-fold-in": "81e74feb",
+  "bs:e-bs1": "948cfc36",
+  "galvo:e-galvo": "49dc3d7a",
+  "lens:e-l2": "f2f7b085",
+  "objective:e-condenser-objective": "3a507a28",
+  "sample:e-sample": "78d9f54b",
+  "objective:e-imaging-objective": "3a507a28",
+  "textlabel:e-objective-group-label": "6f69f73f",
+  "textlabel:e-objective-note": "059b0f3c",
+  "lens:e-l3": "f2f7b085",
+  "mirror:e-ref-mirror": "81e74feb",
+  "bs:e-bs2": "948cfc36",
+  "camera:e-camera": "0117225b",
+  "blocker:e119ya1a": "1b7eb70b"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {
   "objective:e-condenser-objective": {
    "objectivePupil": {

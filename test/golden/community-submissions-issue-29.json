@@ -21,11 +21,31 @@
    4579.7798,
    4725.1609
   ],
-  "digest": "c21420fe"
+  "digest": "1039c5d2"
  },
- "pulseTracks": 0,
- "writeHits": 0,
- "signalHits": 1,
+ "drawnElements": {
+  "lens:egrpu7l6": "e5de68e2",
+  "mirror:ez1zsser": "d6132fbc",
+  "slit:ewzkc8fq": "ff33ebc8",
+  "lens:em4fmk0c": "def3b4ac",
+  "lens:eejte4n0": "1dbfd3f5",
+  "sample:ewk2yb95": "49061cf8",
+  "slit:epohaq5g": "d5f507ab",
+  "lens:exyf10an": "2a653a74",
+  "objective:e5z07sp7": "81caa9f0",
+  "cwlaser:efpipbp2": "d90b3864",
+  "display:est41q39": "fdc9d278",
+  "camera:eh1r66rl": "aa5c666c"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 1,
+  "digest": "c740a002"
+ },
  "readouts": {
   "objective:e5z07sp7": {
    "objectivePupil": {

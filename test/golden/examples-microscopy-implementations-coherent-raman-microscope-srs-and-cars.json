@@ -23,11 +23,448 @@
    978,
    401.5
   ],
-  "digest": "5b409129"
+  "digest": "15ea2f29"
  },
- "pulseTracks": 21,
- "writeHits": 0,
- "signalHits": 2,
+ "drawnElements": {
+  "pulsedlaser:evgazbrh": "4c624357",
+  "mirror:ebgasu4j": "81e74feb",
+  "mirror:egs4tfvh": "81e74feb",
+  "polarizer:eg3ksg58": "4cf8e4bb",
+  "hwp:eaceg0bp": "1dcc48f5",
+  "textlabel:epokmnw0": "0d8403da",
+  "textlabel:ebq2ycw9": "ca81edeb",
+  "galvo:e7o5vg6j": "982b7de3",
+  "galvo:e9dns7tt": "982b7de3",
+  "textlabel:eos4tcal": "bac0e983",
+  "lens:exiqeiuj": "21f36c16",
+  "lens:ep16mkew": "21f36c16",
+  "dichroic:e227dxsg": "bdb68914",
+  "objective:etsvxovm": "3a507a28",
+  "objective:e4w5g7rr": "3a507a28",
+  "dichroic:eg2w5zcc": "bdb68914",
+  "pulsedlaser:ex99xumu": "4c624357",
+  "mirror:eeeexhf1": "81e74feb",
+  "mirror:e8m788rb": "81e74feb",
+  "polarizer:ebij0qw1": "4cf8e4bb",
+  "hwp:e5ercpjt": "1dcc48f5",
+  "textlabel:esvcppzs": "0d8403da",
+  "textlabel:ei74sm6r": "ca81edeb",
+  "mirror:ejynv4la": "81e74feb",
+  "retroreflector:edbs8siw": "418dcb29",
+  "mirror:emlwd6uz": "81e74feb",
+  "mirror:emijjycy": "81e74feb",
+  "dichroic:eapb46vw": "bdb68914",
+  "textlabel:ea3515oz": "d906fa66",
+  "mirror:eya41ont": "81e74feb",
+  "pmt:eztjovh9": "8126f884",
+  "textlabel:e5ad8bsc": "c49e4714",
+  "textlabel:ezyfdtcd": "e6166e1b",
+  "pmt:e966o1em": "57f18968",
+  "textlabel:eenzabj5": "bcc7ce2f",
+  "textlabel:er20ltdw": "ca3337ba",
+  "textlabel:euvczmt4": "47125b12",
+  "stage:e17so0o1": "730cb6dc",
+  "eom:ex1nikcx": "687e7e5b",
+  "polarizer:ertk38vw": "4cf8e4bb",
+  "highlight:eryqxoww": "776c5bfe",
+  "textlabel:eb0ch8om": "eebdcf50",
+  "textlabel:e0ylx3rx": "0768dcad",
+  "detector:ef2uydcv": "66152aee",
+  "display:ewqehdbt": "4d9506bc",
+  "filter:e7lzvaiw": "22c67037",
+  "bs:egy525hq": "948cfc36",
+  "mirror:e9td4zur": "81e74feb",
+  "detector:e9xabqr6": "847f1ee4",
+  "display:e4eyo1co": "ebf66788"
+ },
+ "pulseTracks": [
+  {
+   "intensity": 1,
+   "color": "#ff6400",
+   "points": 4,
+   "opl": [
+    0,
+    225
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "07e9a7e4"
+  },
+  {
+   "intensity": 1,
+   "color": "#ff6400",
+   "points": 2,
+   "opl": [
+    225,
+    325
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "0e61baad"
+  },
+  {
+   "intensity": 1,
+   "color": "#ff6400",
+   "points": 6,
+   "opl": [
+    325,
+    827
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "de4ce4c3"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#ff6400",
+   "points": 6,
+   "opl": [
+    827,
+    1227.03
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "284dab96"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#ff6400",
+   "points": 3,
+   "opl": [
+    1227.03,
+    1302.03
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "12950c99"
+  },
+  {
+   "intensity": 0.149997256,
+   "color": "#ff5900",
+   "points": 5,
+   "opl": [
+    1302.03,
+    1499.03
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "73f06941"
+  },
+  {
+   "intensity": 0.999981709,
+   "color": "#ff5900",
+   "points": 4,
+   "opl": [
+    1302.03,
+    1403.03
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "806096ab"
+  },
+  {
+   "intensity": 0.799985367,
+   "color": "#ff6400",
+   "points": 3,
+   "opl": [
+    1302.03,
+    1379.03
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "37bdb790"
+  },
+  {
+   "intensity": 0.799985367,
+   "color": "#ff6400",
+   "points": 2,
+   "opl": [
+    1379.03,
+    1454.03
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "3bd472d9"
+  },
+  {
+   "intensity": 0.799985367,
+   "color": "#ff6400",
+   "points": 2,
+   "opl": [
+    1454.03,
+    1504.03
+   ],
+   "pulse": {
+    "sourceId": "evgazbrh",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "c71ac2f1"
+  },
+  {
+   "intensity": 1,
+   "color": "#800000",
+   "points": 4,
+   "opl": [
+    0,
+    226
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "0b46b588"
+  },
+  {
+   "intensity": 1,
+   "color": "#800000",
+   "points": 2,
+   "opl": [
+    226,
+    326
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "7d70de11"
+  },
+  {
+   "intensity": 1,
+   "color": "#800000",
+   "points": 2,
+   "opl": [
+    326,
+    476
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "8189f0f9"
+  },
+  {
+   "intensity": 1,
+   "color": "#800000",
+   "points": 2,
+   "opl": [
+    476,
+    576
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 0
+   },
+   "digest": "b79aad19"
+  },
+  {
+   "intensity": 1,
+   "color": "#800000",
+   "points": 2,
+   "opl": [
+    576,
+    651
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "894d2ac7"
+  },
+  {
+   "intensity": 0.5,
+   "color": "#800000",
+   "points": 3,
+   "opl": [
+    651,
+    751
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "5e175480"
+  },
+  {
+   "intensity": 0.5,
+   "color": "#800000",
+   "points": 3,
+   "opl": [
+    651,
+    827
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "b82c04f5"
+  },
+  {
+   "intensity": 0.499990854,
+   "color": "#800000",
+   "points": 6,
+   "opl": [
+    827,
+    1227.03
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "2fbb4f88"
+  },
+  {
+   "intensity": 0.499990854,
+   "color": "#800000",
+   "points": 3,
+   "opl": [
+    1227.03,
+    1302.03
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "d857857f"
+  },
+  {
+   "intensity": 0.399992684,
+   "color": "#800000",
+   "points": 3,
+   "opl": [
+    1302.03,
+    1379.03
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "206d824e"
+  },
+  {
+   "intensity": 0.399992684,
+   "color": "#800000",
+   "points": 2,
+   "opl": [
+    1379.03,
+    1454.03
+   ],
+   "pulse": {
+    "sourceId": "ex99xumu",
+    "repRateMHz": 80,
+    "pulseWidthFs": 1000,
+    "phaseNs": 0,
+    "spectrumReshaped": false,
+    "gates": 1
+   },
+   "digest": "9a19c91e"
+  }
+ ],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 2,
+  "digest": "2d5ffd2a"
+ },
  "readouts": {
   "objective:etsvxovm": {
    "objectivePupil": {
@@ -303,7 +740,8 @@
         1,
         0.324652467,
         0.0111089965
-       ]
+       ],
+       "digest": "853927e8"
       }
      },
      "wl": 780
@@ -369,7 +807,8 @@
         1,
         0.324652467,
         0.0111089965
-       ]
+       ],
+       "digest": "853927e8"
       }
      },
      "wl": 1030

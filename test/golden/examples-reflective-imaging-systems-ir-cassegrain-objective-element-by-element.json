@@ -21,11 +21,44 @@
    530,
    287.5611
   ],
-  "digest": "8073015f"
+  "digest": "37b934cd"
  },
- "pulseTracks": 0,
- "writeHits": 0,
- "signalHits": 0,
+ "drawnElements": {
+  "figureframe:frame": "74558ed9",
+  "textlabel:title": "878f01ac",
+  "textlabel:subtitle": "9cd115a4",
+  "textlabel:prescription": "136ed8e9",
+  "cwlaser:source": "9d043d3c",
+  "beamdump:central-stop": "5ccc812d",
+  "slit:entrance-stop": "23c90878",
+  "conicmirror:primary": "589bc260",
+  "conicmirror:secondary": "dfc05b79",
+  "camera:focus-sensor": "0ac04b42",
+  "textlabel:primary-label": "c400c7a6",
+  "textlabel:primary-detail": "551e7742",
+  "textlabel:secondary-label": "bcd618fe",
+  "textlabel:secondary-detail": "9281587d",
+  "textlabel:source-label": "4d49fc70",
+  "textlabel:stop-label": "7c7e9283",
+  "textlabel:hole-label": "ed7e8fe8",
+  "textlabel:focus-label": "da8c48b3",
+  "textlabel:wd-label": "15d7d3b6",
+  "arrowann:incoming-key": "8714c5dc",
+  "arrowann:return-key": "8714c5dc",
+  "arrowann:focus-key": "8714c5dc",
+  "textlabel:route": "a2c6d8ae",
+  "textlabel:controls": "930c22e8",
+  "textlabel:limits": "01452f3c"
+ },
+ "pulseTracks": [],
+ "writeHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
+ "signalHits": {
+  "count": 0,
+  "digest": "811c9dc5"
+ },
  "readouts": {
   "camera:focus-sensor": {
    "detector": {
