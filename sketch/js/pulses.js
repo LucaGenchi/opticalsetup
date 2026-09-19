@@ -289,6 +289,22 @@ function traceValueAt(events, target, key) {
   return value;
 }
 
+// A filtered pulse is timed by a numerical transform, and inside glass the
+// GDD changes every frame; the packet takes it to a step whose quadratic phase
+// at the edge of the filtered band stays under 0.05 rad -- δ·Δω²/16 -- so the
+// answers can be reused without the step mattering. The bound is on the
+// phase, not on the GDD's own digits: a path that nearly cancels a large
+// source chirp keeps its small residual.
+function packetGdd(pulse, gddFs2) {
+  const pieces = pulse?.spectrumReshaped ? pulse.filteredPieces : null;
+  if (!gddFs2 || !Array.isArray(pieces) || !pieces.length) return gddFs2;
+  const lo = Math.min(...pieces.map(p => p.lo)), hi = Math.max(...pieces.map(p => p.hi));
+  const bandwidth = 2 * Math.PI * 299.792458 * (1 / lo - 1 / hi);
+  if (!(bandwidth > 0)) return gddFs2;
+  const step = 0.8 / (bandwidth * bandwidth);
+  return Math.round(gddFs2 / step) * step;
+}
+
 // The local temporal envelope represented at one position on a traced path.
 // The same source metadata and accumulated dispersion feed detector readouts,
 // probes, scopes and these travelling packets, so their durations cannot drift.
@@ -305,7 +321,7 @@ function pulseEnvelopeAtSample(track, sample, target) {
   const sampled = track.pulse.field ? fieldMetrics(track.pulse.field, gddFs2)?.fwhmFs : null;
   const derived = track.pulse.field
     ? { durationFs: Number.isFinite(sampled) ? sampled : null, model: 'Sampled envelope · argon capillary' }
-    : pulseDurationAfterDispersion(track.pulse, gddFs2, groupDelayDifferenceFs);
+    : pulseDurationAfterDispersion(track.pulse, packetGdd(track.pulse, gddFs2), groupDelayDifferenceFs);
   const pulseWidthFs = Number.isFinite(derived?.durationFs)
     ? derived.durationFs : inputPulseWidthFs;
   const stretchFactor = pulseWidthFs / inputPulseWidthFs;

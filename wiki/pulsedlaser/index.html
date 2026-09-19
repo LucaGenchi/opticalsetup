@@ -236,11 +236,25 @@
         up to zero (“Configured duration · zero net modeled dispersion”), and is shown as
         unavailable anywhere else. Unknown does not mean uncompressible; it means the phase
         that would decide it is not known.</p>
-        <p>The duration model also declines, and says why on the detector's <em>Duration
-        model</em> row, when a filter, dichroic, etalon or AOTF has reshaped the pulse's
-        spectrum — filtering changes a duration by itself, and dispersion accumulated before
-        the filter describes wavelengths it removed — and when parts of one beam reach a
-        detector by paths whose dispersion differs — separate paths do not compensate each
+        <p>When a filter, dichroic, etalon or AOTF reshapes the pulse's spectrum, the
+        duration is worked out from the spectrum that survives. An ideal filter changes the
+        spectrum's amplitude and not its phase, so the pulse at a detector is the numerical
+        transform of the surviving spectrum with the source's chirp plus every GDD on the
+        path, wherever the filter stands; a slice cut from a band that glass has fanned out
+        carries the glass's GDD at its own wavelength. One effective quadratic phase stands
+        for the band, so where the glass's GDD varies across the surviving band enough to move
+        its edge phase by more than half a radian — a broad band behind thick glass — the
+        duration is unavailable rather than approximated. A hard-edged passband gives a
+        sinc-like pulse with side lobes, and the reading is its full width at half maximum;
+        an autocorrelator draws the shape it assumes at that width. An etalon's output keeps
+        its power but not its fringe comb or its transfer phase, so it is not timed. A
+        filtered supercontinuum, which has a duration but no phase, is an assumed-sweep
+        estimate: its duration is taken as a sweep linear in frequency across its band, a
+        slice keeps the share its width spans, and that share adds in quadrature to the
+        slice's own dispersed duration as a source part no compressor removes — a stated
+        convention, not a reconstruction of the continuum's phase. The model also
+        declines, and says why on the detector's <em>Duration model</em> row, when parts of
+        one beam reach a detector by paths whose dispersion differs — separate paths do not compensate each
         other the way glass and a compressor in sequence do, so equal and opposite GDD on two
         arms is not one transform-limited pulse. Small differences, within 0.1&nbsp;rad of
         quadratic phase across the bandwidth and 2&nbsp;% in duration, are treated as one path;
@@ -280,7 +294,8 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
         arbitrary spectral phase, higher-order dispersion, self-phase modulation, pulse-shape
         distortion, or material absorption. Source GDD is bounded to ±10⁷&nbsp;fs², a range
         for input, not a physical validity threshold; a quadratic phase alone does not make a
-        stretched pulse an accurate model of a real stretcher's output. Spectral reshaping is detected from a filter's or dichroic's
+        stretched pulse an accurate model of a real stretcher's output. A filtered pulse keeps
+        only quadratic phase, evaluated at the wavelengths that pass. Spectral reshaping is detected from a filter's or dichroic's
         passband edges falling inside the pulse's emitted band, and, for smooth transmissions
         such as an etalon or AOTF, from the band sampled and cross-checked against the integrated
         transmission. Wavelength-dependent clipping inside one fanned-out sample is not

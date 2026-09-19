@@ -142,3 +142,122 @@ export function propagateEnvelope({ pulseWidthFs, energyJ, wavelengthNm, lengthM
   }
   return { ok: true, field, metrics, spectrum, bIntegral, maxPeakPowerW, spectralRmsTHz: spectralStats.rms * 1000, steps };
 }
+
+// Intensity autocorrelation of a sampled envelope, A(tau) = ∫ I(t) I(t+tau) dt,
+// which is what an intensity autocorrelator records. Computed through the
+// Wiener–Khinchin relation, |F{I}|² transformed back, on a grid padded to
+// twice the envelope's window so the correlation does not wrap around. The
+// trace is normalised to its peak at zero delay; its FWHM is measured the
+// same way the envelope's is. Cached per envelope, since screens and the
+// inspector ask for it on every redraw.
+//
+// Preconditions: `timeFs` is a uniform, increasing grid; the samples are
+// finite; and the envelope is contained in its window. Padding prevents
+// wrap-around but cannot recover wings cut off at the window's edge -- the
+// production caller's envelopes come from fieldMetrics, which rejects any
+// with 1e-5 or more of their energy at the edges. The FWHM, like the
+// envelope's, runs between the outermost half-height crossings, so for a
+// trace with separate lobes it spans all of them.
+const autocorrelations = new WeakMap();
+export function envelopeAutocorrelation(envelope) {
+  const intensity = envelope?.intensity, timeFs = envelope?.timeFs;
+  if (!Array.isArray(intensity) || !Array.isArray(timeFs) || intensity.length < 4) return null;
+  if (autocorrelations.has(intensity)) return autocorrelations.get(intensity);
+  const n = intensity.length, dt = timeFs[1] - timeFs[0];
+  let size = 1;
+  while (size < 2 * n) size *= 2;
+  const re = new Float64Array(size), im = new Float64Array(size);
+  for (let i = 0; i < n; i++) re[i] = Math.max(0, intensity[i]);
+  fft(re, im);
+  for (let i = 0; i < size; i++) { re[i] = re[i] * re[i] + im[i] * im[i]; im[i] = 0; }
+  fft(re, im, true);
+  // Lag k sits at index k (and size − k for negative lags): unwrap to a
+  // centred trace over ±(n − 1) samples.
+  const lags = [], trace = [];
+  for (let k = -(n - 1); k <= n - 1; k++) {
+    lags.push(k * dt);
+    trace.push(re[(k + size) % size]);
+  }
+  const peak = trace[n - 1];
+  if (!(peak > 0)) return null;
+  const normalised = trace.map(v => Math.max(0, v) / peak);
+  const stats = distribution(normalised, dt);
+  const result = stats ? { tauFs: lags, trace: normalised, fwhmFs: stats.fwhm } : null;
+  autocorrelations.set(intensity, result);
+  return result;
+}
+
+// The intensity FWHM of a pulse with a given power spectrum and a purely
+// quadratic spectral phase. `density(nm)` is the spectral power per nm over
+// [loNm, hiNm]; it is taken to angular frequency with its Jacobian, its square
+// root is the field amplitude, and the pulse is its transform. Returns the
+// duration at `gddFs2` and the transform limit (gddFs2 = 0), or null when the
+// transform cannot be resolved.
+//
+// The grid is sized on the part of the interval the spectrum occupies, not on
+// the interval handed in: a 1 nm line inside 400-900 nm bounds is a 1 nm line.
+// Its step resolves a 1/4096 of that extent, so separated bands keep their
+// own narrow features. A strongly chirped pulse can need a window past
+// MAX_SPECTRAL_POINTS; the stationary-phase limit, where the intensity is the
+// spectrum mapped to time (t = GDD·Ω), is used then only where it holds -- the
+// mapped duration at least twenty transform limits -- and nothing is returned
+// otherwise.
+const MAX_SPECTRAL_POINTS = 1 << 16;
+const OCCUPIED_GRID = 16384;
+export function quadraticPhasePulse(density, loNm, hiNm, gddFs2 = 0) {
+  const cNmFs = 299.792458;
+  if (!(hiNm > loNm) || !(loNm > 0) || !Number.isFinite(gddFs2)) return null;
+  const omegaOf = nm => 2 * Math.PI * cNmFs / nm;
+  // Power per unit angular frequency, from power per nm: |dλ/dω| = λ²/(2πc).
+  const spectral = w => {
+    const nm = omegaOf(1) / w;
+    return nm >= loNm && nm <= hiNm ? Math.max(0, Number(density(nm)) || 0) * nm * nm / (2 * Math.PI * cNmFs) : 0;
+  };
+  // Where the spectrum actually is, found on a fine grid across the bounds.
+  const fullLo = omegaOf(hiNm), fullHi = omegaOf(loNm), fullStep = (fullHi - fullLo) / OCCUPIED_GRID;
+  const coarse = Array.from({ length: OCCUPIED_GRID }, (_, i) => spectral(fullLo + fullStep * (i + 0.5)));
+  const top = Math.max(...coarse);
+  if (!(top > 0)) return null;
+  const first = coarse.findIndex(v => v > 1e-9 * top);
+  let last = coarse.length - 1; while (last > first && !(coarse[last] > 1e-9 * top)) last--;
+  const wLo = fullLo + fullStep * Math.max(0, first - 1), wHi = fullLo + fullStep * Math.min(OCCUPIED_GRID, last + 2);
+  const width = wHi - wLo;
+  let total = 0, moment = 0;
+  for (let i = 0; i < 4096; i++) {
+    const w = wLo + width * (i + 0.5) / 4096, v = spectral(w);
+    total += v; moment += v * w;
+  }
+  if (!(total > 0)) return null;
+  const w0 = moment / total;
+  const transform = gdd => {
+    // The window holds the transform limit (about 2π/width) and the chirp's
+    // spread (|GDD|·width) several times over; the grid spans four times the
+    // occupied band, so the time step resolves the transform limit.
+    const needed = 3 * (Math.abs(gdd) * width + 40 * Math.PI / width);
+    const step = Math.min(width / 4096, 2 * Math.PI / needed);
+    const n = 2 ** Math.ceil(Math.log2(4 * width / step));
+    if (n > MAX_SPECTRAL_POINTS) return null;
+    const dt = 2 * Math.PI / (n * step);
+    const re = new Float64Array(n), im = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const k = i < n / 2 ? i : i - n, offset = k * step;
+      // (-1)^k centres the pulse in the window so its FWHM is contiguous.
+      const a = Math.sqrt(spectral(w0 + offset)) * (k % 2 ? -1 : 1);
+      const phi = gdd * offset * offset / 2;
+      re[i] = a * Math.cos(phi); im[i] = a * Math.sin(phi);
+    }
+    fft(re, im, true);
+    const stats = distribution(powers(re, im), dt);
+    return stats && stats.edge < 1e-4 ? stats.fwhm : null;
+  };
+  const transformLimitFs = transform(0);
+  if (!(transformLimitFs > 0)) return null;
+  let durationFs = gddFs2 ? transform(gddFs2) : transformLimitFs;
+  if (!(durationFs > 0)) {
+    const samples = Array.from({ length: 8192 }, (_, i) => spectral(wLo + width * (i + 0.5) / 8192));
+    const stats = distribution(samples, width / 8192);
+    const mapped = stats ? stats.fwhm * Math.abs(gddFs2) : null;
+    durationFs = mapped >= 20 * transformLimitFs ? mapped : null;
+  }
+  return durationFs > 0 ? { durationFs, transformLimitFs, bandwidthRadPerFs: width } : null;
+}

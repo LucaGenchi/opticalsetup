@@ -98,9 +98,13 @@ test('a filter downstream of a coarsened order repaints it', () => {
     assert.notEqual(d.color, '#cbd8ea',
       'a 100 nm slice at 550 nm still drawn as mixed white');
   }
-  // 500-600 nm is green; every surviving ray should agree.
-  assert.ok(past.every(d => d.color === wavelengthToColor(550)
-    || Math.abs(parseInt(d.color.slice(1, 3), 16) - 0xaa) < 0x30),
+  // Every surviving ray is drawn in a colour inside the 500-600 nm passband.
+  // The filter keeps its weak slices too, so an order's sample cut down to
+  // 520 nm is drawn at 520 nm rather than culled.
+  const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const passband = Array.from({ length: 1001 }, (_, i) => rgb(wavelengthToColor(500 + i / 10)));
+  const inPassband = color => passband.some(c => c.every((v, i) => Math.abs(v - rgb(color)[i]) <= 2));
+  assert.ok(past.every(d => inPassband(d.color)),
     `filtered rays came out ${[...new Set(past.map(d => d.color))].join(' ')}`);
 });
 

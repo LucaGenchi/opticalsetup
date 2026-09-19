@@ -3682,9 +3682,9 @@ export const registry = {
     size_: el => ({ w: 40, h: (el.params.aperture || 26) + 4 }),
     params: [{ key: 'aperture', label: 'Sensor height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 26 }],
     svg(el) {
-      const h = el.params.aperture || 26;
+      const h = el.params.aperture || 26, bar = Math.max(2, h - 8); // aperture min 6 would give a negative bar
       return boxSVG(36, h, '#4b5563', '#2b333d', 'PD', null, isFlipped(el)) +
-        `<rect x="-19.5" y="${-(h - 8) / 2}" width="3" height="${h - 8}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
+        `<rect x="-19.5" y="${-bar / 2}" width="3" height="${bar}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
         signalLamp(el, 11, -h / 2 + 5);
     },
     surfaces: el => detectorSurfaces(38, el.params.aperture || 26, 'Photodetector'),
@@ -3717,9 +3717,9 @@ export const registry = {
       { key: 'saturation', label: 'Max output (a.u.)', type: 'number', min: 1, max: 1e7, step: 10, def: 1e4 },
     ],
     svg(el) {
-      const h = el.params.aperture || 26;
+      const h = el.params.aperture || 26, bar = Math.max(2, h - 8); // aperture min 6 would give a negative bar
       return `<rect x="-25" y="${-h / 2}" width="50" height="${h}" rx="${Math.min(13, h / 2)}" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/>` +
-        `<rect x="-27" y="${-(h - 8) / 2}" width="4" height="${h - 8}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
+        `<rect x="-27" y="${-bar / 2}" width="4" height="${bar}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
         `<text x="2" y="0" ${isFlipped(el) ? 'transform="rotate(180 2 0)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text>` +
         signalLamp(el, 16, -h / 2 + 6);
     },
@@ -3750,7 +3750,7 @@ export const registry = {
     svg(el) {
       const h = el.params.ch || 30;
       return boxSVG(40, h, '#4b5563', '#2b333d', 'CAM', null, isFlipped(el)) +
-        `<rect x="-24" y="${-(h - 16) / 2}" width="5" height="${h - 16}" fill="#333" stroke="#2b333d"/>` +
+        `<rect x="-24" y="${-Math.max(2, h - 16) / 2}" width="5" height="${Math.max(2, h - 16)}" fill="#333" stroke="#2b333d"/>` +
         signalLamp(el, 13, -h / 2 + 7);
     },
     surfaces: el => detectorSurfaces(44, el.params.ch || 30, 'Camera sensor', {
