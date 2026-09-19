@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // GitHub handoff for community setup proposals. Authentication and final
 // submission stay on GitHub; the static app only prepares a prefilled form.
 

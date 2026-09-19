@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Progressive Web App registration. The workbench remains fully functional
 // when service workers are unavailable (for example, over plain non-local HTTP).
 

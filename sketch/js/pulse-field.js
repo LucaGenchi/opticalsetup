@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Scalar, single-mode envelope numerics. Units: fs, metres, watts.
 // FFT forward uses exp(-i Ωt); propagation uses exp(+i GDD Ω²/2).
 // Physical carrier convention: E = A(t) exp(-i ω₀t), hence ω = ω₀ - Ω.

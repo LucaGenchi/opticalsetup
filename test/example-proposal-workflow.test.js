@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import assert from 'node:assert/strict';
 import { gzipSync } from 'node:zlib';
 import { readFile } from 'node:fs/promises';
@@ -87,7 +89,7 @@ test('proposal materialization normalizes, traces, exports, and records provenan
   assert.equal(result.proposal.name, 'Green focusing path');
   assert.equal(result.proposal.reference, null);
   assert.equal(result.proposal.author.github, 'example-contributor');
-  assert.equal(result.proposal.source.issue, 'https://github.com/LucaGenchi/optics-sketch/issues/42');
+  assert.equal(result.proposal.source.issue, 'https://github.com/LucaGenchi/opticalsetup/issues/42');
   assert.equal(result.proposal.scene.elements.length, 2);
   assert.match(result.proposal.sceneSha256, /^[0-9a-f]{64}$/);
   assert.match(result.prBody, /parsed and normalized/);

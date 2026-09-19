@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Pure helpers for pulse timing and canvas-only packet visualization.
 // Optical path lengths are expressed in millimetres and time in nanoseconds.
 

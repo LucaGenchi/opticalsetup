@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Structured content for OpticalSetup's Examples pages. One entry per
 // curated setup under Examples/**/*.json. tools/build-examples-pages.mjs
 // turns this into static pages, matching each entry against

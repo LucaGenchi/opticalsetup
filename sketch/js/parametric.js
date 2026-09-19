@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { C_MM_PER_NS } from './pulses.js';
 
 // An application-imposed ceiling on every authored conversion fraction, not a

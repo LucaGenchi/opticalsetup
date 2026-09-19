@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // VIPA (Virtually Imaged Phased Array): a tilted plate with a
 // high-reflectivity entrance face (except a small entrance window) and a
 // partially transmitting output face. Light enters through the window,

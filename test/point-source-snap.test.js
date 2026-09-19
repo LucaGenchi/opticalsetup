@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Regression coverage for the feedback-round-1 features re-applied on top of
 // the direct-manipulation branch: unified evanescent point source,
 // concave-lens outline, and surface-aware snap anchors.

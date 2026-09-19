@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Spectral-lamp data and the helpers that read it. A leaf module so both the
 // element registry and the spectrum resolver can use it without either
 // importing the other.

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -17,10 +19,13 @@ import '../sketch/js/vipa.js';
 import { traceAll } from '../sketch/js/raytrace.js';
 import { parseSketch, state } from '../sketch/js/state.js';
 
-const REPOSITORY = 'LucaGenchi/optics-sketch';
+const REPOSITORY = 'LucaGenchi/opticalsetup';
+// The current site and its GitHub Pages mirror, plus the mirror's old name:
+// links people shared before the repository was renamed still work.
 const ALLOWED_SHARE_LOCATIONS = new Set([
   'opticalsetup.com/sketch/',
   'www.opticalsetup.com/sketch/',
+  'lucagenchi.github.io/opticalsetup/sketch/',
   'lucagenchi.github.io/optics-sketch/sketch/',
 ]);
 const MAX_SCENE_BYTES = 250_000;

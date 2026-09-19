@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+     SPDX-License-Identifier: GPL-3.0-or-later -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -73,6 +75,7 @@
       <a class="toolbar-link" href="/wiki/" target="_blank" rel="noopener" title="Every component, with the physics behind it (opens in a new tab)">Wiki</a>
       <a class="toolbar-link" href="/example-setups/" target="_blank" rel="noopener" title="Worked example setups, each with an explanation (opens in a new tab)">Examples</a>
       <a class="toolbar-link" href="/community/" target="_blank" rel="noopener" title="Setups shared by the community (opens in a new tab)">Community</a>
+      <button type="button" id="btnAbout" class="toolbar-link" title="License, copyright and warranty">About</button>
     </nav>
     <div class="toolgroup theme-group" aria-label="Appearance">
       <button type="button" id="btnTheme" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
@@ -95,6 +98,26 @@
     </div>
     <input type="file" id="fileInput" accept=".json,application/json" hidden>
   </header>
+  <dialog id="aboutDialog" class="share-dialog" aria-labelledby="aboutTitle">
+    <div class="share-dialog-head">
+      <div><span class="eyebrow">Free software</span><h2 id="aboutTitle">About OpticalSetup</h2></div>
+      <button type="button" id="aboutClose" class="icon-button" aria-label="Close about dialog">×</button>
+    </div>
+    <p class="about-text">Copyright © 2026 Luca Genchi and contributors.</p>
+    <p class="about-text">OpticalSetup is free software: you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published by the Free Software
+      Foundation, either version 3 of the License, or (at your option) any later version.</p>
+    <p class="about-text">It is distributed in the hope that it will be useful, but
+      <strong>without any warranty</strong>; without even the implied warranty of merchantability
+      or fitness for a particular purpose. See the GNU General Public License for more details.</p>
+    <p class="about-text">The numbers this app reports come from models with stated limits; read
+      each component's page in the <a href="/wiki/" target="_blank" rel="noopener">wiki</a> before
+      relying on one.</p>
+    <p class="about-links">
+      <a href="/license.html" target="_blank" rel="noopener">License text</a>
+      <a href="https://github.com/LucaGenchi/opticalsetup" target="_blank" rel="noopener">Source code</a>
+    </p>
+  </dialog>
   <dialog id="shareDialog" class="share-dialog" aria-labelledby="shareTitle">
     <div class="share-dialog-head">
       <div><span class="eyebrow">Self-contained setup</span><h2 id="shareTitle">Share this sketch</h2></div>
@@ -157,7 +180,7 @@
         <button type="button" id="proposalCancel">Cancel</button>
         <button type="submit" id="proposalSubmit" class="primary">Continue on GitHub <span aria-hidden="true">↗</span></button>
       </div>
-      <p class="proposal-footnote">Submitting creates a draft pull request after automated format, ray-tracing, and SVG checks. A maintainer still decides whether to publish it to the Community section.</p>
+      <p class="proposal-footnote">Submitting creates a draft pull request after automated format, ray-tracing, and SVG checks. A maintainer still decides whether to publish it to the Community section. A published setup and its description are shared as part of OpticalSetup, under the same <a href="/license.html" target="_blank" rel="noopener">GNU GPL v3 or later</a>.</p>
     </form>
   </dialog>
   <dialog id="mobileMenu" class="mobile-menu" aria-labelledby="mobileMenuTitle">
@@ -180,6 +203,7 @@
       <button type="button" data-mobile-action="gif">Export GIF</button>
     </div>
     <div class="mobile-menu-links">
+      <button type="button" id="btnMobileAbout" data-mobile-action="about">About</button>
       <a href="/wiki/" target="_blank" rel="noopener">Wiki</a>
       <a href="/example-setups/" target="_blank" rel="noopener">Examples</a>
       <a href="/community/" target="_blank" rel="noopener">Community</a>

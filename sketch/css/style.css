@@ -1,3 +1,5 @@
+/* SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+   SPDX-License-Identifier: GPL-3.0-or-later */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -119,16 +121,18 @@ body {
   color: var(--muted); font-weight: 600; font-size: 14px; text-decoration: none;
   padding: 6px 9px; border-radius: 7px; white-space: nowrap;
 }
+button.toolbar-link { border: 0; background: none; cursor: pointer; font-family: inherit; }
 .toolbar-link:hover { color: var(--text); background: var(--surface-hover); }
 .toolbar-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* The same three destinations inside the mobile sheet, where the toolbar's
    own row is hidden. */
 .mobile-menu-links { display: flex; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
-.mobile-menu-links a {
+.mobile-menu-links a, .mobile-menu-links button {
   flex: 1; text-align: center; color: var(--muted); font-weight: 600; font-size: 14px;
   text-decoration: none; padding: 9px 6px; border: 1px solid var(--border); border-radius: 8px;
+  background: none; cursor: pointer; font-family: inherit;
 }
-.mobile-menu-links a:hover { color: var(--text); background: var(--surface-hover); }
+.mobile-menu-links a:hover, .mobile-menu-links button:hover { color: var(--text); background: var(--surface-hover); }
 button {
   font: inherit;
   color: var(--text);
@@ -181,6 +185,8 @@ button.danger:hover { background: var(--danger-bg); }
   background: var(--panel); color: var(--text); box-shadow: 0 24px 70px rgba(22, 31, 44, .24);
 }
 .share-dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
+.about-text { margin: 12px 0 0; color: var(--text); font-size: 12px; line-height: 1.55; }
+.about-links { display: flex; gap: 14px; margin: 16px 0 0; font-size: 12px; }
 .share-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .share-dialog h2 { margin-top: 2px; font-size: 18px; letter-spacing: -.25px; }
 .eyebrow { color: var(--accent); font-size: 9px; font-weight: 760; letter-spacing: .7px; text-transform: uppercase; }

@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // App state, undo/redo, autosave.
 
 import { distinctPoints, rotPt } from './util.js';

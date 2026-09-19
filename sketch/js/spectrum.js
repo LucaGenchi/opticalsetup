@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Luca Genchi and contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Spectral profiles carried by rays, alongside the existing (wl, bw)
 // centroid/FWHM pair every part of the tracer already reads. `bw` stays a
 // meaningful summary number on its own (drawing color, dispersion checks,
