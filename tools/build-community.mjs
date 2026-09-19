@@ -156,7 +156,7 @@ ${header(base)}
       <a class="place-cta" href="${base}/sketch/?community=${encodeURIComponent(entry.slug)}">Open in the full canvas →</a>
     </main>
   </div>
-  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — they show how people actually use OpticalSetup, and haven't been vetted for pedagogical accuracy the way <a href="${base}/sketch/">Examples</a> have.</footer>
+  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — they show how people actually use OpticalSetup, and haven't been vetted for pedagogical accuracy the way <a href="${base}/sketch/">Examples</a> have. Shared setups and their descriptions are published under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, credited to their author.</footer>
 </body>
 </html>
 `;
@@ -213,7 +213,7 @@ ${header(base)}
       <p class="community-empty">No community setups are published yet — be the first to propose one from the canvas.</p>`}
     </div>
   </div>
-  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — see the <a href="${base}/wiki/">wiki</a> for how each component actually works.</footer>
+  <footer class="wiki-footer">Community setups are submitted and reviewed via <a href="https://github.com/LucaGenchi/opticalsetup/issues" target="_blank" rel="noopener">GitHub issues</a> — see the <a href="${base}/wiki/">wiki</a> for how each component actually works. This setup and its description are published under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, credited to its author.</footer>
 </body>
 </html>
 `;

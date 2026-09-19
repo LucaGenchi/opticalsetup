@@ -10,6 +10,12 @@ Audience: repo maintainers with merge rights on `main` (currently Luca Genchi an
 4. Merging triggers the **"Publish approved community setups"** workflow, which runs `node tools/build-community.mjs` (deterministic — same input always produces the same output) and opens a *second* pull request titled **"Publish approved community setups"**, containing only the two generated files it produced: `community/<slug>/index.html` and `sketch/js/community-data.js`.
 5. **Merging that second PR is what actually makes the setup go live** — it's what appears on the public Community page and in the app's "From the community" dropdown.
 
+**Licensing.** A submitted setup and its description are published under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), credited to their author; the
+proposal form says so before the user submits. The app itself stays GPL-3.0-or-later. If a
+submission carries content the author cannot license that way — a figure copied from a
+paper, say — close it rather than merging.
+
 Two merges, both on github.com, both just the ordinary green **Merge pull request** button. No repository settings, admin overrides, or local terminal needed for the normal path.
 
 (Why two PRs instead of one: `main` requires a reviewed pull request with no bypass for any bot identity, on purpose — publishing should never get a direct-push shortcut, regardless of what any current or future workflow tries to do. Every touch to `main` costs a human click.)
