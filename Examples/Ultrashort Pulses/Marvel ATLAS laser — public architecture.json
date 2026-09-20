@@ -125,15 +125,15 @@
       "x": 105,
       "y": 430,
       "rot": 0,
-      "label": "effective post-compressor pulse · 1053 nm · 100 fs · 10 Hz",
+      "label": "normalized qualitative trace · 1053 nm · 100 fs · 1 kHz",
       "showLabel": true,
       "labelPos": "t",
       "params": {
         "wavelength": 1053,
-        "avgPowerW": 3333.333333,
+        "avgPowerW": 1000,
         "beamMode": "beam",
         "beamWidth": 18,
-        "repRateMHz": 0.00001,
+        "repRateMHz": 0.001,
         "pulsePhaseNs": 0,
         "transformLimited": true,
         "pulseWidthFs": 100,
@@ -247,7 +247,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**Energy bookkeeping in this sketch:** 333.3 J at 1053 nm × 60% SHG = 200 J at 526.5 nm.\nThe 60% conversion is illustrative, not a disclosed ATLAS stage efficiency.",
+        "text": "**ATLAS target (annotation, not live power model):** order-200 J · 100 fs · 10 Hz at 527 nm.\nThe live trace is normalized to the app's 1 kHz / 1 kW bounds; 60% SHG is illustrative, not a disclosed stage efficiency.",
         "fontSize": 11,
         "fill": "#5d4534"
       }

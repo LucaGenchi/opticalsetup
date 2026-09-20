@@ -42,16 +42,6 @@ test('sketch loading fills defaults and normalizes unsafe values', () => {
   assert.deepEqual(fiber.out0, { mode: 'focus', na: 0.95, focal: 2, dia: 30 });
 });
 
-test('sketch loading preserves low-rate, kilowatt-class pulsed sources', () => {
-  const raw = createElement('pulsedlaser', 10, 20);
-  raw.params.repRateMHz = 0.00001; // 10 Hz
-  raw.params.avgPowerW = 4000;
-
-  const [laser] = parseSketch(file([raw]), registry).elements;
-  assert.equal(laser.params.repRateMHz, 0.00001);
-  assert.equal(laser.params.avgPowerW, 4000);
-});
-
 test('sketch loading rejects data that would crash the canvas', () => {
   assert.throws(() => parseSketch('{', registry), SyntaxError);
   assert.throws(() => parseSketch(JSON.stringify({ elements: 'nope' }), registry), /valid optics sketch/);

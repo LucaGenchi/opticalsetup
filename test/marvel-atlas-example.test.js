@@ -24,22 +24,21 @@ function reading(scene, id) {
   return probeAt(probe.x, probe.y);
 }
 
-test('the ATLAS example preserves the published pulse regime', () => {
+test('the ATLAS example preserves the published wavelength and duration', () => {
   const scene = traced();
   const source = scene.elements.find(element => element.id === 'atlas-fundamental');
   assert.equal(source.params.wavelength, 1053);
   assert.equal(source.params.pulseWidthFs, 100);
-  assert.equal(source.params.repRateMHz, 0.00001, '10 Hz in MHz');
+  assert.equal(source.params.repRateMHz, 0.001, 'the trace is normalized to the app minimum');
   assert.equal(probeDurationLabel(reading(scene, 'duration-probe'), source.type), '100 fs');
 });
 
-test('the illustrative SHG stage yields 527 nm and order-200 J pulses', () => {
+test('the illustrative SHG stage yields 527 nm without claiming absolute ATLAS power', () => {
   const scene = traced();
   const green = reading(scene, 'wavelength-probe');
   assert.equal(green.wl, 526.5);
   const watts = probeAveragePowerW(reading(scene, 'power-probe'), scene.elements);
-  assert.ok(Math.abs(watts - 2000) < 1e-6, `expected 2 kW, got ${watts}`);
-  assert.ok(Math.abs(watts / 10 - 200) < 1e-6, '2 kW at 10 Hz is 200 J per pulse');
+  assert.ok(Math.abs(watts - 600) < 1e-6, `expected normalized 600 W, got ${watts}`);
 });
 
 test('undisclosed amplifier stages are explicit diagram-only pass-through boxes', () => {

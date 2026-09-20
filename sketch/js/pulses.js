@@ -119,7 +119,7 @@ export function pulseTransmissionAt(pulse, emissionTimeNs) {
 export function pulseGateTransmission(pulse, sampleCount = 4096) {
   const gates = Array.isArray(pulse?.gates) ? pulse.gates.filter(g => Number.isFinite(g?.opl)) : [];
   if (!gates.length) return 1;
-  const repRateMHz = Math.min(1e6, Math.max(0.000001, pulse.repRateMHz || 80));
+  const repRateMHz = Math.min(1e6, Math.max(0.001, pulse.repRateMHz || 80));
   const periodNs = 1000 / repRateMHz;
   const phaseNs = Number.isFinite(pulse.phaseNs) ? pulse.phaseNs : 0;
   const slowestGatePeriodNs = Math.max(...gates.map(g => 1000 / Math.min(1e6, Math.max(0.000001, g.frequencyMHz || 1))));
@@ -162,7 +162,7 @@ export function pulseGateTransmission(pulse, sampleCount = 4096) {
 // chopper. Only its position on the screen moves.
 export function scopeTrace(pulse, { samples = 200, spanNs: forcedSpanNs, startNs = 0, delayNs = 0 } = {}) {
   const repRateMHz = Number.isFinite(pulse?.repRateMHz) && pulse.repRateMHz > 0
-    ? Math.min(1e6, Math.max(0.000001, pulse.repRateMHz)) : null;
+    ? Math.min(1e6, Math.max(0.001, pulse.repRateMHz)) : null;
   if (!repRateMHz) return null;
   const pulsePeriodNs = 1000 / repRateMHz;
   // What the detector sums. Each branch is one distinctly gated share of the
@@ -375,7 +375,7 @@ export function pulseMarkers(track, timeNs, {
   maxMarkers = 80,
 } = {}) {
   if (!finiteTrack(track) || !track.pulse || !Number.isFinite(timeNs)) return [];
-  const repRateMHz = Math.min(1e6, Math.max(0.000001, track.pulse.repRateMHz || 80));
+  const repRateMHz = Math.min(1e6, Math.max(0.001, track.pulse.repRateMHz || 80));
   const periodNs = 1000 / repRateMHz;
   const physical = mode === 'physical';
   const spacing = packetSpacing(periodNs, physical, schematicSpacingMm);
@@ -427,7 +427,7 @@ export function pulseArrivalsAtPath(track, fromTimeNs, toTimeNs, targetOpl, {
       || !Number.isFinite(toTimeNs) || !Number.isFinite(targetOpl)
       || toTimeNs <= fromTimeNs || targetOpl < track.opls[0] - 1e-9
       || targetOpl > track.opls.at(-1) + 1e-9) return [];
-  const repRateMHz = Math.min(1e6, Math.max(0.000001, track.pulse.repRateMHz || 80));
+  const repRateMHz = Math.min(1e6, Math.max(0.001, track.pulse.repRateMHz || 80));
   const periodNs = 1000 / repRateMHz;
   const physical = mode === 'physical';
   const spacing = packetSpacing(periodNs, physical, schematicSpacingMm);
