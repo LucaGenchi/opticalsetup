@@ -12,7 +12,7 @@ import { uid } from './util.js';
 import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
 import { markdownLayout, markdownTextSVG } from './markdown.js';
 import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
+import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opcpaReading, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
 import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
 import {
   probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
@@ -1998,6 +1998,29 @@ function opoStateText(reading) {
   return `Removing ${sig3(reading.efficiency * 100)}% of the pump (authored depletion; no threshold or resonator gain model)`;
 }
 
+function opcpaStateText(reading) {
+  if (!reading) return 'Waiting for a pulsed seed and pump';
+  if (reading.state === 'missingPump') return 'No pump in the configured wavelength window';
+  if (reading.state === 'missingSeed') return 'Pump present; no longer-wavelength seed is connected';
+  if (reading.state === 'unpulsed') return 'OPCPA requires pulsed seed and pump inputs';
+  if (reading.state === 'unsupported') return 'Seed and pump repetition rates differ; asynchronous overlap is not modelled';
+  if (reading.state === 'invalid') return 'No idler: the seed must be longer in wavelength than the pump';
+  if (reading.state === 'noPower') return 'Seed and pump must both carry non-zero average power';
+  const transfer = reading.transfer;
+  if (!transfer) return 'Waiting for a usable seed–pump pair';
+  const delay = reading.timing?.skewNs == null ? 'continuous overlap' : `${formatMixDelay(reading.timing.skewNs)} timing offset`;
+  if (reading.state === 'noOverlap') return `No amplification: ${delay}, ${sig3(transfer.overlap * 100)}% temporal overlap`;
+  return `${sig3(transfer.actualGain)}× signal power · ${sig3(transfer.pumpDepletion * 100)}% pump depletion · `
+    + `${sig3(transfer.overlap * 100)}% overlap (${delay})`;
+}
+
+function opcpaEnergyText(reading) {
+  const t = reading?.transfer;
+  if (!t) return '—';
+  return `Seed ${formatPower(t.seedPowerW)} → ${formatPower(t.signalOutputW)}\n`
+    + `Idler ${formatPower(t.idlerPowerW)} · residual pump ${formatPower(t.residualPumpW)}`;
+}
+
 // Inspector text for a supercontinuum crystal on the last trace.
 function supercontinuumStateText(reading) {
   if (!reading) return 'No pump has reached the crystal yet';
@@ -2122,6 +2145,18 @@ function opoWidthsText(reading) {
   if (waves.merged) return opoWaveText('Degenerate output', waves.merged, pulses.merged);
   return `${opoWaveText('Signal', waves.signal, pulses.signal)}\n${opoWaveText('Idler', waves.idler, pulses.idler)}`;
 }
+
+// ---- Integrated OPCPA element ----
+// A compact stage abstraction with separate seed/pump inputs and signal,
+// idler and residual-pump outputs. It exposes the stage energy budget without
+// pretending to be a proprietary crystal or relay layout.
+const OPCPA_BODY_W = 112;
+const opcpaBodyH = p => 84 + Math.max(2, Math.min(12, Number(p?.aperture) || 8));
+const OPCPA_PORT_Y = { signalIn: 0, pumpIn: 24, signalOut: 0, idlerOut: 24, pumpOut: 42 };
+export function opcpaPortLocal(role) {
+  return { x: role.endsWith('In') ? -OPCPA_BODY_W / 2 - 6 : OPCPA_BODY_W / 2 + 6, y: OPCPA_PORT_Y[role] ?? 0 };
+}
+const opcpaBeamMm = (p, role) => Math.min(30, Math.max(0, Number(p?.[`${role}BeamMm`]) || 0));
 
 // ---- Integrated OPO element ----
 // A laser-style box: the pump enters a rear aperture, the signal leaves the
@@ -4390,9 +4425,9 @@ export const registry = {
     size_: el => ({ w: 36, h: (el.params.aperture || 22) + 4 }),
     params: [
       { key: 'aperture', label: 'Crystal aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 22 },
-      { key: 'convert', label: 'Convert λ', type: 'select', def: 'none', options: [['none', 'None'], ['shg', 'χ⁽²⁾ — SHG, and SFG of two beams'], ['thg', 'THG (λ/3)'], ['sc', 'Supercontinuum (bulk)'], ['opo', 'OPO (signal + idler)'], ['custom', 'Custom output λ']] },
+      { key: 'convert', label: 'Convert λ', type: 'select', def: 'none', options: [['none', 'None'], ['shg', 'χ⁽²⁾ — SHG, and SFG of two beams'], ['thg', 'THG (λ/3)'], ['sc', 'Supercontinuum (bulk)'], ['opo', 'OPO (signal + idler)'], ['opcpa', 'OPCPA (seed + pump)'], ['custom', 'Custom output λ']] },
       { key: 'outWl', label: 'Output λ (nm)', type: 'number', min: 100, max: 12000, step: 1, def: 532, show: p => p.convert === 'custom' },
-      { key: 'pumpWl', label: 'Pump λ (nm)', type: 'number', min: 100, max: 3000, step: 1, def: 532, show: p => p.convert === 'opo' },
+      { key: 'pumpWl', label: 'Pump λ (nm)', type: 'number', min: 100, max: 3000, step: 1, def: 532, show: p => p.convert === 'opo' || p.convert === 'opcpa' },
       { key: 'signalWl', label: 'Signal λ (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 800, show: p => p.convert === 'opo' },
       {
         key: 'idlerWl', label: 'Idler λ', type: 'readout', show: p => p.convert === 'opo',
@@ -4403,7 +4438,7 @@ export const registry = {
       },
       {
         key: 'pumpAcceptanceNm', label: 'Pump acceptance (± nm)', type: 'number', min: 0, max: 100, step: 0.5, def: 1,
-        show: p => p.convert === 'opo',
+        show: p => p.convert === 'opo' || p.convert === 'opcpa',
       },
       // Linewidths are FWHM in wavenumber. Matching the pump is a heuristic
       // for a synchronously pumped fs/ps OPO; a ns or CW OPO's signal width is
@@ -4481,7 +4516,7 @@ export const registry = {
       // A cap this application imposes rather than a physical limit: published
       // single-pass conversion goes higher. It keeps authored fractions
       // conservative for now. The OPO has its own control below.
-      { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: MAX_CONVERSION, step: 0.05, def: 0.5, show: p => p.convert !== 'none' && p.convert !== 'opo' },
+      { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: MAX_CONVERSION, step: 0.05, def: 0.5, show: p => p.convert !== 'none' && p.convert !== 'opo' && p.convert !== 'opcpa' },
       // An OPO's figure is how much of the pump it removes, a result of the
       // signal building up over many round trips rather than a single-pass
       // efficiency, so it is its own quantity with its own ceiling. Scenes
@@ -4493,6 +4528,9 @@ export const registry = {
           ? Math.min(MAX_OPO_DEPLETION, Math.max(0, raw.efficiency))
           : MAX_OPO_DEPLETION,
       },
+      { key: 'smallSignalGain', label: 'Small-signal power gain', type: 'number', min: 1, max: 100000, step: 1, def: 20, show: p => p.convert === 'opcpa' },
+      { key: 'maxPumpDepletion', label: 'Maximum pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: 0.6, show: p => p.convert === 'opcpa' },
+      { key: 'outputIdler', label: 'Output idler', type: 'checkbox', def: true, show: p => p.convert === 'opcpa' },
       { key: 'transmitPump', label: 'Transmit residual pump', type: 'checkbox', def: true, show: p => p.convert !== 'none' },
       {
         key: 'mixState', label: 'Two-beam mixing', type: 'readout', wide: true, show: p => p.convert === 'shg',
@@ -4506,11 +4544,20 @@ export const registry = {
         key: 'opoWidths', label: 'Outputs', type: 'readout', wide: true, show: p => p.convert === 'opo',
         readout: (p, el) => opoWidthsText(el ? opoReading(el.id) : null),
       },
+      {
+        key: 'opcpaState', label: 'Amplification', type: 'readout', wide: true, show: p => p.convert === 'opcpa',
+        readout: (p, el) => opcpaStateText(el ? opcpaReading(el.id) : null),
+      },
+      {
+        key: 'opcpaEnergy', label: 'Stage powers', type: 'readout', wide: true, show: p => p.convert === 'opcpa',
+        readout: (p, el) => opcpaEnergyText(el ? opcpaReading(el.id) : null),
+      },
     ],
     svg(el) {
       const isOpo = el.params.convert === 'opo';
+      const isOpcpa = el.params.convert === 'opcpa';
       const h = (el.params.aperture || 22) / 2;
-      return `<path d="M -12,${-h} L 16,${-h} L 12,${h} L -16,${h} Z" fill="${isOpo ? '#d8e8f5' : '#e4d5f2'}" stroke="${isOpo ? '#4a7fa8' : '#8a5fb0'}" stroke-width="1.5"/>`;
+      return `<path d="M -12,${-h} L 16,${-h} L 12,${h} L -16,${h} Z" fill="${isOpcpa ? '#f9e0ef' : isOpo ? '#d8e8f5' : '#e4d5f2'}" stroke="${isOpcpa ? '#a33b78' : isOpo ? '#4a7fa8' : '#8a5fb0'}" stroke-width="1.5"/>`;
     },
     surfaces(el) {
       const p = el.params;
@@ -4521,6 +4568,7 @@ export const registry = {
         mixEfficiency: p.mixEfficiency, mixDfg: p.mixDfg,
         linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
         outputPhase: p.outputPhase, durationFactor: p.durationFactor,
+        smallSignalGain: p.smallSignalGain, maxPumpDepletion: p.maxPumpDepletion, outputIdler: p.outputIdler,
         scMedium: p.scMedium, scRange: p.scRange, scMinNm: p.scMinNm, scMaxNm: p.scMaxNm,
         efficiency: p.efficiency, opoDepletion: p.opoDepletion, transmitPump: p.transmitPump,
       } }];
@@ -4621,6 +4669,72 @@ export const registry = {
             tuning: opoSignalAt(p, el._animationTimeS || 0),
           },
         },
+      ];
+    },
+  },
+
+  opcpa: {
+    label: 'OPCPA', category: 'Nonlinear Optics', size: { w: 126, h: 100 },
+    liveReadouts: true,
+    aliases: ['optical parametric chirped pulse amplifier', 'opa', 'seeded parametric amplifier', 'parametric amplifier'],
+    size_: el => ({ w: 126, h: opcpaBodyH(el.params) + 8 }),
+    params: [
+      { key: 'aperture', label: 'Input apertures (mm)', type: 'number', min: 2, max: 12, step: 0.5, def: 8 },
+      { key: 'pumpWl', label: 'Pump λ (nm)', type: 'number', min: 100, max: 3000, step: 0.5, def: 527 },
+      { key: 'pumpAcceptanceNm', label: 'Pump acceptance (± nm)', type: 'number', min: 0, max: 100, step: 0.5, def: 2 },
+      { key: 'smallSignalGain', label: 'Small-signal power gain', type: 'number', min: 1, max: 100000, step: 1, def: 20 },
+      { key: 'maxPumpDepletion', label: 'Maximum pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: 0.6 },
+      { key: 'outputIdler', label: 'Output idler', type: 'checkbox', def: true },
+      { key: 'transmitPump', label: 'Output residual pump', type: 'checkbox', def: true },
+      { key: 'signalBeamMm', label: 'Signal beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 4 },
+      { key: 'idlerBeamMm', label: 'Idler beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 4, show: p => p.outputIdler !== false },
+      { key: 'pumpBeamMm', label: 'Residual pump diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 4, show: p => p.transmitPump !== false },
+      {
+        key: 'opcpaState', label: 'Amplification', type: 'readout', wide: true,
+        readout: (p, el) => opcpaStateText(el ? opcpaReading(el.id) : null),
+      },
+      {
+        key: 'opcpaEnergy', label: 'Stage powers', type: 'readout', wide: true,
+        readout: (p, el) => opcpaEnergyText(el ? opcpaReading(el.id) : null),
+      },
+    ],
+    svg(el) {
+      const p = el.params, x = OPCPA_BODY_W / 2, h = opcpaBodyH(p) / 2;
+      const ap = Math.max(2, Math.min(12, Number(p.aperture) || 8)) / 2;
+      const flip = isFlipped(el) ? 'transform="rotate(180)"' : '';
+      const port = (side, y, label) => {
+        const px = side === 'in' ? -x - 5 : x;
+        const tx = side === 'in' ? -x + 7 : x - 7;
+        const anchor = side === 'in' ? 'start' : 'end';
+        return `<rect x="${px}" y="${y - ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`
+          + `<text x="${tx}" y="${y}" text-anchor="${anchor}" dominant-baseline="central" font-size="6" fill="#d8e4ed">${label}</text>`;
+      };
+      return `<rect x="${-x}" y="${-h}" width="${OPCPA_BODY_W}" height="${2 * h}" rx="5" fill="#3b2940" stroke="#241827" stroke-width="1.5"/>`
+        + `<text x="0" y="-15" ${flip} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.2" fill="#fff">OPCPA</text>`
+        + `<g stroke="#f1a5d0" fill="none" stroke-width="1.4"><path d="M -23,0 C -8,-12 5,-12 23,0"/><path d="M -23,24 C -8,12 5,12 23,0"/><path d="M 0,10 L 23,24"/></g>`
+        + port('in', OPCPA_PORT_Y.signalIn, 'S') + port('in', OPCPA_PORT_Y.pumpIn, 'P')
+        + port('out', OPCPA_PORT_Y.signalOut, 'S')
+        + (p.outputIdler !== false ? port('out', OPCPA_PORT_Y.idlerOut, 'I') : '')
+        + (p.transmitPump !== false ? port('out', OPCPA_PORT_Y.pumpOut, 'P') : '');
+    },
+    surfaces(el) {
+      const p = el.params, x = OPCPA_BODY_W / 2, h = opcpaBodyH(p) / 2;
+      const ap = Math.max(2, Math.min(12, Number(p.aperture) || 8)) / 2;
+      const common = {
+        pumpWl: p.pumpWl, pumpAcceptanceNm: p.pumpAcceptanceNm,
+        smallSignalGain: p.smallSignalGain, maxPumpDepletion: p.maxPumpDepletion,
+        outputIdler: p.outputIdler !== false, transmitPump: p.transmitPump !== false,
+        signalBeamMm: opcpaBeamMm(p, 'signal'), idlerBeamMm: opcpaBeamMm(p, 'idler'), pumpBeamMm: opcpaBeamMm(p, 'pump'),
+      };
+      return [
+        { x1: -x, y1: -h, x2: x, y2: -h, kind: 'absorb' },
+        { x1: x, y1: -h, x2: x, y2: h, kind: 'absorb' },
+        { x1: x, y1: h, x2: -x, y2: h, kind: 'absorb' },
+        { x1: -x, y1: -h, x2: -x, y2: -ap, kind: 'absorb' },
+        { x1: -x, y1: ap, x2: -x, y2: OPCPA_PORT_Y.pumpIn - ap, kind: 'absorb' },
+        { x1: -x, y1: OPCPA_PORT_Y.pumpIn + ap, x2: -x, y2: h, kind: 'absorb' },
+        { x1: -x, y1: ap, x2: -x, y2: -ap, kind: 'opcpain', data: { ...common, inputRole: 'signal' } },
+        { x1: -x, y1: OPCPA_PORT_Y.pumpIn + ap, x2: -x, y2: OPCPA_PORT_Y.pumpIn - ap, kind: 'opcpain', data: { ...common, inputRole: 'pump' } },
       ];
     },
   },
@@ -5268,6 +5382,7 @@ const DIRECT = {
   chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
   crystal: { resize: { y: 'aperture' }, tune: { key: p => p.convert === 'opo' ? 'opoDepletion' : 'efficiency', short: 'η', when: p => p.convert !== 'none' } },
   opo: { resize: { y: 'aperture' }, tune: { key: 'signalWl', short: 'λs', when: p => (p.tuneMode || 'fixed') === 'fixed' } },
+  opcpa: { resize: { y: 'aperture' }, tune: { key: 'smallSignalGain', short: 'G' } },
   glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
   sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
   stage: { resize: { x: 'aperture' } },
@@ -5308,6 +5423,7 @@ export function getDirectManipulation(el) {
 // mode, and diagram-only elements are honest visual annotations/placeholders.
 const ELEMENT_HELP = {
   opo: 'An optical parametric oscillator in a box: pump light entering the rear aperture within its angular and wavelength acceptance becomes a signal on the front axis and an optional idler on a parallel port, by the same phenomenological model as the crystal\'s OPO mode. The signal can be fixed, swept or stepped through a list. The unconverted pump is discarded inside; threshold, gain, cavity length and synchronisation are not simulated.',
+  opcpa: 'A seeded optical parametric chirped-pulse amplifier stage with separate seed and pump inputs. It applies an authored small-signal power gain, caps the transfer by temporal overlap and maximum pump depletion, conserves the stage energy budget with Manley–Rowe signal/idler shares, preserves the seed chirp, and reports residual pump. Crystal length, d_eff, fluence, spatial overlap, phase matching, damage and walk-off are not simulated.',
   cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
   pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
   sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
@@ -5363,7 +5479,7 @@ const ELEMENT_HELP = {
   pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
   eom: 'Applies voltage-controlled polarization retardance — either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
   chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
-  crystal: 'Converts a configurable fraction of pump power — single-pass fractions are capped at 60 %, a conservative application limit rather than a physical one — into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, or custom output. The supercontinuum band is estimated from the pump wavelength and the chosen medium, or set by hand. The χ⁽²⁾ mode doubles every beam and, when a second wavelength is present, also mixes the pair, drawing on what doubling leaves of both beams so the mixed line sits alongside the two harmonics — but only while their pulses reach the crystal together, which is how time zero is found. OPO mode removes an authored pump depletion, up to 95 % since it builds over many round trips, splits it by Manley–Rowe and gives signal and idler their own linewidths and pulse durations. Phase matching, threshold and cavity dynamics are not simulated.',
+  crystal: 'Converts light into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, seeded OPCPA, or a custom output. The OPCPA mode uses the arriving seed and pump, temporal overlap, an authored small-signal gain and a pump-depletion ceiling; it preserves the seed chirp and produces an energy-balanced idler and residual pump. The supercontinuum band is estimated from the pump wavelength and medium, or set by hand. OPO mode uses authored multi-pass depletion and Manley–Rowe signal/idler sharing. Detailed phase matching, crystal propagation, damage and cavity dynamics are not simulated.',
   sample: 'Attenuates excitation and can emit up to five stacked signals at once — fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
   stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
   probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',

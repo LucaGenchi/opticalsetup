@@ -6,11 +6,11 @@
       "id": "frame",
       "type": "figureframe",
       "x": 800,
-      "y": 350,
+      "y": 390,
       "rot": 0,
       "label": "",
       "showLabel": false,
-      "params": { "w": 1560, "h": 660, "background": "white" }
+      "params": { "w": 1560, "h": 740, "background": "white" }
     },
     {
       "id": "title",
@@ -35,7 +35,7 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "## Published architecture (diagram only)",
+        "text": "## Published architecture overview",
         "fontSize": 12,
         "fill": "#315a79"
       }
@@ -58,7 +58,7 @@
       "rot": 0,
       "label": "",
       "showLabel": false,
-      "params": { "text": "OPCPA\nfront end", "w": 140, "h": 56, "behavior": "pass", "fill": "#efeaff" }
+      "params": { "text": "OPCPA\nfront end · live stage below", "w": 160, "h": 60, "behavior": "pass", "fill": "#efeaff" }
     },
     {
       "id": "arch-amplifier",
@@ -114,29 +114,31 @@
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "## Live qualitative trace of the final pulse chain",
+        "text": "## Live seeded OPCPA → compressor → SHG trace",
         "fontSize": 12,
         "fill": "#315a79"
       }
     },
     {
-      "id": "atlas-fundamental",
+      "id": "atlas-seed",
       "type": "pulsedlaser",
-      "x": 105,
-      "y": 430,
+      "x": 100,
+      "y": 420,
       "rot": 0,
-      "label": "normalized qualitative trace · 1053 nm · 100 fs · 1 kHz",
+      "label": "chirped seed · 1053 nm · 10 W normalized",
       "showLabel": true,
       "labelPos": "t",
       "params": {
         "wavelength": 1053,
-        "avgPowerW": 1000,
-        "beamMode": "beam",
-        "beamWidth": 18,
+        "avgPowerW": 10,
+        "beamMode": "line",
+        "beamWidth": 4,
         "repRateMHz": 0.001,
         "pulsePhaseNs": 0,
-        "transformLimited": true,
-        "pulseWidthFs": 100,
+        "transformLimited": false,
+        "bandwidth": 16.3,
+        "inputChirp": "positive",
+        "chirpGddFs2": 30000,
         "pulseShape": "gauss",
         "pol": 0,
         "autoColor": true,
@@ -145,26 +147,105 @@
       }
     },
     {
+      "id": "atlas-pump",
+      "type": "pulsedlaser",
+      "x": 250,
+      "y": 594,
+      "rot": -90,
+      "label": "synchronised pump · 526.5 nm · 800 W normalized",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": {
+        "wavelength": 526.5,
+        "avgPowerW": 800,
+        "beamMode": "line",
+        "beamWidth": 4,
+        "repRateMHz": 0.001,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 500,
+        "pulseShape": "gauss",
+        "pol": 0,
+        "autoColor": true,
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "pump-fold",
+      "type": "mirror",
+      "x": 250,
+      "y": 444,
+      "rot": 45,
+      "label": "pump timing path",
+      "showLabel": true,
+      "labelPos": "l",
+      "params": { "length": 25.4, "refl": 100, "showTransmitted": false }
+    },
+    {
+      "id": "opcpa-stage",
+      "type": "opcpa",
+      "x": 385,
+      "y": 420,
+      "rot": 0,
+      "label": "seeded OPCPA · overlap + depletion limited",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "aperture": 8,
+        "pumpWl": 526.5,
+        "pumpAcceptanceNm": 2,
+        "smallSignalGain": 100,
+        "maxPumpDepletion": 0.6,
+        "outputIdler": true,
+        "transmitPump": true,
+        "signalBeamMm": 4,
+        "idlerBeamMm": 4,
+        "pumpBeamMm": 4
+      }
+    },
+    {
+      "id": "compressor",
+      "type": "pulsecompressor",
+      "x": 545,
+      "y": 420,
+      "rot": 0,
+      "label": "compressor · −30,000 fs²",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": { "gddFs2": -30000, "aperture": 18, "transEff": 95 }
+    },
+    {
       "id": "duration-probe",
       "type": "probe",
-      "x": 335,
-      "y": 430,
+      "x": 620,
+      "y": 420,
       "rot": 0,
       "label": "",
       "showLabel": false,
-      "params": { "displayScale": 1.15, "prop": "duration" }
+      "params": { "displayScale": 1.05, "prop": "duration" }
+    },
+    {
+      "id": "power-amplifier-proxy",
+      "type": "box",
+      "x": 745,
+      "y": 420,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "text": "Nd:glass power amplifier\npublic block · no gain model", "w": 170, "h": 58, "behavior": "pass", "fill": "#eaf7ef" }
     },
     {
       "id": "shg",
       "type": "crystal",
-      "x": 555,
-      "y": 430,
+      "x": 865,
+      "y": 420,
       "rot": 0,
       "label": "SHG · illustrative 60% conversion",
       "showLabel": true,
       "labelPos": "b",
       "params": {
-        "aperture": 34,
+        "aperture": 24,
         "convert": "shg",
         "mixEfficiency": 0.3,
         "mixDfg": false,
@@ -175,28 +256,28 @@
     {
       "id": "wavelength-probe",
       "type": "probe",
-      "x": 640,
-      "y": 430,
+      "x": 935,
+      "y": 420,
       "rot": 0,
       "label": "",
       "showLabel": false,
-      "params": { "displayScale": 1.15, "prop": "wl" }
+      "params": { "displayScale": 1.05, "prop": "wl" }
     },
     {
       "id": "power-probe",
       "type": "probe",
-      "x": 735,
-      "y": 430,
+      "x": 1005,
+      "y": 420,
       "rot": 0,
       "label": "",
       "showLabel": false,
-      "params": { "displayScale": 1.15, "prop": "power" }
+      "params": { "displayScale": 1.05, "prop": "power" }
     },
     {
       "id": "beam-expander",
       "type": "telescope",
-      "x": 905,
-      "y": 430,
+      "x": 1120,
+      "y": 420,
       "rot": 0,
       "label": "beam expansion / transport proxy",
       "showLabel": true,
@@ -206,8 +287,8 @@
     {
       "id": "focus",
       "type": "lens",
-      "x": 1195,
-      "y": 430,
+      "x": 1300,
+      "y": 420,
       "rot": 0,
       "label": "ideal focusing optic · f = 150 mm",
       "showLabel": true,
@@ -217,8 +298,8 @@
     {
       "id": "target",
       "type": "sample",
-      "x": 1345,
-      "y": 430,
+      "x": 1450,
+      "y": 420,
       "rot": 90,
       "label": "nanostructured target plane",
       "showLabel": true,
@@ -241,13 +322,13 @@
     {
       "id": "energy-note",
       "type": "textlabel",
-      "x": 45,
-      "y": 550,
+      "x": 390,
+      "y": 610,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**ATLAS target (annotation, not live power model):** order-200 J · 100 fs · 10 Hz at 527 nm.\nThe live trace is normalized to the app's 1 kHz / 1 kW bounds; 60% SHG is illustrative, not a disclosed stage efficiency.",
+        "text": "**ATLAS target (annotation, not a disclosed stage prescription):** order-200 J · 100 fs · 10 Hz at about 527 nm.\nThe live model is normalized to the app's 1 kHz / 1 kW bounds; change the OPCPA gain, depletion or pump timing and watch the stage readout.",
         "fontSize": 11,
         "fill": "#5d4534"
       }
@@ -255,13 +336,13 @@
     {
       "id": "limits-note",
       "type": "textlabel",
-      "x": 790,
-      "y": 550,
+      "x": 910,
+      "y": 690,
       "rot": 0,
       "label": "",
       "showLabel": false,
       "params": {
-        "text": "**Model boundary:** the live trace begins after compression; OPCPA, Nd:glass, and compressor stages above are diagram-only.\nThis 2D geometric tracer does not model gain, damage, thermal loading, contrast, diffraction, plasma, or fusion.",
+        "text": "**Model boundary:** OPCPA is a seeded, single-pass energy budget with temporal overlap and Manley–Rowe sharing.\nNd:glass gain, crystal propagation, phase matching, walk-off, damage, contrast, thermal loading, diffraction, plasma and fusion are not simulated.",
         "fontSize": 11,
         "fill": "#5d4534"
       }
