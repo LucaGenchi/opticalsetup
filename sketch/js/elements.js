@@ -1,5652 +1,851 @@
-import { conicMirrorGeometry, conicMirrorSize, conicMirrorSVG, conicMirrorSurfaces } from './conic-mirror.js';
-// Registry of optical elements.
-// Local coordinates: element centered at (0,0); default optical propagation is along +x.
-// def = { label, category, size:{w,h}|fn(el), params:[...], svg(el)->string,
-//         surfaces(el)->[{x1,y1,x2,y2,kind,data}], source(el)->[rays],
-//         immersionSource(el)->{x,y}, immersionContact(el)->segment|segments }
-// Surface kinds handled by the tracer include mirror, lens, metalens, cmirror,
-// refract, dichroic, filter, split, grating, AOM/AOD, absorb, and transmit.
-
-import { distToSegment, esc, formatSignal, rotPt, smoothPath, toWorld, wavelengthToColor } from './util.js';
-import { uid } from './util.js';
-import { polygonScannerState, polygonScannerVertices, polygonScannerSurfaces, polygonScannerFacetWidth } from './polygon-scanner.js';
-import { markdownLayout, markdownTextSVG } from './markdown.js';
-import { LAMP_PRESETS, lampColor, lampLineSummary } from './lamps.js';
-import { compressorGddReading, detectorReading, metalensReading, mixReading, objectivePupilFill, opoReading, phasePlateIllumination, probeAt, specimenSrsNote, specimenTimingReading, supercontinuumReading } from './raytrace.js';
-import { idlerWavelength, MAX_CONVERSION, MAX_OPO_DEPLETION, opoSignalAt, parseWavelengthList, SC_MEDIA } from './parametric.js';
-import {
-  probeAveragePowerW, formatPowerMw, probeDurationLabel, probeTimeWindowNs, probeSpectrumRange,
-  formatTimeAxisNs,
-} from './probe.js';
-import {
-  linewidthForCoherenceLengthNm, spectrumSamples, supercontinuumTransformLimitFs, transformLimitedBandwidthNm,
-} from './spectrum.js';
-import {
-  boundaryBounds, boundaryPathData, boundarySegments, isSimpleBoundary,
-  pointInBoundary, sampleBoundary,
-} from './polygon.js';
-import { polarizationDescription, stokesAngleDeg } from './polarization.js';
-import {
-  authoredPulseTiming, glassIndex, isDispersiveGlass, GLASS_OPTIONS, MAX_BANDWIDTH_NM, MAX_SOURCE_GDD_FS2, MIN_BANDWIDTH_NM,
-} from './glass.js';
-import {
-  MIN_CEMENT_GAP, MAX_SURFACE_ROWS, PRESET_OPTIONS, normalizeSurfaceTable, surfaceRowsOf, surfaceTableAxialColour,
-  surfaceTableCardinals, surfaceTableSummary, surfaceTableToBodies,
-} from './lensgroup.js';
-
-export { MIN_CEMENT_GAP, MAX_SURFACE_ROWS };
-import {
-  OBJECTIVE_DEFAULT_PRESET, OBJECTIVE_FRONT_X, OBJECTIVE_MEDIA, OBJECTIVE_NA_DEFAULT,
-  OBJECTIVE_PRESETS, OBJECTIVE_PRESET_GROUPS, OBJECTIVE_SHOULDER_X, OBJECTIVE_WD_MIN,
-  OBJECTIVE_WD_MAX,
-  applyObjectivePreset,
-  objectiveAcceptanceHalfAngleDeg, objectiveBackX, objectiveBarrelHalfHeight,
-  objectiveBarrelHalfHeightAt, objectiveStopX,
-  objectiveEffectiveFocalLength, objectiveFrontAperture, objectiveLensPlaneX, objectiveMagnification,
-  objectiveMaximumNA, objectiveMaximumWorkingDistance, objectiveMediumIndex, objectiveMediumKey,
-  objectiveNumericalAperture, objectivePresetKey, objectivePupilDiameter, objectivePupilRadius,
-  objectiveWorkingDistance,
-} from './objective.js';
-import { pulseOverlap, scopeTrace } from './pulses.js';
-import {
-  normalizeAotfChannels, aotfOpenChannels, aotfSummary, legacyAotfPassband,
-  normalizeAotfPassband, AOTF_BAND_MIN, AOTF_BAND_MAX, AOTF_BAND_DEFAULT,
-} from './aotf.js';
-import { aodScanPosition, aodAccessTimeUs, aodMaxScanRateKHz } from './acousto-optic.js';
-import { phaseModulatorOpdMm, phaseModulatorPeakOpdMm } from './electro-optic.js';
-import {
-  ASPHERE_LIMITS, asphereSag, asphereSlope, asphericLensAdjustment, asphericLensCardinals,
-  asphericLensGeometry, asphericSurfaceSummary,
-} from './asphere.js';
-
-export {
-  ASPHERE_LIMITS, asphereSag, asphereSlope, asphericLensAdjustment, asphericLensCardinals,
-  asphericLensGeometry, asphericSurfaceSummary,
-};
-
-// true when the element's rotation would render baked-in text upside down
-function isFlipped(el) {
-  const r = ((el.rot || 0) % 360 + 360) % 360;
-  return r > 90 && r < 270;
-}
-// rotation for side-mounted (vertical) text that keeps it readable
-function sideTextRot(el) {
-  const r = (((el.rot || 0) + 90) % 360 + 360) % 360;
-  return (r > 90 && r < 270) ? -90 : 90;
-}
-
-const GLASS = '#c9e4f5', GLASS_S = '#4a90c4';
-const FREEGLASS_DEFAULT = [
-  { x: -36, y: -24 }, { x: 30, y: -24 }, { x: 38, y: 20 }, { x: -26, y: 26 },
-];
-
-// ---- thick spherical lens -----------------------------------------------
-// A surface of signed radius R with its vertex at xv has its centre of
-// curvature at xv + R, so R > 0 bulges toward âˆ’x (front-convex) and R < 0
-// toward +x. R = 0 is the flat case, drawn and traced as a plain line.
-const surfaceSag = (y, xv, R) => (xv + R) - Math.sign(R) * Math.sqrt(Math.max(0, R * R - y * y));
-
-// Radii below the semi-diameter would need a sphere smaller than the lens
-// itself; clamping keeps the boundary constructible rather than producing NaN
-// geometry at parameter extremes (enforced by test/geometry.test.js).
-function thickLensRadii(params) {
-  const h = Math.max(0.5, (params.dia ?? 25.4) / 2);
-  const clampR = R => {
-    const r = Number(R) || 0;
-    if (Math.abs(r) < 1e-6) return 0;                       // flat
-    return Math.sign(r) * Math.max(Math.abs(r), h * 1.02);
-  };
-  return { h, R1: clampR(params.r1), R2: clampR(params.r2) };
-}
-
-// Glass bodies expose per-surface transmission as a percentage, like every
-// other optic's Transmission efficiency; the tracer works in fractions.
-export function surfaceTransmission(params = {}) {
-  const pct = Number.isFinite(Number(params.transEff)) ? Number(params.transEff) : 98;
-  return Math.min(1, Math.max(0, pct / 100));
-}
-
-// Closed boundary for the glass body, plus the centre thickness actually used:
-// a strongly biconvex lens with too little centre thickness would have its two
-// faces cross at the rim, so the thickness is raised until a real edge remains.
-export function thickLensGeometry(params = {}) {
-  const { h, R1, R2 } = thickLensRadii(params);
-  const MIN_EDGE = 0.4;
-  const sag1 = R1 ? surfaceSag(h, 0, R1) : 0;               // sag measured from the vertex
-  const sag2 = R2 ? surfaceSag(h, 0, R2) : 0;
-  const d = Math.max(Number(params.thickness) || 0.5, MIN_EDGE + sag1 - sag2);
-  const xv1 = -d / 2, xv2 = d / 2;
-  const xEdge1 = R1 ? surfaceSag(h, xv1, R1) : xv1;
-  const xEdge2 = R2 ? surfaceSag(h, xv2, R2) : xv2;
-
-  const points = [{ x: xEdge1, y: h }];
-  if (R1) points.push({ x: xv1, y: 0, arc: true });
-  points.push({ x: xEdge1, y: -h }, { x: xEdge2, y: -h });
-  if (R2) points.push({ x: xv2, y: 0, arc: true });
-  points.push({ x: xEdge2, y: h });
-
-  const xs = points.map(p => p.x);
-  return { points, h, R1, R2, d, xv1, xv2, span: Math.max(...xs) - Math.min(...xs) };
-}
-
-// Some requested combinations cannot describe a closed spherical singlet: a
-// radius smaller than the semi-aperture has no real circular edge, while too
-// little centre thickness makes the two faces cross. The geometry stays safe
-// by realizing the nearest constructible shape; expose that adjustment so the
-// inspector never lets the requested numbers silently disagree with the trace.
-export function thickLensAdjustment(params = {}) {
-  const g = thickLensGeometry(params);
-  const requested = {
-    r1: Number(params.r1) || 0,
-    r2: Number(params.r2) || 0,
-    thickness: Number(params.thickness) || 0.5,
-  };
-  const differs = Math.abs(g.R1 - requested.r1) > 1e-9
-    || Math.abs(g.R2 - requested.r2) > 1e-9
-    || Math.abs(g.d - requested.thickness) > 1e-9;
-  return differs ? { r1: g.R1, r2: g.R2, thickness: g.d } : null;
-}
-
-// Paraxial summary of what the surfaces add up to: effective focal length by
-// the lensmaker's equation with the thickness term, and the back focal
-// distance measured from the rear vertex. Reported to the user rather than
-// configured â€” the trace never consults these.
-export function thickLensCardinals(params = {}, wavelength = 587.6) {
-  const { R1, R2, d } = thickLensGeometry(params);
-  const n = glassIndex(params.glass, wavelength) ?? 1.5;
-  const c1 = R1 ? 1 / R1 : 0, c2 = R2 ? 1 / R2 : 0;
-  const power = (n - 1) * (c1 - c2 + (n - 1) * d * c1 * c2 / n);
-  if (Math.abs(power) < 1e-9) return { f: Infinity, bfd: Infinity, n };
-  const f = 1 / power;
-  return { f, bfd: f * (1 - (n - 1) * d * c1 / n), n };
-}
-
-const formatFocal = v => (Number.isFinite(v) ? `${Number(v.toPrecision(4))}` : 'âˆž (afocal)');
-const formatGeometryValue = v => Number(v.toPrecision(4)).toString().replace('-', 'âˆ’');
-const formatRealizedGeometry = params => {
-  const g = thickLensGeometry(params);
-  return `Râ‚ ${formatGeometryValue(g.R1)} Â· Râ‚‚ ${formatGeometryValue(g.R2)} Â· t ${formatGeometryValue(g.d)} mm`;
-};
-
-const formatAsphericGeometry = params => {
-  const geometry = asphericLensGeometry(params);
-  const adjustment = asphericLensAdjustment(params);
-  const values = [
-    `Râ‚ ${formatGeometryValue(geometry.front.R)}`,
-    `Râ‚‚ ${formatGeometryValue(geometry.rear.R)}`,
-    `t ${formatGeometryValue(geometry.d)} mm`,
-  ];
-  if (adjustment?.frontScale < 1) values.push(`front A terms Ã—${Number(adjustment.frontScale.toPrecision(3))}`);
-  if (adjustment?.rearScale < 1) values.push(`rear A terms Ã—${Number(adjustment.rearScale.toPrecision(3))}`);
-  return values.join(' Â· ');
-};
-
-// Names the shape the two radii actually describe. Worth showing, because the
-// standard Cartesian convention the lensmaker's equation needs is famously
-// counter-intuitive on the REAR surface: R is positive when the centre of
-// curvature lies further along the ray, so a biconvex lens is R1 > 0 with
-// R2 < 0 â€” the rear surface bulges outward at NEGATIVE radius. Reporting the
-// resulting shape means nobody has to hold that in their head.
-export function thickLensShapeName(params = {}) {
-  const { R1, R2 } = thickLensGeometry(params);
-  const face = (R, rear) => (R === 0 ? 'plano' : (rear ? R < 0 : R > 0) ? 'convex' : 'concave');
-  const front = face(R1, false), back = face(R2, true);
-  if (front === 'plano' && back === 'plano') return 'Plane slab';
-  if (front === 'plano' || back === 'plano') {
-    const curved = front === 'plano' ? back : front;
-    return front === 'plano' ? `Plano-${curved}` : `${curved[0].toUpperCase()}${curved.slice(1)}-plano`;
-  }
-  // Both faces bulging the same way is a bi- lens; one of each is a meniscus.
-  if (front !== back) {
-    const power = thickLensCardinals(params).f;
-    return `Meniscus (${power > 0 ? 'positive' : 'negative'})`;
-  }
-  return front === 'convex' ? 'Biconvex' : 'Biconcave';
-}
-
-// Two glass bodies in true optical contact do not trace correctly: the tracer
-// ignores any intersection closer than 0.05 units along a ray, so a pair of
-// coincident interfaces loses one of them and the ray wrongly exits into air.
-// A hand-built cemented doublet therefore comes out silently wrong rather than
-// visibly broken, which is the worst way for a model to fail â€” so say so.
-// The gap itself is defined in lensgroup.js, the module that has to insert it.
-export const GLASS_BODY_TYPES = new Set(['thicklens', 'asphericlens', 'freeglass']);
-
-function glassBodyWorldPoints(el) {
-  const local = el?.type === 'thicklens' ? thickLensGeometry(el.params).points
-    : el?.type === 'asphericlens' ? asphericLensGeometry(el.params).points
-    : el?.type === 'freeglass' ? freeglassPoints(el)
-      : null;
-  if (!local) return null;
-  return sampleBoundary(local, { maxAngle: Math.PI / 24 }).map(pt => toWorld(el, pt.x, pt.y));
-}
-
-const pointsBounds = pts => ({
-  x0: Math.min(...pts.map(p => p.x)), x1: Math.max(...pts.map(p => p.x)),
-  y0: Math.min(...pts.map(p => p.y)), y1: Math.max(...pts.map(p => p.y)),
-});
-
-// Closest approach between two sampled boundaries. Bounding boxes alone would
-// cry wolf on a cemented pair whose rims interlock while their surfaces are
-// millimetres apart, so measure the boundaries themselves â€” but use the boxes
-// first to skip anything obviously far away.
-function boundaryGap(a, b) {
-  const ba = pointsBounds(a), bb = pointsBounds(b);
-  const coarse = Math.max(Math.max(ba.x0 - bb.x1, bb.x0 - ba.x1), Math.max(ba.y0 - bb.y1, bb.y0 - ba.y1));
-  if (coarse >= MIN_CEMENT_GAP) return coarse;   // cheap reject
-  let best = Infinity;
-  const scan = (pts, poly) => {
-    for (const pt of pts) {
-      for (let i = 0; i < poly.length; i++) {
-        best = Math.min(best, distToSegment(pt, poly[i], poly[(i + 1) % poly.length]));
-        if (best === 0) return;
-      }
-    }
-  };
-  scan(a, b);
-  if (best > 0) scan(b, a);
-  return best;
-}
-
-// The nearest other glass body sitting closer than the tracer can resolve.
-// Nested or fully overlapping bodies are a different (also unsupported) case
-// and are left to the existing "not surface-merged" note: their boundaries are
-// nowhere near each other, so nothing here fires.
-const CEMENT_WARN_BELOW = MIN_CEMENT_GAP * 0.99;   // so the recommended gap itself is clean
-export function touchingGlassBody(el, elements = []) {
-  const mine = glassBodyWorldPoints(el);
-  if (!mine || !mine.length) return null;
-  for (const other of elements) {
-    if (!other || other === el || other.id === el.id || !GLASS_BODY_TYPES.has(other.type)) continue;
-    const pts = glassBodyWorldPoints(other);
-    if (!pts || !pts.length) continue;
-    const gap = boundaryGap(mine, pts);
-    if (gap < CEMENT_WARN_BELOW) return { id: other.id, type: other.type, gap: Math.max(0, gap) };
-  }
-  return null;
-}
-
-function freeglassPoints(el) {
-  const scale = Math.min(10, Math.max(0.1, el.params.scale || 1));
-  const points = Array.isArray(el.params.vertices) && el.params.vertices.length >= 3
-    ? el.params.vertices : FREEGLASS_DEFAULT;
-  return points.map(p => ({
-    x: p.x * scale, y: p.y * scale, ...(p.arc === true ? { arc: true } : {}),
-  }));
-}
-
-function freeglassEditCandidate(el, index, localPoint) {
-  if (!Number.isInteger(index) || !Number.isFinite(localPoint?.x) || !Number.isFinite(localPoint?.y)) return null;
-  const scale = Math.min(10, Math.max(0.1, el.params.scale || 1));
-  const limit = 5000 * scale;
-  const points = freeglassPoints(el);
-  if (!points[index]) return null;
-  points[index] = {
-    x: Math.min(limit, Math.max(-limit, localPoint.x)),
-    y: Math.min(limit, Math.max(-limit, localPoint.y)),
-    ...(points[index].arc === true ? { arc: true } : {}),
-  };
-  if (!isSimpleBoundary(points)) return null;
-  const b = boundaryBounds(points), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
-  const shift = rotPt(cx, cy, el.rot || 0);
-  return {
-    x: el.x + shift.x,
-    y: el.y + shift.y,
-    vertices: points.map(p => ({
-      x: (p.x - cx) / scale, y: (p.y - cy) / scale,
-      ...(p.arc === true ? { arc: true } : {}),
-    })),
-  };
-}
-
-function rectAbsorb(w, h) {
-  const x = w / 2, y = h / 2;
-  return [
-    { x1: -x, y1: -y, x2: x, y2: -y, kind: 'absorb' },
-    { x1: x, y1: -y, x2: x, y2: y, kind: 'absorb' },
-    { x1: x, y1: y, x2: -x, y2: y, kind: 'absorb' },
-    { x1: -x, y1: y, x2: -x, y2: -y, kind: 'absorb' },
-  ];
-}
-
-// ---- PMT gain and dark floor --------------------------------------------
-// Both are stored as plain multipliers and edited as base-10 exponents. A
-// sketch saved before the dark floor existed simply has no `darkInput`, so
-// every reader goes through these and gets the default instead of NaN.
-export const PMT_MAX_GAIN = 1e7;
-const PMT_DARK_MIN_LOG = -8, PMT_DARK_MAX_LOG = -2;
-
-export function pmtGain(params = {}) {
-  const stored = Number(params.gain);
-  if (!Number.isFinite(stored) || stored < 1) return 1e4;
-  return Math.min(PMT_MAX_GAIN, stored);
-}
-
-export function pmtGainFromLog(value) {
-  const exponent = Math.min(7, Math.max(0, Number(value) || 0));
-  // Round to three significant figures so the slider lands on 1e4 and 3.16e4
-  // rather than 10000.000000000002.
-  const raw = 10 ** exponent;
-  const decade = 10 ** Math.floor(Math.log10(raw));
-  return Math.min(PMT_MAX_GAIN, Math.max(1, Math.round(raw / decade * 100) / 100 * decade));
-}
-
-export function pmtDarkInput(params = {}) {
-  const stored = Number(params.darkInput);
-  if (!Number.isFinite(stored) || stored <= 0) return 1e-5;
-  return Math.min(1, stored);
-}
-
-export function pmtDarkFromLog(value) {
-  const exponent = Math.min(PMT_DARK_MAX_LOG, Math.max(PMT_DARK_MIN_LOG, Number(value) || PMT_DARK_MIN_LOG));
-  const raw = 10 ** exponent;
-  const decade = 10 ** Math.floor(Math.log10(raw));
-  return Math.round(raw / decade * 100) / 100 * decade;
-}
-
-// One-sided detector housing: light is measured at the front face and the
-// remaining enclosure simply absorbs it. This lets detectors provide a useful
-// readout without pretending the qualitative tracer reports calibrated power.
-function detectorSurfaces(w, h, detectorType, detectorData = {}) {
-  const x = w / 2, y = h / 2;
-  return [
-    { x1: -x, y1: -y, x2: -x, y2: y, kind: 'detector', data: { aperture: h, detectorType, ...detectorData } },
-    { x1: -x, y1: -y, x2: x, y2: -y, kind: 'absorb' },
-    { x1: x, y1: -y, x2: x, y2: y, kind: 'absorb' },
-    { x1: x, y1: y, x2: -x, y2: y, kind: 'absorb' },
-  ];
-}
-
-function signalLamp(el, x, y) {
-  const rd = detectorReading(el.id);
-  const on = rd && rd.signal > 0.001;
-  return `<circle cx="${x}" cy="${y}" r="3.1" fill="${on ? rd.color : '#88919b'}" opacity="${on ? 1 : 0.45}" ` +
-    `stroke="#fff" stroke-width="0.8"/>`;
-}
-
-export function resolveDisplaySensor(display, elements = []) {
-  const sensorId = typeof display?.params?.sensorId === 'string' ? display.params.sensorId : '';
-  if (!sensorId || !Array.isArray(elements)) return null;
-  return elements.find(candidate => candidate?.id === sensorId
-    && candidate.id !== display.id
-    && registry[candidate.type]?.readoutKind) || null;
-}
-
-export function displayDensity(displayScale = 1) {
-  const scale = Math.min(3, Math.max(0.5, Number.isFinite(displayScale) ? displayScale : 1));
-  return scale < 0.85 ? 'compact' : scale < 1.45 ? 'standard' : 'expanded';
-}
-
-// Detector screens and the beam probe's readout card both expose a "Display
-// scale" number, but the range users actually pick from (0.25â€“1.5) is
-// deliberately an octave below the 0.5â€“3 range the drawing/sizing code was
-// tuned against â€” every use doubles it back out, so the default (1) renders
-// at what used to require manually dialing the old control up to 2.
-export function displayRenderScale(rawScale = 1, min = 0.25, max = 1.5, factor = 2) {
-  return Math.min(max, Math.max(min, Number.isFinite(rawScale) ? rawScale : 1)) * factor;
-}
-
-// The beam probe's card reads better a little smaller than the detector
-// screen's, so its own "1" is 1.5x the original baseline rather than 2x,
-// and the dial runs 0.5x-2x around that.
-export const probeScale = el => displayRenderScale(el?.params?.displayScale, 0.5, 2, 1.5);
-
-function availableDisplaySensors(display, elements = []) {
-  return Array.isArray(elements) ? elements.filter(candidate => candidate?.id !== display?.id
-    && registry[candidate?.type]?.readoutKind) : [];
-}
-
-// Which screen views a linked sensor actually has data for. Only the camera
-// and the general detector carry more than one readout; a photodiode has a
-// single channel of information, so offering it a "wavelength samples" view
-// drew a spectrum it never measured underneath its own oscilloscope.
-const DISPLAY_VIEWS = {
-  camera: ['main', 'spectrum', 'detail'],
-  generaldetector: ['main', 'spectrum', 'detail'],
-};
-
-export function displayViewsFor(sensorType) {
-  return DISPLAY_VIEWS[sensorType] || ['main'];
-}
-
-// The view actually rendered: the stored one when the linked sensor supports
-// it, else its primary readout. A display keeps its stored view when it is
-// re-pointed at a sensor that cannot show it, rather than being rewritten.
-export function resolvedDisplayView(display, sensor) {
-  const views = displayViewsFor(sensor?.type);
-  const stored = display?.params?.displayView;
-  return views.includes(stored) ? stored : 'main';
-}
-
-export function displayActionUpdate(display, action, elements = []) {
-  if (!display || display.type !== 'display') return null;
-  if (action === 'power') {
-    const screenOn = display.params.screenOn === false;
-    return { updates: { screenOn }, message: screenOn ? 'Sensor display on' : 'Sensor display standby' };
-  }
-  if (action === 'view') {
-    const sensor = resolveDisplaySensor(display, elements);
-    const views = displayViewsFor(sensor?.type);
-    if (views.length < 2) {
-      return { updates: {}, message: sensor ? `${displaySensorName(sensor)} has one readout` : 'No sensor connected' };
-    }
-    const current = views.includes(display.params.displayView) ? display.params.displayView : 'main';
-    const displayView = views[(views.indexOf(current) + 1) % views.length];
-    return { updates: { displayView }, message: `Display view: ${displayView}` };
-  }
-  if (action === 'input') {
-    const sensors = availableDisplaySensors(display, elements);
-    if (!sensors.length) return { updates: { sensorId: '' }, message: 'No sensors available' };
-    const ids = ['', ...sensors.map(sensor => sensor.id)];
-    const current = ids.includes(display.params.sensorId) ? display.params.sensorId : '';
-    const sensorId = ids[(ids.indexOf(current) + 1) % ids.length];
-    const sensor = sensors.find(candidate => candidate.id === sensorId);
-    return {
-      updates: { sensorId },
-      message: sensor ? `Display input: ${displaySensorName(sensor)}` : 'Display input disconnected',
-    };
-  }
-  return null;
-}
-
-function displaySensorName(sensor) {
-  const name = sensor?.label || registry[sensor?.type]?.label || 'Sensor';
-  return String(name).trim().slice(0, 18) || 'Sensor';
-}
-
-function displaySpectrum(rd) {
-  if (!Number.isFinite(rd?.wavelength) || !Number.isFinite(rd?.bandMin) || !Number.isFinite(rd?.bandMax)) return 'â€”';
-  return rd.bandMax - rd.bandMin > 2
-    ? `${Math.round(rd.bandMin)}â€“${Math.round(rd.bandMax)} nm`
-    : `${Math.round(rd.wavelength)} nm`;
-}
-
-function shortSpectrum(rd) {
-  if (!Number.isFinite(rd?.wavelength) || !Number.isFinite(rd?.bandMin) || !Number.isFinite(rd?.bandMax)) return 'â€”';
-  return rd.bandMax - rd.bandMin > 2
-    ? `Î»${Math.round(rd.bandMin)}â€“${Math.round(rd.bandMax)}`
-    : `Î»${Math.round(rd.wavelength)} nm`;
-}
-
-// The display panels share the detector formatter rather than keeping a
-// second, coarser one: a coherently near-cancelled port carries a real
-// 1.4e-4, and printing that as "0.00" beside a beam that is still drawn is
-// exactly the contradiction the interference work set out to remove.
-const compactNumber = formatSignal;
-
-function shortPolarization(polarization = '') {
-  return String(polarization)
-    .replace(/^Linear /, 'LIN ')
-    .replace(/^Elliptical /, 'ELLIP ')
-    .replace(/^Circular$/, 'CIRC')
-    .replace(/^Unpolarized$/, 'UNPOL')
-    .replace(/^Mixed linear$/, 'MIX LIN')
-    .slice(0, 12);
-}
-
-function displayViewName(view, rd) {
-  if (view === 'spectrum') return 'Î» SAMPLES';
-  if (view === 'detail') return 'DETAIL';
-  if (rd?.readoutKind === 'camera') return 'INTENSITY PROFILE';
-  return rd?.readoutKind === 'pmt' ? 'PMT OUTPUT' : 'REL SIGNAL';
-}
-
-function cameraCoherentPathCount(reading) {
-  const direct = Number(reading?.coherentPaths);
-  if (Number.isInteger(direct) && direct > 0) return direct;
-  const nested = Number(reading?.interference?.pathCount);
-  return Number.isInteger(nested) && nested > 0 ? nested : 0;
-}
-
-function cameraPhaseReason(reading) {
-  const interference = reading?.interference;
-  if (!interference || interference.reason === 'disabled') return '';
-  const phaseIssue = Array.isArray(interference.phaseIssues)
-    ? interference.phaseIssues.find(issue => typeof issue === 'string' && issue.trim())
-    : '';
-  const raw = typeof interference.fallbackReason === 'string' && interference.fallbackReason.trim()
-    ? interference.fallbackReason.trim()
-    : String(phaseIssue || '').trim();
-  if (!raw) return '';
-  return raw.charAt(0).toUpperCase() + raw.slice(1).replace(/[.]+$/, '') + '.';
-}
-
-// Keep the camera's semantic state in one place so the linked display and
-// inspector cannot disagree. A plain deposited one-path profile is the normal
-// state and intentionally has no badge. Warnings only appear when the tracer
-// explicitly reports missing phase information or a partial coherent result.
-export function cameraReadingState(reading) {
-  const paths = cameraCoherentPathCount(reading);
-  const phaseReason = cameraPhaseReason(reading);
-  const applied = reading?.interference?.applied === true || reading?.profileMode === 'coherent';
-  const partial = reading?.interference?.partial === true;
-  if (reading?.dark === true) return {
-    kind: 'cancellation', paths, warning: false, reason: '',
-    label: 'Coherent cancellation', badge: 'CANCELLED', displayStatus: 'COHERENT CANCELLATION',
-  };
-  if (phaseReason) {
-    const isPartial = applied && partial;
-    return {
-      kind: isPartial ? 'partial' : 'phase-unavailable', paths, warning: true, reason: phaseReason,
-      label: isPartial ? 'Partial Â· phase unavailable' : 'Deposited Â· phase unavailable',
-      badge: isPartial ? 'PARTIAL' : 'PHASE',
-      // The linked screen pairs this with the PHASE/PARTIAL badge. Keeping the
-      // footer itself short prevents it colliding with the numeric signal.
-      displayStatus: 'PHASE UNAVAILABLE',
-    };
-  }
-  if (applied && partial) return {
-    kind: 'partial', paths, warning: true, reason: '',
-    label: 'Partial coherent result', badge: 'PARTIAL', displayStatus: 'PARTIAL COHERENCE',
-  };
-  if (applied) return {
-    kind: 'coherent', paths, warning: false, reason: '',
-    label: `Coherent${paths ? ` Â· ${paths} paths` : ''}`,
-    badge: `COH${paths ? ` Â· ${paths}` : ''}`, displayStatus: '',
-  };
-  return { kind: 'deposited', paths: 0, warning: false, reason: '', label: '', badge: '', displayStatus: '' };
-}
-
-// A camera profile is pixel-integrated data, not a row of isolated ray-hit
-// markers. Draw one bounded, piecewise-linear trace through the pixel centres
-// and fill down to the baseline. Linear interpolation is deliberate here:
-// spline smoothing can overshoot between dark and bright interference pixels
-// and invent extrema the sensor never measured.
-// Extra optical path a phase object adds at a given height across its
-// aperture, as a fraction of the configured peak. `u` is the normalized
-// crossing point the tracer already computes for every surface hit.
-// How far the recombined port total can swing as the reference arm is moved,
-// for a beam covering `fringes` of this profile.
-//
-// Averaging cos^2((phi(u) + d)/2) over the beam gives 1/2 + (1/2)(C cos d -
-// S sin d), where C and S are the mean cosine and sine of the written phase.
-// That is one sinusoid in the reference phase d, so its full peak-to-peak
-// range is just the length of the mean phasor -- no search over d needed, and
-// no chance of sampling only the reference phases where a given profile
-// happens to be flat.
-function portSwing(profile, fringes) {
-  const SAMPLES = 256;
-  let meanCos = 0, meanSin = 0;
-  for (let i = 0; i < SAMPLES; i++) {
-    const phase = 2 * Math.PI * fringes * phasePlateOpdFraction(profile, (i + 0.5) / SAMPLES);
-    meanCos += Math.cos(phase);
-    meanSin += Math.sin(phase);
-  }
-  return Math.hypot(meanCos, meanSin) / SAMPLES;
-}
-
-export function phasePlateOpdFraction(profile, u) {
-  const position = Math.min(1, Math.max(0, Number(u)));
-  const centred = 2 * position - 1;          // -1 at one edge, +1 at the other
-  if (profile === 'step') return position < 0.5 ? 0 : 1;
-  if (profile === 'bar') return Math.abs(centred) < 1 / 3 ? 1 : 0;
-  if (profile === 'bump') return 1 - centred * centred;
-  return position;                            // 'ramp'
-}
-
-export function cameraProfileSVG(rd, { x = -35, width = 70, baseline = 5, height = 15, scale = null } = {}) {
-  if (!Array.isArray(rd?.profile) || !rd.profile.length) return '';
-  const values = rd.profile.map(value => Number.isFinite(value) ? Math.max(0, value) : 0);
-  const maximum = Math.max(...values, 1e-9);
-  // Auto-fit always fills the box, so shape is readable but magnitude is
-  // invisible. Absolute keeps the same shape and scales the whole curve by
-  // the total reading, so half the light really does draw half as tall.
-  // A reading above one full source's worth clamps rather than overflowing.
-  // A genuinely zero reading must draw flat, but a reading with no signal
-  // field at all has no absolute reference to scale against -- fall back to
-  // auto-fit there rather than silently collapsing the curve to the axis.
-  const hasTotal = Number.isFinite(rd.signal);
-  const requested = (scale || rd.profileScale) === 'fit' ? 'fit' : 'absolute';
-  const mode = requested === 'absolute' && hasTotal ? 'absolute' : 'fit';
-  const heightScale = mode === 'fit' ? 1 : Math.min(1, Math.max(0, rd.signal));
-  const safeX = Number.isFinite(x) ? x : -35;
-  const safeWidth = Number.isFinite(width) && width > 0 ? width : 70;
-  const safeBaseline = Number.isFinite(baseline) ? baseline : 5;
-  const safeHeight = Number.isFinite(height) && height > 0 ? height : 15;
-  const binWidth = safeWidth / values.length;
-  const points = values.map((value, index) => ({
-    x: safeX + (index + 0.5) * binWidth,
-    y: safeBaseline - safeHeight * heightScale * value / maximum,
-  }));
-  const curve = [
-    { x: safeX, y: points[0].y },
-    ...points,
-    { x: safeX + safeWidth, y: points[points.length - 1].y },
-  ];
-  const curvePoints = curve.map(point => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' L ');
-  const curvePath = `M ${curvePoints}`;
-  const fillPath = `M ${safeX.toFixed(2)},${safeBaseline.toFixed(2)} L ${curvePoints} ` +
-    `L ${(safeX + safeWidth).toFixed(2)},${safeBaseline.toFixed(2)} Z`;
-  const color = /^#[0-9a-f]{6}$/i.test(rd.color || '') ? rd.color : '#d8e7ee';
-  const profileKind = rd.profileMode === 'coherent' ? 'coherent' : 'intensity';
-  return `<g data-camera-profile="${profileKind}" data-camera-profile-pixels="${values.length}" data-camera-profile-scale="${mode}">` +
-    `<path data-camera-profile-fill d="${fillPath}" fill="${color}" opacity="0.22"/>` +
-    `<path data-camera-profile-curve d="${curvePath}" fill="none" stroke="${color}" stroke-width="1.35" stroke-linejoin="round"/>` +
-    `<line x1="${safeX.toFixed(2)}" y1="${safeBaseline.toFixed(2)}" x2="${(safeX + safeWidth).toFixed(2)}" y2="${safeBaseline.toFixed(2)}" stroke="#294453" stroke-width="0.8"/>` +
-    `</g>`;
-}
-
-function displaySpectrumPlot(rd, { baseline = 5, height = 15 } = {}) {
-  const candidates = Array.isArray(rd.spectrum) && rd.spectrum.length
-    ? rd.spectrum : [{ wavelength: rd.wavelength, power: rd.signal, color: rd.color }];
-  // Coherent cancellation can leave numerically tiny residuals. Those are not
-  // detected wavelength samples and must not grow a minimum-height spectrum
-  // stem merely because SVG needs something visible to draw.
-  const samples = rd.dark ? [] : candidates.filter(sample =>
-    Number.isFinite(sample?.wavelength) && Number.isFinite(sample?.power) && sample.power > 1e-12);
-  const axis = `<line data-spectrum-baseline x1="-35" y1="${baseline}" x2="35" y2="${baseline}" stroke="#294453" stroke-width="0.8"/>`;
-  if (!samples.length) return `<g data-spectrum-points="0">${axis}</g>`;
-  const lo = Number.isFinite(rd.bandMin) ? rd.bandMin : Math.min(...samples.map(sample => sample.wavelength));
-  const hi = Number.isFinite(rd.bandMax) ? rd.bandMax : Math.max(...samples.map(sample => sample.wavelength));
-  const span = Math.max(1, hi - lo);
-  const max = Math.max(...samples.map(sample => sample.power || 0), 1e-9);
-  const marks = samples.map((sample, index) => {
-    const x = hi - lo < 1e-9 ? 0 : -34 + 68 * (sample.wavelength - lo) / span;
-    const y = baseline - Math.max(1.2, height * Math.max(0, sample.power || 0) / max);
-    return `<line data-spectrum-sample="${index}" x1="${x.toFixed(2)}" y1="${baseline}" x2="${x.toFixed(2)}" y2="${y.toFixed(2)}" ` +
-      `stroke="${sample.color || wavelengthToColor(sample.wavelength)}" stroke-width="${samples.length > 12 ? 1.4 : 2.2}" stroke-linecap="round"/>`;
-  }).join('');
-  return axis + marks;
-}
-
-// Two lines rather than sharing one row: a long sensor name (e.g.
-// "PHOTODETECTOR") and the current readout mode used to compete for the
-// same baseline and could overlap. Stacking them costs a little vertical
-// room, which the rest of standardDisplayReading()'s layout below (all at
-// y >= -9) already clears.
-function displayHeader(sensorName, mode, pulse) {
-  const headerName = sensorName.toUpperCase();
-  const nameSize = Math.max(3.9, Math.min(6, 46 / Math.max(1, headerName.length * 0.62)));
-  return `<text x="-36" y="-23.5" font-size="${nameSize.toFixed(2)}" font-weight="760" letter-spacing="0.35" fill="#9eb5c3">${esc(headerName)}</text>` +
-    `<text x="-36" y="-16.5" font-size="4.5" font-weight="700" letter-spacing="0.35" fill="${pulse ? '#67e8f9' : '#648092'}">${esc(mode)}${pulse ? ' Â· PULSE' : ''}</text>`;
-}
-
-function displayDetail(rd) {
-  const cameraState = cameraReadingState(rd);
-  const cameraProfileLabel = cameraState.kind === 'cancellation' ? 'CANCELLATION'
-    : cameraState.kind === 'phase-unavailable' ? 'PHASE UNAVAILABLE'
-      : cameraState.kind === 'partial' ? (cameraState.reason ? 'PHASE UNAVAILABLE' : 'PARTIAL')
-        : cameraState.kind === 'coherent' ? (cameraState.paths ? `${cameraState.paths} COHERENT PATHS` : 'COHERENT')
-          : 'INTENSITY';
-  const entries = rd.readoutKind === 'camera'
-    ? [['SIGNAL', `Î£w ${compactNumber(rd.signal)}`], ['CENTROID', rd.centroid == null ? 'â€”' : `${rd.centroid.toFixed(2)} mm`],
-      ['PIXELS', String(rd.profile?.length || 0)], ['PROFILE', cameraProfileLabel]]
-    : rd.readoutKind === 'pmt'
-      ? [['INPUT', `Î£w ${compactNumber(rd.signal)}`], ['OUTPUT', `${compactNumber(rd.outputSignal)} a.u.`],
-        ['STATE', rd.saturated ? 'SATURATED' : 'LINEAR'], ['Î» SPAN', displaySpectrum(rd)]]
-      : [['SIGNAL', `Î£w ${compactNumber(rd.signal)}`], ['SPOT', rd.samples > 1 ? `${rd.spotSpan.toFixed(1)} mm` : 'POINT'],
-        ['POL', shortPolarization(rd.polarization)], ['Î» SPAN', displaySpectrum(rd)]];
-  return entries.map(([label, value], index) => {
-    const x = index % 2 ? 4 : -35;
-    const y = index < 2 ? -8 : 5;
-    return `<text x="${x}" y="${y}" font-size="4.2" font-weight="700" letter-spacing="0.35" fill="#5f7d8e">${label}</text>` +
-      `<text x="${x}" y="${y + 6}" font-size="5.2" font-weight="680" fill="#d9e8ee">${esc(value)}</text>`;
-  }).join('');
-}
-
-function compactDisplayReading(sensorName, rd, view) {
-  const header = `<text x="-35" y="-17" font-size="6" font-weight="760" letter-spacing="0.4" fill="#8fa9b8">${esc(sensorName.toUpperCase().slice(0, 11))}</text>`;
-  const cameraState = rd.readoutKind === 'camera' ? cameraReadingState(rd) : null;
-  const cameraBadge = cameraState?.badge
-    ? `<text x="35" y="-17" text-anchor="end" font-size="${cameraState.warning ? 3.5 : 4.1}" font-weight="760" letter-spacing="0.25" fill="${cameraState.warning ? '#fbbf24' : cameraState.kind === 'cancellation' ? '#94a3b8' : '#6ee7b7'}">${esc(cameraState.badge)}</text>`
-    : '';
-  if (cameraState?.kind === 'cancellation') {
-    return header + cameraBadge + cameraProfileSVG(rd, { x: -35, width: 70, baseline: 6, height: 13 }) +
-      `<text x="0" y="15" text-anchor="middle" font-size="4.5" font-weight="760" letter-spacing="0.2" fill="#94a3b8">COHERENT CANCELLATION</text>`;
-  }
-  if (view === 'spectrum') {
-    const spectral = rd.bandMax - rd.bandMin > 2
-      ? `${Math.round(rd.bandMin)}â€“${Math.round(rd.bandMax)}`
-      : `${Math.round(rd.wavelength)}`;
-    const stateLine = cameraState?.warning
-      ? `<text x="0" y="14" text-anchor="middle" font-size="4.1" font-weight="760" letter-spacing="0.15" fill="#fbbf24">${esc(cameraState.displayStatus)}</text>`
-      : `<text x="0" y="13" text-anchor="middle" font-size="5" font-weight="700" fill="#7792a2">nm Â· DETECTED Î»</text>`;
-    return header + cameraBadge + `<text x="0" y="5" text-anchor="middle" font-size="${spectral.length > 6 ? 10 : 13}" font-weight="780" fill="${rd.color}">${spectral}</text>` + stateLine;
-  }
-  if (view === 'detail') {
-    if (cameraState?.warning) {
-      return header + cameraBadge + `<text x="0" y="4" text-anchor="middle" font-size="4.2" font-weight="760" letter-spacing="0.12" fill="#fbbf24">${esc(cameraState.displayStatus)}</text>` +
-        `<text x="0" y="14" text-anchor="middle" font-size="5" fill="#7892a1">Î£w ${compactNumber(rd.signal)}</text>`;
-    }
-    return header + cameraBadge + `<text x="0" y="4" text-anchor="middle" font-size="8" font-weight="750" fill="#d9e8ee">${esc(shortPolarization(rd.polarization))}</text>` +
-      `<text x="0" y="13" text-anchor="middle" font-size="5" fill="#7792a2">${esc(shortSpectrum(rd))}</text>`;
-  }
-  if (rd.readoutKind === 'camera' && rd.profile) {
-    if (cameraState.warning) {
-      return header + cameraBadge + cameraProfileSVG(rd, { x: -35, width: 70, baseline: 7, height: 14 }) +
-        `<text x="0" y="15" text-anchor="middle" font-size="4.1" font-weight="760" letter-spacing="0.1" fill="#fbbf24">${esc(cameraState.displayStatus)}</text>`;
-    }
-    return header + cameraBadge + cameraProfileSVG(rd, { x: -35, width: 70, baseline: 12, height: 20 });
-  }
-  const value = rd.readoutKind === 'pmt' ? rd.outputSignal : rd.signal;
-  const unit = rd.readoutKind === 'pmt' ? 'a.u.' : 'Î£w';
-  return header + `<circle cx="-29" cy="2" r="2.3" fill="${rd.color}"/>` +
-    `<text x="30" y="7" text-anchor="end" font-size="15" font-weight="780" fill="#ecf7fa">${compactNumber(value)}</text>` +
-    `<text x="34" y="13" text-anchor="end" font-size="5" font-weight="700" fill="#7792a2">${unit}</text>`;
-}
-
-function standardDisplayReading(sensorName, rd, view, density) {
-  const cameraState = rd.readoutKind === 'camera' ? cameraReadingState(rd) : null;
-  const cameraBadge = cameraState?.badge
-    ? `<text x="35" y="-23.5" text-anchor="end" font-size="${cameraState.warning ? 3.35 : 3.7}" font-weight="760" letter-spacing="0.2" fill="${cameraState.warning ? '#fbbf24' : cameraState.kind === 'cancellation' ? '#94a3b8' : '#6ee7b7'}">${esc(cameraState.badge)}</text>`
-    : '';
-  const header = displayHeader(sensorName, displayViewName(view, rd), rd.pulse) + cameraBadge;
-  if (view === 'detail' && cameraState?.kind === 'cancellation') {
-    return header + `<text x="0" y="-1" text-anchor="middle" font-size="6" font-weight="760" letter-spacing="0.25" fill="#94a3b8">COHERENT CANCELLATION</text>` +
-      `<text x="0" y="10" text-anchor="middle" font-size="5" fill="#718695">Î£w ${compactNumber(rd.signal)} Â· ${rd.profile?.length || 0} PIXELS</text>`;
-  }
-  if (view === 'detail') return header + displayDetail(rd);
-  if (view === 'spectrum') {
-    const footer = cameraState?.displayStatus || shortSpectrum(rd);
-    const footerColor = cameraState?.warning ? '#fbbf24' : cameraState?.kind === 'cancellation' ? '#94a3b8' : '#8fa7b5';
-    return header + displaySpectrumPlot(rd, { baseline: density === 'expanded' ? 4 : 6, height: 16 }) +
-      `<text x="-35" y="14" font-size="${cameraState?.kind === 'cancellation' ? 4 : cameraState?.displayStatus ? 4.4 : 5.2}" font-weight="${cameraState?.displayStatus ? 760 : 400}" fill="${footerColor}">${esc(footer)}</text>` +
-      `<text x="35" y="14" text-anchor="end" font-size="5.2" font-weight="700" fill="#d9e8ee">Î£w ${compactNumber(rd.signal)}</text>`;
-  }
-  if (rd.readoutKind === 'camera' && rd.profile) {
-    const expanded = density === 'expanded';
-    const baseline = expanded ? 1 : 5;
-    const spot = cameraState.displayStatus || (rd.samples > 1 ? `BEAM Ã˜ ${rd.spotSpan.toFixed(1)} mm` : 'POINT HIT');
-    const spotColor = cameraState.warning ? '#fbbf24' : cameraState.kind === 'cancellation' ? '#94a3b8' : '#8fa7b5';
-    return header + cameraProfileSVG(rd, { x: -35, width: 70, baseline, height: expanded ? 14 : 16 }) +
-      (expanded
-        ? `<text x="-35" y="7" font-size="4" fill="#557181">âˆ’Â½</text><text x="0" y="7" text-anchor="middle" font-size="4" fill="#557181">0</text><text x="35" y="7" text-anchor="end" font-size="4" fill="#557181">+Â½ sensor</text>`
-        : '') +
-      `<text x="-35" y="14" font-size="${cameraState.kind === 'cancellation' ? 4 : cameraState.displayStatus ? 4.4 : 5.2}" font-weight="${cameraState.displayStatus ? 760 : 400}" fill="${spotColor}">${esc(spot)}</text>` +
-      `<text x="35" y="14" text-anchor="end" font-size="5.2" font-weight="700" fill="#d9e8ee">Î£w ${compactNumber(rd.signal)}</text>`;
-  }
-  const value = rd.readoutKind === 'pmt' ? rd.outputSignal : rd.signal;
-  const unit = rd.readoutKind === 'pmt' ? 'a.u.' : 'Î£w';
-  const stateText = rd.saturated ? 'SATURATED' : shortPolarization(rd.polarization);
-  return header + `<circle cx="-31" cy="-2" r="2.3" fill="${rd.color}"/>` +
-    `<text x="35" y="6" text-anchor="end" font-size="14" font-weight="780" fill="#ecf7fa">${compactNumber(value)}</text>` +
-    `<text x="35" y="-6" text-anchor="end" font-size="4.7" font-weight="700" fill="#7892a1">${unit}</text>` +
-    `<text x="-35" y="14" font-size="5.2" fill="#8fa7b5">${esc(shortSpectrum(rd))}</text>` +
-    `<text x="35" y="14" text-anchor="end" font-size="5.2" font-weight="700" fill="${rd.saturated ? '#fb7185' : '#6ee7b7'}">${esc(stateText)}</text>`;
-}
-
-function displayControls(screenOn, density, hasReading) {
-  const compact = density === 'compact';
-  const labelSize = compact ? 4.1 : 4.5;
-  return `<g class="display-control" data-display-action="power" role="button" aria-label="Toggle display power">` +
-    `<title>Power</title><circle class="display-control-face" cx="-40" cy="27" r="4.4" fill="#14232c" stroke="${screenOn ? '#6ee7b7' : '#60727e'}" stroke-width="1.1"/>` +
-    `<path d="M -40,23.8 L -40,27.1 M -42.2,25.2 A 3,3 0 1 0 -37.8,25.2" fill="none" stroke="${screenOn ? '#6ee7b7' : '#80909a'}" stroke-width="0.9" stroke-linecap="round"/></g>` +
-    `<g class="display-control" data-display-action="input" role="button" aria-label="Cycle sensor input">` +
-    `<title>Cycle sensor input</title><rect class="display-control-face" x="-30" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/>` +
-    `<text x="-18.5" y="28.6" text-anchor="middle" font-size="${labelSize}" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">${compact ? 'IN' : 'INPUT'}</text></g>` +
-    `<g class="display-control" data-display-action="view" role="button" aria-label="Cycle display view">` +
-    `<title>Cycle display view</title><rect class="display-control-face" x="-3.5" y="22.5" width="23" height="9" rx="2" fill="#1b2b35" stroke="#536a78" stroke-width="0.9"/>` +
-    `<text x="8" y="28.6" text-anchor="middle" font-size="${labelSize}" font-weight="760" letter-spacing="0.35" fill="#b7c7d0">${compact ? 'V' : 'VIEW'}</text></g>` +
-    `<circle cx="41" cy="27" r="2.3" fill="${screenOn && hasReading ? '#34d399' : '#596b76'}"/>` +
-    `<text x="33" y="29" text-anchor="end" font-size="3.6" font-weight="700" letter-spacing="0.35" fill="#708692">QUAL</text>`;
-}
-
-function displayScreenSVG(el, elements = []) {
-  const scale = displayRenderScale(el.params.displayScale);
-  const density = displayDensity(scale);
-  const screenOn = el.params.screenOn !== false;
-  const sensor = resolveDisplaySensor(el, elements);
-  const view = resolvedDisplayView(el, sensor);
-  const hasConfiguredLink = Boolean(el.params.sensorId);
-  const rd = sensor ? detectorReading(sensor.id) : null;
-  const sensorName = sensor ? displaySensorName(sensor) : '';
-  let screen;
-
-  if (!screenOn) {
-    screen = `<text x="0" y="-1" text-anchor="middle" font-size="9" font-weight="760" letter-spacing="1" fill="#415661">STANDBY</text>` +
-      `<text x="0" y="10" text-anchor="middle" font-size="5" fill="#31454f">${sensor ? esc(sensorName) : 'input retained'}</text>`;
-  } else if (!sensor) {
-    screen = `<text x="0" y="-2" text-anchor="middle" font-size="9" font-weight="760" letter-spacing="0.8" fill="${hasConfiguredLink ? '#f59e0b' : '#94a3b8'}">${hasConfiguredLink ? 'LINK LOST' : 'SELECT INPUT'}</text>` +
-      `<text x="0" y="10" text-anchor="middle" font-size="5.4" fill="#607887">${hasConfiguredLink ? 'Press INPUT to relink' : 'Press INPUT to connect'}</text>`;
-  } else if (!rd) {
-    screen = `<text x="-35" y="-20" font-size="5.7" font-weight="760" letter-spacing="0.45" fill="#8fa9b8">${esc(sensorName.toUpperCase())}</text>` +
-      `<circle cx="-29" cy="1" r="2.2" fill="#64748b"/>` +
-      `<text x="-23" y="3" font-size="8.5" font-weight="760" letter-spacing="0.7" fill="#a7b8c5">NO SIGNAL</text>` +
-      `<text x="-35" y="14" font-size="5.2" fill="#607887">Î£w 0.00 Â· aim at sensor face</text>`;
-  } else {
-    screen = density === 'compact'
-      ? compactDisplayReading(sensorName, rd, view)
-      : standardDisplayReading(sensorName, rd, view, density);
-  }
-
-  return `<g transform="scale(${scale})" data-display-density="${density}"><rect x="-49" y="-36" width="98" height="72" rx="6" fill="#24313b" stroke="#111b22" stroke-width="1.7"/>` +
-    `<path d="M -43,-32 H 43" stroke="#40515d" stroke-width="0.8" opacity="0.7"/>` +
-    `<rect x="-43" y="-29" width="86" height="47" rx="3" fill="${screenOn ? '#061822' : '#071219'}" stroke="#45606f" stroke-width="1.2"/>` +
-    `<g font-family="ui-monospace, SFMono-Regular, Menlo, monospace">${screen}</g>` +
-    `<circle cx="-49" cy="19" r="3.6" fill="#13212a" stroke="#89a2b2" stroke-width="1"/>` +
-    `<circle cx="-49" cy="19" r="1.3" fill="${sensor ? '#60a5fa' : '#52636f'}"/>` +
-    displayControls(screenOn, density, Boolean(rd)) +
-    `</g>`;
-}
-
-export function displayCableSVG(display, elements = []) {
-  const sensor = resolveDisplaySensor(display, elements);
-  if (!sensor) return '';
-  const rawPort = registry[sensor.type]?.dataPort;
-  const localPort = typeof rawPort === 'function' ? rawPort(sensor) : rawPort;
-  if (!Number.isFinite(localPort?.x) || !Number.isFinite(localPort?.y)) return '';
-  const from = toWorld(sensor, localPort.x, localPort.y);
-  const scale = displayRenderScale(display.params.displayScale);
-  const to = toWorld(display, -49 * scale, 19 * scale);
-  if (![from.x, from.y, to.x, to.y].every(Number.isFinite)) return '';
-  const direction = to.x >= from.x ? 1 : -1;
-  const bend = Math.min(90, Math.max(24, Math.abs(to.x - from.x) * 0.42 + Math.abs(to.y - from.y) * 0.12));
-  const path = `M ${from.x.toFixed(2)} ${from.y.toFixed(2)} C ${(from.x + direction * bend).toFixed(2)} ${from.y.toFixed(2)}, ${(to.x - direction * bend).toFixed(2)} ${to.y.toFixed(2)}, ${to.x.toFixed(2)} ${to.y.toFixed(2)}`;
-  return `<g data-sensor-link="${esc(sensor.id)}" pointer-events="none">` +
-    `<path d="${path}" fill="none" stroke="#f8fafc" stroke-width="5.2" stroke-linecap="round" opacity="0.9" vector-effect="non-scaling-stroke"/>` +
-    `<path d="${path}" fill="none" stroke="#40586a" stroke-width="2.4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>` +
-    `<circle cx="${from.x.toFixed(2)}" cy="${from.y.toFixed(2)}" r="3.2" fill="#1f3340" stroke="#9eb3c0" stroke-width="1" vector-effect="non-scaling-stroke"/>` +
-    `</g>`;
-}
-
-function boxSVG(w, h, fill, stroke, text, textFill, flip) {
-  return `<rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>` +
-    (text ? `<text x="0" y="0" ${flip ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="${Math.min(11, w / (text.length * 0.62))}" font-weight="600" fill="${textFill || '#fff'}">${esc(text)}</text>` : '');
-}
-
-// A real spherical mirror surface. Radius R = 2f, vertex at the element
-// origin, centre of curvature in front for a concave mirror and behind for a
-// convex one. Handed to the tracer as a true circular arc -- endpoints plus a
-// point it passes through -- so both the intersection and the normal are
-// analytic. Spherical aberration then comes out of the geometry rather than
-// having to be modelled: a sphere simply does not bring marginal rays to the
-// paraxial focus, which is the entire reason parabolic mirrors exist.
-function sphericalMirrorGeometry(el, concave) {
-  const f = Math.max(5, Math.abs(Number(el.params.f) || 100));
-  const R = 2 * f;
-  // A mirror cannot be wider than its own sphere.
-  const L = Math.min(el.params.length / 2, R * 0.98);
-  const sgn = concave ? -1 : 1;
-  return { R, L, sgn, x: y => sgn * (R - Math.sqrt(Math.max(0, R * R - y * y))) };
-}
-
-function sphericalMirrorSurfaces(el, concave) {
-  const g = sphericalMirrorGeometry(el, concave);
-  return [{
-    x1: g.x(-g.L), y1: -g.L, x2: g.x(g.L), y2: g.L, kind: 'cmirror',
-    data: {
-      f: concave ? Math.abs(el.params.f) : -Math.abs(el.params.f),
-      refl: el.params.refl,
-      showTransmitted: el.params.showTransmitted,
-      // the vertex: the third point that fixes the circle
-      arcPoint: { x: 0, y: 0 },
-    },
-  }];
-}
-
-// Bounds that cover the real curve. A short focal length with a wide aperture
-// gives a sag of tens or hundreds of millimetres, and a box 18 mm wide would
-// leave most of the drawn mirror outside hit testing, selection handles and
-// the export crop.
-function sphericalMirrorSize(el, concave) {
-  const g = sphericalMirrorGeometry(el, concave);
-  const sag = Math.abs(g.x(g.L));
-  return { w: Math.max(18, sag + 12), h: 2 * g.L + 6 };
-}
-
-// A mirror cannot be wider than its own sphere, so a wide aperture on a short
-// focal length is silently reduced. Saying so beats letting the panel claim a
-// size the optic does not have.
-const SPHERICAL_APERTURE_READOUT = {
-  key: 'realizedAperture', label: 'Actual aperture', type: 'readout',
-  readout: p => {
-    const f = Math.max(5, Math.abs(Number(p.f) || 100));
-    const R = 2 * f;
-    const full = Number(p.length) || 0;
-    const used = Math.min(full / 2, R * 0.98) * 2;
-    return used < full - 1e-9
-      ? `${used.toFixed(1)} mm â€” limited by the ${R.toFixed(0)} mm radius`
-      : `${full.toFixed(1)} mm Â· radius ${R.toFixed(0)} mm`;
-  },
-};
-
-// The drawn profile, matching the surface the tracer actually uses.
-function sphericalMirrorPath(el, concave) {
-  const g = sphericalMirrorGeometry(el, concave);
-  let d = '';
-  for (let i = 0; i <= 24; i++) {
-    const y = -g.L + (2 * g.L * i) / 24;
-    d += (i ? ' L ' : 'M ') + g.x(y).toFixed(2) + ',' + y.toFixed(2);
-  }
-  return d;
-}
-
-function hatch(x, y1, y2, side, n) {
-  // decorative hatching behind mirror-like surfaces
-  if (!Number.isFinite(n) || n < 1 || y2 <= y1) return '';
-  let s = '';
-  const step = (y2 - y1) / n;
-  for (let i = 0; i <= n; i++) {
-    const y = y1 + i * step;
-    s += `<line x1="${x}" y1="${y}" x2="${x + 6 * side}" y2="${y + 6}" stroke="#888" stroke-width="1"/>`;
-  }
-  return s;
-}
-
-// Wavefront shapers (SLM / DMD / deformable mirror) compose their optical
-// function from up to 4 overlaid layers, applied in order to the reflected ray.
-export const MAX_SHAPER_LAYERS = 4;
-export function newShaperLayer() {
-  return { type: 'lensarray', n: 3, f: 50, lines: 600, orders: '1', angle: 5, div: 8 };
-}
-const layersParam = { key: 'layers', label: 'Optical function', type: 'layers', def: [] };
-
-// object shapes for image-formation diagrams, in unit coords:
-// base at (0,0), tip at (0,-1); the traced image redraws the same shape
-// scaled by the magnification (negative m = inverted)
-// Normalized around y = 0 (the object's anchor, also the ray fan's origin):
-// a shape spanning the full "height" param extends Â±0.5 of it either side,
-// so a 20mm-tall shape sits 10mm above and 10mm below the point that's
-// actually irradiating â€” both the live icon (svg() below) and the redrawn
-// image at the image plane (raytrace.js) read these same coordinates.
-export const OBJ_SHAPES = {
-  arrow: {
-    lines: [[[0, 0.5], [0, -0.22]]],
-    polys: [[[0, -0.5], [-0.17, -0.16], [0.17, -0.16]]],
-  },
-  F: {
-    lines: [[[-0.06, 0.5], [-0.06, -0.5]], [[-0.06, -0.5], [0.42, -0.5]], [[-0.06, -0.05], [0.3, -0.05]]],
-    polys: [],
-  },
-  tree: {
-    // fir tree: short trunk + three stacked crown tiers
-    lines: [[[0, 0.5], [0, 0.22]]],
-    polys: [
-      [[-0.36, 0.26], [0.36, 0.26], [0, -0.08]],
-      [[-0.28, 0.02], [0.28, 0.02], [0, -0.3]],
-      [[-0.2, -0.2], [0.2, -0.2], [0, -0.5]],
-    ],
-  },
-};
-
-// Infographic card for the beam probe ("?" tool). Every branch draws with its
-// top-left corner at the local origin and reports its own {w, h}, so the
-// caller can place the card relative to the sampled point and keep it upright
-// no matter how the probe itself is rotated â€” see probeCardPlacement().
-function probeCard(el, rd, elements = []) {
-  if (!rd) {
-    return {
-      w: 56,
-      h: 24,
-      body: `<rect x="0" y="0" width="56" height="24" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-        `<text x="28" y="12" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#9aa2ad">no beam</text>`,
-    };
-  }
-  const prop = el.params.prop;
-  const isSC = rd.bw >= 200;
-  const c = wavelengthToColor(rd.wl);
-
-  if (prop === 'wl') {
-    const label = isSC ? `SC ${Math.round(rd.wl - rd.bw / 2)}â€“${Math.round(rd.wl + rd.bw / 2)} nm`
-      : rd.bw > 0 ? `${Math.round(rd.wl)} Â± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`;
-    const w = label.length * 5.4 + 24;
-    return {
-      w,
-      h: 24,
-      body: `<rect x="0" y="0" width="${w}" height="24" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-        `<circle cx="11" cy="12" r="4.5" fill="${isSC ? '#fff' : c}" ${isSC ? 'stroke="#888"' : ''}/>` +
-        (isSC ? `<path d="M 7,12 A 4.5 4.5 0 0 1 15.5,12" fill="#e04040"/><path d="M 7,12 A 4.5 4.5 0 0 0 15.5,12" fill="#3050e0"/>` : '') +
-        `<text x="20" y="12" font-size="9" dominant-baseline="central" fill="#333">${label}</text>`,
-    };
-  }
-
-  if (prop === 'pol') {
-    let icon, lab, labSize = 8;
-    if (rd.polMod) {
-      // A modulated segment alternates between two states, so its average is
-      // a meaningless (often zero-length) Stokes vector. Name both states and
-      // the rate instead â€” that is what is physically there.
-      const name = s => polarizationDescription(s).replace(/^Linear /, '').replace('Â°', 'Â°');
-      const mhz = rd.polMod.frequencyMHz;
-      const rate = mhz >= 1000 ? `${(mhz / 1000).toFixed(2)} GHz`
-        : mhz >= 1 ? `${mhz.toFixed(mhz < 10 ? 2 : 1)} MHz`
-          : `${(mhz * 1000).toFixed(0)} kHz`;
-      icon = `<g stroke="#7c3aed" stroke-width="1.6"><line x1="-8.5" y1="0" x2="8.5" y2="0"/>` +
-        `<line x1="0" y1="-8.5" x2="0" y2="8.5"/></g>` +
-        `<path d="M -6,-11 L 6,-11 M 3,-13.5 L 6,-11 L 3,-8.5" fill="none" stroke="#7c3aed" stroke-width="1.2"/>`;
-      lab = `${name(rd.polMod.stokesLow)} â†” ${name(rd.polMod.stokesHigh)} Â· ${rate}`;
-      labSize = 7;
-    } else if (rd.pol === 'c') {
-      icon = `<path d="M 8,2 A 8.2 8.2 0 1 1 3,-7.7" fill="none" stroke="#333" stroke-width="1.6"/>` +
-        `<path d="M 3,-7.7 L 7.5,-8.5 L 4.5,-3.6 Z" fill="#333"/>`;
-      lab = 'circular';
-    } else if (typeof rd.pol === 'number') {
-      icon = `<g transform="rotate(${-rd.pol})"><line x1="-8.5" y1="0" x2="8.5" y2="0" stroke="#333" stroke-width="1.6"/>` +
-        `<path d="M 10,0 L 4.5,-3 L 4.5,3 Z M -10,0 L -4.5,-3 L -4.5,3 Z" fill="#333"/></g>`;
-      lab = `linear ${Math.round(rd.pol)}Â°`;
-    } else if (rd.pol === 'e') {
-      // Elliptical: partial retardance (e.g. a waveplate not at 0/45/90Â° to
-      // the input) leaves a nonzero circular component (s3) without being
-      // purely circular â€” distinct from, and must not collapse into, the
-      // true "no polarization at all" case below.
-      const angle = rd.stokes ? stokesAngleDeg(rd.stokes) : 0;
-      icon = `<g transform="rotate(${-angle})"><ellipse cx="0" cy="0" rx="8.5" ry="4" fill="none" stroke="#333" stroke-width="1.6"/>` +
-        `<path d="M 8.5,0 L 4,-2.6 L 4,2.6 Z" fill="#333"/></g>`;
-      lab = `elliptical ${Math.round(angle)}Â°`;
-    } else {
-      icon = `<g stroke="#666" stroke-width="1.3"><line x1="-8" y1="0" x2="8" y2="0"/><line x1="0" y1="-8" x2="0" y2="8"/><line x1="-5.7" y1="-5.7" x2="5.7" y2="5.7"/><line x1="-5.7" y1="5.7" x2="5.7" y2="-5.7"/></g>`;
-      lab = 'unpolarized';
-    }
-    // Sized to the label so a long modulation caption never spills outside
-    // the box the caller uses for placement and export bounds.
-    const w = Math.max(56, lab.length * labSize * 0.56 + 12);
-    return {
-      w,
-      h: 44,
-      body: `<g transform="translate(${w / 2},14)"><circle r="14" fill="#fff" stroke="#c9ced6"/>${icon}</g>` +
-        `<text x="${w / 2}" y="38" text-anchor="middle" font-size="${labSize}" fill="#333">${lab}</text>`,
-    };
-  }
-
-  // A plain value in a box: the reading is the whole content, with nothing
-  // captioning what the probe is already set to show.
-  const valueCard = label => {
-    const w = Math.max(46, label.length * 6.4 + 16);
-    return {
-      w,
-      h: 22,
-      body: `<rect x="0" y="0" width="${w}" height="22" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-        `<text x="${w / 2}" y="11" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" fill="#333">${esc(label)}</text>`,
-    };
-  };
-
-  if (prop === 'power') {
-    const watts = probeAveragePowerW(rd, elements);
-    // Without a source carrying a configured wattage there is no absolute
-    // number to give, and the relative weight is not one -- say so, in place
-    // of the number rather than under it.
-    return valueCard(watts === null ? 'no source power' : formatPowerMw(watts));
-  }
-
-  if (prop === 'duration') {
-    const source = elements.find(item => item?.id === rd.sourceId);
-    return valueCard(probeDurationLabel(rd, source?.type));
-  }
-
-  if (prop === 'time') {
-    const W = 78, H = 46, x0 = 9, y0 = H - 12, pw = W - 16, ph = H - 22;
-    const { startNs, spanNs } = probeTimeWindowNs(rd, el.params);
-    const xAt = ns => x0 + pw * (spanNs > 0 ? (ns - startNs) / spanNs : 0);
-    const frame = `<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-      `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
-      `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>`;
-    const axis = ns => esc(formatTimeAxisNs(ns));
-    const ticks = `<text x="${x0}" y="${y0 + 6}" font-size="4.6" fill="#666">${axis(startNs)}</text>` +
-      `<text x="${x0 + pw}" y="${y0 + 6}" text-anchor="end" font-size="4.6" fill="#666">${axis(startNs + spanNs)}</text>`;
-    const trace = scopeTrace(rd.pulse, { spanNs, startNs, samples: 160 });
-    if (!trace) {
-      // Continuous wave: the honest picture is a flat line at full height.
-      return {
-        w: W,
-        h: H,
-        body: frame +
-          `<line data-probe-time="cw" x1="${x0}" y1="${(y0 - ph).toFixed(2)}" x2="${x0 + pw}" y2="${(y0 - ph).toFixed(2)}" stroke="${c}" stroke-width="1.6"/>` +
-          ticks +
-          `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6" fill="#333">CW</text>`,
-      };
-    }
-    const peak = Math.max(1e-9, ...trace.pulses.map(p => p.amplitude || 0), ...trace.envelope.map(e => e.value || 0));
-    const yAt = v => y0 - Math.max(0, Math.min(1, v / peak)) * ph;
-    // The gate envelope behind the spikes makes a modulation readable even
-    // where the train is too dense to resolve pulse by pulse.
-    const gated = (rd.pulse.gates || []).length > 0;
-    const envelopePts = trace.envelope.map(pt => `${xAt(pt.tNs).toFixed(2)},${yAt(pt.value).toFixed(2)}`);
-    const envelope = trace.envelope.length > 1 && gated
-      ? `<polyline points="${envelopePts.join(' ')}" fill="none" stroke="#7c3aed" stroke-width="0.7" opacity="0.75"/>`
-      : '';
-    // Two periods of a kilohertz chopper contain tens of thousands of
-    // megahertz pulses. Drawing them individually is both a lie -- the trace
-    // is capped long before that -- and an unreadable block of ink, so past
-    // the point where pulses stop being separable the beam is filled in under
-    // its own envelope, which is what a scope at that timebase shows.
-    const dense = trace.pulses.length > pw / 2 || trace.truncated;
-    const spikes = dense
-      ? `<path d="M ${xAt(trace.startNs).toFixed(2)},${y0} L ${envelopePts.join(' L ')} L ${xAt(trace.startNs + spanNs).toFixed(2)},${y0} Z" fill="${c}" opacity="0.55" stroke="none"/>`
-      : trace.pulses.filter(p => p.amplitude > 1e-6).map(p => {
-        const x = xAt(p.tNs).toFixed(2);
-        return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${yAt(p.amplitude).toFixed(2)}" stroke="${c}" stroke-width="1.4" stroke-linecap="round"/>`;
-      }).join('');
-    const rate = trace.repRateMHz >= 1000 ? `${(trace.repRateMHz / 1000).toPrecision(3)} GHz`
-      : trace.repRateMHz >= 1 ? `${Number(trace.repRateMHz.toPrecision(3))} MHz`
-        : `${Number((trace.repRateMHz * 1000).toPrecision(3))} kHz`;
-    return {
-      w: W,
-      h: H,
-      body: frame + envelope +
-        `<g data-probe-time="${dense ? 'dense' : trace.pulses.length}">${spikes}</g>` + ticks +
-        `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I</text>` +
-        `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6" fill="#333">${esc(rate)}</text>`,
-    };
-  }
-
-  // spectrum plot: Î» (nm) vs I (a.u.), real sampled data, smoothed through a
-  // Catmull-Rom spline (matching the spectrometer's own screen readout).
-  // Domain is Â±2Ïƒ of the beam's FWHM bandwidth plus 5 nm padding â€” wide
-  // enough to actually show the Gaussian shape, not just its half-max width
-  // â€” and the rendered samples are both filtered to that domain and clipped,
-  // since the spec's own sampled support (Â±3Ïƒ) can otherwise reach past it.
-  const W = 74, H = 50, x0 = 10, y0 = H - 13, pw = W - 18, ph = H - 24;
-  const { lo, hi } = probeSpectrumRange(rd, el.params);
-  const span = Math.max(1e-6, hi - lo);
-  const xAt = wl => x0 + pw * (wl - lo) / span;
-  let curve = '';
-  if (rd.spec) {
-    const samples = (spectrumSamples(rd.spec, 28) || []).filter(s => s.wl >= lo && s.wl <= hi);
-    const peak = Math.max(...samples.map(s => s.weight), 1e-9);
-    if (samples.length < 2) {
-      const sample = samples[0];
-      if (sample) {
-        const x = xAt(sample.wl).toFixed(2), height = Math.max(1, (sample.weight / peak) * ph);
-        curve = `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - height).toFixed(2)}" stroke="${wavelengthToColor(sample.wl)}" stroke-width="2" stroke-linecap="round"/>`;
-      }
-    } else {
-      const points = samples.map(s => ({ x: xAt(s.wl), y: y0 - Math.max(0, (s.weight / peak) * ph) }));
-      const fillPoints = [{ x: points[0].x, y: y0 }, ...points, { x: points[points.length - 1].x, y: y0 }];
-      const clipId = `probeSpecClip${esc(el.id)}`, gradientId = `probeSpecGrad${esc(el.id)}`;
-      const stops = samples.map((s, i) => {
-        const offset = samples.length > 1 ? (i / (samples.length - 1) * 100).toFixed(1) : 0;
-        return `<stop offset="${offset}%" stop-color="${wavelengthToColor(s.wl)}"/>`;
-      }).join('');
-      curve = `<defs><clipPath id="${clipId}"><rect x="${x0}" y="${(y0 - ph - 2).toFixed(2)}" width="${pw}" height="${(ph + 3).toFixed(2)}"/></clipPath>` +
-        `<linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">${stops}</linearGradient></defs>` +
-        `<g clip-path="url(#${clipId})">` +
-        `<path data-spectrum-points="${samples.length}" d="${smoothPath(fillPoints)} Z" fill="url(#${gradientId})" opacity="0.3" stroke="none"/>` +
-        `<path d="${smoothPath(points)}" fill="none" stroke="url(#${gradientId})" stroke-width="1.6" stroke-linecap="round"/>` +
-        `</g>`;
-    }
-  } else {
-    const x = xAt(rd.wl).toFixed(2);
-    curve = `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 - ph).toFixed(2)}" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
-  }
-  const tick = (wl, anchor) => {
-    const x = xAt(wl).toFixed(2);
-    return `<line x1="${x}" y1="${y0}" x2="${x}" y2="${(y0 + 1.6).toFixed(2)}" stroke="#888" stroke-width="0.7"/>` +
-      `<text x="${x}" y="${(y0 + 6).toFixed(2)}" text-anchor="${anchor}" font-size="4.6" fill="#666">${Math.round(wl)}</text>`;
-  };
-  const vlabel = isSC ? `${Math.round(rd.wl - rd.bw / 2)}â€“${Math.round(rd.wl + rd.bw / 2)} nm`
-    : rd.bw > 0 ? `${Math.round(rd.wl)} Â± ${Math.round(rd.bw / 2)} nm` : `${Math.round(rd.wl)} nm`;
-  return {
-    w: W,
-    h: H,
-    body: `<rect x="0" y="0" width="${W}" height="${H}" rx="4" fill="#fff" stroke="#c9ced6"/>` +
-      `<line x1="${x0}" y1="${y0}" x2="${x0 + pw}" y2="${y0}" stroke="#888" stroke-width="1"/>` +
-      `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 - ph - 2}" stroke="#888" stroke-width="1"/>` +
-      curve +
-      tick(lo, 'start') + tick((lo + hi) / 2, 'middle') + tick(hi, 'end') +
-      `<text x="${x0 - 4}" y="${y0 - ph}" text-anchor="middle" font-size="5.5" fill="#888" transform="rotate(-90 ${x0 - 4} ${y0 - ph})">I (a.u.)</text>` +
-      `<text x="${x0 + pw}" y="${y0 - ph - 1}" text-anchor="end" font-size="6.5" fill="#333">${vlabel}</text>`,
-  };
-}
-
-// Where the probe's readout card sits and how it is oriented. The leader line
-// points straight up from the sampled point at 0Â° and swings around that
-// point as the probe is rotated, but the card itself is counter-rotated so
-// its text and plots always read horizontally â€” an upside-down spectrum is
-// useless. The card is anchored by whichever edge faces the sampled point, so
-// it always extends away from the beam rather than covering it.
-const PROBE_LEADER = 22;
-
-function probeCardPlacement(el, card, scale) {
-  const rot = el.rot || 0;
-  const a = rot * Math.PI / 180;
-  const dirX = Math.sin(a), dirY = -Math.cos(a); // local "up" in world space
-  const x = dirX * PROBE_LEADER + (-card.w / 2 + dirX * card.w / 2) * scale;
-  const y = dirY * PROBE_LEADER + (-card.h / 2 + dirY * card.h / 2) * scale;
-  return { rot, x, y, w: card.w * scale, h: card.h * scale };
-}
-
-// samples can generate signal (fluorescence / SHG / THG / CARS) and
-// independently transmit or block the excitation beam
-// A specimen can emit several signals at once â€” up to five stacked channels,
-// the same overlay pattern the wavefront shapers use for their optical
-// function (see layersParam / newShaperLayer above). An empty list is an
-// optically inert specimen that only attenuates the excitation.
-export const MAX_SAMPLE_CHANNELS = 5;
-
-// A specimen is one of four kinds. Absorbing and resin have no signal
-// channels at all; the two "specimen" types each offer their own menu of
-// stackable signals, because a linear process and a nonlinear one are never
-// alternatives for the same physical sample.
-export const SPECIMEN_TYPES = [
-  ['absorbing', 'Absorbing specimen'],
-  ['resin', 'Photocurable resin'],
-  ['linear', 'Linear specimen'],
-  ['nonlinear', 'Nonlinear specimen'],
-];
-
-export const LINEAR_SIGNAL_KINDS = [
-  ['fluor', 'Fluorescence â€” isotropic'],
-  ['raman', 'Spontaneous Raman â€” isotropic'],
-  ['phase', 'Phase contrast â€” retardance'],
-];
-export const NONLINEAR_SIGNAL_KINDS = [
-  ['tpef', 'Two-photon fluorescence (2PEF)'],
-  ['thpef', 'Three-photon fluorescence (3PEF)'],
-  ['shg', 'Ï‡â½Â²â¾ â€” second harmonic, and sum frequency of two beams'],
-  ['thg', 'Third harmonic (THG)'],
-  ['cars', 'CARS â€” anti-Stokes'],
-  ['srs', 'Stimulated Raman (SRS)'],
-];
-
-export function signalKindsFor(specimenType) {
-  if (specimenType === 'linear') return LINEAR_SIGNAL_KINDS;
-  if (specimenType === 'nonlinear') return NONLINEAR_SIGNAL_KINDS;
-  return [];
-}
-
-const LINEAR_KIND_SET = new Set(LINEAR_SIGNAL_KINDS.map(([k]) => k));
-const NONLINEAR_KIND_SET = new Set(NONLINEAR_SIGNAL_KINDS.map(([k]) => k));
-export const ALL_SIGNAL_KINDS = [...LINEAR_SIGNAL_KINDS, ...NONLINEAR_SIGNAL_KINDS];
-
-// Kept for the legacy single-`mode` reader and any external caller.
-export const SIGNAL_KINDS = ALL_SIGNAL_KINDS;
-
-// Four- and three-wave mixing need two DIFFERENT excitation colours present
-// at the same spot; the others are driven by a single beam. SRS likewise
-// needs two beams â€” one to carry the modulation and one to receive it.
-export const MIXING_KINDS = new Set(['sfg', 'cars']);
-// Signals that cannot happen with one beam alone. Second harmonic is not one
-// of them: it doubles a single beam, and mixes a pair when there is one.
-export const TWO_BEAM_KINDS = new Set(['sfg', 'cars', 'srs']);
-// Incoherent emission radiates in every direction, so it has no forward/epi
-// distinction to offer. The parametric signals are generated along the
-// excitation direction and are forward-dominant, with a weaker backward
-// (epi) lobe that real epi-detected CARS/SHG setups rely on.
-export const ISOTROPIC_KINDS = new Set(['fluor', 'raman', 'tpef', 'thpef']);
-export const EPI_CAPABLE_KINDS = new Set(['shg', 'thg', 'sfg', 'cars']);
-// These modify the excitation beam in place rather than emitting a new one.
-export const MODIFIER_KINDS = new Set(['phase', 'srs']);
-
-// How far above the driving photon energy an emission sits by default: real
-// Stokes shifts are tens of nm, and the same offset reads sensibly for
-// one-, two- and three-photon excitation.
-export const EMISSION_OFFSET_NM = 20;
-
-// The photon order each emission is pumped by â€” 1 for ordinary
-// fluorescence, 2 for 2PEF, 3 for 3PEF. The emitted photon must be less
-// energetic than the combined excitation photons, i.e. its wavelength must
-// exceed excitation/order.
-export const EMISSION_ORDER = { fluor: 1, tpef: 2, thpef: 3 };
-
-// Spontaneous Raman lines, as Stokes shifts in cm^-1. Real reference values
-// for a handful of specimens people actually image, so a spectrometer
-// downstream reconstructs a recognizable fingerprint rather than noise.
-export const RAMAN_MATERIALS = [
-  ['lipid', 'Lipids (CHâ‚‚)', [1440, 1650, 2845, 2880]],
-  ['protein', 'Protein (amide I)', [1004, 1450, 1660, 2930]],
-  ['dmso', 'DMSO', [670, 1042, 2913, 2994]],
-  ['pmma', 'PMMA (acrylic)', [812, 1452, 1730, 2952]],
-  ['polystyrene', 'Polystyrene', [1001, 1602, 3054]],
-  ['water', 'Water (Oâ€“H)', [1640, 3250, 3400]],
-];
-const RAMAN_BY_ID = new Map(RAMAN_MATERIALS.map(([id, label, shifts]) => [id, { label, shifts }]));
-export const ramanShifts = material => RAMAN_BY_ID.get(material)?.shifts || RAMAN_BY_ID.get('lipid').shifts;
-
-// A Stokes-shifted wavelength: 1/lambda_s = 1/lambda_p - shift, with the
-// shift converted from cm^-1 to nm^-1 (1 cm^-1 = 1e-7 nm^-1).
-export function ramanStokesWl(pumpWl, shiftCm) {
-  if (!(pumpWl > 0)) return null;
-  const inv = 1 / pumpWl - shiftCm * 1e-7;
-  return inv > 1e-9 ? 1 / inv : null;
-}
-
-// Real fluorophores, as the two numbers that matter for a sketch: where
-// they absorb and where they emit, each as a peak plus a full width at half
-// maximum. Excitation away from the absorption peak still works, just more
-// weakly â€” which is the point of picking a dye at all. "Custom" keeps the
-// generic behavior: absorbs whatever arrives and emits one Stokes offset
-// above it.
-export const FLUOROPHORES = [
-  ['custom', 'Custom (any excitation)', null],
-  ['dapi', 'DAPI', { absPeak: 358, absFwhm: 70, emPeak: 461, emFwhm: 70 }],
-  ['hoechst', 'Hoechst 33342', { absPeak: 350, absFwhm: 70, emPeak: 461, emFwhm: 75 }],
-  ['gfp', 'GFP (EGFP)', { absPeak: 488, absFwhm: 40, emPeak: 507, emFwhm: 45 }],
-  ['rhodamine', 'Rhodamine (TRITC)', { absPeak: 555, absFwhm: 45, emPeak: 580, emFwhm: 45 }],
-];
-const FLUOROPHORE_BY_ID = new Map(FLUOROPHORES.map(([id, label, spec]) => [id, spec]));
-export const fluorophoreSpec = id => FLUOROPHORE_BY_ID.get(id) || null;
-
-// How well a dye absorbs at one wavelength, relative to its own peak. A
-// multiphoton process is driven by the combined energy of its photons, so
-// n-photon excitation at lambda behaves like one-photon excitation at
-// lambda/n â€” an 800 nm beam reaches DAPI's 358 nm band two photons at a time.
-export function fluorophoreAbsorption(id, excitationWl, order = 1) {
-  const spec = fluorophoreSpec(id);
-  if (!spec || !(excitationWl > 0)) return 1;
-  const effective = excitationWl / Math.max(1, order);
-  const halfWidth = Math.max(1, spec.absFwhm) / 2;
-  return Math.exp(-Math.LN2 * ((effective - spec.absPeak) / halfWidth) ** 2);
-}
-
-export function newSampleChannel(kind = 'fluor') {
-  return {
-    kind, wl: 520, eff: 0.1, epi: false, epiRatio: 0.15, autoWl: true,
-    autoColor: true, color: '#22c55e',
-    material: 'lipid',        // spontaneous Raman fingerprint
-    fluorophore: 'custom',    // emission band for the fluorescence kinds
-    retardance: 90, axis: 45, // phase contrast
-    transferEff: 0.1,         // SRS modulation transfer
-    requireOverlap: true,     // two-beam signals need the pulses to coincide
-  };
-}
-
-// Photon-energy conservation, in nm. Returns null when a combination is not
-// physical (e.g. an anti-Stokes photon needing more energy than the two pump
-// photons carry).
-export function sumFrequencyWl(a, b) {
-  const inv = 1 / a + 1 / b;
-  return inv > 1e-9 ? 1 / inv : null;
-}
-export function carsAntiStokesWl(pumpWl, stokesWl) {
-  const inv = 2 / pumpWl - 1 / stokesWl;
-  return inv > 1e-9 ? 1 / inv : null;
-}
-
-// Legacy scenes stored one `mode` plus its own wavelength/efficiency fields.
-// They keep loading unchanged by being read as a single-channel list.
-export function legacySampleChannels(p) {
-  if (!p || !p.mode || p.mode === 'none') return [];
-  const eff = Number.isFinite(p.signalEff) ? p.signalEff : 0.1;
-  if (p.mode === 'fluor') return [{ ...newSampleChannel('fluor'), wl: p.fluorWl ?? 520, eff }];
-  if (p.mode === 'cars') return [{ ...newSampleChannel('cars'), wl: p.carsWl ?? 660, eff, autoWl: false }];
-  if (p.mode === 'shg' || p.mode === 'thg') return [{ ...newSampleChannel(p.mode), eff }];
-  return [];
-}
-
-// Which of the four specimen kinds this element is. Sketches saved before
-// the type existed are read from whatever they do carry: an explicit resin
-// material, the signal channels they already stack, or the old per-material
-// `sampleKind` â€” so nothing silently changes behavior on load.
-export function specimenTypeOf(p) {
-  if (p?.specimenType) return p.specimenType;
-  const legacy = p?.sampleKind;
-  if (legacy === 'resin') return 'resin';
-  const stacked = Array.isArray(p?.channels) && p.channels.length ? p.channels : legacySampleChannels(p);
-  if (stacked.length) return stacked.some(c => NONLINEAR_KIND_SET.has(c.kind)) ? 'nonlinear' : 'linear';
-  if (legacy === 'fluorescent') return 'linear';
-  if (legacy === 'nonlinear') return 'nonlinear';
-  return 'absorbing';
-}
-
-export function sampleChannels(p) {
-  const type = specimenTypeOf(p);
-  // Absorbing and resin specimens emit nothing. Channels the user configured
-  // under another type are kept in params (so switching back restores them)
-  // but take no part in the trace, and a channel is only ever honored under
-  // the type whose menu offers it.
-  const allowed = type === 'linear' ? LINEAR_KIND_SET : type === 'nonlinear' ? NONLINEAR_KIND_SET : null;
-  if (!allowed) return [];
-  const raw = Array.isArray(p?.channels) && p.channels.length ? p.channels : legacySampleChannels(p);
-  return raw.filter(c => allowed.has(c.kind)).slice(0, MAX_SAMPLE_CHANNELS);
-}
-
-// Two-beam signals only happen while both pulses are at the spot together.
-// When they are not, say by how much and in which direction to fix it, so a
-// silent signal is diagnosable instead of mysterious.
-function overlapWarning(channel, records) {
-  if (channel.requireOverlap === false) return null;
-  const sorted = [...records].sort((a, b) => a.wl - b.wl);
-  const a = sorted[0], b = sorted[sorted.length - 1];
-  const { factor, skewNs, comparable } = pulseOverlap(a, b);
-  if (!comparable || factor >= 0.5) return null;
-  const skewPs = skewNs * 1000;
-  const pathMm = skewNs * 299.792458;
-  const what = channel.kind === 'srs' ? 'Stimulated Raman' : channel.kind === 'sfg' ? 'Sum frequency' : 'CARS';
-  return `${what} needs the two pulses to arrive together: they are ${skewPs.toFixed(skewPs < 10 ? 2 : 0)} ps apart `
-    + `(${pathMm.toFixed(pathMm < 10 ? 2 : 0)} mm of path). Match the arms, or add a delay line.`;
-}
-
-// Whether a channel has to know what else is illuminating the specimen â€”
-// which colours are present, and whether any of them carries a modulation.
-// SHG, THG and phase contrast derive everything from the ray in front of
-// them, so a specimen made only of those never pays for the probe pass.
-export function channelNeedsExcitationProbe(c) {
-  // Second harmonic now carries the pair's sum frequency too, so it has to
-  // know what else is on the spot.
-  if (c.kind === 'shg') return true;
-  if (TWO_BEAM_KINDS.has(c.kind)) return !(c.kind === 'cars' && c.autoWl === false);
-  if (c.kind === 'raman') return true;
-  // Emission channels need it even when the wavelength is pinned: the
-  // photon-energy floor a manual value has to clear is set by the SHORTEST
-  // beam on the spot, which a single ray cannot know on its own.
-  if (EMISSION_ORDER[c.kind]) return true;
-  return false;
-}
-
-// The excitation colour a single-beam signal is driven by. With several
-// beams on the spot the shortest wavelength carries the most energy per
-// photon, so it is the one that drives fluorescence and Raman.
-export function drivingExcitationWl(incidentWls) {
-  const list = (incidentWls || []).filter(w => Number.isFinite(w) && w > 0);
-  return list.length ? Math.min(...list) : null;
-}
-
-// The wavelength an emission channel defaults to for a given excitation:
-// one Stokes offset above the energy its pump photons can reach.
-export function defaultEmissionWl(kind, excitationWl) {
-  const order = EMISSION_ORDER[kind];
-  if (!order || !(excitationWl > 0)) return null;
-  return Math.round(excitationWl / order + EMISSION_OFFSET_NM);
-}
-
-// Physically impossible or under-specified configurations, reported as a
-// short sentence for the inspector to surface. Returns null when the channel
-// is fine. `incidentWls` is what actually reaches this specimen.
-export function channelWarning(channel, incident) {
-  // `incident` is either the plain wavelengths or the full probe records
-  // (wavelength, path length, pulse train) needed to judge arrival timing.
-  const records = (incident || []).map(b => (typeof b === 'number' ? { wl: b } : b))
-    .filter(b => Number.isFinite(b?.wl) && b.wl > 0);
-  const distinct = [...new Set(records.map(b => Math.round(b.wl)))];
-  if (TWO_BEAM_KINDS.has(channel.kind)) {
-    if (channel.kind === 'cars' && channel.autoWl === false) return null;
-    if (distinct.length < 2) {
-      return channel.kind === 'srs'
-        ? 'Stimulated Raman needs two excitation beams â€” one carrying the modulation, one to receive it.'
-        : `${channel.kind === 'sfg' ? 'Sum frequency' : 'CARS'} needs two different excitation wavelengths at the sample.`;
-    }
-    return overlapWarning(channel, records);
-  }
-  const order = EMISSION_ORDER[channel.kind];
-  if (!order) return null;
-  const excitation = drivingExcitationWl(records.map(b => b.wl));
-  const dye = fluorophoreSpec(channel.fluorophore);
-  if (dye && excitation > 0) {
-    const absorbed = fluorophoreAbsorption(channel.fluorophore, excitation, order);
-    if (absorbed < 0.05) {
-      const label = (FLUOROPHORES.find(([id]) => id === channel.fluorophore) || [, 'This dye'])[1];
-      const effective = Math.round(excitation / order);
-      const via = order === 1 ? `${effective} nm` : `${Math.round(excitation)} nm at ${order} photons (${effective} nm effective)`;
-      return `${label} barely absorbs ${via} â€” its band peaks at ${dye.absPeak} nm. `
-        + `Emission is ${(absorbed * 100).toFixed(absorbed < 0.01 ? 2 : 1)}% of what it would be on peak.`;
-    }
-    return null;
-  }
-  if (channel.autoWl !== false) return null;
-  if (!(excitation > 0) || !(channel.wl > 0)) return null;
-  const floor = excitation / order;
-  if (channel.wl < floor) {
-    const what = order === 1 ? 'Fluorescence' : `${order}-photon fluorescence`;
-    return `${what} cannot emit at ${Math.round(channel.wl)} nm: that is more energetic than `
-      + `${order === 1 ? 'the' : `${order} combined`} ${Math.round(excitation)} nm excitation photon${order === 1 ? '' : 's'} `
-      + `(must exceed ${Math.round(floor)} nm).`;
-  }
-  return null;
-}
-
-function sampleModeParams() {
-  return [
-    { key: 'specimenType', label: 'Specimen type', type: 'select', def: 'absorbing', options: SPECIMEN_TYPES,
-      // Sketches predating the type selector are read from what they do
-      // carry â€” stacked channels, a legacy single `mode`, or the old
-      // per-material `sampleKind`.
-      migrate: p => specimenTypeOf({ ...p, specimenType: null }) },
-    // Only the two signal-bearing types show a channel list; the resin's own
-    // preview controls live on the stage, next to its piezo scan.
-    { key: 'channels', label: 'Signals generated', type: 'signals', def: [], show: p => {
-      const type = specimenTypeOf(p);
-      return type === 'linear' || type === 'nonlinear';
-    } },
-    // Arrival timing is a number, not a picture: a picosecond is a third of a
-    // millimetre of path, which no drawing at bench scale can show. A specimen
-    // whose signals depend on it says where the two beams are.
-    {
-      key: 'pulseTiming', label: 'Two-beam timing', type: 'readout', wide: true,
-      show: p => {
-        const type = specimenTypeOf(p);
-        if (type !== 'nonlinear') return false;
-        return sampleChannels(p).some(c => TWO_BEAM_KINDS.has(c.kind) || c.kind === 'shg');
-      },
-      readout: (p, el) => {
-        const timing = specimenTimingReadout(el ? specimenTimingReading(el.id) : null);
-        const srs = el ? specimenSrsNote(el.id) : null;
-        return srs ? `${timing}. Stimulated Raman transfer not drawn: ${srs}.` : timing;
-      },
-    },
-    { key: 'showSignalSpot', label: 'Show excitation spot', type: 'checkbox', def: true, appearance: true },
-    { key: 'thickness', label: 'Sample thickness (mm)', type: 'number', min: 0.15, htmlMin: 0, max: 20, step: 0.5, def: 6, appearance: true },
-    { key: 'voxelPreview', label: '2PP voxel preview', type: 'checkbox', def: false, show: p => specimenTypeOf(p) === 'resin' },
-    { key: 'voxelSize', label: 'Voxel marker (mm)', type: 'number', min: 0.1, max: 6, step: 0.1, def: 0.6, show: p => specimenTypeOf(p) === 'resin' && p.voxelPreview },
-    { key: 'transmitExc', label: 'Transmit excitation', type: 'checkbox', def: true, show: p => specimenTypeOf(p) !== 'absorbing' },
-    // An absorbing specimen is exactly this one dial: full transmission down
-    // to zero, where it blocks the beam outright.
-    { key: 'transmission', label: 'Excitation transmission', type: 'number', min: 0, max: 1, step: 0.05, def: 0.8, show: p => specimenTypeOf(p) === 'absorbing' || p.transmitExc },
-    // Legacy single-signal fields: hidden, kept so pre-channels sketches keep
-    // loading and are read through legacySampleChannels() above.
-    { key: 'mode', label: 'Signal generated', type: 'select', def: 'none', show: () => false, options: [['none', 'None'], ['fluor', 'Fluorescence (isotropic)'], ['shg', 'SHG Î»/2 (forward)'], ['thg', 'THG Î»/3 (forward)'], ['cars', 'CARS (forward)']] },
-    { key: 'fluorWl', label: 'Emission Î» (nm)', type: 'number', min: 200, max: 1200, step: 5, def: 520, show: () => false },
-    { key: 'carsWl', label: 'CARS Î» (nm)', type: 'number', min: 200, max: 1200, step: 5, def: 660, show: () => false },
-    { key: 'signalEff', label: 'Signal efficiency', type: 'number', min: 0, max: 1, step: 0.05, def: 0.1, show: () => false },
-  ];
-}
-// A piezo stage can translate the mounted specimen along its own XY (long
-// axis, transverse to the beam) and Z (its own optical axis â€” a 2D stand-in
-// for focus/depth) directions. Three scan patterns:
-//   'xy'   â€” continuous bidirectional (triangle) sweep along XY only.
-//   'z'    â€” continuous bidirectional sweep along Z only.
-//   'sync' â€” a raster scan: XY sweeps continuously (one full left-to-right
-//            or right-to-left pass per half period) while Z advances by one
-//            discrete step each time XY completes a pass, bouncing back
-//            down once it reaches the far end â€” a serpentine line-by-line
-//            scan, not a calibrated piezo trajectory.
-// XY maps to the local-x offset and Z to the local-y offset, matching the
-// sample's local geometry (its long/clear-aperture axis is local x, the
-// beam crosses it along local y â€” see sampleSurfaces). The caller rotates
-// this local offset into world space by the element's own rot (same
-// pattern as retroOffsetAt below), so XY stays parallel to the specimen's
-// long axis and Z stays perpendicular to it at any placed angle.
-function triangleWave(timeSeconds, frequency, travel) {
-  const phase = ((timeSeconds * frequency) % 1 + 1) % 1;
-  const triangle = phase < 0.5 ? phase * 2 : 2 - phase * 2;
-  return (triangle - 0.5) * travel;
-}
-
-function syncZOffset(timeSeconds, freqXY, travelZ, steps) {
-  const n = Math.max(2, Math.round(steps) || 2);
-  if (!(freqXY > 0)) return -travelZ / 2;
-  const halfPeriod = 1 / (2 * freqXY);
-  const sweepIndex = Math.floor(timeSeconds / halfPeriod);
-  const cycleLen = 2 * (n - 1);
-  const stepPhase = ((sweepIndex % cycleLen) + cycleLen) % cycleLen;
-  const level = stepPhase <= n - 1 ? stepPhase : cycleLen - stepPhase;
-  return -travelZ / 2 + (level / (n - 1)) * travelZ;
-}
-
-// A retroreflector's delay-line motion translates the whole element along
-// its own apex axis (local x, pointing from the mouth toward the apex); the
-// caller rotates this local offset into world space by the element's own
-// rot (same pattern the piezo stage uses â€” see stageOffsetAt above), since
-// a retroreflector is routinely placed at an arbitrary angle to fold a beam
-// path. The offset ranges over
-// [0, travel], starting at 0 (the placed position, the shortest path) and
-// moving only in the positive-x direction â€” away from the mouth, which
-// always lengthens the round-trip optical path, never shortens it.
-// The two ends of a swept delay line, ordered. The controls are bounded
-// independently, so nothing stops "from" being set beyond "to" -- and a stage
-// asked to travel between two points does not care which was named first.
-// Ordering them here is what keeps a reversed pair a working sweep rather
-// than a frozen one that still advertises its span.
-export function delayLineSweepRangeMm(params = {}) {
-  const a = Math.max(0, Number(params.delayMinMm) || 0);
-  const b = Math.max(0, Number(params.delayMaxMm) || 0);
-  return [Math.min(a, b), Math.max(a, b)];
-}
-
-// How far it travels between them. Never negative.
-export function delayLineSweepSpanMm(params = {}) {
-  const [lo, hi] = delayLineSweepRangeMm(params);
-  return hi - lo;
-}
-
-// The optical path the delay line is adding right now. A stage sweeps and
-// retraces -- a carriage cannot fly back instantly -- so the motion is a
-// triangle between the two ends, on the same illustrative wall clock the
-// retroreflector and the piezo stage use. Real stages move at hertz, which is
-// exactly what that clock shows.
-export function delayLineDelayAt(params = {}, timeSeconds = 0) {
-  if ((params.moveMode || 'static') !== 'linear') {
-    return Math.max(0, Number(params.delayMm) || 0);
-  }
-  const [lo, hi] = delayLineSweepRangeMm(params);
-  const span = hi - lo;
-  if (!(span > 0)) return lo;
-  const freq = Math.min(10, Math.max(0.01, Number(params.freqHz) || 1));
-  // triangleWave is centred on zero, so shift it onto [lo, lo + span].
-  return lo + span / 2 + triangleWave(timeSeconds, freq, span);
-}
-
-export function retroOffsetAt(params = {}, timeSeconds = 0) {
-  if (params.moveMode !== 'linear' || !Number.isFinite(timeSeconds)) return { x: 0, y: 0 };
-  const travel = Math.min(200, Math.max(0, params.travel ?? 50));
-  const freq = Math.min(10, Math.max(0.01, params.freqHz ?? 0.2));
-  return { x: triangleWave(timeSeconds, freq, travel) + travel / 2, y: 0 };
-}
-
-export function stageOffsetAt(params = {}, timeSeconds = 0) {
-  const mode = params.pzMode || 'static';
-  if (mode === 'static' || !Number.isFinite(timeSeconds)) return { x: 0, y: 0 };
-  const travelXY = Math.min(150, Math.max(0, params.pzTravelXY ?? 12));
-  const freqXY = Math.min(10, Math.max(0.01, params.pzFreqXY ?? 0.15));
-  const travelZ = Math.min(150, Math.max(0, params.pzTravelZ ?? 8));
-  if (mode === 'xy') return { x: triangleWave(timeSeconds, freqXY, travelXY), y: 0 };
-  if (mode === 'z') {
-    const freqZ = Math.min(10, Math.max(0.01, params.pzFreqZ ?? 0.1));
-    return { x: 0, y: triangleWave(timeSeconds, freqZ, travelZ) };
-  }
-  if (mode === 'sync') {
-    const steps = Math.min(50, Math.max(2, Math.round(params.pzZSteps ?? 5)));
-    return { x: triangleWave(timeSeconds, freqXY, travelXY), y: syncZOffset(timeSeconds, freqXY, travelZ, steps) };
-  }
-  return { x: 0, y: 0 };
-}
-
-// A 2PP voxel's apparent size/opacity qualitatively broadens and fades the
-// further the sample currently sits from the stage's nominal Z=0 (focus)
-// plane â€” a stand-in for real defocus-broadened, threshold-limited exposure
-// in a system with no true third axis. `travelZ` scales what "far" means so
-// the falloff tracks whatever axial range the user configured.
-export function voxelDepthFactor(zOffset = 0, travelZ = 8) {
-  const halfTravel = Math.max(1e-6, travelZ / 2);
-  return Math.min(1, Math.abs(zOffset) / halfTravel);
-}
-
-// Fallback material-identity color, used only when no live traced hit is
-// available yet (e.g. nothing currently illuminates the sample). Once a ray
-// hits, the actual generated-signal wavelength (computed in raytrace.js)
-// takes over for fluorescence and nonlinear signals.
-function stageSampleColor(params) {
-  // The first channel whose wavelength is known without knowing what is
-  // actually illuminating the specimen â€” SHG/THG/SFG/CARS all depend on the
-  // incident colour, so they fall through to the material tint below.
-  const named = sampleChannels(params).find(c => c.kind === 'fluor' || (c.kind === 'cars' && c.autoWl === false));
-  if (named) return wavelengthToColor(named.wl);
-  const type = specimenTypeOf(params);
-  if (type === 'resin') return '#9b5de5';
-  if (type === 'nonlinear') return '#e6a23c';
-  if (type === 'absorbing') return '#69737e';
-  return '#e2758f';
-}
-
-// How thick the specimen glass is DRAWN. The tracer crosses it as a thin
-// sheet whatever this says, so it is presentation only â€” it never changes
-// where a ray meets the specimen or what it does there.
-export const sampleThickness = p => Math.min(20, Math.max(0.15, p?.thickness ?? 6));
-
-function signalSpotSVG(el) {
-  const hit = el._signalHitLocal;
-  if (!el.params.showSignalSpot || !hit) return '';
-  const color = Number.isFinite(hit.wl) ? wavelengthToColor(hit.wl) : stageSampleColor(el.params);
-  return `<circle cx="${hit.x.toFixed(2)}" cy="${hit.y.toFixed(2)}" r="1.4" fill="${color}" opacity="0.85"/>`;
-}
-
-function sampleSurfaces(el, h) {
-  const p = el.params;
-  const writeVoxel = specimenTypeOf(p) === 'resin' && p.voxelPreview === true;
-  const reportHit = true;
-  const channels = sampleChannels(p);
-  // One surface carries every channel, so a multimodal specimen emits all of
-  // its signals from the same spot on a single crossing. An inert specimen
-  // (no channels) keeps the plain attenuate/absorb behavior it always had.
-  if (channels.length) {
-    return [{
-      x1: -h, y1: 0, x2: h, y2: 0, kind: 'specimen',
-      data: { channels, transmitExc: p.transmitExc, transmission: p.transmission, writeVoxel, reportHit },
-    }];
-  }
-  return p.transmitExc
-    ? [{ x1: -h, y1: 0, x2: h, y2: 0, kind: 'attenuate', data: { transmission: p.transmission, writeVoxel, reportHit, specimen: true } }]
-    : rectAbsorb(2 * h, 8).map(s => ({ ...s, data: { reportHit } }));
-}
-
-// lens outline at x=cx: biconvex for f>=0, biconcave for f<0.
-// The refracting faces are the two VERTICAL surfaces the beam crosses, so
-// for a diverging lens those are the ones that curve inward (waist at mid).
-function lensShape(cx, h, f) {
-  const d = f >= 0
-    ? `M ${cx},${-h} Q ${cx + 9},0 ${cx},${h} Q ${cx - 9},0 ${cx},${-h} Z`
-    : `M ${cx - 6},${-h} L ${cx + 6},${-h} Q ${cx},0 ${cx + 6},${h} L ${cx - 6},${h} Q ${cx},0 ${cx - 6},${-h} Z`;
-  return `<path d="${d}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.5"/>`;
-}
-
-// Silent centre-thickness estimate for a zero-thickness paraxial singlet.
-// It reuses the same lensmaker geometry as the real thick-lens model:
-// R = |f|(n-1), then adds a typical 2.5 mm edge thickness to the spherical
-// sag. Diameter therefore matters, unlike a focal-length bucket. If an
-// authored focal length would require R smaller than the clear semi-diameter,
-// clamp to the limiting hemisphere rather than produce a non-finite result.
-export function estimatedThinLensThicknessMm(params, wavelengthNm = 587.6) {
-  const diameter = Math.min(500, Math.max(0.1, Number(params?.dia) || 25.4));
-  const halfDiameter = diameter / 2;
-  const index = glassIndex('nbk7', wavelengthNm) ?? 1.5168;
-  const rawRadius = Math.abs(Number(params?.f) || 0) * Math.max(0.01, index - 1);
-  const radius = Math.max(halfDiameter, rawRadius);
-  const sag = radius - Math.sqrt(Math.max(0, radius * radius - halfDiameter * halfDiameter));
-  return Math.max(1.5, sag + 2.5);
-}
-
-// ---- flat metasurface lens ----------------------------------------------
-// OpticalSetup does not propagate carrier phase or solve a meta-atom unit
-// cell. A metalens is therefore a zero-thickness, wavelength-aware paraxial
-// phase-gradient proxy: exact at its configured first-order focus, honest
-// about ordinary diffractive chromaticity, and deliberately silent about PSF,
-// Strehl, fabrication feasibility, and where the unfocused power goes.
-export function metalensFocalLength(params = {}, wavelengthNm = 532) {
-  const nominal = Number(params.f);
-  if (!Number.isFinite(nominal)) return 0;
-  const wavelength = Math.max(1e-6, Number.isFinite(Number(wavelengthNm)) ? Number(wavelengthNm) : 532);
-  if (params.designType === 'achromatic') {
-    const a = Number.isFinite(Number(params.bandMin)) ? Number(params.bandMin) : 450;
-    const b = Number.isFinite(Number(params.bandMax)) ? Number(params.bandMax) : 650;
-    const lo = Math.max(1e-6, Math.min(a, b));
-    const hi = Math.max(lo, Math.max(a, b));
-    if (wavelength >= lo && wavelength <= hi) return nominal;
-    // Anchor the ordinary diffractive law to the nearest corrected edge. The
-    // focal length is continuous at both edges instead of jumping when a
-    // broadband source crosses the idealized correction band.
-    return nominal * (wavelength < lo ? lo : hi) / wavelength;
-  }
-  const designWavelength = Math.max(1e-6,
-    Number.isFinite(Number(params.designWavelength)) ? Number(params.designWavelength) : 532);
-  return nominal * designWavelength / wavelength;
-}
-
-export function metalensNumericalAperture(params = {}) {
-  const diameter = Math.max(0, Number.isFinite(Number(params.dia)) ? Number(params.dia) : 0);
-  const focalLength = Math.abs(Number.isFinite(Number(params.f)) ? Number(params.f) : 0);
-  if (!(diameter > 0) || !(focalLength > 0)) return 0;
-  return Math.sin(Math.atan(diameter / (2 * focalLength)));
-}
-
-function formatMetalensFocal(value) {
-  if (!Number.isFinite(value)) return 'â€”';
-  const abs = Math.abs(value);
-  return `${abs >= 100 ? value.toFixed(0) : abs >= 10 ? value.toFixed(1) : value.toFixed(2)} mm`;
-}
-
-function metalensOpticalReadout(params) {
-  const f = Math.abs(Number(params.f));
-  const diameter = Number(params.dia);
-  if (!(f > 0) || !(diameter > 0)) return 'No optical power';
-  return `NA ${metalensNumericalAperture(params).toFixed(3)} Â· f/${(f / diameter).toFixed(2)}`;
-}
-
-function metalensIncidentReadout(el) {
-  const reading = el ? metalensReading(el.id) : null;
-  if (!reading?.length) return 'No incident light';
-  const wavelengths = reading.map(sample => sample.wavelengthNm);
-  const focals = reading.map(sample => sample.focalLengthMm);
-  const wl = wavelengths.length === 1
-    ? `${Number(wavelengths[0].toFixed(1))} nm`
-    : `${Number(Math.min(...wavelengths).toFixed(1))}â€“${Number(Math.max(...wavelengths).toFixed(1))} nm`;
-  const lo = Math.min(...focals), hi = Math.max(...focals);
-  const focus = Math.abs(hi - lo) < 0.005
-    ? formatMetalensFocal((lo + hi) / 2)
-    : `${formatMetalensFocal(lo).replace(' mm', '')}â€“${formatMetalensFocal(hi)}`;
-  return `${wl} â†’ ${focus}`;
-}
-
-function prismGeometry(el) {
-  const height = Math.max(5, el.params.psize || 25.4);
-  const apex = Math.min(80, Math.max(10, el.params.apex || 60)) * Math.PI / 180;
-  const halfBase = height * Math.tan(apex / 2);
-  return {
-    top: { x: 0, y: -height / 2 },
-    left: { x: -halfBase, y: height / 2 },
-    right: { x: halfBase, y: height / 2 },
-    width: 2 * halfBase,
-    height,
-  };
-}
-
-// laser body height grows with the beam width so a thick beam never
-// exceeds its source
-function laserH(el) {
-  const p = el.params;
-  return p.beamMode === 'beam' ? Math.max(34, p.beamWidth + 28) : 34;
-}
-
-// absorbing housing around a shaper's active face: top, bottom, back, and the
-// two bits of front frame beyond the active area (face at x=fx, body to x=bx)
-function shaperBody(fx, bx, L, hh) {
-  return [
-    { x1: fx, y1: -hh, x2: bx, y2: -hh, kind: 'absorb' },
-    { x1: fx, y1: hh, x2: bx, y2: hh, kind: 'absorb' },
-    { x1: bx, y1: -hh, x2: bx, y2: hh, kind: 'absorb' },
-    { x1: fx, y1: -hh, x2: fx, y2: -L, kind: 'absorb' },
-    { x1: fx, y1: L, x2: fx, y2: hh, kind: 'absorb' },
-  ];
-}
-
-const P = {
-  wavelength: { key: 'wavelength', label: 'Wavelength (nm)', type: 'number', min: 100, max: 12000, step: 1, def: 532 },
-  autoColor: { key: 'autoColor', label: 'Color from Î»', type: 'checkbox', def: true },
-  color: { key: 'color', label: 'Beam color', type: 'color', def: '#e02020', show: p => !p.autoColor },
-};
-
-// Shared by every mirror in the Mirrors category: a reflectivity percentage
-// and, once it's set below 100%, an opt-in toggle for actually drawing the
-// leaked transmitted beam (default off â€” the leak is still retained within
-// the tracer's bounded weak-power budget for correct detector/power-budget
-// readings either way, see raytrace.js's
-// `hidden` ray flag; this only controls whether it's rendered).
-function reflectivityParams() {
-  return [
-    { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-    { key: 'showTransmitted', label: 'Display transmitted beam', type: 'checkbox', def: false, show: p => (p.refl ?? 100) < 100 },
-  ];
-}
-
-// Ideal quasistatic galvo command. The mechanical mirror angle is what the
-// user configures; a reflected beam changes direction by twice that amount.
-// Animation deliberately omits inertia/resonance so the UI never implies a
-// calibrated scanner transfer function.
-export function galvoAngleAt(params = {}, timeSeconds = 0) {
-  const center = Math.min(45, Math.max(-45, Number.isFinite(params.commandAngle) ? params.commandAngle : 0));
-  if (params.scanMode !== 'sine' && params.scanMode !== 'triangle') {
-    return Math.min(45, Math.max(-45, center));
-  }
-  const amplitude = Math.min(10, 45 - Math.abs(center),
-    Math.max(0, Number.isFinite(params.scanAmplitude) ? params.scanAmplitude : 0));
-  const frequency = Math.min(5000, Math.max(0.01, Number.isFinite(params.scanFrequencyHz) ? params.scanFrequencyHz : 100));
-  const phase = (Number.isFinite(params.scanPhaseDeg) ? params.scanPhaseDeg : 0) * Math.PI / 180;
-  const cycle = timeSeconds * frequency + phase / (2 * Math.PI);
-  const frac = ((cycle % 1) + 1) % 1;
-  const wave = params.scanMode === 'triangle'
-    ? (frac < 0.25 ? 4 * frac : frac < 0.75 ? 2 - 4 * frac : 4 * frac - 4)
-    : Math.sin(2 * Math.PI * frac);
-  return Math.min(45, Math.max(-45, center + amplitude * wave));
-}
-
-// ---- shared laser-source building blocks --------------------------------
-// CW Laser, Pulsed Laser and Supercontinuum laser are three separate palette
-// entries over one emission contract, rather than a single element with an
-// "Emission" switch. Folding them together meant the icon could disagree with
-// the configured behavior (a laser drawn as a plain box while set to emit a
-// supercontinuum), and buried each source's real controls behind others that
-// did not apply. They still share beam geometry, polarization, color and the
-// (wl, bw, spec) spectrum resolved by resolveSourceSpectrum().
-const beamShapeParams = beamWidthDef => [
-  { key: 'beamMode', label: 'Beam style', type: 'select', def: 'beam', options: [['line', 'Simple line'], ['beam', 'Beam with size']] },
-  { key: 'beamWidth', label: 'Beam width (mm)', type: 'number', min: 1, max: 60, step: 0.5, def: beamWidthDef, show: p => p.beamMode === 'beam' },
-];
-
-const POL_PARAM = { key: 'pol', label: 'Polarization (Â°)', type: 'number', min: 0, max: 180, step: 5, def: 0 };
-
-// Repetition rate and emission offset are the pulse-train timing both pulsed
-// sources expose. Pulse duration is not shared: it is a property of the laser
-// line itself, while a supercontinuum's duration is set by whatever generated
-// it upstream, so the SC source does not claim to know it.
-const pulseTrainParams = () => [
-  { key: 'repRateMHz', label: 'Repetition rate (MHz)', type: 'number', min: 0.001, max: 1000000, step: 1, def: 80 },
-  { key: 'pulsePhaseNs', label: 'Emission offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0 },
-];
-
-// Purely a rendering choice: the pulse train stays fully simulated when this
-// is off â€” it still drives the time-scale picker and still gates two-colour
-// temporal overlap â€” only the travelling pulse packets stop being drawn, so
-// the beam reads as a steady CW line.
-const SHOW_PULSE_PARAM = { key: 'showPulse', label: 'Show pulse dynamics', type: 'checkbox', def: true };
-
-// `temporalMode` stopped being a user-facing switch when the sources split â€”
-// the element type is the answer now â€” but the tracer, the time-scale picker
-// and the pulse animation all still read it, so each type pins its own value
-// as a single-option, never-rendered param that survives save/load intact.
-const pinnedParam = (key, value) => ({ key, label: key, type: 'select', def: value, options: [[value, value]], show: () => false });
-
-// Exit aperture half-height: tracks the configured beam width so a wide beam
-// visibly leaves a wide port.
-function laserAperture(el) {
-  const hh = laserH(el) / 2;
-  return el.params.beamMode === 'beam' ? Math.min(hh - 4, el.params.beamWidth / 2 + 3) : 6;
-}
-
-function laserSource(el) {
-  const p = el.params;
-  if (p.beamMode === 'beam') {
-    // sample rays across the beam width; adjacent samples with an identical
-    // interaction history are filled as an envelope strip, so a lenslet
-    // array splits the beam into visibly separate focusing beamlets.  The
-    // first and last samples lie on the authored beam edges; `sampleGrid`
-    // lets finite-pixel detectors apply the corresponding trapezoidal
-    // quadrature without changing the tracer's long-standing ray weights.
-    const K = 25, w = p.beamWidth;
-    const out = [];
-    for (let i = 0; i < K; i++) out.push({
-      x: 52, y: -w / 2 + w * i / (K - 1), dx: 1, dy: 0,
-      sample: i, sampleGrid: 'edges',
-    });
-    return out;
-  }
-  return [{ x: 52, y: 0, dx: 1, dy: 0 }];
-}
-
-// Peak power of a mode-locked pulse train: the pulse energy (average power
-// spread over one repetition period) delivered within a single pulse, scaled
-// by the shape factor relating an envelope's FWHM duration to its true peak.
-const PEAK_SHAPE_FACTOR = { gauss: 0.9394, sech2: 0.8815 };
-
-// Energy in each pulse: average power over repetition rate.
-export function pulseEnergyJ(params = {}) {
-  const avg = Number(params.avgPowerW), repHz = Number(params.repRateMHz) * 1e6;
-  return avg > 0 && repHz > 0 ? avg / repHz : null;
-}
-function formatFs(fs) {
-  if (!(fs > 0) || !Number.isFinite(fs)) return 'â€”';
-  if (fs >= 1e6) return `${Number((fs / 1e6).toPrecision(4))} ns`;
-  if (fs >= 1000) return `${Number((fs / 1000).toPrecision(4))} ps`;
-  return `${Number(fs.toPrecision(4))} fs`;
-}
-const ENERGY_UNITS = [[1, 'J'], [1e-3, 'mJ'], [1e-6, 'ÂµJ'], [1e-9, 'nJ'], [1e-12, 'pJ'], [1e-15, 'fJ']];
-export function formatEnergy(joules) {
-  if (!(joules > 0)) return 'â€”';
-  const [scale, unit] = ENERGY_UNITS.find(([f]) => joules >= f) || ENERGY_UNITS.at(-1);
-  return `${Number((joules / scale).toPrecision(3))} ${unit}`;
-}
-
-// Peak power from the emitted duration. A chirped Gaussian stays Gaussian, so
-// its shape factor holds exactly; a dispersed sechÂ² pulse does not keep an
-// exact sechÂ² profile, so there the figure is an estimate.
-export function peakPowerW(params = {}) {
-  const avg = Number(params.avgPowerW);
-  const repHz = Number(params.repRateMHz) * 1e6;
-  const tau = Number(authoredPulseTiming(params).durationFs) * 1e-15;
-  if (!(avg > 0) || !(repHz > 0) || !(tau > 0)) return null;
-  const shape = PEAK_SHAPE_FACTOR[params.pulseShape] ?? PEAK_SHAPE_FACTOR.gauss;
-  return shape * (avg / repHz) / tau;
-}
-
-const POWER_UNITS = [[1e12, 'TW'], [1e9, 'GW'], [1e6, 'MW'], [1e3, 'kW'], [1, 'W'], [1e-3, 'mW'], [1e-6, 'ÂµW']];
-
-export function formatPower(watts) {
-  if (!(watts > 0)) return 'â€”';
-  for (const [scale, unit] of POWER_UNITS) {
-    if (watts >= scale) return `${Number((watts / scale).toPrecision(3))} ${unit}`;
-  }
-  return `${Number((watts * 1e9).toPrecision(3))} nW`;
-}
-
-// One GDD number for the compressor's readout rows. The unit lives in the row
-// label, so the value is bare. Sub-10 fsÂ² residuals keep a decimal â€” the
-// difference between "cancelled to 0.2" and "cancelled to 6" is worth seeing â€”
-// and `|| 0` normalizes JavaScript's negative zero, which would print "-0".
-export function formatGdd(fs2) {
-  if (!Number.isFinite(fs2)) return 'â€”';
-  if (Math.abs(fs2) < 10) return (fs2 || 0).toFixed(1);
-  return (Math.round(fs2) || 0).toLocaleString();
-}
-
-// Which side of zero the pulse leaves on, and how it got there. Sign is the
-// part that carries intent: driving the output negative is a destination, not
-// a failed cancellation. Pre-chirping a pulse so it arrives transform-limited
-// *after* the dispersion of whatever follows â€” an objective, a long glass
-// path â€” is an ordinary reason to reach for a compressor, and describing that
-// only as a percentage change in |GDD| hides what the user was aiming for.
-export function compressorFinalState({ incoming, outgoing }) {
-  if (!Number.isFinite(incoming) || !Number.isFinite(outgoing)) return 'â€”';
-  // Anything that rounds away is "no chirp left", not a vanishingly small
-  // chirp with a sign, so it is reported before any sign is claimed.
-  if (Math.round(outgoing) === 0) {
-    return incoming !== 0 ? 'Cancelled â€” no net chirp left' : 'No chirp';
-  }
-  const side = outgoing < 0 ? 'Negative dispersion' : 'Positive dispersion';
-  if (incoming === 0) {
-    return outgoing < 0
-      ? `${side} â€” nothing upstream to cancel, so this is pure pre-compensation`
-      : `${side} â€” applied by this element alone`;
-  }
-  const applied = outgoing - incoming;
-  if (Math.round(applied) === 0) return `${side} â€” passed through unchanged`;
-  if (Math.sign(outgoing) === Math.sign(incoming)) {
-    return Math.abs(outgoing) < Math.abs(incoming)
-      ? `${side} â€” the upstream GDD is partly cancelled`
-      : `${side} â€” this element adds to the upstream GDD`;
-  }
-  // Past the null: the upstream chirp is gone and the opposite one is applied.
-  const upstream = incoming > 0 ? 'positive' : 'negative';
-  const chirp = outgoing < 0 ? 'negative' : 'positive';
-  return `${side} â€” the upstream ${upstream} GDD is completely cancelled `
-    + `and a ${chirp} chirp is applied`;
-}
-
-// Inspector text for a crystal's OPO state on the last trace.
-const sig3 = x => Number(x.toPrecision(3));
-// Wavelengths need the fourth digit: 1032 nm and 1030 nm are different lasers.
-const nm4 = x => Number(x.toPrecision(4));
-function opoStateText(reading) {
-  if (!reading) return 'No pump within the acceptance window yet';
-  if (reading.state === 'invalid') return 'No output: the signal must be longer than the pump';
-  return `Removing ${sig3(reading.efficiency * 100)}% of the pump (authored depletion; no threshold or resonator gain model)`;
-}
-
-// Inspector text for a supercontinuum crystal on the last trace.
-function supercontinuumStateText(reading) {
-  if (!reading) return 'No pump has reached the crystal yet';
-  if (reading.state === 'cw') {
-    return 'No continuum: continuous-wave input is outside this pulsed bulk estimate. Set the range manually to draw one';
-  }
-  const medium = SC_MEDIA[reading.medium]?.label || reading.medium;
-  if (reading.state === 'unsupported') {
-    return `No continuum: this estimate includes reference data for ${medium} pumps from ${reading.fromNm} to ${reading.toNm} nm, `
-      + `not ${nm4(reading.pumpNm)} nm. Set the range manually to draw one`;
-  }
-  const band = `${Math.round(reading.minNm)}â€“${Math.round(reading.maxNm)} nm`;
-  if (reading.state === 'manual') return `Drawing ${band}, as set`;
-  const source = reading.measured
-    ? 'as reported for one experiment at this pump wavelength'
-    : reading.summary
-      ? 'from a typical span or a range the review summarises for pumps here, not a single measurement'
-      : 'interpolated between reference spectra at nearby pump wavelengths, an illustration rather than a prediction';
-  const red = reading.redAtLeast ? ' The red edge rests on a detector-limited measurement, so the spectrum can reach further.' : '';
-  return `About ${band} from a ${nm4(reading.pumpNm)} nm pump in ${medium}, ${source}.${red}\n`
-    + 'Focusing, pulse energy and duration, chirp and crystal length shift both edges and are not modelled; nor is whether the pump reaches threshold';
-}
-
-// How a mixing crystal reports what it found. The delay figure is the point
-// of the two-beam modes: scanning a stage until it reads zero is how time
-// zero is found on a real bench.
-export function mixStateText(reading) {
-  if (!reading) return 'No light at the crystal yet';
-  if (reading.state === 'oneBeam') return 'One colour only: the crystal doubles it, and mixing needs a second wavelength here';
-  const sum = `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm â†’ ${nm4(reading.wl)} nm`;
-  const pair = reading.dfgWl > 0 ? `${sum}, difference ${nm4(reading.dfgWl)} nm` : sum;
-  if (reading.state === 'unsupported') {
-    return `Timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at the same repetition rate are mixed here, so ${sum} is not drawn.`;
-  }
-  if (reading.state === 'unsynchronized') {
-    return `Only the second harmonics: the pulses arrive ${formatMixDelay(reading.skewNs)} apart, so nothing mixes. Match the path lengths, or scan a delay stage until the sum-frequency line appears at ${nm4(reading.wl)} nm.`;
-  }
-  const timing = reading.skewNs == null
-    ? 'no pulse timing to match'
-    : `${formatMixDelay(reading.skewNs)} apart, ${sig3(reading.overlap * 100)}% temporal overlap`;
-  const others = reading.alsoPairs > 0
-    ? `; ${reading.alsoPairs} more pair${reading.alsoPairs > 1 ? 's' : ''} at this crystal` : '';
-  return `${pair}, ${timing}${others}`;
-}
-
-// What a specimen's two-beam signals found about arrival timing, in the same
-// terms the crystal uses. A signal that is silent because of timing should say
-// so on the canvas rather than leaving an empty detector to interpret.
-// The same thing as a permanent readout rather than a one-off message: a
-// picosecond of arrival difference is about 0.3 mm of path, far below anything
-// the drawing can show, so the number has to be somewhere you can watch while
-// you move a delay stage.
-export function specimenTimingReadout(reading) {
-  // No reading means nothing was timed -- which is not the same as no signal:
-  // a channel with the overlap requirement switched off still draws its
-  // schematic two-beam signal, it just is not checked.
-  if (!reading) return 'No two-beam timing measured yet';
-  if (reading.state === 'ignored') {
-    return `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm: pulse-overlap requirement off, so arrival timing is not checked`;
-  }
-  if (reading.state === 'oneBeam') return 'One colour only: a second wavelength is needed for CARS, Raman transfer or sum frequency';
-  const pair = `${nm4(reading.driverWl)} + ${nm4(reading.partnerWl)} nm`;
-  if (reading.state === 'unsupported') {
-    return `${pair} at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz â€” timing not modelled between different repetition rates`;
-  }
-  const pathMm = (reading.skewNs || 0) * 299.792458;
-  // Below a femtosecond is matched, not a number worth printing: paths that
-  // cancel algebraically still leave floating-point dust behind.
-  const apart = reading.skewNs > 1e-6
-    ? `${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path)`
-    : 'arriving together';
-  return `${pair}: ${apart}, ${sig3(reading.overlap * 100)}% temporal overlap`;
-}
-
-export function specimenTimingText(reading) {
-  if (!reading) return null;
-  const what = reading.kind === 'srs' ? 'Stimulated Raman'
-    : reading.kind === 'cars' ? 'CARS'
-      : 'Sum frequency';
-  if (reading.state === 'unsupported') {
-    return `${what} timing not modelled: the two beams run at ${sig3(reading.repRateMHz)} and ${sig3(reading.partnerRepRateMHz)} MHz. Only trains at the same repetition rate are mixed here.`;
-  }
-  if (reading.state === 'unsynchronized') {
-    const pathMm = reading.skewNs * 299.792458;
-    return `${what} needs both pulses at the specimen: they arrive ${formatMixDelay(reading.skewNs)} apart (${sig3(pathMm)} mm of path). Match the arms, or add a delay line.`;
-  }
-  return null;
-}
-
-function formatMixDelay(skewNs) {
-  if (!(skewNs > 0)) return '0 fs';
-  const fs = skewNs * 1e6;
-  if (fs >= 1e6) return `${sig3(fs / 1e6)} ns`;
-  if (fs >= 1e3) return `${sig3(fs / 1e3)} ps`;
-  return `${sig3(fs)} fs`;
-}
-
-function formatOpoDuration(fs) {
-  if (!(fs > 0)) return 'â€”';
-  if (fs >= 1e6) return `${sig3(fs / 1e6)} ns`;
-  if (fs >= 1e3) return `${sig3(fs / 1e3)} ps`;
-  return `${sig3(fs)} fs`;
-}
-
-function opoWaveText(name, wave, pulse) {
-  const width = wave.bw > 0
-    ? `${name} bandwidth ${sig3(wave.bw)} nm (${sig3(wave.widthCm)} cmâ»Â¹)`
-    : `${name} bandwidth 0 nm (single frequency)`;
-  if (!pulse) return width;
-  const note = pulse.spectralPhase === 'positiveChirp' ? 'chirped'
-    : pulse.durationRaisedToLimit ? 'raised to the transform limit; the set duration is shorter'
-      : pulse.transformLimited ? 'transform limited'
-        : pulse.transformLimitUnavailable || !(wave.bw > 0) ? 'spectral phase unknown: a zero bandwidth has no transform limit'
-          : 'spectral phase unknown';
-  return `${width}\n${name} duration ${formatOpoDuration(pulse.outputDurationFs ?? pulse.pulseWidthFs)} (${note})`;
-}
-
-function opoWidthsText(reading) {
-  const waves = reading?.waves;
-  if (!waves) return 'â€”';
-  const pulses = reading.pulses || {};
-  if (waves.merged) return opoWaveText('Degenerate output', waves.merged, pulses.merged);
-  return `${opoWaveText('Signal', waves.signal, pulses.signal)}\n${opoWaveText('Idler', waves.idler, pulses.idler)}`;
-}
-
-// ---- Integrated OPO element ----
-// A laser-style box: the pump enters a rear aperture, the signal leaves the
-// front on the body axis and the idler leaves a second front port a fixed
-// distance below it. The geometry is a packaging convention for this
-// workbench, not the layout of any particular instrument.
-const OPO_BODY_W = 92;
-// Pump light within this angle of the body axis is accepted. A fixed
-// geometric rule, not a calculation of mode matching or coupling efficiency.
-export const OPO_ACCEPTANCE_DEG = 20;
-const opoApertureMm = p => Math.min(30, Math.max(1, Number(p?.aperture) || 6));
-// Output beam diameters; 0 draws that output as a single line.
-export const opoBeamMm = (p, role) => Math.min(30, Math.max(0, Number(role === 'idler' ? p?.idlerBeamMm : p?.signalBeamMm) || 0));
-// The idler port sits far enough below the signal port that the two output
-// beams never overlap, and the body is tall enough to hold the input aperture
-// and both ports whole.
-const opoIdlerOffset = p => Math.max(14, opoBeamMm(p, 'signal') / 2 + opoBeamMm(p, 'idler') / 2 + 6);
-// The input aperture always sets a minimum height, so the resize handle that
-// drags it visibly resizes the box.
-const opoBodyH = p => 2 * Math.max(
-  opoIdlerOffset(p) + opoBeamMm(p, 'idler') / 2 + 6,
-  opoApertureMm(p) / 2 + 17,
-);
-
-// Where the element sends each output, in its own coordinates.
-export function opoPortLocal(role, params) {
-  return { x: OPO_BODY_W / 2 + 6, y: role === 'idler' ? opoIdlerOffset(params) : 0 };
-}
-
-function opoTuningText(p) {
-  const mode = p.tuneMode || 'fixed';
-  if (mode === 'sweep') {
-    return `Sweeping the signal ${nm4(Number(p.sweepMinNm))}â€“${nm4(Number(p.sweepMaxNm))} nm and back every ${sig3(Number(p.sweepPeriodS))} s`;
-  }
-  if (mode === 'steps') {
-    const { values, ignored } = parseWavelengthList(p.stepList);
-    if (!values.length) return 'No valid tuning program: list at least one signal wavelength in nm';
-    const skipped = ignored ? ` Â· ${ignored} entr${ignored === 1 ? 'y' : 'ies'} not a wavelength, ignored` : '';
-    return `Stepping through ${values.map(nm4).join(', ')} nm, ${sig3(Number(p.stepDwellS))} s each${skipped}`;
-  }
-  return `Fixed at ${nm4(Number(p.signalWl))} nm`;
-}
-
-function opoElementStateText(reading, p) {
-  if (!reading) return 'No pump has reached the input aperture yet';
-  const step = Number.isInteger(reading.tuning?.index)
-    ? `step ${reading.tuning.index + 1} of ${reading.tuning.count}, ` : '';
-  // A setpoint only: this line is used where nothing was generated.
-  const now = Number.isFinite(reading.signalWl) ? ` (${step}signal set to ${nm4(reading.signalWl)} nm)` : '';
-  switch (reading.state) {
-    case 'rejected':
-      return `No output: the pump arrives ${sig3(reading.angleDeg)}Â° off the input axis, outside the Â±${OPO_ACCEPTANCE_DEG}Â° the input accepts`;
-    case 'noProgram':
-      return 'No output: the tuning program has no valid signal wavelength';
-    case 'badParams':
-      return 'No output: the pump and signal wavelengths must be positive numbers';
-    case 'invalid':
-      return `No output: the signal must be longer than the ${Number.isFinite(reading.pumpNm) ? `${nm4(reading.pumpNm)} nm ` : ''}pump${now}`;
-    case 'converting': {
-      if (!(reading.efficiency > 0)) return `Pump accepted, but pump depletion is 0, so nothing is generated${now}`;
-      const waves = reading.waves;
-      const out = waves?.merged || waves?.degenerate
-        ? `Pump ${nm4(reading.pumpNm)} nm â†’ degenerate: signal and idler at ${nm4(waves.signal.wl)} nm, both from the signal port`
-        : `Pump ${nm4(reading.pumpNm)} nm â†’ signal ${nm4(waves.signal.wl)} nm Â· idler ${nm4(waves.idler.wl)} nm${p.outputIdler === false ? ' (idler port off)' : ''}`;
-      return `${step ? `${step[0].toUpperCase()}${step.slice(1, -2)}: ` : ''}${out}\n`
-        + `Removing ${sig3(reading.efficiency * 100)}% of the pump (authored depletion; no threshold or resonator gain model). `
-        + 'The unconverted pump is discarded inside the box';
-    }
-    default:
-      return 'â€”';
-  }
-}
-
-export const registry = {
-
-  // ---------------- Sources ----------------
-  cwlaser: {
-    label: 'CW Laser', category: 'Sources', paletteOrder: 0, size: { w: 104, h: 38 },
-    aliases: ['laser', 'continuous wave laser', 'cw laser', 'diode laser', 'helium neon', 'he-ne'],
-    snapPt: { x: 52, y: 0 }, // beam exit aperture
-    size_: el => ({ w: 104, h: laserH(el) + 4 }),
-    params: [
-      P.wavelength,
-      { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
-      ...beamShapeParams(3),
-      POL_PARAM,
-      // Temporal coherence, as a length rather than a linewidth, because the
-      // length is what an interferometer actually shows: two arms only make
-      // fringes while their path difference stays inside it. 0 keeps the
-      // idealized source that interferes at any delay.
-      //
-      // This is deliberately a coherence property alone. The ray still
-      // carries zero spectral width, so colour, filters and the spectrometer
-      // are untouched -- see the readout below for the linewidth it implies.
-      { key: 'coherenceLengthMm', label: 'Coherence length (mm)', type: 'number', min: 0, max: 100000, step: 0.01, def: 0 },
-      {
-        key: 'coherenceLinewidth', label: 'Implied linewidth', type: 'readout',
-        readout: params => {
-          const lc = Number(params.coherenceLengthMm);
-          if (!Number.isFinite(lc) || lc <= 0) return 'Ideal â€” interferes at any path difference';
-          const nm = linewidthForCoherenceLengthNm(lc, params.wavelength);
-          return `${nm < 0.01 ? nm.toExponential(2) : nm.toPrecision(3)} nm`;
-        },
-      },
-      P.autoColor, P.color,
-      pinnedParam('temporalMode', 'cw'),
-    ],
-    svg(el) {
-      const h = laserH(el), hh = h / 2, ap = laserAperture(el);
-      return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
-        `<text x="0" y="0" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" letter-spacing="1.2" fill="#fff">CW LASER</text>` +
-        `<rect x="46" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`;
-    },
-    surfaces: el => rectAbsorb(92, laserH(el)),
-    source: laserSource,
-  },
-
-  pulsedlaser: {
-    label: 'Pulsed Laser', category: 'Sources', paletteOrder: 1, size: { w: 104, h: 38 },
-    aliases: ['pulsed laser', 'ultrafast laser', 'femtosecond laser', 'mode-locked laser', 'fs laser', 'ti:sapphire'],
-    snapPt: { x: 52, y: 0 },
-    size_: el => ({ w: 104, h: laserH(el) + 4 }),
-    params: [
-      P.wavelength,
-      { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 0.1 },
-      ...beamShapeParams(3),
-      ...pulseTrainParams(),
-      // Two ways to author a pulse. Transform-limited: the duration and shape,
-      // with the bandwidth they imply shown beneath. Chirped: the bandwidth,
-      // a quadratic chirp's sign and its GDD, with the transform-limited and
-      // emitted durations shown beneath -- so the duration is always derived
-      // and can never fall below the limit the bandwidth sets. The laser
-      // offers no "phase unknown": that is a simplification of authoring,
-      // not a claim that every real laser has a known quadratic phase.
-      { key: 'transformLimited', label: 'Transform-limited pulses', type: 'checkbox', def: true },
-      { key: 'pulseWidthFs', label: 'Pulse duration (fs)', type: 'number', min: 1, max: 1000000000, step: 10, def: 150,
-        show: p => p.transformLimited !== false },
-      {
-        // The envelope shape matters either way: it sets the timeâ€“bandwidth
-        // constant, and the peak-power shape factor.
-        key: 'pulseShape', label: 'Pulse shape', type: 'select', def: 'gauss',
-        options: [['gauss', 'Gaussian'], ['sech2', 'SechÂ²']],
-      },
-      {
-        key: 'bandwidthTL', label: 'Bandwidth (nm)', type: 'readout',
-        readout: p => String(Number(transformLimitedBandwidthNm(p.pulseWidthFs, p.wavelength, p.pulseShape).toPrecision(4))),
-        show: p => p.transformLimited !== false,
-      },
-      {
-        key: 'bandwidth', label: 'Bandwidth (nm)', type: 'number',
-        min: MIN_BANDWIDTH_NM, max: MAX_BANDWIDTH_NM, step: 0.5, def: 5,
-        show: p => p.transformLimited === false,
-      },
-      {
-        key: 'durationTL', label: 'Transform-limited duration', type: 'readout',
-        readout: p => formatFs(authoredPulseTiming(p).transformLimitFs),
-        show: p => p.transformLimited === false,
-      },
-      {
-        key: 'inputChirp', label: 'Chirp', type: 'select', def: 'positive',
-        options: [['positive', 'Positively chirped (quadratic)'], ['negative', 'Negatively chirped (quadratic)']],
-        show: p => p.transformLimited === false,
-      },
-      {
-        key: 'chirpGddFs2', label: 'Chirp GDD (fsÂ²)', type: 'number', min: 0, max: MAX_SOURCE_GDD_FS2, step: 100, def: 0,
-        show: p => p.transformLimited === false,
-      },
-      {
-        key: 'durationChirped', label: 'Pulse duration', type: 'readout',
-        readout: p => formatFs(authoredPulseTiming(p).durationFs),
-        show: p => p.transformLimited === false,
-      },
-      POL_PARAM,
-      P.autoColor, P.color,
-      { key: 'pulseEnergy', label: 'Pulse energy', type: 'readout', readout: p => formatEnergy(pulseEnergyJ(p)) },
-      {
-        key: 'peakPower', label: 'Peak power', type: 'readout',
-        readout: p => {
-          const text = formatPower(peakPowerW(p));
-          const estimate = p.transformLimited === false && p.pulseShape === 'sech2' && Number(p.chirpGddFs2) > 0;
-          return estimate ? `â‰ˆ ${text} (estimate)` : text;
-        },
-      },
-      SHOW_PULSE_PARAM,
-      pinnedParam('temporalMode', 'pulsed'),
-    ],
-    svg(el) {
-      const h = laserH(el), hh = h / 2, ap = laserAperture(el);
-      return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#3a3f46" stroke="#22252a" stroke-width="1.5"/>` +
-        `<text x="0" y="-3" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">LASER</text>` +
-        `<g stroke="#8fd3ff" stroke-width="1.2" opacity="0.95"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>` +
-        `<rect x="46" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`;
-    },
-    surfaces: el => rectAbsorb(92, laserH(el)),
-    source: laserSource,
-  },
-
-  // Unified replacement for the old LED + Light source: one isotropic point
-  // emitter. Rays are evanescent â€” they fade within ~110 mm (5x a fluorescent
-  // specimen's range) unless a nearby lens / objective / fiber tip collects
-  // them, which keeps 360Â° emission from flooding the canvas.
-  pointsource: {
-    label: 'Point source', category: 'Sources', paletteOrder: 3, size: { w: 30, h: 30 },
-    aliases: ['led', 'lamp', 'light source', 'bulb', 'isotropic source', 'point emitter'],
-    size_: el => ({ w: 30 * (el.params.displayScale || 1), h: 30 * (el.params.displayScale || 1) }),
-    params: [
-      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2.5, step: 0.1, def: 1 },
-      // The same emitter, wearing one of two hats. A discharge lamp is
-      // geometrically a point source -- isotropic, incoherent, collected the
-      // same way -- and differs only in emitting a fixed set of lines instead
-      // of a wavelength you type, so it is a mode here rather than an element
-      // of its own.
-      {
-        key: 'sourceKind', label: 'Source', type: 'select', def: 'point',
-        options: [['point', 'Point emitter'], ['lamp', 'Gas discharge lamp']],
-      },
-      { ...P.wavelength, show: p => (p.sourceKind || 'point') !== 'lamp' },
-      { key: 'bwMode', label: 'Spectrum', type: 'select', def: 'mono', options: [['mono', 'Monochromatic'], ['band', 'Broadband']], show: p => (p.sourceKind || 'point') !== 'lamp' },
-      { key: 'bandwidth', label: 'Spectrum width (nm)', type: 'number', min: 10, max: 600, step: 10, def: 400, show: p => (p.sourceKind || 'point') !== 'lamp' && p.bwMode === 'band' },
-      {
-        key: 'lampType', label: 'Lamp', type: 'select', def: 'hg',
-        options: Object.entries(LAMP_PRESETS).map(([key, preset]) => [key, preset.label]),
-        show: p => p.sourceKind === 'lamp',
-      },
-      { key: 'linesReadout', label: 'Lines', type: 'readout', readout: p => lampLineSummary(p.lampType), show: p => p.sourceKind === 'lamp' },
-      { key: 'spread', label: 'Emission angle (Â°)', type: 'number', min: 10, max: 360, step: 10, def: 360 },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 4, max: 32, step: 2, def: 12 },
-      P.autoColor, P.color,
-    ],
-    svg(el) {
-      const lamp = el.params.sourceKind === 'lamp';
-      const c = el.params.autoColor === false && el.params.color
-        ? el.params.color
-        : (lamp ? lampColor(el.params.lampType) : wavelengthToColor(el.params.wavelength));
-      const scale = el.params.displayScale || 1;
-      if (lamp) {
-        // A pen-ray envelope: the narrow tube these lamps almost always are.
-        return `<g transform="scale(${scale})">` +
-          `<rect x="-5" y="-13" width="10" height="26" rx="5" fill="${c}" stroke="#333" stroke-width="1.2"/>` +
-          `<rect x="-5" y="-13" width="10" height="26" rx="5" fill="none" stroke="#fff" stroke-width="0.6" opacity="0.5"/>` +
-          `<line x1="0" y1="-8" x2="0" y2="8" stroke="#fff" stroke-width="1.4" opacity="0.75"/>` +
-          `<rect x="-3.5" y="12" width="7" height="4" rx="1" fill="#4d565f"/>` +
-          `<g stroke="${c}" stroke-width="1.4" stroke-linecap="round" opacity="0.9">` +
-          `<line x1="-9" y1="-6" x2="-13" y2="-8"/><line x1="9" y1="-6" x2="13" y2="-8"/>` +
-          `<line x1="-9" y1="2" x2="-13" y2="2"/><line x1="9" y1="2" x2="13" y2="2"/>` +
-          `</g></g>`;
-      }
-      let spokes = '';
-      for (let i = 0; i < 8; i++) {
-        const a = (i * 45) * Math.PI / 180;
-        spokes += `<line x1="${(6 * Math.cos(a)).toFixed(1)}" y1="${(6 * Math.sin(a)).toFixed(1)}" x2="${(11 * Math.cos(a)).toFixed(1)}" y2="${(11 * Math.sin(a)).toFixed(1)}" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/>`;
-      }
-      return `<g transform="scale(${scale})"><circle r="4.5" fill="${c}" stroke="#333" stroke-width="1"/>` + spokes + `</g>`;
-    },
-    source(el) {
-      const { spread, nrays } = el.params, out = [];
-      const n = Math.max(1, Math.round(nrays));
-      for (let i = 0; i < n; i++) {
-        // A full-circle source must not duplicate the -180Â°/+180Â° sample.
-        const aDeg = spread >= 359.999
-          ? 360 * i / n
-          : (n === 1 ? 0 : -spread / 2 + spread * i / (n - 1));
-        const a = aDeg * Math.PI / 180;
-        out.push({ x: 0, y: 0, dx: Math.cos(a), dy: Math.sin(a), evan: true, evanLen: 110 });
-      }
-      return out;
-    },
-  },
-
-  // ---------------- Mirrors ----------------
-  mirror: {
-    label: 'Mirror', category: 'Mirrors', paletteOrder: 0, size: { w: 14, h: 56 },
-    params: [
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-      ...reflectivityParams(),
-    ],
-    size_: el => ({ w: 14, h: el.params.length + 6 }),
-    svg(el) {
-      const L = el.params.length / 2;
-      return `<line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#444" stroke-width="3.5"/>` + hatch(-1.5, -L, L - 6, -1, Math.round(el.params.length / 8));
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'mirror', data: { refl: el.params.refl, showTransmitted: el.params.showTransmitted } }];
-    },
-  },
-
-  galvo: {
-    label: 'Galvo mirror', category: 'Mirrors', paletteOrder: 4, size: { w: 30, h: 40 },
-    size_: el => {
-      const L = Math.max(6, el.params.length || 20);
-      const sweep = Math.abs(el.params.commandAngle || 0) + (el.params.scanMode === 'static' ? 0 : Math.abs(el.params.scanAmplitude || 0));
-      const a = Math.min(45, sweep) * Math.PI / 180;
-      return { w: Math.max(30, L * Math.sin(a) + 18), h: Math.max(40, L * Math.cos(a) + 18) };
-    },
-    params: [
-      { key: 'length', label: 'Mirror size (mm)', type: 'number', min: 6, max: 60, step: 2, def: 20 },
-      { key: 'commandAngle', label: 'Center mechanical angle (Â°)', type: 'number', min: -30, max: 30, step: 0.5, def: 0 },
-      { key: 'scanMode', label: 'Scan waveform', type: 'select', def: 'static', options: [['static', 'Static'], ['sine', 'Sine scan'], ['triangle', 'Triangle scan']] },
-      { key: 'scanAmplitude', label: 'Peak mechanical sweep (Â°)', type: 'number', min: 0, max: 10, step: 0.5, def: 1, show: p => p.scanMode !== 'static' },
-      { key: 'scanFrequencyHz', label: 'Scan frequency (Hz)', type: 'number', min: 0.01, max: 5000, step: 1, def: 100, show: p => p.scanMode !== 'static' },
-      { key: 'scanPhaseDeg', label: 'Scan phase (Â°)', type: 'number', min: -360, max: 360, step: 5, def: 0, show: p => p.scanMode !== 'static' },
-      ...reflectivityParams(),
-    ],
-    svg(el) {
-      const L = el.params.length / 2;
-      const command = galvoAngleAt(el.params, el._animationTimeS || 0);
-      return `<circle r="4.5" fill="#777" stroke="#444" stroke-width="1.2"/>` +
-        `<g transform="rotate(${command})"><line x1="0" y1="${-L}" x2="0" y2="${L}" stroke="#444" stroke-width="3"/></g>` +
-        `<path d="M -9,${-L - 3} A ${L + 5} ${L + 5} 0 0 1 9,${-L - 3}" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/>` +
-        `<path d="M -9,${L + 3} A ${L + 5} ${L + 5} 0 0 0 9,${L + 3}" fill="none" stroke="#999" stroke-width="1.2" stroke-dasharray="3 2"/>` +
-        (el.params.scanMode !== 'static' ? `<circle cx="10" cy="${-L - 5}" r="2.5" fill="#8b5cf6"/>` : '');
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      const a = galvoAngleAt(el.params, el._animationTimeS || 0) * Math.PI / 180;
-      return [{
-        x1: L * Math.sin(a), y1: -L * Math.cos(a), x2: -L * Math.sin(a), y2: L * Math.cos(a), kind: 'mirror',
-        data: { refl: el.params.refl, showTransmitted: el.params.showTransmitted },
-      }];
-    },
-  },
-
-  polygonscanner: {
-    label: 'Polygon scanner', category: 'Mirrors', paletteOrder: 4.5,
-    aliases: ['polygon mirror', 'rotating polygon', 'line scanner', 'raster scanner', 'NST', 'SCANLAB'],
-    directHint: 'aim the beam at a perimeter facet; the hub is the rotation axis',
-    size: { w: 68, h: 68 },
-    size_: el => {
-      const { diameter } = polygonScannerState(el.params);
-      return { w: diameter + 8, h: diameter + 8 };
-    },
-    params: [
-      { key: 'diameter', label: 'Wheel diameter (mm)', type: 'number', min: 10, max: 200, step: 1, def: 60 },
-      { key: 'facets', label: 'Mirror facets', type: 'number', min: 3, max: 72, step: 1, def: 12 },
-      { key: 'scanMode', label: 'Rotation', type: 'select', def: 'rotate', options: [['rotate', 'Continuous'], ['static', 'Static phase']] },
-      { key: 'rpm', label: 'Rotation speed (RPM)', type: 'number', min: 0, max: 60000, step: 100, def: 1000 },
-      { key: 'lineRate', label: 'Facet rate (lines/s)', type: 'readout', readout: p => p.scanMode === 'static' ? '0 (static)' : polygonScannerState(p).lineRateHz.toFixed(2) },
-      // The number a beam width has to be judged against: the window is not
-      // derived from the beam, so this is what says whether it can be opened.
-      { key: 'facetWidth', label: 'Facet width (mm)', type: 'readout', readout: p => polygonScannerFacetWidth(p).toFixed(1) },
-      { key: 'scanPhase', label: 'Phase within one facet (%)', type: 'number', min: 0, max: 100, step: 1, def: 50 },
-      { key: 'dutyCycle', label: 'Usable scan window (%)', type: 'number', min: 0, max: 100, step: 1, def: 71 },
-      { key: 'refl', label: 'Facet reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
-    ],
-    svg(el) {
-      const time = el._animationTimeS || 0;
-      const { active, diameter } = polygonScannerState(el.params, time);
-      const points = polygonScannerVertices(el.params, time).map(p => `${p.x},${p.y}`).join(' ');
-      return `<polygon points="${points}" fill="#cbd5e1" stroke="#475569" stroke-width="2"/>` +
-        `<circle r="${diameter * 0.18}" fill="#64748b" stroke="#334155" stroke-width="1"/>` +
-        `<circle r="2.5" fill="${active ? '#16a34a' : '#d97706'}"/>`;
-    },
-    surfaces: el => polygonScannerSurfaces(el.params, el._animationTimeS || 0),
-  },
-
-  retroreflector: {
-    label: 'Retroreflector', category: 'Mirrors', paletteOrder: 5, size: { w: 24, h: 56 },
-    size_: el => ({ w: el.params.length / 2 + 10, h: el.params.length + 10 }),
-    params: [
-      { key: 'moveHeading', label: 'Delay-line movement', type: 'section' },
-      { key: 'moveMode', label: 'Motion', type: 'select', def: 'static', options: [['static', 'Static'], ['linear', 'Periodic linear']] },
-      { key: 'travel', label: 'Travel range (mm)', type: 'number', min: 0, max: 200, step: 1, def: 50, show: p => p.moveMode === 'linear' },
-      { key: 'freqHz', label: 'Frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.2, show: p => p.moveMode === 'linear' },
-      { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-      ...reflectivityParams(),
-    ],
-    // Apex at the local origin (the element's anchor/pivot point) pointing
-    // toward +x, with two mirror arms opening toward -x at exactly 45Â° each
-    // â€” a right-angle "roof" corner reflector. In 2D this returns any
-    // incoming ray exactly antiparallel to its incidence direction
-    // (offset in y), independent of incidence angle within its aperture â€”
-    // the defining property of a corner retroreflector, unlike a single
-    // flat mirror whose return direction depends on incidence angle.
-    svg(el) {
-      const L = el.params.length / 2;
-      return `<path d="M ${-L},${L} L 0,0 L ${-L},${-L}" fill="#e8eaee" fill-opacity="0.3" stroke="#444" stroke-width="3.5"/>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      const data = { refl: el.params.refl, showTransmitted: el.params.showTransmitted };
-      return [
-        { x1: 0, y1: 0, x2: -L, y2: L, kind: 'mirror', data },
-        { x1: 0, y1: 0, x2: -L, y2: -L, kind: 'mirror', data },
-      ];
-    },
-  },
-
-
-  conicmirror: {
-    label: 'Conic mirror', category: 'Mirrors', paletteOrder: 3.5, size: { w: 20, h: 56 },
-    aliases: ['annular mirror', 'Cassegrain', 'Schwarzschild', 'elliptical mirror', 'hyperbolic mirror', 'reflective objective'],
-    params: [
-      { key: 'dia', label: 'Outer diameter (mm)', type: 'number', min: 1, max: 500, step: 1, def: 50 },
-      { key: 'hole', label: 'Central opening (mm)', type: 'number', min: 0, max: 500, step: 0.5, def: 0 },
-      { key: 'radius', label: 'Signed vertex radius (mm)', type: 'number', min: -5000, max: 5000, step: 0.1, def: -100, slider: false },
-      { key: 'conic', label: 'Conic constant k', type: 'number', min: -20, max: 20, step: 0.01, def: 0, slider: false },
-      { key: 'facing', label: 'Coated side (local axis)', type: 'select', def: 'left', options: [['left', 'âˆ’x side'], ['right', '+x side']] },
-      { key: 'refl', label: 'Reflectivity (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
-      { key: 'realized', label: 'Geometry used', type: 'readout', readout: params => {
-        const g = conicMirrorGeometry(params);
-        return `R = ${g.R.toFixed(3)} mm; opening = ${(2 * g.inner).toFixed(2)} mm`;
-      } },
-    ],
-    size_: conicMirrorSize,
-    svg: conicMirrorSVG,
-    surfaces: conicMirrorSurfaces,
-  },
-
-  cmirrorx: {
-    label: 'Convex mirror', category: 'Mirrors', paletteOrder: 1, size: { w: 18, h: 56 },
-    params: [
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-      { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: -100, negative: true },
-      SPHERICAL_APERTURE_READOUT,
-      ...reflectivityParams(),
-    ],
-    size_: el => sphericalMirrorSize(el, false),
-    svg(el) {
-      const g = sphericalMirrorGeometry(el, false);
-      // bulges toward the incoming beam (from -x)
-      return `<path d="${sphericalMirrorPath(el, false)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -g.L, g.L - 6, 1, Math.max(2, Math.round(g.L / 4)));
-    },
-    surfaces(el) { return sphericalMirrorSurfaces(el, false); },
-  },
-
-  cmirror: {
-    label: 'Concave mirror', category: 'Mirrors', paletteOrder: 2, size: { w: 18, h: 56 },
-    params: [
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-      { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 100 },
-      SPHERICAL_APERTURE_READOUT,
-      ...reflectivityParams(),
-    ],
-    size_: el => sphericalMirrorSize(el, true),
-    svg(el) {
-      const g = sphericalMirrorGeometry(el, true);
-      // hollow toward the incoming beam (from -x): focuses it
-      return `<path d="${sphericalMirrorPath(el, true)}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + hatch(1, -g.L, g.L - 6, 1, Math.max(2, Math.round(g.L / 4)));
-    },
-    surfaces(el) { return sphericalMirrorSurfaces(el, true); },
-  },
-
-  oap: {
-    label: 'Parabolic mirror', category: 'Mirrors', paletteOrder: 3, size: { w: 40, h: 90 },
-    params: [
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 80 },
-      { key: 'f', label: 'Focal length (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 50 },
-      ...reflectivityParams(),
-    ],
-    size_: el => {
-      const L = el.params.length / 2;
-      const sag = (L * L) / (4 * Math.max(5, el.params.f));
-      return { w: Math.max(20, 2 * sag + 14), h: el.params.length + 6 };
-    },
-    svg(el) {
-      // true parabola x = -yÂ²/(4f): vertex at the origin, opening toward the
-      // incoming beam, focus at (-f, 0). Shorter f -> visibly deeper curve.
-      const L = el.params.length / 2, f = Math.max(5, el.params.f);
-      const N = 26;
-      let dp = '';
-      for (let i = 0; i <= N; i++) {
-        const y = -L + (2 * L * i) / N;
-        const x = -(y * y) / (4 * f);
-        dp += (i ? ' L ' : 'M ') + x.toFixed(1) + ',' + y.toFixed(1);
-      }
-      let ticks = '';
-      for (let y = -L + 4; y < L - 3; y += 8) {
-        const x = -(y * y) / (4 * f);
-        ticks += `<line x1="${(x + 1.5).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + 7).toFixed(1)}" y2="${(y + 5).toFixed(1)}" stroke="#888" stroke-width="1"/>`;
-      }
-      return `<path d="${dp}" fill="none" stroke="#444" stroke-width="3.5" stroke-linejoin="round"/>` + ticks;
-    },
-    surfaces(el) {
-      // real geometry: the parabola as a chain of small plane mirrors, so
-      // reflection off the actual curve sends a collimated beam to the focus
-      const L = el.params.length / 2, f = Math.max(5, el.params.f);
-      // more segments for deeper curves so marginal rays still hit the focus
-      const N = Math.min(64, Math.max(16, Math.round(L / 2 + (L * L) / (6 * f))));
-      const segs = [];
-      // The facets exist to find WHERE a ray lands. Reflecting off the chord
-      // itself would then send it off by the angle between chord and curve,
-      // which is what stopped a source at the focus from collimating: a
-      // parabola's whole defining property is that it does. `parab` carries
-      // the true surface into the tracer, which uses it for the normal at the
-      // hit point exactly as `arc` already does for circles -- so the facet
-      // count now sets only positional accuracy, not angular.
-      const rot = ((el.rot || 0) * Math.PI) / 180;
-      const cos = Math.cos(rot), sin = Math.sin(rot);
-      const data = {
-        refl: el.params.refl,
-        showTransmitted: el.params.showTransmitted,
-        parab: { cx: el.x, cy: el.y, ux: { x: cos, y: sin }, uy: { x: -sin, y: cos }, f },
-      };
-      let py = -L, px = -(py * py) / (4 * f);
-      for (let i = 1; i <= N; i++) {
-        const y = -L + (2 * L * i) / N;
-        const x = -(y * y) / (4 * f);
-        segs.push({ x1: px, y1: py, x2: x, y2: y, kind: 'mirror', data });
-        px = x; py = y;
-      }
-      return segs;
-    },
-  },
-
-  // ---------------- Lenses ----------------
-  lens: {
-    label: 'Thin convex lens', category: 'Lenses',
-    paletteGroup: 'Ideal lenses', paletteOrder: 0, size: { w: 18, h: 56 },
-    aliases: ['convex lens', 'thin lens', 'positive lens', 'converging lens', 'ideal lens'],
-    params: [
-      { key: 'f', label: 'Focal length (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
-      { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
-      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-    ],
-    size_: el => ({ w: 18, h: el.params.dia + 6 }),
-    svg(el) { return lensShape(0, el.params.dia / 2, el.params.f); },
-    surfaces(el) {
-      const h = el.params.dia / 2;
-      return [{
-        x1: 0, y1: -h, x2: 0, y2: h, kind: 'lens',
-        data: {
-          f: el.params.f, transEff: el.params.transEff,
-          gddMaterial: 'nbk7', gddThicknessMm: estimatedThinLensThicknessMm(el.params),
-        },
-      }];
-    },
-  },
-
-  metalens: {
-    label: 'Metalens', category: 'Lenses',
-    paletteGroup: 'Metalenses', paletteOrder: 7, size: { w: 12, h: 20 },
-    aliases: ['flat lens', 'metasurface lens', 'meta optic', 'meta-optic', 'diffractive lens'],
-    params: [
-      {
-        key: 'designType', label: 'Spectral design', type: 'select', def: 'chromatic',
-        options: [
-          ['chromatic', 'Chromatic (diffractive)'],
-          ['achromatic', 'Idealized achromatic band'],
-        ],
-      },
-      { key: 'f', label: 'Nominal focal length (mm)', type: 'number', min: -3000, max: 3000, step: 1, def: 20, slider: false },
-      {
-        key: 'designWavelength', label: 'Design wavelength (nm)', type: 'number',
-        min: 100, max: 12000, step: 1, def: 532, show: p => p.designType !== 'achromatic',
-      },
-      {
-        key: 'bandMin', label: 'Achromatic minimum (nm)', type: 'number',
-        min: 100, max: 12000, step: 10, def: 450, show: p => p.designType === 'achromatic',
-      },
-      {
-        key: 'bandMax', label: 'Achromatic maximum (nm)', type: 'number',
-        min: 100, max: 12000, step: 10, def: 650, show: p => p.designType === 'achromatic',
-      },
-      { key: 'dia', label: 'Clear aperture', type: 'optsize', def: 12.7 },
-      { key: 'focusEff', label: 'Focusing efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 70 },
-      { key: 'opticalSpec', label: 'Nominal NA Â· f-number', type: 'readout', readout: p => metalensOpticalReadout(p) },
-      { key: 'incidentFocus', label: 'Incident wavelength â†’ focus', type: 'readout', readout: (_p, el) => metalensIncidentReadout(el) },
-    ],
-    size_: el => ({ w: 12, h: Math.max(1, el.params.dia) + 6 }),
-    svg(el) {
-      const h = Math.max(0.5, el.params.dia / 2);
-      let zones = '';
-      // A meridional view of wrapped phase zones: spacing tightens toward
-      // the rim, unlike the evenly spaced rules of the grating icon.
-      for (let i = 1; i <= 5; i++) {
-        const y = h * Math.sqrt(i / 5);
-        const halfWidth = 1.5 + 2.5 * i / 5;
-        zones += `<line x1="${-halfWidth}" y1="${-y}" x2="${halfWidth}" y2="${-y}"/>`;
-        zones += `<line x1="${-halfWidth}" y1="${y}" x2="${halfWidth}" y2="${y}"/>`;
-      }
-      return `<rect x="-1.5" y="${-h}" width="3" height="${2 * h}" rx="0.8" fill="#c9edf0" stroke="#247d87" stroke-width="1.2"/>`
-        + `<g stroke="#247d87" stroke-width="0.9" stroke-linecap="round">${zones}</g>`;
-    },
-    surfaces(el) {
-      const h = Math.max(0.5, el.params.dia / 2);
-      return [{
-        x1: 0, y1: -h, x2: 0, y2: h, kind: 'metalens',
-        data: {
-          designType: el.params.designType,
-          f: el.params.f,
-          designWavelength: el.params.designWavelength,
-          bandMin: el.params.bandMin,
-          bandMax: el.params.bandMax,
-          focusEff: el.params.focusEff,
-        },
-      }];
-    },
-  },
-
-  // A real lens instead of a paraxial one: two spherical surfaces with actual
-  // glass between them, refracted by Snell's law at each. Nothing about its
-  // focal length is configured â€” it emerges from the radii, thickness and
-  // index, which is exactly why spherical and chromatic aberration come out
-  // of it for free rather than being painted on. See thickLensCardinals() for
-  // the paraxial summary shown in the inspector.
-  thicklens: {
-    label: 'Thick spherical lens', category: 'Lenses',
-    paletteGroup: 'Real lenses', paletteOrder: 4,
-    aliases: ['real lens', 'spherical lens', 'singlet', 'biconvex', 'plano-convex', 'meniscus', 'aberration'],
-    params: [
-      { key: 'r1', label: 'Front radius Râ‚ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 60, slider: false },
-      { key: 'r2', label: 'Rear radius Râ‚‚ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: -60, slider: false },
-      { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
-      { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
-      { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
-      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
-      { key: 'shape', label: 'Shape', type: 'readout', readout: p => thickLensShapeName(p) },
-      {
-        key: 'realizedGeometry', label: 'Geometry used', type: 'readout',
-        show: p => Boolean(thickLensAdjustment(p)), readout: p => formatRealizedGeometry(p),
-      },
-      { key: 'efl', label: 'Focal length at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).f) },
-      { key: 'bfd', label: 'Back focal distance at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(thickLensCardinals(p).bfd) },
-    ],
-    size_: el => { const g = thickLensGeometry(el.params); return { w: g.span + 6, h: 2 * g.h + 6 }; },
-    svg(el) {
-      const g = thickLensGeometry(el.params);
-      return `<path d="${boundaryPathData(g.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`;
-    },
-    surfaces(el) {
-      const g = thickLensGeometry(el.params);
-      // The two spherical faces and their closing rim form one glass boundary.
-      // Axial rays outside that boundary miss the clear aperture; a ray that
-      // actually reaches the physical rim still exits with the correct medium.
-      return boundarySegments(g.points).map((segment, i) => ({
-        x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
-        data: {
-          material: el.params.glass, transmission: surfaceTransmission(el.params),
-          topologyKey: `face-${i}`,
-          ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
-        },
-      }));
-    },
-    hitTest(el, localPoint, tolerance = 4) {
-      const points = thickLensGeometry(el.params).points;
-      const sampled = sampleBoundary(points, { maxAngle: Math.PI / 90 });
-      return pointInBoundary(localPoint, points)
-        || sampled.some((a, i) => distToSegment(localPoint, a, sampled[(i + 1) % sampled.length]) <= tolerance);
-    },
-    containsLocal(el, localPoint) { return pointInBoundary(localPoint, thickLensGeometry(el.params).points); },
-    refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
-  },
-
-  // A finite singlet whose two faces follow the standard even-asphere sag
-  // equation. The tracer intersects those analytic profiles and uses their
-  // exact local derivatives for Snell refraction; the sampled outline is only
-  // for drawing and pointer hit testing.
-  asphericlens: {
-    label: 'Aspheric lens', category: 'Lenses',
-    paletteGroup: 'Real lenses', paletteOrder: 6,
-    aliases: ['asphere', 'aspheric singlet', 'conic lens', 'hyperbolic lens', 'even asphere', 'A4 A6 A8'],
-    params: [
-      { key: 'r1', label: 'Front radius Râ‚ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 30, slider: false },
-      { key: 'k1', label: 'Front conic constant kâ‚', type: 'number', min: -ASPHERE_LIMITS.conic, max: ASPHERE_LIMITS.conic, step: 0.01, def: -0.58, slider: false },
-      { key: 'r2', label: 'Rear radius Râ‚‚ (mm)', type: 'number', min: -2000, max: 2000, step: 1, def: 0, slider: false },
-      { key: 'k2', label: 'Rear conic constant kâ‚‚', type: 'number', min: -ASPHERE_LIMITS.conic, max: ASPHERE_LIMITS.conic, step: 0.01, def: 0, slider: false },
-      { key: 'thickness', label: 'Centre thickness (mm)', type: 'number', min: 0.5, max: 60, step: 0.1, def: 6 },
-      { key: 'dia', label: 'Diameter', type: 'optsize', def: 25.4 },
-      { key: 'glass', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
-      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
-      { key: 'shape', label: 'Surface types', type: 'readout', readout: p => asphericSurfaceSummary(p) },
-      {
-        key: 'realizedGeometry', label: 'Geometry used', type: 'readout',
-        show: p => Boolean(asphericLensAdjustment(p)), readout: p => formatAsphericGeometry(p),
-      },
-      { key: 'efl', label: 'Paraxial focal length at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(asphericLensCardinals(p).f) },
-      { key: 'bfd', label: 'Paraxial back focal distance at 587.6 nm (mm)', type: 'readout', readout: p => formatFocal(asphericLensCardinals(p).bfd) },
-      { key: 'asphere-polynomial', label: 'Higher-order asphere coefficients', type: 'section', open: false },
-      { key: 'a4_1', label: 'Front Aâ‚„ (mmâ»Â³)', type: 'number', min: -ASPHERE_LIMITS.a4, max: ASPHERE_LIMITS.a4, step: 0.000001, def: 0, slider: false },
-      { key: 'a6_1', label: 'Front Aâ‚† (mmâ»âµ)', type: 'number', min: -ASPHERE_LIMITS.a6, max: ASPHERE_LIMITS.a6, step: 0.00000001, def: 0, slider: false },
-      { key: 'a8_1', label: 'Front Aâ‚ˆ (mmâ»â·)', type: 'number', min: -ASPHERE_LIMITS.a8, max: ASPHERE_LIMITS.a8, step: 0.0000000001, def: 0, slider: false },
-      { key: 'a4_2', label: 'Rear Aâ‚„ (mmâ»Â³)', type: 'number', min: -ASPHERE_LIMITS.a4, max: ASPHERE_LIMITS.a4, step: 0.000001, def: 0, slider: false },
-      { key: 'a6_2', label: 'Rear Aâ‚† (mmâ»âµ)', type: 'number', min: -ASPHERE_LIMITS.a6, max: ASPHERE_LIMITS.a6, step: 0.00000001, def: 0, slider: false },
-      { key: 'a8_2', label: 'Rear Aâ‚ˆ (mmâ»â·)', type: 'number', min: -ASPHERE_LIMITS.a8, max: ASPHERE_LIMITS.a8, step: 0.0000000001, def: 0, slider: false },
-    ],
-    size_: el => {
-      const geometry = asphericLensGeometry(el.params);
-      return { w: geometry.span + 6, h: 2 * geometry.h + 6 };
-    },
-    svg(el) {
-      const geometry = asphericLensGeometry(el.params);
-      return `<path d="${boundaryPathData(geometry.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`;
-    },
-    surfaces(el) {
-      const geometry = asphericLensGeometry(el.params);
-      const frontTop = geometry.frontPoints[0];
-      const frontBottom = geometry.frontPoints.at(-1);
-      const rearBottom = geometry.rearPoints[0];
-      const rearTop = geometry.rearPoints.at(-1);
-      const transmission = surfaceTransmission(el.params);
-      const common = { material: el.params.glass, transmission };
-      const worldProfile = (vertexX, profile) => {
-        const vertex = toWorld(el, vertexX, 0);
-        return {
-          ...profile,
-          cx: vertex.x, cy: vertex.y,
-          ux: rotPt(1, 0, el.rot || 0),
-          uy: rotPt(0, 1, el.rot || 0),
-          h: geometry.h,
-        };
-      };
-      return [
-        {
-          x1: frontTop.x, y1: frontTop.y, x2: frontBottom.x, y2: frontBottom.y, kind: 'refract',
-          data: { ...common, topologyKey: 'front', asphere: worldProfile(geometry.xv1, geometry.front) },
-        },
-        {
-          x1: frontBottom.x, y1: frontBottom.y, x2: rearBottom.x, y2: rearBottom.y, kind: 'refract',
-          data: { ...common, topologyKey: 'rim-bottom' },
-        },
-        {
-          // Keep +h -> -h ordering on both analytic faces so hit.u has one
-          // consistent endpoint convention for exact-corner detection.
-          x1: rearTop.x, y1: rearTop.y, x2: rearBottom.x, y2: rearBottom.y, kind: 'refract',
-          data: { ...common, topologyKey: 'rear', asphere: worldProfile(geometry.xv2, geometry.rear) },
-        },
-        {
-          x1: rearTop.x, y1: rearTop.y, x2: frontTop.x, y2: frontTop.y, kind: 'refract',
-          data: { ...common, topologyKey: 'rim-top' },
-        },
-      ];
-    },
-    hitTest(el, localPoint, tolerance = 4) {
-      const points = asphericLensGeometry(el.params).points;
-      return pointInBoundary(localPoint, points)
-        || points.some((point, index) => distToSegment(localPoint, point, points[(index + 1) % points.length]) <= tolerance);
-    },
-    containsLocal(el, localPoint) {
-      if (!Number.isFinite(localPoint?.x) || !Number.isFinite(localPoint?.y)) return false;
-      const geometry = asphericLensGeometry(el.params);
-      const tolerance = 1e-7;
-      if (localPoint.y < -geometry.h - tolerance || localPoint.y > geometry.h + tolerance) return false;
-      const y = Math.min(geometry.h, Math.max(-geometry.h, localPoint.y));
-      const frontX = geometry.xv1 + asphereSag(y, geometry.front);
-      const rearX = geometry.xv2 + asphereSag(y, geometry.rear);
-      return localPoint.x >= frontX - tolerance && localPoint.x <= rearX + tolerance;
-    },
-    refractiveIndex(el, wavelength = 550) { return glassIndex(el.params.glass, wavelength) ?? 1.5; },
-  },
-
-  // The singlet generalised: a surface table describing any number of glass
-  // bodies in a row, which is how real prescriptions are written. Cemented
-  // and air-spaced groups are the same data â€” glass continuing across an
-  // interface means cemented â€” so one element covers a plain singlet, an
-  // achromatic doublet and anything else the table can express. Nothing about
-  // the focal length is configured; see lensgroup.js.
-  lensgroup: {
-    label: 'Lens group', category: 'Lenses',
-    paletteGroup: 'Real lenses', paletteOrder: 5,
-    aliases: ['achromat', 'achromatic doublet', 'cemented doublet', 'compound lens', 'prescription', 'surface table'],
-    params: [
-      { key: 'preset', label: 'Prescription', type: 'select', def: 'doublet', options: PRESET_OPTIONS },
-      // Edited by the row editor; a preset overrides it while one is selected.
-      { key: 'rows', label: 'Surface table', type: 'surfacetable', def: null },
-      // Canvas-only derived control: the purple knob edits the final radius
-      // without storing a second source of truth. Its setter materializes an
-      // active preset into a custom table on the first drag, exactly like the
-      // row editor does on its first edit.
-      {
-        key: 'lastRadius', label: 'Last surface radius (mm)', type: 'derived', hidden: true,
-        min: -2000, max: 2000, step: 1,
-        get: p => surfaceRowsOf(p).at(-1)?.r ?? 0,
-        set: (p, value) => {
-          const rows = surfaceRowsOf(p).map(row => ({ ...row }));
-          rows.at(-1).r = value;
-          p.rows = normalizeSurfaceTable(rows);
-          p.preset = 'custom';
-        },
-      },
-      { key: 'dia', label: 'Clear aperture', type: 'optsize', def: 25.4 },
-      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
-      {
-        key: 'assembly', label: 'Assembly', type: 'readout',
-        readout: p => {
-          const s = surfaceTableSummary(surfaceRowsOf(p));
-          return `${s.name} Â· ${s.surfaces} surfaces${s.stops ? ` Â· ${s.stops} stop${s.stops === 1 ? '' : 's'}` : ''}`;
-        },
-      },
-      {
-        key: 'efl', label: 'Focal length at 587.6 nm (mm)', type: 'readout',
-        readout: p => formatFocal(surfaceTableCardinals(surfaceRowsOf(p), 587.6, { diameter: p.dia }).f),
-      },
-      {
-        key: 'bfd', label: 'Back focal distance at 587.6 nm (mm)', type: 'readout',
-        readout: p => formatFocal(surfaceTableCardinals(surfaceRowsOf(p), 587.6, { diameter: p.dia }).bfd),
-      },
-      {
-        key: 'colour', label: 'Axial colour, F to C (mm)', type: 'readout',
-        readout: p => {
-          const c = surfaceTableAxialColour(surfaceRowsOf(p), { diameter: p.dia });
-          const f = surfaceTableCardinals(surfaceRowsOf(p), 587.6, { diameter: p.dia }).f;
-          if (!Number.isFinite(c)) return 'â€”';
-          const ppm = Number.isFinite(f) && f !== 0 ? Math.abs(c / f) * 1e6 : NaN;
-          return `${Number(c.toPrecision(3))}${Number.isFinite(ppm) ? ` Â· ${ppm < 1000 ? `${ppm.toFixed(0)} ppm` : `${(ppm / 1e4).toFixed(2)}%`} of f` : ''}`;
-        },
-      },
-    ],
-    size_(el) {
-      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
-      return { w: g.span + 6, h: 2 * g.h + 6 };
-    },
-    svg(el) {
-      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
-      // One path per body, so a cemented pair reads as two glasses in contact
-      // rather than one lump, and the cement line stays visible.
-      const bodies = g.bodies.map(body =>
-        `<path d="${boundaryPathData(body.points)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`).join('');
-      const stops = g.stops.map(stop => {
-        const edge = Math.min(stop.h, stop.aperture / 2);
-        return `<g stroke="#3c4652" stroke-width="2.4" stroke-linecap="square">` +
-          `<line x1="${stop.x}" y1="${-stop.h}" x2="${stop.x}" y2="${-edge}"/>` +
-          `<line x1="${stop.x}" y1="${edge}" x2="${stop.x}" y2="${stop.h}"/></g>`;
-      }).join('');
-      return bodies + stops;
-    },
-    surfaces(el) {
-      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
-      const transmission = surfaceTransmission(el.params);
-      // Every body contributes its own closed boundary. The topology key has
-      // to be unique per body AND per face: the tracer uses it to tell one
-      // interaction from another, and two bodies of one element would
-      // otherwise collide on `face-0`.
-      const refracting = g.bodies.flatMap((body, b) => boundarySegments(body.points).map((segment, i) => ({
-        x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
-        data: {
-          material: body.glass, transmission,
-          topologyKey: `body-${b}-face-${i}`,
-          ...(segment.kind === 'arc' ? { arcPoint: { x: segment.through.x, y: segment.through.y } } : {}),
-        },
-      })));
-      const stops = g.stops.flatMap(stop => {
-        // Same 0.02 mm edge allowance as the objective pupil: a ray exactly
-        // on the configured clear diameter belongs to the opening, not the
-        // metal around it.
-        const edge = Math.min(stop.h, stop.aperture / 2 + 0.02);
-        if (stop.h <= edge + 0.01) return [];
-        return [
-          { x1: stop.x, y1: edge, x2: stop.x, y2: stop.h, kind: 'absorb', data: { topologyKey: `stop-${stop.row}-upper` } },
-          { x1: stop.x, y1: -edge, x2: stop.x, y2: -stop.h, kind: 'absorb', data: { topologyKey: `stop-${stop.row}-lower` } },
-        ];
-      });
-      return [...refracting, ...stops];
-    },
-    hitTest(el, localPoint, tolerance = 4) {
-      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
-      return g.bodies.some(body => {
-        const sampled = sampleBoundary(body.points, { maxAngle: Math.PI / 90 });
-        return pointInBoundary(localPoint, body.points)
-          || sampled.some((a, i) => distToSegment(localPoint, a, sampled[(i + 1) % sampled.length]) <= tolerance);
-      }) || g.stops.some(stop => {
-        const edge = Math.min(stop.h, stop.aperture / 2);
-        return distToSegment(localPoint, { x: stop.x, y: -stop.h }, { x: stop.x, y: -edge }) <= tolerance
-          || distToSegment(localPoint, { x: stop.x, y: edge }, { x: stop.x, y: stop.h }) <= tolerance;
-      });
-    },
-    containsLocal(el, localPoint) {
-      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
-      return g.bodies.some(body => pointInBoundary(localPoint, body.points));
-    },
-    // A source born inside the group takes the index of whichever body holds
-    // it, not the first one in the table.
-    refractiveIndex(el, wavelength = 550, localPoint = null) {
-      const g = surfaceTableToBodies(surfaceRowsOf(el.params), { diameter: el.params.dia });
-      const body = localPoint
-        ? g.bodies.find(b => pointInBoundary(localPoint, b.points)) || g.bodies[0]
-        : g.bodies[0];
-      return body ? (glassIndex(body.glass, wavelength) ?? 1.5) : 1.5;
-    },
-  },
-
-  telescope: {
-    label: 'Conjugated thin lens pair', category: 'Lenses',
-    paletteGroup: 'Ideal lenses', paletteOrder: 2, size: { w: 174, h: 62 },
-    aliases: ['telescope', 'beam expander', 'lens pair', 'relay', '4f', 'afocal', 'keplerian'],
-    size_: el => ({ w: Math.max(30, el.params.f1 + el.params.f2) + 26, h: (el.params.dia || 25.4) + 10 }),
-    params: [
-      { key: 'f1', label: 'Lens 1 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 100 },
-      { key: 'f2', label: 'Lens 2 focal (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 50 },
-      { key: 'dia', label: 'Lens diameter', type: 'optsize', def: 25.4 },
-      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-    ],
-    svg(el) {
-      const p = el.params, s = Math.max(5, p.f1 + p.f2), h = (p.dia || 25.4) / 2;
-      return `<line x1="${-s / 2}" y1="0" x2="${s / 2}" y2="0" stroke="#b6bdc6" stroke-width="1" stroke-dasharray="4 4"/>` +
-        lensShape(-s / 2, h, p.f1) + lensShape(s / 2, h, p.f2);
-    },
-    surfaces(el) {
-      // Each lens carries the same shared coating spec, so the pair's
-      // overall throughput is transEffÂ² â€” matching two real lenses with
-      // matched AR coatings, consistent with how `dia` is already shared.
-      const p = el.params, s = Math.max(5, p.f1 + p.f2), h = (p.dia || 25.4) / 2;
-      return [
-        {
-          x1: -s / 2, y1: -h, x2: -s / 2, y2: h, kind: 'lens',
-          data: {
-            f: p.f1, transEff: p.transEff,
-            gddMaterial: 'nbk7',
-            gddThicknessMm: estimatedThinLensThicknessMm({ f: p.f1, dia: p.dia }),
-          },
-        },
-        {
-          x1: s / 2, y1: -h, x2: s / 2, y2: h, kind: 'lens',
-          data: {
-            f: p.f2, transEff: p.transEff,
-            gddMaterial: 'nbk7',
-            gddThicknessMm: estimatedThinLensThicknessMm({ f: p.f2, dia: p.dia }),
-          },
-        },
-      ];
-    },
-  },
-
-  objective: {
-    // Back (tube-lens/infinity side, where a telescope or scan relay delivers
-    // collimated light) is the wide barrel and carries the back pupil; front
-    // (sample side) is the narrow tip at local x=+16, the physical boundary
-    // the working distance is measured from. The equivalent refracting plane
-    // of focal length EFL sits at x = 16 + WD - EFL. This equivalent plane
-    // can lie outside the barrel for long-WD designs. It is never drawn â€” an
-    // opaque barrel, not a visible singlet. See objective.js.
-    label: 'Objective', category: 'Lenses',
-    paletteGroup: 'Ideal lenses', paletteOrder: 3, size: { w: 36, h: 40 },
-    snapPt: { x: OBJECTIVE_FRONT_X, y: 0 }, // physical sample-facing front tip
-    // The objective owns the medium; immersion.js derives the disposable
-    // relationship from this front tip to a compatible scene contact.
-    immersionSource: () => ({ x: OBJECTIVE_FRONT_X, y: 0 }),
-    size_: el => ({
-      w: (OBJECTIVE_FRONT_X - objectiveBackX(el.params)) + 4,
-      h: 2 * objectiveBarrelHalfHeight(el.params) + 6,
-    }),
-    // the barrel is no longer centred on the element origin once it grows
-    boxAnchor: el => ({ x: (OBJECTIVE_FRONT_X + objectiveBackX(el.params)) / 2, y: 0 }),
-    params: [
-      {
-        key: 'objectivePreset', label: 'Objective starting point', type: 'derived-select',
-        def: OBJECTIVE_DEFAULT_PRESET,
-        options: OBJECTIVE_PRESETS.map(preset => [preset.key, preset.label, false, preset.group]),
-        groups: OBJECTIVE_PRESET_GROUPS,
-        customOption: ['custom', 'Custom parameters'],
-        get: objectivePresetKey,
-        set: (params, key) => Object.assign(params, applyObjectivePreset(params, key)),
-        note: 'Plausible catalogue-shaped specs, not one manufacturer\u2019s prescriptions. Raising NA at a fixed magnification costs working distance, exactly as it does on real hardware. Open Advanced parameters for exact values.',
-      },
-      {
-        key: 'magnification', label: 'Magnification with a 200 mm tube lens (Ã—)', type: 'readout',
-        readout: p => `${objectiveMagnification(p).toFixed(1)}Ã—`,
-      },
-      // What the rated NA costs you in practice: the back pupil is a real
-      // stop, so a beam wider than 2*f*NA loses its overflow to the barrel.
-      {
-        key: 'pupilFill', label: 'Back-pupil fill', type: 'readout',
-        readout: (p, el) => {
-          const pupil = objectivePupilDiameter(p);
-          const fill = el ? objectivePupilFill(el.id) : null;
-          if (!fill) return `${pupil.toFixed(1)} mm pupil Â· no beam`;
-          const ratio = fill.beamDiameter / pupil;
-          if (ratio <= 1.001) {
-            return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm â€” ${(ratio * 100).toFixed(0)}% filled, all through`;
-          }
-          // The fraction is a round-pupil area ratio; the 2D tracer clips a
-          // line through the pupil instead, so its traced power can differ.
-          return `${fill.beamDiameter.toFixed(1)} / ${pupil.toFixed(1)} mm â€” overfilled, ` +
-            `about ${(fill.transmitted * 100).toFixed(0)}% through a round pupil (area estimate; the 2D trace can differ)`;
-        },
-      },
-      // Underfilling the pupil does not just waste the rating â€” it hands you a
-      // smaller NA, and with it a bigger focal spot. That is the number the
-      // experiment actually runs at, so report it next to the fill.
-      {
-        key: 'effectiveNA', label: 'Effective NA in use', type: 'readout',
-        readout: (p, el) => {
-          const rated = objectiveNumericalAperture(p);
-          const fill = el ? objectivePupilFill(el.id) : null;
-          if (!fill) return `${rated.toFixed(2)} rated Â· no beam`;
-          const effective = rated * Math.min(1, fill.fill);
-          if (fill.fill >= 0.999) return `${rated.toFixed(2)} â€” the full rated NA`;
-          return `${effective.toFixed(2)} of ${rated.toFixed(2)} â€” the pupil is only ` +
-            `${(fill.fill * 100).toFixed(0)}% filled, so the spot is ${(rated / effective).toFixed(1)}Ã— wider`;
-        },
-      },
-      { key: 'objective-advanced', label: 'Advanced parameters', type: 'section', open: false },
-      // EFL is the objective's real optical power and the thing the tracer
-      // uses. Magnification is what it produces once the user's own tube lens
-      // images it, so it is reported rather than set.
-      { key: 'efl', label: 'Effective focal length EFL (mm)', type: 'number', min: 2, max: 60, step: 0.1, def: 10, slider: false },
-      // A real objective focuses at or inside its own focal length, so WD
-      // starts equal to EFL and can only be shortened from there.
-      {
-        key: 'workingDistance', label: 'Working distance (mm)', type: 'number',
-        min: OBJECTIVE_WD_MIN, max: p => objectiveMaximumWorkingDistance(p), step: 0.01, def: 5,
-      },
-      {
-        key: 'immersion', label: 'Objective medium', type: 'select', def: 'air',
-        options: [
-          ['air', OBJECTIVE_MEDIA.air.label],
-          ['water', OBJECTIVE_MEDIA.water.label],
-          ['oil', OBJECTIVE_MEDIA.oil.label],
-          ['custom', OBJECTIVE_MEDIA.custom.label],
-        ],
-        // Accepted only when loading an older high-NA sketch. The inspector
-        // shows it as a disabled current value, never as a new choice.
-        legacyOptions: [['legacy', OBJECTIVE_MEDIA.legacy.label]],
-      },
-      {
-        key: 'immersionIndex', label: 'Medium index (n)', type: 'number', min: 1, max: 2, step: 0.001, def: 1.333,
-        show: p => p.immersion === 'custom',
-      },
-      {
-        key: 'na', label: 'Rated numerical aperture (NA)', type: 'number', min: 0.05,
-        max: p => objectiveMaximumNA(p), step: 0.01, def: 0.4,
-      },
-      {
-        key: 'acceptanceHalfAngle', label: 'Object-side half-angle Î¸', type: 'readout',
-        readout: p => {
-          const angle = objectiveAcceptanceHalfAngleDeg(p);
-          return Number.isFinite(angle) ? `${angle.toFixed(1)}Â°` : 'Resolve medium';
-        },
-      },
-      { key: 'showAcceptance', label: 'Show acceptance angle', type: 'checkbox', def: false },
-      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-      {
-        key: 'frontAperture', label: 'Front aperture (mm)', type: 'number', min: 1, max: 100, step: 0.1, def: 11,
-      },
-    ],
-    svg(el) {
-      const h = objectiveFrontAperture(el.params) / 2;
-      const outer = objectiveBarrelHalfHeight(el.params);
-      const back = objectiveBackX(el.params);
-      // The nose taper is fixed geometry: only the straight rear section
-      // lengthens when a short working distance pushes the lens plane back,
-      // so a long objective still reads as an objective.
-      const shoulder = OBJECTIVE_SHOULDER_X;
-      const pupilHalf = Math.min(outer - 1, Math.max(0.8, objectivePupilRadius(el.params)));
-      const barrel = `M 16,${-h} L ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer} L 16,${h}`;
-      // The body is filled with no outline, and only the straight rear section
-      // is stroked. Strokes are screen-space: at 100% zoom a 1.5 px contour is
-      // 1.5 mm of world, so an outlined nose swallows the working distance of
-      // any real high-NA objective. Leaving the front face AND both tapers
-      // unstroked is what makes a sub-millimetre clearance readable.
-      return `<path d="${barrel} Z" fill="#8d98a5" stroke="none"/>` +
-        `<path d="M ${shoulder},${-outer} L ${back},${-outer} L ${back},${outer} L ${shoulder},${outer}" fill="none" stroke="#4d565f" stroke-width="1.5" stroke-linejoin="round"/>` +
-        `<line x1="${shoulder}" y1="${-outer}" x2="${shoulder}" y2="${outer}" stroke="#4d565f" stroke-width="1"/>` +
-        // No lens is drawn: an objective is an opaque barrel. What IS visible
-        // at the back is the iris the rated NA leaves open â€” the dark bars
-        // are the metal a beam overfilling the pupil is lost to.
-        `<rect x="${back}" y="${-outer}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>` +
-        `<rect x="${back}" y="${pupilHalf.toFixed(2)}" width="2.4" height="${(outer - pupilHalf).toFixed(2)}" fill="#2f3e4d"/>`;
-    },
-    surfaces(el) {
-      const lensX = objectiveLensPlaneX(el.params);
-      const outer = objectiveBarrelHalfHeight(el.params);
-      const pupil = Math.min(outer, objectivePupilRadius(el.params));
-      // The stop sits at the back focal plane, which for an infinity objective
-      // is where its entrance pupil is â€” see objectiveStopX. Its outer extent
-      // follows the barrel at that point so it cannot swallow light that
-      // visually passes outside the housing.
-      const stopX = objectiveStopX(el.params);
-      // The stop is seated in the straight rear section, so its blocking
-      // annulus spans the full barrel radius. Anything inside the housing is
-      // either refracted through the pupil or absorbed by the metal; only
-      // light that genuinely passes outside the barrel goes by untouched.
-      const stopOuter = Math.max(objectiveBarrelHalfHeightAt(el.params, stopX), outer);
-      // The stop starts a hair outside the rated pupil, and the clear bore
-      // matches it. A beam sized to exactly fill the pupil lands its edge rays
-      // right on the boundary, and without this margin the stop â€” which the
-      // ray reaches first â€” would swallow them and report a full beam as lost.
-      const edge = Math.min(outer, pupil + 0.02);
-      const shared = {
-        effectiveFocalLength: objectiveEffectiveFocalLength(el.params),
-        workingDistance: objectiveWorkingDistance(el.params),
-        objectiveMediumIndex: objectiveMediumIndex(el.params),
-        // A legacy >1 NA is kept in the editor so old sketches are not
-        // rewritten with an invented medium. Until the author resolves
-        // that medium, however, it is not a configured NA that downstream
-        // sample calculations or handoffs may rely on.
-        ...(objectiveMediumKey(el.params) === 'legacy'
-          ? {}
-          : { objectiveNA: objectiveNumericalAperture(el.params) }),
-      };
-      // `pupilSpan` is the segment's local y-range, so the tracer can turn a
-      // hit into a distance from the barrel axis for the overfill readout.
-      return [{
-        // The equivalent refracting plane carries the objective's REAL focal
-        // length, positioned so that collimated light focuses exactly one
-        // working distance beyond the front tip. That is what makes the back
-        // focal plane a true conjugate and the magnification honest. Its
-        // clear aperture is the rated pupil, so NA really does set the
-        // convergence angle of a beam that fills it.
-        x1: lensX, y1: -edge, x2: lensX, y2: edge, kind: 'lens',
-        data: {
-          ...shared, f: shared.effectiveFocalLength, transEff: el.params.transEff,
-          pupilRadius: pupil, pupilSpan: [-edge, edge],
-          // Class-typical equivalent glass path. Real objectives vary by
-          // roughly a factor of two; this is a reported estimate only and
-          // never changes the equivalent-lens geometry.
-          gddMaterial: 'nbk7', gddThicknessMm: 30,
-        },
-      },
-      // The metal around the pupil. Overfilling it is normal practice â€” you do
-      // it to reach the full rated NA â€” and the light that lands outside is
-      // genuinely lost, so it stops here rather than sailing through as if the
-      // housing were not there.
-      ...(stopOuter > edge + 0.01 ? [
-        { x1: stopX, y1: edge, x2: stopX, y2: stopOuter, kind: 'absorb', data: { ...shared, pupilRadius: pupil, pupilSpan: [edge, stopOuter] } },
-        { x1: stopX, y1: -edge, x2: stopX, y2: -stopOuter, kind: 'absorb', data: { ...shared, pupilRadius: pupil, pupilSpan: [-edge, -stopOuter] } },
-      ] : [])];
-    },
-  },
-
-  // ---------------- Filters & splitters ----------------
-  dichroic: {
-    label: 'Dichroic mirror', category: 'Filters & Splitters', paletteOrder: 3, size: { w: 14, h: 56 },
-    params: [
-      { key: 'dtype', label: 'Type', type: 'select', def: 'longpass', options: [['longpass', 'Longpass (transmit long Î»)'], ['shortpass', 'Shortpass (transmit short Î»)'], ['bandpass', 'Bandpass'], ['notch', 'Band reflector (reflect one band)']] },
-      { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype !== 'bandpass' && p.dtype !== 'notch' },
-      { key: 'center', label: 'Band center (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 550, show: p => p.dtype === 'bandpass' || p.dtype === 'notch' },
-      { key: 'band', label: 'Band width (nm)', type: 'number', min: 1, max: 2000, step: 5, def: 50, show: p => p.dtype === 'bandpass' || p.dtype === 'notch' },
-      // An output coupler's coating reflects most of the resonant band and
-      // transmits the rest; 100 % is a high reflector.
-      { key: 'bandRefl', label: 'Reflectivity in band (%)', type: 'number', min: 0, max: 100, step: 1, def: 100, show: p => p.dtype === 'notch' },
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-    ],
-    size_: el => ({ w: 14, h: el.params.length + 6 }),
-    svg(el) {
-      const L = el.params.length / 2;
-      return `<rect x="-3" y="${-L}" width="6" height="${el.params.length}" fill="#dfeef7" stroke="#5d7f96" stroke-width="1.5"/>` +
-        `<line x1="-3" y1="${-L}" x2="-3" y2="${L}" stroke="#b04ad0" stroke-width="2"/>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2, p = el.params;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'dichroic', data: { dtype: p.dtype, cutoff: p.cutoff, center: p.center, band: p.band, bandRefl: p.bandRefl } }];
-    },
-  },
-
-  filter: {
-    label: 'Filter', category: 'Filters & Splitters', paletteOrder: 2, size: { w: 12, h: 42 },
-    params: [
-      { key: 'ftype', label: 'Type', type: 'select', def: 'bandpass', options: [['bandpass', 'Bandpass'], ['longpass', 'Longpass'], ['shortpass', 'Shortpass'], ['nd', 'Neutral density']] },
-      { key: 'cutoff', label: 'Cutoff (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 500, show: p => p.ftype === 'longpass' || p.ftype === 'shortpass' },
-      { key: 'center', label: 'Band center (nm)', type: 'number', min: 150, max: 8000, step: 5, def: 525, show: p => p.ftype === 'bandpass' },
-      { key: 'band', label: 'Band width (nm)', type: 'number', min: 1, max: 2000, step: 5, def: 40, show: p => p.ftype === 'bandpass' },
-      { key: 'trans', label: 'Transmission (0â€“1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5, show: p => p.ftype === 'nd' },
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-    ],
-    size_: el => ({ w: 12, h: el.params.length + 6 }),
-    svg(el) {
-      const L = el.params.length / 2;
-      const fill = el.params.ftype === 'nd' ? '#9aa0a6' : '#bfe3c9';
-      return `<rect x="-2.5" y="${-L}" width="5" height="${el.params.length}" fill="${fill}" stroke="#557" stroke-width="1.5"/>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2, p = el.params;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'filter', data: { ftype: p.ftype, cutoff: p.cutoff, center: p.center, band: p.band, trans: p.trans } }];
-    },
-  },
-
-  bs: {
-    label: 'Beamsplitter', category: 'Filters & Splitters', paletteOrder: 1, size: { w: 30, h: 30 },
-    size_: el => ({ w: (el.params.size || 26) + 4, h: (el.params.size || 26) + 4 }),
-    params: [
-      { key: 'ratio', label: 'Transmission (0â€“1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.5 },
-      { key: 'size', label: 'Cube size', type: 'optsize', def: 25.4 },
-    ],
-    svg(el) {
-      const s = (el.params.size || 26) / 2;
-      return `<rect x="${-s}" y="${-s}" width="${2 * s}" height="${2 * s}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.5"/>` +
-        `<line x1="${-s}" y1="${s}" x2="${s}" y2="${-s}" stroke="${GLASS_S}" stroke-width="1.5"/>`;
-    },
-    surfaces(el) {
-      const s = (el.params.size || 26) / 2;
-      return [{ x1: -s, y1: s, x2: s, y2: -s, kind: 'split', data: { ratio: el.params.ratio } }];
-    },
-  },
-
-  // ---------------- Polarization ----------------
-  polarizer: {
-    label: 'Polarizer', category: 'Polarization', size: { w: 24, h: 56 },
-    size_: el => ({ w: 24, h: el.params.length + 6 }),
-    params: [
-      { key: 'pangle', label: 'Axis angle (Â°)', type: 'number', min: 0, max: 180, step: 5, def: 0 },
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-    ],
-    svg(el) {
-      const L = el.params.length / 2, a = el.params.pangle;
-      // The transmission axis is drawn along the lab horizontal at 0Â° and
-      // sweeps to vertical at 90Â°, matching how every polarization readout in
-      // the app (probe glyph, detector "Linear NÂ°") already draws that angle.
-      return `<rect x="-2.5" y="${-L}" width="5" height="${el.params.length}" fill="#cfd8e3" stroke="#54606e" stroke-width="1.4"/>` +
-        `<g transform="rotate(${-a})"><circle r="8.5" fill="#fff" stroke="#54606e" stroke-width="1.2"/>` +
-        `<line x1="-6" y1="0" x2="6" y2="0" stroke="#54606e" stroke-width="1.6"/>` +
-        `<path d="M -8,0 L -4,-2.4 L -4,2.4 Z M 8,0 L 4,-2.4 L 4,2.4 Z" fill="#54606e"/></g>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'polarizer', data: { a: el.params.pangle } }];
-    },
-  },
-
-  hwp: {
-    label: 'Î»/2 waveplate', category: 'Polarization', size: { w: 18, h: 56 },
-    size_: el => ({ w: 18, h: el.params.length + 6 }),
-    params: [
-      { key: 'a', label: 'Fast axis (Â°)', type: 'number', min: 0, max: 180, step: 5, def: 22.5 },
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-    ],
-    svg(el) {
-      const L = el.params.length / 2;
-      return `<rect x="-2.5" y="${-L}" width="5" height="${el.params.length}" fill="#f3e3c3" stroke="#a08340" stroke-width="1.4"/>` +
-        `<text x="0" y="${-L - 6}" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#7a6430" ${isFlipped(el) ? `transform="rotate(180 0 ${-L - 6})"` : ''}>Î»/2</text>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'wp', data: { a: el.params.a, half: true } }];
-    },
-  },
-
-  qwp: {
-    label: 'Î»/4 waveplate', category: 'Polarization', size: { w: 18, h: 56 },
-    size_: el => ({ w: 18, h: el.params.length + 6 }),
-    params: [
-      { key: 'a', label: 'Fast axis (Â°)', type: 'number', min: 0, max: 180, step: 5, def: 45 },
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-    ],
-    svg(el) {
-      const L = el.params.length / 2;
-      return `<rect x="-2.5" y="${-L}" width="5" height="${el.params.length}" fill="#e8d5ef" stroke="#8a5fa8" stroke-width="1.4"/>` +
-        `<text x="0" y="${-L - 6}" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="#6a4a80" ${isFlipped(el) ? `transform="rotate(180 0 ${-L - 6})"` : ''}>Î»/4</text>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'wp', data: { a: el.params.a, half: false } }];
-    },
-  },
-
-  pbs: {
-    label: 'Polarizing BS', category: 'Polarization', size: { w: 30, h: 30 },
-    size_: el => ({ w: (el.params.size || 26) + 4, h: (el.params.size || 26) + 4 }),
-    params: [{ key: 'size', label: 'Cube size', type: 'optsize', def: 25.4 }],
-    svg(el) {
-      const s = (el.params.size || 26) / 2;
-      return `<rect x="${-s}" y="${-s}" width="${2 * s}" height="${2 * s}" fill="#d5e3f0" stroke="#3f6a92" stroke-width="1.6"/>` +
-        `<line x1="${-s}" y1="${s}" x2="${s}" y2="${-s}" stroke="#3f6a92" stroke-width="1.6"/>` +
-        `<text x="${-s}" y="${s + 8}" text-anchor="start" dominant-baseline="central" font-size="8.5" fill="#3f6a92" font-weight="600" ${isFlipped(el) ? `transform="rotate(180 ${-s} ${s + 8})"` : ''}>PBS</text>`;
-    },
-    surfaces(el) {
-      const s = (el.params.size || 26) / 2;
-      return [{ x1: -s, y1: s, x2: s, y2: -s, kind: 'pbs' }];
-    },
-  },
-
-  isolator: {
-    label: 'Optical isolator', category: 'Polarization', size: { w: 50, h: 26 },
-    size_: el => ({ w: 50, h: (el.params.aperture || 22) + 4 }),
-    params: [{ key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 8, max: 100, step: 2, def: 22 }],
-    svg(el) {
-      const h = (el.params.aperture || 22) / 2;
-      return `<rect x="-23" y="${-h}" width="46" height="${2 * h}" rx="${Math.min(11, h)}" fill="#6b7280" stroke="#3f4650" stroke-width="1.5"/>` +
-        `<path d="M -12,0 L 10,0 M 10,0 L 3,-5 M 10,0 L 3,5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
-    },
-    surfaces: el => {
-      const h = (el.params.aperture || 22) / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'isolator' }];
-    },
-  },
-
-  // ---------------- Dispersive elements ----------------
-  grating: {
-    label: 'Diffraction grating', category: 'Dispersive elements', size: { w: 16, h: 56 },
-    params: [
-      { key: 'lines', label: 'Lines / mm', type: 'number', min: 50, max: 3600, step: 50, def: 600 },
-      { key: 'orders', label: 'Orders (e.g. -1,0,1)', type: 'text', def: '1' },
-      { key: 'transmissive', label: 'Transmissive', type: 'checkbox', def: false },
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-    ],
-    size_: el => ({ w: 16, h: el.params.length + 6 }),
-    svg(el) {
-      const L = el.params.length / 2;
-      let ticks = '';
-      for (let y = -L + 3; y <= L - 3; y += 5) ticks += `<line x1="0" y1="${y}" x2="4" y2="${y}" stroke="#333" stroke-width="1"/>`;
-      return `<rect x="0" y="${-L}" width="6" height="${el.params.length}" fill="#e8e0f0" stroke="#5d5575" stroke-width="1.5"/>` + ticks;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2, p = el.params;
-      const orders = [...new Set(String(p.orders).split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n)))].slice(0, 21);
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'grating', data: { d: 1e6 / p.lines, orders: orders.length ? orders : [1], transmissive: p.transmissive } }];
-    },
-  },
-
-  slit: {
-    label: 'Slit', category: 'Beam Block', size: { w: 10, h: 56 },
-    params: [
-      { key: 'gap', label: 'Gap (mm)', type: 'number', min: 0.5, max: 60, step: 0.5, def: 8 },
-      { key: 'length', label: 'Plate size', type: 'optsize', def: 50.8 },
-    ],
-    size_: el => ({ w: 10, h: el.params.length + 6 }),
-    svg(el) {
-      const L = el.params.length / 2, g = Math.min(L, el.params.gap / 2);
-      if (g >= L) return '';
-      return `<rect x="-2.5" y="${-L}" width="5" height="${L - g}" fill="#333"/>` +
-        `<rect x="-2.5" y="${g}" width="5" height="${L - g}" fill="#333"/>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2, g = Math.min(L, el.params.gap / 2);
-      if (g >= L) return [];
-      return [
-        { x1: 0, y1: -L, x2: 0, y2: -g, kind: 'absorb' },
-        { x1: 0, y1: g, x2: 0, y2: L, kind: 'absorb' },
-      ];
-    },
-  },
-
-  prism: {
-    label: 'Prism', category: 'Dispersive elements', size: { w: 44, h: 44 },
-    size_: el => { const g = prismGeometry(el); return { w: g.width + 6, h: g.height + 6 }; },
-    params: [
-      { key: 'apex', label: 'Apex angle (Â°)', type: 'number', min: 10, max: 80, step: 5, def: 60 },
-      { key: 'psize', label: 'Size', type: 'optsize', def: 25.4 },
-      { key: 'material', label: 'Glass', type: 'select', def: 'nbk7', options: GLASS_OPTIONS },
-    ],
-    svg(el) {
-      const g = prismGeometry(el);
-      return `<path d="M ${g.top.x},${g.top.y} L ${g.left.x},${g.left.y} L ${g.right.x},${g.right.y} Z" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1.5"/>`;
-    },
-    surfaces(el) {
-      const { left, top, right } = prismGeometry(el);
-      const data = { material: el.params.material, transmission: 0.98 };
-      return [
-        { x1: left.x, y1: left.y, x2: top.x, y2: top.y, kind: 'refract', data: { ...data, topologyKey: 'edge-0' } },
-        { x1: top.x, y1: top.y, x2: right.x, y2: right.y, kind: 'refract', data: { ...data, topologyKey: 'edge-1' } },
-        { x1: right.x, y1: right.y, x2: left.x, y2: left.y, kind: 'refract', data: { ...data, topologyKey: 'edge-2' } },
-      ];
-    },
-  },
-
-  freeglass: {
-    label: 'Freeform glass', category: 'Dispersive elements', paletteOrder: 3,
-    aliases: ['custom prism', 'polygon glass', 'arbitrary glass', 'glass polygon', 'curved glass', 'circular arc glass'],
-    construction: { kind: 'polygon', pointsKey: 'vertices', minPoints: 3, circularArcs: true },
-    size_(el) {
-      const b = boundaryBounds(freeglassPoints(el));
-      return { w: b.x1 - b.x0 + 6, h: b.y1 - b.y0 + 6 };
-    },
-    params: [
-      { key: 'vertices', label: 'Boundary points', type: 'boundary', def: FREEGLASS_DEFAULT, hidden: true },
-      { key: 'scale', label: 'Overall scale', type: 'number', min: 0.1, max: 10, step: 0.05, def: 1 },
-      { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ...GLASS_OPTIONS] },
-      { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.5, show: p => p.material === 'constant' },
-      { key: 'transEff', label: 'Per-surface transmission (%)', type: 'number', min: 0, max: 100, step: 1, def: 98 },
-    ],
-    svg(el) {
-      const path = boundaryPathData(freeglassPoints(el));
-      return `<path d="${path}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5" stroke-linejoin="round"/>`;
-    },
-    surfaces(el) {
-      const points = freeglassPoints(el);
-      const material = isDispersiveGlass(el.params.material) ? el.params.material : undefined;
-      return boundarySegments(points).map((segment, i) => ({
-        x1: segment.a.x, y1: segment.a.y, x2: segment.b.x, y2: segment.b.y, kind: 'refract',
-        data: {
-          material, ior: el.params.ior, transmission: surfaceTransmission(el.params),
-          topologyKey: `edge-${i}`,
-          ...(segment.kind === 'arc'
-            ? { arcPoint: { x: segment.through.x, y: segment.through.y } }
-            : {}),
-        },
-      }));
-    },
-    editPoints: {
-      get: freeglassPoints,
-      candidate: freeglassEditCandidate,
-      hint: 'blue anchors and purple curve nodes reshape the boundary',
-    },
-    hitTest(el, localPoint, tolerance = 4) {
-      const points = freeglassPoints(el);
-      const sampled = sampleBoundary(points, { maxAngle: Math.PI / 90 });
-      return pointInBoundary(localPoint, points)
-        || sampled.some((a, i) => distToSegment(localPoint, a, sampled[(i + 1) % sampled.length]) <= tolerance);
-    },
-    containsLocal(el, localPoint) { return pointInBoundary(localPoint, freeglassPoints(el)); },
-    refractiveIndex(el, wavelength = 550) {
-      return glassIndex(el.params.material, wavelength)
-        ?? Math.min(2.5, Math.max(1.01, el.params.ior || 1.5));
-    },
-  },
-
-  diffuser: {
-    label: 'Diffuser', category: 'Dispersive elements', size: { w: 14, h: 56 },
-    size_: el => ({ w: 14, h: el.params.length + 6 }),
-    params: [
-      { key: 'div', label: 'Divergence (Â°)', type: 'number', min: 0.5, max: 40, step: 0.5, def: 8 },
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-    ],
-    svg(el) {
-      const L = el.params.length / 2;
-      let rough = `M -3,${-L}`;
-      for (let y = -L; y < L - 1; y += 3) rough += ` L ${-3 - (y % 6 === 0 ? 1.8 : 0.4)},${y + 1.5}`;
-      rough += ` L -3,${L}`;
-      return `<rect x="-3" y="${-L}" width="6" height="${el.params.length}" fill="#eceef1" stroke="#6b7280" stroke-width="1.3"/>` +
-        `<path d="${rough}" fill="none" stroke="#6b7280" stroke-width="1"/>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{ x1: 0, y1: -L, x2: 0, y2: L, kind: 'diffuser', data: { div: el.params.div } }];
-    },
-  },
-
-  // ---------------- Wavefront shaping ----------------
-  slm: {
-    label: 'SLM', category: 'Wavefront Shaping', size: { w: 30, h: 50 },
-    snapPt: { x: -9, y: 0 }, // active face
-    params: [
-      { key: 'transmissive', label: 'Transmissive', type: 'checkbox', def: false },
-      { key: 'length', label: 'Active size (mm)', type: 'number', min: 10, max: 100, step: 2, def: 40 },
-      { key: 'zeroOrder', label: '0th-order reflection', type: 'checkbox', def: false },
-      { key: 'zeroFrac', label: '0th-order fraction (0â€“1)', type: 'number', min: 0.01, max: 0.9, step: 0.01, def: 0.1, show: p => p.zeroOrder },
-      layersParam,
-    ],
-    size_: el => ({ w: 30, h: el.params.length + 10 }),
-    svg(el) {
-      const L = el.params.length / 2;
-      let px = '';
-      for (let y = -L + 2; y < L - 1; y += 5) px += `<line x1="-11" y1="${y}" x2="-7" y2="${y}" stroke="#4ac0b0" stroke-width="2.5"/>`;
-      return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#3a4750" stroke="#222b31" stroke-width="1.5"/>` + px +
-        `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">SLM</text>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      const body = el.params.transmissive ? [] : shaperBody(-9, 11, L, L + 3);
-      return [{
-        x1: -9, y1: -L, x2: -9, y2: L, kind: 'shaper',
-        data: {
-          layers: el.params.layers || [], length: el.params.length, transmissive: !!el.params.transmissive,
-          zeroOrder: !!el.params.zeroOrder, zeroFrac: el.params.zeroFrac || 0.1,
-        },
-      }, ...body];
-    },
-  },
-
-  // The same phase-shaping engine as the SLM, but built the way a metasurface
-  // actually is: a patterned layer on a thin transparent carrier, working in
-  // transmission. The optics are shared deliberately -- a metasurface and an
-  // LCOS panel differ in how the phase is fixed, not in what a phase profile
-  // does to a ray.
-  metasurface: {
-    label: 'Metasurface', category: 'Wavefront Shaping', size: { w: 10, h: 50 },
-    aliases: ['meta-optic', 'metasurface phase plate', 'flat optic', 'nanostructured surface'],
-    snapPt: { x: 0, y: 0 },
-    params: [
-      { key: 'transmissive', label: 'Transmissive', type: 'checkbox', def: true },
-      { key: 'length', label: 'Active size (mm)', type: 'number', min: 4, max: 100, step: 2, def: 30 },
-      { key: 'zeroOrder', label: 'Undiffracted 0th order', type: 'checkbox', def: false },
-      { key: 'zeroFrac', label: '0th-order fraction (0â€“1)', type: 'number', min: 0.01, max: 0.9, step: 0.01, def: 0.1, show: p => p.zeroOrder },
-      layersParam,
-    ],
-    size_: el => ({ w: 10, h: el.params.length + 8 }),
-    svg(el) {
-      const L = el.params.length / 2;
-      // A thin transparent carrier with the patterned layer sitting on its
-      // input face -- the way these are made, and what tells it apart from
-      // the SLM's opaque panel at a glance.
-      const substrate = `<rect x="-1.4" y="${-L}" width="2.8" height="${2 * L}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="0.9"/>`;
-      const layer = `<rect x="-2.9" y="${-L}" width="1.5" height="${2 * L}" fill="#f2c230" stroke="#a67c06" stroke-width="0.7"/>`;
-      // Meta-atom ticks: dense, and finer than any drawn feature elsewhere,
-      // because subwavelength structure is the whole point of the surface.
-      let atoms = '';
-      for (let y = -L + 1.2; y < L - 0.6; y += 2.2) {
-        atoms += `<line x1="-2.6" y1="${y.toFixed(2)}" x2="-1.7" y2="${y.toFixed(2)}" stroke="#7a5a04" stroke-width="0.5"/>`;
-      }
-      return substrate + layer + atoms;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      // Reflective mode needs a body behind the surface, exactly as the SLM
-      // does; in transmission the carrier is clear and nothing blocks.
-      const body = el.params.transmissive ? [] : shaperBody(-2.9, 1.4, L, L + 2);
-      return [{
-        x1: 0, y1: -L, x2: 0, y2: L, kind: 'shaper',
-        data: {
-          layers: el.params.layers || [], length: el.params.length,
-          transmissive: el.params.transmissive !== false,
-          zeroOrder: !!el.params.zeroOrder, zeroFrac: el.params.zeroFrac || 0.1,
-        },
-      }, ...body];
-    },
-  },
-  dmd: {
-    label: 'DMD', category: 'Wavefront Shaping', size: { w: 30, h: 50 },
-    snapPt: { x: -9, y: 0 }, // active face
-    params: [
-      { key: 'length', label: 'Active size (mm)', type: 'number', min: 10, max: 100, step: 2, def: 40 },
-      { key: 'tilt', label: 'Micromirror tilt (Â°)', type: 'number', min: 1, max: 20, step: 0.5, def: 12 },
-      { key: 'pitch', label: 'Pattern pitch (mm)', type: 'number', min: 1, max: 40, step: 0.5, def: 8 },
-      { key: 'duty', label: 'ON fraction (0â€“1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5 },
-      { key: 'routeOff', label: 'Show OFF order', type: 'checkbox', def: false },
-    ],
-    size_: el => ({ w: 30, h: el.params.length + 10 }),
-    svg(el) {
-      const L = el.params.length / 2;
-      let mm = '';
-      for (let y = -L + 4; y < L - 2; y += 6) mm += `<line x1="-11" y1="${y + 2}" x2="-7" y2="${y - 2}" stroke="#cfd6dd" stroke-width="1.6"/>`;
-      return `<rect x="-9" y="${-L - 3}" width="20" height="${el.params.length + 6}" rx="2" fill="#2e3a42" stroke="#1b2329" stroke-width="1.5"/>` + mm +
-        `<text x="3" y="0" text-anchor="middle" dominant-baseline="central" font-size="8.5" font-weight="600" fill="#fff" transform="rotate(${sideTextRot(el)} 3 0)">DMD</text>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{
-        x1: -9, y1: -L, x2: -9, y2: L, kind: 'dmd',
-        data: {
-          length: el.params.length, tilt: el.params.tilt, pitch: el.params.pitch,
-          duty: el.params.duty, routeOff: el.params.routeOff,
-        },
-      }, ...shaperBody(-9, 11, L, L + 3)];
-    },
-  },
-
-  dm: {
-    label: 'Deformable mirror', category: 'Wavefront Shaping', size: { w: 22, h: 56 },
-    params: [
-      { key: 'length', label: 'Aperture (mm)', type: 'number', min: 10, max: 100, step: 2, def: 50 },
-      { key: 'f', label: 'Defocus focal length (mm)', type: 'number', min: -3000, max: 3000, step: 5, def: 200 },
-      { key: 'steer', label: 'Tip / tilt (Â°)', type: 'number', min: -30, max: 30, step: 0.5, def: 0 },
-    ],
-    size_: el => ({ w: 22, h: el.params.length + 6 }),
-    svg(el) {
-      const L = el.params.length / 2;
-      // wavy membrane
-      const nW = Math.max(3, Math.round(el.params.length / 12));
-      const step = el.params.length / nW;
-      let d = `M 0,${-L}`, side = 1;
-      for (let i = 0; i < nW; i++) {
-        const y = -L + i * step;
-        d += ` Q ${3 * side},${y + step / 2} 0,${y + step}`;
-        side = -side;
-      }
-      let act = '';
-      for (let y = -L + 2; y < L - 4; y += 7) act += `<rect x="4" y="${y}" width="4" height="4" fill="#8d98a5"/>`;
-      return `<rect x="8" y="${-L}" width="4" height="${el.params.length}" fill="#4d565f"/>` + act +
-        `<path d="${d}" fill="none" stroke="#444" stroke-width="2.5"/>`;
-    },
-    surfaces(el) {
-      const L = el.params.length / 2;
-      return [{
-        x1: 0, y1: -L, x2: 0, y2: L, kind: 'dm',
-        data: { f: el.params.f, steer: el.params.steer },
-      }, ...shaperBody(0, 12, L, L)];
-    },
-  },
-
-  // ---------------- Detectors ----------------
-  detector: {
-    label: 'Photodetector', category: 'Detectors', readoutKind: 'detector', size: { w: 40, h: 30 },
-    snapPt: { x: -19, y: 0 }, // entrance window
-    dataPort: { x: 20, y: 0 },
-    size_: el => ({ w: 40, h: (el.params.aperture || 26) + 4 }),
-    params: [{ key: 'aperture', label: 'Sensor height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 26 }],
-    svg(el) {
-      const h = el.params.aperture || 26, bar = Math.max(2, h - 8); // aperture min 6 would give a negative bar
-      return boxSVG(36, h, '#4b5563', '#2b333d', 'PD', null, isFlipped(el)) +
-        `<rect x="-19.5" y="${-bar / 2}" width="3" height="${bar}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
-        signalLamp(el, 11, -h / 2 + 5);
-    },
-    surfaces: el => detectorSurfaces(38, el.params.aperture || 26, 'Photodetector'),
-  },
-
-  pmt: {
-    label: 'PMT', category: 'Detectors', readoutKind: 'pmt', size: { w: 54, h: 30 },
-    snapPt: { x: -25, y: 0 }, // entrance window
-    dataPort: { x: 27, y: 0 },
-    size_: el => ({ w: 54, h: (el.params.aperture || 26) + 4 }),
-    // Gain and the dark floor both span decades, so each stores a plain
-    // multiplier (unchanged on disk, so old sketches keep their exact values)
-    // and is edited through a base-10 exponent slider â€” the axis a real PMT
-    // datasheet plots them on, and the only one a 1..10â· range is usable at.
-    params: [
-      { key: 'aperture', label: 'Photocathode height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 26 },
-      { key: 'gain', label: 'Electron gain', type: 'number', min: 1, max: PMT_MAX_GAIN, step: 1, def: 1e4, hidden: true },
-      {
-        key: 'gainLog', label: 'Gain (Ã—10â¿)', type: 'derived', min: 0, max: 7, step: 0.1,
-        get: p => Math.round(Math.log10(pmtGain(p)) * 10) / 10,
-        set: (p, value) => { p.gain = pmtGainFromLog(value); },
-      },
-      { key: 'gainReadout', label: 'Electron gain', type: 'readout', readout: p => `Ã—${formatSignal(pmtGain(p))}` },
-      { key: 'darkInput', label: 'Equivalent dark input', type: 'number', min: 0, max: 1, step: 1e-9, def: 1e-5, hidden: true },
-      {
-        key: 'darkLog', label: 'Dark floor (10â¿ a.u.)', type: 'derived', min: -8, max: -2, step: 0.1,
-        get: p => Math.round(Math.log10(pmtDarkInput(p)) * 10) / 10,
-        set: (p, value) => { p.darkInput = pmtDarkFromLog(value); },
-      },
-      { key: 'saturation', label: 'Max output (a.u.)', type: 'number', min: 1, max: 1e7, step: 10, def: 1e4 },
-    ],
-    svg(el) {
-      const h = el.params.aperture || 26, bar = Math.max(2, h - 8); // aperture min 6 would give a negative bar
-      return `<rect x="-25" y="${-h / 2}" width="50" height="${h}" rx="${Math.min(13, h / 2)}" fill="#4b5563" stroke="#2b333d" stroke-width="1.5"/>` +
-        `<rect x="-27" y="${-bar / 2}" width="4" height="${bar}" fill="#93c5fd" stroke="#2b333d" stroke-width="1"/>` +
-        `<text x="2" y="0" ${isFlipped(el) ? 'transform="rotate(180 2 0)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="#fff">PMT</text>` +
-        signalLamp(el, 16, -h / 2 + 6);
-    },
-    surfaces: el => detectorSurfaces(52, el.params.aperture || 26, 'PMT', {
-      gain: pmtGain(el.params), saturation: el.params.saturation, darkInput: pmtDarkInput(el.params),
-    }),
-  },
-
-  camera: {
-    label: 'Camera', category: 'Detectors', readoutKind: 'camera', size: { w: 44, h: 34 },
-    snapPt: { x: -22, y: 0 }, // sensor face
-    dataPort: { x: 22, y: 0 },
-    size_: el => ({ w: 44, h: (el.params.ch || 30) + 4 }),
-    params: [
-      { key: 'ch', label: 'Sensor height (mm)', type: 'number', min: 20, max: 150, step: 2, def: 30 },
-      { key: 'pixels', label: 'Sensor pixels (1D)', type: 'number', min: 8, max: 64, step: 1, def: 24 },
-      { key: 'interference', label: 'Coherent interference', type: 'checkbox', def: true },
-      // Auto-fit shows the profile's shape whatever its magnitude, which
-      // hides the magnitude entirely: a port carrying 1% of the light draws
-      // the same curve as one carrying all of it. Absolute scales the curve
-      // by the total reading instead, so a weak port looks weak -- the whole
-      // point when two ports are meant to be compared against each other.
-      {
-        key: 'profileScale', label: 'Profile height', type: 'select', def: 'absolute',
-        options: [['absolute', 'Absolute â€” height tracks the reading'], ['fit', 'Auto-fit â€” normalize to this profile\u2019s peak']],
-      },
-    ],
-    svg(el) {
-      const h = el.params.ch || 30;
-      return boxSVG(40, h, '#4b5563', '#2b333d', 'CAM', null, isFlipped(el)) +
-        `<rect x="-24" y="${-Math.max(2, h - 16) / 2}" width="5" height="${Math.max(2, h - 16)}" fill="#333" stroke="#2b333d"/>` +
-        signalLamp(el, 13, -h / 2 + 7);
-    },
-    surfaces: el => detectorSurfaces(44, el.params.ch || 30, 'Camera sensor', {
-      pixels: el.params.pixels,
-      interference: el.params.interference !== false,
-      profileScale: el.params.profileScale === 'fit' ? 'fit' : 'absolute',
-    }),
-  },
-
-  eye: {
-    label: 'Human eye', category: 'Detectors', readoutKind: 'retina', size: { w: 36, h: 36 },
-    snapPt: { x: -15, y: 0 }, // pupil
-    dataPort: el => ({ x: (el.params.diameter || 30) / 2 + 3, y: 0 }),
-    size_: el => ({ w: (el.params.diameter || 30) + 6, h: (el.params.diameter || 30) + 6 }),
-    params: [
-      { key: 'diameter', label: 'Eye diameter (mm)', type: 'number', min: 18, max: 60, step: 1, def: 30 },
-      { key: 'pupil', label: 'Pupil diameter (mm)', type: 'number', min: 2, max: 12, step: 0.5, def: 12 },
-      { key: 'focus', label: 'Lens focal length (mm)', type: 'number', min: 20, max: 35, step: 0.5, def: 30 },
-    ],
-    svg(el) {
-      const scale = (el.params.diameter || 30) / 30;
-      return `<g transform="scale(${scale})"><circle r="15" fill="#fff" stroke="#4d565f" stroke-width="1.5"/>` +
-        // cornea bulge over the pupil
-        `<path d="M -14.2,-7 Q -21,0 -14.2,7" fill="rgba(160,200,240,0.45)" stroke="#4a7fa8" stroke-width="1.2"/>` +
-        // iris above and below the pupil
-        `<path d="M -14.5,-9 L -10.5,-5.5" stroke="#7a5230" stroke-width="2.4" stroke-linecap="round"/>` +
-        `<path d="M -14.5,9 L -10.5,5.5" stroke="#7a5230" stroke-width="2.4" stroke-linecap="round"/>` +
-        // crystalline lens
-        `<ellipse cx="-8.5" cy="0" rx="3" ry="6.5" fill="#cfe4f5" stroke="#4a7fa8" stroke-width="1"/>` +
-        // retina
-        `<path d="M 7,-13 A 15 15 0 0 1 7,13" fill="none" stroke="#c86a6a" stroke-width="2.5"/></g>`;
-    },
-    surfaces(el) {
-      // the pupil acts as an ideal lens that focuses collimated light onto
-      // the retina; the rest of the eyeball absorbs
-      const scale = (el.params.diameter || 30) / 30;
-      const radius = 15 * scale, retina = 13 * scale;
-      const h = Math.min(radius * 0.8, Math.max(1, el.params.pupil / 2));
-      return [
-        { x1: -radius, y1: -h, x2: -radius, y2: h, kind: 'lens', data: { f: el.params.focus } },
-        { x1: -radius, y1: -radius, x2: -radius, y2: -h, kind: 'absorb' },
-        { x1: -radius, y1: h, x2: -radius, y2: radius, kind: 'absorb' },
-        { x1: -radius, y1: -radius, x2: radius, y2: -radius, kind: 'absorb' },
-        { x1: -radius, y1: radius, x2: radius, y2: radius, kind: 'absorb' },
-        { x1: radius, y1: -retina, x2: radius, y2: retina, kind: 'detector', data: { aperture: 2 * retina, detectorType: 'Retina' } },
-      ];
-    },
-  },
-
-  display: {
-    label: 'Sensor display', category: 'Detectors', paletteOrder: 10, size: { w: 98, h: 72 },
-    aliases: ['screen', 'monitor', 'readout', 'oscilloscope', 'data acquisition', 'DAQ'],
-    rotatable: false,
-    paramsTitle: 'Signal connection',
-    size_: el => {
-      const scale = displayRenderScale(el.params.displayScale);
-      return { w: 98 * scale, h: 72 * scale };
-    },
-    params: [
-      { key: 'sensorId', label: 'Sensor input', type: 'sensor', def: '' },
-      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.25, max: 1.5, step: 0.05, def: 1 },
-      { key: 'screenOn', label: 'Power', type: 'checkbox', def: true, hidden: true },
-      { key: 'displayView', label: 'View', type: 'select', def: 'main', options: [['main', 'Primary'], ['spectrum', 'Wavelength samples'], ['detail', 'Detail']], hidden: true },
-    ],
-    directHint: 'Use the blue handles to resize Â· PWR, INPUT, and VIEW operate directly on the display.',
-    svg: displayScreenSVG,
-    surfaces: () => [],
-  },
-
-  beamdump: {
-    label: 'Beam dump', category: 'Beam Block', size: { w: 24, h: 26 },
-    size_: el => ({ w: 24, h: (el.params.aperture || 22) + 4 }),
-    params: [{ key: 'aperture', label: 'Absorber height (mm)', type: 'number', min: 6, max: 120, step: 2, def: 22 }],
-    svg(el) {
-      const h = (el.params.aperture || 22) / 2;
-      return `<path d="M -10,${-h} L 10,${-h} L 10,${h} L -10,${h} Z M -10,${-h} L 4,0 L -10,${h}" fill="#26292e" stroke="#111" stroke-width="1.5"/>`;
-    },
-    surfaces: el => rectAbsorb(20, el.params.aperture || 22),
-  },
-
-  // ---------------- Modulators & misc ----------------
-  aom: {
-    label: 'AOM', category: 'Modulators', paletteGroup: 'Acousto-optic', paletteOrder: 0, size: { w: 44, h: 30 },
-    size_: el => ({ w: 44, h: (el.params.aperture || 26) + 4 }),
-    params: [
-      { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
-      { key: 'deflect', label: 'Deflection (Â°)', type: 'number', min: -45, max: 45, step: 0.5, def: 4 },
-      { key: 'zero', label: 'Keep 0th order', type: 'checkbox', def: false },
-      // The crystal's diffraction efficiency, named for what it does to the
-      // beam you watch: it is the fraction that can be switched, so it sets
-      // how completely each order turns on and off. At 1 both orders swing
-      // the full way; at 0.5 the diffracted order only reaches half height
-      // and the undiffracted one only falls to half.
-      { key: 'eff', label: 'Modulation efficiency (0â€“1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.85 },
-      { key: 'modulate', label: 'Modulate RF drive', type: 'checkbox', def: false },
-      // Named for the waveform driving the RF, the way a function generator
-      // labels them. A square drive switches the diffracted order fully on and
-      // off, so it alone has an on fraction; the two continuous shapes sweep
-      // the drive amplitude instead and are described by a depth.
-      {
-        key: 'modShape', label: 'Modulation waveform', type: 'select', def: 'square',
-        options: [['square', 'Square'], ['sine', 'Sine'], ['sawtooth', 'Sawtooth / triangle']],
-        show: p => p.modulate,
-      },
-      { key: 'modFreqMHz', label: 'Modulation frequency (MHz)', type: 'number', min: 0.000001, max: 1000, step: 0.001, def: 1, show: p => p.modulate },
-      // Duty cycle is a square-wave property: the fraction of the period the
-      // drive is on. A sine has no such thing, and a ramp's shape is set by
-      // how much of the period it spends rising instead.
-      { key: 'chopDuty', label: 'Duty cycle (0â€“1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.modShape === 'square' },
-      // The symmetry knob a function generator puts on its ramp output:
-      // 1 is the rising sawtooth, 0 the falling one, 0.5 a triangle.
-      { key: 'modSymmetry', label: 'Rise fraction (0â€“1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape === 'sawtooth' },
-      { key: 'modDepth', label: 'Modulation depth (0â€“1)', type: 'number', min: 0, max: 1, step: 0.05, def: 1, show: p => p.modulate && p.modShape !== 'square' },
-      { key: 'phaseNs', label: 'Modulation offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate },
-      // A beam drawn as a steady line says nothing about an RF drive being
-      // switched on and off -- the gating is real, but at megahertz it lives
-      // entirely in the temporal model. Drawing the diffracted order in
-      // chunks is the same schematic footprint the chopper already uses for
-      // gated CW light, and it only affects the drawing: the traced power and
-      // every detector reading are untouched either way. Square gating only;
-      // the continuous shapes sweep the drive smoothly and have no on/off
-      // edges to chunk.
-      {
-        key: 'drawChopped', label: 'Draw gated beam chopped', type: 'checkbox', def: true,
-        show: p => p.modulate && p.modShape === 'square',
-      },
-    ],
-    svg(el) { return boxSVG(40, el.params.aperture || 26, '#c9b458', '#8a7a2e', 'AOM', '#3d3616', isFlipped(el)); },
-    surfaces(el) {
-      const p = el.params;
-      return [{
-        x1: 0, y1: -(p.aperture || 26) / 2, x2: 0, y2: (p.aperture || 26) / 2, kind: 'aom',
-        data: {
-          deflect: p.deflect, zero: p.zero, eff: p.eff,
-          gate: p.modulate ? {
-            frequencyMHz: p.modFreqMHz, duty: p.chopDuty, phaseNs: p.phaseNs,
-            shape: p.modShape, depth: p.modDepth, symmetry: p.modSymmetry,
-            drawChopped: p.drawChopped !== false,
-          } : null,
-        },
-      }];
-    },
-  },
-
-  aod: {
-    label: 'AOD', category: 'Modulators', paletteGroup: 'Acousto-optic', paletteOrder: 1, size: { w: 44, h: 30 },
-    aliases: ['acousto-optic deflector', 'acousto optic deflector', 'beam scanner', 'non-mechanical scanner'],
-    size_: el => ({ w: 44, h: (el.params.aperture || 10) + 4 }),
-    params: [
-      { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 2, max: 100, step: 1, def: 10 },
-      { key: 'designWavelength', label: 'Design wavelength (nm)', type: 'number', min: 200, max: 12000, step: 1, def: 532 },
-      // theta = lambda f / v puts real deflections in the single degrees: a
-      // TeO2 slow-shear deflector, the usual choice for the visible and near
-      // infrared, gives 3.9 deg at 532 nm on an 80 MHz drive, and the same
-      // device sweeps about 2 deg across a 40 MHz bandwidth. Fused silica in
-      // the ultraviolet manages a few tenths of a degree. The maxima here are
-      // deliberately looser than any real device so an illustrative sketch
-      // can still be read at a glance, but the defaults are a real deflector.
-      { key: 'centerDeflect', label: 'Centre deflection (Â°)', type: 'number', min: 0, max: 30, step: 0.1, def: 4 },
-      { key: 'scanRange', label: 'Total scan angle (Â°)', type: 'number', min: 0, max: 15, step: 0.1, def: 2, show: p => p.scanMode && p.scanMode !== 'static' },
-      {
-        key: 'order', label: 'Diffraction order', type: 'select', def: '1',
-        options: [['1', '+1'], ['-1', 'âˆ’1']],
-      },
-      {
-        key: 'scanMode', label: 'Scan drive', type: 'select', def: 'static',
-        options: [
-          ['static', 'Static â€” hold one angle'],
-          ['triangle', 'Triangle â€” sweep and retrace'],
-          ['sawtooth', 'Sawtooth â€” sweep and fly back'],
-          ['random', 'Random step â€” address spots in any order'],
-        ],
-      },
-      // Published random-access cycle rates run 40-170 kHz, set by how long
-      // sound takes to cross the aperture. 200 is a generous ceiling on that.
-      { key: 'scanFreqKHz', label: 'Scan rate (kHz)', type: 'number', min: 0.001, max: 200, step: 1, def: 10, show: p => p.scanMode && p.scanMode !== 'static' },
-      {
-        key: 'aodAccess', label: 'Access time', type: 'readout',
-        show: p => p.scanMode && p.scanMode !== 'static',
-        readout: params => {
-          const access = aodAccessTimeUs(params.aperture);
-          const ceiling = aodMaxScanRateKHz(params.aperture);
-          const rate = Math.max(0, Number(params.scanFreqKHz) || 0);
-          const summary = `${access.toFixed(1)} Âµs â€” up to ${ceiling.toFixed(0)} kHz`;
-          // Sound has to cross the whole aperture before the beam has finished
-          // moving, so asking for steps faster than that is asking for a scan
-          // the crystal cannot settle into.
-          return rate > ceiling
-            ? `${summary} Â· ${rate} kHz outruns it`
-            : summary;
-        },
-      },
-      { key: 'scanPhaseDeg', label: 'Scan phase (Â°)', type: 'number', min: -360, max: 360, step: 5, def: 0, show: p => p.scanMode === 'triangle' || p.scanMode === 'sawtooth' },
-      { key: 'zero', label: 'Keep 0th order', type: 'checkbox', def: true },
-      // Real deflectors run 50-80%, occasionally 90%, and always less at the
-      // edges of the scan than at its centre.
-      { key: 'eff', label: 'Efficiency (0â€“1)', type: 'number', min: 0, max: 1, step: 0.05, def: 0.7 },
-    ],
-    svg(el) {
-      const active = el.params.scanMode !== 'static';
-      const scanIndicatorY = -(el.params.aperture || 10) / 2 + 5;
-      return boxSVG(40, el.params.aperture || 10, '#d7bd68', '#8a6f24', 'AOD', '#3d3012', isFlipped(el)) +
-        (active ? `<path d="M -8,${scanIndicatorY} H 8 M 5,${scanIndicatorY - 3} l 3,3 l -3,3" fill="none" stroke="#684f0f" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>` : '');
-    },
-    surfaces(el) {
-      const p = el.params;
-      const timeSeconds = Number.isFinite(el._simulationTimeNs) ? el._simulationTimeNs / 1e9 : 0;
-      return [{
-        x1: 0, y1: -(p.aperture || 10) / 2, x2: 0, y2: (p.aperture || 10) / 2, kind: 'aod',
-        data: {
-          designWavelength: p.designWavelength,
-          centerDeflect: p.centerDeflect,
-          scanRange: p.scanRange,
-          order: p.order,
-          position: aodScanPosition(p, timeSeconds),
-          zero: p.zero,
-          eff: p.eff,
-        },
-      }];
-    },
-  },
-
-  aotf: {
-    label: 'AOTF', category: 'Modulators', paletteGroup: 'Acousto-optic', paletteOrder: 2, size: { w: 56, h: 30 },
-    size_: el => ({ w: 56, h: (el.params.aperture || 26) + 4 }),
-    params: [
-      { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 26 },
-      // The passband is set by the crystal and its interaction length, so it
-      // belongs to the device rather than to any one RF tone: every selected
-      // line is filtered through the same width.
-      {
-        key: 'passband', label: 'Passband FWHM (nm)', type: 'number',
-        min: AOTF_BAND_MIN, max: AOTF_BAND_MAX, step: 0.1, def: AOTF_BAND_DEFAULT,
-        // Sketches written before this was a device property recorded a width
-        // on every channel, and older ones still a single flat center/band
-        // pair. Recover the device's width from whichever the file carries.
-        migrate: (p, raw = {}) => legacyAotfPassband(raw.channels, raw.band),
-      },
-      {
-        key: 'channels', label: 'Selected lines', type: 'aotfchannels',
-        def: [{ wl: 532, eff: 0.8 }],
-        // Older sketches selected exactly one line through flat center/band/eff
-        // params. Those keys are gone from the schema, so they survive only in
-        // the raw saved object â€” carry that line across rather than dropping
-        // the author's selection for the default.
-        migrate: (p, raw = {}) => normalizeAotfChannels(Number.isFinite(+raw.center)
-          ? [{ wl: +raw.center, eff: +raw.eff }]
-          : null),
-      },
-      {
-        key: 'modMode', label: 'Line drive', type: 'select', def: 'static',
-        options: [
-          ['static', 'Multiplexed â€” every line at once'],
-          ['cycle', 'Sequential â€” one line at a time'],
-        ],
-      },
-      {
-        key: 'modFreqHz', label: 'Sequence rate (Hz)', type: 'number', min: 0.1, max: 1000000, step: 10, def: 1000,
-        show: p => p.modMode === 'cycle',
-      },
-      { key: 'showDepleted', label: 'Show depleted beam', type: 'checkbox', def: false },
-      {
-        key: 'deflect', label: 'Depleted-beam deflection (Â°)', type: 'number', min: -45, max: 45, step: 0.5, def: 6,
-        show: p => p.showDepleted === true,
-      },
-    ],
-    svg(el) {
-      return boxSVG(52, el.params.aperture || 26, '#7fc7c4', '#397b78', 'AOTF', '#153b39', isFlipped(el));
-    },
-    surfaces(el) {
-      const p = el.params, h = (p.aperture || 26) / 2;
-      // One surface, not a filter plus a deflector: the selected lines and the
-      // beam depleted of them leave the same face along different paths, and
-      // splitting that across two surfaces would let the second one act on
-      // light the first had already routed away.
-      return [{
-        x1: 0, y1: -h, x2: 0, y2: h, kind: 'aotf',
-        data: {
-          // Only the lines open at this instant are handed to the tracer, so a
-          // sequential drive really does show one line at a time and steps to
-          // the next as the animation clock advances.
-          channels: aotfOpenChannels(p, el._animationTimeS || 0),
-          passband: normalizeAotfPassband(p.passband),
-          deflect: Number(p.deflect) || 0,
-          showDepleted: p.showDepleted === true,
-        },
-      }];
-    },
-  },
-
-  // A Pockels cell driven as a pure phase modulator: the whole beam, one
-  // optical path, moved by a voltage.
-  phasemodulator: {
-    label: 'Phase modulator', category: 'Modulators',
-    paletteGroup: 'Electro-optic', paletteOrder: 4, size: { w: 40, h: 28 },
-    aliases: ['electro-optic phase modulator', 'EOM phase', 'pockels cell', 'phase shifter',
-      'mach-zehnder modulator', 'sideband', 'pound-drever-hall', 'PDH'],
-    size_: el => ({ w: 40, h: (el.params.aperture || 12) + 4 }),
-    params: [
-      { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 2, max: 100, step: 1, def: 12 },
-      { key: 'designWavelength', label: 'Design wavelength (nm)', type: 'number', min: 200, max: 12000, step: 1, def: 532 },
-      // Quoted the way a modulator is chosen: how much phase a full drive
-      // writes. Half a wave is the usual specification.
-      { key: 'depthDeg', label: 'Drive depth (Â° at design Î»)', type: 'number', min: -1440, max: 1440, step: 5, def: 180 },
-      {
-        key: 'driveMode', label: 'Drive', type: 'select', def: 'static',
-        options: [
-          ['static', 'Static â€” hold the phase'],
-          ['sine', 'Sine'],
-          ['square', 'Square'],
-        ],
-      },
-      { key: 'freqMHz', label: 'Drive frequency (MHz)', type: 'number', min: 0.000001, max: 40000, step: 0.001, def: 1, show: p => p.driveMode !== 'static' },
-      { key: 'phaseDeg', label: 'Drive phase (Â°)', type: 'number', min: -360, max: 360, step: 5, def: 0, show: p => p.driveMode !== 'static' },
-      {
-        key: 'pmOpd', label: 'Path written', type: 'readout',
-        readout: params => {
-          const peak = phaseModulatorPeakOpdMm(params) * 1e6;   // nm
-          if (!(Math.abs(peak) > 1e-9)) return 'None â€” no drive set';
-          const design = Math.max(1, Number(params.designWavelength) || 532);
-          return `${peak.toFixed(1)} nm peak Â· ${(Math.abs(peak) / design).toFixed(3)} waves at ${design} nm`;
-        },
-      },
-    ],
-    svg(el) {
-      const h = el.params.aperture || 12;
-      const driven = el.params.driveMode !== 'static';
-      return boxSVG(34, h, '#c9b3d8', '#6b4f85', 'Ï†~', '#33224a', isFlipped(el)) +
-        `<path d="M -20,${-h / 2 - 4} h 4 v -3 h 4 v 3 h 4" fill="none" stroke="#6b4f85" stroke-width="1.1" stroke-linecap="round"/>` +
-        (driven ? `<path d="M -7,${h / 2 + 5} q 3.5,-4 7,0 q 3.5,4 7,0" fill="none" stroke="#6b4f85" stroke-width="1.2" stroke-linecap="round"/>` : '');
-    },
-    surfaces(el) {
-      const p = el.params;
-      const timeSeconds = Number.isFinite(el._simulationTimeNs) ? el._simulationTimeNs / 1e9 : 0;
-      const h = (p.aperture || 12) / 2;
-      return [{
-        x1: 0, y1: -h, x2: 0, y2: h, kind: 'phasemod',
-        data: { opdMm: phaseModulatorOpdMm(p, timeSeconds) },
-      }];
-    },
-  },
-
-  // A transparent object that retards one part of the beam more than another.
-  // It never bends a ray -- that is the whole point of a phase object, and
-  // also what lets it work inside the coherent path: recombination matches
-  // arrivals on position and direction, both of which this leaves alone, so
-  // each sampled ray simply arrives with its own optical path and the camera
-  // resolves the resulting fringes across the sensor.
-  phaseplate: {
-    label: 'Phase object', category: 'Specimens', paletteOrder: 3, size: { w: 14, h: 40 },
-    aliases: ['phase plate', 'phase mask', 'phase contrast', 'wedge', 'phase step', 'optical path difference'],
-    params: [
-      {
-        key: 'profile', label: 'Path profile', type: 'select', def: 'bar',
-        options: [
-          ['bar', 'Central bar â€” a phase-contrast test object'],
-          ['ramp', 'Wedge â€” path rises across the aperture'],
-          ['step', 'Step â€” half the aperture retarded'],
-          ['bump', 'Curved â€” quadratic, thickest at the centre'],
-        ],
-      },
-      // Half a wave at 532 nm. That is the phase-contrast condition -- the
-      // setting that turns the most phase into the most contrast -- and it
-      // keeps the default under one fringe, which is what makes the effect
-      // legible as a whole-port swing rather than a wash.
-      { key: 'opdUm', label: 'Peak path difference (Âµm)', type: 'number', min: 0, max: 20, step: 0.01, def: 0.27 },
-      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 2, max: 100, step: 1, def: 6 },
-      {
-        key: 'phaseFringes', label: 'Fringes across the beam', type: 'readout',
-        readout: (params, el) => {
-          const opd = Math.max(0, Number(params.opdUm) || 0);
-          if (opd <= 0) return 'None â€” no path difference set';
-          const acrossAperture = opd * 1000 / 532;
-          // Only the illuminated part of the profile is written onto the
-          // beam, so a wide plate in a narrow beam makes far fewer fringes
-          // than its own peak path difference suggests.
-          const lit = el?.id ? phasePlateIllumination(el.id) : null;
-          const fringes = acrossAperture * (lit ? lit.span : 1);
-          const count = `${fringes.toFixed(2)} at 532 nm`;
-          if (!lit) return `${count} if the beam fills the aperture`;
-          if (fringes < 0.02) return `${count} â€” too little path to see`;
-          // How much the recombined port total can actually move is a
-          // different question from how many fringes there are, and it is the
-          // one a user watching a single number is really asking. When the
-          // phases written across the beam cancel as a phasor -- a wedge
-          // spanning a whole number of fringes, a half-aperture step at half a
-          // wave -- the total sits at half the light however the reference arm
-          // is set, and only the profile carries the pattern. Saying that is
-          // the difference between a subtle element and one that looks broken.
-          if (portSwing(params.profile, fringes) < 0.05) {
-            return `${count} â€” total stays put, read the profile`;
-          }
-          return count;
-        },
-      },
-    ],
-    size_: el => ({ w: 14, h: (el.params.aperture || 30) + 8 }),
-    svg(el) {
-      const h = (el.params.aperture || 30) / 2;
-      const profile = el.params.profile || 'ramp';
-      // The drawn wedge/step/bar shows which part of the beam is retarded.
-      const shape = profile === 'step'
-        ? `M -4,0 L 4,0 L 4,${h} L -4,${h} Z`
-        : profile === 'bar'
-          ? `M -4,${-h / 3} L 4,${-h / 3} L 4,${h / 3} L -4,${h / 3} Z`
-          : profile === 'bump'
-            ? `M -1,${-h} Q 5,0 -1,${h} L -4,${h} L -4,${-h} Z`
-            : `M -4,${-h} L 1,${-h} L 4,${h} L -4,${h} Z`;
-      return `<rect x="-5" y="${-h - 3}" width="10" height="${2 * h + 6}" rx="2" fill="#dbeafe" stroke="#5b7fb5" stroke-width="1.3" opacity="0.55"/>` +
-        `<path d="${shape}" fill="#93b4de" stroke="#41618f" stroke-width="1.1" opacity="0.9"/>` +
-        `<text x="0" y="${h + 1}" text-anchor="middle" dominant-baseline="central" font-size="6.5" font-weight="700" fill="#33507a">Ï†</text>`;
-    },
-    surfaces(el) {
-      const h = (el.params.aperture || 30) / 2;
-      return [{
-        x1: 0, y1: -h, x2: 0, y2: h, kind: 'phaseplate',
-        data: { profile: el.params.profile || 'ramp', opdUm: el.params.opdUm },
-      }];
-    },
-  },
-
-  delayline: {
-    label: 'Mechanical delay line', category: 'Pulse Timing', size: { w: 40, h: 32 },
-    params: [
-      {
-        key: 'moveMode', label: 'Motion', type: 'select', def: 'static',
-        options: [['static', 'Static â€” hold one delay'], ['linear', 'Periodic sweep']],
-      },
-      { key: 'delayMm', label: 'Extra optical path (mm)', type: 'number', min: 0, max: 100000, step: 0.001, def: 100, show: p => (p.moveMode || 'static') === 'static' },
-      // A swept stage retraces rather than flying back -- the carriage has to
-      // come home the way it went out. Defaults span a couple of wavelengths
-      // at 532 nm, which is the range that reads as moving fringes rather than
-      // as a blur; a stage really does dither over microns for lock-in work.
-      { key: 'delayMinMm', label: 'Sweep from (mm)', type: 'number', min: 0, max: 100000, step: 0.001, def: 0, show: p => p.moveMode === 'linear' },
-      { key: 'delayMaxMm', label: 'Sweep to (mm)', type: 'number', min: 0, max: 100000, step: 0.001, def: 0.001, show: p => p.moveMode === 'linear' },
-      { key: 'freqHz', label: 'Sweep frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 1, show: p => p.moveMode === 'linear' },
-      {
-        key: 'delaySweepReadout', label: 'Sweep spans', type: 'readout',
-        show: p => p.moveMode === 'linear',
-        readout: params => {
-          const span = delayLineSweepSpanMm(params);
-          if (!(span > 0)) return 'Nothing â€” the two ends are the same';
-          const waves = span * 1e6 / 532;
-          return `${(span * 1e3).toFixed(2)} Âµm Â· ${waves.toFixed(1)} waves at 532 nm`;
-        },
-      },
-      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
-    ],
-    size_: el => ({ w: 40, h: (el.params.aperture || 24) + 8 }),
-    svg(el) {
-      const h = (el.params.aperture || 24) / 2;
-      const flipped = isFlipped(el) ? 'transform="rotate(180)"' : '';
-      return `<rect x="-18" y="${-h - 3}" width="36" height="${2 * h + 6}" rx="3" fill="#d8d1ec" stroke="#69588f" stroke-width="1.4"/>` +
-        `<g ${flipped} fill="none" stroke="#514171" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">` +
-        `<path d="M -15,0 H -6 L 4,-7 H 11 L 4,0 L 11,7 H 4 L -6,0"/>` +
-        `<path d="M -1,-10 V 10" stroke-dasharray="2 2" opacity="0.65"/></g>` +
-        `<text x="0" y="${h + 1}" ${flipped} text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="700" fill="#44365f">Î”L</text>`;
-    },
-    surfaces(el) {
-      const h = (el.params.aperture || 24) / 2;
-      return [{
-        x1: 0, y1: -h, x2: 0, y2: h, kind: 'delay',
-        data: { delayMm: delayLineDelayAt(el.params, el._animationTimeS || 0) },
-      }];
-    },
-  },
-
-  pulsecompressor: {
-    label: 'Pulse compressor', category: 'Pulse Timing', size: { w: 52, h: 32 },
-    aliases: ['phase compressor', 'chirp compressor', 'gdd compressor', 'gdd compensator', 'chirped mirrors', 'grating compressor'],
-    size_: el => ({ w: 52, h: (el.params.aperture || 24) + 8 }),
-    params: [
-      {
-        key: 'gddFs2', label: 'Applied GDD (fsÂ²)', type: 'number',
-        min: -1000000, max: 1000000, step: 100, def: -2000,
-      },
-      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
-      { key: 'transEff', label: 'Transmission efficiency (%)', type: 'number', min: 1, max: 100, step: 1, def: 100 },
-      // Three plain rows rather than one composite string: what arrives, what
-      // leaves, and which side of zero the pulse ends up on. The sign is the
-      // part that carries intent. A negative output is not a failed
-      // cancellation -- it is the ordinary way a pulse is pre-chirped so that
-      // it arrives transform-limited *after* the dispersion of whatever
-      // follows, an objective or a long glass path. Reporting only how the
-      // magnitude moved hides exactly what the user was aiming for.
-      //
-      // There is deliberately no "setting that would null it" row: with the
-      // input shown as its own number, that advice is just its negation.
-      {
-        key: 'gddIn', label: 'GDD at input (fsÂ²)', type: 'readout',
-        readout: (p, el) => {
-          const reading = el ? compressorGddReading(el.id) : null;
-          return reading ? formatGdd(reading.incoming) : 'No pulse through it yet';
-        },
-      },
-      {
-        key: 'gddOut', label: 'GDD at output (fsÂ²)', type: 'readout',
-        readout: (p, el) => {
-          const reading = el ? compressorGddReading(el.id) : null;
-          return reading ? formatGdd(reading.outgoing) : '\u2014';
-        },
-      },
-      {
-        key: 'gddState', label: 'Final state', type: 'readout', wide: true,
-        readout: (p, el) => {
-          const reading = el ? compressorGddReading(el.id) : null;
-          return reading ? compressorFinalState(reading) : '\u2014';
-        },
-      },
-    ],
-    svg(el) {
-      const h = (el.params.aperture || 24) / 2;
-      const flipped = isFlipped(el) ? 'transform="rotate(180)"' : '';
-      const sign = Number(el.params.gddFs2) < 0 ? 'âˆ’' : '+';
-      return `<rect x="-24" y="${-h - 3}" width="48" height="${2 * h + 6}" rx="4" fill="#eee4fb" stroke="#70479c" stroke-width="1.5"/>` +
-        `<g ${flipped} fill="none" stroke="#70479c" stroke-width="1.5" stroke-linecap="round">` +
-        `<path d="M -17,-7 C -8,-7 -7,-2 0,-2 C 7,-2 8,-7 17,-7"/>` +
-        `<path d="M -17,7 C -8,7 -7,2 0,2 C 7,2 8,7 17,7"/></g>` +
-        `<text x="0" y="0" ${flipped} text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="750" fill="#4f2e73">${sign}GDD</text>`;
-    },
-    surfaces(el) {
-      const h = (el.params.aperture || 24) / 2;
-      return [{
-        x1: 0, y1: -h, x2: 0, y2: h, kind: 'gdd',
-        data: {
-          gddFs2: el.params.gddFs2,
-          efficiency: Math.min(1, Math.max(0.01, (el.params.transEff || 100) / 100)),
-        },
-      }];
-    },
-  },
-
-  // Voltage-controlled retarder (Pockels effect): "Static retardance" acts as
-  // a plain waveplate at the configured crystal axis. "Switching" square-wave
-  // toggles the retardance between two states at a set frequency â€” paired
-  // with a downstream polarizer/analyzer (and, for a clean two-state linear
-  // swing, a quarter-wave plate before the EOM), this is how a real EOM
-  // becomes an intensity modulator, the standard technique behind
-  // modulation-transfer methods like stimulated Raman scattering. Detector
-  // and analyzer readings use the duty-cycle-averaged Stokes state (the same
-  // convention the chopper element uses for CW light) rather than animating
-  // individual pulses mid-switch â€” this reports the correct time-averaged
-  // modulation depth but doesn't synchronize with a pulsed source's own
-  // repetition rate.
-  eom: {
-    label: 'EOM', category: 'Modulators', paletteGroup: 'Electro-optic', paletteOrder: 3, size: { w: 48, h: 28 },
-    size_: el => ({ w: 48, h: (el.params.aperture || 24) + 4 }),
-    params: [
-      { key: 'aperture', label: 'Active aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 24 },
-      { key: 'modulate', label: 'Apply voltage', type: 'checkbox', def: false },
-      // Irrelevant in the Hâ†”V flip drive, where the required axis is derived
-      // from whatever polarization actually arrives.
-      { key: 'a', label: 'Crystal axis (Â°)', type: 'number', min: 0, max: 180, step: 5, def: 0, show: p => p.modulate && !(p.driveMode === 'switching' && p.switchMode !== 'custom') },
-      {
-        key: 'driveMode', label: 'Drive', type: 'select', def: 'static',
-        options: [['static', 'Static retardance'], ['switching', 'Switching (square wave)']],
-        show: p => p.modulate,
-      },
-      {
-        // The default needs no crystal-axis reasoning at all: "Flip" is the
-        // half-wave switch a Pockels cell is normally used for, and it
-        // rotates whatever linear state arrives by exactly 90Â° (H<->V),
-        // which is what an analyzer or PBS turns into full-depth intensity
-        // modulation. Explicit retardance states stay available underneath.
-        key: 'switchMode', label: 'Switch between', type: 'select', def: 'flip',
-        options: [['flip', 'Orthogonal polarizations (Hâ†”V)'], ['custom', 'Custom retardance states']],
-        show: p => p.modulate && p.driveMode === 'switching',
-      },
-      { key: 'retardance', label: 'Retardance (Â°)', type: 'number', min: -720, max: 720, step: 5, def: 90, show: p => p.modulate && p.driveMode !== 'switching' },
-      { key: 'retardanceLow', label: 'Low-state retardance (Â°)', type: 'number', min: -720, max: 720, step: 5, def: 0, show: p => p.modulate && p.driveMode === 'switching' && p.switchMode === 'custom' },
-      { key: 'retardanceHigh', label: 'High-state retardance (Â°)', type: 'number', min: -720, max: 720, step: 5, def: 180, show: p => p.modulate && p.driveMode === 'switching' && p.switchMode === 'custom' },
-      { key: 'switchFreqMHz', label: 'Switching frequency (MHz)', type: 'number', min: 0.000001, max: 1000, step: 0.001, def: 1, show: p => p.modulate && p.driveMode === 'switching' },
-      { key: 'switchDuty', label: 'High-state duty (0â€“1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate && p.driveMode === 'switching' },
-      { key: 'switchPhaseNs', label: 'Switching offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate && p.driveMode === 'switching' },
-    ],
-    svg(el) { return boxSVG(44, el.params.aperture || 24, '#b8c9a3', '#66794a', 'EOM', '#2f3a20', isFlipped(el)); },
-    surfaces(el) {
-      const p = el.params;
-      if (!p.modulate) return [];
-      const h = (p.aperture || 24) / 2;
-      const data = p.driveMode === 'switching'
-        ? {
-          a: p.a, switching: true, flip: p.switchMode !== 'custom',
-          retardanceLow: p.retardanceLow, retardanceHigh: p.retardanceHigh,
-          duty: p.switchDuty, frequencyMHz: p.switchFreqMHz, phaseNs: p.switchPhaseNs,
-        }
-        : { a: p.a, retardance: p.retardance };
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'retarder', data }];
-    },
-  },
-
-  chopper: {
-    label: 'Chopper', category: 'Modulators', size: { w: 40, h: 40 },
-    size_: el => ({ w: (el.params.diameter || 40) + 4, h: (el.params.diameter || 40) + 4 }),
-    params: [
-      { key: 'modulate', label: 'Modulate on/off', type: 'checkbox', def: true },
-      { key: 'diameter', label: 'Wheel diameter (mm)', type: 'number', min: 20, max: 120, step: 2, def: 40 },
-      { key: 'frequencyHz', label: 'Chop frequency (Hz)', type: 'number', min: 0.1, max: 20000, step: 0.1, def: 1000, show: p => p.modulate },
-      { key: 'chopDuty', label: 'On fraction (0â€“1)', type: 'number', min: 0.05, max: 0.95, step: 0.05, def: 0.5, show: p => p.modulate },
-      { key: 'phaseNs', label: 'Gate offset (ns)', type: 'number', min: -1000000, max: 1000000, step: 0.1, def: 0, show: p => p.modulate },
-    ],
-    svg(el) {
-      let blades = '';
-      const p = el.params, r = (p.diameter || 40) / 2 - 2;
-      const bladeSpan = 60 * (1 - Math.min(0.95, Math.max(0.05, p.chopDuty ?? 0.5)));
-      // Six identical blade/slot pairs make one gate period a 60Â° wheel step.
-      // The positive rotation also places the fixed horizontal ray in a slot
-      // for phase < duty and behind a blade for the remainder of the cycle.
-      const rawAngle = Number.isFinite(el._simulationTimeNs)
-        ? (el._simulationTimeNs - (p.phaseNs || 0)) * (p.frequencyHz || 1000) * 6e-8
-        : (el._animationTimeS || 0) * 60 * Math.min(2, Math.max(0.25, p.frequencyHz || 1000));
-      const physicalAngle = ((rawAngle % 60) + 60) % 60;
-      for (let i = 0; i < 6; i++) {
-        const a0 = i * 60, a1 = a0 + bladeSpan;
-        const x0 = r * Math.cos(a0 * Math.PI / 180), y0 = r * Math.sin(a0 * Math.PI / 180),
-          x1 = r * Math.cos(a1 * Math.PI / 180), y1 = r * Math.sin(a1 * Math.PI / 180);
-        blades += `<path d="M 0,0 L ${x0},${y0} A ${r} ${r} 0 0 1 ${x1},${y1} Z" fill="#8d98a5"/>`;
-      }
-      return `<g transform="rotate(${physicalAngle})">${blades}</g>` +
-        `<circle r="3.5" fill="#4d565f"/><circle r="${r + 0.5}" fill="none" stroke="#4d565f" stroke-width="1" stroke-dasharray="2 3"/>`;
-    },
-    surfaces(el) {
-      const p = el.params;
-      if (!p.modulate) return [];
-      const half = (p.diameter || 40) / 2;
-      return [{
-        x1: 0, y1: -half, x2: 0, y2: half, kind: 'chop',
-        data: {
-          frequencyMHz: (p.frequencyHz || 1000) / 1e6,
-          duty: p.chopDuty,
-          phaseNs: p.phaseNs,
-        },
-      }];
-    },
-  },
-
-  crystal: {
-    label: 'Crystal', category: 'Nonlinear Optics', size: { w: 36, h: 26 },
-    size_: el => ({ w: 36, h: (el.params.aperture || 22) + 4 }),
-    params: [
-      { key: 'aperture', label: 'Crystal aperture (mm)', type: 'number', min: 6, max: 100, step: 2, def: 22 },
-      { key: 'convert', label: 'Convert Î»', type: 'select', def: 'none', options: [['none', 'None'], ['shg', 'Ï‡â½Â²â¾ â€” SHG, and SFG of two beams'], ['thg', 'THG (Î»/3)'], ['sc', 'Supercontinuum (bulk)'], ['opo', 'OPO (signal + idler)'], ['custom', 'Custom output Î»']] },
-      { key: 'outWl', label: 'Output Î» (nm)', type: 'number', min: 100, max: 12000, step: 1, def: 532, show: p => p.convert === 'custom' },
-      { key: 'pumpWl', label: 'Pump Î» (nm)', type: 'number', min: 100, max: 3000, step: 1, def: 532, show: p => p.convert === 'opo' },
-      { key: 'signalWl', label: 'Signal Î» (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 800, show: p => p.convert === 'opo' },
-      {
-        key: 'idlerWl', label: 'Idler Î»', type: 'readout', show: p => p.convert === 'opo',
-        readout: p => {
-          const idler = idlerWavelength(p.pumpWl, p.signalWl);
-          return idler === null ? 'None â€” the signal must be longer than the pump' : `${Number(idler.toPrecision(5))} nm`;
-        },
-      },
-      {
-        key: 'pumpAcceptanceNm', label: 'Pump acceptance (Â± nm)', type: 'number', min: 0, max: 100, step: 0.5, def: 1,
-        show: p => p.convert === 'opo',
-      },
-      // Linewidths are FWHM in wavenumber. Matching the pump is a heuristic
-      // for a synchronously pumped fs/ps OPO; a ns or CW OPO's signal width is
-      // set by its cavity, and a datasheet may give both outputs.
-      {
-        key: 'linewidthMode', label: 'Output linewidths', type: 'select', def: 'pump', show: p => p.convert === 'opo',
-        options: [
-          ['pump', 'Signal as wide as the pump'],
-          ['signal', 'Signal width set, idler derived'],
-          ['both', 'Signal and idler widths set'],
-        ],
-      },
-      {
-        key: 'signalLinewidthCm', label: 'Signal linewidth (cmâ»Â¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5,
-        show: p => p.convert === 'opo' && (p.linewidthMode === 'signal' || p.linewidthMode === 'both'),
-      },
-      {
-        key: 'idlerLinewidthCm', label: 'Idler linewidth (cmâ»Â¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5,
-        show: p => p.convert === 'opo' && p.linewidthMode === 'both',
-      },
-      {
-        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'transformLimited', show: p => p.convert === 'opo',
-        options: [
-          ['transformLimited', 'Transform-limited'],
-          ['unknown', 'Duration set, spectral phase unknown'],
-          ['positiveChirp', 'Duration set, positively chirped (assumed Gaussian)'],
-        ],
-        // Saved OPOs that predate the setting drew a set duration.
-        migrate: p => p.convert === 'opo' ? 'unknown' : 'transformLimited',
-      },
-      {
-        // How many times the pump's duration each output lasts: 1 matches the
-        // pump, 2 is twice as long.
-        key: 'durationFactor', label: 'Output duration (Ã— pump duration)', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1,
-        show: p => p.convert === 'opo' && p.outputPhase !== 'transformLimited',
-      },
-      // A chi(2) crystal doubles each beam and mixes any pair at the same
-      // time, so the two processes have their own fractions: sharing one knob
-      // would make a second harmonic fade as the pulses came into overlap,
-      // when a bench sees all the lines at once.
-      {
-        key: 'mixEfficiency', label: 'Two-beam mixing share', type: 'number', min: 0, max: MAX_CONVERSION, step: 0.05, def: 0.3,
-        show: p => p.convert === 'shg',
-      },
-      {
-        key: 'mixDfg', label: 'Also generate difference frequency', type: 'checkbox', def: false,
-        show: p => p.convert === 'shg',
-      },
-      // A bulk supercontinuum spans a band set by the medium and the pump. The
-      // estimate reads the pump that arrives; scenes saved before it existed
-      // drew a fixed 430-870 nm band and keep it as a manual range.
-      {
-        key: 'scMedium', label: 'Medium', type: 'select', def: 'yag', show: p => p.convert === 'sc',
-        options: Object.entries(SC_MEDIA).map(([key, medium]) => [key, medium.label]),
-      },
-      {
-        key: 'scRange', label: 'Spectral range', type: 'select', def: 'estimate', show: p => p.convert === 'sc',
-        options: [['estimate', 'Estimate from the pump'], ['manual', 'Set manually']],
-        migrate: p => p.convert === 'sc' ? 'manual' : 'estimate',
-      },
-      {
-        key: 'scMinNm', label: 'Shortest Î» (nm)', type: 'number', min: 100,
-        max: p => Math.max(101, (p.scMaxNm ?? 870) - 1), step: 5, def: 430,
-        show: p => p.convert === 'sc' && p.scRange === 'manual',
-      },
-      {
-        key: 'scMaxNm', label: 'Longest Î» (nm)', type: 'number', min: p => Math.min(11999, (p.scMinNm ?? 430) + 1),
-        max: 12000, step: 5, def: 870,
-        show: p => p.convert === 'sc' && p.scRange === 'manual',
-      },
-      {
-        key: 'scState', label: 'Continuum', type: 'readout', wide: true, show: p => p.convert === 'sc',
-        readout: (p, el) => supercontinuumStateText(el ? supercontinuumReading(el.id) : null),
-      },
-      // A cap this application imposes rather than a physical limit: published
-      // single-pass conversion goes higher. It keeps authored fractions
-      // conservative for now. The OPO has its own control below.
-      { key: 'efficiency', label: 'Conversion efficiency', type: 'number', min: 0, max: MAX_CONVERSION, step: 0.05, def: 0.5, show: p => p.convert !== 'none' && p.convert !== 'opo' },
-      // An OPO's figure is how much of the pump it removes, a result of the
-      // signal building up over many round trips rather than a single-pass
-      // efficiency, so it is its own quantity with its own ceiling. Scenes
-      // saved before the split stored it as the shared efficiency.
-      {
-        key: 'opoDepletion', label: 'Pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: MAX_OPO_DEPLETION,
-        show: p => p.convert === 'opo',
-        migrate: (p, raw) => p.convert === 'opo' && Number.isFinite(raw.efficiency)
-          ? Math.min(MAX_OPO_DEPLETION, Math.max(0, raw.efficiency))
-          : MAX_OPO_DEPLETION,
-      },
-      { key: 'transmitPump', label: 'Transmit residual pump', type: 'checkbox', def: true, show: p => p.convert !== 'none' },
-      {
-        key: 'mixState', label: 'Two-beam mixing', type: 'readout', wide: true, show: p => p.convert === 'shg',
-        readout: (p, el) => mixStateText(el ? mixReading(el.id) : null),
-      },
-      {
-        key: 'opoState', label: 'Oscillation', type: 'readout', wide: true, show: p => p.convert === 'opo',
-        readout: (p, el) => opoStateText(el ? opoReading(el.id) : null),
-      },
-      {
-        key: 'opoWidths', label: 'Outputs', type: 'readout', wide: true, show: p => p.convert === 'opo',
-        readout: (p, el) => opoWidthsText(el ? opoReading(el.id) : null),
-      },
-    ],
-    svg(el) {
-      const isOpo = el.params.convert === 'opo';
-      const h = (el.params.aperture || 22) / 2;
-      return `<path d="M -12,${-h} L 16,${-h} L 12,${h} L -16,${h} Z" fill="${isOpo ? '#d8e8f5' : '#e4d5f2'}" stroke="${isOpo ? '#4a7fa8' : '#8a5fb0'}" stroke-width="1.5"/>`;
-    },
-    surfaces(el) {
-      const p = el.params;
-      if (p.convert === 'none') return [];
-      const h = (p.aperture || 22) / 2;
-      return [{ x1: 0, y1: -h, x2: 0, y2: h, kind: 'transmit', data: {
-        convert: p.convert, outWl: p.outWl, pumpWl: p.pumpWl, signalWl: p.signalWl, pumpAcceptanceNm: p.pumpAcceptanceNm,
-        mixEfficiency: p.mixEfficiency, mixDfg: p.mixDfg,
-        linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
-        outputPhase: p.outputPhase, durationFactor: p.durationFactor,
-        scMedium: p.scMedium, scRange: p.scRange, scMinNm: p.scMinNm, scMaxNm: p.scMaxNm,
-        efficiency: p.efficiency, opoDepletion: p.opoDepletion, transmitPump: p.transmitPump,
-      } }];
-    },
-  },
-
-  // An integrated optical parametric oscillator: the crystal's OPO mode in a
-  // closed box. Nothing comes out without a pump inside its acceptance; the
-  // unconverted pump is discarded inside. See opoConversion() in raytrace.js,
-  // which both packagings share.
-  opo: {
-    label: 'OPO', category: 'Nonlinear Optics', size: { w: 104, h: 44 },
-    liveReadouts: true,
-    aliases: ['optical parametric oscillator', 'integrated opo', 'tunable source', 'signal idler'],
-    size_: el => ({ w: 104, h: opoBodyH(el.params) + 4 }),
-    params: [
-      // Any pump that reaches the aperture is converted; the only condition
-      // on its wavelength is that the signal must be longer.
-      { key: 'aperture', label: 'Input aperture (mm)', type: 'number', min: 1, max: 30, step: 0.5, def: 6 },
-      {
-        key: 'tuneMode', label: 'Signal tuning', type: 'select', def: 'fixed',
-        options: [['fixed', 'Fixed'], ['sweep', 'Sweep between two wavelengths'], ['steps', 'Step through a list']],
-      },
-      { key: 'signalWl', label: 'Signal Î» (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 800, show: p => (p.tuneMode || 'fixed') === 'fixed' },
-      { key: 'sweepMinNm', label: 'Sweep from (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 750, show: p => p.tuneMode === 'sweep' },
-      { key: 'sweepMaxNm', label: 'Sweep to (nm)', type: 'number', min: 100, max: 11000, step: 1, def: 950, show: p => p.tuneMode === 'sweep' },
-      { key: 'sweepPeriodS', label: 'Sweep period (s, there and back)', type: 'number', min: 0.5, max: 600, step: 0.5, def: 8, show: p => p.tuneMode === 'sweep' },
-      { key: 'stepList', label: 'Signal wavelengths (nm, comma-separated; 100â€“11000)', type: 'text', def: '780, 800, 820', show: p => p.tuneMode === 'steps' },
-      { key: 'stepDwellS', label: 'Time at each wavelength (s)', type: 'number', min: 0.1, max: 600, step: 0.1, def: 2, show: p => p.tuneMode === 'steps' },
-      { key: 'tuning', label: 'Tuning', type: 'readout', wide: true, readout: p => opoTuningText(p) },
-      {
-        key: 'linewidthMode', label: 'Output linewidths', type: 'select', def: 'pump',
-        options: [
-          ['pump', 'Signal as wide as the pump'],
-          ['signal', 'Signal width set, idler derived'],
-          ['both', 'Signal and idler widths set'],
-        ],
-      },
-      { key: 'signalLinewidthCm', label: 'Signal linewidth (cmâ»Â¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5, show: p => p.linewidthMode === 'signal' || p.linewidthMode === 'both' },
-      { key: 'idlerLinewidthCm', label: 'Idler linewidth (cmâ»Â¹)', type: 'number', min: 0, max: 2000, step: 0.5, def: 5, show: p => p.linewidthMode === 'both' },
-      {
-        key: 'outputPhase', label: 'Output pulses', type: 'select', def: 'transformLimited',
-        options: [
-          ['transformLimited', 'Transform-limited'],
-          ['unknown', 'Duration set, spectral phase unknown'],
-          ['positiveChirp', 'Duration set, positively chirped (assumed Gaussian)'],
-        ],
-      },
-      { key: 'durationFactor', label: 'Output duration (Ã— pump duration)', type: 'number', min: 0.05, max: 20, step: 0.05, def: 1, show: p => p.outputPhase !== 'transformLimited' },
-      { key: 'opoDepletion', label: 'Pump depletion', type: 'number', min: 0, max: MAX_OPO_DEPLETION, step: 0.05, def: MAX_OPO_DEPLETION },
-      // Switching the idler port off removes that power from the bench; it is
-      // not handed to the signal.
-      { key: 'outputIdler', label: 'Output idler', type: 'checkbox', def: true },
-      { key: 'signalBeamMm', label: 'Signal beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 2 },
-      { key: 'idlerBeamMm', label: 'Idler beam diameter (mm)', type: 'number', min: 0, max: 30, step: 0.5, def: 2, show: p => p.outputIdler !== false },
-      {
-        key: 'opoState', label: 'Oscillation', type: 'readout', wide: true,
-        readout: (p, el) => opoElementStateText(el ? opoReading(el.id) : null, p),
-      },
-      {
-        key: 'opoWidths', label: 'Outputs', type: 'readout', wide: true,
-        readout: (p, el) => opoWidthsText(el ? opoReading(el.id) : null),
-      },
-    ],
-    svg(el) {
-      const p = el.params, hh = opoBodyH(p) / 2, ap = opoApertureMm(p) / 2, idlerY = opoIdlerOffset(p);
-      const flip = isFlipped(el) ? 'transform="rotate(180)"' : '';
-      const x = OPO_BODY_W / 2;
-      // Each output port is drawn as wide as the beam it emits.
-      const sHalf = Math.max(1.5, opoBeamMm(p, 'signal') / 2), iHalf = Math.max(1.5, opoBeamMm(p, 'idler') / 2);
-      const idler = p.outputIdler !== false
-        ? `<rect x="${x}" y="${idlerY - iHalf}" width="5" height="${2 * iHalf}" fill="#666" stroke="#444" stroke-width="1"/>`
-          + `<text x="${x - 5}" y="${idlerY}" text-anchor="end" dominant-baseline="central" font-size="6" fill="#c9d3dc">I</text>`
-        : '';
-      return `<rect x="${-x}" y="${-hh}" width="${OPO_BODY_W}" height="${2 * hh}" rx="4" fill="#2f3f4c" stroke="#1d272f" stroke-width="1.5"/>`
-        + `<text x="0" y="-5" ${flip} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="700" letter-spacing="1.5" fill="#fff">OPO</text>`
-        + `<g stroke="#ffb86b" stroke-width="1.2" opacity="0.95"><path d="M -14,8 L -4,8"/><path d="M 0,5 L 14,5"/><path d="M 0,11 L 14,11"/></g>`
-        + `<rect x="${-x - 5}" y="${-ap}" width="5" height="${2 * ap}" fill="#666" stroke="#444" stroke-width="1"/>`
-        + `<rect x="${x}" y="${-sHalf}" width="5" height="${2 * sHalf}" fill="#666" stroke="#444" stroke-width="1"/>`
-        + `<text x="${x - 5}" y="0" text-anchor="end" dominant-baseline="central" font-size="6" fill="#c9d3dc">S</text>`
-        + idler;
-    },
-    surfaces(el) {
-      const p = el.params, hh = opoBodyH(p) / 2, x = OPO_BODY_W / 2;
-      const ap = opoApertureMm(p) / 2;
-      return [
-        { x1: -x, y1: -hh, x2: x, y2: -hh, kind: 'absorb' },
-        { x1: x, y1: -hh, x2: x, y2: hh, kind: 'absorb' },
-        { x1: x, y1: hh, x2: -x, y2: hh, kind: 'absorb' },
-        { x1: -x, y1: hh, x2: -x, y2: ap, kind: 'absorb' },
-        { x1: -x, y1: -ap, x2: -x, y2: -hh, kind: 'absorb' },
-        {
-          x1: -x, y1: ap, x2: -x, y2: -ap, kind: 'opoin', data: {
-            linewidthMode: p.linewidthMode, signalLinewidthCm: p.signalLinewidthCm, idlerLinewidthCm: p.idlerLinewidthCm,
-            outputPhase: p.outputPhase, durationFactor: p.durationFactor, opoDepletion: p.opoDepletion,
-            outputIdler: p.outputIdler !== false, aperture: p.aperture,
-            signalBeamMm: opoBeamMm(p, 'signal'), idlerBeamMm: opoBeamMm(p, 'idler'),
-            tuning: opoSignalAt(p, el._animationTimeS || 0),
-          },
-        },
-      ];
-    },
-  },
-
-  glassrod: {
-    label: 'Glass rod', category: 'Dispersive elements', size: { w: 64, h: 14 },
-    params: [
-      { key: 'rodlen', label: 'Length (mm)', type: 'number', min: 20, max: 300, step: 5, def: 60 },
-      { key: 'dia', label: 'Diameter', type: 'optsize', def: 12.7 },
-      { key: 'material', label: 'Glass model', type: 'select', def: 'constant', options: [['constant', 'Constant index'], ...GLASS_OPTIONS] },
-      { key: 'ior', label: 'Refractive index', type: 'number', min: 1.01, max: 2.5, step: 0.01, def: 1.52, show: p => p.material === 'constant' },
-    ],
-    size_: el => ({ w: el.params.rodlen + 4, h: (el.params.dia || 10) + 4 }),
-    svg(el) {
-      const L = el.params.rodlen / 2, d = el.params.dia || 10;
-      return `<rect x="${-L}" y="${-d / 2}" width="${el.params.rodlen}" height="${d}" rx="${Math.min(4, d / 3)}" fill="${GLASS}" fill-opacity="0.72" stroke="${GLASS_S}" stroke-width="1.5"/>`;
-    },
-    surfaces(el) {
-      const x = el.params.rodlen / 2, y = (el.params.dia || 10) / 2;
-      const data = {
-        material: isDispersiveGlass(el.params.material) ? el.params.material : undefined,
-        ior: el.params.ior || 1.52,
-        transmission: 0.96,
-      };
-      // All four faces are dielectric boundaries. The tracer tracks whether a
-      // ray is inside this rod, so it refracts on entry/exit and reflects when
-      // total internal reflection occurs at a side wall.
-      return [
-        { x1: -x, y1: -y, x2: x, y2: -y, kind: 'refract', data: { ...data, topologyKey: 'edge-0' } },
-        { x1: x, y1: -y, x2: x, y2: y, kind: 'refract', data: { ...data, topologyKey: 'edge-1' } },
-        { x1: x, y1: y, x2: -x, y2: y, kind: 'refract', data: { ...data, topologyKey: 'edge-2' } },
-        { x1: -x, y1: y, x2: -x, y2: -y, kind: 'refract', data: { ...data, topologyKey: 'edge-3' } },
-      ];
-    },
-  },
-
-  // ---------------- Specimens ----------------
-  sample: {
-    // Horizontal at rot 0: the clear-aperture/long axis runs left-right
-    // (local x), the beam crosses it top-to-bottom (local y).
-    label: 'Sample', category: 'Specimens', paletteOrder: 1, size: { w: 40, h: 14 },
-    size_: el => ({ w: (el.params.aperture || 34) + 6, h: Math.max(14, sampleThickness(el.params) + 8) }),
-    params: [{ key: 'aperture', label: 'Sample width (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true }, ...sampleModeParams()],
-    svg(el) {
-      const p = el.params;
-      const h = (p.aperture || 34) / 2, t = sampleThickness(p);
-      return `<rect x="${-h}" y="${(-t / 2).toFixed(2)}" width="${2 * h}" height="${t}" fill="${GLASS}" stroke="none"/>` +
-        signalSpotSVG(el);
-    },
-    // Both visible specimen faces are explicit immersion contacts. They are
-    // target surfaces, not separate liquid elements, and never move merely
-    // because an objective couples to one.
-    immersionContact: el => {
-      const halfWidth = (el.params.aperture || 34) / 2;
-      const halfThickness = sampleThickness(el.params) / 2;
-      return [
-        { x1: -halfWidth, y1: -halfThickness, x2: halfWidth, y2: -halfThickness },
-        { x1: -halfWidth, y1: halfThickness, x2: halfWidth, y2: halfThickness },
-      ];
-    },
-    surfaces: el => sampleSurfaces(el, (el.params.aperture || 34) / 2),
-  },
-
-  stage: {
-    // Horizontal at rot 0, same convention as 'sample': the clear-aperture
-    // axis runs left-right (local x), the beam crosses top-to-bottom
-    // (local y). The mounting brackets grip the specimen's left/right short
-    // edges accordingly.
-    label: 'Sample on piezo stage', category: 'Specimens', paletteOrder: 2, size: { w: 56, h: 22 },
-    size_: el => ({ w: (el.params.aperture || 50) + 30, h: Math.max(22, sampleThickness(el.params) + 14) }),
-    params: [
-      { key: 'pzHeading', label: 'Piezo movement', type: 'section' },
-      { key: 'pzMode', label: 'Scan pattern', type: 'select', def: 'static', options: [['static', 'Static'], ['xy', 'XY â€” long axis'], ['z', 'Z â€” depth'], ['sync', 'XYZ sync â€” raster']] },
-      { key: 'pzTravelXY', label: 'XY travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 12, show: p => p.pzMode === 'xy' || p.pzMode === 'sync' },
-      { key: 'pzFreqXY', label: 'XY scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.15, show: p => p.pzMode === 'xy' || p.pzMode === 'sync' },
-      { key: 'pzTravelZ', label: 'Z travel (mm)', type: 'number', min: 0, max: 150, step: 1, def: 8, show: p => p.pzMode === 'z' || p.pzMode === 'sync' },
-      { key: 'pzFreqZ', label: 'Z scan frequency (Hz)', type: 'number', min: 0.01, max: 10, step: 0.01, def: 0.1, show: p => p.pzMode === 'z' },
-      { key: 'pzZSteps', label: 'Z raster lines', type: 'number', min: 2, max: 50, step: 1, def: 5, show: p => p.pzMode === 'sync' },
-      { key: 'opticalHeading', label: 'Optical behavior', type: 'section' },
-      { key: 'aperture', label: 'Clear aperture (mm)', type: 'number', min: 6, max: 150, step: 2, def: 50, appearance: true },
-      // Legacy per-material selector, replaced by `specimenType`. Hidden but
-      // still declared so pre-existing sketches keep loading and can be read
-      // by specimenTypeOf().
-      { key: 'sampleKind', label: 'Sample material', type: 'select', def: 'generic', show: () => false, options: [['generic', 'General sample'], ['fluorescent', 'Fluorescent specimen'], ['resin', 'Photocurable resin'], ['nonlinear', 'Nonlinear specimen'], ['opaque', 'Absorbing specimen']] },
-      ...sampleModeParams(),
-    ],
-    svg(el) {
-      const p = el.params;
-      const clear = (p.aperture || 50) / 2, outer = clear + 12;
-      const spot = signalSpotSVG(el);
-      // Two separate L brackets (short-side cap + rail) grip the glass from
-      // its left and right short edges and protrude 20% of the glass length
-      // inward, leaving a 60%-of-length window between them for the beam.
-      const windowX = clear * 0.6;
-      const t = sampleThickness(p);
-      return `<path d="M ${-outer},-8 L ${-outer},6 L ${-windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<path d="M ${outer},-8 L ${outer},6 L ${windowX},6" fill="none" stroke="#4d565f" stroke-width="4"/>` +
-        `<rect x="${-clear}" y="${(-t / 2).toFixed(2)}" width="${2 * clear}" height="${t}" fill="${GLASS}" fill-opacity="0.75" stroke="none"/>` +
-        spot +
-        (p.voxelPreview ? `<circle cx="0" cy="-0.5" r="6.2" fill="none" stroke="#7c3aed" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>` : '');
-    },
-    immersionContact: el => {
-      const halfWidth = (el.params.aperture || 50) / 2;
-      const halfThickness = sampleThickness(el.params) / 2;
-      return [
-        { x1: -halfWidth, y1: -halfThickness, x2: halfWidth, y2: -halfThickness },
-        { x1: -halfWidth, y1: halfThickness, x2: halfWidth, y2: halfThickness },
-      ];
-    },
-    surfaces(el) {
-      const clear = Math.max(2, (el.params.aperture || 50) / 2), outer = clear + 12;
-      const mount = [
-        { x1: -outer, y1: 6, x2: -clear, y2: 6, kind: 'absorb' },
-        { x1: clear, y1: 6, x2: outer, y2: 6, kind: 'absorb' },
-      ];
-      return [...mount, ...sampleSurfaces(el, clear)];
-    },
-  },
-
-  // ---------------- Imaging ----------------
-  objarrow: {
-    label: 'Object', category: 'Sources', size: { w: 20, h: 60 },
-    size_: el => ({ w: 20, h: 2 * el.params.height + 10 }),
-    imaging: true,
-    params: [
-      { key: 'height', label: 'Height (mm)', type: 'number', min: 2, max: 150, step: 1, def: 22 },
-      { key: 'shape', label: 'Shape', type: 'select', def: 'arrow', options: [['arrow', 'Arrow'], ['F', 'Letter F'], ['tree', 'Tree']] },
-      { key: 'raysMode', label: 'Rays from axis', type: 'select', def: 'fan', options: [['fan', 'Show ray fan'], ['none', 'No rays']] },
-      { key: 'spread', label: 'Fan angle (Â°)', type: 'number', min: 1, max: 40, step: 1, def: 10, show: p => p.raysMode === 'fan' },
-      { key: 'nrays', label: 'Rays', type: 'number', min: 2, max: 9, step: 1, def: 3, show: p => p.raysMode === 'fan' },
-      { key: 'showImage', label: 'Draw image formed', type: 'checkbox', def: true },
-      { ...P.wavelength, def: 620 },
-      P.autoColor, P.color,
-    ],
-    svg(el) {
-      const p = el.params, h = p.height;
-      const c = p.autoColor === false && p.color ? p.color : wavelengthToColor(p.wavelength);
-      const sh = OBJ_SHAPES[p.shape] || OBJ_SHAPES.arrow;
-      let s = `<line x1="-7" y1="0" x2="7" y2="0" stroke="#888" stroke-width="1.2"/>`;
-      for (const ln of sh.lines) {
-        s += `<polyline points="${ln.map(q => `${(q[0] * h).toFixed(1)},${(q[1] * h).toFixed(1)}`).join(' ')}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
-      }
-      for (const pg of sh.polys) {
-        s += `<polygon points="${pg.map(q => `${(q[0] * h).toFixed(1)},${(q[1] * h).toFixed(1)}`).join(' ')}" fill="${c}"/>`;
-      }
-      return s;
-    },
-    source(el) {
-      const p = el.params;
-      if (p.raysMode !== 'fan') return [];
-      const n = Math.max(2, Math.round(p.nrays)), out = [];
-      // fan from the object's own anchor point (on the shared optical axis,
-      // not the off-axis tip): the central ray is exactly horizontal, so it
-      // passes through the center of every on-axis lens undeviated (h = 0
-      // there) and stays a fixed horizontal reference as the surrounding
-      // rays fan out symmetrically â€” half clockwise, half counterclockwise
-      // â€” and bend toward it at each focusing surface.
-      for (let i = 0; i < n; i++) {
-        const a = (-p.spread / 2 + p.spread * i / (n - 1)) * Math.PI / 180;
-        out.push({ x: 1, y: 0, dx: Math.cos(a), dy: Math.sin(a) });
-      }
-      return out;
-    },
-    surfaces: () => [],
-  },
-
-  probe: {
-    label: 'Beam probe (?)', category: 'Annotations', size: { w: 24, h: 24 },
-    size_: el => {
-      const scale = probeScale(el);
-      return { w: 24 * scale, h: 24 * scale };
-    },
-    noLabel: true,
-    params: [
-      { key: 'displayScale', label: 'Display scale', type: 'number', min: 0.5, max: 2, step: 0.05, def: 1 },
-      { key: 'prop', label: 'Show', type: 'select', def: 'spectrum', options: [
-        ['spectrum', 'Spectrum plot'],
-        ['wl', 'Wavelength label'],
-        ['power', 'Average power'],
-        ['pol', 'Polarization'],
-        ['duration', 'Pulse duration'],
-        ['time', 'Intensity over time'],
-      ] },
-      // The wavelength axis frames itself from the light by default, on the
-      // spectrometer's own principle. A fixed window is there for comparing
-      // two probes against the same scale.
-      { key: 'rangeMode', label: 'Wavelength range', type: 'select', def: 'auto',
-        options: [['auto', 'Automatic'], ['manual', 'Fixed range']],
-        show: p => p.prop === 'spectrum' },
-      { key: 'specMin', label: 'From (nm)', type: 'number', min: 10, max: 12000, step: 10, def: 400,
-        show: p => p.prop === 'spectrum' && p.rangeMode === 'manual' },
-      { key: 'specMax', label: 'To (nm)', type: 'number', min: 11, max: 12000, step: 10, def: 700,
-        show: p => p.prop === 'spectrum' && p.rangeMode === 'manual' },
-      // Left at 0 the window is two periods of the slowest thing on the beam.
-      { key: 'timeSpanNs', label: 'Time interval (ns) Â· 0 = automatic', type: 'number', min: 0, max: 1e6, step: 0.1, def: 0,
-        show: p => p.prop === 'time' },
-      { key: 'timeOffsetNs', label: 'Time offset (ns)', type: 'number', min: -1e6, max: 1e6, step: 0.1, def: 0,
-        show: p => p.prop === 'time' },
-    ],
-    svg(el, elements = []) {
-      const scale = probeScale(el);
-      const card = probeCard(el, probeAt(el.x, el.y), elements);
-      const place = probeCardPlacement(el, card, scale);
-      // The crosshair marks the exact point being read and must stay put
-      // regardless of scale â€” only the readout card grows with Display scale.
-      // The leader rotates with the element (so the card swings around the
-      // sampled point), while the card itself is counter-rotated to stay
-      // upright and readable.
-      const crosshair = `<circle r="4.5" fill="none" stroke="#e07020" stroke-width="1.6"/>` +
-        `<line x1="0" y1="-8" x2="0" y2="8" stroke="#e07020" stroke-width="1"/>` +
-        `<line x1="-8" y1="0" x2="8" y2="0" stroke="#e07020" stroke-width="1"/>` +
-        `<line x1="0" y1="-9" x2="0" y2="${-PROBE_LEADER}" stroke="#e07020" stroke-width="1"/>`;
-      return crosshair +
-        `<g class="probe-card" transform="rotate(${-place.rot}) translate(${place.x.toFixed(2)},${place.y.toFixed(2)}) scale(${scale})">` +
-        card.body + `</g>`;
-    },
-    surfaces: () => [],
-  },
-
-  // Hidden from the palette: the Annotations "Arrow" tile starts the freehand
-  // draw-arrow tool instead (same concept, drawn point-by-point). Existing
-  // placed arrowann elements stay fully editable.
-  arrowann: {
-    label: 'Arrow', category: 'Annotations', hidden: true, size: el => ({
-      w: el.params.len + 8,
-      h: Math.max(20, 2 * (3 + 1.5 * el.params.width) + 4),
-    }),
-    params: [
-      { key: 'len', label: 'Length (mm)', type: 'number', min: 10, max: 400, step: 5, def: 60 },
-      { key: 'width', label: 'Line width', type: 'number', min: 0.5, max: 8, step: 0.5, def: 2 },
-      { key: 'fill', label: 'Color', type: 'color', def: '#333333' },
-    ],
-    svg(el) {
-      const p = el.params, L = p.len / 2, w = p.width;
-      const hl = Math.min(p.len, 6 + 3 * w), hw = 3 + 1.5 * w;
-      return `<line x1="${-L}" y1="0" x2="${(L - hl + 1).toFixed(1)}" y2="0" stroke="${p.fill}" stroke-width="${w}" stroke-linecap="round"/>` +
-        `<path d="M ${L},0 L ${L - hl},${-hw} L ${L - hl},${hw} Z" fill="${p.fill}"/>`;
-    },
-    surfaces: () => [],
-  },
-
-  figureframe: {
-    label: 'Figure frame', category: 'Annotations', paletteOrder: 99,
-    aliases: ['crop', 'artboard', 'export frame', 'paper frame'],
-    singleton: true,
-    hideInExport: true,
-    exportFrame: true,
-    rotatable: false,
-    noLabel: true,
-    directHint: 'blue handles set the exact export crop',
-    params: [
-      { key: 'w', label: 'Figure width (mm)', type: 'number', min: 40, max: 2000, step: 5, def: 320 },
-      { key: 'h', label: 'Figure height (mm)', type: 'number', min: 30, max: 2000, step: 5, def: 200 },
-      { key: 'background', label: 'SVG background', type: 'select', def: 'transparent', options: [['transparent', 'Transparent'], ['white', 'White']] },
-    ],
-    size: el => ({ w: el.params.w, h: el.params.h }),
-    hitTest(el, point, tolerance) {
-      const hw = el.params.w / 2, hh = el.params.h / 2;
-      if (Math.abs(point.x) > hw + tolerance || Math.abs(point.y) > hh + tolerance) return false;
-      return Math.abs(Math.abs(point.x) - hw) <= tolerance || Math.abs(Math.abs(point.y) - hh) <= tolerance;
-    },
-    svg(el) {
-      const w = el.params.w, h = el.params.h, x = -w / 2, y = -h / 2;
-      const m = Math.min(12, w / 7, h / 7);
-      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#7d8ca3" stroke-width="1.2" stroke-dasharray="7 5"/>` +
-        `<path d="M ${x},${y + m} V ${y} H ${x + m} M ${-x - m},${y} H ${-x} V ${y + m} M ${-x},${-y - m} V ${-y} H ${-x - m} M ${x + m},${-y} H ${x} V ${-y - m}" fill="none" stroke="#50637d" stroke-width="2"/>` +
-        `<text x="${x + 7}" y="${y + 15}" font-size="9" font-weight="700" letter-spacing="0.7" fill="#64748b">FIGURE</text>`;
-    },
-    surfaces: () => [],
-  },
-
-  highlight: {
-    label: 'Highlight', category: 'Annotations', background: true,
-    size: el => ({ w: el.params.w, h: el.params.h }),
-    // Painted in its own layer behind the grid holes, beams, and every other
-    // element (see renderHighlights() in canvas.js) â€” purely a background
-    // wash that is still part of the exported figure, unlike the figure
-    // frame's canvas-only crop border. It never intercepts or attenuates a
-    // traced ray (surfaces() is empty).
-    params: [
-      { key: 'shape', label: 'Shape', type: 'select', def: 'rect', options: [['rect', 'Rectangle'], ['circle', 'Circle']] },
-      { key: 'w', label: 'Width (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 120 },
-      { key: 'h', label: 'Height (mm)', type: 'number', min: 5, max: 2000, step: 5, def: 80 },
-      { key: 'fill', label: 'Color', type: 'color', def: '#fde047' },
-      { key: 'opacity', label: 'Opacity (%)', type: 'number', min: 5, max: 100, step: 5, def: 35 },
-    ],
-    hitTest(el, point, tolerance) {
-      const hw = el.params.w / 2 + tolerance, hh = el.params.h / 2 + tolerance;
-      if (el.params.shape === 'circle') return (point.x * point.x) / (hw * hw) + (point.y * point.y) / (hh * hh) <= 1;
-      return Math.abs(point.x) <= hw && Math.abs(point.y) <= hh;
-    },
-    svg(el) {
-      const p = el.params, w = p.w, h = p.h;
-      const fillOpacity = Math.min(1, Math.max(0.05, (p.opacity ?? 35) / 100));
-      const shape = p.shape === 'circle'
-        ? `<ellipse cx="0" cy="0" rx="${w / 2}" ry="${h / 2}" fill="${p.fill}" fill-opacity="${fillOpacity}"/>`
-        : `<rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" fill="${p.fill}" fill-opacity="${fillOpacity}"/>`;
-      return shape;
-    },
-    surfaces: () => [],
-  },
-
-  // ---------------- Custom ----------------
-  box: {
-    label: 'Custom box', category: 'Custom', size: el => ({ w: el.params.w + 4, h: el.params.h + 4 }),
-    params: [
-      { key: 'text', label: 'Label', type: 'text', def: 'Device' },
-      { key: 'w', label: 'Width (mm)', type: 'number', min: 10, max: 400, step: 5, def: 70 },
-      { key: 'h', label: 'Height (mm)', type: 'number', min: 10, max: 400, step: 5, def: 40 },
-      { key: 'behavior', label: 'Beam behavior', type: 'select', def: 'block', options: [['block', 'Blocks beam'], ['pass', 'Beam passes through']] },
-      { key: 'fill', label: 'Fill', type: 'color', def: '#eef0f3' },
-    ],
-    svg(el) {
-      const p = el.params;
-      return boxSVG(p.w, p.h, p.fill, '#7a828c', p.text, '#3d444d', isFlipped(el));
-    },
-    surfaces(el) {
-      return el.params.behavior === 'block' ? rectAbsorb(el.params.w, el.params.h) : [];
-    },
-  },
-
-  blocker: {
-    label: 'Invisible blocker', category: 'Beam Block', size: el => ({ w: el.params.w + 4, h: el.params.h + 4 }),
-    hideInExport: true,
-    params: [
-      { key: 'w', label: 'Width (mm)', type: 'number', min: 4, max: 400, step: 2, def: 16 },
-      { key: 'h', label: 'Height (mm)', type: 'number', min: 4, max: 400, step: 2, def: 60 },
-    ],
-    svg(el) {
-      const p = el.params;
-      return `<rect x="${-p.w / 2}" y="${-p.h / 2}" width="${p.w}" height="${p.h}" rx="2" fill="rgba(208,96,96,0.07)" stroke="#d89c9c" stroke-width="1" stroke-dasharray="4 3"/>` +
-        `<text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="9" fill="#c98080">âœ‚</text>`;
-    },
-    surfaces(el) {
-      return rectAbsorb(el.params.w, el.params.h);
-    },
-  },
-
-  textlabel: {
-    label: 'Text label', category: 'Annotations', size: el => {
-      const layout = markdownLayout(el.params.text, el.params.fontSize);
-      return { w: layout.width, h: layout.height };
-    },
-    // The element position is the box's LEFT edge, not its center (see
-    // boxAnchor()), so typing longer text grows the box to the right instead
-    // of re-centering it around the drop point every keystroke.
-    anchorX: 'left',
-    paramsTitle: 'Text style',
-    params: [
-      { key: 'text', label: 'Text', type: 'text', def: 'Label', canvasEdit: true },
-      { key: 'fontSize', label: 'Size (pt)', type: 'number', min: 6, max: 72, step: 1, def: 14 },
-      { key: 'fill', label: 'Color', type: 'color', def: '#333333' },
-    ],
-    directHint: 'Double-click the text, use Edit text, or press Enter to edit Markdown on the canvas. Blue handles change its base size.',
-    noLabel: true,
-    svg(el) {
-      const p = el.params;
-      return markdownTextSVG(p.text, { fontSize: p.fontSize, fill: p.fill });
-    },
-    surfaces: () => [],
-  },
-
-  // ---------------- Lab elements ----------------
-  // Purely cosmetic hardware set dressing: gas cells, windows, and similar
-  // lab fixtures that appear in real beamline photos/diagrams but carry no
-  // ray-tracing role of their own (surfaces() always returns []). A fiber
-  // or manual beam drawn through one is just layered on top â€” no binding.
-  gascell: {
-    label: 'Gas cell', category: 'Lab elements', size: { w: 94, h: 59 },
-    size_: el => ({ w: el.params.length + 4, h: el.params.height + 4 }),
-    params: [
-      { key: 'length', label: 'Length (mm)', type: 'number', min: 30, max: 250, step: 5, def: 90 },
-      { key: 'height', label: 'Height (mm)', type: 'number', min: 20, max: 120, step: 2, def: 55 },
-      { key: 'windowLeft', label: 'Window (left)', type: 'checkbox', def: false },
-      { key: 'windowRight', label: 'Window (right)', type: 'checkbox', def: false },
-      { key: 'extension', label: 'Extension tube', type: 'checkbox', def: false },
-      {
-        key: 'extensionSide', label: 'Extension side', type: 'select', def: 'right',
-        options: [['left', 'Left'], ['right', 'Right']], show: p => p.extension,
-      },
-      {
-        key: 'gasDirection', label: 'Gas port', type: 'select', def: 'out',
-        options: [['out', 'Outward'], ['in', 'Inward'], ['closed', 'Closed']],
-      },
-      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 100 },
-    ],
-    svg(el) {
-      const p = el.params;
-      const hl = p.length / 2, hh = p.height / 2;
-      const bodyOpacity = (1 - p.transparency / 100).toFixed(2);
-      const screwX = hl * 0.82, screwY = hh * 0.72;
-      const winH = Math.min(20, p.height * 0.35);
-      const gaugeR = Math.max(8, Math.min(15, p.height * 0.16));
-      const tubeLen = Math.max(32, hl * 0.8);
-      const tubeH = Math.min(24, p.height * 0.4);
-      const leftOpen = p.extension && p.extensionSide === 'left';
-      const rightOpen = p.extension && p.extensionSide === 'right';
-      const r = 6;
-      let s = '';
-      if (p.extension) {
-        const side = p.extensionSide === 'left' ? -1 : 1;
-        const x0 = side > 0 ? hl : -hl - tubeLen;
-        const x1 = side > 0 ? hl + tubeLen : -hl;
-        s += `<rect x="${Math.min(x0, x1)}" y="${-tubeH / 2}" width="${tubeLen}" height="${tubeH}" fill="#b8933f" fill-opacity="${bodyOpacity}"/>` +
-          `<line x1="${x0}" y1="${-tubeH / 2}" x2="${x1}" y2="${-tubeH / 2}" stroke="#7a5f28" stroke-width="2.5" stroke-linecap="round"/>` +
-          `<line x1="${x0}" y1="${tubeH / 2}" x2="${x1}" y2="${tubeH / 2}" stroke="#7a5f28" stroke-width="2.5" stroke-linecap="round"/>`;
-      }
-      s += `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height}" rx="${r}" fill="#b8933f" fill-opacity="${bodyOpacity}"/>` +
-        `<rect x="${-hl}" y="${-hh}" width="${p.length}" height="${p.height * 0.17}" rx="${r}" fill="#d9b968" fill-opacity="${(0.55 * bodyOpacity).toFixed(2)}"/>`;
-      // Housing outline: a normal rounded rect. Where an extension tube
-      // connects, only the short stretch of wall directly between its two
-      // rails is left undrawn -- the wall still runs from each rounded
-      // corner down to the rail, so the opening lines up with the tube.
-      let d = `M ${-hl + r} ${-hh} `;
-      d += `L ${hl - r} ${-hh} `;
-      d += `A ${r} ${r} 0 0 1 ${hl} ${-hh + r} `;
-      if (rightOpen) {
-        d += `L ${hl} ${-tubeH / 2} `;
-        d += `M ${hl} ${tubeH / 2} `;
-        d += `L ${hl} ${hh - r} `;
-      } else {
-        d += `L ${hl} ${hh - r} `;
-      }
-      d += `A ${r} ${r} 0 0 1 ${hl - r} ${hh} `;
-      d += `L ${-hl + r} ${hh} `;
-      d += `A ${r} ${r} 0 0 1 ${-hl} ${hh - r} `;
-      if (leftOpen) {
-        d += `L ${-hl} ${tubeH / 2} `;
-        d += `M ${-hl} ${-tubeH / 2} `;
-        d += `L ${-hl} ${-hh + r} `;
-      } else {
-        d += `L ${-hl} ${-hh + r} `;
-      }
-      d += `A ${r} ${r} 0 0 1 ${-hl + r} ${-hh} `;
-      s += `<path d="${d}" fill="none" stroke="#7a5f28" stroke-width="2"/>` +
-        `<circle cx="${-screwX}" cy="${-screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
-        `<circle cx="${screwX}" cy="${-screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
-        `<circle cx="${-screwX}" cy="${screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>` +
-        `<circle cx="${screwX}" cy="${screwY}" r="4" fill="#5b4520" stroke="#3d2e15" stroke-width="1"/>`;
-      if (p.windowLeft) {
-        s += `<rect x="${-hl - 3}" y="${-winH / 2}" width="6" height="${winH}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
-      }
-      if (p.windowRight) {
-        s += `<rect x="${hl - 3}" y="${-winH / 2}" width="6" height="${winH}" fill="${GLASS}" stroke="${GLASS_S}" stroke-width="1"/>`;
-      }
-      const portX = hl * 0.5;
-      s += `<circle cx="0" cy="${-hh}" r="${gaugeR}" fill="#fff" stroke="#4d565f" stroke-width="1.5"/>` +
-        `<line x1="0" y1="${-hh}" x2="${gaugeR * 0.4}" y2="${-hh - gaugeR * 0.55}" stroke="#c0392b" stroke-width="1.5" stroke-linecap="round"/>` +
-        `<rect x="${portX - 4}" y="${-hh - 10}" width="8" height="10" fill="#6b7280" stroke="#3f4650" stroke-width="1"/>`;
-      if (p.gasDirection === 'in') {
-        s += `<line x1="${portX}" y1="${-hh - 10}" x2="${portX}" y2="${-hh - 22}" stroke="#1361fa" stroke-width="2.2"/>` +
-          `<polygon points="${portX},${-hh - 10} ${portX - 4},${-hh - 17} ${portX + 4},${-hh - 17}" fill="#1361fa"/>`;
-      } else if (p.gasDirection === 'out') {
-        s += `<line x1="${portX}" y1="${-hh - 22}" x2="${portX}" y2="${-hh - 10}" stroke="#1361fa" stroke-width="2.2"/>` +
-          `<polygon points="${portX},${-hh - 27} ${portX - 4},${-hh - 20} ${portX + 4},${-hh - 20}" fill="#1361fa"/>`;
-      }
-      return s;
-    },
-    surfaces: () => [],
-  },
-
-  window: {
-    label: 'Optical window', category: 'Lab elements', size: { w: 12, h: 32 },
-    size_: el => ({ w: 12, h: el.params.length + 6 }),
-    params: [
-      { key: 'length', label: 'Optic size', type: 'optsize', def: 25.4 },
-      { key: 'transparency', label: 'Transparency (%)', type: 'number', min: 0, max: 100, step: 5, def: 100 },
-    ],
-    svg(el) {
-      const p = el.params, L = p.length / 2;
-      const bodyOpacity = (1 - p.transparency / 100).toFixed(2);
-      return `<rect x="-3" y="${-L}" width="6" height="${p.length}" fill="${GLASS}" fill-opacity="${bodyOpacity}" stroke="${GLASS_S}" stroke-width="1.5"/>`;
-    },
-    surfaces: () => [],
-  },
-};
-
-// Where an element's local origin (el.x, el.y) sits relative to the center
-// of its size() box, in local (unrotated) coordinates. Every element type is
-// center-anchored (origin === box center) except those that opt into
-// anchorX: 'left', where the origin is the box's left-middle edge instead â€”
-// see the textlabel entry above. Consumed by every generic piece of UI that
-// draws or hit-tests a selection box around an element (canvas.js).
-export function boxAnchor(el) {
-  const d = registry[el.type];
-  if (typeof d?.boxAnchor === 'function') return d.boxAnchor(el);
-  if (d?.anchorX === 'left') return { x: getSize(el).w / 2, y: 0 };
-  return { x: 0, y: 0 };
-}
-
-// concave lens: identical optics to 'lens', concave default focal length
-registry.lensc = {
-  ...registry.lens,
-  label: 'Thin concave lens',
-  paletteGroup: 'Ideal lenses',
-  paletteOrder: 1,
-  aliases: ['concave lens', 'thin lens', 'negative lens', 'diverging lens', 'ideal lens'],
-  params: registry.lens.params.map(p => (p.key === 'f' ? { ...p, def: -100 } : p)),
-};
-
-// The third laser source. Its spectrum is a flat top between two endpoints
-// rather than a line, so it replaces wavelength with a range and defaults to
-// a fixed broadband white instead of a colour derived from a centroid Î» that
-// no longer means much once the band is hundreds of nm wide.
-//
-// Its pulse duration is set by hand, but never below what its band allows: a
-// pulse shorter than the transform limit of its spectrum cannot exist. The
-// floor is rounded up to three significant figures so the field shows a clean
-// number and the rounded value still honours the limit. A band so narrow its
-// limit passes the longest duration the field holds -- a zero-width band has
-// no finite limit at all -- floors at that maximum instead: the tracer and a
-// reloaded sketch clamp there too, so any higher floor could never be kept.
-const SC_PULSE_WIDTH_MIN_FS = 1;
-const SC_PULSE_WIDTH_MAX_FS = 1000000000;
-export function supercontinuumPulseWidthFloorFs(p = {}) {
-  const tl = supercontinuumTransformLimitFs(p.scMin ?? 300, p.scMax ?? 700, p.pulseShape);
-  if (!(tl > SC_PULSE_WIDTH_MIN_FS)) return SC_PULSE_WIDTH_MIN_FS;
-  if (!(tl < SC_PULSE_WIDTH_MAX_FS)) return SC_PULSE_WIDTH_MAX_FS;
-  const unit = 10 ** (Math.floor(Math.log10(tl)) - 2);
-  return Math.min(SC_PULSE_WIDTH_MAX_FS, Number((Math.ceil(tl / unit - 1e-9) * unit).toPrecision(3)));
-}
-// Narrowing the band or switching the envelope raises the floor under a
-// duration that was valid a moment ago; every path that edits those params
-// runs this so the stored duration is lifted rather than left impossible.
-// It is also what enforces the floor on a typed duration: the field's HTML
-// min stays at 1 fs so the browser's 10 fs step ladder is not rebased onto
-// an arbitrary floor like 71.5 fs, which would mark 250 fs as off-step.
-export function normalizeSupercontinuumParams(params) {
-  const floor = supercontinuumPulseWidthFloorFs(params);
-  return Number(params.pulseWidthFs) >= floor ? {} : { pulseWidthFs: floor };
-}
-// The two endpoints stay at least one field step apart. A zero-width band is
-// not a continuum at all, and it has no finite transform limit: clamping a
-// crossed entry to equal endpoints lifted the pulse duration to the field's
-// 1e9 fs ceiling, where it stayed after the band was put right. At 10 nm the
-// narrowest band still admits a 71 fs pulse at 700 nm.
-const SC_MIN_SEPARATION_NM = 10;
-registry.sclaser = {
-  ...registry.pulsedlaser,
-  label: 'Supercontinuum laser',
-  paletteOrder: 2,
-  aliases: ['super continuum', 'white laser', 'broadband pulsed source', 'sc laser'],
-  params: [
-    { ...P.wavelength, def: 500, show: () => false },
-    { key: 'scMin', label: 'Spectrum minimum (nm)', type: 'number', min: 200,
-      max: p => Math.max(200, Math.min(12000 - SC_MIN_SEPARATION_NM, (p.scMax ?? 700) - SC_MIN_SEPARATION_NM)), step: 10, def: 300 },
-    { key: 'scMax', label: 'Spectrum maximum (nm)', type: 'number',
-      min: p => Math.min(12000, Math.max(200 + SC_MIN_SEPARATION_NM, (p.scMin ?? 300) + SC_MIN_SEPARATION_NM)), max: 12000, step: 10, def: 700 },
-    { key: 'avgPowerW', label: 'Average power (W)', type: 'number', min: 0, max: 1000, step: 0.001, def: 1 },
-    ...beamShapeParams(3),
-    ...pulseTrainParams(),
-    // Duration and envelope are configured independently of the broad spectrum;
-    // this is not a reconstruction of nonlinear continuum generation.
-    ...registry.pulsedlaser.params.filter(p => ['pulseWidthFs', 'pulseShape'].includes(p.key))
-      .map(p => p.key === 'pulseWidthFs'
-        ? { ...p, def: 100, min: supercontinuumPulseWidthFloorFs, htmlMin: SC_PULSE_WIDTH_MIN_FS, max: SC_PULSE_WIDTH_MAX_FS }
-        : { ...p }),
-    {
-      key: 'scTransformLimit', label: 'Transform limit (fs)', type: 'readout',
-      readout: p => String(supercontinuumPulseWidthFloorFs(p)),
-    },
-    POL_PARAM,
-    // Broadband white by default: a supercontinuum has no single colour to
-    // derive, and this is the shade the tracer already paints wide-band light.
-    { ...P.autoColor, def: false },
-    { ...P.color, def: '#cbd8ea' },
-    SHOW_PULSE_PARAM,
-    pinnedParam('temporalMode', 'pulsed'),
-  ],
-  svg(el) {
-    const h = laserH(el), hh = h / 2, ap = laserAperture(el);
-    const stripes = ['#7c3aed', '#2563eb', '#10b981', '#eab308', '#f97316', '#ef4444']
-      .map((c, i) => `<rect x="${46 + i * 0.85}" y="${-ap}" width="1" height="${2 * ap}" fill="${c}"/>`).join('');
-    return `<rect x="-46" y="${-hh}" width="92" height="${h}" rx="4" fill="#24233a" stroke="#171629" stroke-width="1.5"/>` +
-      `<text x="0" y="-3" ${isFlipped(el) ? 'transform="rotate(180)"' : ''} text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="750" letter-spacing="1.1" fill="#fff">SC LASER</text>` +
-      `<g stroke="#c4b5fd" stroke-width="1.1"><path d="M -17,8 L -12,8 L -10,3 L -8,11 L -6,8 L -1,8"/><path d="M 3,8 L 8,8 L 10,3 L 12,11 L 14,8 L 19,8"/></g>` + stripes;
-  },
-};
-
-// Registry-owned direct-manipulation semantics. Canvas code only understands
-// generic resize/tune descriptors; the component definition decides which
-// real physical parameter a handle changes.
-const DIRECT = {
-  cwlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'Î»' } },
-  pulsedlaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'wavelength', short: 'Î»' } },
-  sclaser: { resize: { y: 'beamWidth', set: { beamMode: 'beam' } }, tune: { key: 'scMax', short: 'Î» max' } },
-  pointsource: { resize: { uniform: 'displayScale' }, tune: { key: 'spread', short: 'angle' } },
-  objarrow: { resize: { y: 'height' }, tune: { key: 'spread', short: 'fan', when: p => p.raysMode === 'fan' } },
-  mirror: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
-  galvo: { resize: { y: 'length' }, tune: { key: 'commandAngle', short: 'center' } },
-  polygonscanner: { resize: { uniform: 'diameter' }, tune: { key: 'scanPhase', short: 'phase' } },
-  retroreflector: { resize: { y: 'length' }, tune: { key: 'refl', short: 'R' } },
-  conicmirror: { resize: { y: 'dia' }, tune: { key: 'conic', short: 'k' } },
-  cmirrorx: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
-  cmirror: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
-  oap: { resize: { y: 'length' }, tune: { key: 'f', short: 'f' } },
-  lens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
-  lensc: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
-  metalens: { resize: { y: 'dia' }, tune: { key: 'f', short: 'f' } },
-  // Radii are the physics, so the tune knob drives R1 (and the shape
-  // follows); resize sets the clear aperture, which is genuinely a size.
-  thicklens: { resize: { y: 'dia' }, tune: { key: 'r1', short: 'Râ‚' } },
-  asphericlens: { resize: { y: 'dia' }, tune: { key: 'k1', short: 'kâ‚' } },
-  lensgroup: { resize: { y: 'dia' }, tune: { key: 'lastRadius', short: 'R last' } },
-  telescope: { resize: { y: 'dia' }, tune: { key: 'f2', short: 'fâ‚‚' } },
-  // The blue handle changes the physical front opening.
-  // Objective EFL is an exact optical specification, not a safe free-drag
-  // gesture: its former 1â€“200 mm tuning knob could make the derived barrel
-  // and internal planes jump by hundreds of millimetres. Presets now handle
-  // ordinary changes and Advanced parameters retain exact EFL entry.
-  objective: { resize: { y: 'frontAperture' } },
-  dichroic: { resize: { y: 'length' }, tune: { key: p => (p.dtype === 'bandpass' || p.dtype === 'notch' ? 'center' : 'cutoff'), short: 'Î»' } },
-  filter: { resize: { y: 'length' }, tune: { key: p => p.ftype === 'nd' ? 'trans' : p.ftype === 'bandpass' ? 'center' : 'cutoff', short: 'filter' } },
-  bs: { resize: { uniform: 'size' }, tune: { key: 'ratio', short: 'T' } },
-  polarizer: { resize: { y: 'length' }, tune: { key: 'pangle', short: 'axis' } },
-  hwp: { resize: { y: 'length' }, tune: { key: 'a', short: 'axis' } },
-  qwp: { resize: { y: 'length' }, tune: { key: 'a', short: 'axis' } },
-  pbs: { resize: { uniform: 'size' } },
-  isolator: { resize: { y: 'aperture' } },
-  grating: { resize: { y: 'length' }, tune: { key: 'lines', short: 'lines' } },
-  slit: { resize: { y: 'length' }, tune: { key: 'gap', short: 'gap' } },
-  prism: { resize: { uniform: 'psize' }, tune: { key: 'apex', short: 'apex' } },
-  freeglass: { resize: { uniform: 'scale' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
-  diffuser: { resize: { y: 'length' }, tune: { key: 'div', short: 'spread' } },
-  slm: { resize: { y: 'length' }, tune: { key: 'zeroFrac', short: '0th', when: p => p.zeroOrder } },
-  metasurface: { resize: { y: 'length' }, tune: { key: 'zeroFrac', short: '0th', when: p => p.zeroOrder } },
-  dmd: { resize: { y: 'length' }, tune: { key: 'tilt', short: 'tilt' } },
-  dm: { resize: { y: 'length' }, tune: { key: 'steer', short: 'steer' } },
-  detector: { resize: { y: 'aperture' } },
-  // Tunes the exponent, not the raw multiplier: dragging a 1..10â· linear
-  // range would crawl through the first decade and never reach the rest.
-  pmt: { resize: { y: 'aperture' }, tune: { key: 'gainLog', short: 'gain Ã—10^' } },
-  camera: { resize: { y: 'ch' }, tune: { key: 'pixels', short: 'px' } },
-  eye: { resize: { uniform: 'diameter' }, tune: { key: 'focus', short: 'f' } },
-  display: { resize: { uniform: 'displayScale' } },
-  beamdump: { resize: { y: 'aperture' } },
-  aom: { resize: { y: 'aperture' }, tune: { key: 'deflect', short: 'deflect' } },
-  aod: { resize: { y: 'aperture' }, tune: { key: 'centerDeflect', short: 'angle' } },
-  phasemodulator: { resize: { y: 'aperture' }, tune: { key: 'depthDeg', short: 'depth' } },
-  aotf: { resize: { y: 'aperture' } },
-  phaseplate: { resize: { y: 'aperture' }, tune: { key: 'opdUm', short: 'OPD' } },
-  delayline: { resize: { y: 'aperture' }, tune: { key: 'delayMm', short: 'Î”L', when: p => (p.moveMode || 'static') === 'static' } },
-  pulsecompressor: { resize: { y: 'aperture' }, tune: { key: 'gddFs2', short: 'GDD' } },
-  eom: { resize: { y: 'aperture' }, tune: { key: 'retardance', short: 'Î”Ï†', when: p => p.modulate && p.driveMode !== 'switching' } },
-  chopper: { resize: { uniform: 'diameter' }, tune: { key: 'chopDuty', short: 'duty', when: p => p.modulate } },
-  crystal: { resize: { y: 'aperture' }, tune: { key: p => p.convert === 'opo' ? 'opoDepletion' : 'efficiency', short: 'Î·', when: p => p.convert !== 'none' } },
-  opo: { resize: { y: 'aperture' }, tune: { key: 'signalWl', short: 'Î»s', when: p => (p.tuneMode || 'fixed') === 'fixed' } },
-  glassrod: { resize: { x: 'rodlen', y: 'dia' }, tune: { key: 'ior', short: 'n', when: p => p.material === 'constant' } },
-  sample: { resize: { x: 'aperture' }, tune: { key: 'transmission', short: 'T', when: p => p.transmitExc } },
-  stage: { resize: { x: 'aperture' } },
-  arrowann: { resize: { x: 'len' }, tune: { key: 'width', short: 'stroke' } },
-  figureframe: { resize: { x: 'w', y: 'h', anchor: true } },
-  highlight: { resize: { x: 'w', y: 'h', anchor: true } },
-  box: { resize: { x: 'w', y: 'h' } },
-  blocker: { resize: { x: 'w', y: 'h' } },
-  textlabel: { resize: { uniform: 'fontSize' } },
-  probe: { resize: { uniform: 'displayScale' } },
-  gascell: { resize: { x: 'length', y: 'height' }, tune: { key: 'transparency', short: 'transp.' } },
-  window: { resize: { y: 'length' }, tune: { key: 'transparency', short: 'transp.' } },
-};
-
-for (const [type, direct] of Object.entries(DIRECT)) {
-  if (registry[type]) registry[type].direct = direct;
-}
-
-export function getDirectManipulation(el) {
-  const def = registry[el?.type];
-  if (!def?.direct) return null;
-  const resolveKey = value => typeof value === 'function' ? value(el.params) : value;
-  const resize = def.direct.resize && (!def.direct.resize.when || def.direct.resize.when(el.params))
-    ? Object.fromEntries(Object.entries(def.direct.resize).filter(([key]) => key !== 'when').map(([key, value]) => [key, resolveKey(value)]))
-    : null;
-  const rawTune = def.direct.tune;
-  let tune = null;
-  if (rawTune && (!rawTune.when || rawTune.when(el.params))) {
-    const key = resolveKey(rawTune.key);
-    const param = (def.params || []).find(spec => spec.key === key);
-    if (param && (param.type === 'number' || param.type === 'optsize' || param.type === 'derived')) tune = { ...rawTune, key, param };
-  }
-  return resize || tune ? { resize, tune } : null;
-}
-
-// User-facing capability metadata. The distinction is deliberately explicit:
-// simulated elements affect traced rays, configurable elements need an active
-// mode, and diagram-only elements are honest visual annotations/placeholders.
-const ELEMENT_HELP = {
-  opo: 'An optical parametric oscillator in a box: pump light entering the rear aperture within its angular and wavelength acceptance becomes a signal on the front axis and an optional idler on a parallel port, by the same phenomenological model as the crystal\'s OPO mode. The signal can be fixed, swept or stepped through a list. The unconverted pump is discarded inside; threshold, gain, cavity length and synchronisation are not simulated.',
-  cwlaser: 'Emits a steady monochromatic collimated beam at one wavelength.',
-  pulsedlaser: 'Emits a mode-locked pulse train; its bandwidth follows the pulse duration while transform-limited, or is set by hand.',
-  sclaser: 'Emits a configurable pulsed supercontinuum band as a collimated beam. Its pulse duration is set directly, never shorter than the band\u2019s transform limit.',
-  pointsource: 'Emits isotropic light â€” monochromatic, broadband, or the line spectrum of a gas discharge lamp â€” that fades over a short evanescent range unless captured by a nearby lens, objective, mirror, or fiber tip. A parabolic mirror with the source at its focus collimates it.',
-  objarrow: 'Traces a ray fan from the objectâ€™s anchor on the optical axis and separately draws an ideal paraxial image; the image marker does not model downstream clipping.',
-  mirror: 'Reflects rays with configurable size and reflectivity.',
-  retroreflector: 'A right-angle pair of mirrors that reflects any incoming ray back antiparallel to its incidence direction, independent of angle. Its delay-line motion starts at the placed position and periodically slides the whole element away along its own apex axis, only ever lengthening the round-trip optical path over a user-set range â€” a physical model of a mechanical retroreflecting delay stage.',
-  galvo: 'Reflects rays from a static or animated ideal quasistatic mechanical scan angle; high scan rates use a slowed preview.',
-  conicmirror: 'Exact conic intersections and surface normals, with a real central opening. k = 0: sphere; âˆ’1: parabola; below âˆ’1: hyperbola. Radius 0: plane. The coated side reflects; the back and coating losses absorb. The opening is capped at the diameter; an impossible spherical/elliptical radius is enlarged to keep the aperture real (see Geometry used). 2D ray geometry only: no diffraction, spider vanes, coating spectrum, or calibrated IR throughput.',
-  polygonscanner: 'Traces reflection from every facet of a rotating regular polygon, so the angle doubling and the pupil walk fall out of the geometry rather than being modelled. Facet rate = facets Ã— RPM / 60. The usable window is ideal synchronized blanking centred on the facet â€” green hub open, amber blanked â€” and is not derived from your beam: compare the beam against the facet width readout and close the window before the beam straddles two facets. No telecentric scan optics, facet-to-facet angular error, or material removal model.',
-  cmirrorx: 'Diverges reflected rays off a real spherical surface of radius 2f, so it carries the spherical aberration a real one does.',
-  cmirror: 'Focuses reflected rays off a real spherical surface of radius 2f â€” marginal rays cross ahead of the paraxial focus, which is the aberration a parabolic mirror exists to avoid.',
-  oap: 'Reflects off the true parabola, so a source at its focus leaves exactly collimated at any aperture â€” no spherical aberration, unlike a spherical mirror.',
-  lens: 'Bends rays with a thin-lens, paraxial focal-length model. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
-  lensc: 'Diverges rays with a negative thin-lens focal length. Pulse GDD silently assumes N-BK7 and a diameter-aware sag thickness.',
-  metalens: 'A flat paraxial phase-gradient proxy with design-wavelength focal length, diffractive chromatic shift or an idealized achromatic band, and user-set focusing efficiency.',
-  lensgroup: 'Traces a whole prescription â€” one row per surface, with radius, spacing and the glass that follows â€” as real glass bodies. Cemented and air-spaced groups are the same table, so an achromatic doublet corrects its own colour instead of being told to. Pulse GDD follows the real traced path through each glass.',
-  thicklens: 'Refracts through two separated spherical or flat faces of selectable catalogue glass; focal distance, spherical and chromatic aberration, and pulse GDD all follow the traced geometry.',
-  asphericlens: 'Refracts through exact conic-plus-even-polynomial faces, so changing k or Aâ‚„/Aâ‚†/Aâ‚ˆ changes the physical ray intersections and aberration rather than only the drawing.',
-  telescope: 'Applies two thin lenses separated by their focal lengths. Each lens uses the same silent N-BK7 sag estimate for pulse GDD.',
-  objective: 'Choose a plausible generic objective starting point, or open Advanced parameters for exact catalogue values. EFL is the focal length of the whole objective as one equivalent lens; working distance is independent of it, and long-working-distance designs really do focus beyond their own EFL. Magnification is reported for a 200 mm tube lens. The equivalent plane is placed so light focuses one working distance past the front tip. It can lie outside the drawn barrel for long-working-distance designs; it represents the whole objective, not a physical glass surface. Rated NA is the back pupil (2fNA): a beam filling it converges at the rated angle, and overfilling loses the overflow to the barrel. Pulse GDD uses a class-typical 30 mm N-BK7 equivalent that can differ by about 2x from a real objective.',
-  dichroic: 'Transmits or reflects wavelength bands around its configured cutoff, or reflects one band and transmits both sides of it (band reflector), optionally reflecting only part of that band as an output coupler.',
-  filter: 'Passes a spectral band or attenuates intensity as a neutral-density filter.',
-  bs: 'Splits incident light into transmitted and reflected branches.',
-  grating: 'Creates selected diffraction orders using the grating equation.',
-  prism: 'Refracts through all three drawn boundaries with selectable catalogue-glass dispersion and traced path-length GDD.',
-  freeglass: 'Refracts through a directly editable boundary of straight segments and exact circular arcs. Supports constant index or selectable catalogue-glass dispersion and traced GDD; overlapping glass bodies are not surface-merged.',
-  diffuser: 'Spreads incident light into a configurable angular fan.',
-  glassrod: 'Refracts at every glass-air boundary and supports total internal reflection. Catalogue materials add traced path-length GDD; constant index keeps legacy behavior.',
-  polarizer: 'Applies a linear polarization axis and Malus-law attenuation.',
-  hwp: 'Rotates linear polarization around the configured fast axis.',
-  qwp: 'Applies quarter-wave retardance, producing linear, elliptical, or circular polarization from the input state.',
-  pbs: 'Separates orthogonal polarization states into two paths.',
-  isolator: 'Passes light in one direction and blocks reverse propagation.',
-  slit: 'Blocks rays outside the configured aperture gap.',
-  beamdump: 'Absorbs incident rays.',
-  blocker: 'Absorbs rays but stays hidden in exported figures.',
-  phaseplate: 'Retards part of the beam without bending it \u2014 invisible on its own, and the thing an interferometer exists to reveal.',
-  slm: 'Reflects by default and can overlay lens-array, grating, steering, or speckle functions.',
-  metasurface: 'A patterned layer on a thin transparent carrier, working in transmission by default. Overlays the same lens-array, grating, steering, and speckle functions as the SLM, with an optional undiffracted zeroth order â€” but the phase profile is fixed at fabrication rather than programmable.',
-  dmd: 'Routes a configurable binary micromirror pattern into ON and optional OFF orders.',
-  dm: 'Applies continuous reflective tip, tilt, and paraxial defocus.',
-  detector: 'Measures qualitative ray signal, spectrum, polarization, and spot span.',
-  pmt: 'Multiplies a faint signal into a readable one, and reports whether it actually clears the tube\u2019s own dark floor.',
-  camera: 'Measures a pixel-integrated one-dimensional intensity profile and resolves supported interference from sized monochromatic CW lasers.',
-  eye: 'Focuses through a configurable pupil and reports the qualitative retinal signal and spot.',
-  display: 'Shows the live qualitative output of a linked photodetector, PMT, camera, or retina.',
-  aom: 'Deflects first-order light with a configurable modulation efficiency and zero order, under square, sine or sawtooth RF modulation (the ramp sweeping from falling through triangular to rising). A square gate can also draw both orders chopped in opposition, so the switching stays visible on a beam drawn as a steady line.',
-  phasemodulator: 'Writes a voltage-driven optical path across the whole beam without touching its polarization \u2014 invisible alone, and an amplitude modulator in one arm of an interferometer.',
-  aod: 'Steers first-order light to a set deflection angle, held static or swept, with wavelength-dependent scanning and an optional zero order.',
-  aotf: 'Selects one or more spectral lines and passes them straight through â€” multiplexed, with every line open at once, or sequential, stepping through them one at a time. The beam depleted of those lines is deflected to a configurable angle and can be shown or hidden.',
-  delayline: 'Adds a configurable folded optical-path delay while preserving the outgoing beam axis; the stage can hold one delay or sweep between two.',
-  pulsecompressor: 'Adds a bounded second-order spectral-phase correction as positive or negative GDD. It can compress a pulse only by cancelling opposite accumulated GDD; higher-order phase and a physical grating, prism, or chirped-mirror layout are not modeled.',
-  eom: 'Applies voltage-controlled polarization retardance â€” either a fixed waveplate-like shift, or a square-wave switch between two retardance states at a set frequency; an analyzer converts either into intensity modulation.',
-  chopper: 'Gates finite-duration pulse trains in time and draws CW light as a chunked on/off pattern matching its duty cycle; detector readings use the duty-averaged CW power.',
-  crystal: 'Converts a configurable fraction of pump power â€” single-pass fractions are capped at 60 %, a conservative application limit rather than a physical one â€” into second-order (SHG and two-beam SFG), THG, supercontinuum, OPO, or custom output. The supercontinuum band is estimated from the pump wavelength and the chosen medium, or set by hand. The Ï‡â½Â²â¾ mode doubles every beam and, when a second wavelength is present, also mixes the pair, drawing on what doubling leaves of both beams so the mixed line sits alongside the two harmonics â€” but only while their pulses reach the crystal together, which is how time zero is found. OPO mode removes an authored pump depletion, up to 95 % since it builds over many round trips, splits it by Manleyâ€“Rowe and gives signal and idler their own linewidths and pulse durations. Phase matching, threshold and cavity dynamics are not simulated.',
-  sample: 'Attenuates excitation and can emit up to five stacked signals at once â€” fluorescence, SHG, THG, SFG, and CARS. Parametric signals are forward-generated with an optional weaker epi (backward) lobe; SFG and CARS additionally require two different excitation wavelengths at the same spot.',
-  stage: 'Mechanically clips rays outside its clear aperture and optionally contains a sample. The piezo stage can scan the sample along its long axis (XY), along the beam axis (Z, depth), or raster both together; a resin sample can also show pulsed 2PP voxel marks.',
-  probe: 'Reads spectrum, wavelength, or polarization from the nearest traced beam.',
-  arrowann: 'Diagram annotation; does not interact with rays.',
-  figureframe: 'Canvas-only export crop. Its border and handles never appear in the exported figure.',
-  textlabel: 'Markdown annotation with headings, lists, emphasis, and code; web and DOI addresses become clickable links. It does not interact with rays.',
-  highlight: 'Background wash for calling out a region of the sketch; always drawn behind rays and elements, never interacts with rays.',
-  box: 'Generic enclosure with explicit pass-through or beam-blocking behavior.',
-  gascell: 'Diagram-only gas cell housing for gas-filled hollow-core fiber setups; never bends, blocks, or absorbs a ray.',
-  window: 'Diagram-only optical window; never bends, blocks, or absorbs a ray.',
-};
-
-const DIAGRAM_ONLY = new Set(['arrowann', 'textlabel', 'figureframe', 'highlight', 'gascell', 'window']);
-const SHAPERS = new Set(['slm', 'metasurface']);
-
-export function getElementMeta(type, params = {}, context = {}) {
-  let tier = DIAGRAM_ONLY.has(type) ? 'diagram' : 'simulated';
-  let note = '';
-  // A registry-level override (detector-instruments.js sets one per
-  // instrument) is more specific than this generic fallback table and must
-  // win -- otherwise every Detectors-category tagline outside the live
-  // palette (the wiki build, search strings built from this path) silently
-  // reverts to the generic text the moment a type also happens to appear in
-  // ELEMENT_HELP below.
-  let description = registry[type]?.description || ELEMENT_HELP[type] || 'Optical workbench component.';
-  const displayLinkMissing = type === 'display' && params.sensorId
-    && context.element && Array.isArray(context.elements)
-    && !resolveDisplaySensor(context.element, context.elements);
-
-  if (type === 'objective' && objectiveMediumKey(params) === 'legacy') {
-    tier = 'configurable';
-    note = 'This older high-NA sketch did not record a front medium. Choose air, water, oil, or a custom index before treating its rated NA as configured.';
-  } else if (type === 'objective' && objectiveMediumKey(params) !== 'air') {
-    note = 'Medium and NA set a qualitative angular acceptance guide. The curved immersion bridge is schematic; it does not add refraction, focal shift, wetting, or aberration correction.';
-  } else if (type === 'objective') {
-    note = 'Dry objectives are capped at NA 0.85, the practical ceiling for real dry designs. NA sets the back-pupil diameter 2fNA, so it changes the focusing cone and what an overfilled beam costs.';
-  } else if (type === 'metalens' && params.designType === 'achromatic') {
-    note = 'The configured band holds one idealized geometric focus. Meta-atom group-delay limits, PSF, Strehl, field angle, fabrication feasibility, and wavelength-dependent efficiency are not solved.';
-  } else if (type === 'metalens') {
-    note = 'Focal length follows f(Î») = fâ‚€Î»â‚€/Î». Focusing efficiency is a user-set power fraction; unfocused zeroth order and scatter are not drawn.';
-  } else if (type === 'phaseplate') {
-    note = 'On its own this element changes no intensity anywhere \u2014 recombine it against a reference arm to turn the phase into fringes. The profile spans the clear aperture, so match the aperture to the beam; \u201cFringes across the beam\u201d reports what the light actually picks up. A wedge near half a fringe swings the port total hardest; at a whole fringe the written phases cancel and the total stops moving while the profile still shows the pattern, which is when the readout says so.';
-  } else if (type === 'pmt') {
-    note = 'Gain multiplies the signal and the dark floor together, so it lifts a faint signal into a readable range but never improves the signal-to-dark ratio. Collect more light to do that. Output clips at the configured maximum, where a brighter input stops reading brighter.';
-  } else if (type === 'aod') {
-    note = 'Deflection is set directly in degrees, not derived from a crystal and an acoustic velocity, so the angles here need not belong to any real device \u2014 a real deflector reaches a few degrees at most. Efficiency is flat across the scan, where a real one falls away toward both ends, and the optical frequency shift a deflector applies is not carried: at 80 MHz it moves 532 nm by 7.6\u00d710\u207b\u2075 nm, far below anything this workbench resolves.';
-  } else if (type === 'eom' && !params.modulate) {
-    tier = 'configurable';
-    note = 'Apply voltage to set a polarization retardance; use a downstream polarizer or PBS for amplitude modulation.';
-  } else if (type === 'eom' && params.modulate && params.driveMode === 'switching') {
-    note = params.switchMode === 'custom'
-      ? 'The two retardance states alternate at the switching frequency. A downstream polarizer or PBS turns that into real intensity modulation â€” with a pulsed source, individual pulses are routed by the state they meet, so a photodetector on a screen shows the modulated train.'
-      : 'Alternates the incoming polarization between two orthogonal states (Hâ†”V) at the switching frequency; no crystal-axis tuning needed. Put a polarizer or PBS downstream to turn it into intensity modulation â€” with a pulsed source, individual pulses are routed by the state they meet, so a photodetector on a screen shows the modulated train.';
-  } else if (type === 'display' && (!params.sensorId || displayLinkMissing)) {
-    tier = 'configurable';
-    note = displayLinkMissing
-      ? 'The linked sensor is no longer in this sketch. Choose another input; the data cable never changes traced rays.'
-      : 'Choose a sensor input in the inspector. The drawn cable carries data only and never changes traced rays.';
-  } else if (type === 'crystal' && (!params.convert || params.convert === 'none')) {
-    tier = 'configurable';
-    note = 'Choose a conversion mode to generate an output wavelength.';
-  } else if (SHAPERS.has(type) && (!Array.isArray(params.layers) || params.layers.length === 0)) {
-    tier = 'configurable';
-    // An unpatterned shaper is whatever its own default geometry makes it:
-    // a mirror for the SLM, a clear window for a transmissive metasurface.
-    note = params.transmissive
-      ? 'Currently a clear window. Add an optical structure to shape the wavefront.'
-      : 'Currently a plain reflector. Add an optical structure to shape the wavefront.';
-  } else if (DIAGRAM_ONLY.has(type)) {
-    note = 'This element is intentionally visual and never changes traced rays.';
-  } else if (GLASS_BODY_TYPES.has(type)) {
-    const cemented = context.element && Array.isArray(context.elements)
-      ? touchingGlassBody(context.element, context.elements)
-      : null;
-    const adjusted = type === 'thicklens' ? thickLensAdjustment(params)
-      : type === 'asphericlens' ? asphericLensAdjustment(params)
-        : null;
-    if (cemented) {
-      tier = 'configurable';
-      note = `This body is touching another glass body. The tracer cannot resolve two interfaces that close together, so one of them is skipped and the rays are wrong â€” not obviously wrong, just wrong. Leave at least ${MIN_CEMENT_GAP} mm between them; a real cemented group is a 10-20 Âµm layer of not-quite-glass anyway.`;
-    } else if (adjusted) {
-      note = type === 'asphericlens'
-        ? `Requested asphere geometry is outside the finite-aperture safety bounds or would cross the other face. The trace uses ${formatAsphericGeometry(params)}; see Geometry used below.`
-        : `Requested radii or thickness cannot close at this aperture. The trace uses ${formatRealizedGeometry(params)}; see Geometry used below.`;
-    } else if (type === 'thicklens') {
-      note = 'A 2D meridional singlet with spherical or flat faces and visible-band catalogue approximations. Use Aspheric lens for conic/even-polynomial faces; skew rays, coatings, and calibrated off-axis aberrations are not modeled.';
-    } else if (type === 'asphericlens') {
-      note = 'The trace uses the standard even-asphere sag with exact intersections and surface normals in a 2D meridional section. Paraxial focal readouts use vertex curvature; diffraction, skew rays, coatings, and manufacturing tolerances are not modeled.';
-    } else {
-      note = 'Straight and circular-arc boundaries use qualitative geometric refraction. Nested or overlapping glass bodies are not surface-merged.';
-    }
-  } else if (type === 'stage' && params.voxelPreview) {
-    note = 'Pulsed arrivals leave canvas-only 2PP voxel markers in the mounted sample; marker size/opacity qualitatively broadens with Z (depth) offset from focus. This is a 2D scan preview, not a threshold, dose, curing, or true 3D fabrication simulation.';
-  } else if (type === 'stage' && params.pzMode && params.pzMode !== 'static') {
-    note = 'The piezo stage motion is a display-time animation of the mounted sample â€” "sync" is a simple serpentine raster, not a calibrated piezo trajectory.';
-  } else if (type === 'display') {
-    note = 'The screen mirrors a linked sensorâ€™s qualitative tracer output. Its data cable never changes traced rays.';
-  }
-
-  const labels = { simulated: 'Simulated', configurable: 'Needs setup', diagram: 'Diagram only' };
-  return {
-    tier,
-    status: labels[tier],
-    description,
-    note,
-  };
-}
-
-export const categories = [
-  'Annotations',
-  'Sources',
-  'Mirrors',
-  'Lenses',
-  'Fibers',
-  'Filters & Splitters',
-  'Dispersive elements',
-  'Polarization',
-  'Beam Block',
-  'Wavefront Shaping',
-  'Detectors',
-  'Modulators',
-  'Pulse Timing',
-  'Nonlinear Optics',
-  'Specimens',
-  'Custom',
-  'Lab elements',
-];
-
-// The order the palette lists a category in: ungrouped components first, so
-// one belonging to no family reads as its own thing rather than as a stray
-// member of the subsection above it, then each named family in turn. Shared
-// with the wiki builder so its index cannot drift out of step with the
-// library it is documenting.
-export function paletteOrderedTypes(category) {
-  const entries = Object.entries(registry)
-    .filter(([, def]) => def.category === category && !def.hidden)
-    .sort((a, b) => (a[1].paletteOrder ?? 100) - (b[1].paletteOrder ?? 100));
-  const grouped = new Map();
-  const ungrouped = [];
-  for (const [type, def] of entries) {
-    if (!def.paletteGroup) { ungrouped.push(type); continue; }
-    if (!grouped.has(def.paletteGroup)) grouped.set(def.paletteGroup, []);
-    grouped.get(def.paletteGroup).push(type);
-  }
-  return [...ungrouped, ...[...grouped.values()].flat()];
-}
-
-export function getSize(el) {
-  const d = registry[el.type];
-  if (d.size_ && typeof d.size_ === 'function') return d.size_(el);
-  if (typeof d.size === 'function') return d.size(el);
-  return d.size;
-}
-
-// Axis-aligned world bounds for fitting/export. This includes common labels
-// and the probe's readout card, which extend beyond the element hit box.
-export function getVisualBounds(el, { includeLabel = true } = {}) {
-  const d = registry[el.type];
-  if (!d) return null;
-  const sz = getSize(el);
-  const a = (el.rot || 0) * Math.PI / 180;
-  const ex = (Math.abs(sz.w * Math.cos(a)) + Math.abs(sz.h * Math.sin(a))) / 2;
-  const ey = (Math.abs(sz.w * Math.sin(a)) + Math.abs(sz.h * Math.cos(a))) / 2;
-  const anchor = boxAnchor(el);
-  const cx = el.x + anchor.x * Math.cos(a) - anchor.y * Math.sin(a);
-  const cy = el.y + anchor.x * Math.sin(a) + anchor.y * Math.cos(a);
-  let x0 = cx - ex, x1 = cx + ex, y0 = cy - ey, y1 = cy + ey;
-
-  if (el.type === 'probe') {
-    // The card is counter-rotated to stay upright, so its world box is
-    // axis-aligned and offset from the element â€” not a rotation of some
-    // element-local rectangle.
-    const scale = probeScale(el);
-    const place = probeCardPlacement(el, probeCard(el, probeAt(el.x, el.y)), scale);
-    const left = el.x + place.x, top = el.y + place.y;
-    x0 = Math.min(x0, left); x1 = Math.max(x1, left + place.w);
-    y0 = Math.min(y0, top); y1 = Math.max(y1, top + place.h);
-  }
-
-  if (includeLabel && el.showLabel && el.label) {
-    const width = Math.max(8, String(el.label).length * 6.2);
-    const pos = el.labelPos || 'b';
-    if (pos === 'b') {
-      const y = el.y + ey + 13;
-      x0 = Math.min(x0, el.x - width / 2); x1 = Math.max(x1, el.x + width / 2); y1 = Math.max(y1, y + 3);
-    } else if (pos === 't') {
-      const y = el.y - ey - 7;
-      x0 = Math.min(x0, el.x - width / 2); x1 = Math.max(x1, el.x + width / 2); y0 = Math.min(y0, y - 11);
-    } else if (pos === 'l') {
-      x0 = Math.min(x0, el.x - ex - 7 - width); y0 = Math.min(y0, el.y - 7); y1 = Math.max(y1, el.y + 7);
-    } else {
-      x1 = Math.max(x1, el.x + ex + 7 + width); y0 = Math.min(y0, el.y - 7); y1 = Math.max(y1, el.y + 7);
-    }
-  }
-  return { x0, y0, x1, y1 };
-}
-
-// The world direction an element's data port faces, as a unit vector. The
-// port is stored in element-local coordinates, so it has to be rotated with
-// the element before it means anything on the bench.
-export function dataPortDirection(el) {
-  const raw = registry[el?.type]?.dataPort;
-  const port = typeof raw === 'function' ? raw(el) : raw;
-  const angle = (el?.rot || 0) * Math.PI / 180;
-  const x = (port?.x || 0) * Math.cos(angle) - (port?.y || 0) * Math.sin(angle);
-  const y = (port?.x || 0) * Math.sin(angle) + (port?.y || 0) * Math.cos(angle);
-  const length = Math.hypot(x, y);
-  return length > 1e-9 ? { x: x / length, y: y / length } : { x: 1, y: 0 };
-}
-
-// Somewhere to drop `el` that no existing element already occupies. Searches
-// outward from `near`, trying the `prefer` direction first and fanning to
-// either side before widening the ring, so a screen lands on the side the
-// sensor's cable actually leaves from whenever that side is free.
-//
-// Only element boxes count as occupied. Beams are deliberately ignored: a
-// screen is a bench instrument that reads a cable, it does not block light,
-// and refusing every spot a ray crosses would leave nowhere to put it in a
-// busy sketch.
-export function findFreePlacement(el, elements, near, prefer = { x: 1, y: 0 }) {
-  const size = getSize(el);
-  const margin = 14;
-  const occupied = elements
-    .filter(other => other && other.id !== el.id)
-    .map(other => getVisualBounds(other))
-    .filter(Boolean);
-
-  const fits = (x, y) => {
-    const bounds = getVisualBounds({ ...el, x, y });
-    if (!bounds) return false;
-    return !occupied.some(other => bounds.x0 - margin < other.x1 && bounds.x1 + margin > other.x0
-      && bounds.y0 - margin < other.y1 && bounds.y1 + margin > other.y0);
-  };
-
-  const baseAngle = Math.atan2(prefer.y, prefer.x);
-  const fan = [0, 28, -28, 56, -56, 90, -90, 124, -124, 152, -152, 180];
-  // `near` is the sensor's centre and the returned point is the screen's
-  // centre, so the first ring has to clear half the screen before it clears
-  // anything else â€” plus a gap wide enough to leave the data cable readable.
-  const firstRing = Math.max(size.w, size.h) / 2 + 58;
-  const ringStep = 34, rings = 12;
-  for (let ring = 0; ring < rings; ring++) {
-    const radius = firstRing + ring * ringStep;
-    for (const degrees of fan) {
-      const angle = baseAngle + degrees * Math.PI / 180;
-      const x = near.x + Math.cos(angle) * radius;
-      const y = near.y + Math.sin(angle) * radius;
-      if (fits(x, y)) return { x: Math.round(x), y: Math.round(y) };
-    }
-  }
-  // Every candidate was blocked. Place it beyond the whole search area rather
-  // than on top of something: an overlap the user must untangle is worse than
-  // a screen further out than they expected.
-  const radius = firstRing + rings * ringStep;
-  return {
-    x: Math.round(near.x + Math.cos(baseAngle) * radius),
-    y: Math.round(near.y + Math.sin(baseAngle) * radius),
-  };
-}
-
-// element label, drawn OUTSIDE the rotated group: always upright, positioned
-// around the element's rotated bounding box (labelPos: b/t/l/r)
-export function labelSVG(el) {
-  if (!el.showLabel || !el.label) return '';
-  const sz = getSize(el);
-  const a = (el.rot || 0) * Math.PI / 180;
-  const ex = (Math.abs(sz.w * Math.cos(a)) + Math.abs(sz.h * Math.sin(a))) / 2;
-  const ey = (Math.abs(sz.w * Math.sin(a)) + Math.abs(sz.h * Math.cos(a))) / 2;
-  const pos = el.labelPos || 'b';
-  let x = el.x, y = el.y, anchor = 'middle', base = '';
-  if (pos === 'b') y += ey + 13;
-  else if (pos === 't') y -= ey + 7;
-  else if (pos === 'l') { x -= ex + 7; anchor = 'end'; base = 'dominant-baseline="central"'; }
-  else { x += ex + 7; anchor = 'start'; base = 'dominant-baseline="central"'; }
-  return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}" ${base} font-size="11" fill="#444">${esc(el.label)}</text>`;
-}
-
-export function createElement(type, x = 0, y = 0) {
-  const d = registry[type];
-  const params = {};
-  for (const p of d.params || []) {
-    if (p.type === 'readout' || p.type === 'derived' || p.type === 'derived-select' || p.type === 'section') continue;
-    params[p.key] = Array.isArray(p.def) ? JSON.parse(JSON.stringify(p.def)) : p.def;
-  }
-  return { id: uid(), type, x, y, rot: 0, label: '', showLabel: false, params };
-}
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×OtÛtèµ©hºÚn¶X§zÍZ[\ÜÈÛÛšXÓZ\œ›Ü‘Ù[ÛY]žKÛÛšXÓZ\œ›Ü”Ú^™KÛÛšXÓZ\œ›Ü”Õ‘ËÛÛšXÓZ\œ›Ü”Ý\™˜XÙ\ÈHœ›ÛH	Ë‹ØÛÛšXË[Z\œ›Ü‹šœÉÎÂ‹ËÈ™YÚ\ÝžHÙˆÜXØ[[[Y[Ë‚‹ËÈØØ[ÛÛÜ™[˜]\Îˆ[[Y[Ù[\™Y]
+
+NÈY˜][ÜXØ[›ÜYØ][Ûˆ\È[Û™È
+Þ‚‹ËÈYˆHÈX™[Ø]YÛÜžKÚ^™NžÝË_›Š[
+K\˜[\Î–Ë‹‹—KÝ™Ê[
+KOœÝš[™Ë‹ËÈÝ\™˜XÙ\Ê[
+KO–ÞÞKLK‹L‹Ú[™]_WKÛÝ\˜ÙJ[
+KO–Ü˜^\×K‹ËÈ[[Y\œÚ[Û”ÛÝ\˜ÙJ[
+KOžÞ_K[[Y\œÚ[ÛÛÛXÝ
+[
+KOœÙYÛY[ÙYÛY[ÈB‹ËÈÝ\™˜XÙHÚ[™È[™YžHH˜XÙ\ˆ[˜ÛYHZ\œ›Ü‹[œËY][[œËÛZ\œ›Ü‹‹ËÈ™Yœ˜XÝXÚ›ÚXËš[\‹Ü]Ü˜][™ËSÓKÐSÑXœÛÜ˜‹[™˜[œÛZ]‚‚š[\ÜÈ\ÝÔÙYÛY[\ØË›Ü›X]ÚYÛ˜[›ÝÛ[ÛÝ]ÕÛÜ›Ø]™[[™ÝÐÛÛÜˆHœ›ÛH	Ë‹Ý][šœÉÎÂš[\ÜÈZYHœ›ÛH	Ë‹Ý][šœÉÎÂš[\ÜÈÛYÛÛ”ØØ[›™\”Ý]KÛYÛÛ”ØØ[›™\•™\XÙ\ËÛYÛÛ”ØØ[›™\”Ý\™˜XÙ\ËÛYÛÛ”ØØ[›™\‘˜XÙ]ÚYHœ›ÛH	Ë‹ÜÛYÛÛ‹\ØØ[›™\‹šœÉÎÂš[\ÜÈX\šÙÝÛ“^[Ý]X\šÙÝÛ•^Õ‘ÈHœ›ÛH	Ë‹ÛX\šÙÝÛ‹šœÉÎÂš[\ÜÈSTÔ‘TÑUË[\ÛÛÜ‹[\[™TÝ[[X\žHHœ›ÛH	Ë‹Û[\ËšœÉÎÂš[\ÜÈÛÛ\™\ÜÛÜ‘Ù™XY[™Ë]XÝÜ”™XY[™ËY][[œÔ™XY[™ËZ^™XY[™ËØš™XÝ]™T\[š[ÜÔ™XY[™Ë\ÙT]R[[Z[˜][Û‹›Ø™P]ÜXÚ[Y[”ÜœÓ›ÝKÜXÚ[Y[•[Z[™Ô™XY[™ËÝ\\˜ÛÛ[][T™XY[™ÈHœ›ÛH	Ë‹Ü˜^]˜XÙKšœÉÎÂš[\ÜÈY\•Ø]™[[™ÝPVÐÓÓ•‘T”ÒSÓ‹PVÓÔ×ÑTUSÓ‹ÜÔÚYÛ˜[]\œÙUØ]™[[™Ý\ÝÐ×ÓQQPHHœ›ÛH	Ë‹Ü\˜[Y]šXËšœÉÎÂš[\ÜÂˆ›Ø™P]™\˜YÙTÝÙ\•Ë›Ü›X]ÝÙ\“]Ë›Ø™Q\˜][Û“X™[›Ø™U[YUÚ[™ÝÓœË›Ø™TÜXÝ[T˜[™ÙKˆ›Ü›X][YP^\ÓœËŸHœ›ÛH	Ë‹Ü›Ø™KšœÉÎÂš[\ÜÂˆ[™]ÚY›ÜÛÚ\™[˜ÙS[™Ý›KÜXÝ[TØ[\\ËÝ\\˜ÛÛ[][U˜[œÙ›Ü›S[Z]œË˜[œÙ›Ü›S[Z]Y˜[™ÚY›KŸHœ›ÛH	Ë‹ÜÜXÝ[KšœÉÎÂš[\ÜÂˆ›Ý[™\žP›Ý[™Ë›Ý[™\žT]]K›Ý[™\žTÙYÛY[Ë\ÔÚ[\P›Ý[™\žKˆÚ[[›Ý[™\žKØ[\P›Ý[™\žKŸHœ›ÛH	Ë‹ÜÛYÛÛ‹šœÉÎÂš[\ÜÈÛ\š^˜][Û‘\ØÜš\[Û‹ÝÚÙ\Ð[™ÛQYÈHœ›ÛH	Ë‹ÜÛ\š^˜][Û‹šœÉÎÂš[\ÜÂˆ]]Ü™Y[ÙU[Z[™ËÛ\ÜÒ[™^\Ñ\Ü\œÚ]™QÛ\ÜËÓTÔ×ÓÔSÓ”ËPVÐS‘ÒQÓ“KPVÔÓÕTÑWÑÑÑ”Ì‹RS—ÐS‘ÒQÓ“KŸHœ›ÛH	Ë‹ÙÛ\ÜËšœÉÎÂš[\ÜÂˆRS—ÐÑSQS•ÑÐTPVÔÕT‘PÑWÔ“ÕÔË‘TÑUÓÔSÓ”Ë›Ü›X[^™TÝ\™˜XÙUX›KÝ\™˜XÙT›ÝÜÓÙ‹Ý\™˜XÙUX›P^X[ÛÛÝ\‹ˆÝ\™˜XÙUX›PØ\™[˜[ËÝ\™˜XÙUX›TÝ[[X\žKÝ\™˜XÙUX›UÐ›ÙY\ËŸHœ›ÛH	Ë‹Û[œÙÜ›Ý\šœÉÎÂ‚™^ÜÈRS—ÐÑSQS•ÑÐTPVÔÕT‘PÑWÔ“ÕÔÈNÂš[\ÜÂˆÐ’‘PÕU‘WÑQUSÔ‘TÑUÐ’‘PÕU‘WÑ”“Ó•ÖÐ’‘PÕU‘WÓQQPKÐ’‘PÕU‘WÓWÑQUSˆÐ’‘PÕU‘WÔ‘TÑUËÐ’‘PÕU‘WÔ‘TÑUÑÔ“ÕTËÐ’‘PÕU‘WÔÒÕST—ÖÐ’‘PÕU‘WÕÑÓRS‹ˆÐ’‘PÕU‘WÕÑÓPVˆ\SØš™XÝ]™T™\Ù]ˆØš™XÝ]™PXØÙ\[˜ÙR[[™ÛQYËØš™XÝ]™P˜XÚÖØš™XÝ]™P˜\œ™[[’ZYÚˆØš™XÝ]™P˜\œ™[[’ZYÚ]Øš™XÝ]™TÝÜˆØš™XÝ]™QY™™XÝ]™Q›ØØ[[™ÝØš™XÝ]™Qœ›Û\\\™KØš™XÝ]™S[œÔ[™VØš™XÝ]™SXYÛšYšXØ][Û‹ˆØš™XÝ]™SX^[][SKØš™XÝ]™SX^[][UÛÜšÚ[™Ñ\Ý[˜ÙKØš™XÝ]™SYY][R[™^Øš™XÝ]™SYY][RÙ^KˆØš™XÝ]™S[Y\šXØ[\\\™KØš™XÝ]™T™\Ù]Ù^KØš™XÝ]™T\[X[Y]\‹Øš™XÝ]™T\[˜Y]\ËˆØš™XÝ]™UÛÜšÚ[™Ñ\Ý[˜ÙKŸHœ›ÛH	Ë‹ÛØš™XÝ]™KšœÉÎÂš[\ÜÈ[ÙSÝ™\›\ØÛÜU˜XÙHHœ›ÛH	Ë‹Ü[Ù\ËšœÉÎÂš[\ÜÂˆ›Ü›X[^™P[ÝÚ[›™[Ë[Ý“Ü[Ú[›™[Ë[Ý”Ý[[X\žKYØXÞP[Ý”\ÜØ˜[™ˆ›Ü›X[^™P[Ý”\ÜØ˜[™SÕ—ÐS‘ÓRS‹SÕ—ÐS‘ÓPVSÕ—ÐS‘ÑQUSŸHœ›ÛH	Ë‹Ø[Ý‹šœÉÎÂš[\ÜÈ[ÙØØ[”ÜÚ][Û‹[ÙXØÙ\ÜÕ[YU\Ë[ÙX^ØØ[”˜]RÒˆHœ›ÛH	Ë‹ØXÛÝ\ÝË[ÜXËšœÉÎÂš[\ÜÈ\ÙS[Ù[]Ü“Ü[K\ÙS[Ù[]Ü”XZÓÜ[HHœ›ÛH	Ë‹Ù[XÝ›Ë[ÜXËšœÉÎÂš[\ÜÂˆTÔT‘WÓSRUË\Ü\™TØYË\Ü\™TÛÜK\Ü\šXÓ[œÐY\ÝY[\Ü\šXÓ[œÐØ\™[˜[Ëˆ\Ü\šXÓ[œÑÙ[ÛY]žK\Ü\šXÔÝ\™˜XÙTÝ[[X\žKŸHœ›ÛH	Ë‹Ø\Ü\™KšœÉÎÂ‚™^ÜÂˆTÔT‘WÓSRUË\Ü\™TØYË\Ü\™TÛÜK\Ü\šXÓ[œÐY\ÝY[\Ü\šXÓ[œÐØ\™[˜[Ëˆ\Ü\šXÓ[œÑÙ[ÛY]žK\Ü\šXÔÝ\™˜XÙTÝ[[X\žKŸNÂ‚‹ËÈYHÚ[ˆH[[Y[	ÜÈ›Ý][ÛˆÛÝ[™[™\ˆ˜ZÙYZ[ˆ^\ÚYHÝÛ‚™[˜Ý[Ûˆ\Ñ›\Y
+[
+HÂˆÛÛœÝˆH
+
+[œ›Ý
+H	HÍŒ
+ÈÍŒ
+H	HÍŒÂˆ™]\›ˆˆˆL	‰ˆˆÌÂŸB‹ËÈ›Ý][Ûˆ›ÜˆÚYK[[Ý[Y
+™\XØ[
+H^]ÙY\È]™XYX›B™[˜Ý[ÛˆÚYU^›Ý
+[
+HÂˆÛÛœÝˆH
+
+
+[œ›Ý
+H
+ÈL
+H	HÍŒ
+ÈÍŒ
+H	HÍŒÂˆ™]\›ˆ
+ˆˆL	‰ˆˆÌ
+HÈNLˆLÂŸB‚˜ÛÛœÝÓTÔÈH	ÈØÎYMIËÓTÔ×ÔÈH	ÈÍNLÍ	ÎÂ˜ÛÛœÝ”‘QQÓTÔ×ÑQUSHÂˆÈˆLÍ‹NˆLKÈˆÌNˆLKÈˆÎNˆŒKÈˆL‹NˆˆK—NÂ‚‹ËÈKKKHXÚÈÜ\šXØ[[œÈKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKB‹ËÈHÝ\™˜XÙHÙˆÚYÛ™Y˜Y]\ÈˆÚ]]È™\^]ˆ\È]ÈÙ[™HÙ‚‹ËÈÝ\˜]\™H]ˆ
+È‹ÛÈˆˆ[Ù\ÈÝØ\™8¢$ž
+œ›ÛXÛÛ™^
+H[™ˆ‹ËÈÝØ\™
+ÞˆˆH\ÈH›]Ø\ÙK˜]Ûˆ[™˜XÙY\ÈHZ[ˆ[™K‚˜ÛÛœÝÝ\™˜XÙTØYÈH
+K‹ŠHOˆ
+ˆ
+ÈŠHHX]œÚYÛŠŠH
+ˆX]œÜ\
+X]›X^
+ˆ
+ˆˆHH
+ˆJJNÂ‚‹ËÈ˜YZH™[ÝÈHÙ[ZKYX[Y]\ˆÛÝ[™YYHÜ\™HÛX[\ˆ[ˆH[œÂ‹ËÈ]Ù[ŽÈÛ[\[™ÈÙY\ÈH›Ý[™\žHÛÛœÝXÝX›H˜]\ˆ[ˆ›ÙXÚ[™È˜S‚‹ËÈÙ[ÛY]žH]\˜[Y]\ˆ^™[Y\È
+[™›Ü˜ÙYžH\ÝÙÙ[ÛY]žK\ÝšœÊK‚™[˜Ý[ÛˆXÚÓ[œÔ˜YZJ\˜[\ÊHÂˆÛÛœÝHX]›X^
+K
+\˜[\Ë™XHÏÈK
+HÈŠNÂˆÛÛœÝÛ[\ˆHˆOˆÂˆÛÛœÝˆH[X™\ŠŠHÂˆYˆ
+X]˜XœÊŠHYKMŠH™]\›ˆÈËÈ›]ˆ™]\›ˆX]œÚYÛŠŠH
+ˆX]›X^
+X]˜XœÊŠK
+ˆKŒŠNÂˆNÂˆ™]\›ˆÈŒNˆÛ[\Š\˜[\ËœŒJKŒŽˆÛ[\Š\˜[\ËœŒŠHNÂŸB‚‹ËÈÛ\ÜÈ›ÙY\È^ÜÙH\‹\Ý\™˜XÙH˜[œÛZ\ÜÚ[Ûˆ\ÈH\˜Ù[YÙKZÙH]™\žB‹ËÈÝ\ˆÜXÉÜÈ˜[œÛZ\ÜÚ[ÛˆY™šXÚY[˜ÞNÈH˜XÙ\ˆÛÜšÜÈ[ˆœ˜XÝ[ÛœË‚™^Ü[˜Ý[ÛˆÝ\™˜XÙU˜[œÛZ\ÜÚ[ÛŠ\˜[\ÈHßJHÂˆÛÛœÝÝH[X™\‹š\Ñš[š]J[X™\Š\˜[\Ë˜[œÑY™ŠJHÈ[X™\Š\˜[\Ë˜[œÑY™ŠHˆNÂˆ™]\›ˆX]›Z[ŠKX]›X^
+ÝÈL
+JNÂŸB‚‹ËÈÛÜÙY›Ý[™\žH›ÜˆHÛ\ÜÈ›ÙK\ÈHÙ[™HXÚÛ™\ÜÈXÝX[H\ÙY‚‹ËÈHÝ›Û™ÛHšXÛÛ™^[œÈÚ]ÛÈ]HÙ[™HXÚÛ™\ÜÈÛÝ[]™H]ÈÛÂ‹ËÈ˜XÙ\ÈÜ›ÜÜÈ]Hš[KÛÈHXÚÛ™\ÜÈ\È˜Z\ÙY[[H™X[YÙH™[XZ[œË‚™^Ü[˜Ý[ÛˆXÚÓ[œÑÙ[ÛY]žJ\˜[\ÈHßJHÂˆÛÛœÝÈŒKŒˆHHXÚÓ[œÔ˜YZJ\˜[\ÊNÂˆÛÛœÝRS—ÑQÑHHÂˆÛÛœÝØYÌHHŒHÈÝ\™˜XÙTØYÊŒJHˆÈËÈØYÈYX\Ý\™Yœ›ÛHH™\^ˆÛÛœÝØYÌˆHŒˆÈÝ\™˜XÙTØYÊŒŠHˆÂˆÛÛœÝHX]›X^
+[X™\Š\˜[\ËXÚÛ™\ÜÊHKRS—ÑQÑH
+ÈØYÌHHØYÌŠNÂˆÛÛœÝŒHHYÈ‹ŒˆHÈŽÂˆÛÛœÝYÙLHHŒHÈÝ\™˜XÙTØYÊŒKŒJHˆŒNÂˆÛÛœÝYÙLˆHŒˆÈÝ\™˜XÙTØYÊŒ‹ŒŠHˆŒŽÂ‚ˆÛÛœÝÚ[ÈHÞÈˆYÙLKNˆWNÂˆYˆ
+ŒJHÚ[Ëœ\Ú
+ÈˆŒKNˆ\˜ÎˆYHJNÂˆÚ[Ëœ\Ú
+ÈˆYÙLKNˆZKÈˆYÙL‹NˆZJNÂˆYˆ
+ŒŠHÚ[Ëœ\Ú
+ÈˆŒ‹Nˆ\˜ÎˆYHJNÂˆÚ[Ëœ\Ú
+ÈˆYÙL‹NˆJNÂ‚ˆÛÛœÝÈHÚ[Ë›X\
+Oˆž
+NÂˆ™]\›ˆÈÚ[ËŒKŒ‹ŒKŒ‹Ü[ŽˆX]›X^
+‹‹žÊHHX]›Z[Š‹‹žÊHNÂŸB‚‹ËÈÛÛYH™\]Y\ÝYÛÛXš[˜][ÛœÈØ[››Ý\ØÜšX™HHÛÜÙYÜ\šXØ[Ú[™Û]ˆB‹ËÈ˜Y]\ÈÛX[\ˆ[ˆHÙ[ZKX\\\™H\È›È™X[Ú\˜Ý[\ˆYÙKÚ[HÛÂ‹ËÈ]HÙ[™HXÚÛ™\ÜÈXZÙ\ÈHÛÈ˜XÙ\ÈÜ›ÜÜËˆHÙ[ÛY]žHÝ^\ÈØY™B‹ËÈžH™X[^š[™ÈH™X\™\ÝÛÛœÝXÝX›HÚ\NÈ^ÜÙH]Y\ÝY[ÛÈB‹ËÈ[œÜXÝÜˆ™]™\ˆ]ÈH™\]Y\ÝY[X™\œÈÚ[[H\ØYÜ™YHÚ]H˜XÙK‚™^Ü[˜Ý[ÛˆXÚÓ[œÐY\ÝY[
+\˜[\ÈHßJHÂˆÛÛœÝÈHXÚÓ[œÑÙ[ÛY]žJ\˜[\ÊNÂˆÛÛœÝ™\]Y\ÝYHÂˆŒNˆ[X™\Š\˜[\ËœŒJHˆŒŽˆ[X™\Š\˜[\ËœŒŠHˆXÚÛ™\ÜÎˆ[X™\Š\˜[\ËXÚÛ™\ÜÊHKˆNÂˆÛÛœÝY™™\œÈHX]˜XœÊË”ŒHH™\]Y\ÝYœŒJHˆYKNBˆX]˜XœÊË”ŒˆH™\]Y\ÝYœŒŠHˆYKNBˆX]˜XœÊË™H™\]Y\ÝYXÚÛ™\ÜÊHˆYKNNÂˆ™]\›ˆY™™\œÈÈÈŒNˆË”ŒKŒŽˆË”Œ‹XÚÛ™\ÜÎˆË™Hˆ[ÂŸB‚‹ËÈ\˜^X[Ý[[X\žHÙˆÚ]HÝ\™˜XÙ\ÈY\ÎˆY™™XÝ]™H›ØØ[[™ÝžB‹ËÈH[œÛXZÙ\‰ÜÈ\]X][ÛˆÚ]HXÚÛ™\ÜÈ\›K[™H˜XÚÈ›ØØ[‹ËÈ\Ý[˜ÙHYX\Ý\™Yœ›ÛHH™X\ˆ™\^ˆ™\ÜYÈH\Ù\ˆ˜]\ˆ[‚‹ËÈÛÛ™šYÝ\™Y8 %H˜XÙH™]™\ˆÛÛœÝ[È\ÙK‚™^Ü[˜Ý[ÛˆXÚÓ[œÐØ\™[˜[Ê\˜[\ÈHßKØ]™[[™ÝHNËŠHÂˆÛÛœÝÈŒKŒ‹HHXÚÓ[œÑÙ[ÛY]žJ\˜[\ÊNÂˆÛÛœÝˆHÛ\ÜÒ[™^
+\˜[\Ë™Û\ÜËØ]™[[™Ý
+HÏÈKNÂˆÛÛœÝÌHHŒHÈHÈŒHˆÌˆHŒˆÈHÈŒˆˆÂˆÛÛœÝÝÙ\ˆH
+ˆHJH
+ˆ
+ÌHHÌˆ
+È
+ˆHJH
+ˆ
+ˆÌH
+ˆÌˆÈŠNÂˆYˆ
+X]˜XœÊÝÙ\ŠHYKNJH™]\›ˆÈŽˆ[™š[š]K™™ˆ[™š[š]KˆNÂˆÛÛœÝˆHHÈÝÙ\ŽÂˆ™]\›ˆÈ‹™™ˆˆ
+ˆ
+HH
+ˆHJH
+ˆ
+ˆÌHÈŠKˆNÂŸB‚˜ÛÛœÝ›Ü›X]›ØØ[HˆOˆ
+[X™\‹š\Ñš[š]JŠHÈ	Ó[X™\Š‹Ô™XÚ\Ú[ÛŠ
+J_Xˆ	ø¢'ˆ
+Y›ØØ[
+IÊNÂ˜ÛÛœÝ›Ü›X]Ù[ÛY]žU˜[YHHˆOˆ[X™\Š‹Ô™XÚ\Ú[ÛŠ
+JKÔÝš[™Ê
+Kœ™\XÙJ	ËIË	ø¢$‰ÊNÂ˜ÛÛœÝ›Ü›X]™X[^™YÙ[ÛY]žHH\˜[\ÈOˆÂˆÛÛœÝÈHXÚÓ[œÑÙ[ÛY]žJ\˜[\ÊNÂˆ™]\›ˆ¸  H	Ù›Ü›X]Ù[ÛY]žU˜[YJË”ŒJ_H0­È¸  ˆ	Ù›Ü›X]Ù[ÛY]žU˜[YJË”ŒŠ_H0­È	Ù›Ü›X]Ù[ÛY]žU˜[YJË™
+_H[XÂŸNÂ‚˜ÛÛœÝ›Ü›X]\Ü\šXÑÙ[ÛY]žHH\˜[\ÈOˆÂˆÛÛœÝÙ[ÛY]žHH\Ü\šXÓ[œÑÙ[ÛY]žJ\˜[\ÊNÂˆÛÛœÝY\ÝY[H\Ü\šXÓ[œÐY\ÝY[
+\˜[\ÊNÂˆÛÛœÝ˜[Y\ÈHÂˆ¸  H	Ù›Ü›X]Ù[ÛY]žU˜[YJÙ[ÛY]žK™œ›Û”Š_Xˆ¸  ˆ	Ù›Ü›X]Ù[ÛY]žU˜[YJÙ[ÛY]žKœ™X\‹”Š_Xˆ	Ù›Ü›X]Ù[ÛY]žU˜[YJÙ[ÛY]žK™
+_H[XˆNÂˆYˆ
+Y\ÝY[Ë™œ›ÛØØ[HJH˜[Y\Ëœ\Ú
+œ›ÛH\›\È0åÉÓ[X™\ŠY\ÝY[™œ›ÛØØ[KÔ™XÚ\Ú[ÛŠÊJ_X
+NÂˆYˆ
+Y\ÝY[Ëœ™X\”ØØ[HJH˜[Y\Ëœ\Ú
+™X\ˆH\›\È0åÉÓ[X™\ŠY\ÝY[œ™X\”ØØ[KÔ™XÚ\Ú[ÛŠÊJ_X
+NÂˆ™]\›ˆ˜[Y\Ëš›Ú[Š	È0­È	ÊNÂŸNÂ‚‹ËÈ˜[Y\ÈHÚ\HHÛÈ˜YZHXÝX[H\ØÜšX™KˆÛÜÚÝÚ[™Ë™XØ]\ÙHB‹ËÈÝ[™\™Ø\\ÚX[ˆÛÛ™[[ÛˆH[œÛXZÙ\‰ÜÈ\]X][Ûˆ™YYÈ\È˜[[Ý\ÛB‹ËÈÛÝ[\‹Z[Z]]™HÛˆH‘PTˆÝ\™˜XÙNˆˆ\ÈÜÚ]]™HÚ[ˆHÙ[™HÙ‚‹ËÈÝ\˜]\™HY\È\\ˆ[Û™ÈH˜^KÛÈHšXÛÛ™^[œÈ\ÈŒHˆÚ]‹ËÈŒˆ8 %H™X\ˆÝ\™˜XÙH[Ù\ÈÝ]Ø\™]‘QÐUU‘H˜Y]\Ëˆ™\Ü[™ÈB‹ËÈ™\Ý[[™ÈÚ\HYX[œÈ›Ø›ÙH\ÈÈÛ][ˆZ\ˆXY‚™^Ü[˜Ý[ÛˆXÚÓ[œÔÚ\S˜[YJ\˜[\ÈHßJHÂˆÛÛœÝÈŒKŒˆHHXÚÓ[œÑÙ[ÛY]žJ\˜[\ÊNÂˆÛÛœÝ˜XÙHH
+‹™X\ŠHOˆ
+ˆOOHÈ	Ü[›ÉÈˆ
+™X\ˆÈˆˆˆˆ
+HÈ	ØÛÛ™^	Èˆ	ØÛÛ˜Ø]™IÊNÂˆÛÛœÝœ›ÛH˜XÙJŒK˜[ÙJK˜XÚÈH˜XÙJŒ‹YJNÂˆYˆ
+œ›ÛOOH	Ü[›ÉÈ	‰ˆ˜XÚÈOOH	Ü[›ÉÊH™]\›ˆ	Ô[™HÛX‰ÎÂˆYˆ
+œ›ÛOOH	Ü[›ÉÈ˜XÚÈOOH	Ü[›ÉÊHÂˆÛÛœÝÝ\™YHœ›ÛOOH	Ü[›ÉÈÈ˜XÚÈˆœ›ÛÂˆ™]\›ˆœ›ÛOOH	Ü[›ÉÈÈ[›ËIØÝ\™YXˆ	ØÝ\™YÌKÕ\\Ø\ÙJ
+_IØÝ\™YœÛXÙJJ_K\[›ØÂˆBˆËÈ›Ý˜XÙ\È[Ú[™ÈHØ[YHØ^H\ÈHšKH[œÎÈÛ™HÙˆXXÚ\ÈHY[š\ØÝ\Ë‚ˆYˆ
+œ›ÛOOH˜XÚÊHÂˆÛÛœÝÝÙ\ˆHXÚÓ[œÐØ\™[˜[Ê\˜[\ÊK™ŽÂˆ™]\›ˆY[š\ØÝ\È
+	ÜÝÙ\ˆˆÈ	ÜÜÚ]]™IÈˆ	Û™YØ]]™IßJXÂˆBˆ™]\›ˆœ›ÛOOH	ØÛÛ™^	ÈÈ	ÐšXÛÛ™^	Èˆ	ÐšXÛÛ˜Ø]™IÎÂŸB‚‹ËÈÛÈÛ\ÜÈ›ÙY\È[ˆYHÜXØ[ÛÛXÝÈ›Ý˜XÙHÛÜœ™XÝNˆH˜XÙ\‚‹ËÈYÛ›Ü™\È[žH[\œÙXÝ[ÛˆÛÜÙ\ˆ[ˆŒH[š]È[Û™ÈH˜^KÛÈHZ\ˆÙ‚‹ËÈÛÚ[˜ÚY[[\™˜XÙ\ÈÜÙ\ÈÛ™HÙˆ[H[™H˜^HÜ›Û™ÛH^]È[ÈZ\‹‚‹ËÈH[™XZ[Ù[Y[YÝX›]\™Y›Ü™HÛÛY\ÈÝ]Ú[[HÜ›Û™È˜]\ˆ[‚‹ËÈš\ÚX›Hœ›ÚÙ[‹ÚXÚ\ÈHÛÜœÝØ^H›ÜˆH[Ù[È˜Z[8 %ÛÈØ^HÛË‚‹ËÈHØ\]Ù[ˆ\ÈYš[™Y[ˆ[œÙÜ›Ý\šœËH[Ù[H]\ÈÈ[œÙ\]‚™^ÜÛÛœÝÓTÔ×Ð“ÑWÕTTÈH™]ÈÙ]
+ÉÝXÚÛ[œÉË	Ø\Ü\šXÛ[œÉË	Ùœ™YYÛ\ÜÉ×JNÂ‚™[˜Ý[ÛˆÛ\ÜÐ›ÙUÛÜ›Ú[Ê[
+HÂˆÛÛœÝØØ[H[Ë\HOOH	ÝXÚÛ[œÉÈÈXÚÓ[œÑÙ[ÛY]žJ[œ\˜[\ÊKœÚ[Âˆˆ[Ë\HOOH	Ø\Ü\šXÛ[œÉÈÈ\Ü\šXÓ[œÑÙ[ÛY]žJ[œ\˜[\ÊKœÚ[Âˆˆ[Ë\HOOH	Ùœ™YYÛ\ÜÉÈÈœ™YYÛ\ÜÔÚ[Ê[
+Bˆˆ[ÂˆYˆ
+[ØØ[
+H™]\›ˆ[Âˆ™]\›ˆØ[\P›Ý[™\žJØØ[ÈX^[™ÛNˆX]”HÈJK›X\
+OˆÕÛÜ›
+[žžJJNÂŸB‚˜ÛÛœÝÚ[Ð›Ý[™ÈHÈOˆ
+ÂˆˆX]›Z[Š‹‹œË›X\
+Oˆž
+JKNˆX]›X^
+‹‹œË›X\
+Oˆž
+JKˆLˆX]›Z[Š‹‹œË›X\
+OˆžJJKLNˆX]›X^
+‹‹œË›X\
+OˆžJJKŸJNÂ‚‹ËÈÛÜÙ\Ý\›ØXÚ™]ÙY[ˆÛÈØ[\Y›Ý[™\šY\Ëˆ›Ý[™[™È›Þ\È[Û™HÛÝ[‹ËÈÜžHÛÛˆÛˆHÙ[Y[YZ\ˆÚÜÙHš[\È[\›ØÚÈÚ[HZ\ˆÝ\™˜XÙ\È\™B‹ËÈZ[[Y]™\È\\ÛÈYX\Ý\™HH›Ý[™\šY\È[\Ù[™\È8 %]\ÙHH›Þ\Â‹ËÈš\œÝÈÚÚ\[ž][™ÈØš[Ý\ÛH˜\ˆ]Ø^K‚™[˜Ý[Ûˆ›Ý[™\žQØ\
+KŠHÂˆÛÛœÝ˜HHÚ[Ð›Ý[™ÊJK˜ˆHÚ[Ð›Ý[™ÊŠNÂˆÛÛœÝÛØ\œÙHHX]›X^
+X]›X^
+˜KžH˜‹žK˜‹žH˜KžJKX]›X^
+˜KžLH˜‹žLK˜‹žLH˜KžLJJNÂˆYˆ
+ÛØ\œÙHHRS—ÐÑSQS•ÑÐT
+H™]\›ˆÛØ\œÙNÈËÈÚX\™Z™XÝˆ]™\ÝH[™š[š]NÂˆÛÛœÝØØ[ˆH
+ËÛJHOˆÂˆ›Üˆ
+ÛÛœÝÙˆÊHÂˆ›Üˆ
+]HHÈHÛK›[™ÝÈJÊÊHÂˆ™\ÝHX]›Z[Š™\Ý\ÝÔÙYÛY[
+ÛVÚWKÛVÊH
+ÈJH	HÛK›[™ÝJJNÂˆYˆ
+™\ÝOOH
+H™]\›ŽÂˆBˆBˆNÂˆØØ[ŠKŠNÂˆYˆ
+™\Ýˆ
+HØØ[Š‹JNÂˆ™]\›ˆ™\ÝÂŸB‚‹ËÈH™X\™\ÝÝ\ˆÛ\ÜÈ›ÙHÚ][™ÈÛÜÙ\ˆ[ˆH˜XÙ\ˆØ[ˆ™\ÛÛ™K‚‹ËÈ™\ÝYÜˆ[HÝ™\›\[™È›ÙY\È\™HHY™™\™[
+[ÛÈ[œÝ\ÜY
+HØ\ÙB‹ËÈ[™\™HYÈH^\Ý[™È››ÝÝ\™˜XÙK[Y\™ÙYˆ›ÝNˆZ\ˆ›Ý[™\šY\È\™B‹ËÈ›ÝÚ\™H™X\ˆXXÚÝ\‹ÛÈ›Ý[™È\™Hš\™\Ë‚˜ÛÛœÝÑSQS•ÕÐT“—Ð‘SÕÈHRS—ÐÑSQS•ÑÐT
+ˆŽNNÈËÈÛÈH™XÛÛ[Y[™YØ\]Ù[ˆ\ÈÛX[‚™^Ü[˜Ý[ÛˆÝXÚ[™ÑÛ\ÜÐ›ÙJ[[[Y[ÈH×JHÂˆÛÛœÝZ[™HHÛ\ÜÐ›ÙUÛÜ›Ú[Ê[
+NÂˆYˆ
+[Z[™H[Z[™K›[™Ý
+H™]\›ˆ[Âˆ›Üˆ
+ÛÛœÝÝ\ˆÙˆ[[Y[ÊHÂˆYˆ
+[Ý\ˆÝ\ˆOOH[Ý\‹šYOOH[šYQÓTÔ×Ð“ÑWÕTTËš\ÊÝ\‹\JJHÛÛ[YNÂˆÛÛœÝÈHÛ\ÜÐ›ÙUÛÜ›Ú[ÊÝ\ŠNÂˆYˆ
+\È\Ë›[™Ý
+HÛÛ[YNÂˆÛÛœÝØ\H›Ý[™\žQØ\
+Z[™KÊNÂˆYˆ
+Ø\ÑSQS•ÕÐT“—Ð‘SÕÊH™]\›ˆÈYˆÝ\‹šY\NˆÝ\‹\KØ\ˆX]›X^
+Ø\
+HNÂˆBˆ™]\›ˆ[ÂŸB‚™[˜Ý[Ûˆœ™YYÛ\ÜÔÚ[Ê[
+HÂˆÛÛœÝØØ[HHX]›Z[ŠLX]›X^
+ŒK[œ\˜[\ËœØØ[HJJNÂˆÛÛœÝÚ[ÈH\œ˜^Kš\Ð\œ˜^J[œ\˜[\Ë™\XÙ\ÊH	‰ˆ[œ\˜[\Ë™\XÙ\Ë›[™ÝHÂˆÈ[œ\˜[\Ë™\XÙ\Èˆ”‘QQÓTÔ×ÑQUSÂˆ™]\›ˆÚ[Ë›X\
+Oˆ
+Âˆˆž
+ˆØØ[KNˆžH
+ˆØØ[K‹‹Š˜\˜ÈOOHYHÈÈ\˜ÎˆYHHˆßJKˆJJNÂŸB‚™[˜Ý[Ûˆœ™YYÛ\ÜÑY]Ø[™Y]J[[™^ØØ[Ú[
+HÂˆYˆ
+S[X™\‹š\Ò[YÙ\Š[™^
+HS[X™\‹š\Ñš[š]JØØ[Ú[Ëž
+HS[X™\‹š\Ñš[š]JØØ[Ú[ËžJJH™]\›ˆ[ÂˆÛÛœÝØØ[HHX]›Z[ŠLX]›X^
+ŒK[œ\˜[\ËœØØ[HJJNÂˆÛÛœÝ[Z]HL
+ˆØØ[NÂˆÛÛœÝÚ[ÈHœ™YYÛ\ÜÔÚ[Ê[
+NÂˆYˆ
+\Ú[ÖÚ[™^JH™]\›ˆ[ÂˆÚ[ÖÚ[™^HHÂˆˆX]›Z[Š[Z]X]›X^
+[[Z]ØØ[Ú[ž
+JKˆNˆX]›Z[Š[Z]X]›X^
+[[Z]ØØ[Ú[žJJKˆ‹‹ŠÚ[ÖÚ[™^K˜\˜ÈOOHYHÈÈ\˜ÎˆYHHˆßJKˆNÂˆYˆ
+Z\ÔÚ[\P›Ý[™\žJÚ[ÊJH™]\›ˆ[ÂˆÛÛœÝˆH›Ý[™\žP›Ý[™ÊÚ[ÊKÞH
+‹ž
+È‹žJHÈ‹ÞHH
+‹žL
+È‹žLJHÈŽÂˆÛÛœÝÚYH›Ý
+ÞÞK[œ›Ý
+NÂˆ™]\›ˆÂˆˆ[ž
+ÈÚYžˆNˆ[žH
+ÈÚYžKˆ™\XÙ\ÎˆÚ[Ë›X\
+Oˆ
+Âˆˆ
+žHÞ
+HÈØØ[KNˆ
+žHHÞJHÈØØ[Kˆ‹‹Š˜\˜ÈOOHYHÈÈ\˜ÎˆYHHˆßJKˆJJKˆNÂŸB‚™[˜Ý[Ûˆ™XÝXœÛÜ˜ŠË
+HÂˆÛÛœÝHÈÈ‹HHÈŽÂˆ™]\›ˆÂˆÈNˆ^LNˆ^KŽˆLŽˆ^KÚ[™ˆ	ØXœÛÜ˜‰ÈKˆÈNˆLNˆ^KŽˆLŽˆKÚ[™ˆ	ØXœÛÜ˜‰ÈKˆÈNˆLNˆKŽˆ^LŽˆKÚ[™ˆ	ØXœÛÜ˜‰ÈKˆÈNˆ^LNˆKŽˆ^LŽˆ^KÚ[™ˆ	ØXœÛÜ˜‰ÈKˆNÂŸB‚‹ËÈKKKHUØZ[ˆ[™\šÈ›ÛÜˆKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKB‹ËÈ›Ý\™HÝÜ™Y\ÈZ[ˆ][\Y\œÈ[™Y]Y\È˜\ÙKLL^Û™[ËˆB‹ËÈÚÙ]ÚØ]™Y™Y›Ü™HH\šÈ›ÛÜˆ^\ÝYÚ[\H\È›È\šÒ[œ]ÛÂ‹ËÈ]™\žH™XY\ˆÛÙ\È›ÝYÚ\ÙH[™Ù]ÈHY˜][[œÝXYÙˆ˜S‹‚™^ÜÛÛœÝUÓPVÑÐRSˆHYMÎÂ˜ÛÛœÝUÑT’×ÓRS—ÓÑÈHNUÑT’×ÓPVÓÑÈHLŽÂ‚™^Ü[˜Ý[Ûˆ]ØZ[Š\˜[\ÈHßJHÂˆÛÛœÝÝÜ™YH[X™\Š\˜[\Ë™ØZ[ŠNÂˆYˆ
+S[X™\‹š\Ñš[š]JÝÜ™Y
+HÝÜ™YJH™]\›ˆYMÂˆ™]\›ˆX]›Z[ŠUÓPVÑÐRS‹ÝÜ™Y
+NÂŸB‚™^Ü[˜Ý[Ûˆ]ØZ[‘œ›ÛSÙÊ˜[YJHÂˆÛÛœÝ^Û™[HX]›Z[ŠËX]›X^
+[X™\Š˜[YJH
+JNÂˆËÈ›Ý[™È™YHÚYÛšYšXØ[šYÝ\™\ÈÛÈHÛY\ˆ[™ÈÛˆYM[™ËŒM™MˆËÈ˜]\ˆ[ˆLŒ‹‚ˆÛÛœÝ˜]ÈHL
+Šˆ^Û™[ÂˆÛÛœÝXØYHHL
+ŠˆX]™›ÛÜŠX]›ÙÌL
+˜]ÊJNÂˆ™]\›ˆX]›Z[ŠUÓPVÑÐRS‹X]›X^
+KX]œ›Ý[™
+˜]ÈÈXØYH
+ˆL
+HÈL
+ˆXØYJJNÂŸB‚™^Ü[˜Ý[Ûˆ]\šÒ[œ]
+\˜[\ÈHßJHÂˆÛÛœÝÝÜ™YH[X™\Š\˜[\Ë™\šÒ[œ]
+NÂˆYˆ
+S[X™\‹š\Ñš[š]JÝÜ™Y
+HÝÜ™YH
+H™]\›ˆYKMNÂˆ™]\›ˆX]›Z[ŠKÝÜ™Y
+NÂŸB‚™^Ü[˜Ý[Ûˆ]\šÑœ›ÛSÙÊ˜[YJHÂˆÛÛœÝ^Û™[HX]›Z[ŠUÑT’×ÓPVÓÑËX]›X^
+UÑT’×ÓRS—ÓÑË[X™\Š˜[YJHUÑT’×ÓRS—ÓÑÊJNÂˆÛÛœÝ˜]ÈHL
+Šˆ^Û™[ÂˆÛÛœÝXØYHHL
+ŠˆX]™›ÛÜŠX]›ÙÌL
+˜]ÊJNÂˆ™]\›ˆX]œ›Ý[™
+˜]ÈÈXØYH
+ˆL
+HÈL
+ˆXØYNÂŸB‚‹ËÈÛ™K\ÚYY]XÝÜˆÝ\Ú[™ÎˆYÚ\ÈYX\Ý\™Y]Hœ›Û˜XÙH[™B‹ËÈ™[XZ[š[™È[˜ÛÜÝ\™HÚ[\HXœÛÜ˜œÈ]ˆ\È]È]XÝÜœÈ›ÝšYHH\ÙY[‹ËÈ™XYÝ]Ú]Ý]™][™[™ÈH]X[]]]™H˜XÙ\ˆ™\ÜÈØ[Xœ˜]YÝÙ\‹‚™[˜Ý[Ûˆ]XÝÜ”Ý\™˜XÙ\ÊË]XÝÜ•\K]XÝÜ‘]HHßJHÂˆÛÛœÝHÈÈ‹HHÈŽÂˆ™]\›ˆÂˆÈNˆ^LNˆ^KŽˆ^LŽˆKÚ[™ˆ	Ù]XÝÜ‰Ë]NˆÈ\\\™Nˆ]XÝÜ•\K‹‹™]XÝÜ‘]HHKˆÈNˆ^LNˆ^KŽˆLŽˆ^KÚ[™ˆ	ØXœÛÜ˜‰ÈKˆÈNˆLNˆ^KŽˆLŽˆKÚ[™ˆ	ØXœÛÜ˜‰ÈKˆÈNˆLNˆKŽˆ^LŽˆKÚ[™ˆ	ØXœÛÜ˜‰ÈKˆNÂŸB‚™[˜Ý[ÛˆÚYÛ˜[[\
+[JHÂˆÛÛœÝ™H]XÝÜ”™XY[™Ê[šY
+NÂˆÛÛœÝÛˆH™	‰ˆ™œÚYÛ˜[ˆŒNÂˆ™]\›ˆÚ\˜ÛHÞH‰ÞHˆÞOH‰Þ_HˆHŒËŒHˆš[H‰ÛÛˆÈ™˜ÛÛÜˆˆ	ÈÎLNX‰ßHˆÜXÚ]OH‰ÛÛˆÈHˆ_Hˆ
+ÂˆÝ›ÚÙOHˆÙ™™ˆˆÝ›ÚÙK]ÚYHŒŽ‹Ï˜ÂŸB‚™^Ü[˜Ý[Ûˆ™\ÛÛ™Q\Ü^TÙ[œÛÜŠ\Ü^K[[Y[ÈH×JHÂˆÛÛœÝÙ[œÛÜ’YH\[Ùˆ\Ü^OËœ\˜[\ÏËœÙ[œÛÜ’YOOH	ÜÝš[™ÉÈÈ\Ü^Kœ\˜[\ËœÙ[œÛÜ’Yˆ	ÉÎÂˆYˆ
+\Ù[œÛÜ’YP\œ˜^Kš\Ð\œ˜^J[[Y[ÊJH™]\›ˆ[Âˆ™]\›ˆ[[Y[Ë™š[™
+Ø[™Y]HOˆØ[™Y]OËšYOOHÙ[œÛÜ’Yˆ	‰ˆØ[™Y]KšYOOH\Ü^KšYˆ	‰ˆ™YÚ\ÝžVØØ[™Y]K\WOËœ™XYÝ]Ú[™
+H[ÂŸB‚™^Ü[˜Ý[Ûˆ\Ü^Q[œÚ]J\Ü^TØØ[HHJHÂˆÛÛœÝØØ[HHX]›Z[ŠËX]›X^
+K[X™\‹š\Ñš[š]J\Ü^TØØ[JHÈ\Ü^TØØ[HˆJJNÂˆ™]\›ˆØØ[HŽHÈ	ØÛÛ\XÝ	ÈˆØØ[HKHÈ	ÜÝ[™\™	Èˆ	Ù^[™Y	ÎÂŸB‚‹ËÈ]XÝÜˆØÜ™Y[œÈ[™H™X[H›Ø™IÜÈ™XYÝ]Ø\™›Ý^ÜÙHH‘\Ü^B‹ËÈØØ[Hˆ[X™\‹]H˜[™ÙH\Ù\œÈXÝX[HXÚÈœ›ÛH
+Œx $ÌKJH\Â‹ËÈ[X™\˜][H[ˆØÝ]™H™[ÝÈHx $ÌÈ˜[™ÙHH˜]Ú[™ËÜÚ^š[™ÈÛÙHØ\Â‹ËÈ[™YYØZ[œÝ8 %]™\žH\ÙHÝX›\È]˜XÚÈÝ]ÛÈHY˜][
+JH™[™\œÂ‹ËÈ]Ú]\ÙYÈ™\]Z\™HX[X[HX[[™ÈHÛÛÛ›Û\È‹‚™^Ü[˜Ý[Ûˆ\Ü^T™[™\”ØØ[J˜]ÔØØ[HHKZ[ˆHŒKX^HKK˜XÝÜˆHŠHÂˆ™]\›ˆX]›Z[ŠX^X]›X^
+Z[‹[X™\‹š\Ñš[š]J˜]ÔØØ[JHÈ˜]ÔØØ[HˆJJH
+ˆ˜XÝÜŽÂŸB‚‹ËÈH™X[H›Ø™IÜÈØ\™™XYÈ™]\ˆH]HÛX[\ˆ[ˆH]XÝÜ‚‹ËÈØÜ™Y[‰ÜËÛÈ]ÈÝÛˆŒHˆ\ÈK^HÜšYÚ[˜[˜\Ù[[™H˜]\ˆ[ˆž‹ËÈ[™HX[[œÈ^Lž\›Ý[™]‚™^ÜÛÛœÝ›Ø™TØØ[HH[Oˆ\Ü^T™[™\”ØØ[J[Ëœ\˜[\ÏË™\Ü^TØØ[KK‹KJNÂ‚™[˜Ý[Ûˆ]˜Z[X›Q\Ü^TÙ[œÛÜœÊ\Ü^K[[Y[ÈH×JHÂˆ™]\›ˆ\œ˜^Kš\Ð\œ˜^J[[Y[ÊHÈ[[Y[Ë™š[\ŠØ[™Y]HOˆØ[™Y]OËšYOOH\Ü^OËšYˆ	‰ˆ™YÚ\ÝžVØØ[™Y]OË\WOËœ™XYÝ]Ú[™
+Hˆ×NÂŸB‚‹ËÈÚXÚØÜ™Y[ˆšY]ÜÈH[šÙYÙ[œÛÜˆXÝX[H\È]H›Ü‹ˆÛ›HHØ[Y\˜B‹ËÈ[™HÙ[™\˜[]XÝÜˆØ\œžH[Ü™H[ˆÛ™H™XYÝ]ÈHÝÙ[ÙH\ÈB‹ËÈÚ[™ÛHÚ[›™[Ùˆ[™›Ü›X][Û‹ÛÈÙ™™\š[™È]HØ]™[[™ÝØ[\\ÈˆšY]Â‹ËÈ™]ÈHÜXÝ[H]™]™\ˆYX\Ý\™Y[™\›™X]]ÈÝÛˆÜØÚ[ÜØÛÜK‚˜ÛÛœÝTÔVWÕ’QUÔÈHÂˆØ[Y\˜NˆÉÛXZ[‰Ë	ÜÜXÝ[IË	Ù]Z[	×KˆÙ[™\˜[]XÝÜŽˆÉÛXZ[‰Ë	ÜÜXÝ[IË	Ù]Z[	×KŸNÂ‚™^Ü[˜Ý[Ûˆ\Ü^UšY]ÜÑ›ÜŠÙ[œÛÜ•\JHÂˆ™]\›ˆTÔVWÕ’QUÔÖÜÙ[œÛÜ•\WHÉÛXZ[‰×NÂŸB‚‹ËÈHšY]ÈXÝX[H™[™\™YˆHÝÜ™YÛ™HÚ[ˆH[šÙYÙ[œÛÜˆÝ\ÜÂ‹ËÈ][ÙH]Èš[X\žH™XYÝ]ˆH\Ü^HÙY\È]ÈÝÜ™YšY]ÈÚ[ˆ]\Â‹ËÈ™K\Ú[Y]HÙ[œÛÜˆ]Ø[››ÝÚÝÈ]˜]\ˆ[ˆ™Z[™È™]Üš][‹‚™^Ü[˜Ý[Ûˆ™\ÛÛ™Y\Ü^UšY]Ê\Ü^KÙ[œÛÜŠHÂˆÛÛœÝšY]ÜÈH\Ü^UšY]ÜÑ›ÜŠÙ[œÛÜË\JNÂˆÛÛœÝÝÜ™YH\Ü^OËœ\˜[\ÏË™\Ü^UšY]ÎÂˆ™]\›ˆšY]ÜËš[˜ÛY\ÊÝÜ™Y
+HÈÝÜ™Yˆ	ÛXZ[‰ÎÂŸB‚™^Ü[˜Ý[Ûˆ\Ü^PXÝ[Û•\]J\Ü^KXÝ[Û‹[[Y[ÈH×JHÂˆYˆ
+Y\Ü^H\Ü^K\HOOH	Ù\Ü^IÊH™]\›ˆ[ÂˆYˆ
+XÝ[ÛˆOOH	ÜÝÙ\‰ÊHÂˆÛÛœÝØÜ™Y[“ÛˆH\Ü^Kœ\˜[\ËœØÜ™Y[“ÛˆOOH˜[ÙNÂˆ™]\›ˆÈ\]\ÎˆÈØÜ™Y[“ÛˆKY\ÜØYÙNˆØÜ™Y[“ÛˆÈ	ÔÙ[œÛÜˆ\Ü^HÛ‰Èˆ	ÔÙ[œÛÜˆ\Ü^HÝ[™žIÈNÂˆBˆYˆ
+XÝ[ÛˆOOH	ÝšY]ÉÊHÂˆÛÛœÝÙ[œÛÜˆH™\ÛÛ™Q\Ü^TÙ[œÛÜŠ\Ü^K[[Y[ÊNÂˆÛÛœÝšY]ÜÈH\Ü^UšY]ÜÑ›ÜŠÙ[œÛÜË\JNÂˆYˆ
+šY]ÜË›[™ÝŠHÂˆ™]\›ˆÈ\]\ÎˆßKY\ÜØYÙNˆÙ[œÛÜˆÈ	Ù\Ü^TÙ[œÛÜ“˜[YJÙ[œÛÜŠ_H\ÈÛ™H™XYÝ]ˆ	Ó›ÈÙ[œÛÜˆÛÛ›™XÝY	ÈNÂˆBˆÛÛœÝÝ\œ™[HšY]ÜËš[˜ÛY\Ê\Ü^Kœ\˜[\Ë™\Ü^UšY]ÊHÈ\Ü^Kœ\˜[\Ë™\Ü^UšY]Èˆ	ÛXZ[‰ÎÂˆÛÛœÝ\Ü^UšY]ÈHšY]ÜÖÊšY]ÜËš[™^ÙŠÝ\œ™[
+H
+ÈJH	HšY]ÜË›[™ÝNÂˆ™]\›ˆÈ\]\ÎˆÈ\Ü^UšY]ÈKY\ÜØYÙNˆ\Ü^HšY]Îˆ	Ù\Ü^UšY]ßXNÂˆBˆYˆ
+XÝ[ÛˆOOH	Ú[œ]	ÊHÂˆÛÛœÝÙ[œÛÜœÈH]˜Z[X›Q\Ü^TÙ[œÛÜœÊ\Ü^K[[Y[ÊNÂˆYˆ
+\Ù[œÛÜœË›[™Ý
+H™]\›ˆÈ\]\ÎˆÈÙ[œÛÜ’Yˆ	ÉÈKY\ÜØYÙNˆ	Ó›ÈÙ[œÛÜœÈ]˜Z[X›IÈNÂˆÛÛœÝYÈHÉÉË‹‹œÙ[œÛÜœË›X\
+Ù[œÛÜˆOˆÙ[œÛÜ‹šY
+WNÂˆÛÛœÝÝ\œ™[HYËš[˜ÛY\Ê\Ü^Kœ\˜[\ËœÙ[œÛÜ’Y
+HÈ\Ü^Kœ\˜[\ËœÙ[œÛÜ’Yˆ	ÉÎÂˆÛÛœÝÙ[œÛÜ’YHYÖÊYËš[™^ÙŠÝ\œ™[
+H
+ÈJH	HYË›[™ÝNÂˆÛÛœÝÙ[œÛÜˆHÙ[œÛÜœË™š[™
+Ø[™Y]HOˆØ[™Y]KšYOOHÙ[œÛÜ’Y
+NÂˆ™]\›ˆÂˆ\]\ÎˆÈÙ[œÛÜ’YKˆY\ÜØYÙNˆÙ[œÛÜˆÈ\Ü^H[œ]ˆ	Ù\Ü^TÙ[œÛÜ“˜[YJÙ[œÛÜŠ_Xˆ	Ñ\Ü^H[œ]\ØÛÛ›™XÝY	ËˆNÂˆBˆ™]\›ˆ[ÂŸB‚™[˜Ý[Ûˆ\Ü^TÙ[œÛÜ“˜[YJÙ[œÛÜŠHÂˆÛÛœÝ˜[YHHÙ[œÛÜË›X™[™YÚ\ÝžVÜÙ[œÛÜË\WOË›X™[	ÔÙ[œÛÜ‰ÎÂˆ™]\›ˆÝš[™Ê˜[YJKš[J
+KœÛXÙJN
+H	ÔÙ[œÛÜ‰ÎÂŸB‚™[˜Ý[Ûˆ\Ü^TÜXÝ[J™
+HÂˆYˆ
+S[X™\‹š\Ñš[š]J™ËØ]™[[™Ý
+HS[X™\‹š\Ñš[š]J™Ë˜˜[™Z[ŠHS[X™\‹š\Ñš[š]J™Ë˜˜[™X^
+JH™]\›ˆ	ø %	ÎÂˆ™]\›ˆ™˜˜[™X^H™˜˜[™Z[ˆˆ‚ˆÈ	ÓX]œ›Ý[™
+™˜˜[™Z[Š_x $ÉÓX]œ›Ý[™
+™˜˜[™X^
+_H›Xˆˆ	ÓX]œ›Ý[™
+™Ø]™[[™Ý
+_H›XÂŸB‚™[˜Ý[ÛˆÚÜÜXÝ[J™
+HÂˆYˆ
+S[X™\‹š\Ñš[š]J™ËØ]™[[™Ý
+HS[X™\‹š\Ñš[š]J™Ë˜˜[™Z[ŠHS[X™\‹š\Ñš[š]J™Ë˜˜[™X^
+JH™]\›ˆ	ø %	ÎÂˆ™]\›ˆ™˜˜[™X^H™˜˜[™Z[ˆˆ‚ˆÈ3®ÉÓX]œ›Ý[™
+™˜˜[™Z[Š_x $ÉÓX]œ›Ý[™
+™˜˜[™X^
+_Xˆˆ3®ÉÓX]œ›Ý[™
+™Ø]™[[™Ý
+_H›XÂŸB‚‹ËÈH\Ü^H[™[ÈÚ\™HH]XÝÜˆ›Ü›X]\ˆ˜]\ˆ[ˆÙY\[™ÈB‹ËÈÙXÛÛ™ÛØ\œÙ\ˆÛ™NˆHÛÚ\™[H™X\‹XØ[˜Ù[YÜØ\œšY\ÈH™X[‹ËÈKKM[™š[[™È]\ÈŒŒˆ™\ÚYHH™X[H]\ÈÝ[˜]Ûˆ\Â‹ËÈ^XÝHHÛÛ˜YXÝ[ÛˆH[\™™\™[˜ÙHÛÜšÈÙ]Ý]È™[[Ý™K‚˜ÛÛœÝÛÛ\XÝ[X™\ˆH›Ü›X]ÚYÛ˜[Â‚™[˜Ý[ÛˆÚÜÛ\š^˜][ÛŠÛ\š^˜][ÛˆH	ÉÊHÂˆ™]\›ˆÝš[™ÊÛ\š^˜][ÛŠBˆœ™\XÙJ×“[™X\ˆË	ÓSˆ	ÊBˆœ™\XÙJ×‘[\XØ[Ë	ÑST	ÊBˆœ™\XÙJ×Ú\˜Ý[\‰Ë	ÐÒTÉÊBˆœ™\XÙJ×•[œÛ\š^™Y	Ë	ÕS”Ó	ÊBˆœ™\XÙJ×“Z^Y[™X\‰Ë	ÓRVS‰ÊBˆœÛXÙJLŠNÂŸB‚™[˜Ý[Ûˆ\Ü^UšY]Ó˜[YJšY]Ë™
+HÂˆYˆ
+šY]ÈOOH	ÜÜXÝ[IÊH™]\›ˆ	ó®ÈÐSTTÉÎÂˆYˆ
+šY]ÈOOH	Ù]Z[	ÊH™]\›ˆ	ÑURS	ÎÂˆYˆ
+™Ëœ™XYÝ]Ú[™OOH	ØØ[Y\˜IÊH™]\›ˆ	ÒS•S”ÒUH“Ñ’SIÎÂˆ™]\›ˆ™Ëœ™XYÝ]Ú[™OOH	Ü]	ÈÈ	ÔUÕUU	Èˆ	Ô‘SÒQÓS	ÎÂŸB‚™[˜Ý[ÛˆØ[Y\˜PÛÚ\™[]ÛÝ[
+™XY[™ÊHÂˆÛÛœÝ\™XÝH[X™\Š™XY[™ÏË˜ÛÚ\™[]ÊNÂˆYˆ
+[X™\‹š\Ò[YÙ\Š\™XÝ
+H	‰ˆ\™XÝˆ
+H™]\›ˆ\™XÝÂˆÛÛœÝ™\ÝYH[X™\Š™XY[™ÏËš[\™™\™[˜ÙOËœ]ÛÝ[
+NÂˆ™]\›ˆ[X™\‹š\Ò[YÙ\Š™\ÝY
+H	‰ˆ™\ÝYˆÈ™\ÝYˆÂŸB‚™[˜Ý[ÛˆØ[Y\˜T\ÙT™X\ÛÛŠ™XY[™ÊHÂˆÛÛœÝ[\™™\™[˜ÙHH™XY[™ÏËš[\™™\™[˜ÙNÂˆYˆ
+Z[\™™\™[˜ÙH[\™™\™[˜ÙKœ™X\ÛÛˆOOH	Ù\ØX›Y	ÊH™]\›ˆ	ÉÎÂˆÛÛœÝ\ÙR\ÜÝYHH\œ˜^Kš\Ð\œ˜^J[\™™\™[˜ÙKœ\ÙR\ÜÝY\ÊBˆÈ[\™™\™[˜ÙKœ\ÙR\ÜÝY\Ë™š[™
+\ÜÝYHOˆ\[Ùˆ\ÜÝYHOOH	ÜÝš[™ÉÈ	‰ˆ\ÜÝYKš[J
+JBˆˆ	ÉÎÂˆÛÛœÝ˜]ÈH\[Ùˆ[\™™\™[˜ÙK™˜[˜XÚÔ™X\ÛÛˆOOH	ÜÝš[™ÉÈ	‰ˆ[\™™\™[˜ÙK™˜[˜XÚÔ™X\ÛÛ‹š[J
+BˆÈ[\™™\™[˜ÙK™˜[˜XÚÔ™X\ÛÛ‹š[J
+BˆˆÝš[™Ê\ÙR\ÜÝYH	ÉÊKš[J
+NÂˆYˆ
+\˜]ÊH™]\›ˆ	ÉÎÂˆ™]\›ˆ˜]Ë˜Ú\]
+
+KÕ\\Ø\ÙJ
+H
+È˜]ËœÛXÙJJKœ™\XÙJÖË—JÉË	ÉÊH
+È	Ë‰ÎÂŸB‚‹ËÈÙY\HØ[Y\˜IÜÈÙ[X[XÈÝ]H[ˆÛ™HXÙHÛÈH[šÙY\Ü^H[™‹ËÈ[œÜXÝÜˆØ[››Ý\ØYÜ™YKˆHZ[ˆ\ÜÚ]YÛ™K\]›Ùš[H\ÈH›Ü›X[‹ËÈÝ]H[™[[[Û˜[H\È›È˜YÙKˆØ\›š[™ÜÈÛ›H\X\ˆÚ[ˆH˜XÙ\‚‹ËÈ^XÚ]H™\ÜÈZ\ÜÚ[™È\ÙH[™›Ü›X][ÛˆÜˆH\X[ÛÚ\™[™\Ý[‚™^Ü[˜Ý[ÛˆØ[Y\˜T™XY[™ÔÝ]J™XY[™ÊHÂˆÛÛœÝ]ÈHØ[Y\˜PÛÚ\™[]ÛÝ[
+™XY[™ÊNÂˆÛÛœÝ\ÙT™X\ÛÛˆHØ[Y\˜T\ÙT™X\ÛÛŠ™XY[™ÊNÂˆÛÛœÝ\YYH™XY[™ÏËš[\™™\™[˜ÙOË˜\YYOOHYH™XY[™ÏËœ›Ùš[S[ÙHOOH	ØÛÚ\™[	ÎÂˆÛÛœÝ\X[H™XY[™ÏËš[\™™\™[˜ÙOËœ\X[OOHYNÂˆYˆ
+™XY[™ÏË™\šÈOOHYJH™]\›ˆÂˆÚ[™ˆ	ØØ[˜Ù[][Û‰Ë]ËØ\›š[™Îˆ˜[ÙK™X\ÛÛŽˆ	ÉËˆX™[ˆ	ÐÛÚ\™[Ø[˜Ù[][Û‰Ë˜YÙNˆ	ÐÐSÑSQ	Ë\Ü^TÝ]\Îˆ	ÐÓÒT‘S•ÐSÑSUSÓ‰ËˆNÂˆYˆ
+\ÙT™X\ÛÛŠHÂˆÛÛœÝ\Ô\X[H\YY	‰ˆ\X[Âˆ™]\›ˆÂˆÚ[™ˆ\Ô\X[È	Ü\X[	Èˆ	Ü\ÙK][˜]˜Z[X›IË]ËØ\›š[™ÎˆYK™X\ÛÛŽˆ\ÙT™X\ÛÛ‹ˆX™[ˆ\Ô\X[È	Ô\X[0­È\ÙH[˜]˜Z[X›IÈˆ	Ñ\ÜÚ]Y0­È\ÙH[˜]˜Z[X›IËˆ˜YÙNˆ\Ô\X[È	ÔT•PS	Èˆ	ÔTÑIËˆËÈH[šÙYØÜ™Y[ˆZ\œÈ\ÈÚ]HTÑKÔT•PS˜YÙKˆÙY\[™ÈBˆËÈ›ÛÝ\ˆ]Ù[ˆÚÜ™]™[È]ÛÛY[™ÈÚ]H[Y\šXÈÚYÛ˜[‚ˆ\Ü^TÝ]\Îˆ	ÔTÑHSURSP“IËˆNÂˆBˆYˆ
+\YY	‰ˆ\X[
+H™]\›ˆÂˆÚ[™ˆ	Ü\X[	Ë]ËØ\›š[™ÎˆYK™X\ÛÛŽˆ	ÉËˆX™[ˆ	Ô\X[ÛÚ\™[™\Ý[	Ë˜YÙNˆ	ÔT•PS	Ë\Ü^TÝ]\Îˆ	ÔT•PSÓÒT‘SÑIËˆNÂˆYˆ
+\YY
+H™]\›ˆÂˆÚ[™ˆ	ØÛÚ\™[	Ë]ËØ\›š[™Îˆ˜[ÙK™X\ÛÛŽˆ	ÉËˆX™[ˆÛÚ\™[	Ü]ÈÈ0­È	Ü]ßH]Øˆ	ÉßXˆ˜YÙNˆÓÒ	Ü]ÈÈ0­È	Ü]ßXˆ	ÉßX\Ü^TÝ]\Îˆ	ÉËˆNÂˆ™]\›ˆÈÚ[™ˆ	Ù\ÜÚ]Y	Ë]ÎˆØ\›š[™Îˆ˜[ÙK™X\ÛÛŽˆ	ÉËX™[ˆ	ÉË˜YÙNˆ	ÉË\Ü^TÝ]\Îˆ	ÉÈNÂŸB‚‹ËÈHØ[Y\˜H›Ùš[H\È^[Z[YÜ˜]Y]K›ÝH›ÝÈÙˆ\ÛÛ]Y˜^KZ]‹ËÈX\šÙ\œËˆ˜]ÈÛ™H›Ý[™YYXÙ]Ú\ÙK[[™X\ˆ˜XÙH›ÝYÚH^[Ù[™\Â‹ËÈ[™š[ÝÛˆÈH˜\Ù[[™Kˆ[™X\ˆ[\œÛ][Ûˆ\È[X™\˜]H\™N‚‹ËÈÜ[™HÛ[ÛÝ[™ÈØ[ˆÝ™\œÚÛÝ™]ÙY[ˆ\šÈ[™œšYÚ[\™™\™[˜ÙH^[Â‹ËÈ[™[™[^™[XHHÙ[œÛÜˆ™]™\ˆYX\Ý\™Y‚‹ËÈ^˜HÜXØ[]H\ÙHØš™XÝYÈ]HÚ]™[ˆZYÚXÜ›ÜÜÈ]Â‹ËÈ\\\™K\ÈHœ˜XÝ[ÛˆÙˆHÛÛ™šYÝ\™YXZËˆX\ÈH›Ü›X[^™Y‹ËÈÜ›ÜÜÚ[™ÈÚ[H˜XÙ\ˆ[™XYHÛÛ\]\È›Üˆ]™\žHÝ\™˜XÙH]‚‹ËÈÝÈ˜\ˆH™XÛÛXš[™YÜÝ[Ø[ˆÝÚ[™È\ÈH™Y™\™[˜ÙH\›H\È[Ý™Y‹ËÈ›ÜˆH™X[HÛÝ™\š[™Èœš[™Ù\ØÙˆ\È›Ùš[K‚‹ËÂ‹ËÈ]™\˜YÚ[™ÈÛÜ×ŒŠ
+JJH
+È
+KÌŠHÝ™\ˆH™X[HÚ]™\ÈKÌˆ
+È
+KÌŠJÈÛÜÈB‹ËÈÈÚ[ˆ
+KÚ\™HÈ[™È\™HHYX[ˆÛÜÚ[™H[™Ú[™HÙˆHÜš][ˆ\ÙK‚‹ËÈ]\ÈÛ™HÚ[\ÛÚY[ˆH™Y™\™[˜ÙH\ÙHÛÈ]È[XZË]Ë\XZÂ‹ËÈ˜[™ÙH\È\ÝH[™ÝÙˆHYX[ˆ\ÛÜˆKH›ÈÙX\˜ÚÝ™\ˆ™YYY[™‹ËÈ›ÈÚ[˜ÙHÙˆØ[\[™ÈÛ›HH™Y™\™[˜ÙH\Ù\ÈÚ\™HHÚ]™[ˆ›Ùš[B‹ËÈ\[œÈÈ™H›]‚™[˜Ý[ÛˆÜÝÚ[™Ê›Ùš[Kœš[™Ù\ÊHÂˆÛÛœÝÐSTTÈHMŽÂˆ]YX[ÛÜÈHYX[”Ú[ˆHÂˆ›Üˆ
+]HHÈHÐSTTÎÈJÊÊHÂˆÛÛœÝ\ÙHHˆ
+ˆX]”H
+ˆœš[™Ù\È
+ˆ\ÙT]SÜœ˜XÝ[ÛŠ›Ùš[K
+H
+ÈJHÈÐSTTÊNÂˆYX[ÛÜÈ
+ÏHX]˜ÛÜÊ\ÙJNÂˆYX[”Ú[ˆ
+ÏHX]œÚ[Š\ÙJNÂˆBˆ™]\›ˆX]š\Ý
+YX[ÛÜËYX[”Ú[ŠHÈÐSTTÎÂŸB‚™^Ü[˜Ý[Ûˆ\ÙT]SÜœ˜XÝ[ÛŠ›Ùš[KJHÂˆÛÛœÝÜÚ][ÛˆHX]›Z[ŠKX]›X^
+[X™\ŠJJJNÂˆÛÛœÝÙ[™YHˆ
+ˆÜÚ][ÛˆHNÈËÈLH]Û™HYÙK
+ÌH]HÝ\‚ˆYˆ
+›Ùš[HOOH	ÜÝ\	ÊH™]\›ˆÜÚ][ÛˆHÈˆNÂˆYˆ
+›Ùš[HOOH	Ø˜\‰ÊH™]\›ˆX]˜XœÊÙ[™Y
+HHÈÈÈHˆÂˆYˆ
+›Ùš[HOOH	Ø[\	ÊH™]\›ˆHHÙ[™Y
+ˆÙ[™YÂˆ™]\›ˆÜÚ][ÛŽÈËÈ	Ü˜[\	ÂŸB‚™^Ü[˜Ý[ÛˆØ[Y\˜T›Ùš[TÕ‘Ê™ÈHLÍKÚYHÌ˜\Ù[[™HHKZYÚHMKØØ[HH[HHßJHÂˆYˆ
+P\œ˜^Kš\Ð\œ˜^J™Ëœ›Ùš[JH\™œ›Ùš[K›[™Ý
+H™]\›ˆ	ÉÎÂˆÛÛœÝ˜[Y\ÈH™œ›Ùš[K›X\
+˜[YHOˆ[X™\‹š\Ñš[š]J˜[YJHÈX]›X^
+˜[YJHˆ
+NÂˆÛÛœÝX^[][HHX]›X^
+‹‹˜[Y\ËYKNJNÂˆËÈ]]ËYš][Ø^\Èš[ÈH›ÞÛÈÚ\H\È™XYX›H]XYÛš]YH\ÂˆËÈ[š\ÚX›KˆXœÛÛ]HÙY\ÈHØ[YHÚ\H[™ØØ[\ÈHÚÛHÝ\™HžBˆËÈHÝ[™XY[™ËÛÈ[ˆHYÚ™X[HÙ\È˜]È[ˆ\È[‚ˆËÈH™XY[™ÈX›Ý™HÛ™H[ÛÝ\˜ÙIÜÈÛÜÛ[\È˜]\ˆ[ˆÝ™\™›ÝÚ[™Ë‚ˆËÈHÙ[Z[™[H™\›È™XY[™È]\Ý˜]È›]]H™XY[™ÈÚ]›ÈÚYÛ˜[ˆËÈšY[][\È›ÈXœÛÛ]H™Y™\™[˜ÙHÈØØ[HYØZ[œÝKH˜[˜XÚÈÂˆËÈ]]ËYš]\™H˜]\ˆ[ˆÚ[[HÛÛ\Ú[™ÈHÝ\™HÈH^\Ë‚ˆÛÛœÝ\ÕÝ[H[X™\‹š\Ñš[š]J™œÚYÛ˜[
+NÂˆÛÛœÝ™\]Y\ÝYH
+ØØ[H™œ›Ùš[TØØ[JHOOH	Ùš]	ÈÈ	Ùš]	Èˆ	ØXœÛÛ]IÎÂˆÛÛœÝ[ÙHH™\]Y\ÝYOOH	ØXœÛÛ]IÈ	‰ˆ\ÕÝ[È	ØXœÛÛ]IÈˆ	Ùš]	ÎÂˆÛÛœÝZYÚØØ[HH[ÙHOOH	Ùš]	ÈÈHˆX]›Z[ŠKX]›X^
+™œÚYÛ˜[
+JNÂˆÛÛœÝØY™VH[X™\‹š\Ñš[š]J
+HÈˆLÍNÂˆÛÛœÝØY™UÚYH[X™\‹š\Ñš[š]JÚY
+H	‰ˆÚYˆÈÚYˆÌÂˆÛÛœÝØY™P˜\Ù[[™HH[X™\‹š\Ñš[š]J˜\Ù[[™JHÈ˜\Ù[[™HˆNÂˆÛÛœÝØY™RZYÚH[X™\‹š\Ñš[š]JZYÚ
+H	‰ˆZYÚˆÈZYÚˆMNÂˆÛÛœÝš[•ÚYHØY™UÚYÈ˜[Y\Ë›[™ÝÂˆÛÛœÝÚ[ÈH˜[Y\Ë›X\
+
+˜[YK[™^
+HOˆ
+ÂˆˆØY™V
+È
+[™^
+ÈJH
+ˆš[•ÚYˆNˆØY™P˜\Ù[[™HHØY™RZYÚ
+ˆZYÚØØ[H
+ˆ˜[YHÈX^[][KˆJJNÂˆÛÛœÝÝ\™HHÂˆÈˆØY™VNˆÚ[ÖÌKžHKˆ‹‹œÚ[ËˆÈˆØY™V
+ÈØY™UÚYNˆÚ[ÖÜÚ[Ë›[™ÝHWKžHKˆNÂˆÛÛœÝÝ\™TÚ[ÈHÝ\™K›X\
+Ú[Oˆ	ÜÚ[žÑš^Y
+Š_K	ÜÚ[žKÑš^Y
+Š_X
+Kš›Ú[Š	È	ÊNÂˆÛÛœÝÝ\™T]HH	ØÝ\™TÚ[ßXÂˆÛÛœÝš[]HH	ÜØY™VÑš^Y
+Š_K	ÜØY™P˜\Ù[[™KÑš^Y
+Š_H	ØÝ\™TÚ[ßH
+Âˆ	ÊØY™V
+ÈØY™UÚY
+KÑš^Y
+Š_K	ÜØY™P˜\Ù[[™KÑš^Y
+Š_H˜ÂˆÛÛœÝÛÛÜˆH×ˆÖÌNXKY—^ÍŸIÚK\Ý
+™˜ÛÛÜˆ	ÉÊHÈ™˜ÛÛÜˆˆ	ÈÙMÙYIÎÂˆÛÛœÝ›Ùš[RÚ[™H™œ›Ùš[S[ÙHOOH	ØÛÚ\™[	ÈÈ	ØÛÚ\™[	Èˆ	Ú[[œÚ]IÎÂˆ™]\›ˆÈ]KXØ[Y\˜K\›Ùš[OH‰Ü›Ùš[RÚ[™Hˆ]KXØ[Y\˜K\›Ùš[K\^[ÏH‰Ý˜[Y\Ë›[™ÝHˆ]KXØ[Y\˜K\›Ùš[K\ØØ[OH‰Û[Ù_H˜
+Âˆ]]KXØ[Y\˜K\›Ùš[KYš[H‰Ùš[]Hˆš[H‰ØÛÛÜŸHˆÜXÚ]OHŒŒŒˆ‹Ï˜
+Âˆ]]KXØ[Y\˜K\›Ùš[KXÝ\™HH‰ØÝ\™T]Hˆš[H››Û™HˆÝ›ÚÙOH‰ØÛÛÜŸHˆÝ›ÚÙK]ÚYHŒKŒÍHˆÝ›ÚÙK[[™Z›Ú[Hœ›Ý[™‹Ï˜
+Âˆ[™HOH‰ÜØY™VÑš^Y
+Š_HˆLOH‰ÜØY™P˜\Ù[[™KÑš^Y
+Š_HˆH‰ÊØY™V
+ÈØY™UÚY
+KÑš^Y
+Š_HˆLH‰ÜØY™P˜\Ù[[™KÑš^Y
+Š_HˆÝ›ÚÙOHˆÌŽMLÈˆÝ›ÚÙK]ÚYHŒŽ‹Ï˜
+ÂˆÙÏ˜ÂŸB‚™[˜Ý[Ûˆ\Ü^TÜXÝ[TÝ
+™È˜\Ù[[™HHKZYÚHMHHHßJHÂˆÛÛœÝØ[™Y]\ÈH\œ˜^Kš\Ð\œ˜^J™œÜXÝ[JH	‰ˆ™œÜXÝ[K›[™ÝˆÈ™œÜXÝ[HˆÞÈØ]™[[™Ýˆ™Ø]™[[™ÝÝÙ\Žˆ™œÚYÛ˜[ÛÛÜŽˆ™˜ÛÛÜˆWNÂˆËÈÛÚ\™[Ø[˜Ù[][ÛˆØ[ˆX]™H[Y\šXØ[H[žH™\ÚYX[ËˆÜÙH\™H›ÝˆËÈ]XÝYØ]™[[™ÝØ[\\È[™]\Ý›ÝÜ›ÝÈHZ[š[][KZZYÚÜXÝ[BˆËÈÝ[HY\™[H™XØ]\ÙHÕ‘È™YYÈÛÛY][™Èš\ÚX›HÈ˜]Ë‚ˆÛÛœÝØ[\\ÈH™™\šÈÈ×HˆØ[™Y]\Ë™š[\ŠØ[\HO‚ˆ[X™\‹š\Ñš[š]JØ[\OËØ]™[[™Ý
+H	‰ˆ[X™\‹š\Ñš[š]JØ[\OËœÝÙ\ŠH	‰ˆØ[\KœÝÙ\ˆˆYKLLŠNÂˆÛÛœÝ^\ÈH[™H]K\ÜXÝ[KX˜\Ù[[™HOH‹LÍHˆLOH‰Ø˜\Ù[[™_HˆHŒÍHˆLH‰Ø˜\Ù[[™_HˆÝ›ÚÙOHˆÌŽMLÈˆÝ›ÚÙK]ÚYHŒŽ‹Ï˜ÂˆYˆ
+\Ø[\\Ë›[™Ý
+H™]\›ˆÈ]K\ÜXÝ[K\Ú[ÏHŒ‰Ø^\ßOÙÏ˜ÂˆÛÛœÝÈH[X™\‹š\Ñš[š]J™˜˜[™Z[ŠHÈ™˜˜[™Z[ˆˆX]›Z[Š‹‹œØ[\\Ë›X\
+Ø[\HOˆØ[\KØ]™[[™Ý
+JNÂˆÛÛœÝHH[X™\‹š\Ñš[š]J™˜˜[™X^
+HÈ™˜˜[™X^ˆX]›X^
+‹‹œØ[\\Ë›X\
+Ø[\HOˆØ[\KØ]™[[™Ý
+JNÂˆÛÛœÝÜ[ˆHX]›X^
+KHHÊNÂˆÛÛœÝX^HX]›X^
+‹‹œØ[\\Ë›X\
+Ø[\HOˆØ[\KœÝÙ\ˆ
+KYKNJNÂˆÛÛœÝX\šÜÈHØ[\\Ë›X\
+
+Ø[\K[™^
+HOˆÂˆÛÛœÝHHHÈYKNHÈˆLÍ
+ÈŽ
+ˆ
+Ø[\KØ]™[[™ÝHÊHÈÜ[ŽÂˆÛÛœÝHH˜\Ù[[™HHX]›X^
+KŒ‹ZYÚ
+ˆX]›X^
+Ø[\KœÝÙ\ˆ
+HÈX^
+NÂˆ™]\›ˆ[™H]K\ÜXÝ[K\Ø[\OH‰Ú[™^HˆOH‰ÞÑš^Y
+Š_HˆLOH‰Ø˜\Ù[[™_HˆH‰ÞÑš^Y
+Š_HˆLH‰ÞKÑš^Y
+Š_Hˆ
+ÂˆÝ›ÚÙOH‰ÜØ[\K˜ÛÛÜˆØ]™[[™ÝÐÛÛÜŠØ[\KØ]™[[™Ý
+_HˆÝ›ÚÙK]ÚYH‰ÜØ[\\Ë›[™ÝˆLˆÈKˆ‹ŒŸHˆÝ›ÚÙK[[™XØ\Hœ›Ý[™‹Ï˜ÂˆJKš›Ú[Š	ÉÊNÂˆ™]\›ˆ^\È
+ÈX\šÜÎÂŸB‚‹ËÈÛÈ[™\È˜]\ˆ[ˆÚ\š[™ÈÛ™H›ÝÎˆHÛ™ÈÙ[œÛÜˆ˜[YH
+K™Ë‚‹ËÈ”ÕÑUPÕÔˆŠH[™HÝ\œ™[™XYÝ][ÙH\ÙYÈÛÛ\]H›ÜˆB‹ËÈØ[YH˜\Ù[[™H[™ÛÝ[Ý™\›\ˆÝXÚÚ[™È[HÛÜÝÈH]H™\XØ[‹ËÈ›ÛÛKÚXÚH™\ÝÙˆÝ[™\™\Ü^T™XY[™Ê
+IÜÈ^[Ý]™[ÝÈ
+[]‹ËÈHHNJH[™XYHÛX\œË‚™[˜Ý[Ûˆ\Ü^RXY\ŠÙ[œÛÜ“˜[YK[ÙK[ÙJHÂˆÛÛœÝXY\“˜[YHHÙ[œÛÜ“˜[YKÕ\\Ø\ÙJ
+NÂˆÛÛœÝ˜[YTÚ^™HHX]›X^
+ËŽKX]›Z[Š‹ˆÈX]›X^
+KXY\“˜[YK›[™Ý
+ˆŒŠJJNÂˆ™]\›ˆ^H‹LÍˆˆOH‹LŒËHˆ›Û\Ú^™OH‰Û˜[YTÚ^™KÑš^Y
+Š_Hˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒÍHˆš[HˆÎYXXÌÈ‰Ù\ØÊXY\“˜[YJ_OÝ^˜
+Âˆ^H‹LÍˆˆOH‹LM‹Hˆ›Û\Ú^™OHHˆ›Û]ÙZYÚHÌˆ]\‹\ÜXÚ[™ÏHŒŒÍHˆš[H‰Ü[ÙHÈ	ÈÍÙNŽIÈˆ	ÈÍL‰ßH‰Ù\ØÊ[ÙJ_IÜ[ÙHÈ	È0­ÈSÑIÈˆ	ÉßOÝ^˜ÂŸB‚™[˜Ý[Ûˆ\Ü^Q]Z[
+™
+HÂˆÛÛœÝØ[Y\˜TÝ]HHØ[Y\˜T™XY[™ÔÝ]J™
+NÂˆÛÛœÝØ[Y\˜T›Ùš[SX™[HØ[Y\˜TÝ]KšÚ[™OOH	ØØ[˜Ù[][Û‰ÈÈ	ÐÐSÑSUSÓ‰ÂˆˆØ[Y\˜TÝ]KšÚ[™OOH	Ü\ÙK][˜]˜Z[X›IÈÈ	ÔTÑHSURSP“IÂˆˆØ[Y\˜TÝ]KšÚ[™OOH	Ü\X[	ÈÈ
+Ø[Y\˜TÝ]Kœ™X\ÛÛˆÈ	ÔTÑHSURSP“IÈˆ	ÔT•PS	ÊBˆˆØ[Y\˜TÝ]KšÚ[™OOH	ØÛÚ\™[	ÈÈ
+Ø[Y\˜TÝ]Kœ]ÈÈ	ØØ[Y\˜TÝ]Kœ]ßHÓÒT‘S•UØˆ	ÐÓÒT‘S•	ÊBˆˆ	ÒS•S”ÒUIÎÂˆÛÛœÝ[šY\ÈH™œ™XYÝ]Ú[™OOH	ØØ[Y\˜IÂˆÈÖÉÔÒQÓS	Ë3¨ÝÈ	ØÛÛ\XÝ[X™\Š™œÚYÛ˜[
+_XKÉÐÑS•“ÒQ	Ë™˜Ù[›ÚYOH[È	ø %	Èˆ	Ü™˜Ù[›ÚYÑš^Y
+Š_H[XKˆÉÔVSÉËÝš[™Ê™œ›Ùš[OË›[™Ý
+WKÉÔ“Ñ’SIËØ[Y\˜T›Ùš[SX™[WBˆˆ™œ™XYÝ]Ú[™OOH	Ü]	ÂˆÈÖÉÒS”U	Ë3¨ÝÈ	ØÛÛ\XÝ[X™\Š™œÚYÛ˜[
+_XKÉÓÕUU	Ë	ØÛÛ\XÝ[X™\Š™›Ý]]ÚYÛ˜[
+_HKK˜KˆÉÔÕUIË™œØ]\˜]YÈ	ÔÐUTUQ	Èˆ	ÓS‘PT‰×KÉó®ÈÔS‰Ë\Ü^TÜXÝ[J™
+WWBˆˆÖÉÔÒQÓS	Ë3¨ÝÈ	ØÛÛ\XÝ[X™\Š™œÚYÛ˜[
+_XKÉÔÔÕ	Ë™œØ[\\ÈˆHÈ	Ü™œÜÝÜ[‹Ñš^Y
+J_H[Xˆ	ÔÒS•	×KˆÉÔÓ	ËÚÜÛ\š^˜][ÛŠ™œÛ\š^˜][ÛŠWKÉó®ÈÔS‰Ë\Ü^TÜXÝ[J™
+WWNÂˆ™]\›ˆ[šY\Ë›X\
+
+ÛX™[˜[YWK[™^
+HOˆÂˆÛÛœÝH[™^	HˆÈˆLÍNÂˆÛÛœÝHH[™^ˆÈNˆNÂˆ™]\›ˆ^H‰ÞHˆOH‰Þ_Hˆ›Û\Ú^™OHŒˆˆ›Û]ÙZYÚHÌˆ]\‹\ÜXÚ[™ÏHŒŒÍHˆš[HˆÍYÙH‰ÛX™[OÝ^˜
+Âˆ^H‰ÞHˆOH‰ÞH
+ÈŸHˆ›Û\Ú^™OHKŒˆˆ›Û]ÙZYÚHŽˆš[HˆÙYNYH‰Ù\ØÊ˜[YJ_OÝ^˜ÂˆJKš›Ú[Š	ÉÊNÂŸB‚™[˜Ý[ÛˆÛÛ\XÝ\Ü^T™XY[™ÊÙ[œÛÜ“˜[YK™šY]ÊHÂˆÛÛœÝXY\ˆH^H‹LÍHˆOH‹LMÈˆ›Û\Ú^™OHˆˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒˆš[HˆÎ˜NXŽ‰Ù\ØÊÙ[œÛÜ“˜[YKÕ\\Ø\ÙJ
+KœÛXÙJLJJ_OÝ^˜ÂˆÛÛœÝØ[Y\˜TÝ]HH™œ™XYÝ]Ú[™OOH	ØØ[Y\˜IÈÈØ[Y\˜T™XY[™ÔÝ]J™
+Hˆ[ÂˆÛÛœÝØ[Y\˜P˜YÙHHØ[Y\˜TÝ]OË˜˜YÙBˆÈ^HŒÍHˆOH‹LMÈˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OH‰ØØ[Y\˜TÝ]KØ\›š[™ÈÈËHˆŒ_Hˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒHˆš[H‰ØØ[Y\˜TÝ]KØ\›š[™ÈÈ	ÈÙ˜˜™Œ	ÈˆØ[Y\˜TÝ]KšÚ[™OOH	ØØ[˜Ù[][Û‰ÈÈ	ÈÎMLØŽ	Èˆ	ÈÍ™YMØÉßH‰Ù\ØÊØ[Y\˜TÝ]K˜˜YÙJ_OÝ^˜ˆˆ	ÉÎÂˆYˆ
+Ø[Y\˜TÝ]OËšÚ[™OOH	ØØ[˜Ù[][Û‰ÊHÂˆ™]\›ˆXY\ˆ
+ÈØ[Y\˜P˜YÙH
+ÈØ[Y\˜T›Ùš[TÕ‘Ê™ÈˆLÍKÚYˆÌ˜\Ù[[™Nˆ‹ZYÚˆLÈJH
+Âˆ^HŒˆOHŒMHˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHHˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒˆˆš[HˆÎMLØŽÓÒT‘S•ÐSÑSUSÓÝ^˜ÂˆBˆYˆ
+šY]ÈOOH	ÜÜXÝ[IÊHÂˆÛÛœÝÜXÝ˜[H™˜˜[™X^H™˜˜[™Z[ˆˆ‚ˆÈ	ÓX]œ›Ý[™
+™˜˜[™Z[Š_x $ÉÓX]œ›Ý[™
+™˜˜[™X^
+_Xˆˆ	ÓX]œ›Ý[™
+™Ø]™[[™Ý
+_XÂˆÛÛœÝÝ]S[™HHØ[Y\˜TÝ]OËØ\›š[™ÂˆÈ^HŒˆOHŒMˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHŒHˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒMHˆš[HˆÙ˜˜™Œ‰Ù\ØÊØ[Y\˜TÝ]K™\Ü^TÝ]\Ê_OÝ^˜ˆˆ^HŒˆOHŒLÈˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHHˆ›Û]ÙZYÚHÌˆš[HˆÍÍÎL˜Lˆ››H0­ÈUPÕQ3®ÏÝ^˜Âˆ™]\›ˆXY\ˆ
+ÈØ[Y\˜P˜YÙH
+È^HŒˆOHHˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OH‰ÜÜXÝ˜[›[™ÝˆˆÈLˆLßHˆ›Û]ÙZYÚHÎˆš[H‰Ü™˜ÛÛÜŸH‰ÜÜXÝ˜[OÝ^˜
+ÈÝ]S[™NÂˆBˆYˆ
+šY]ÈOOH	Ù]Z[	ÊHÂˆYˆ
+Ø[Y\˜TÝ]OËØ\›š[™ÊHÂˆ™]\›ˆXY\ˆ
+ÈØ[Y\˜P˜YÙH
+È^HŒˆOHˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHŒˆˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒLˆˆš[HˆÙ˜˜™Œ‰Ù\ØÊØ[Y\˜TÝ]K™\Ü^TÝ]\Ê_OÝ^˜
+Âˆ^HŒˆOHŒMˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHHˆš[HˆÍÎL˜LH³¨ÝÈ	ØÛÛ\XÝ[X™\Š™œÚYÛ˜[
+_OÝ^˜ÂˆBˆ™]\›ˆXY\ˆ
+ÈØ[Y\˜P˜YÙH
+È^HŒˆOHˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHŽˆ›Û]ÙZYÚHÍLˆš[HˆÙYNYH‰Ù\ØÊÚÜÛ\š^˜][ÛŠ™œÛ\š^˜][ÛŠJ_OÝ^˜
+Âˆ^HŒˆOHŒLÈˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHHˆš[HˆÍÍÎL˜Lˆ‰Ù\ØÊÚÜÜXÝ[J™
+J_OÝ^˜ÂˆBˆYˆ
+™œ™XYÝ]Ú[™OOH	ØØ[Y\˜IÈ	‰ˆ™œ›Ùš[JHÂˆYˆ
+Ø[Y\˜TÝ]KØ\›š[™ÊHÂˆ™]\›ˆXY\ˆ
+ÈØ[Y\˜P˜YÙH
+ÈØ[Y\˜T›Ùš[TÕ‘Ê™ÈˆLÍKÚYˆÌ˜\Ù[[™NˆËZYÚˆMJH
+Âˆ^HŒˆOHŒMHˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHŒHˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒHˆš[HˆÙ˜˜™Œ‰Ù\ØÊØ[Y\˜TÝ]K™\Ü^TÝ]\Ê_OÝ^˜ÂˆBˆ™]\›ˆXY\ˆ
+ÈØ[Y\˜P˜YÙH
+ÈØ[Y\˜T›Ùš[TÕ‘Ê™ÈˆLÍKÚYˆÌ˜\Ù[[™NˆL‹ZYÚˆŒJNÂˆBˆÛÛœÝ˜[YHH™œ™XYÝ]Ú[™OOH	Ü]	ÈÈ™›Ý]]ÚYÛ˜[ˆ™œÚYÛ˜[ÂˆÛÛœÝ[š]H™œ™XYÝ]Ú[™OOH	Ü]	ÈÈ	ØKK‰Èˆ	ó¨ÝÉÎÂˆ™]\›ˆXY\ˆ
+ÈÚ\˜ÛHÞH‹LŽHˆÞOHŒˆˆHŒ‹ŒÈˆš[H‰Ü™˜ÛÛÜŸH‹Ï˜
+Âˆ^HŒÌˆOHÈˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OHŒMHˆ›Û]ÙZYÚHÎˆš[HˆÙXÙÙ˜H‰ØÛÛ\XÝ[X™\Š˜[YJ_OÝ^˜
+Âˆ^HŒÍˆOHŒLÈˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OHHˆ›Û]ÙZYÚHÌˆš[HˆÍÍÎL˜Lˆ‰Ý[š]OÝ^˜ÂŸB‚™[˜Ý[ÛˆÝ[™\™\Ü^T™XY[™ÊÙ[œÛÜ“˜[YK™šY]Ë[œÚ]JHÂˆÛÛœÝØ[Y\˜TÝ]HH™œ™XYÝ]Ú[™OOH	ØØ[Y\˜IÈÈØ[Y\˜T™XY[™ÔÝ]J™
+Hˆ[ÂˆÛÛœÝØ[Y\˜P˜YÙHHØ[Y\˜TÝ]OË˜˜YÙBˆÈ^HŒÍHˆOH‹LŒËHˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OH‰ØØ[Y\˜TÝ]KØ\›š[™ÈÈËŒÍHˆËßHˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒˆˆš[H‰ØØ[Y\˜TÝ]KØ\›š[™ÈÈ	ÈÙ˜˜™Œ	ÈˆØ[Y\˜TÝ]KšÚ[™OOH	ØØ[˜Ù[][Û‰ÈÈ	ÈÎMLØŽ	Èˆ	ÈÍ™YMØÉßH‰Ù\ØÊØ[Y\˜TÝ]K˜˜YÙJ_OÝ^˜ˆˆ	ÉÎÂˆÛÛœÝXY\ˆH\Ü^RXY\ŠÙ[œÛÜ“˜[YK\Ü^UšY]Ó˜[YJšY]Ë™
+K™œ[ÙJH
+ÈØ[Y\˜P˜YÙNÂˆYˆ
+šY]ÈOOH	Ù]Z[	È	‰ˆØ[Y\˜TÝ]OËšÚ[™OOH	ØØ[˜Ù[][Û‰ÊHÂˆ™]\›ˆXY\ˆ
+È^HŒˆOH‹LHˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHˆˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒHˆš[HˆÎMLØŽÓÒT‘S•ÐSÑSUSÓÝ^˜
+Âˆ^HŒˆOHŒLˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHHˆš[HˆÍÌNŽMH³¨ÝÈ	ØÛÛ\XÝ[X™\Š™œÚYÛ˜[
+_H0­È	Ü™œ›Ùš[OË›[™ÝHVSÏÝ^˜ÂˆBˆYˆ
+šY]ÈOOH	Ù]Z[	ÊH™]\›ˆXY\ˆ
+È\Ü^Q]Z[
+™
+NÂˆYˆ
+šY]ÈOOH	ÜÜXÝ[IÊHÂˆÛÛœÝ›ÛÝ\ˆHØ[Y\˜TÝ]OË™\Ü^TÝ]\ÈÚÜÜXÝ[J™
+NÂˆÛÛœÝ›ÛÝ\ÛÛÜˆHØ[Y\˜TÝ]OËØ\›š[™ÈÈ	ÈÙ˜˜™Œ	ÈˆØ[Y\˜TÝ]OËšÚ[™OOH	ØØ[˜Ù[][Û‰ÈÈ	ÈÎMLØŽ	Èˆ	ÈÎ˜MØIÎÂˆ™]\›ˆXY\ˆ
+È\Ü^TÜXÝ[TÝ
+™È˜\Ù[[™Nˆ[œÚ]HOOH	Ù^[™Y	ÈÈˆ‹ZYÚˆMˆJH
+Âˆ^H‹LÍHˆOHŒMˆ›Û\Ú^™OH‰ØØ[Y\˜TÝ]OËšÚ[™OOH	ØØ[˜Ù[][Û‰ÈÈˆØ[Y\˜TÝ]OË™\Ü^TÝ]\ÈÈˆKŒŸHˆ›Û]ÙZYÚH‰ØØ[Y\˜TÝ]OË™\Ü^TÝ]\ÈÈÍŒˆHˆš[H‰Ù›ÛÝ\ÛÛÜŸH‰Ù\ØÊ›ÛÝ\Š_OÝ^˜
+Âˆ^HŒÍHˆOHŒMˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OHKŒˆˆ›Û]ÙZYÚHÌˆš[HˆÙYNYH³¨ÝÈ	ØÛÛ\XÝ[X™\Š™œÚYÛ˜[
+_OÝ^˜ÂˆBˆYˆ
+™œ™XYÝ]Ú[™OOH	ØØ[Y\˜IÈ	‰ˆ™œ›Ùš[JHÂˆÛÛœÝ^[™YH[œÚ]HOOH	Ù^[™Y	ÎÂˆÛÛœÝ˜\Ù[[™HH^[™YÈHˆNÂˆÛÛœÝÜÝHØ[Y\˜TÝ]K™\Ü^TÝ]\È
+™œØ[\\ÈˆHÈ‘PSH0æ	Ü™œÜÝÜ[‹Ñš^Y
+J_H[Xˆ	ÔÒS•U	ÊNÂˆÛÛœÝÜÝÛÛÜˆHØ[Y\˜TÝ]KØ\›š[™ÈÈ	ÈÙ˜˜™Œ	ÈˆØ[Y\˜TÝ]KšÚ[™OOH	ØØ[˜Ù[][Û‰ÈÈ	ÈÎMLØŽ	Èˆ	ÈÎ˜MØIÎÂˆ™]\›ˆXY\ˆ
+ÈØ[Y\˜T›Ùš[TÕ‘Ê™ÈˆLÍKÚYˆÌ˜\Ù[[™KZYÚˆ^[™YÈMˆMˆJH
+Âˆ
+^[™YˆÈ^H‹LÍHˆOHÈˆ›Û\Ú^™OHˆš[HˆÍMMÌNH¸¢$°¯OÝ^^HŒˆOHÈˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHˆš[HˆÍMMÌNHŒÝ^^HŒÍHˆOHÈˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OHˆš[HˆÍMMÌNHŠð¯HÙ[œÛÜÝ^˜ˆˆ	ÉÊH
+Âˆ^H‹LÍHˆOHŒMˆ›Û\Ú^™OH‰ØØ[Y\˜TÝ]KšÚ[™OOH	ØØ[˜Ù[][Û‰ÈÈˆØ[Y\˜TÝ]K™\Ü^TÝ]\ÈÈˆKŒŸHˆ›Û]ÙZYÚH‰ØØ[Y\˜TÝ]K™\Ü^TÝ]\ÈÈÍŒˆHˆš[H‰ÜÜÝÛÛÜŸH‰Ù\ØÊÜÝ
+_OÝ^˜
+Âˆ^HŒÍHˆOHŒMˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OHKŒˆˆ›Û]ÙZYÚHÌˆš[HˆÙYNYH³¨ÝÈ	ØÛÛ\XÝ[X™\Š™œÚYÛ˜[
+_OÝ^˜ÂˆBˆÛÛœÝ˜[YHH™œ™XYÝ]Ú[™OOH	Ü]	ÈÈ™›Ý]]ÚYÛ˜[ˆ™œÚYÛ˜[ÂˆÛÛœÝ[š]H™œ™XYÝ]Ú[™OOH	Ü]	ÈÈ	ØKK‰Èˆ	ó¨ÝÉÎÂˆÛÛœÝÝ]U^H™œØ]\˜]YÈ	ÔÐUTUQ	ÈˆÚÜÛ\š^˜][ÛŠ™œÛ\š^˜][ÛŠNÂˆ™]\›ˆXY\ˆ
+ÈÚ\˜ÛHÞH‹LÌHˆÞOH‹LˆˆHŒ‹ŒÈˆš[H‰Ü™˜ÛÛÜŸH‹Ï˜
+Âˆ^HŒÍHˆOHˆˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OHŒMˆ›Û]ÙZYÚHÎˆš[HˆÙXÙÙ˜H‰ØÛÛ\XÝ[X™\Š˜[YJ_OÝ^˜
+Âˆ^HŒÍHˆOH‹Mˆˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OHÈˆ›Û]ÙZYÚHÌˆš[HˆÍÎL˜LH‰Ý[š]OÝ^˜
+Âˆ^H‹LÍHˆOHŒMˆ›Û\Ú^™OHKŒˆˆš[HˆÎ˜MØH‰Ù\ØÊÚÜÜXÝ[J™
+J_OÝ^˜
+Âˆ^HŒÍHˆOHŒMˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OHKŒˆˆ›Û]ÙZYÚHÌˆš[H‰Ü™œØ]\˜]YÈ	ÈÙ˜ÌNIÈˆ	ÈÍ™YMØÉßH‰Ù\ØÊÝ]U^
+_OÝ^˜ÂŸB‚™[˜Ý[Ûˆ\Ü^PÛÛ›ÛÊØÜ™Y[“Û‹[œÚ]K\Ô™XY[™ÊHÂˆÛÛœÝÛÛ\XÝH[œÚ]HOOH	ØÛÛ\XÝ	ÎÂˆÛÛœÝX™[Ú^™HHÛÛ\XÝÈŒHˆNÂˆ™]\›ˆÈÛ\ÜÏH™\Ü^KXÛÛ›Ûˆ]KY\Ü^KXXÝ[ÛHœÝÙ\ˆˆ›ÛOH˜]Ûˆˆ\šXK[X™[H•ÙÙÛH\Ü^HÝÙ\ˆ˜
+Âˆ]O”ÝÙ\Ý]OÚ\˜ÛHÛ\ÜÏH™\Ü^KXÛÛ›ÛY˜XÙHˆÞH‹MˆÞOHŒÈˆHˆš[HˆÌMŒÌ˜ÈˆÝ›ÚÙOH‰ÜØÜ™Y[“ÛˆÈ	ÈÍ™YMØÉÈˆ	ÈÍŒÌÙIßHˆÝ›ÚÙK]ÚYHŒKŒH‹Ï˜
+Âˆ]H“HMŒËŽMËŒHHM‹Œ‹KŒˆHËÈHLÍËŽKŒˆˆš[H››Û™HˆÝ›ÚÙOH‰ÜØÜ™Y[“ÛˆÈ	ÈÍ™YMØÉÈˆ	ÈÎLXIßHˆÝ›ÚÙK]ÚYHŒŽHˆÝ›ÚÙK[[™XØ\Hœ›Ý[™‹ÏÙÏ˜
+ÂˆÈÛ\ÜÏH™\Ü^KXÛÛ›Ûˆ]KY\Ü^KXXÝ[ÛHš[œ]ˆ›ÛOH˜]Ûˆˆ\šXK[X™[HÞXÛHÙ[œÛÜˆ[œ]˜
+Âˆ]OÞXÛHÙ[œÛÜˆ[œ]Ý]O™XÝÛ\ÜÏH™\Ü^KXÛÛ›ÛY˜XÙHˆH‹LÌˆOHŒŒ‹HˆÚYHŒŒÈˆZYÚHŽHˆžHŒˆˆš[HˆÌXŒ˜ŒÍHˆÝ›ÚÙOHˆÍLÍ˜MÎˆÝ›ÚÙK]ÚYHŒŽH‹Ï˜
+Âˆ^H‹LNHˆOHŒŽˆˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OH‰ÛX™[Ú^™_Hˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒÍHˆš[HˆØØÍÙ‰ØÛÛ\XÝÈ	ÒS‰Èˆ	ÒS”U	ßOÝ^ÙÏ˜
+ÂˆÈÛ\ÜÏH™\Ü^KXÛÛ›Ûˆ]KY\Ü^KXXÝ[ÛHšY]Èˆ›ÛOH˜]Ûˆˆ\šXK[X™[HÞXÛH\Ü^HšY]È˜
+Âˆ]OÞXÛH\Ü^HšY]ÏÝ]O™XÝÛ\ÜÏH™\Ü^KXÛÛ›ÛY˜XÙHˆH‹LËHˆOHŒŒ‹HˆÚYHŒŒÈˆZYÚHŽHˆžHŒˆˆš[HˆÌXŒ˜ŒÍHˆÝ›ÚÙOHˆÍLÍ˜MÎˆÝ›ÚÙK]ÚYHŒŽH‹Ï˜
+Âˆ^HŽˆOHŒŽˆˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OH‰ÛX™[Ú^™_Hˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŒÍHˆš[HˆØØÍÙ‰ØÛÛ\XÝÈ	Õ‰Èˆ	Õ’QUÉßOÝ^ÙÏ˜
+ÂˆÚ\˜ÛHÞHHˆÞOHŒÈˆHŒ‹ŒÈˆš[H‰ÜØÜ™Y[“Ûˆ	‰ˆ\Ô™XY[™ÈÈ	ÈÌÍÎNIÈˆ	ÈÍNM˜Í‰ßH‹Ï˜
+Âˆ^HŒÌÈˆOHŒŽHˆ^X[˜ÚÜH™[™ˆ›Û\Ú^™OHŒËˆˆ›Û]ÙZYÚHÌˆ]\‹\ÜXÚ[™ÏHŒŒÍHˆš[HˆÍÌŽLˆ”UPSÝ^˜ÂŸB‚™[˜Ý[Ûˆ\Ü^TØÜ™Y[”Õ‘Ê[[[Y[ÈH×JHÂˆÛÛœÝØØ[HH\Ü^T™[™\”ØØ[J[œ\˜[\Ë™\Ü^TØØ[JNÂˆÛÛœÝ[œÚ]HH\Ü^Q[œÚ]JØØ[JNÂˆÛÛœÝØÜ™Y[“ÛˆH[œ\˜[\ËœØÜ™Y[“ÛˆOOH˜[ÙNÂˆÛÛœÝÙ[œÛÜˆH™\ÛÛ™Q\Ü^TÙ[œÛÜŠ[[[Y[ÊNÂˆÛÛœÝšY]ÈH™\ÛÛ™Y\Ü^UšY]Ê[Ù[œÛÜŠNÂˆÛÛœÝ\ÐÛÛ™šYÝ\™Y[šÈH›ÛÛX[Š[œ\˜[\ËœÙ[œÛÜ’Y
+NÂˆÛÛœÝ™HÙ[œÛÜˆÈ]XÝÜ”™XY[™ÊÙ[œÛÜ‹šY
+Hˆ[ÂˆÛÛœÝÙ[œÛÜ“˜[YHHÙ[œÛÜˆÈ\Ü^TÙ[œÛÜ“˜[YJÙ[œÛÜŠHˆ	ÉÎÂˆ]ØÜ™Y[ŽÂ‚ˆYˆ
+\ØÜ™Y[“ÛŠHÂˆØÜ™Y[ˆH^HŒˆOH‹LHˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHŽHˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒHˆš[HˆÍMMŒH”ÕS‘–OÝ^˜
+Âˆ^HŒˆOHŒLˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHHˆš[HˆÌÌMMˆ‰ÜÙ[œÛÜˆÈ\ØÊÙ[œÛÜ“˜[YJHˆ	Ú[œ]™]Z[™Y	ßOÝ^˜ÂˆH[ÙHYˆ
+\Ù[œÛÜŠHÂˆØÜ™Y[ˆH^HŒˆOH‹Lˆˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHŽHˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒŽˆš[H‰Ú\ÐÛÛ™šYÝ\™Y[šÈÈ	ÈÙNYL‰Èˆ	ÈÎMLØŽ	ßH‰Ú\ÐÛÛ™šYÝ\™Y[šÈÈ	ÓS’ÈÔÕ	Èˆ	ÔÑSPÕS”U	ßOÝ^˜
+Âˆ^HŒˆOHŒLˆ^X[˜ÚÜH›ZYHˆ›Û\Ú^™OHKˆš[HˆÍŒÎÈ‰Ú\ÐÛÛ™šYÝ\™Y[šÈÈ	Ô™\ÜÈS”UÈ™[[šÉÈˆ	Ô™\ÜÈS”UÈÛÛ›™XÝ	ßOÝ^˜ÂˆH[ÙHYˆ
+\™
+HÂˆØÜ™Y[ˆH^H‹LÍHˆOH‹LŒˆ›Û\Ú^™OHKÈˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒHˆš[HˆÎ˜NXŽ‰Ù\ØÊÙ[œÛÜ“˜[YKÕ\\Ø\ÙJ
+J_OÝ^˜
+ÂˆÚ\˜ÛHÞH‹LŽHˆÞOHŒHˆHŒ‹Œˆˆš[HˆÍÍˆ‹Ï˜
+Âˆ^H‹LŒÈˆOHŒÈˆ›Û\Ú^™OHŽHˆ›Û]ÙZYÚHÍŒˆ]\‹\ÜXÚ[™ÏHŒÈˆš[HˆØMØŽÍH““ÈÒQÓSÝ^˜
+Âˆ^H‹LÍHˆOHŒMˆ›Û\Ú^™OHKŒˆˆš[HˆÍŒÎÈ³¨ÝÈŒ0­ÈZ[H]Ù[œÛÜˆ˜XÙOÝ^˜ÂˆH[ÙHÂˆØÜ™Y[ˆH[œÚ]HOOH	ØÛÛ\XÝ	ÂˆÈÛÛ\XÝ\Ü^T™XY[™ÊÙ[œÛÜ“˜[YK™šY]ÊBˆˆÝ[™\™\Ü^T™XY[™ÊÙ[œÛÜ“˜[YK™šY]Ë[œÚ]JNÂˆB‚ˆ™]\›ˆÈ˜[œÙ›Ü›OHœØØ[J	ÜØØ[_JHˆ]KY\Ü^KY[œÚ]OH‰Ù[œÚ]_H™XÝH‹MHˆOH‹LÍˆˆÚYHŽNˆZYÚHÌˆˆžHˆˆš[HˆÌÌLØˆˆÝ›ÚÙOHˆÌLLXŒŒˆˆÝ›ÚÙK]ÚYHŒKÈ‹Ï˜
+Âˆ]H“HMËLÌˆÈˆÝ›ÚÙOHˆÍLMYˆÝ›ÚÙK]ÚYHŒŽˆÜXÚ]OHŒÈ‹Ï˜
+Âˆ™XÝH‹MÈˆOH‹LŽHˆÚYHŽˆˆZYÚHÈˆ»÷M·¶‰žËkºwµçYK]ÚYHŒˆ‹Ï˜
+ÂˆÚ\˜ÛHÞH‰Ë\ØÜ™]ÖHˆÞOH‰Ë\ØÜ™]Ö_HˆHˆš[HˆÍXLŒˆÝ›ÚÙOHˆÌÙ™LMHˆÝ›ÚÙK]ÚYHŒH‹Ï˜
+ÂˆÚ\˜ÛHÞH‰ÜØÜ™]ÖHˆÞOH‰Ë\ØÜ™]Ö_HˆHˆš[HˆÍXLŒˆÝ›ÚÙOHˆÌÙ™LMHˆÝ›ÚÙK]ÚYHŒH‹Ï˜
+ÂˆÚ\˜ÛHÞH‰Ë\ØÜ™]ÖHˆÞOH‰ÜØÜ™]Ö_HˆHˆš[HˆÍXLŒˆÝ›ÚÙOHˆÌÙ™LMHˆÝ›ÚÙK]ÚYHŒH‹Ï˜
+ÂˆÚ\˜ÛHÞH‰ÜØÜ™]ÖHˆÞOH‰ÜØÜ™]Ö_HˆHˆš[HˆÍXLŒˆÝ›ÚÙOHˆÌÙ™LMHˆÝ›ÚÙK]ÚYHŒH‹Ï˜ÂˆYˆ
+Ú[™ÝÓY
+HÂˆÈ
+ÏH™XÝH‰ËZHßHˆOH‰Ë]Ú[’ÈŸHˆÚYHˆˆZYÚH‰ÝÚ[’Hˆš[H‰ÑÓTÔßHˆÝ›ÚÙOH‰ÑÓTÔ×ÔßHˆÝ›ÚÙK]ÚYHŒH‹Ï˜ÂˆBˆYˆ
+Ú[™ÝÔšYÚ
+HÂˆÈ
+ÏH™XÝH‰ÚHßHˆOH‰Ë]Ú[’ÈŸHˆÚYHˆˆZYÚH‰ÝÚ[’Hˆš[H‰ÑÓTÔßHˆÝ›ÚÙOH‰ÑÓTÔ×ÔßHˆÝ›ÚÙK]ÚYHŒH‹Ï˜ÂˆBˆÛÛœÝÜH
+ˆNÂˆÈ
+ÏHÚ\˜ÛHÞHŒˆÞOH‰ËZHˆH‰ÙØ]YÙTŸHˆš[HˆÙ™™ˆˆÝ›ÚÙOHˆÍMYˆˆÝ›ÚÙK]ÚYHŒKH‹Ï˜
+Âˆ[™HOHŒˆLOH‰ËZHˆH‰ÙØ]YÙTˆ
+ˆHˆLH‰ËZHØ]YÙTˆ
+ˆM_HˆÝ›ÚÙOHˆØÌÎL˜ˆˆÝ›ÚÙK]ÚYHŒKHˆÝ›ÚÙK[[™XØ\Hœ›Ý[™‹Ï˜
+Âˆ™XÝH‰ÜÜHHˆOH‰ËZHLHˆÚYHŽˆZYÚHŒLˆš[HˆÍ˜ÌŽˆÝ›ÚÙOHˆÌÙLˆÝ›ÚÙK]ÚYHŒH‹Ï˜ÂˆYˆ
+™Ø\Ñ\™XÝ[ÛˆOOH	Ú[‰ÊHÂˆÈ
+ÏH[™HOH‰ÜÜHˆLOH‰ËZHLHˆH‰ÜÜHˆLH‰ËZHŒŸHˆÝ›ÚÙOHˆÌLÍŒY˜HˆÝ›ÚÙK]ÚYHŒ‹Œˆ‹Ï˜
+ÂˆÛYÛÛˆÚ[ÏH‰ÜÜK	ËZHLH	ÜÜHK	ËZHMßH	ÜÜ
+ÈK	ËZHMßHˆš[HˆÌLÍŒY˜H‹Ï˜ÂˆH[ÙHYˆ
+™Ø\Ñ\™XÝ[ÛˆOOH	ÛÝ]	ÊHÂˆÈ
+ÏH[™HOH‰ÜÜHˆLOH‰ËZHŒŸHˆH‰ÜÜHˆLH‰ËZHLHˆÝ›ÚÙOHˆÌLÍŒY˜HˆÝ›ÚÙK]ÚYHŒ‹Œˆ‹Ï˜
+ÂˆÛYÛÛˆÚ[ÏH‰ÜÜK	ËZHßH	ÜÜHK	ËZHŒH	ÜÜ
+ÈK	ËZHŒHˆš[HˆÌLÍŒY˜H‹Ï˜ÂˆBˆ™]\›ˆÎÂˆKˆÝ\™˜XÙ\Îˆ
+
+HOˆ×KˆK‚ˆÚ[™ÝÎˆÂˆX™[ˆ	ÓÜXØ[Ú[™ÝÉËØ]YÛÜžNˆ	ÓXˆ[[Y[ÉËÚ^™NˆÈÎˆL‹ˆÌˆKˆÚ^™WÎˆ[Oˆ
+ÈÎˆL‹ˆ[œ\˜[\Ë›[™Ý
+ÈˆJKˆ\˜[\ÎˆÂˆÈÙ^Nˆ	Û[™Ý	ËX™[ˆ	ÓÜXÈÚ^™IË\Nˆ	ÛÜÚ^™IËYŽˆKKˆÈÙ^Nˆ	Ý˜[œÜ\™[˜ÞIËX™[ˆ	Õ˜[œÜ\™[˜ÞH
+	JIË\Nˆ	Û[X™\‰ËZ[ŽˆX^ˆLÝ\ˆKYŽˆLKˆKˆÝ™Ê[
+HÂˆÛÛœÝH[œ\˜[\ËH›[™ÝÈŽÂˆÛÛœÝ›ÙSÜXÚ]HH
+HH˜[œÜ\™[˜ÞHÈL
+KÑš^Y
+ŠNÂˆ™]\›ˆ™XÝH‹LÈˆOH‰ËSHˆÚYHˆˆZYÚH‰Ü›[™ÝHˆš[H‰ÑÓTÔßHˆš[[ÜXÚ]OH‰Ø›ÙSÜXÚ]_HˆÝ›ÚÙOH‰ÑÓTÔ×ÔßHˆÝ›ÚÙK]ÚYHŒKH‹Ï˜ÂˆKˆÝ\™˜XÙ\Îˆ
+
+HOˆ×KˆKŸNÂ‚‹ËÈÚ\™H[ˆ[[Y[	ÜÈØØ[ÜšYÚ[ˆ
+[ž[žJHÚ]È™[]]™HÈHÙ[\‚‹ËÈÙˆ]ÈÚ^™J
+H›Þ[ˆØØ[
+[œ›Ý]Y
+HÛÛÜ™[˜]\Ëˆ]™\žH[[Y[\H\Â‹ËÈÙ[\‹X[˜ÚÜ™Y
+ÜšYÚ[ˆOOH›ÞÙ[\ŠH^Ù\ÜÙH]Ü[Â‹ËÈ[˜ÚÜ–ˆ	ÛY	ËÚ\™HHÜšYÚ[ˆ\ÈH›Þ	ÜÈY[ZYHYÙH[œÝXY8 %‹ËÈÙYHH^X™[[žHX›Ý™KˆÛÛœÝ[YYžH]™\žHÙ[™\šXÈYXÙHÙˆRH]‹ËÈ˜]ÜÈÜˆ]]\ÝÈHÙ[XÝ[Ûˆ›Þ\›Ý[™[ˆ[[Y[
+Ø[˜\ËšœÊK‚™^Ü[˜Ý[Ûˆ›Þ[˜ÚÜŠ[
+HÂˆÛÛœÝH™YÚ\ÝžVÙ[\WNÂˆYˆ
+\[ÙˆË˜›Þ[˜ÚÜˆOOH	Ù[˜Ý[Û‰ÊH™]\›ˆ˜›Þ[˜ÚÜŠ[
+NÂˆYˆ
+Ë˜[˜ÚÜ–OOH	ÛY	ÊH™]\›ˆÈˆÙ]Ú^™J[
+KÈÈ‹NˆNÂˆ™]\›ˆÈˆNˆNÂŸB‚‹ËÈÛÛ˜Ø]™H[œÎˆY[XØ[ÜXÜÈÈ	Û[œÉËÛÛ˜Ø]™HY˜][›ØØ[[™Ýœ™YÚ\ÝžK›[œØÈHÂˆ‹‹œ™YÚ\ÝžK›[œËˆX™[ˆ	Õ[ˆÛÛ˜Ø]™H[œÉËˆ[]QÜ›Ý\ˆ	ÒYX[[œÙ\ÉËˆ[]SÜ™\ŽˆKˆ[X\Ù\ÎˆÉØÛÛ˜Ø]™H[œÉË	Ý[ˆ[œÉË	Û™YØ]]™H[œÉË	Ù]™\™Ú[™È[œÉË	ÚYX[[œÉ×Kˆ\˜[\Îˆ™YÚ\ÝžK›[œËœ\˜[\Ë›X\
+Oˆ
+šÙ^HOOH	Ù‰ÈÈÈ‹‹œYŽˆLLHˆ
+JKŸNÂ‚‹ËÈH\™\Ù\ˆÛÝ\˜ÙKˆ]ÈÜXÝ[H\ÈH›]Ü™]ÙY[ˆÛÈ[™Ú[Â‹ËÈ˜]\ˆ[ˆH[™KÛÈ]™\XÙ\ÈØ]™[[™ÝÚ]H˜[™ÙH[™Y˜][ÈÂ‹ËÈHš^Yœ›ØY˜[™Ú]H[œÝXYÙˆHÛÛÝ\ˆ\š]™Yœ›ÛHHÙ[›ÚY3®È]‹ËÈ›ÈÛ™Ù\ˆYX[œÈ]XÚÛ˜ÙHH˜[™\È[™™YÈÙˆ›HÚYK‚‹ËÂ‹ËÈ]È[ÙH\˜][Ûˆ\ÈÙ]žH[™]™]™\ˆ™[ÝÈÚ]]È˜[™[ÝÜÎˆB‹ËÈ[ÙHÚÜ\ˆ[ˆH˜[œÙ›Ü›H[Z]Ùˆ]ÈÜXÝ[HØ[››Ý^\ÝˆB‹ËÈ›ÛÜˆ\È›Ý[™Y\È™YHÚYÛšYšXØ[šYÝ\™\ÈÛÈHšY[ÚÝÜÈHÛX[‚‹ËÈ[X™\ˆ[™H›Ý[™Y˜[YHÝ[Û›Ý\œÈH[Z]ˆH˜[™ÛÈ˜\œ›ÝÈ]Â‹ËÈ[Z]\ÜÙ\ÈHÛ™Ù\Ý\˜][ÛˆHšY[ÛÈKHH™\›Ë]ÚY˜[™\Â‹ËÈ›Èš[š]H[Z]][KH›ÛÜœÈ]]X^[][H[œÝXYˆH˜XÙ\ˆ[™B‹ËÈ™[ØYYÚÙ]ÚÛ[\\™HÛËÛÈ[žHYÚ\ˆ›ÛÜˆÛÝ[™]™\ˆ™HÙ\‚˜ÛÛœÝÐ×ÔSÑWÕÒQÓRS—Ñ”ÈHNÂ˜ÛÛœÝÐ×ÔSÑWÕÒQÓPVÑ”ÈHLÂ™^Ü[˜Ý[ÛˆÝ\\˜ÛÛ[][T[ÙUÚY›ÛÜ‘œÊHßJHÂˆÛÛœÝHÝ\\˜ÛÛ[][U˜[œÙ›Ü›S[Z]œÊœØÓZ[ˆÏÈÌœØÓX^ÏÈÌœ[ÙTÚ\JNÂˆYˆ
+JˆÐ×ÔSÑWÕÒQÓRS—Ñ”ÊJH™]\›ˆÐ×ÔSÑWÕÒQÓRS—Ñ”ÎÂˆYˆ
+JÐ×ÔSÑWÕÒQÓPVÑ”ÊJH™]\›ˆÐ×ÔSÑWÕÒQÓPVÑ”ÎÂˆÛÛœÝ[š]HL
+Šˆ
+X]™›ÛÜŠX]›ÙÌL
+
+JHHŠNÂˆ™]\›ˆX]›Z[ŠÐ×ÔSÑWÕÒQÓPVÑ”Ë[X™\Š
+X]˜ÙZ[
+È[š]HYKNJH
+ˆ[š]
+KÔ™XÚ\Ú[ÛŠÊJJNÂŸB‹ËÈ˜\œ›ÝÚ[™ÈH˜[™ÜˆÝÚ]Ú[™ÈH[™[ÜH˜Z\Ù\ÈH›ÛÜˆ[™\ˆB‹ËÈ\˜][Ûˆ]Ø\È˜[YH[ÛY[YÛÎÈ]™\žH]]Y]ÈÜÙH\˜[\Â‹ËÈ[œÈ\ÈÛÈHÝÜ™Y\˜][Ûˆ\ÈYY˜]\ˆ[ˆY[\ÜÜÚX›K‚‹ËÈ]\È[ÛÈÚ][™›Ü˜Ù\ÈH›ÛÜˆÛˆH\Y\˜][ÛŽˆHšY[	ÜÈS‹ËÈZ[ˆÝ^\È]HœÈÛÈHœ›ÝÜÙ\‰ÜÈLœÈÝ\Y\ˆ\È›Ý™X˜\ÙYÛÂ‹ËÈ[ˆ\˜š]˜\žH›ÛÜˆZÙHÌKHœËÚXÚÛÝ[X\šÈLœÈ\ÈÙ™‹\Ý\‚™^Ü[˜Ý[Ûˆ›Ü›X[^™TÝ\\˜ÛÛ[][T\˜[\Ê\˜[\ÊHÂˆÛÛœÝ›ÛÜˆHÝ\\˜ÛÛ[][T[ÙUÚY›ÛÜ‘œÊ\˜[\ÊNÂˆ™]\›ˆ[X™\Š\˜[\Ëœ[ÙUÚYœÊHH›ÛÜˆÈßHˆÈ[ÙUÚYœÎˆ›ÛÜˆNÂŸB‹ËÈHÛÈ[™Ú[ÈÝ^H]X\ÝÛ™HšY[Ý\\\ˆH™\›Ë]ÚY˜[™\Â‹ËÈ›ÝHÛÛ[][H][[™]\È›Èš[š]H˜[œÙ›Ü›H[Z]ˆÛ[\[™ÈB‹ËÈÜ›ÜÜÙY[žHÈ\]X[[™Ú[ÈYYH[ÙH\˜][ÛˆÈHšY[	ÜÂ‹ËÈYNHœÈÙZ[[™ËÚ\™H]Ý^YYY\ˆH˜[™Ø\È]šYÚˆ]L›HB‹ËÈ˜\œ›ÝÙ\Ý˜[™Ý[YZ]ÈHÌHœÈ[ÙH]Ì›K‚˜ÛÛœÝÐ×ÓRS—ÔÑTTUSÓ—Ó“HHLÂœ™YÚ\ÝžKœØÛ\Ù\ˆHÂˆ‹‹œ™YÚ\ÝžKœ[ÙY\Ù\‹ˆX™[ˆ	ÔÝ\\˜ÛÛ[][H\Ù\‰Ëˆ[]SÜ™\Žˆ‹ˆ[X\Ù\ÎˆÉÜÝ\\ˆÛÛ[][IË	ÝÚ]H\Ù\‰Ë	Øœ›ØY˜[™[ÙYÛÝ\˜ÙIË	ÜØÈ\Ù\‰×Kˆ\˜[\ÎˆÂˆÈ‹‹”Ø]™[[™ÝYŽˆLÚÝÎˆ
+
+HOˆ˜[ÙHKˆÈÙ^Nˆ	ÜØÓZ[‰ËX™[ˆ	ÔÜXÝ[HZ[š[][H
+›JIË\Nˆ	Û[X™\‰ËZ[ŽˆŒˆX^ˆOˆX]›X^
+ŒX]›Z[ŠLŒHÐ×ÓRS—ÔÑTTUSÓ—Ó“K
+œØÓX^ÏÈÌ
+HHÐ×ÓRS—ÔÑTTUSÓ—Ó“JJKÝ\ˆLYŽˆÌKˆÈÙ^Nˆ	ÜØÓX^	ËX™[ˆ	ÔÜXÝ[HX^[][H
+›JIË\Nˆ	Û[X™\‰ËˆZ[ŽˆOˆX]›Z[ŠLŒX]›X^
+Œ
+ÈÐ×ÓRS—ÔÑTTUSÓ—Ó“K
+œØÓZ[ˆÏÈÌ
+H
+ÈÐ×ÓRS—ÔÑTTUSÓ—Ó“JJKX^ˆLŒÝ\ˆLYŽˆÌKˆÈÙ^Nˆ	Ø]™ÔÝÙ\•ÉËX™[ˆ	Ð]™\˜YÙHÝÙ\ˆ
+ÊIË\Nˆ	Û[X™\‰ËZ[ŽˆX^ˆLÝ\ˆŒKYŽˆHKˆ‹‹˜™X[TÚ\T\˜[\ÊÊKˆ‹‹œ[ÙU˜Z[”\˜[\Ê
+KˆËÈ\˜][Ûˆ[™[™[ÜH\™HÛÛ™šYÝ\™Y[™\[™[HÙˆHœ›ØYÜXÝ[NÂˆËÈ\È\È›ÝH™XÛÛœÝXÝ[ÛˆÙˆ›Û›[™X\ˆÛÛ[][HÙ[™\˜][Û‹‚ˆ‹‹œ™YÚ\ÝžKœ[ÙY\Ù\‹œ\˜[\Ë™š[\ŠOˆÉÜ[ÙUÚYœÉË	Ü[ÙTÚ\I×Kš[˜ÛY\ÊšÙ^JJBˆ›X\
+OˆšÙ^HOOH	Ü[ÙUÚYœÉÂˆÈÈ‹‹œYŽˆLZ[ŽˆÝ\\˜ÛÛ[][T[ÙUÚY›ÛÜ‘œË[Z[ŽˆÐ×ÔSÑWÕÒQÓRS—Ñ”ËX^ˆÐ×ÔSÑWÕÒQÓPVÑ”ÈBˆˆÈ‹‹œJKˆÂˆÙ^Nˆ	ÜØÕ˜[œÙ›Ü›S[Z]	ËX™[ˆ	Õ˜[œÙ›Ü›H[Z]
+œÊIË\Nˆ	Ü™XYÝ]	Ëˆ™XYÝ]ˆOˆÝš[™ÊÝ\\˜ÛÛ[][T[ÙUÚY›ÛÜ‘œÊ
+JKˆKˆÓÔTSKˆËÈœ›ØY˜[™Ú]HžHY˜][ˆHÝ\\˜ÛÛ[][H\È›ÈÚ[™ÛHÛÛÝ\ˆÂˆËÈ\š]™K[™\È\ÈHÚYHH˜XÙ\ˆ[™XYHZ[ÈÚYKX˜[™YÚ‚ˆÈ‹‹”˜]]ÐÛÛÜ‹YŽˆ˜[ÙHKˆÈ‹‹”˜ÛÛÜ‹YŽˆ	ÈØØ™XIÈKˆÒÕ×ÔSÑWÔTSKˆ[›™Y\˜[J	Ý[\Ü˜[[ÙIË	Ü[ÙY	ÊKˆKˆÝ™Ê[
+HÂˆÛÛœÝH\Ù\’
+[
+KHÈ‹\H\Ù\\\\™J[
+NÂˆÛÛœÝÝš\\ÈHÉÈÍØÌØYY	Ë	ÈÌMŒÙX‰Ë	ÈÌLŽNIË	ÈÙXXŒÌ	Ë	ÈÙŽMÌÌM‰Ë	ÈÙY	×Bˆ›X\
+
+ËJHOˆ™XÝH‰Íˆ
+ÈH
+ˆŽ_HˆOH‰ËX\HˆÚYHŒHˆZYÚH‰Ìˆ
+ˆ\Hˆš[H‰ØßH‹Ï˜
+Kš›Ú[Š	ÉÊNÂˆ™]\›ˆ™XÝH‹MˆˆOH‰ËZHˆÚYHŽLˆˆZYÚH‰ÚHˆžHˆš[HˆÌŒÌØHˆÝ›ÚÙOHˆÌMÌMŒŽHˆÝ›ÚÙK]ÚYHŒKH‹Ï˜
+Âˆ^HŒˆOH‹LÈˆ	Ú\Ñ›\Y
+[
+HÈ	Ý˜[œÙ›Ü›OHœ›Ý]JN
+H‰Èˆ	ÉßH^X[˜ÚÜH›ZYHˆÛZ[˜[X˜\Ù[[™OH˜Ù[˜[ˆ›Û\Ú^™OHŒLˆ›Û]ÙZYÚHÍLˆ]\‹\ÜXÚ[™ÏHŒKŒHˆš[HˆÙ™™ˆ”ÐÈTÑTÝ^˜
+ÂˆÈÝ›ÚÙOHˆØÍY™ˆÝ›ÚÙK]ÚYHŒKŒH]H“HLMËLL‹LLÈNLHM‹LK‹Ï]H“HËLÈL‹LHMNK‹ÏÙÏ˜
+ÈÝš\\ÎÂˆKŸNÂ‚‹ËÈ™YÚ\ÝžK[ÝÛ™Y\™XÝ[X[š\[][ÛˆÙ[X[XÜËˆØ[˜\ÈÛÙHÛ›H[™\œÝ[™Â‹ËÈÙ[™\šXÈ™\Ú^™KÝ[™H\ØÜš\ÜœÎÈHÛÛ\Û™[Yš[š][ÛˆXÚY\ÈÚXÚ‹ËÈ™X[\ÚXØ[\˜[Y]\ˆH[™HÚ[™Ù\Ë‚˜ÛÛœÝT‘PÕHÂˆÝÛ\Ù\ŽˆÈ™\Ú^™NˆÈNˆ	Ø™X[UÚY	ËÙ]ˆÈ™X[S[ÙNˆ	Ø™X[IÈHK[™NˆÈÙ^Nˆ	ÝØ]™[[™Ý	ËÚÜˆ	ó®ÉÈHKˆ[ÙY\Ù\ŽˆÈ™\Ú^™NˆÈNˆ	Ø™X[UÚY	ËÙ]ˆÈ™X[S[ÙNˆ	Ø™X[IÈHK[™NˆÈÙ^Nˆ	ÝØ]™[[™Ý	ËÚÜˆ	ó®ÉÈHKˆØÛ\Ù\ŽˆÈ™\Ú^™NˆÈNˆ	Ø™X[UÚY	ËÙ]ˆÈ™X[S[ÙNˆ	Ø™X[IÈHK[™NˆÈÙ^Nˆ	ÜØÓX^	ËÚÜˆ	ó®ÈX^	ÈHKˆÚ[ÛÝ\˜ÙNˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	Ù\Ü^TØØ[IÈK[™NˆÈÙ^Nˆ	ÜÜ™XY	ËÚÜˆ	Ø[™ÛIÈHKˆØš˜\œ›ÝÎˆÈ™\Ú^™NˆÈNˆ	ÚZYÚ	ÈK[™NˆÈÙ^Nˆ	ÜÜ™XY	ËÚÜˆ	Ù˜[‰ËÚ[ŽˆOˆœ˜^\Ó[ÙHOOH	Ù˜[‰ÈHKˆZ\œ›ÜŽˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Ü™Y›	ËÚÜˆ	Ô‰ÈHKˆØ[›ÎˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	ØÛÛ[X[™[™ÛIËÚÜˆ	ØÙ[\‰ÈHKˆÛYÛÛœØØ[›™\ŽˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	ÙX[Y]\‰ÈK[™NˆÈÙ^Nˆ	ÜØØ[”\ÙIËÚÜˆ	Ü\ÙIÈHKˆ™]›Ü™Y›XÝÜŽˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Ü™Y›	ËÚÜˆ	Ô‰ÈHKˆÛÛšXÛZ\œ›ÜŽˆÈ™\Ú^™NˆÈNˆ	ÙXIÈK[™NˆÈÙ^Nˆ	ØÛÛšXÉËÚÜˆ	ÚÉÈHKˆÛZ\œ›ÜžˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Ù‰ËÚÜˆ	Ù‰ÈHKˆÛZ\œ›ÜŽˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Ù‰ËÚÜˆ	Ù‰ÈHKˆØ\ˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Ù‰ËÚÜˆ	Ù‰ÈHKˆ[œÎˆÈ™\Ú^™NˆÈNˆ	ÙXIÈK[™NˆÈÙ^Nˆ	Ù‰ËÚÜˆ	Ù‰ÈHKˆ[œØÎˆÈ™\Ú^™NˆÈNˆ	ÙXIÈK[™NˆÈÙ^Nˆ	Ù‰ËÚÜˆ	Ù‰ÈHKˆY][[œÎˆÈ™\Ú^™NˆÈNˆ	ÙXIÈK[™NˆÈÙ^Nˆ	Ù‰ËÚÜˆ	Ù‰ÈHKˆËÈ˜YZH\™HH\ÚXÜËÛÈH[™HÛ›Øˆš]™\ÈŒH
+[™HÚ\BˆËÈ›ÛÝÜÊNÈ™\Ú^™HÙ]ÈHÛX\ˆ\\\™KÚXÚ\ÈÙ[Z[™[HHÚ^™K‚ˆXÚÛ[œÎˆÈ™\Ú^™NˆÈNˆ	ÙXIÈK[™NˆÈÙ^Nˆ	ÜŒIËÚÜˆ	Ô¸  IÈHKˆ\Ü\šXÛ[œÎˆÈ™\Ú^™NˆÈNˆ	ÙXIÈK[™NˆÈÙ^Nˆ	ÚÌIËÚÜˆ	Úø  IÈHKˆ[œÙÜ›Ý\ˆÈ™\Ú^™NˆÈNˆ	ÙXIÈK[™NˆÈÙ^Nˆ	Û\Ý˜Y]\ÉËÚÜˆ	Ôˆ\Ý	ÈHKˆ[\ØÛÜNˆÈ™\Ú^™NˆÈNˆ	ÙXIÈK[™NˆÈÙ^Nˆ	ÙŒ‰ËÚÜˆ	Ù¸  ‰ÈHKˆËÈH›YH[™HÚ[™Ù\ÈH\ÚXØ[œ›ÛÜ[š[™Ë‚ˆËÈØš™XÝ]™HQ“\È[ˆ^XÝÜXØ[ÜXÚYšXØ][Û‹›ÝHØY™Hœ™YKY˜YÂˆËÈÙ\Ý\™Nˆ]È›Ü›Y\ˆx $ÌŒ[H[š[™ÈÛ›ØˆÛÝ[XZÙHH\š]™Y˜\œ™[ˆËÈ[™[\›˜[[™\È[\žH[™™YÈÙˆZ[[Y]™\Ëˆ™\Ù]È›ÝÈ[™BˆËÈÜ™[˜\žHÚ[™Ù\È[™Y˜[˜ÙY\˜[Y]\œÈ™]Z[ˆ^XÝQ“[žK‚ˆØš™XÝ]™NˆÈ™\Ú^™NˆÈNˆ	Ùœ›Û\\\™IÈHKˆXÚ›ÚXÎˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^NˆOˆ
+™\HOOH	Ø˜[™\ÜÉÈ™\HOOH	Û›ÝÚ	ÈÈ	ØÙ[\‰Èˆ	ØÝ]Ù™‰ÊKÚÜˆ	ó®ÉÈHKˆš[\ŽˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^NˆOˆ™\HOOH	Û™	ÈÈ	Ý˜[œÉÈˆ™\HOOH	Ø˜[™\ÜÉÈÈ	ØÙ[\‰Èˆ	ØÝ]Ù™‰ËÚÜˆ	Ùš[\‰ÈHKˆœÎˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	ÜÚ^™IÈK[™NˆÈÙ^Nˆ	Ü˜][ÉËÚÜˆ	Õ	ÈHKˆÛ\š^™\ŽˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Ü[™ÛIËÚÜˆ	Ø^\ÉÈHKˆÜˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	ØIËÚÜˆ	Ø^\ÉÈHKˆ]ÜˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	ØIËÚÜˆ	Ø^\ÉÈHKˆœÎˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	ÜÚ^™IÈHKˆ\ÛÛ]ÜŽˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈHKˆÜ˜][™ÎˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Û[™\ÉËÚÜˆ	Û[™\ÉÈHKˆÛ]ˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	ÙØ\	ËÚÜˆ	ÙØ\	ÈHKˆš\ÛNˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	ÜÚ^™IÈK[™NˆÈÙ^Nˆ	Ø\^	ËÚÜˆ	Ø\^	ÈHKˆœ™YYÛ\ÜÎˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	ÜØØ[IÈK[™NˆÈÙ^Nˆ	Ú[Ü‰ËÚÜˆ	Û‰ËÚ[ŽˆOˆ›X]\šX[OOH	ØÛÛœÝ[	ÈHKˆY™\Ù\ŽˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Ù]‰ËÚÜˆ	ÜÜ™XY	ÈHKˆÛNˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Þ™\›Ñœ˜XÉËÚÜˆ	Ì	ËÚ[ŽˆOˆž™\›ÓÜ™\ˆHKˆY]\Ý\™˜XÙNˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Þ™\›Ñœ˜XÉËÚÜˆ	Ì	ËÚ[ŽˆOˆž™\›ÓÜ™\ˆHKˆYˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Ý[	ËÚÜˆ	Ý[	ÈHKˆNˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	ÜÝY\‰ËÚÜˆ	ÜÝY\‰ÈHKˆ]XÝÜŽˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈHKˆËÈ[™\ÈH^Û™[›ÝH˜]È][\Y\Žˆ˜YÙÚ[™ÈHK‹ŒL8 mÈ[™X\‚ˆËÈ˜[™ÙHÛÝ[Ü˜]Û›ÝYÚHš\œÝXØYH[™™]™\ˆ™XXÚH™\Ý‚ˆ]ˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	ÙØZ[“ÙÉËÚÜˆ	ÙØZ[ˆ0åÌL‰ÈHKˆØ[Y\˜NˆÈ™\Ú^™NˆÈNˆ	ØÚ	ÈK[™NˆÈÙ^Nˆ	Ü^[ÉËÚÜˆ	Ü	ÈHKˆ^YNˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	ÙX[Y]\‰ÈK[™NˆÈÙ^Nˆ	Ù›ØÝ\ÉËÚÜˆ	Ù‰ÈHKˆ\Ü^NˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	Ù\Ü^TØØ[IÈHKˆ™X[Y[\ˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈHKˆ[ÛNˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	ÙY›XÝ	ËÚÜˆ	ÙY›XÝ	ÈHKˆ[ÙˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	ØÙ[\‘Y›XÝ	ËÚÜˆ	Ø[™ÛIÈHKˆ\Ù[[Ù[]ÜŽˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	Ù\YÉËÚÜˆ	Ù\	ÈHKˆ[ÝŽˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈHKˆ\Ù\]NˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	ÛÜ[IËÚÜˆ	ÓÔ	ÈHKˆ[^[[™NˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	Ù[^S[IËÚÜˆ	ó¥	ËÚ[ŽˆOˆ
+›[Ý™S[ÙH	ÜÝ]XÉÊHOOH	ÜÝ]XÉÈHKˆ[ÙXÛÛ\™\ÜÛÜŽˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	ÙÙœÌ‰ËÚÜˆ	ÑÑ	ÈHKˆ[ÛNˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	Ü™]\™[˜ÙIËÚÜˆ	ó¥3á‰ËÚ[ŽˆOˆ›[Ù[]H	‰ˆ™š]™S[ÙHOOH	ÜÝÚ]Ú[™ÉÈHKˆÚÜ\ŽˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	ÙX[Y]\‰ÈK[™NˆÈÙ^Nˆ	ØÚÜ]IËÚÜˆ	Ù]IËÚ[ŽˆOˆ›[Ù[]HHKˆÜž\Ý[ˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^NˆOˆ˜ÛÛ™\OOH	ÛÜÉÈÈ	ÛÜÑ\][Û‰Èˆ	ÙY™šXÚY[˜ÞIËÚÜˆ	ó­ÉËÚ[ŽˆOˆ˜ÛÛ™\OOH	Û›Û™IÈHKˆÜÎˆÈ™\Ú^™NˆÈNˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	ÜÚYÛ˜[Û	ËÚÜˆ	ó®ÜÉËÚ[ŽˆOˆ
+[™S[ÙH	Ùš^Y	ÊHOOH	Ùš^Y	ÈHKˆÛ\ÜÜ›ÙˆÈ™\Ú^™NˆÈˆ	Ü›Ù[‰ËNˆ	ÙXIÈK[™NˆÈÙ^Nˆ	Ú[Ü‰ËÚÜˆ	Û‰ËÚ[ŽˆOˆ›X]\šX[OOH	ØÛÛœÝ[	ÈHKˆØ[\NˆÈ™\Ú^™NˆÈˆ	Ø\\\™IÈK[™NˆÈÙ^Nˆ	Ý˜[œÛZ\ÜÚ[Û‰ËÚÜˆ	Õ	ËÚ[ŽˆOˆ˜[œÛZ]^ÈHKˆÝYÙNˆÈ™\Ú^™NˆÈˆ	Ø\\\™IÈHKˆ\œ›ÝØ[›ŽˆÈ™\Ú^™NˆÈˆ	Û[‰ÈK[™NˆÈÙ^Nˆ	ÝÚY	ËÚÜˆ	ÜÝ›ÚÙIÈHKˆšYÝ\™Yœ˜[YNˆÈ™\Ú^™NˆÈˆ	ÝÉËNˆ	Ú	Ë[˜ÚÜŽˆYHHKˆYÚYÚˆÈ™\Ú^™NˆÈˆ	ÝÉËNˆ	Ú	Ë[˜ÚÜŽˆYHHKˆ›ÞˆÈ™\Ú^™NˆÈˆ	ÝÉËNˆ	Ú	ÈHKˆ›ØÚÙ\ŽˆÈ™\Ú^™NˆÈˆ	ÝÉËNˆ	Ú	ÈHKˆ^X™[ˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	Ù›ÛÚ^™IÈHKˆ›Ø™NˆÈ™\Ú^™NˆÈ[šY›Ü›Nˆ	Ù\Ü^TØØ[IÈHKˆØ\ØÙ[ˆÈ™\Ú^™NˆÈˆ	Û[™Ý	ËNˆ	ÚZYÚ	ÈK[™NˆÈÙ^Nˆ	Ý˜[œÜ\™[˜ÞIËÚÜˆ	Ý˜[œÜ‰ÈHKˆÚ[™ÝÎˆÈ™\Ú^™NˆÈNˆ	Û[™Ý	ÈK[™NˆÈÙ^Nˆ	Ý˜[œÜ\™[˜ÞIËÚÜˆ	Ý˜[œÜ‰ÈHKŸNÂ‚™›Üˆ
+ÛÛœÝÝ\K\™XÝHÙˆØš™XÝ™[šY\ÊT‘PÕ
+JHÂˆYˆ
+™YÚ\ÝžVÝ\WJH™YÚ\ÝžVÝ\WK™\™XÝH\™XÝÂŸB‚™^Ü[˜Ý[ÛˆÙ]\™XÝX[š\[][ÛŠ[
+HÂˆÛÛœÝYˆH™YÚ\ÝžVÙ[Ë\WNÂˆYˆ
+YYË™\™XÝ
+H™]\›ˆ[ÂˆÛÛœÝ™\ÛÛ™RÙ^HH˜[YHOˆ\[Ùˆ˜[YHOOH	Ù[˜Ý[Û‰ÈÈ˜[YJ[œ\˜[\ÊHˆ˜[YNÂˆÛÛœÝ™\Ú^™HHY‹™\™XÝœ™\Ú^™H	‰ˆ
+YY‹™\™XÝœ™\Ú^™KÚ[ˆY‹™\™XÝœ™\Ú^™KÚ[Š[œ\˜[\ÊJBˆÈØš™XÝ™œ›ÛQ[šY\ÊØš™XÝ™[šY\ÊY‹™\™XÝœ™\Ú^™JK™š[\Š
+ÚÙ^WJHOˆÙ^HOOH	ÝÚ[‰ÊK›X\
+
+ÚÙ^K˜[YWJHOˆÚÙ^K™\ÛÛ™RÙ^J˜[YJWJJBˆˆ[ÂˆÛÛœÝ˜]Õ[™HHY‹™\™XÝ[™NÂˆ][™HH[ÂˆYˆ
+˜]Õ[™H	‰ˆ
+\˜]Õ[™KÚ[ˆ˜]Õ[™KÚ[Š[œ\˜[\ÊJJHÂˆÛÛœÝÙ^HH™\ÛÛ™RÙ^J˜]Õ[™KšÙ^JNÂˆÛÛœÝ\˜[HH
+Y‹œ\˜[\È×JK™š[™
+ÜXÈOˆÜXËšÙ^HOOHÙ^JNÂˆYˆ
+\˜[H	‰ˆ
+\˜[K\HOOH	Û[X™\‰È\˜[K\HOOH	ÛÜÚ^™IÈ\˜[K\HOOH	Ù\š]™Y	ÊJH[™HHÈ‹‹œ˜]Õ[™KÙ^K\˜[HNÂˆBˆ™]\›ˆ™\Ú^™H[™HÈÈ™\Ú^™K[™HHˆ[ÂŸB‚‹ËÈ\Ù\‹Y˜XÚ[™ÈØ\Xš[]HY]Y]KˆH\Ý[˜Ý[Ûˆ\È[X™\˜][H^XÚ]‚‹ËÈÚ[][]Y[[Y[ÈY™™XÝ˜XÙY˜^\ËÛÛ™šYÝ\˜X›H[[Y[È™YY[ˆXÝ]™B‹ËÈ[ÙK[™XYÜ˜[K[Û›H[[Y[È\™HÛ™\Ýš\ÝX[[››Ý][ÛœËÜXÙZÛ\œË‚˜ÛÛœÝSSQS•ÒSHÂˆÜÎˆ	Ð[ˆÜXØ[\˜[Y]šXÈÜØÚ[]Üˆ[ˆH›Þˆ[\YÚ[\š[™ÈH™X\ˆ\\\™HÚ][ˆ]È[™Ý[\ˆ[™Ø]™[[™ÝXØÙ\[˜ÙH™XÛÛY\ÈHÚYÛ˜[ÛˆHœ›Û^\È[™[ˆÜ[Û˜[Y\ˆÛˆH\˜[[ÜžHHØ[YH[›ÛY[›ÛÙÚXØ[[Ù[\ÈHÜž\Ý[	ÜÈÔÈ[ÙKˆHÚYÛ˜[Ø[ˆ™Hš^YÝÙ\ÜˆÝ\Y›ÝYÚH\ÝˆH[˜ÛÛ™\Y[\\È\ØØ\™Y[œÚYNÈ™\ÚÛØZ[‹Ø]š]H[™Ý[™Þ[˜Ú›Ûš\Ø][Ûˆ\™H›ÝÚ[][]Y‰ËˆÝÛ\Ù\Žˆ	Ñ[Z]ÈHÝXYH[Û›ØÚ›ÛX]XÈÛÛ[X]Y™X[H]Û™HØ]™[[™Ý‰Ëˆ[ÙY\Ù\Žˆ	Ñ[Z]ÈH[ÙK[ØÚÙY[ÙH˜Z[ŽÈ]È˜[™ÚY›ÛÝÜÈH[ÙH\˜][ÛˆÚ[H˜[œÙ›Ü›K[[Z]YÜˆ\ÈÙ]žH[™‰ËˆØÛ\Ù\Žˆ	Ñ[Z]ÈHÛÛ™šYÝ\˜X›H[ÙYÝ\\˜ÛÛ[][H˜[™\ÈHÛÛ[X]Y™X[Kˆ]È[ÙH\˜][Ûˆ\ÈÙ]\™XÝK™]™\ˆÚÜ\ˆ[ˆH˜[™LŒN\È˜[œÙ›Ü›H[Z]‰ËˆÚ[ÛÝ\˜ÙNˆ	Ñ[Z]È\ÛÝ›ÜXÈYÚ8 %[Û›ØÚ›ÛX]XËœ›ØY˜[™ÜˆH[™HÜXÝ[HÙˆHØ\È\ØÚ\™ÙH[\8 %]˜Y\ÈÝ™\ˆHÚÜ]˜[™\ØÙ[˜[™ÙH[›\ÜÈØ\\™YžHH™X\˜žH[œËØš™XÝ]™KZ\œ›Ü‹ÜˆšX™\ˆ\ˆH\˜X›ÛXÈZ\œ›ÜˆÚ]HÛÝ\˜ÙH]]È›ØÝ\ÈÛÛ[X]\È]‰ËˆØš˜\œ›ÝÎˆ	Õ˜XÙ\ÈH˜^H˜[ˆœ›ÛHHØš™XÝ8 &\È[˜ÚÜˆÛˆHÜXØ[^\È[™Ù\\˜][H˜]ÜÈ[ˆYX[\˜^X[[XYÙNÈH[XYÙHX\šÙ\ˆÙ\È›Ý[Ù[ÝÛœÝ™X[HÛ\[™Ë‰ËˆZ\œ›ÜŽˆ	Ô™Y›XÝÈ˜^\ÈÚ]ÛÛ™šYÝ\˜X›HÚ^™H[™™Y›XÝ]š]K‰Ëˆ™]›Ü™Y›XÝÜŽˆ	ÐHšYÚX[™ÛHZ\ˆÙˆZ\œ›ÜœÈ]™Y›XÝÈ[žH[˜ÛÛZ[™È˜^H˜XÚÈ[\\˜[[È]È[˜ÚY[˜ÙH\™XÝ[Û‹[™\[™[Ùˆ[™ÛKˆ]È[^K[[™H[Ý[ÛˆÝ\È]HXÙYÜÚ][Ûˆ[™\š[ÙXØ[HÛY\ÈHÚÛH[[Y[]Ø^H[Û™È]ÈÝÛˆ\^^\ËÛ›H]™\ˆ[™Ý[š[™ÈH›Ý[™]š\ÜXØ[]Ý™\ˆH\Ù\‹\Ù]˜[™ÙH8 %H\ÚXØ[[Ù[ÙˆHYXÚ[šXØ[™]›Ü™Y›XÝ[™È[^HÝYÙK‰ËˆØ[›Îˆ	Ô™Y›XÝÈ˜^\Èœ›ÛHHÝ]XÈÜˆ[š[X]YYX[]X\Ú\Ý]XÈYXÚ[šXØ[ØØ[ˆ[™ÛNÈYÚØØ[ˆ˜]\È\ÙHHÛÝÙY™]šY]Ë‰ËˆÛÛšXÛZ\œ›ÜŽˆ	Ñ^XÝÛÛšXÈ[\œÙXÝ[ÛœÈ[™Ý\™˜XÙH›Ü›X[ËÚ]H™X[Ù[˜[Ü[š[™ËˆÈHˆÜ\™NÈ8¢$ŒNˆ\˜X›ÛNÈ™[ÝÈ8¢$ŒNˆ\\˜›ÛKˆ˜Y]\Èˆ[™KˆHÛØ]YÚYH™Y›XÝÎÈH˜XÚÈ[™ÛØ][™ÈÜÜÙ\ÈXœÛÜ˜‹ˆHÜ[š[™È\ÈØ\Y]HX[Y]\ŽÈ[ˆ[\ÜÜÚX›HÜ\šXØ[Ù[\XØ[˜Y]\È\È[›\™ÙYÈÙY\H\\\™H™X[
+ÙYHÙ[ÛY]žH\ÙY
+Kˆ‘˜^HÙ[ÛY]žHÛ›Nˆ›ÈY™œ˜XÝ[Û‹ÜY\ˆ˜[™\ËÛØ][™ÈÜXÝ[KÜˆØ[Xœ˜]YTˆ›ÝYÚ]‰ËˆÛYÛÛœØØ[›™\Žˆ	Õ˜XÙ\È™Y›XÝ[Ûˆœ›ÛH]™\žH˜XÙ]ÙˆH›Ý][™È™YÝ[\ˆÛYÛÛ‹ÛÈH[™ÛHÝX›[™È[™H\[Ø[È˜[Ý]ÙˆHÙ[ÛY]žH˜]\ˆ[ˆ™Z[™È[Ù[Yˆ˜XÙ]˜]HH˜XÙ]È0åÈ”HÈŒˆH\ØX›HÚ[™ÝÈ\ÈYX[Þ[˜Ú›Ûš^™Y›[šÚ[™ÈÙ[™YÛˆH˜XÙ]8 %Ü™Y[ˆXˆÜ[‹[X™\ˆ›[šÙY8 %[™\È›Ý\š]™Yœ›ÛH[Ý\ˆ™X[NˆÛÛ\\™HH™X[HYØZ[œÝH˜XÙ]ÚY™XYÝ][™ÛÜÙHHÚ[™ÝÈ™Y›Ü™HH™X[HÝ˜Y\ÈÛÈ˜XÙ]Ëˆ›È[XÙ[šXÈØØ[ˆÜXÜË˜XÙ]]ËY˜XÙ][™Ý[\ˆ\œ›Ü‹ÜˆX]\šX[™[[Ý˜[[Ù[‰ËˆÛZ\œ›Üžˆ	Ñ]™\™Ù\È™Y›XÝY˜^\ÈÙ™ˆH™X[Ü\šXØ[Ý\™˜XÙHÙˆ˜Y]\È™‹ÛÈ]Ø\œšY\ÈHÜ\šXØ[X™\œ˜][ÛˆH™X[Û™HÙ\Ë‰ËˆÛZ\œ›ÜŽˆ	Ñ›ØÝ\Ù\È™Y›XÝY˜^\ÈÙ™ˆH™X[Ü\šXØ[Ý\™˜XÙHÙˆ˜Y]\È™ˆ8 %X\™Ú[˜[˜^\ÈÜ›ÜÜÈZXYÙˆH\˜^X[›ØÝ\ËÚXÚ\ÈHX™\œ˜][ÛˆH\˜X›ÛXÈZ\œ›Üˆ^\ÝÈÈ]›ÚY‰ËˆØ\ˆ	Ô™Y›XÝÈÙ™ˆHYH\˜X›ÛKÛÈHÛÝ\˜ÙH]]È›ØÝ\ÈX]™\È^XÝHÛÛ[X]Y][žH\\\™H8 %›ÈÜ\šXØ[X™\œ˜][Û‹[›ZÙHHÜ\šXØ[Z\œ›Ü‹‰Ëˆ[œÎˆ	Ð™[™È˜^\ÈÚ]H[‹[[œË\˜^X[›ØØ[[[™Ý[Ù[ˆ[ÙHÑÚ[[H\ÜÝ[Y\È‹P’ÍÈ[™HX[Y]\‹X]Ø\™HØYÈXÚÛ™\ÜË‰Ëˆ[œØÎˆ	Ñ]™\™Ù\È˜^\ÈÚ]H™YØ]]™H[‹[[œÈ›ØØ[[™Ýˆ[ÙHÑÚ[[H\ÜÝ[Y\È‹P’ÍÈ[™HX[Y]\‹X]Ø\™HØYÈXÚÛ™\ÜË‰ËˆY][[œÎˆ	ÐH›]\˜^X[\ÙKYÜ˜YY[›ÞHÚ]\ÚYÛ‹]Ø]™[[™Ý›ØØ[[™ÝY™œ˜XÝ]™HÚ›ÛX]XÈÚYÜˆ[ˆYX[^™YXÚ›ÛX]XÈ˜[™[™\Ù\‹\Ù]›ØÝ\Ú[™ÈY™šXÚY[˜ÞK‰Ëˆ[œÙÜ›Ý\ˆ	Õ˜XÙ\ÈHÚÛH™\ØÜš\[Ûˆ8 %Û™H›ÝÈ\ˆÝ\™˜XÙKÚ]˜Y]\ËÜXÚ[™È[™HÛ\ÜÈ]›ÛÝÜÈ8 %\È™X[Û\ÜÈ›ÙY\ËˆÙ[Y[Y[™Z\‹\ÜXÙYÜ›Ý\È\™HHØ[YHX›KÛÈ[ˆXÚ›ÛX]XÈÝX›]ÛÜœ™XÝÈ]ÈÝÛˆÛÛÝ\ˆ[œÝXYÙˆ™Z[™ÈÛËˆ[ÙHÑ›ÛÝÜÈH™X[˜XÙY]›ÝYÚXXÚÛ\ÜË‰ËˆXÚÛ[œÎˆ	Ô™Yœ˜XÝÈ›ÝYÚÛÈÙ\\˜]YÜ\šXØ[Üˆ›]˜XÙ\ÈÙˆÙ[XÝX›HØ][ÙÝYHÛ\ÜÎÈ›ØØ[\Ý[˜ÙKÜ\šXØ[[™Ú›ÛX]XÈX™\œ˜][Û‹[™[ÙHÑ[›ÛÝÈH˜XÙYÙ[ÛY]žK‰Ëˆ\Ü\šXÛ[œÎˆ	Ô™Yœ˜XÝÈ›ÝYÚ^XÝÛÛšXË\\ËY]™[‹\Û[›ÛZX[˜XÙ\ËÛÈÚ[™Ú[™ÈÈÜˆx ¡Ðx ¡‹Ðx ¢Ú[™Ù\ÈH\ÚXØ[˜^H[\œÙXÝ[ÛœÈ[™X™\œ˜][Ûˆ˜]\ˆ[ˆÛ›HH˜]Ú[™Ë‰Ëˆ[\ØÛÜNˆ	Ð\Y\ÈÛÈ[ˆ[œÙ\ÈÙ\\˜]YžHZ\ˆ›ØØ[[™ÝËˆXXÚ[œÈ\Ù\ÈHØ[YHÚ[[‹P’ÍÈØYÈ\Ý[X]H›Üˆ[ÙHÑ‰ËˆØš™XÝ]™Nˆ	ÐÚÛÜÙHH]\ÚX›HÙ[™\šXÈØš™XÝ]™HÝ\[™ÈÚ[ÜˆÜ[ˆY˜[˜ÙY\˜[Y]\œÈ›Üˆ^XÝØ][ÙÝYH˜[Y\ËˆQ“\ÈH›ØØ[[™ÝÙˆHÚÛHØš™XÝ]™H\ÈÛ™H\]Z]˜[[[œÎÈÛÜšÚ[™È\Ý[˜ÙH\È[™\[™[Ùˆ][™Û™Ë]ÛÜšÚ[™ËY\Ý[˜ÙH\ÚYÛœÈ™X[HÈ›ØÝ\È™^[Û™Z\ˆÝÛˆQ“ˆXYÛšYšXØ][Ûˆ\È™\ÜY›ÜˆHŒ[HX™H[œËˆH\]Z]˜[[[™H\ÈXÙYÛÈYÚ›ØÝ\Ù\ÈÛ™HÛÜšÚ[™È\Ý[˜ÙH\ÝHœ›Û\ˆ]Ø[ˆYHÝ]ÚYHH˜]Ûˆ˜\œ™[›ÜˆÛ™Ë]ÛÜšÚ[™ËY\Ý[˜ÙH\ÚYÛœÎÈ]™\™\Ù[ÈHÚÛHØš™XÝ]™K›ÝH\ÚXØ[Û\ÜÈÝ\™˜XÙKˆ˜]YH\ÈH˜XÚÈ\[
+™“JNˆH™X[Hš[[™È]ÛÛ™\™Ù\È]H˜]Y[™ÛK[™Ý™\™š[[™ÈÜÙ\ÈHÝ™\™›ÝÈÈH˜\œ™[ˆ[ÙHÑ\Ù\ÈHÛ\ÜË]\XØ[Ì[H‹P’ÍÈ\]Z]˜[[]Ø[ˆY™™\ˆžHX›Ý]žœ›ÛHH™X[Øš™XÝ]™K‰ËˆXÚ›ÚXÎˆ	Õ˜[œÛZ]ÈÜˆ™Y›XÝÈØ]™[[™Ý˜[™È\›Ý[™]ÈÛÛ™šYÝ\™YÝ]Ù™‹Üˆ™Y›XÝÈÛ™H˜[™[™˜[œÛZ]È›ÝÚY\ÈÙˆ]
+˜[™™Y›XÝÜŠKÜ[Û˜[H™Y›XÝ[™ÈÛ›H\Ùˆ]˜[™\È[ˆÝ]]ÛÝ\\‹‰Ëˆš[\Žˆ	Ô\ÜÙ\ÈHÜXÝ˜[˜[™Üˆ][X]\È[[œÚ]H\ÈH™]]˜[Y[œÚ]Hš[\‹‰ËˆœÎˆ	ÔÜ]È[˜ÚY[YÚ[È˜[œÛZ]Y[™™Y›XÝYœ˜[˜Ú\Ë‰ËˆÜ˜][™Îˆ	ÐÜ™X]\ÈÙ[XÝYY™œ˜XÝ[ÛˆÜ™\œÈ\Ú[™ÈHÜ˜][™È\]X][Û‹‰Ëˆš\ÛNˆ	Ô™Yœ˜XÝÈ›ÝYÚ[™YH˜]Ûˆ›Ý[™\šY\ÈÚ]Ù[XÝX›HØ][ÙÝYKYÛ\ÜÈ\Ü\œÚ[Ûˆ[™˜XÙY][[™ÝÑ‰Ëˆœ™YYÛ\ÜÎˆ	Ô™Yœ˜XÝÈ›ÝYÚH\™XÝHY]X›H›Ý[™\žHÙˆÝ˜ZYÚÙYÛY[È[™^XÝÚ\˜Ý[\ˆ\˜ÜËˆÝ\ÜÈÛÛœÝ[[™^ÜˆÙ[XÝX›HØ][ÙÝYKYÛ\ÜÈ\Ü\œÚ[Ûˆ[™˜XÙYÑÈÝ™\›\[™ÈÛ\ÜÈ›ÙY\È\™H›ÝÝ\™˜XÙK[Y\™ÙY‰ËˆY™\Ù\Žˆ	ÔÜ™XYÈ[˜ÚY[YÚ[ÈHÛÛ™šYÝ\˜X›H[™Ý[\ˆ˜[‹‰ËˆÛ\ÜÜ›Ùˆ	Ô™Yœ˜XÝÈ]]™\žHÛ\ÜËXZ\ˆ›Ý[™\žH[™Ý\ÜÈÝ[[\›˜[™Y›XÝ[Û‹ˆØ][ÙÝYHX]\šX[ÈY˜XÙY][[™ÝÑÈÛÛœÝ[[™^ÙY\ÈYØXÞH™Z]š[Ü‹‰ËˆÛ\š^™\Žˆ	Ð\Y\ÈH[™X\ˆÛ\š^˜][Ûˆ^\È[™X[\Ë[]È][X][Û‹‰ËˆÜˆ	Ô›Ý]\È[™X\ˆÛ\š^˜][Ûˆ\›Ý[™HÛÛ™šYÝ\™Y˜\Ý^\Ë‰Ëˆ]Üˆ	Ð\Y\È]X\\‹]Ø]™H™]\™[˜ÙK›ÙXÚ[™È[™X\‹[\XØ[ÜˆÚ\˜Ý[\ˆÛ\š^˜][Ûˆœ›ÛHH[œ]Ý]K‰ËˆœÎˆ	ÔÙ\\˜]\ÈÜÙÛÛ˜[Û\š^˜][ÛˆÝ]\È[ÈÛÈ]Ë‰Ëˆ\ÛÛ]ÜŽˆ	Ô\ÜÙ\ÈYÚ[ˆÛ™H\™XÝ[Ûˆ[™›ØÚÜÈ™]™\œÙH›ÜYØ][Û‹‰ËˆÛ]ˆ	Ð›ØÚÜÈ˜^\ÈÝ]ÚYHHÛÛ™šYÝ\™Y\\\™HØ\‰Ëˆ™X[Y[\ˆ	ÐXœÛÜ˜œÈ[˜ÚY[˜^\Ë‰Ëˆ›ØÚÙ\Žˆ	ÐXœÛÜ˜œÈ˜^\È]Ý^\ÈY[ˆ[ˆ^ÜYšYÝ\™\Ë‰Ëˆ\Ù\]Nˆ	Ô™]\™È\ÙˆH™X[HÚ]Ý]™[™[™È]LŒM[š\ÚX›HÛˆ]ÈÝÛ‹[™H[™È[ˆ[\™™\›ÛY]\ˆ^\ÝÈÈ™]™X[‰ËˆÛNˆ	Ô™Y›XÝÈžHY˜][[™Ø[ˆÝ™\›^H[œËX\œ˜^KÜ˜][™ËÝY\š[™ËÜˆÜXÚÛH[˜Ý[ÛœË‰ËˆY]\Ý\™˜XÙNˆ	ÐH]\›™Y^Y\ˆÛˆH[ˆ˜[œÜ\™[Ø\œšY\‹ÛÜšÚ[™È[ˆ˜[œÛZ\ÜÚ[ÛˆžHY˜][ˆÝ™\›^\ÈHØ[YH[œËX\œ˜^KÜ˜][™ËÝY\š[™Ë[™ÜXÚÛH[˜Ý[ÛœÈ\ÈHÓKÚ][ˆÜ[Û˜[[™Y™œ˜XÝY™\›ÝÜ™\ˆ8 %]H\ÙH›Ùš[H\Èš^Y]˜XœšXØ][Ûˆ˜]\ˆ[ˆ›ÙÜ˜[[XX›K‰ËˆYˆ	Ô›Ý]\ÈHÛÛ™šYÝ\˜X›Hš[˜\žHZXÜ›ÛZ\œ›Üˆ]\›ˆ[ÈÓˆ[™Ü[Û˜[Ñ‘ˆÜ™\œË‰ËˆNˆ	Ð\Y\ÈÛÛ[[Ý\È™Y›XÝ]™H\[[™\˜^X[Y›ØÝ\Ë‰Ëˆ]XÝÜŽˆ	ÓYX\Ý\™\È]X[]]]™H˜^HÚYÛ˜[ÜXÝ[KÛ\š^˜][Û‹[™ÜÝÜ[‹‰Ëˆ]ˆ	Ó][\Y\ÈH˜Z[ÚYÛ˜[[ÈH™XYX›HÛ™K[™™\ÜÈÚ]\ˆ]XÝX[HÛX\œÈHX™WLŒN\ÈÝÛˆ\šÈ›ÛÜ‹‰ËˆØ[Y\˜Nˆ	ÓYX\Ý\™\ÈH^[Z[YÜ˜]YÛ™KY[Y[œÚ[Û˜[[[œÚ]H›Ùš[H[™™\ÛÛ™\ÈÝ\ÜY[\™™\™[˜ÙHœ›ÛHÚ^™Y[Û›ØÚ›ÛX]XÈÕÈ\Ù\œË‰Ëˆ^YNˆ	Ñ›ØÝ\Ù\È›ÝYÚHÛÛ™šYÝ\˜X›H\[[™™\ÜÈH]X[]]]™H™][˜[ÚYÛ˜[[™ÜÝ‰Ëˆ\Ü^Nˆ	ÔÚÝÜÈH]™H]X[]]]™HÝ]]ÙˆH[šÙYÝÙ]XÝÜ‹UØ[Y\˜KÜˆ™][˜K‰Ëˆ[ÛNˆ	ÑY›XÝÈš\œÝ[Ü™\ˆYÚÚ]HÛÛ™šYÝ\˜X›H[Ù[][ÛˆY™šXÚY[˜ÞH[™™\›ÈÜ™\‹[™\ˆÜ]X\™KÚ[™HÜˆØ]ÝÛÝ‘ˆ[Ù[][Ûˆ
+H˜[\ÝÙY\[™Èœ›ÛH˜[[™È›ÝYÚšX[™Ý[\ˆÈš\Ú[™ÊKˆHÜ]X\™HØ]HØ[ˆ[ÛÈ˜]È›ÝÜ™\œÈÚÜY[ˆÜÜÚ][Û‹ÛÈHÝÚ]Ú[™ÈÝ^\Èš\ÚX›HÛˆH™X[H˜]Ûˆ\ÈHÝXYH[™K‰Ëˆ\Ù[[Ù[]ÜŽˆ	ÕÜš]\ÈH›ÛYÙKYš]™[ˆÜXØ[]XÜ›ÜÜÈHÚÛH™X[HÚ]Ý]ÝXÚ[™È]ÈÛ\š^˜][ÛˆLŒM[š\ÚX›H[Û™K[™[ˆ[\]YH[Ù[]Üˆ[ˆÛ™H\›HÙˆ[ˆ[\™™\›ÛY]\‹‰Ëˆ[Ùˆ	ÔÝY\œÈš\œÝ[Ü™\ˆYÚÈHÙ]Y›XÝ[Ûˆ[™ÛK[Ý]XÈÜˆÝÙ\Ú]Ø]™[[™ÝY\[™[ØØ[›š[™È[™[ˆÜ[Û˜[™\›ÈÜ™\‹‰Ëˆ[ÝŽˆ	ÔÙ[XÝÈÛ™HÜˆ[Ü™HÜXÝ˜[[™\È[™\ÜÙ\È[HÝ˜ZYÚ›ÝYÚ8 %][\^YÚ]]™\žH[™HÜ[ˆ]Û˜ÙKÜˆÙ\]Y[X[Ý\[™È›ÝYÚ[HÛ™H]H[YKˆH™X[H\]YÙˆÜÙH[™\È\ÈY›XÝYÈHÛÛ™šYÝ\˜X›H[™ÛH[™Ø[ˆ™HÚÝÛˆÜˆY[‹‰Ëˆ[^[[™Nˆ	ÐYÈHÛÛ™šYÝ\˜X›H›ÛYÜXØ[\][^HÚ[H™\Ù\š[™ÈHÝ]ÛÚ[™È™X[H^\ÎÈHÝYÙHØ[ˆÛÛ™H[^HÜˆÝÙY\™]ÙY[ˆÛË‰Ëˆ[ÙXÛÛ\™\ÜÛÜŽˆ	ÐYÈH›Ý[™YÙXÛÛ™[Ü™\ˆÜXÝ˜[\\ÙHÛÜœ™XÝ[Ûˆ\ÈÜÚ]]™HÜˆ™YØ]]™HÑˆ]Ø[ˆÛÛ\™\ÜÈH[ÙHÛ›HžHØ[˜Ù[[™ÈÜÜÚ]HXØÝ[][]YÑÈYÚ\‹[Ü™\ˆ\ÙH[™H\ÚXØ[Ü˜][™Ëš\ÛKÜˆÚ\œY[Z\œ›Üˆ^[Ý]\™H›Ý[Ù[Y‰Ëˆ[ÛNˆ	Ð\Y\È›ÛYÙKXÛÛ›ÛYÛ\š^˜][Ûˆ™]\™[˜ÙH8 %Z]\ˆHš^YØ]™\]K[ZÙHÚYÜˆHÜ]X\™K]Ø]™HÝÚ]Ú™]ÙY[ˆÛÈ™]\™[˜ÙHÝ]\È]HÙ]œ™\]Y[˜ÞNÈ[ˆ[˜[^™\ˆÛÛ™\ÈZ]\ˆ[È[[œÚ]H[Ù[][Û‹‰ËˆÚÜ\Žˆ	ÑØ]\Èš[š]KY\˜][Ûˆ[ÙH˜Z[œÈ[ˆ[YH[™˜]ÜÈÕÈYÚ\ÈHÚ[šÙYÛ‹ÛÙ™ˆ]\›ˆX]Ú[™È]È]HÞXÛNÈ]XÝÜˆ™XY[™ÜÈ\ÙHH]KX]™\˜YÙYÕÈÝÙ\‹‰ËˆÜž\Ý[ˆ	ÐÛÛ™\ÈHÛÛ™šYÝ\˜X›Hœ˜XÝ[ÛˆÙˆ[\ÝÙ\ˆ8 %Ú[™ÛK\\ÜÈœ˜XÝ[ÛœÈ\™HØ\Y]Œ	KHÛÛœÙ\˜]]™H\XØ][Ûˆ[Z]˜]\ˆ[ˆH\ÚXØ[Û™H8 %[ÈÙXÛÛ™[Ü™\ˆ
+ÒÈ[™ÛËX™X[HÑ‘ÊKËÝ\\˜ÛÛ[][KÔËÜˆÝ\ÝÛHÝ]]ˆHÝ\\˜ÛÛ[][H˜[™\È\Ý[X]Yœ›ÛHH[\Ø]™[[™Ý[™HÚÜÙ[ˆYY][KÜˆÙ]žH[™ˆH3áø op¬¸ oˆ[ÙHÝX›\È]™\žH™X[H[™Ú[ˆHÙXÛÛ™Ø]™[[™Ý\È™\Ù[[ÛÈZ^\ÈHZ\‹˜]Ú[™ÈÛˆÚ]ÝX›[™ÈX]™\ÈÙˆ›Ý™X[\ÈÛÈHZ^Y[™HÚ]È[Û™ÜÚYHHÛÈ\›[ÛšXÜÈ8 %]Û›HÚ[HZ\ˆ[Ù\È™XXÚHÜž\Ý[ÙÙ]\‹ÚXÚ\ÈÝÈ[YH™\›È\È›Ý[™ˆÔÈ[ÙH™[[Ý™\È[ˆ]]Ü™Y[\\][Û‹\ÈMH	HÚ[˜ÙH]Z[ÈÝ™\ˆX[žH›Ý[™š\ËÜ]È]žHX[›^x $Ô›ÝÙH[™Ú]™\ÈÚYÛ˜[[™Y\ˆZ\ˆÝÛˆ[™]ÚYÈ[™[ÙH\˜][ÛœËˆ\ÙHX]Ú[™Ë™\ÚÛ[™Ø]š]H[˜[ZXÜÈ\™H›ÝÚ[][]Y‰ËˆØ[\Nˆ	Ð][X]\È^Ú]][Ûˆ[™Ø[ˆ[Z]\Èš]™HÝXÚÙYÚYÛ˜[È]Û˜ÙH8 %›[Ü™\ØÙ[˜ÙKÒËËÑ‘Ë[™ÐT”Ëˆ\˜[Y]šXÈÚYÛ˜[È\™H›ÜØ\™YÙ[™\˜]YÚ][ˆÜ[Û˜[ÙXZÙ\ˆ\H
+˜XÚÝØ\™
+HØ™NÈÑ‘È[™ÐT”ÈY][Û˜[H™\]Z\™HÛÈY™™\™[^Ú]][ÛˆØ]™[[™ÝÈ]HØ[YHÜÝ‰ËˆÝYÙNˆ	ÓYXÚ[šXØ[HÛ\È˜^\ÈÝ]ÚYH]ÈÛX\ˆ\\\™H[™Ü[Û˜[HÛÛZ[œÈHØ[\KˆHY^›ÈÝYÙHØ[ˆØØ[ˆHØ[\H[Û™È]ÈÛ™È^\È
+JK[Û™ÈH™X[H^\È
+‹\
+KÜˆ˜\Ý\ˆ›ÝÙÙ]\ŽÈH™\Ú[ˆØ[\HØ[ˆ[ÛÈÚÝÈ[ÙY”›Þ[X\šÜË‰Ëˆ›Ø™Nˆ	Ô™XYÈÜXÝ[KØ]™[[™ÝÜˆÛ\š^˜][Ûˆœ›ÛHH™X\™\Ý˜XÙY™X[K‰Ëˆ\œ›ÝØ[›Žˆ	ÑXYÜ˜[H[››Ý][ÛŽÈÙ\È›Ý[\˜XÝÚ]˜^\Ë‰ËˆšYÝ\™Yœ˜[YNˆ	ÐØ[˜\Ë[Û›H^ÜÜ›Üˆ]È›Ü™\ˆ[™[™\È™]™\ˆ\X\ˆ[ˆH^ÜYšYÝ\™K‰Ëˆ^X™[ˆ	ÓX\šÙÝÛˆ[››Ý][ÛˆÚ]XY[™ÜË\ÝË[\\Ú\Ë[™ÛÙNÈÙXˆ[™ÒHY™\ÜÙ\È™XÛÛYHÛXÚØX›H[šÜËˆ]Ù\È›Ý[\˜XÝÚ]˜^\Ë‰ËˆYÚYÚˆ	Ð˜XÚÙÜ›Ý[™Ø\Ú›ÜˆØ[[™ÈÝ]H™YÚ[ÛˆÙˆHÚÙ]ÚÈ[Ø^\È˜]Ûˆ™Z[™˜^\È[™[[Y[Ë™]™\ˆ[\˜XÝÈÚ]˜^\Ë‰Ëˆ›Þˆ	ÑÙ[™\šXÈ[˜ÛÜÝ\™HÚ]^XÚ]\ÜË]›ÝYÚÜˆ™X[KX›ØÚÚ[™È™Z]š[Ü‹‰ËˆØ\ØÙ[ˆ	ÑXYÜ˜[K[Û›HØ\ÈÙ[Ý\Ú[™È›ÜˆØ\ËYš[YÛÝËXÛÜ™HšX™\ˆÙ]\ÎÈ™]™\ˆ™[™Ë›ØÚÜËÜˆXœÛÜ˜œÈH˜^K‰ËˆÚ[™ÝÎˆ	ÑXYÜ˜[K[Û›HÜXØ[Ú[™ÝÎÈ™]™\ˆ™[™Ë›ØÚÜËÜˆXœÛÜ˜œÈH˜^K‰ËŸNÂ‚˜ÛÛœÝPQÔSWÓÓ“HH™]ÈÙ]
+ÉØ\œ›ÝØ[›‰Ë	Ý^X™[	Ë	ÙšYÝ\™Yœ˜[YIË	ÚYÚYÚ	Ë	ÙØ\ØÙ[	Ë	ÝÚ[™ÝÉ×JNÂ˜ÛÛœÝÒTT”ÈH™]ÈÙ]
+ÉÜÛIË	ÛY]\Ý\™˜XÙI×JNÂ‚™^Ü[˜Ý[ÛˆÙ][[Y[Y]J\K\˜[\ÈHßKÛÛ^HßJHÂˆ]Y\ˆHPQÔSWÓÓ“Kš\Ê\JHÈ	ÙXYÜ˜[IÈˆ	ÜÚ[][]Y	ÎÂˆ]›ÝHH	ÉÎÂˆËÈH™YÚ\ÝžK[]™[Ý™\œšYH
+]XÝÜ‹Z[œÝ[Y[ËšœÈÙ]ÈÛ™H\‚ˆËÈ[œÝ[Y[
+H\È[Ü™HÜXÚYšXÈ[ˆ\ÈÙ[™\šXÈ˜[˜XÚÈX›H[™]\ÝˆËÈÚ[ˆKHÝ\Ú\ÙH]™\žH]XÝÜœËXØ]YÛÜžHYÛ[™HÝ]ÚYHH]™BˆËÈ[]H
+HÚZÚHZ[ÙX\˜ÚÝš[™ÜÈZ[œ›ÛH\È]
+HÚ[[BˆËÈ™]™\ÈÈHÙ[™\šXÈ^H[ÛY[H\H[ÛÈ\[œÈÈ\X\ˆ[‚ˆËÈSSQS•ÒS™[ÝË‚ˆ]\ØÜš\[ÛˆH™YÚ\ÝžVÝ\WOË™\ØÜš\[ÛˆSSQS•ÒSÝ\WH	ÓÜXØ[ÛÜšØ™[˜ÚÛÛ\Û™[‰ÎÂˆÛÛœÝ\Ü^S[šÓZ\ÜÚ[™ÈH\HOOH	Ù\Ü^IÈ	‰ˆ\˜[\ËœÙ[œÛÜ’Yˆ	‰ˆÛÛ^™[[Y[	‰ˆ\œ˜^Kš\Ð\œ˜^JÛÛ^™[[Y[ÊBˆ	‰ˆ\™\ÛÛ™Q\Ü^TÙ[œÛÜŠÛÛ^™[[Y[ÛÛ^™[[Y[ÊNÂ‚ˆYˆ
+\HOOH	ÛØš™XÝ]™IÈ	‰ˆØš™XÝ]™SYY][RÙ^J\˜[\ÊHOOH	ÛYØXÞIÊHÂˆY\ˆH	ØÛÛ™šYÝ\˜X›IÎÂˆ›ÝHH	Õ\ÈÛ\ˆYÚSHÚÙ]ÚY›Ý™XÛÜ™Hœ›ÛYY][KˆÚÛÜÙHZ\‹Ø]\‹Ú[ÜˆHÝ\ÝÛH[™^™Y›Ü™H™X][™È]È˜]YH\ÈÛÛ™šYÝ\™Y‰ÎÂˆH[ÙHYˆ
+\HOOH	ÛØš™XÝ]™IÈ	‰ˆØš™XÝ]™SYY][RÙ^J\˜[\ÊHOOH	ØZ\‰ÊHÂˆ›ÝHH	ÓYY][H[™HÙ]H]X[]]]™H[™Ý[\ˆXØÙ\[˜ÙHÝZYKˆHÝ\™Y[[Y\œÚ[ÛˆœšYÙH\ÈØÚ[X]XÎÈ]Ù\È›ÝY™Yœ˜XÝ[Û‹›ØØ[ÚYÙ][™ËÜˆX™\œ˜][ÛˆÛÜœ™XÝ[Û‹‰ÎÂˆH[ÙHYˆ
+\HOOH	ÛØš™XÝ]™IÊHÂˆ›ÝHH	ÑžHØš™XÝ]™\È\™HØ\Y]HŽKH˜XÝXØ[ÙZ[[™È›Üˆ™X[žH\ÚYÛœËˆHÙ]ÈH˜XÚË\\[X[Y]\ˆ™“KÛÈ]Ú[™Ù\ÈH›ØÝ\Ú[™ÈÛÛ™H[™Ú][ˆÝ™\™š[Y™X[HÛÜÝË‰ÎÂˆH[ÙHYˆ
+\HOOH	ÛY][[œÉÈ	‰ˆ\˜[\Ë™\ÚYÛ•\HOOH	ØXÚ›ÛX]XÉÊHÂˆ›ÝHH	ÕHÛÛ™šYÝ\™Y˜[™ÛÈÛ™HYX[^™YÙ[ÛY]šXÈ›ØÝ\ËˆY]KX]ÛHÜ›Ý\Y[^H[Z]ËÑ‹Ý™ZšY[[™ÛK˜XœšXØ][Ûˆ™X\ÚXš[]K[™Ø]™[[™ÝY\[™[Y™šXÚY[˜ÞH\™H›ÝÛÛ™Y‰ÎÂˆH[ÙHYˆ
+\HOOH	ÛY][[œÉÊHÂˆ›ÝHH	Ñ›ØØ[[™Ý›ÛÝÜÈŠ3®ÊHH¸  3®ø  ó®Ëˆ›ØÝ\Ú[™ÈY™šXÚY[˜ÞH\ÈH\Ù\‹\Ù]ÝÙ\ˆœ˜XÝ[ÛŽÈ[™›ØÝ\ÙY™\›ÝÜ™\ˆ[™ØØ]\ˆ\™H›Ý˜]Û‹‰ÎÂˆH[ÙHYˆ
+\HOOH	Ü\Ù\]IÊHÂˆ›ÝHH	ÓÛˆ]ÈÝÛˆ\È[[Y[Ú[™Ù\È›È[[œÚ]H[ž]Ú\™HLŒM™XÛÛXš[™H]YØZ[œÝH™Y™\™[˜ÙH\›HÈ\›ˆH\ÙH[Èœš[™Ù\ËˆH›Ùš[HÜ[œÈHÛX\ˆ\\\™KÛÈX]ÚH\\\™HÈH™X[NÈLŒXÑœš[™Ù\ÈXÜ›ÜÜÈH™X[WLŒY™\ÜÈÚ]HYÚXÝX[HXÚÜÈ\ˆHÙYÙH™X\ˆ[ˆHœš[™ÙHÝÚ[™ÜÈHÜÝ[\™\ÝÈ]HÚÛHœš[™ÙHHÜš][ˆ\Ù\ÈØ[˜Ù[[™HÝ[ÝÜÈ[Ýš[™ÈÚ[HH›Ùš[HÝ[ÚÝÜÈH]\›‹ÚXÚ\ÈÚ[ˆH™XYÝ]Ø^\ÈÛË‰ÎÂˆH[ÙHYˆ
+\HOOH	Ü]	ÊHÂˆ›ÝHH	ÑØZ[ˆ][\Y\ÈHÚYÛ˜[[™H\šÈ›ÛÜˆÙÙ]\‹ÛÈ]YÈH˜Z[ÚYÛ˜[[ÈH™XYX›H˜[™ÙH]™]™\ˆ[\›Ý™\ÈHÚYÛ˜[]ËY\šÈ˜][ËˆÛÛXÝ[Ü™HYÚÈÈ]ˆÝ]]Û\È]HÛÛ™šYÝ\™YX^[][KÚ\™HHœšYÚ\ˆ[œ]ÝÜÈ™XY[™ÈœšYÚ\‹‰ÎÂˆH[ÙHYˆ
+\HOOH	Ø[Ù	ÊHÂˆ›ÝHH	ÑY›XÝ[Ûˆ\ÈÙ]\™XÝH[ˆYÜ™Y\Ë›Ý\š]™Yœ›ÛHHÜž\Ý[[™[ˆXÛÝ\ÝXÈ™[ØÚ]KÛÈH[™Û\È\™H™YY›Ý™[Û™ÈÈ[žH™X[]šXÙHLŒMH™X[Y›XÝÜˆ™XXÚ\ÈH™]ÈYÜ™Y\È][ÜÝˆY™šXÚY[˜ÞH\È›]XÜ›ÜÜÈHØØ[‹Ú\™HH™X[Û™H˜[È]Ø^HÝØ\™›Ý[™Ë[™HÜXØ[œ™\]Y[˜ÞHÚYHY›XÝÜˆ\Y\È\È›ÝØ\œšYYˆ]Rˆ][Ý™\ÈLÌˆ›HžHË—LÌLLŒØ—LŒÍH›K˜\ˆ™[ÝÈ[ž][™È\ÈÛÜšØ™[˜Ú™\ÛÛ™\Ë‰ÎÂˆH[ÙHYˆ
+\HOOH	Ù[ÛIÈ	‰ˆ\\˜[\Ë›[Ù[]JHÂˆY\ˆH	ØÛÛ™šYÝ\˜X›IÎÂˆ›ÝHH	Ð\H›ÛYÙHÈÙ]HÛ\š^˜][Ûˆ™]\™[˜ÙNÈ\ÙHHÝÛœÝ™X[HÛ\š^™\ˆÜˆ”È›Üˆ[\]YH[Ù[][Û‹‰ÎÂˆH[ÙHYˆ
+\HOOH	Ù[ÛIÈ	‰ˆ\˜[\Ë›[Ù[]H	‰ˆ\˜[\Ë™š]™S[ÙHOOH	ÜÝÚ]Ú[™ÉÊHÂˆ›ÝHH\˜[\ËœÝÚ]Ú[ÙHOOH	ØÝ\ÝÛIÂˆÈ	ÕHÛÈ™]\™[˜ÙHÝ]\È[\›˜]H]HÝÚ]Ú[™Èœ™\]Y[˜ÞKˆHÝÛœÝ™X[HÛ\š^™\ˆÜˆ”È\›œÈ][È™X[[[œÚ]H[Ù[][Ûˆ8 %Ú]H[ÙYÛÝ\˜ÙK[™]šYX[[Ù\È\™H›Ý]YžHHÝ]H^HYY]ÛÈHÝÙ]XÝÜˆÛˆHØÜ™Y[ˆÚÝÜÈH[Ù[]Y˜Z[‹‰Âˆˆ	Ð[\›˜]\ÈH[˜ÛÛZ[™ÈÛ\š^˜][Ûˆ™]ÙY[ˆÛÈÜÙÛÛ˜[Ý]\È
+8¡¥ŠH]HÝÚ]Ú[™Èœ™\]Y[˜ÞNÈ›ÈÜž\Ý[X^\È[š[™È™YYYˆ]HÛ\š^™\ˆÜˆ”ÈÝÛœÝ™X[HÈ\›ˆ][È[[œÚ]H[Ù[][Ûˆ8 %Ú]H[ÙYÛÝ\˜ÙK[™]šYX[[Ù\È\™H›Ý]YžHHÝ]H^HYY]ÛÈHÝÙ]XÝÜˆÛˆHØÜ™Y[ˆÚÝÜÈH[Ù[]Y˜Z[‹‰ÎÂˆH[ÙHYˆ
+\HOOH	Ù\Ü^IÈ	‰ˆ
+\\˜[\ËœÙ[œÛÜ’Y\Ü^S[šÓZ\ÜÚ[™ÊJHÂˆY\ˆH	ØÛÛ™šYÝ\˜X›IÎÂˆ›ÝHH\Ü^S[šÓZ\ÜÚ[™ÂˆÈ	ÕH[šÙYÙ[œÛÜˆ\È›ÈÛ™Ù\ˆ[ˆ\ÈÚÙ]ÚˆÚÛÜÙH[›Ý\ˆ[œ]ÈH]HØX›H™]™\ˆÚ[™Ù\È˜XÙY˜^\Ë‰Âˆˆ	ÐÚÛÜÙHHÙ[œÛÜˆ[œ][ˆH[œÜXÝÜ‹ˆH˜]ÛˆØX›HØ\œšY\È]HÛ›H[™™]™\ˆÚ[™Ù\È˜XÙY˜^\Ë‰ÎÂˆH[ÙHYˆ
+\HOOH	ØÜž\Ý[	È	‰ˆ
+\\˜[\Ë˜ÛÛ™\\˜[\Ë˜ÛÛ™\OOH	Û›Û™IÊJHÂˆY\ˆH	ØÛÛ™šYÝ\˜X›IÎÂˆ›ÝHH	ÐÚÛÜÙHHÛÛ™\œÚ[Ûˆ[ÙHÈÙ[™\˜]H[ˆÝ]]Ø]™[[™Ý‰ÎÂˆH[ÙHYˆ
+ÒTT”Ëš\Ê\JH	‰ˆ
+P\œ˜^Kš\Ð\œ˜^J\˜[\Ë›^Y\œÊH\˜[\Ë›^Y\œË›[™ÝOOH
+JHÂˆY\ˆH	ØÛÛ™šYÝ\˜X›IÎÂˆËÈ[ˆ[œ]\›™YÚ\\ˆ\ÈÚ]]™\ˆ]ÈÝÛˆY˜][Ù[ÛY]žHXZÙ\È]‚ˆËÈHZ\œ›Üˆ›ÜˆHÓKHÛX\ˆÚ[™ÝÈ›ÜˆH˜[œÛZ\ÜÚ]™HY]\Ý\™˜XÙK‚ˆ›ÝHH\˜[\Ë˜[œÛZ\ÜÚ]™BˆÈ	ÐÝ\œ™[HHÛX\ˆÚ[™ÝËˆY[ˆÜXØ[ÝXÝ\™HÈÚ\HHØ]™Yœ›Û‰Âˆˆ	ÐÝ\œ™[HHZ[ˆ™Y›XÝÜ‹ˆY[ˆÜXØ[ÝXÝ\™HÈÚ\HHØ]™Yœ›Û‰ÎÂˆH[ÙHYˆ
+PQÔSWÓÓ“Kš\Ê\JJHÂˆ›ÝHH	Õ\È[[Y[\È[[[Û˜[Hš\ÝX[[™™]™\ˆÚ[™Ù\È˜XÙY˜^\Ë‰ÎÂˆH[ÙHYˆ
+ÓTÔ×Ð“ÑWÕTTËš\Ê\JJHÂˆÛÛœÝÙ[Y[YHÛÛ^™[[Y[	‰ˆ\œ˜^Kš\Ð\œ˜^JÛÛ^™[[Y[ÊBˆÈÝXÚ[™ÑÛ\ÜÐ›ÙJÛÛ^™[[Y[ÛÛ^™[[Y[ÊBˆˆ[ÂˆÛÛœÝY\ÝYH\HOOH	ÝXÚÛ[œÉÈÈXÚÓ[œÐY\ÝY[
+\˜[\ÊBˆˆ\HOOH	Ø\Ü\šXÛ[œÉÈÈ\Ü\šXÓ[œÐY\ÝY[
+\˜[\ÊBˆˆ[ÂˆYˆ
+Ù[Y[Y
+HÂˆY\ˆH	ØÛÛ™šYÝ\˜X›IÎÂˆ›ÝHH\È›ÙH\ÈÝXÚ[™È[›Ý\ˆÛ\ÜÈ›ÙKˆH˜XÙ\ˆØ[››Ý™\ÛÛ™HÛÈ[\™˜XÙ\È]ÛÜÙHÙÙ]\‹ÛÈÛ™HÙˆ[H\ÈÚÚ\Y[™H˜^\È\™HÜ›Û™È8 %›ÝØš[Ý\ÛHÜ›Û™Ë\ÝÜ›Û™ËˆX]™H]X\Ý	ÓRS—ÐÑSQS•ÑÐTH[H™]ÙY[ˆ[NÈH™X[Ù[Y[YÜ›Ý\\ÈHLLŒ0­[H^Y\ˆÙˆ›Ý\]Z]KYÛ\ÜÈ[ž]Ø^K˜ÂˆH[ÙHYˆ
+Y\ÝY
+HÂˆ›ÝHH\HOOH	Ø\Ü\šXÛ[œÉÂˆÈ™\]Y\ÝY\Ü\™HÙ[ÛY]žH\ÈÝ]ÚYHHš[š]KX\\\™HØY™]H›Ý[™ÈÜˆÛÝ[Ü›ÜÜÈHÝ\ˆ˜XÙKˆH˜XÙH\Ù\È	Ù›Ü›X]\Ü\šXÑÙ[ÛY]žJ\˜[\Ê_NÈÙYHÙ[ÛY]žH\ÙY™[ÝË˜ˆˆ™\]Y\ÝY˜YZHÜˆXÚÛ™\ÜÈØ[››ÝÛÜÙH]\È\\\™KˆH˜XÙH\Ù\È	Ù›Ü›X]™X[^™YÙ[ÛY]žJ\˜[\Ê_NÈÙYHÙ[ÛY]žH\ÙY™[ÝË˜ÂˆH[ÙHYˆ
+\HOOH	ÝXÚÛ[œÉÊHÂˆ›ÝHH	ÐH‘Y\šY[Û˜[Ú[™Û]Ú]Ü\šXØ[Üˆ›]˜XÙ\È[™š\ÚX›KX˜[™Ø][ÙÝYH\›Þ[X][ÛœËˆ\ÙH\Ü\šXÈ[œÈ›ÜˆÛÛšXËÙ]™[‹\Û[›ÛZX[˜XÙ\ÎÈÚÙ]È˜^\ËÛØ][™ÜË[™Ø[Xœ˜]YÙ™‹X^\ÈX™\œ˜][ÛœÈ\™H›Ý[Ù[Y‰ÎÂˆH[ÙHYˆ
+\HOOH	Ø\Ü\šXÛ[œÉÊHÂˆ›ÝHH	ÕH˜XÙH\Ù\ÈHÝ[™\™]™[‹X\Ü\™HØYÈÚ]^XÝ[\œÙXÝ[ÛœÈ[™Ý\™˜XÙH›Ü›X[È[ˆH‘Y\šY[Û˜[ÙXÝ[Û‹ˆ\˜^X[›ØØ[™XYÝ]È\ÙH™\^Ý\˜]\™NÈY™œ˜XÝ[Û‹ÚÙ]È˜^\ËÛØ][™ÜË[™X[Y˜XÝ\š[™ÈÛ\˜[˜Ù\È\™H›Ý[Ù[Y‰ÎÂˆH[ÙHÂˆ›ÝHH	ÔÝ˜ZYÚ[™Ú\˜Ý[\‹X\˜È›Ý[™\šY\È\ÙH]X[]]]™HÙ[ÛY]šXÈ™Yœ˜XÝ[Û‹ˆ™\ÝYÜˆÝ™\›\[™ÈÛ\ÜÈ›ÙY\È\™H›ÝÝ\™˜XÙK[Y\™ÙY‰ÎÂˆBˆH[ÙHYˆ
+\HOOH	ÜÝYÙIÈ	‰ˆ\˜[\Ë›Þ[™]šY]ÊHÂˆ›ÝHH	Ô[ÙY\œš]˜[ÈX]™HØ[˜\Ë[Û›H”›Þ[X\šÙ\œÈ[ˆH[Ý[YØ[\NÈX\šÙ\ˆÚ^™KÛÜXÚ]H]X[]]]™[Hœ›ØY[œÈÚ]ˆ
+\
+HÙ™œÙ]œ›ÛH›ØÝ\Ëˆ\È\ÈH‘ØØ[ˆ™]šY]Ë›ÝH™\ÚÛÜÙKÝ\š[™ËÜˆYHÑ˜XœšXØ][ÛˆÚ[][][Û‹‰ÎÂˆH[ÙHYˆ
+\HOOH	ÜÝYÙIÈ	‰ˆ\˜[\Ëœ“[ÙH	‰ˆ\˜[\Ëœ“[ÙHOOH	ÜÝ]XÉÊHÂˆ›ÝHH	ÕHY^›ÈÝYÙH[Ý[Ûˆ\ÈH\Ü^K][YH[š[X][ÛˆÙˆH[Ý[YØ[\H8 %œÞ[˜Èˆ\ÈHÚ[\HÙ\œ[[™H˜\Ý\‹›ÝHØ[Xœ˜]YY^›È˜Z™XÝÜžK‰ÎÂˆH[ÙHYˆ
+\HOOH	Ù\Ü^IÊHÂˆ›ÝHH	ÕHØÜ™Y[ˆZ\œ›ÜœÈH[šÙYÙ[œÛÜ¸ &\È]X[]]]™H˜XÙ\ˆÝ]]ˆ]È]HØX›H™]™\ˆÚ[™Ù\È˜XÙY˜^\Ë‰ÎÂˆB‚ˆÛÛœÝX™[ÈHÈÚ[][]Yˆ	ÔÚ[][]Y	ËÛÛ™šYÝ\˜X›Nˆ	Ó™YYÈÙ]\	ËXYÜ˜[Nˆ	ÑXYÜ˜[HÛ›IÈNÂˆ™]\›ˆÂˆY\‹ˆÝ]\ÎˆX™[ÖÝY\—Kˆ\ØÜš\[Û‹ˆ›ÝKˆNÂŸB‚™^ÜÛÛœÝØ]YÛÜšY\ÈHÂˆ	Ð[››Ý][ÛœÉËˆ	ÔÛÝ\˜Ù\ÉËˆ	ÓZ\œ›ÜœÉËˆ	Ó[œÙ\ÉËˆ	ÑšX™\œÉËˆ	Ñš[\œÈ	ˆÜ]\œÉËˆ	Ñ\Ü\œÚ]™H[[Y[ÉËˆ	ÔÛ\š^˜][Û‰Ëˆ	Ð™X[H›ØÚÉËˆ	ÕØ]™Yœ›ÛÚ\[™ÉËˆ	Ñ]XÝÜœÉËˆ	Ó[Ù[]ÜœÉËˆ	Ô[ÙH[Z[™ÉËˆ	Ó›Û›[™X\ˆÜXÜÉËˆ	ÔÜXÚ[Y[œÉËˆ	ÐÝ\ÝÛIËˆ	ÓXˆ[[Y[ÉË—NÂ‚‹ËÈHÜ™\ˆH[]H\ÝÈHØ]YÛÜžH[Žˆ[™Ü›Ý\YÛÛ\Û™[Èš\œÝÛÂ‹ËÈÛ™H™[Û™Ú[™ÈÈ›È˜[Z[H™XYÈ\È]ÈÝÛˆ[™È˜]\ˆ[ˆ\ÈHÝ˜^B‹ËÈY[X™\ˆÙˆHÝXœÙXÝ[ÛˆX›Ý™H][ˆXXÚ˜[YY˜[Z[H[ˆ\›‹ˆÚ\™Y‹ËÈÚ]HÚZÚHZ[\ˆÛÈ]È[™^Ø[››ÝšYÝ]ÙˆÝ\Ú]B‹ËÈXœ˜\žH]\ÈØÝ[Y[[™Ë‚™^Ü[˜Ý[Ûˆ[]SÜ™\™Y\\ÊØ]YÛÜžJHÂˆÛÛœÝ[šY\ÈHØš™XÝ™[šY\Ê™YÚ\ÝžJBˆ™š[\Š
+ËY—JHOˆY‹˜Ø]YÛÜžHOOHØ]YÛÜžH	‰ˆYY‹šY[ŠBˆœÛÜ
+
+KŠHOˆ
+VÌWKœ[]SÜ™\ˆÏÈL
+HH
+–ÌWKœ[]SÜ™\ˆÏÈL
+JNÂˆÛÛœÝÜ›Ý\YH™]ÈX\
+
+NÂˆÛÛœÝ[™Ü›Ý\YH×NÂˆ›Üˆ
+ÛÛœÝÝ\KY—HÙˆ[šY\ÊHÂˆYˆ
+YY‹œ[]QÜ›Ý\
+HÈ[™Ü›Ý\Yœ\Ú
+\JNÈÛÛ[YNÈBˆYˆ
+YÜ›Ý\Yš\ÊY‹œ[]QÜ›Ý\
+JHÜ›Ý\YœÙ]
+Y‹œ[]QÜ›Ý\×JNÂˆÜ›Ý\Y™Ù]
+Y‹œ[]QÜ›Ý\
+Kœ\Ú
+\JNÂˆBˆ™]\›ˆË‹‹[™Ü›Ý\Y‹‹–Ë‹‹™Ü›Ý\Y˜[Y\Ê
+WK™›]
+
+WNÂŸB‚™^Ü[˜Ý[ÛˆÙ]Ú^™J[
+HÂˆÛÛœÝH™YÚ\ÝžVÙ[\WNÂˆYˆ
+œÚ^™WÈ	‰ˆ\[ÙˆœÚ^™WÈOOH	Ù[˜Ý[Û‰ÊH™]\›ˆœÚ^™WÊ[
+NÂˆYˆ
+\[ÙˆœÚ^™HOOH	Ù[˜Ý[Û‰ÊH™]\›ˆœÚ^™J[
+NÂˆ™]\›ˆœÚ^™NÂŸB‚‹ËÈ^\ËX[YÛ™YÛÜ››Ý[™È›Üˆš][™ËÙ^Üˆ\È[˜ÛY\ÈÛÛ[[ÛˆX™[Â‹ËÈ[™H›Ø™IÜÈ™XYÝ]Ø\™ÚXÚ^[™™^[Û™H[[Y[]›Þ‚™^Ü[˜Ý[ÛˆÙ]š\ÝX[›Ý[™Ê[È[˜ÛYSX™[HYHHHßJHÂˆÛÛœÝH™YÚ\ÝžVÙ[\WNÂˆYˆ
+Y
+H™]\›ˆ[ÂˆÛÛœÝÞˆHÙ]Ú^™J[
+NÂˆÛÛœÝHH
+[œ›Ý
+H
+ˆX]”HÈNÂˆÛÛœÝ^H
+X]˜XœÊÞ‹È
+ˆX]˜ÛÜÊJJH
+ÈX]˜XœÊÞ‹š
+ˆX]œÚ[ŠJJJHÈŽÂˆÛÛœÝ^HH
+X]˜XœÊÞ‹È
+ˆX]œÚ[ŠJJH
+ÈX]˜XœÊÞ‹š
+ˆX]˜ÛÜÊJJJHÈŽÂˆÛÛœÝ[˜ÚÜˆH›Þ[˜ÚÜŠ[
+NÂˆÛÛœÝÞH[ž
+È[˜ÚÜ‹ž
+ˆX]˜ÛÜÊJHH[˜ÚÜ‹žH
+ˆX]œÚ[ŠJNÂˆÛÛœÝÞHH[žH
+È[˜ÚÜ‹ž
+ˆX]œÚ[ŠJH
+È[˜ÚÜ‹žH
+ˆX]˜ÛÜÊJNÂˆ]HÞH^HHÞ
+È^LHÞHH^KLHHÞH
+È^NÂ‚ˆYˆ
+[\HOOH	Ü›Ø™IÊHÂˆËÈHØ\™\ÈÛÝ[\‹\›Ý]YÈÝ^H\šYÚÛÈ]ÈÛÜ››Þ\ÂˆËÈ^\ËX[YÛ™Y[™Ù™œÙ]œ›ÛHH[[Y[8 %›ÝH›Ý][ÛˆÙˆÛÛYBˆËÈ[[Y[[ØØ[™XÝ[™ÛK‚ˆÛÛœÝØØ[HH›Ø™TØØ[J[
+NÂˆÛÛœÝXÙHH›Ø™PØ\™XÙ[Y[
+[›Ø™PØ\™
+[›Ø™P]
+[ž[žJJKØØ[JNÂˆÛÛœÝYH[ž
+ÈXÙKžÜH[žH
+ÈXÙKžNÂˆHX]›Z[ŠY
+NÈHHX]›X^
+KY
+ÈXÙKÊNÂˆLHX]›Z[ŠLÜ
+NÈLHHX]›X^
+LKÜ
+ÈXÙKš
+NÂˆB‚ˆYˆ
+[˜ÛYSX™[	‰ˆ[œÚÝÓX™[	‰ˆ[›X™[
+HÂˆÛÛœÝÚYHX]›X^
+Ýš[™Ê[›X™[
+K›[™Ý
+ˆ‹ŒŠNÂˆÛÛœÝÜÈH[›X™[ÜÈ	Ø‰ÎÂˆYˆ
+ÜÈOOH	Ø‰ÊHÂˆÛÛœÝHH[žH
+È^H
+ÈLÎÂˆHX]›Z[Š[žHÚYÈŠNÈHHX]›X^
+K[ž
+ÈÚYÈŠNÈLHHX]›X^
+LKH
+ÈÊNÂˆH[ÙHYˆ
+ÜÈOOH	Ý	ÊHÂˆÛÛœÝHH[žHH^HHÎÂˆHX]›Z[Š[žHÚYÈŠNÈHHX]›X^
+K[ž
+ÈÚYÈŠNÈLHX]›Z[ŠLHHLJNÂˆH[ÙHYˆ
+ÜÈOOH	Û	ÊHÂˆHX]›Z[Š[žH^HÈHÚY
+NÈLHX]›Z[ŠL[žHHÊNÈLHHX]›X^
+LK[žH
+ÈÊNÂˆH[ÙHÂˆHHX]›X^
+K[ž
+È^
+ÈÈ
+ÈÚY
+NÈLHX]›Z[ŠL[žHHÊNÈLHHX]›X^
+LK[žH
+ÈÊNÂˆBˆBˆ™]\›ˆÈLKLHNÂŸB‚‹ËÈHÛÜ›\™XÝ[Ûˆ[ˆ[[Y[	ÜÈ]HÜ˜XÙ\Ë\ÈH[š]™XÝÜ‹ˆB‹ËÈÜ\ÈÝÜ™Y[ˆ[[Y[[ØØ[ÛÛÜ™[˜]\ËÛÈ]\ÈÈ™H›Ý]YÚ]‹ËÈH[[Y[™Y›Ü™H]YX[œÈ[ž][™ÈÛˆH™[˜Ú‚™^Ü[˜Ý[Ûˆ]TÜ\™XÝ[ÛŠ[
+HÂˆÛÛœÝ˜]ÈH™YÚ\ÝžVÙ[Ë\WOË™]TÜÂˆÛÛœÝÜH\[Ùˆ˜]ÈOOH	Ù[˜Ý[Û‰ÈÈ˜]Ê[
+Hˆ˜]ÎÂˆÛÛœÝ[™ÛHH
+[Ëœ›Ý
+H
+ˆX]”HÈNÂˆÛÛœÝH
+ÜËž
+H
+ˆX]˜ÛÜÊ[™ÛJHH
+ÜËžH
+H
+ˆX]œÚ[Š[™ÛJNÂˆÛÛœÝHH
+ÜËž
+H
+ˆX]œÚ[Š[™ÛJH
+È
+ÜËžH
+H
+ˆX]˜ÛÜÊ[™ÛJNÂˆÛÛœÝ[™ÝHX]š\Ý
+JNÂˆ™]\›ˆ[™ÝˆYKNHÈÈˆÈ[™ÝNˆHÈ[™ÝHˆÈˆKNˆNÂŸB‚‹ËÈÛÛY]Ú\™HÈ›Ü[]›È^\Ý[™È[[Y[[™XYHØØÝ\Y\ËˆÙX\˜Ú\Â‹ËÈÝ]Ø\™œ›ÛH™X\˜žZ[™ÈH™Y™\˜\™XÝ[Ûˆš\œÝ[™˜[›š[™ÈÂ‹ËÈZ]\ˆÚYH™Y›Ü™HÚY[š[™ÈHš[™ËÛÈHØÜ™Y[ˆ[™ÈÛˆHÚYHB‹ËÈÙ[œÛÜ‰ÜÈØX›HXÝX[HX]™\Èœ›ÛHÚ[™]™\ˆ]ÚYH\Èœ™YK‚‹ËÂ‹ËÈÛ›H[[Y[›Þ\ÈÛÝ[\ÈØØÝ\YYˆ™X[\È\™H[X™\˜][HYÛ›Ü™YˆB‹ËÈØÜ™Y[ˆ\ÈH™[˜Ú[œÝ[Y[]™XYÈHØX›K]Ù\È›Ý›ØÚÈYÚ‹ËÈ[™™Y\Ú[™È]™\žHÜÝH˜^HÜ›ÜÜÙ\ÈÛÝ[X]™H›ÝÚ\™HÈ]][ˆB‹ËÈ\ÞHÚÙ]Ú‚™^Ü[˜Ý[Ûˆš[™œ™YTXÙ[Y[
+[[[Y[Ë™X\‹™Y™\ˆHÈˆKNˆJHÂˆÛÛœÝÚ^™HHÙ]Ú^™J[
+NÂˆÛÛœÝX\™Ú[ˆHMÂˆÛÛœÝØØÝ\YYH[[Y[Âˆ™š[\ŠÝ\ˆOˆÝ\ˆ	‰ˆÝ\‹šYOOH[šY
+Bˆ›X\
+Ý\ˆOˆÙ]š\ÝX[›Ý[™ÊÝ\ŠJBˆ™š[\Š›ÛÛX[ŠNÂ‚ˆÛÛœÝš]ÈH
+JHOˆÂˆÛÛœÝ›Ý[™ÈHÙ]š\ÝX[›Ý[™ÊÈ‹‹™[HJNÂˆYˆ
+X›Ý[™ÊH™]\›ˆ˜[ÙNÂˆ™]\›ˆ[ØØÝ\YYœÛÛYJÝ\ˆOˆ›Ý[™ËžHX\™Ú[ˆÝ\‹žH	‰ˆ›Ý[™ËžH
+ÈX\™Ú[ˆˆÝ\‹žˆ	‰ˆ›Ý[™ËžLHX\™Ú[ˆÝ\‹žLH	‰ˆ›Ý[™ËžLH
+ÈX\™Ú[ˆˆÝ\‹žL
+NÂˆNÂ‚ˆÛÛœÝ˜\ÙP[™ÛHHX]˜][ŒŠ™Y™\‹žK™Y™\‹ž
+NÂˆÛÛœÝ˜[ˆHÌŽLŽM‹MM‹LNLLLLML‹LML‹NNÂˆËÈ™X\˜\ÈHÙ[œÛÜ‰ÜÈÙ[™H[™H™]\›™YÚ[\ÈHØÜ™Y[‰ÜÂˆËÈÙ[™KÛÈHš\œÝš[™È\ÈÈÛX\ˆ[ˆHØÜ™Y[ˆ™Y›Ü™H]ÛX\œÂˆËÈ[ž][™È[ÙH8 %\ÈHØ\ÚYH[›ÝYÚÈX]™HH]HØX›H™XYX›K‚ˆÛÛœÝš\œÝš[™ÈHX]›X^
+Ú^™KËÚ^™Kš
+HÈˆ
+ÈNÂˆÛÛœÝš[™ÔÝ\HÍš[™ÜÈHLŽÂˆ›Üˆ
+]š[™ÈHÈš[™Èš[™ÜÎÈš[™ÊÊÊHÂˆÛÛœÝ˜Y]\ÈHš\œÝš[™È
+Èš[™È
+ˆš[™ÔÝ\Âˆ›Üˆ
+ÛÛœÝYÜ™Y\ÈÙˆ˜[ŠHÂˆÛÛœÝ[™ÛHH˜\ÙP[™ÛH
+ÈYÜ™Y\È
+ˆX]”HÈNÂˆÛÛœÝH™X\‹ž
+ÈX]˜ÛÜÊ[™ÛJH
+ˆ˜Y]\ÎÂˆÛÛœÝHH™X\‹žH
+ÈX]œÚ[Š[™ÛJH
+ˆ˜Y]\ÎÂˆYˆ
+š]ÊJJH™]\›ˆÈˆX]œ›Ý[™
+
+KNˆX]œ›Ý[™
+JHNÂˆBˆBˆËÈ]™\žHØ[™Y]HØ\È›ØÚÙYˆXÙH]™^[Û™HÚÛHÙX\˜Ú\™XH˜]\‚ˆËÈ[ˆÛˆÜÙˆÛÛY][™Îˆ[ˆÝ™\›\H\Ù\ˆ]\Ý[[™ÛH\ÈÛÜœÙH[‚ˆËÈHØÜ™Y[ˆ\\ˆÝ][ˆ^H^XÝY‚ˆÛÛœÝ˜Y]\ÈHš\œÝš[™È
+Èš[™ÜÈ
+ˆš[™ÔÝ\Âˆ™]\›ˆÂˆˆX]œ›Ý[™
+™X\‹ž
+ÈX]˜ÛÜÊ˜\ÙP[™ÛJH
+ˆ˜Y]\ÊKˆNˆX]œ›Ý[™
+™X\‹žH
+ÈX]œÚ[Š˜\ÙP[™ÛJH
+ˆ˜Y]\ÊKˆNÂŸB‚‹ËÈ[[Y[X™[˜]ÛˆÕUÒQHH›Ý]YÜ›Ý\ˆ[Ø^\È\šYÚÜÚ][Û™Y‹ËÈ\›Ý[™H[[Y[	ÜÈ›Ý]Y›Ý[™[™È›Þ
+X™[ÜÎˆ‹ÝÛÜŠB™^Ü[˜Ý[ÛˆX™[Õ‘Ê[
+HÂˆYˆ
+Y[œÚÝÓX™[Y[›X™[
+H™]\›ˆ	ÉÎÂˆÛÛœÝÞˆHÙ]Ú^™J[
+NÂˆÛÛœÝHH
+[œ›Ý
+H
+ˆX]”HÈNÂˆÛÛœÝ^H
+X]˜XœÊÞ‹È
+ˆX]˜ÛÜÊJJH
+ÈX]˜XœÊÞ‹š
+ˆX]œÚ[ŠJJJHÈŽÂˆÛÛœÝ^HH
+X]˜XœÊÞ‹È
+ˆX]œÚ[ŠJJH
+ÈX]˜XœÊÞ‹š
+ˆX]˜ÛÜÊJJJHÈŽÂˆÛÛœÝÜÈH[›X™[ÜÈ	Ø‰ÎÂˆ]H[žHH[žK[˜ÚÜˆH	ÛZYIË˜\ÙHH	ÉÎÂˆYˆ
+ÜÈOOH	Ø‰ÊHH
+ÏH^H
+ÈLÎÂˆ[ÙHYˆ
+ÜÈOOH	Ý	ÊHHOH^H
+ÈÎÂˆ[ÙHYˆ
+ÜÈOOH	Û	ÊHÈOH^
+ÈÎÈ[˜ÚÜˆH	Ù[™	ÎÈ˜\ÙHH	ÙÛZ[˜[X˜\Ù[[™OH˜Ù[˜[‰ÎÈBˆ[ÙHÈ
+ÏH^
+ÈÎÈ[˜ÚÜˆH	ÜÝ\	ÎÈ˜\ÙHH	ÙÛZ[˜[X˜\Ù[[™OH˜Ù[˜[‰ÎÈBˆ™]\›ˆ^H‰ÞÑš^Y
+J_HˆOH‰ÞKÑš^Y
+J_Hˆ^X[˜ÚÜH‰Ø[˜ÚÜŸHˆ	Ø˜\Ù_H›Û\Ú^™OHŒLHˆš[HˆÍ‰Ù\ØÊ[›X™[
+_OÝ^˜ÂŸB‚™^Ü[˜Ý[ÛˆÜ™X]Q[[Y[
+\KHHH
+HÂˆÛÛœÝH™YÚ\ÝžVÝ\WNÂˆÛÛœÝ\˜[\ÈHßNÂˆ›Üˆ
+ÛÛœÝÙˆœ\˜[\È×JHÂˆYˆ
+\HOOH	Ü™XYÝ]	È\HOOH	Ù\š]™Y	È\HOOH	Ù\š]™Y\Ù[XÝ	È\HOOH	ÜÙXÝ[Û‰ÊHÛÛ[YNÂˆ\˜[\ÖÜšÙ^WHH\œ˜^Kš\Ð\œ˜^J™YŠHÈ”ÓÓ‹œ\œÙJ”ÓÓ‹œÝš[™ÚYžJ™YŠJHˆ™YŽÂˆBˆ™]\›ˆÈYˆZY
+
+K\KK›ÝˆX™[ˆ	ÉËÚÝÓX™[ˆ˜[ÙK\˜[\ÈNÂŸB

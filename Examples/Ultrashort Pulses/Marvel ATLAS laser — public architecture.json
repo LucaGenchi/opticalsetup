@@ -1,0 +1,271 @@
+{
+  "app": "optics2d",
+  "version": 1,
+  "elements": [
+    {
+      "id": "frame",
+      "type": "figureframe",
+      "x": 800,
+      "y": 350,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "w": 1560, "h": 660, "background": "white" }
+    },
+    {
+      "id": "title",
+      "type": "textlabel",
+      "x": 45,
+      "y": 35,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "# Marvel ATLAS laser — public architecture\n**Illustrative, not a proprietary optical prescription** · 1053 nm → 527 nm · 100 fs · 10 Hz · order-200 J green output",
+        "fontSize": 14,
+        "fill": "#203047"
+      }
+    },
+    {
+      "id": "architecture-note",
+      "type": "textlabel",
+      "x": 45,
+      "y": 112,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "## Published architecture (diagram only)",
+        "fontSize": 12,
+        "fill": "#315a79"
+      }
+    },
+    {
+      "id": "arch-seed",
+      "type": "box",
+      "x": 130,
+      "y": 185,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "text": "broadband\nseed", "w": 120, "h": 56, "behavior": "pass", "fill": "#e9f3ff" }
+    },
+    {
+      "id": "arch-opcpa",
+      "type": "box",
+      "x": 365,
+      "y": 185,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "text": "OPCPA\nfront end", "w": 140, "h": 56, "behavior": "pass", "fill": "#efeaff" }
+    },
+    {
+      "id": "arch-amplifier",
+      "type": "box",
+      "x": 635,
+      "y": 185,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "text": "diode-pumped\nface-cooled Nd:glass", "w": 190, "h": 64, "behavior": "pass", "fill": "#eaf7ef" }
+    },
+    {
+      "id": "arch-compressor",
+      "type": "box",
+      "x": 910,
+      "y": 185,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "text": "pulse\ncompressor", "w": 140, "h": 56, "behavior": "pass", "fill": "#fff3dc" }
+    },
+    {
+      "id": "arch-shg",
+      "type": "box",
+      "x": 1130,
+      "y": 185,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "text": "SHG\n1053 → 527 nm", "w": 140, "h": 56, "behavior": "pass", "fill": "#ebf9e6" }
+    },
+    {
+      "id": "arch-target",
+      "type": "box",
+      "x": 1390,
+      "y": 185,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "text": "focus on\nnanostructured target", "w": 190, "h": 64, "behavior": "block", "fill": "#ffe9e2" }
+    },
+    { "id": "a1", "type": "arrowann", "x": 245, "y": 185, "rot": 0, "label": "", "showLabel": false, "params": { "len": 90, "width": 2, "fill": "#557086" } },
+    { "id": "a2", "type": "arrowann", "x": 495, "y": 185, "rot": 0, "label": "", "showLabel": false, "params": { "len": 90, "width": 2, "fill": "#557086" } },
+    { "id": "a3", "type": "arrowann", "x": 790, "y": 185, "rot": 0, "label": "", "showLabel": false, "params": { "len": 90, "width": 2, "fill": "#557086" } },
+    { "id": "a4", "type": "arrowann", "x": 1020, "y": 185, "rot": 0, "label": "", "showLabel": false, "params": { "len": 70, "width": 2, "fill": "#557086" } },
+    { "id": "a5", "type": "arrowann", "x": 1260, "y": 185, "rot": 0, "label": "", "showLabel": false, "params": { "len": 90, "width": 2, "fill": "#557086" } },
+    {
+      "id": "trace-heading",
+      "type": "textlabel",
+      "x": 45,
+      "y": 285,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "## Live qualitative trace of the final pulse chain",
+        "fontSize": 12,
+        "fill": "#315a79"
+      }
+    },
+    {
+      "id": "atlas-fundamental",
+      "type": "pulsedlaser",
+      "x": 105,
+      "y": 430,
+      "rot": 0,
+      "label": "effective post-compressor pulse · 1053 nm · 100 fs · 10 Hz",
+      "showLabel": true,
+      "labelPos": "t",
+      "params": {
+        "wavelength": 1053,
+        "avgPowerW": 3333.333333,
+        "beamMode": "beam",
+        "beamWidth": 18,
+        "repRateMHz": 0.00001,
+        "pulsePhaseNs": 0,
+        "transformLimited": true,
+        "pulseWidthFs": 100,
+        "pulseShape": "gauss",
+        "pol": 0,
+        "autoColor": true,
+        "showPulse": true,
+        "temporalMode": "pulsed"
+      }
+    },
+    {
+      "id": "duration-probe",
+      "type": "probe",
+      "x": 335,
+      "y": 430,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "displayScale": 1.15, "prop": "duration" }
+    },
+    {
+      "id": "shg",
+      "type": "crystal",
+      "x": 555,
+      "y": 430,
+      "rot": 0,
+      "label": "SHG · illustrative 60% conversion",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": {
+        "aperture": 34,
+        "convert": "shg",
+        "mixEfficiency": 0.3,
+        "mixDfg": false,
+        "efficiency": 0.6,
+        "transmitPump": false
+      }
+    },
+    {
+      "id": "wavelength-probe",
+      "type": "probe",
+      "x": 640,
+      "y": 430,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "displayScale": 1.15, "prop": "wl" }
+    },
+    {
+      "id": "power-probe",
+      "type": "probe",
+      "x": 735,
+      "y": 430,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": { "displayScale": 1.15, "prop": "power" }
+    },
+    {
+      "id": "beam-expander",
+      "type": "telescope",
+      "x": 905,
+      "y": 430,
+      "rot": 0,
+      "label": "beam expansion / transport proxy",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": { "f1": 50, "f2": 150, "dia": 50.8, "transEff": 99 }
+    },
+    {
+      "id": "focus",
+      "type": "lens",
+      "x": 1195,
+      "y": 430,
+      "rot": 0,
+      "label": "ideal focusing optic · f = 150 mm",
+      "showLabel": true,
+      "labelPos": "b",
+      "params": { "f": 150, "dia": 60, "transEff": 99 }
+    },
+    {
+      "id": "target",
+      "type": "sample",
+      "x": 1345,
+      "y": 430,
+      "rot": 90,
+      "label": "nanostructured target plane",
+      "showLabel": true,
+      "labelPos": "r",
+      "params": {
+        "aperture": 60,
+        "specimenType": "absorbing",
+        "channels": [],
+        "showSignalSpot": true,
+        "thickness": 2,
+        "voxelPreview": false,
+        "transmitExc": false,
+        "transmission": 0,
+        "mode": "none",
+        "fluorWl": 520,
+        "carsWl": 660,
+        "signalEff": 0.1
+      }
+    },
+    {
+      "id": "energy-note",
+      "type": "textlabel",
+      "x": 45,
+      "y": 550,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Energy bookkeeping in this sketch:** 333.3 J at 1053 nm × 60% SHG = 200 J at 526.5 nm.\nThe 60% conversion is illustrative, not a disclosed ATLAS stage efficiency.",
+        "fontSize": 11,
+        "fill": "#5d4534"
+      }
+    },
+    {
+      "id": "limits-note",
+      "type": "textlabel",
+      "x": 790,
+      "y": 550,
+      "rot": 0,
+      "label": "",
+      "showLabel": false,
+      "params": {
+        "text": "**Model boundary:** the live trace begins after compression; OPCPA, Nd:glass, and compressor stages above are diagram-only.\nThis 2D geometric tracer does not model gain, damage, thermal loading, contrast, diffraction, plasma, or fusion.",
+        "fontSize": 11,
+        "fill": "#5d4534"
+      }
+    }
+  ],
+  "beams": []
+}
